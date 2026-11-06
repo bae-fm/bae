@@ -11,7 +11,7 @@
 use super::audio_output::{
     AudioDrain, AudioError, AudioEventSender, AudioOutput, AudioOutputControls, AudioStream,
 };
-use super::device_writer::{DeviceStream, DeviceStreamError, DeviceWriter, WriterStep};
+use super::device_writer::{DeviceStream, DeviceStreamError, DeviceWriter};
 use crate::source::PlaybackSource;
 use bae_util::task_failure::caught_sync;
 use ndk::audio::{
@@ -21,7 +21,6 @@ use ndk::audio::{
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
-use std::time::Duration;
 use tracing::{info, warn};
 
 /// Number of frames pulled and written per loop iteration. Interleaved across
@@ -142,6 +141,9 @@ impl DeviceStream for AAudioDeviceStream {
 /// writer thread when dropped.
 struct AAudioStreamHandle {
     stop: Arc<AtomicBool>,
+    /// The controls the writer waits on while it has nothing to write: woken
+    /// after `stop` is set, so a waiting writer sees it.
+    controls: AudioOutputControls,
     thread: Option<std::thread::JoinHandle<()>>,
 }
 
@@ -154,6 +156,7 @@ impl AudioStream for AAudioStreamHandle {
 impl Drop for AAudioStreamHandle {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
+        self.controls.wake_drain();
         if let Some(handle) = self.thread.take() {
             if let Err(e) = handle.join() {
                 warn!("AAudio writer thread panicked during shutdown: {:?}", e);
@@ -174,6 +177,7 @@ impl AudioOutput for AAudioOutput {
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         let stop = Arc::new(AtomicBool::new(false));
         let stop_clone = stop.clone();
+        let handle_controls = controls.clone();
         // The writer thread opens the stream (AAudio binds it to the opening
         // thread) and says here whether it could, so a stream that can't open
         // fails this build rather than a later write.
@@ -211,7 +215,7 @@ impl AudioOutput for AAudioOutput {
                 audio_events,
                 position_update_interval_ms,
             );
-            let mut writer = DeviceWriter::new(
+            let writer = DeviceWriter::new(
                 stream,
                 move || {
                     open_output_stream(source_sample_rate, source_channels)
@@ -221,19 +225,10 @@ impl AudioOutput for AAudioOutput {
                 drain,
                 WRITE_FRAMES * source_channels as usize,
             );
-            while !stop_clone.load(Ordering::Acquire) {
-                let step = caught_sync("write to the AAudio stream", || writer.step())
-                    .unwrap_or_else(|failed| writer.end(failed.to_string()));
-                match step {
-                    WriterStep::Wrote => {}
-                    WriterStep::Paused => std::thread::sleep(Duration::from_millis(5)),
-                    WriterStep::Starved => std::thread::sleep(Duration::from_millis(1)),
-                    WriterStep::Ended => break,
-                }
-            }
+            writer.run(&stop_clone);
         });
 
-        let handle = AAudioStreamHandle { stop, thread: Some(thread) };
+        let handle = AAudioStreamHandle { stop, controls: handle_controls, thread: Some(thread) };
         match opened_rx.recv() {
             Ok(Ok(())) => Ok(Box::new(handle)),
             Ok(Err(error)) => Err(error),

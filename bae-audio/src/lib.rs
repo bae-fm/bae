@@ -13,6 +13,7 @@ mod probe;
 mod resample;
 mod sample_clock;
 pub mod sparse_buffer;
+pub mod stream_wake;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_fixtures;
 #[cfg(any(test, feature = "test-instrumentation"))]

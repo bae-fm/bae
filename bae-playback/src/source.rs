@@ -14,6 +14,7 @@
 
 use crate::audio_output::{duration_millis, AudioEvent, AudioEventSender};
 use crate::timeline::{StreamPosition, TrackTimeline};
+use bae_audio::stream_wake::StreamWake;
 use bae_audio::track_stream::TrackStream;
 use bae_util::stall::Stall;
 use std::sync::Arc;
@@ -88,6 +89,10 @@ pub struct PlaybackSource {
     /// across a persistent output stream that plays many tracks through the
     /// same source.
     completion_reported: bool,
+    /// The wake of the drain reading this source, once one is built over it.
+    /// Every track placed here notifies it as it decodes, and placing one
+    /// notifies it too.
+    wake: Option<StreamWake>,
 }
 
 impl PlaybackSource {
@@ -98,12 +103,35 @@ impl PlaybackSource {
             next: None,
             starvation: Stall::default(),
             completion_reported: false,
+            wake: None,
+        }
+    }
+
+    /// Wake `wake` whenever this source may have new samples: its tracks'
+    /// decoders push or finish, or a track is placed here. Called as a drain
+    /// is built over the source, never from the real-time callback.
+    pub(crate) fn wake_on_change(&mut self, wake: StreamWake) {
+        self.current.wake_on_push(&wake);
+        if let Some((next, _)) = &self.next {
+            next.wake_on_push(&wake);
+        }
+        wake.notify();
+        self.wake = Some(wake);
+    }
+
+    /// Have `stream`, just placed here, wake this source's drain, and wake
+    /// it now: what it reads changed.
+    fn placed(&self, stream: &TrackStream) {
+        if let Some(wake) = &self.wake {
+            stream.wake_on_push(wake);
+            wake.notify();
         }
     }
 
     /// Stage the next track to play immediately after the current one. The
     /// caller is responsible for only staging a format-compatible track.
     pub fn stage_next(&mut self, next: TrackStream, next_fmt: TrackFmt) {
+        self.placed(&next);
         self.next = Some((next, Arc::new(next_fmt)));
     }
 
@@ -130,6 +158,7 @@ impl PlaybackSource {
     }
 
     fn install_current(&mut self, next: TrackStream, next_fmt: TrackFmt) {
+        self.placed(&next);
         self.current = next;
         self.current_fmt = Arc::new(next_fmt);
         self.completion_reported = false;
@@ -159,6 +188,10 @@ impl PlaybackSource {
         self.current_fmt = next_fmt;
         self.completion_reported = false;
         self.starvation.clear();
+        // Already waking the drain since it was staged; what it reads changed.
+        if let Some(wake) = &self.wake {
+            wake.notify();
+        }
         true
     }
 

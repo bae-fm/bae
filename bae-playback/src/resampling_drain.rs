@@ -6,7 +6,7 @@
 //! at the track's rate, and passes the samples through everywhere else.
 
 use crate::audio_output::{
-    AudioDrain, AudioLockMissLog, AudioOutputControls, AudioState, DrainStatus,
+    AudioDrain, AudioLockMissLog, AudioOutputControls, AudioState, DrainStatus, SourceLock,
 };
 use bae_audio::Resampler;
 #[cfg(not(target_os = "android"))]
@@ -46,8 +46,10 @@ pub(crate) struct ResamplingDrain {
 impl ResamplingDrain {
     /// A drain from a source at `source_rate` and `source_channels` to an
     /// output at `output_rate` and `output_channels`, or why no converter
-    /// between the two could be set up. `lock_miss`, when given, logs the audio
-    /// thread failing to take the source's lock.
+    /// between the two could be set up. `lock_miss`, given for the real-time
+    /// callback, makes the drain skip a buffer rather than wait for the
+    /// source's lock, and logs each miss; without it the drain's thread waits
+    /// for the lock.
     pub(crate) fn new(
         drain: AudioDrain,
         controls: AudioOutputControls,
@@ -109,7 +111,11 @@ impl ResamplingDrain {
             return Pull::Idle;
         }
         self.pulled.resize(frames * self.source_channels, 0.0);
-        match self.drain.drain_iteration(&mut self.pulled, true, false, self.lock_miss.as_mut()) {
+        let lock = match &mut self.lock_miss {
+            Some(lock_miss) => SourceLock::Try(lock_miss),
+            None => SourceLock::Wait,
+        };
+        match self.drain.drain_iteration(&mut self.pulled, true, false, lock) {
             DrainStatus::Samples { read } => {
                 self.flushed = false;
                 let input = &self.pulled[..read];

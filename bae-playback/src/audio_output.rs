@@ -7,10 +7,11 @@
 //! depend only on this module, not on each other or on cpal.
 
 use crate::source::{PlaybackSource, TrackCrossing, TrackFmt};
+use bae_audio::stream_wake::StreamWake;
 use rtrb::{Consumer, Producer, RingBuffer};
 use std::sync::atomic::{AtomicU32, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 
 use bae_util::task_failure::caught_sync;
 
@@ -44,6 +45,9 @@ impl AudioState {
 pub struct AudioOutputControls {
     state: Arc<AtomicU8>,
     volume: Arc<AtomicF32>,
+    /// What a drain on its own thread waits on while it has nothing to do. A
+    /// state change notifies it, and so does every track its source holds.
+    wake: StreamWake,
 }
 
 impl AudioOutputControls {
@@ -51,11 +55,53 @@ impl AudioOutputControls {
         Self {
             state: Arc::new(AtomicU8::new(AudioState::Stopped as u8)),
             volume: Arc::new(AtomicF32::new(initial_volume.get())),
+            wake: StreamWake::new(),
         }
     }
 
+    /// Set the state and wake a drain waiting for it. Never from the
+    /// real-time callback: the wake takes a lock.
     pub(crate) fn set_state(&self, new_state: AudioState) {
         self.state.store(new_state as u8, Ordering::Relaxed);
+        self.wake.notify();
+    }
+
+    /// The drain stopping its own player when the last track drained. It is
+    /// the only waiter, so nothing is woken, and the real-time callback may
+    /// call it.
+    fn stop_from_drain(&self) {
+        self.state.store(AudioState::Stopped as u8, Ordering::Relaxed);
+    }
+
+    /// Have `source`'s tracks, and each one placed in it, wake a drain
+    /// waiting on these controls.
+    fn wake_drain_of(&self, source: &mut PlaybackSource) {
+        source.wake_on_change(self.wake.clone());
+    }
+
+    /// The changes counted so far that could give this player's drain work.
+    /// A drain on its own thread reads it before it looks for work.
+    #[cfg(any(target_os = "android", test))]
+    pub(crate) fn drain_changes(&self) -> u64 {
+        self.wake.changes()
+    }
+
+    /// Wait until a change past `seen` could give the drain work.
+    #[cfg(any(target_os = "android", test))]
+    pub(crate) fn wait_for_drain_work(&self, seen: u64) {
+        self.wake.wait_past(seen);
+    }
+
+    /// Wake a waiting drain: its owner stopped it.
+    #[cfg(any(target_os = "android", test))]
+    pub(crate) fn wake_drain(&self) {
+        self.wake.notify();
+    }
+
+    /// Test-only: wait until a drain is waiting for work.
+    #[cfg(test)]
+    pub(crate) fn wait_until_drain_waits(&self) {
+        self.wake.wait_until_waiting();
     }
 
     pub(crate) fn get_state(&self) -> AudioState {
@@ -87,6 +133,15 @@ impl AtomicF32 {
     fn load(&self) -> f32 {
         f32::from_bits(self.bits.load(Ordering::Relaxed))
     }
+}
+
+/// How a drain takes the source's lock.
+pub(crate) enum SourceLock<'a> {
+    /// A drain on its own thread waits while the service holds the lock.
+    Wait,
+    /// The real-time callback never waits: a miss yields nothing this buffer,
+    /// and is logged.
+    Try(&'a mut AudioLockMissLog),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -144,6 +199,7 @@ impl AudioDrain {
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Self {
+        controls.wake_drain_of(&mut source.lock().unwrap_or_else(PoisonError::into_inner));
         Self {
             controls,
             source,
@@ -166,7 +222,7 @@ impl AudioDrain {
         buf: &mut [f32],
         apply_gain: bool,
         zero_unfilled: bool,
-        lock_miss: Option<&mut AudioLockMissLog>,
+        lock: SourceLock<'_>,
     ) -> DrainStatus {
         if self.failed || self.controls.get_state() != AudioState::Playing {
             if zero_unfilled {
@@ -175,22 +231,30 @@ impl AudioDrain {
             return DrainStatus::Idle;
         }
 
-        let mut source_guard = match self.source.try_lock() {
-            Ok(guard) => {
-                if let Some(lock_miss) = lock_miss {
+        let locked = match lock {
+            SourceLock::Wait => self.source.lock().map_err(|poisoned| {
+                // A panic while the lock was held leaves the source in an
+                // unknown state: stop reading it, and say why.
+                self.failed = true;
+                self.audio_events
+                    .push_required(AudioEvent::OutputFailed { detail: poisoned.to_string() });
+            }),
+            SourceLock::Try(lock_miss) => match self.source.try_lock() {
+                Ok(guard) => {
                     lock_miss.acquired(&mut self.audio_events);
+                    Ok(guard)
                 }
-                guard
-            }
-            Err(_) => {
-                if let Some(lock_miss) = lock_miss {
+                Err(_) => {
                     lock_miss.missed(&mut self.audio_events);
+                    Err(())
                 }
-                if zero_unfilled {
-                    buf.fill(0.0);
-                }
-                return DrainStatus::Idle;
+            },
+        };
+        let Ok(mut source_guard) = locked else {
+            if zero_unfilled {
+                buf.fill(0.0);
             }
+            return DrainStatus::Idle;
         };
 
         // Caught while the guard is held, so a panicking pull leaves the
@@ -217,7 +281,7 @@ impl AudioDrain {
             // crossing or a `replace`, so a persistent stream playing many tracks
             // still reports each one exactly once.
             if let Some(event) = source_guard.take_completion_event() {
-                self.controls.set_state(AudioState::Stopped);
+                self.controls.stop_from_drain();
                 self.audio_events.push_required(AudioEvent::Completion(event));
             }
             if zero_unfilled {
@@ -634,7 +698,7 @@ where
                 break;
             }
 
-            match drain.drain_iteration(&mut buf, false, false, None) {
+            match drain.drain_iteration(&mut buf, false, false, SourceLock::Wait) {
                 // Idle covers a drained track too: the output stream is
                 // persistent, so this thread keeps running until the source is
                 // replaced with the next track or the stream is dropped.
@@ -889,7 +953,7 @@ impl AudioOutput for RealtimeProbeOutput {
                     break;
                 }
 
-                match drain.drain_iteration(&mut buf, true, false, None) {
+                match drain.drain_iteration(&mut buf, true, false, SourceLock::Wait) {
                     // Persistent output: a drained track idles rather than ending
                     // the probe thread, which exits only on the stop flag.
                     DrainStatus::Idle => {

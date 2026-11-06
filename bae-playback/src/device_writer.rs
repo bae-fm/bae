@@ -14,8 +14,10 @@
 //! The device stream is behind [`DeviceStream`], so the writer's reaction to a
 //! disconnect runs in tests against streams that disconnect on cue.
 
-use super::audio_output::{AudioDrain, AudioOutputControls, AudioState, DrainStatus};
+use super::audio_output::{AudioDrain, AudioOutputControls, AudioState, DrainStatus, SourceLock};
+use bae_util::task_failure::caught_sync;
 use std::ops::Range;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::{debug, info};
 
 /// Why a device stream refused an operation.
@@ -107,6 +109,28 @@ where
         }
     }
 
+    /// Step until the output ends or `stop` is set. While paused or starved
+    /// the thread waits on the player's wake, which a resume, a decoder's push
+    /// or finish, a track placed in the source, and the owner's stop all
+    /// notify. A step that panics ends the output, which playback reports.
+    pub(crate) fn run(mut self, stop: &AtomicBool) {
+        loop {
+            // Read before the stop flag and the step, so a stop, a resume or a
+            // push that lands after this read ends the wait below at once.
+            let seen = self.controls.drain_changes();
+            if stop.load(Ordering::Acquire) {
+                return;
+            }
+            let step = caught_sync("write to the device stream", || self.step())
+                .unwrap_or_else(|failed| self.end(failed.to_string()));
+            match step {
+                WriterStep::Wrote => {}
+                WriterStep::Paused | WriterStep::Starved => self.controls.wait_for_drain_work(seen),
+                WriterStep::Ended => return,
+            }
+        }
+    }
+
     /// One pass of the writer: follow the play state, then write what the
     /// device hasn't taken yet, or drain more and write that.
     pub(crate) fn step(&mut self) -> WriterStep {
@@ -132,7 +156,7 @@ where
         }
 
         if self.unwritten.is_empty() {
-            match self.drain.drain_iteration(&mut self.buf, true, false, None) {
+            match self.drain.drain_iteration(&mut self.buf, true, false, SourceLock::Wait) {
                 DrainStatus::Samples { read } => self.unwritten = 0..read,
                 // Persistent output: a drained track idles the writer rather
                 // than ending it; the next track's source replace resumes it.

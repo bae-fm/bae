@@ -8,9 +8,10 @@
 //!
 //! Uses `rtrb` for lock-free SPSC communication, safe for real-time audio.
 
+use crate::stream_wake::StreamWake;
 use rtrb::{Consumer, Producer, RingBuffer};
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use tokio::sync::oneshot;
 
 /// How much audio the ring holds, whatever the sample rate.
@@ -32,6 +33,12 @@ pub struct StreamingState {
     /// Set by the decoder thread on its first push; the audio callback reads it
     /// to unpark a decoder parked on a full ring.
     decoder_thread: OnceLock<std::thread::Thread>,
+    /// The wake of the drain that reads this stream, once the stream is in a
+    /// source that drain reads. The producer notifies it after each push and
+    /// when it finishes. Set under the lock and read under it, so a push either
+    /// sees the wake or happened before the stream was placed, where the
+    /// drain's first look finds it.
+    consumer_wake: Mutex<Option<StreamWake>>,
     /// What the producer has done so far, for a test to wait on.
     #[cfg(any(test, feature = "test-instrumentation"))]
     activity: std::sync::Mutex<ProducerActivity>,
@@ -65,10 +72,19 @@ impl StreamingState {
             decode_error_count: AtomicU32::new(0),
             samples_decoded: AtomicU64::new(0),
             decoder_thread: OnceLock::new(),
+            consumer_wake: Mutex::new(None),
             #[cfg(any(test, feature = "test-instrumentation"))]
             activity: std::sync::Mutex::default(),
             #[cfg(any(test, feature = "test-instrumentation"))]
             activity_changed: std::sync::Condvar::new(),
+        }
+    }
+
+    /// Tell the drain reading this stream, if it is in one's source yet, that
+    /// it may have work.
+    fn wake_consumer(&self) {
+        if let Some(wake) = &*self.consumer_wake.lock().unwrap_or_else(PoisonError::into_inner) {
+            wake.notify();
         }
     }
 
@@ -146,6 +162,9 @@ impl TrackSink {
             }
         }
         self.state.add_samples_decoded(pushed as u64);
+        if pushed > 0 {
+            self.state.wake_consumer();
+        }
         pushed
     }
 
@@ -188,6 +207,7 @@ impl TrackSink {
             offset += n;
             self.samples_pushed += n;
             self.state.add_samples_decoded(n as u64);
+            self.state.wake_consumer();
 
             if self.ready_tx.is_some() && self.samples_pushed >= self.capacity / 2 {
                 if let Some(tx) = self.ready_tx.take() {
@@ -240,6 +260,7 @@ impl TrackSink {
             let _ = tx.send(());
         }
         self.state.finished.store(true, Ordering::Release);
+        self.state.wake_consumer();
     }
 
     /// Record the decode's FFmpeg error count, once the decode ends.
@@ -288,6 +309,14 @@ impl TrackStream {
     /// The producer finished, though the ring may still hold samples.
     pub fn producer_finished(&self) -> bool {
         self.state.is_finished()
+    }
+
+    /// Have the producer notify `wake` after each push and when it finishes,
+    /// for the drain that reads this stream. Called when the stream is placed
+    /// in that drain's source, never from the real-time callback.
+    pub fn wake_on_push(&self, wake: &StreamWake) {
+        *self.state.consumer_wake.lock().unwrap_or_else(PoisonError::into_inner) =
+            Some(wake.clone());
     }
 
     /// Stop the decoder: set the flag and unpark it if it's parked on a full ring.

@@ -241,3 +241,131 @@ fn a_write_failure_ends_the_output_without_reopening() {
     let detail = output_failure(&mut rx).expect("playback is told the output stopped");
     assert!(detail.contains("Internal"), "{detail}");
 }
+
+/// A device stream that hands each write's samples to the test.
+struct ChannelStream(std::sync::mpsc::Sender<Vec<f32>>);
+
+impl DeviceStream for ChannelStream {
+    fn start(&self) -> Result<(), DeviceStreamError> {
+        Ok(())
+    }
+    fn stop(&self) -> Result<(), DeviceStreamError> {
+        Ok(())
+    }
+    fn write(&self, samples: &[f32]) -> Result<usize, DeviceStreamError> {
+        self.0.send(samples.to_vec()).unwrap();
+        Ok(samples.len())
+    }
+}
+
+/// A writer running on its own thread, and what the test drives it with.
+struct RunningWriter {
+    sink: bae_audio::track_stream::TrackSink,
+    source: Arc<Mutex<PlaybackSource>>,
+    controls: AudioOutputControls,
+    written: std::sync::mpsc::Receiver<Vec<f32>>,
+    stop: Arc<AtomicBool>,
+    ended: std::sync::mpsc::Receiver<()>,
+}
+
+impl RunningWriter {
+    /// A writer in `state` over a source already holding `held`.
+    fn start(state: AudioState, held: &[f32]) -> Self {
+        let (mut sink, stream, _ready) = create_track_stream_pair(44_100, 2);
+        sink.push_samples(held);
+        let source = Arc::new(Mutex::new(PlaybackSource::new(stream, TrackFmt::for_test("t"))));
+        let controls = AudioOutputControls::new(crate::Volume::FULL);
+        controls.set_state(state);
+        let (events, _rx) = audio_event_channel();
+        let drain = AudioDrain::new(controls.clone(), source.clone(), events, 100);
+        let (written_tx, written) = std::sync::mpsc::channel();
+        let writer = DeviceWriter::new(
+            ChannelStream(written_tx),
+            || -> Result<ChannelStream, String> { panic!("nothing disconnects") },
+            controls.clone(),
+            drain,
+            1_024,
+        );
+        let stop = Arc::new(AtomicBool::new(false));
+        let (ended_tx, ended) = std::sync::mpsc::channel();
+        let running = stop.clone();
+        std::thread::spawn(move || {
+            writer.run(&running);
+            ended_tx.send(()).unwrap();
+        });
+        Self { sink, source, controls, written, stop, ended }
+    }
+
+    /// Every sample written once `count` have arrived.
+    fn written(&self, count: usize) -> Vec<f32> {
+        let mut written = Vec::new();
+        while written.len() < count {
+            let run = self
+                .written
+                .recv_timeout(bae_util::test_channels::HANG_GUARD)
+                .expect("the writer never wrote the samples");
+            written.extend(run);
+        }
+        written
+    }
+
+    fn stop(&self) {
+        self.stop.store(true, Ordering::Release);
+        self.controls.wake_drain();
+        self.ended
+            .recv_timeout(bae_util::test_channels::HANG_GUARD)
+            .expect("the writer never stopped");
+    }
+}
+
+/// A writer waiting on an empty source writes the samples a decoder pushes
+/// next: the push wakes it. Sabotage: push without notifying the source's
+/// wake, and the writer waits forever.
+#[test]
+fn a_starved_writer_writes_what_the_decoder_pushes_next() {
+    let mut writer = RunningWriter::start(AudioState::Playing, &[]);
+    writer.controls.wait_until_drain_waits();
+
+    writer.sink.push_samples(&ramp());
+
+    assert_eq!(writer.written(SAMPLES), ramp());
+    writer.stop();
+}
+
+/// A paused writer resumes when playback does: the state change wakes it.
+/// Sabotage: set the state without notifying, and the writer waits forever.
+#[test]
+fn a_paused_writer_resumes_when_playback_does() {
+    let writer = RunningWriter::start(AudioState::Paused, &ramp());
+    writer.controls.wait_until_drain_waits();
+
+    writer.controls.set_state(AudioState::Playing);
+
+    assert_eq!(writer.written(SAMPLES), ramp());
+    writer.stop();
+}
+
+/// A writer waiting for work ends when its owner stops it.
+#[test]
+fn a_waiting_writer_ends_when_stopped() {
+    let writer = RunningWriter::start(AudioState::Paused, &[]);
+    writer.controls.wait_until_drain_waits();
+
+    writer.stop();
+}
+
+/// A writer waiting on a starved track writes the track put in its place:
+/// placing it wakes the writer. Sabotage: place it without notifying, and
+/// the writer waits forever.
+#[test]
+fn a_starved_writer_writes_the_track_put_in_place() {
+    let writer = RunningWriter::start(AudioState::Playing, &[]);
+    writer.controls.wait_until_drain_waits();
+
+    let (mut sink, stream, _ready) = create_track_stream_pair(44_100, 2);
+    sink.push_samples(&ramp());
+    writer.source.lock().unwrap().replace(stream, TrackFmt::for_test("next"));
+
+    assert_eq!(writer.written(SAMPLES), ramp());
+    writer.stop();
+}
