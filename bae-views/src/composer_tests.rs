@@ -402,7 +402,7 @@ async fn next_composer_page_is_only_a_work(
     live: &mut coven::ReconfigurableLiveQuery<
         bae_store::LibraryPageWindows,
         ComposerBrowseProjection,
-        coven::CovenError,
+        bae_store::DbError,
     >,
     shown: ComposerBrowseProjection,
     work: &str,
@@ -613,7 +613,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
         let listed = async |live: &mut coven::ReconfigurableLiveQuery<
             bae_store::LibraryPageWindows,
             ComposerBrowseProjection,
-            coven::CovenError,
+            bae_store::DbError,
         >,
                             expected: Vec<(&str, i64)>| {
             tokio::time::timeout(HANG_GUARD, async {

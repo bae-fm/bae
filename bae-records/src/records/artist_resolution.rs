@@ -46,12 +46,44 @@ pub enum IdentityWriteError {
     Db(#[from] DbError),
 }
 
-/// Carry an [`IdentityWriteError`] out of a coven write closure with its type
-/// intact, so [`identity_write_error`] can hand it back.
-pub fn identity_write_failure(error: IdentityWriteError) -> CovenError {
-    match error {
-        IdentityWriteError::Db(error) => CovenError::from(error),
-        other => rusqlite::Error::UserFunctionError(Box::new(other)).into(),
+impl From<rusqlite::Error> for IdentityWriteError {
+    fn from(error: rusqlite::Error) -> Self {
+        Self::Db(error.into())
+    }
+}
+
+impl From<coven::DbError> for IdentityWriteError {
+    fn from(error: coven::DbError) -> Self {
+        Self::Db(error.into())
+    }
+}
+
+impl coven::task::CarriesBug for IdentityWriteError {
+    fn bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Db(error) => error.bug(),
+            Self::Unresolvable(_) | Self::StoredName(_) => None,
+        }
+    }
+}
+
+/// A failed rollback or byte removal is a database failure first: it joins
+/// a database error beside the refusal it followed, as that error's text.
+impl coven::WriteFailure for IdentityWriteError {
+    fn with_rollback(self, rollback: rusqlite::Error) -> Self {
+        match self {
+            Self::Db(error) => Self::Db(error.with_rollback(rollback)),
+            refusal => Self::Db(DbError::Message(refusal.to_string()).with_rollback(rollback)),
+        }
+    }
+
+    fn with_cleanup(write: Self, failures: Vec<coven::DbError>) -> Self {
+        match write {
+            Self::Db(error) => Self::Db(DbError::with_cleanup(error, failures)),
+            refusal => {
+                Self::Db(DbError::with_cleanup(DbError::Message(refusal.to_string()), failures))
+            }
+        }
     }
 }
 
@@ -64,10 +96,7 @@ pub async fn write_resolving_identities<R>(
 where
     R: Send + 'static,
 {
-    store
-        .write(move |sql| f(sql).map_err(identity_write_failure))
-        .await
-        .map_err(identity_write_error)
+    store.write(f).await
 }
 
 /// A read that resolves artist credits: [`Store::read`], with an
@@ -80,26 +109,7 @@ pub async fn read_resolving_identities<R>(
 where
     R: Send + 'static,
 {
-    store
-        .read_coven(move |sql| f(sql).map_err(identity_write_failure))
-        .await
-        .map_err(identity_write_error)
-}
-
-/// The [`IdentityWriteError`] a coven write closure failed with, or the
-/// database error it failed with otherwise.
-pub fn identity_write_error(error: CovenError) -> IdentityWriteError {
-    match error {
-        CovenError::Database(coven::DbError::Sqlite(rusqlite::Error::UserFunctionError(host))) => {
-            match host.downcast::<IdentityWriteError>() {
-                Ok(error) => *error,
-                Err(other) => IdentityWriteError::Db(DbError::from(CovenError::from(
-                    rusqlite::Error::UserFunctionError(other),
-                ))),
-            }
-        }
-        other => IdentityWriteError::Db(DbError::from(other)),
-    }
+    store.read_coven(f).await
 }
 
 impl Records {
@@ -127,12 +137,6 @@ impl Records {
     ) -> Result<Vec<crate::ResolvedCredit>, DbError> {
         let credits = credits.to_vec();
         self.store.read(move |sql| resolve_credits_on(&sql, &credits)).await
-    }
-}
-
-impl From<rusqlite::Error> for IdentityWriteError {
-    fn from(error: rusqlite::Error) -> Self {
-        Self::Db(error.into())
     }
 }
 

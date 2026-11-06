@@ -151,7 +151,7 @@ impl Membership {
             + 'static,
     ) -> Result<R, coven::SyncError> {
         self.store
-            .write_as(move |sql| {
+            .write(move |sql| {
                 let (operation, value) = change(&sql)?;
                 if let Some(operation) = operation {
                     insert_admin_operation(&sql, operation, &target)?;
@@ -163,7 +163,9 @@ impl Membership {
 
     /// The admin changes this device asked for, live: each until its outcome
     /// is acknowledged.
-    pub fn subscribe_admin_changes(&self) -> coven::LiveQuery<Vec<AdminChange>, coven::CovenError> {
+    pub fn subscribe_admin_changes(
+        &self,
+    ) -> coven::LiveQuery<Vec<AdminChange>, bae_store::DbError> {
         self.store.subscribe(|sql| Ok(admin_changes_on(&sql)?))
     }
 

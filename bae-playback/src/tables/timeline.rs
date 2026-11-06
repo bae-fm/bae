@@ -27,8 +27,8 @@ impl PlaybackTimelineRow {
 /// themselves read it.
 pub fn subscribe_playback_timeline(
     store: &Store,
-) -> coven::LiveQuery<PlaybackTimeline, coven::CovenError> {
-    store.subscribe(|sql| playback_timeline_on(&sql).map_err(CovenError::from))
+) -> coven::LiveQuery<PlaybackTimeline, bae_store::DbError> {
+    store.subscribe(|sql| playback_timeline_on(&sql))
 }
 
 /// Where playback is now, as `subscribe_playback_timeline` reads it.

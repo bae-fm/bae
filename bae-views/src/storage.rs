@@ -78,7 +78,7 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<
         StorageBrowseRequest,
         StorageBrowseProjection,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         let places = KnownPlaces::new();
         self.store
@@ -86,8 +86,7 @@ impl LibraryViews {
                 let order = storage_order(&request.sort);
                 let query = crate::LibrarySearchQuery::parse(&request.search);
                 let (total_count, total_size, search) =
-                    storage_totals_on(&sql, request.filter, query.as_ref())
-                        .map_err(CovenError::from)?;
+                    storage_totals_on(&sql, request.filter, query.as_ref())?;
                 // The places a read found hold for the next only under the
                 // same sort, filter and search.
                 let sources: &[&str] = match query {
@@ -115,13 +114,11 @@ impl LibraryViews {
                             offset,
                         )
                     },
-                )
-                .map_err(CovenError::from)?;
+                )?;
                 places.keep(standing, found);
                 let selected =
-                    storage_selected_on(&sql, request.filter, search.as_ref(), &request.selected)
-                        .map_err(CovenError::from)?;
-                let queues = storage_queues_on(&sql).map_err(CovenError::from)?;
+                    storage_selected_on(&sql, request.filter, search.as_ref(), &request.selected)?;
+                let queues = storage_queues_on(&sql)?;
                 let has_cloud_home = cloud_home_on(&sql)?;
                 let searching = search.is_some();
                 Ok((

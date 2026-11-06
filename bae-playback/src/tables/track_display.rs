@@ -10,7 +10,8 @@ use super::*;
 pub(crate) fn subscribe_playback_track_infos(
     store: &Store,
     initial: Vec<String>,
-) -> coven::ReconfigurableLiveQuery<Vec<String>, Vec<crate::PlaybackTrackInfo>, coven::CovenError> {
+) -> coven::ReconfigurableLiveQuery<Vec<String>, Vec<crate::PlaybackTrackInfo>, bae_store::DbError>
+{
     store
         .subscribe_reconfigurable(initial, |track_ids, sql| {
             let mut infos = Vec::with_capacity(track_ids.len());

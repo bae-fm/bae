@@ -23,7 +23,7 @@ use tokio_util::sync::CancellationToken;
 mod read;
 mod values;
 pub use read::{LiveRead, LiveRequest, ReadFor};
-pub use values::{LiveSource, LiveValues};
+pub use values::{LiveSource, LiveValues, NextValue};
 
 /// The subscription is over: it was cancelled, or its query is gone or has
 /// ended.
@@ -40,7 +40,7 @@ pub enum LiveQueryError {
     /// as it arrived, or an earlier bug the store failed with. The query has
     /// ended then.
     #[error(transparent)]
-    Query(#[from] coven::CovenError),
+    Query(#[from] crate::DbError),
 }
 
 impl bae_util::task_failure::ReportedBug for LiveQueryError {
@@ -63,7 +63,7 @@ impl From<LiveQueryCancelled> for LiveQueryError {
 pub struct CancellableLiveQuery<Request, Projection> {
     requests: std::sync::Mutex<Option<coven::LiveQueryRequests<Request>>>,
     query: tokio::sync::Mutex<
-        Option<coven::ReconfigurableLiveQuery<Request, Projection, coven::CovenError>>,
+        Option<coven::ReconfigurableLiveQuery<Request, Projection, crate::DbError>>,
     >,
     cancellation: CancellationToken,
     /// Where a bug a run of the query carries goes as it arrives.
@@ -82,7 +82,7 @@ where
     /// `query`, ended by `cancel` or by `cancellation`, reporting a bug a
     /// run carries to `bugs`.
     pub fn new(
-        query: coven::ReconfigurableLiveQuery<Request, Projection, coven::CovenError>,
+        query: coven::ReconfigurableLiveQuery<Request, Projection, crate::DbError>,
         cancellation: CancellationToken,
         bugs: coven::task::BugSinkRef,
     ) -> Self {
@@ -130,7 +130,7 @@ where
     pub async fn next(
         &self,
     ) -> Result<
-        coven::ReconfigurableLiveQueryEvent<Request, Projection, coven::CovenError>,
+        coven::ReconfigurableLiveQueryEvent<Request, Projection, crate::DbError>,
         LiveQueryCancelled,
     > {
         tokio::select! {

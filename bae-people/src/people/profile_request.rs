@@ -129,17 +129,17 @@ impl People {
     /// live.
     pub fn subscribe_requested_profile(
         &self,
-    ) -> coven::LiveQuery<Option<crate::people::RequestedProfile>, coven::CovenError> {
+    ) -> coven::LiveQuery<Option<crate::people::RequestedProfile>, bae_store::DbError> {
         self.inner
             .store
-            .subscribe(|sql| Ok(profile_request_on(&sql)?.map(requested_profile).transpose()?))
+            .subscribe(|sql| profile_request_on(&sql)?.map(requested_profile).transpose())
     }
 
     /// The profile request, live: it reruns as the request is made or ends
     /// and as its circle's operation ends.
     pub(crate) fn subscribe_profile_request(
         &self,
-    ) -> coven::LiveQuery<Option<ProfileRequest>, coven::CovenError> {
+    ) -> coven::LiveQuery<Option<ProfileRequest>, bae_store::DbError> {
         self.inner.store.subscribe(|sql| Ok(profile_request_on(&sql)?))
     }
 }

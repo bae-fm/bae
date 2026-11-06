@@ -34,7 +34,7 @@ impl Records {
         &self,
         artists: Vec<DbArtist>,
         mut albums: Vec<SeededAlbum>,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), IdentityWriteError> {
         // Each cover's bytes, then each release file's original, are staged
         // as coven files in album order, which the rows then reference.
         let cover_files: Vec<(&'static str, Vec<u8>)> = albums
@@ -86,7 +86,9 @@ impl Records {
                     let mut files = files.into_iter();
                     let staged = |file: Option<coven::FileId>| {
                         file.ok_or_else(|| {
-                            DbError::Message("a seeded file has no coven file".into())
+                            IdentityWriteError::from(DbError::Message(
+                                "a seeded file has no coven file".into(),
+                            ))
                         })
                     };
                     for artist in &artists {
@@ -97,8 +99,7 @@ impl Records {
                         for credit in &seeded.credits {
                             insert_album_artist_row(tx, credit)?;
                         }
-                        insert_release_row(tx, &seeded.release, &label_write(labels))
-                            .map_err(identity_write_failure)?;
+                        insert_release_row(tx, &seeded.release, &label_write(labels))?;
                         insert_release_medium_row(tx, &seeded.medium)?;
                         for track in &seeded.tracks {
                             insert_track_row(tx, track)?;
@@ -112,8 +113,7 @@ impl Records {
                     // reading them.
                     for (rows, audio_formats, audio_segments) in &audios {
                         for file in rows {
-                            insert_release_file_row(tx, file, staged(files.next())?)
-                                .map_err(identity_write_failure)?;
+                            insert_release_file_row(tx, file, staged(files.next())?)?;
                         }
                         for format in audio_formats {
                             insert_audio_format_row(tx, format)?;
@@ -127,6 +127,5 @@ impl Records {
             )
             .await
             .map(|_| ())
-            .map_err(DbError::from)
     }
 }

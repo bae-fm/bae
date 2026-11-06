@@ -30,15 +30,13 @@ impl LibraryViews {
     pub fn subscribe_composer_detail(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, ComposerDetailProjection, coven::CovenError>
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, ComposerDetailProjection, bae_store::DbError>
     {
         self.store.subscribe_reconfigurable(initial, |artist_id, sql| {
             let Some(artist_id) = artist_id else {
                 return Ok(ComposerDetailProjection { detail: None });
             };
-            Ok(ComposerDetailProjection {
-                detail: find_composer_detail_on(&sql, artist_id).map_err(CovenError::from)?,
-            })
+            Ok(ComposerDetailProjection { detail: find_composer_detail_on(&sql, artist_id)? })
         })
     }
 
@@ -79,7 +77,7 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<
         bae_store::LibraryPageWindows,
         ComposerDetailRowsProjection,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         let artist_id = artist_id.to_string();
         let order = composer_detail_order("listing");
@@ -87,8 +85,7 @@ impl LibraryViews {
         self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
             let versions =
                 list_versions_on(&sql, crate::versions::TABLE, &["composer_detail_row"])?;
-            let total_count =
-                composer_detail_row_count_on(&sql, &artist_id).map_err(CovenError::from)?;
+            let total_count = composer_detail_row_count_on(&sql, &artist_id)?;
             let WindowsRead { windows, found } =
                 read_windows(&order, requested, places.under(&versions), |seek, limit, offset| {
                     composer_detail_rows_on(&sql, &artist_id, &order, seek, limit, offset)

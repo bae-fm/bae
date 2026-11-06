@@ -1,14 +1,10 @@
 use super::*;
 
 /// A source that answers with each of `results` in turn, then ends.
-struct Answers(std::collections::VecDeque<coven::CovenResult<u8>>);
+struct Answers(std::collections::VecDeque<Result<u8, crate::DbError>>);
 
 impl LiveSource<u8> for Answers {
-    fn next(
-        &mut self,
-    ) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Option<coven::CovenResult<u8>>> + Send + '_>,
-    > {
+    fn next(&mut self) -> NextValue<'_, u8> {
         let next = self.0.pop_front();
         Box::pin(async move { next })
     }
@@ -31,8 +27,8 @@ async fn a_runs_bug_is_reported_once_and_a_repeat_is_only_shown() {
     let values = LiveValues::new(
         Answers(
             [
-                Err(coven::CovenError::Database(coven::DbError::Bug(bug("a run broke")))),
-                Err(coven::CovenError::Database(coven::DbError::StoreFailed(bug("earlier")))),
+                Err(coven::DbError::Bug(bug("a run broke")).into()),
+                Err(coven::DbError::StoreFailed(bug("earlier")).into()),
             ]
             .into(),
         ),

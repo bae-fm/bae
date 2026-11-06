@@ -35,8 +35,8 @@ impl PlaybackNowRow {
 /// playback has yet to move off it.
 pub fn subscribe_now_playing(
     store: &Store,
-) -> coven::LiveQuery<Option<NowPlayingValues>, coven::CovenError> {
-    store.subscribe(|sql| now_playing_on(&sql).map_err(CovenError::from))
+) -> coven::LiveQuery<Option<NowPlayingValues>, bae_store::DbError> {
+    store.subscribe(|sql| now_playing_on(&sql))
 }
 
 /// What playback is doing now, as `subscribe_now_playing` reads it.

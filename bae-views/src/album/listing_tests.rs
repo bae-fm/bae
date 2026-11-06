@@ -601,7 +601,7 @@ async fn read_albums(
     query: &mut coven::ReconfigurableLiveQuery<
         LibraryPageWindows,
         AlbumBrowseProjection,
-        coven::CovenError,
+        bae_store::DbError,
     >,
     windows: LibraryPageWindows,
 ) -> Vec<Vec<String>> {

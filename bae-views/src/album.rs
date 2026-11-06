@@ -46,7 +46,7 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<
         Option<crate::LibrarySearchQuery>,
         LibrarySearchProjection,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         let limit_i64 = limit as i64;
         self.store
@@ -55,7 +55,7 @@ impl LibraryViews {
                     return Ok(None);
                 };
                 let pattern = search_pattern(query.as_str());
-                Ok(Some(search_library_on(&sql, &pattern, limit_i64).map_err(CovenError::from)?))
+                Ok(Some(search_library_on(&sql, &pattern, limit_i64)?))
             })
             .process(|raw| {
                 let Some(results) = raw else {
@@ -123,7 +123,7 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<
         bae_store::LibraryPageWindows,
         AlbumBrowseProjection,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         let (relation, order) = album_browse_order(sort, group_by_artist);
         let sources = album_browse_sources(group_by_artist);
@@ -138,7 +138,7 @@ impl LibraryViews {
         self.store
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
                 let versions = list_versions_on(&sql, crate::versions::TABLE, sources)?;
-                let total_count = album_count_on(&sql).map_err(CovenError::from)?;
+                let total_count = album_count_on(&sql)?;
                 let sections = match &section_query {
                     Some(query) => sql.query(query, [], |row| {
                         Ok(crate::LibraryBrowseSection {
@@ -201,7 +201,7 @@ impl LibraryViews {
     pub fn subscribe_album_selection(
         &self,
         initial: BTreeSet<String>,
-    ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>, coven::CovenError> {
+    ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>, bae_store::DbError> {
         self.store.subscribe_reconfigurable(initial, move |requested, sql| {
             let requested = serde_json::to_string(requested).expect("album ids serialize as JSON");
             let query = format!(
@@ -212,7 +212,7 @@ impl LibraryViews {
                      ) \
                      ORDER BY requested.value"
             );
-            sql.query(&query, [requested], |row| row.get::<_, String>(0)).map_err(CovenError::from)
+            Ok(sql.query(&query, [requested], |row| row.get::<_, String>(0))?)
         })
     }
 
@@ -306,15 +306,13 @@ impl LibraryViews {
     pub fn subscribe_album_detail(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, AlbumDetailProjection, coven::CovenError>
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, AlbumDetailProjection, bae_store::DbError>
     {
         self.store
             .subscribe_reconfigurable(initial, |album_id, sql| {
                 let has_cloud_home = cloud_home_on(&sql)?;
                 let detail = match album_id {
-                    Some(album_id) => {
-                        find_album_detail_on(&sql, album_id).map_err(CovenError::from)?
-                    }
+                    Some(album_id) => find_album_detail_on(&sql, album_id)?,
                     None => None,
                 };
                 Ok((detail, has_cloud_home))

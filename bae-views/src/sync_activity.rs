@@ -134,7 +134,9 @@ pub struct SyncActivityRows {
 
 /// The activity's rows as one read sees them: the counts are read first,
 /// since the retry effect's read takes the read whole.
-fn sync_activity_rows_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncActivityRows> {
+fn sync_activity_rows_on(
+    sql: coven::SqlReadContext<'_>,
+) -> Result<SyncActivityRows, bae_store::DbError> {
     let uploads = upload_queue_counts_on(&sql)?;
     let downloads = bae_transfers::tables::release_queue_counts_on::<()>(&sql)?;
     let status = bae_sync_status::sync_status_rows_on(sql)?;

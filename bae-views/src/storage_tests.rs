@@ -515,7 +515,7 @@ async fn read_storage(
     query: &mut coven::ReconfigurableLiveQuery<
         StorageBrowseRequest,
         StorageBrowseProjection,
-        coven::CovenError,
+        bae_store::DbError,
     >,
     request: StorageBrowseRequest,
 ) -> (u64, Vec<Vec<String>>) {

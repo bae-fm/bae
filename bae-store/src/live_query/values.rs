@@ -4,31 +4,32 @@
 use super::LiveQueryError;
 use tokio_util::sync::CancellationToken;
 
+/// The future of a source's next value: a value, a failed read, or `None`
+/// once the source has ended with its store.
+pub type NextValue<'a, T> = std::pin::Pin<
+    Box<dyn std::future::Future<Output = Option<Result<T, crate::DbError>>> + Send + 'a>,
+>;
+
 /// What a surface pulls values from: a coven live query, or coven's sync
 /// state beside one ([`crate::WithSyncState`]).
 pub trait LiveSource<T>: Send {
     /// The next value, a failed read, or `None` once the source has ended
     /// with its store.
-    fn next(
-        &mut self,
-    ) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Option<coven::CovenResult<T>>> + Send + '_>,
-    >;
+    fn next(&mut self) -> NextValue<'_, T>;
 
     /// How often the source's query had run when it last returned a value.
     #[cfg(any(test, feature = "test-utils"))]
     fn runs(&self) -> coven::LiveQueryRuns;
 }
 
-impl<T: Clone + PartialEq + Send + 'static> LiveSource<T>
-    for coven::LiveQuery<T, coven::CovenError>
+/// A coven live query, failing with bae's own error or coven's.
+impl<T, E> LiveSource<T> for coven::LiveQuery<T, E>
+where
+    T: Clone + PartialEq + Send + 'static,
+    E: From<coven::DbError> + coven::task::CarriesBug + Into<crate::DbError> + Send + 'static,
 {
-    fn next(
-        &mut self,
-    ) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Option<coven::CovenResult<T>>> + Send + '_>,
-    > {
-        Box::pin(coven::LiveQuery::next(self))
+    fn next(&mut self) -> NextValue<'_, T> {
+        Box::pin(async move { Some(coven::LiveQuery::next(self).await?.map_err(Into::into)) })
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -42,11 +43,7 @@ where
     R: Clone + PartialEq + Send + 'static,
     T: Clone + PartialEq + Send + 'static,
 {
-    fn next(
-        &mut self,
-    ) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Option<coven::CovenResult<T>>> + Send + '_>,
-    > {
+    fn next(&mut self) -> NextValue<'_, T> {
         Box::pin(crate::WithSyncState::next(self))
     }
 

@@ -6,7 +6,7 @@ use rusqlite::{params, OptionalExtension, Row};
 // coven owns production connections; row-mapping tests also use bare SQLite.
 use bae_store::DbError;
 use bae_store::Store;
-use coven::{CovenError, CovenWrite, SqlReadContext};
+use coven::{CovenWrite, SqlReadContext};
 use std::collections::{HashMap, HashSet};
 
 /// The columns of a release file row `f` that `row_to_file` reads: its own,
@@ -43,7 +43,6 @@ pub use label_resolution::{LabelParts, LabelWrite};
 use artist_resolution::relink;
 // Only the seeded albums carry an identity failure out of their own write.
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
-use artist_resolution::identity_write_failure;
 pub mod files;
 pub(crate) mod identity_merges;
 pub mod queued_uploads;

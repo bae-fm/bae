@@ -200,7 +200,7 @@ impl LibraryManager {
     /// start.
     pub fn until_closed<Request, Projection>(
         &self,
-        query: coven::ReconfigurableLiveQuery<Request, Projection, coven::CovenError>,
+        query: coven::ReconfigurableLiveQuery<Request, Projection, bae_store::DbError>,
     ) -> bae_store::live_query::CancellableLiveQuery<Request, Projection>
     where
         Request: Clone + PartialEq + Send + Sync + 'static,
@@ -442,7 +442,7 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_download_snapshot(
         &self,
-    ) -> coven::LiveQuery<bae_transfers::DownloadSnapshot, coven::CovenError> {
+    ) -> coven::LiveQuery<bae_transfers::DownloadSnapshot, bae_store::DbError> {
         self.downloads.subscribe()
     }
 
@@ -454,7 +454,7 @@ impl LibraryManager {
     ) -> coven::ReconfigurableLiveQuery<
         bae_store::LibraryPageWindows,
         bae_transfers::ReleaseQueueWindows<()>,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         self.downloads.subscribe_windows(initial)
     }
@@ -469,7 +469,7 @@ impl LibraryManager {
     /// paused: what the Downloads pane's controls show of them.
     pub fn subscribe_download_counts(
         &self,
-    ) -> coven::LiveQuery<bae_transfers::ReleaseQueueCounts, coven::CovenError> {
+    ) -> coven::LiveQuery<bae_transfers::ReleaseQueueCounts, bae_store::DbError> {
         self.downloads.subscribe_counts()
     }
 
@@ -506,7 +506,7 @@ impl LibraryManager {
     #[cfg(all(desktop, test))]
     pub(crate) fn subscribe_output_snapshot(
         &self,
-    ) -> coven::LiveQuery<bae_transfers::OutputPhaseSnapshot, coven::CovenError> {
+    ) -> coven::LiveQuery<bae_transfers::OutputPhaseSnapshot, bae_store::DbError> {
         self.outputs.subscribe()
     }
 

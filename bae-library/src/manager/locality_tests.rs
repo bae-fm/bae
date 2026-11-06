@@ -142,7 +142,7 @@ async fn next_playability(
     live: &mut coven::ReconfigurableLiveQuery<
         Option<String>,
         bae_views::ReleaseDetailProjection,
-        coven::CovenError,
+        bae_store::DbError,
     >,
     release_id: &str,
     wanted: impl Fn(&ReleasePlayability) -> bool,

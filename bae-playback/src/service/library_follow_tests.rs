@@ -94,9 +94,8 @@ async fn a_failed_read_is_reported_as_a_bug() {
     let diagnostics = bae_diagnostics::Diagnostics::noop()
         .reporting_bugs_to(std::sync::Arc::new(HeardBugs(heard)));
     let query = db.subscribe_reconfigurable(Vec::<String>::new(), |_, sql| {
-        Ok(sql
-            .query_row("SELECT id FROM no_such_table", [], |row| row.get::<_, String>(0))
-            .map_err(bae_store::DbError::from)?)
+        sql.query_row("SELECT id FROM no_such_table", [], |row| row.get::<_, String>(0))
+            .map_err(bae_store::DbError::from)
     });
     let _follow = LibraryFollow::new(query, Vec::new(), "the missing table", &diagnostics);
 
@@ -123,7 +122,7 @@ fn a_store_failed_on_an_earlier_bug_is_not_reported_again() {
         "read the tracks for playback",
         "the tracks",
         &Vec::<String>::new(),
-        &coven::CovenError::Database(coven::DbError::StoreFailed(bug)),
+        &bae_store::DbError::from(coven::DbError::StoreFailed(bug)),
     );
     assert_eq!(reporter.reports(), Vec::new());
 
@@ -132,7 +131,7 @@ fn a_store_failed_on_an_earlier_bug_is_not_reported_again() {
         "read the tracks for playback",
         "the tracks",
         &Vec::<String>::new(),
-        &coven::CovenError::Database(coven::DbError::StatementFailed),
+        &bae_store::DbError::from(coven::DbError::StatementFailed),
     );
     assert_eq!(reporter.reports().len(), 1);
 }
@@ -150,7 +149,7 @@ fn a_run_that_panicked_is_reported_as_its_bug() {
         "read the tracks for playback",
         "the tracks",
         &Vec::<String>::new(),
-        &coven::CovenError::Database(coven::DbError::Bug(bug)),
+        &bae_store::DbError::from(coven::DbError::Bug(bug)),
     );
 
     assert_eq!(

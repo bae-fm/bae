@@ -49,6 +49,8 @@ fn refusal_is_a_bug(error: &bae_store::DbError) -> bool {
     use bae_store::DbError as E;
     match error {
         E::Io(_) | E::FileRead(_) => false,
+        E::Rollback { operation, .. } => refusal_is_a_bug(operation),
+        E::FileCleanup { write, .. } => refusal_is_a_bug(write),
         E::Sqlite(error) => !sqlite_is_the_disk(error),
         E::Coven(error) => match error.as_ref() {
             coven::CovenError::Rollback { .. } | coven::CovenError::Shutdown(_) => false,

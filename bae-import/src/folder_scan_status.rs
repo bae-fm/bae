@@ -205,7 +205,7 @@ pub(crate) type FolderScansInMemory = BTreeMap<PathBuf, RootScanInMemory>;
 /// own live query only says when they change.
 pub(crate) struct FolderScansLive {
     tables: crate::tables::ImportTables,
-    changes: coven::LiveQuery<Vec<StoredRootScan>, coven::CovenError>,
+    changes: coven::LiveQuery<Vec<StoredRootScan>, bae_store::DbError>,
     in_memory: tokio::sync::watch::Receiver<FolderScansInMemory>,
     /// Whether the coordinator still holds the memory's sender. Once it has
     /// stopped, the memory says what it last said and only the table moves.
@@ -235,7 +235,7 @@ impl FolderScansLive {
     /// The first progress once the table has been read, then one each time
     /// the table or the memory changes it. A failed read is handed on.
     /// `None` once the table's query has ended with its store.
-    pub(crate) async fn next(&mut self) -> Option<coven::CovenResult<FolderScanProgress>> {
+    pub(crate) async fn next(&mut self) -> Option<Result<FolderScanProgress, bae_store::DbError>> {
         loop {
             tokio::select! {
                 changed = self.changes.next() => match changed? {
@@ -257,7 +257,7 @@ impl FolderScansLive {
             let in_memory = self.in_memory.borrow_and_update().clone();
             let stored = match self.tables.load_stored_folder_scans().await {
                 Ok(stored) => stored,
-                Err(error) => return Some(Err(error.into())),
+                Err(error) => return Some(Err(error)),
             };
             let progress = FolderScanProgress::of(stored, &in_memory);
             if self.told.as_ref() == Some(&progress) {
@@ -270,15 +270,7 @@ impl FolderScansLive {
 }
 
 impl bae_store::live_query::LiveSource<FolderScanProgress> for FolderScansLive {
-    fn next(
-        &mut self,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = Option<coven::CovenResult<FolderScanProgress>>>
-                + Send
-                + '_,
-        >,
-    > {
+    fn next(&mut self) -> bae_store::live_query::NextValue<'_, FolderScanProgress> {
         Box::pin(FolderScansLive::next(self))
     }
 

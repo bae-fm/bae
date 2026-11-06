@@ -49,6 +49,6 @@ use bae_records::records::query::*;
 use bae_records::records::read::*;
 use bae_store::read::*;
 use bae_store::*;
-use coven::{CovenError, CovenWrite, SqlReadContext};
+use coven::{CovenWrite, SqlReadContext};
 use rusqlite::{params, OptionalExtension, Row};
 use tracing::warn;

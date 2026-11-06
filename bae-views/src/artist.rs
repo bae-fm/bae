@@ -42,13 +42,13 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<
         bae_store::LibraryPageWindows,
         ArtistBrowseProjection,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         let order = artist_order(sort);
         let places = KnownPlaces::new();
         self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
             let versions = list_versions_on(&sql, crate::versions::TABLE, &["artist_listing"])?;
-            let total_count = artist_count_on(&sql).map_err(CovenError::from)?;
+            let total_count = artist_count_on(&sql)?;
             let WindowsRead { windows, found } =
                 read_windows(&order, requested, places.under(&versions), |seek, limit, offset| {
                     artist_rows_on(&sql, &order, seek, limit, offset)
@@ -94,14 +94,14 @@ impl LibraryViews {
     pub fn subscribe_artist_detail(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, ArtistDetailProjection, coven::CovenError>
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, ArtistDetailProjection, bae_store::DbError>
     {
         self.store
             .subscribe_reconfigurable(initial, |artist_id, sql| {
                 let Some(artist_id) = artist_id else {
                     return Ok(None);
                 };
-                find_artist_detail_on(&sql, artist_id).map_err(CovenError::from)
+                find_artist_detail_on(&sql, artist_id)
             })
             .process(|detail| {
                 Ok(ArtistDetailProjection {

@@ -522,13 +522,11 @@ impl ImportTables {
     #[cfg(test)]
     pub(crate) fn subscribe_candidate_facts(
         &self,
-    ) -> coven::LiveQuery<HashMap<CandidateKey, TriageRuntimeFacts>, coven::CovenError> {
+    ) -> coven::LiveQuery<HashMap<CandidateKey, TriageRuntimeFacts>, bae_store::DbError> {
         self.store.subscribe(|sql| {
-            load_standings_on(&sql)
-                .map(|standings| {
-                    standings.into_iter().map(|(key, standing)| (key, standing.facts())).collect()
-                })
-                .map_err(CovenError::from)
+            load_standings_on(&sql).map(|standings| {
+                standings.into_iter().map(|(key, standing)| (key, standing.facts())).collect()
+            })
         })
     }
 
@@ -543,8 +541,8 @@ impl ImportTables {
     /// flight, live.
     pub(crate) fn subscribe_import_counts(
         &self,
-    ) -> coven::LiveQuery<ImportCounts, coven::CovenError> {
-        self.store.subscribe(|sql| load_import_counts_on(&sql).map_err(CovenError::from))
+    ) -> coven::LiveQuery<ImportCounts, bae_store::DbError> {
+        self.store.subscribe(|sql| load_import_counts_on(&sql))
     }
 
     /// Apply each change to its candidate's identification, in one write.

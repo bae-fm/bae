@@ -2,7 +2,7 @@
 //! live query of the library runs through.
 
 use coven::task::{BugSinkRef, CarriesBug};
-use coven::{ClockRef, CovenError, CovenHandle, CovenWrite, SqlReadContext};
+use coven::{ClockRef, CovenHandle, CovenWrite, SqlReadContext};
 #[cfg(any(test, feature = "test-utils"))]
 use std::path::Path;
 use std::sync::Arc;
@@ -73,20 +73,12 @@ impl Store {
 
     /// Run a pure read on Coven's bounded readers. Attach `.process()` for
     /// result assembly after releasing the connection.
-    pub fn read<R>(
-        &self,
-        f: impl for<'conn> FnOnce(SqlReadContext<'conn>) -> Result<R, DbError> + Send + 'static,
-    ) -> StoreRead<
-        '_,
-        impl for<'conn> FnOnce(SqlReadContext<'conn>) -> Result<R, CovenError> + Send + 'static,
-    >
+    pub fn read<F, R>(&self, f: F) -> StoreRead<'_, F>
     where
+        F: for<'conn> FnOnce(SqlReadContext<'conn>) -> Result<R, DbError> + Send + 'static,
         R: Send + 'static,
     {
-        StoreRead::new(
-            self.inner.handle.read(move |sql| f(sql).map_err(CovenError::from)),
-            self.inner.bugs.as_ref(),
-        )
+        StoreRead::new(self.inner.handle.read(f), self.inner.bugs.as_ref())
     }
 
     /// Run a write with a borrowed transaction context.
@@ -109,7 +101,7 @@ impl Store {
     where
         R: Send + 'static,
     {
-        self.write(move |sql| f(sql).map_err(CovenError::from)).await.map_err(DbError::from)
+        self.write(f).await
     }
 
     /// Run a bulk write: SQL that changes device-local tables alone, run
@@ -123,17 +115,14 @@ impl Store {
     where
         R: Send + 'static,
     {
-        self.reported(
-            self.inner.handle.write_bulk(move |sql| f(&sql).map_err(CovenError::from)).await,
-        )
-        .map_err(DbError::from)
+        self.reported(self.inner.handle.write_bulk(move |sql| f(&sql)).await)
     }
 
     /// A live query: coven reruns `query` for each write that touches what it
     /// read.
-    pub fn subscribe<F, R>(&self, query: F) -> coven::LiveQuery<R, coven::CovenError>
+    pub fn subscribe<F, R>(&self, query: F) -> coven::LiveQuery<R, DbError>
     where
-        F: Fn(SqlReadContext<'_>) -> Result<R, CovenError> + Send + Sync + 'static,
+        F: Fn(SqlReadContext<'_>) -> Result<R, DbError> + Send + Sync + 'static,
         R: Send + 'static,
     {
         self.inner.handle.subscribe(query)
@@ -145,10 +134,10 @@ impl Store {
         &self,
         initial_request: Q,
         query: F,
-    ) -> coven::ReconfigurableLiveQuery<Q, R, coven::CovenError>
+    ) -> coven::ReconfigurableLiveQuery<Q, R, DbError>
     where
         Q: Clone + PartialEq + Send + Sync + 'static,
-        F: Fn(&Q, SqlReadContext<'_>) -> Result<R, CovenError> + Send + Sync + 'static,
+        F: Fn(&Q, SqlReadContext<'_>) -> Result<R, DbError> + Send + Sync + 'static,
         R: Send + 'static,
     {
         self.inner.handle.subscribe_reconfigurable(initial_request, query)
@@ -166,21 +155,11 @@ impl Store {
     }
 
     /// Run one coven write, its future boxed to keep it off the caller's
-    /// async stack, including the import worker's stack. The failure is
-    /// coven's, for a write that runs coven's own steps beside its SQL.
-    pub fn write<R>(
-        &self,
-        write: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, CovenError> + Send + 'static,
-    ) -> impl std::future::Future<Output = Result<R, CovenError>> + Send + '_
-    where
-        R: Send + 'static,
-    {
-        self.write_as(write)
-    }
-
-    /// [`Self::write`] failing with the closure's own error, such as sync's
-    /// for a write whose step is one of coven's sync operations.
-    pub fn write_as<R, E>(
+    /// async stack, including the import worker's stack. It fails with the
+    /// closure's own error, which keeps a failed rollback or byte removal
+    /// beside the write's failure: `DbError`, or sync's for a write whose
+    /// step is one of coven's sync operations.
+    pub fn write<R, E>(
         &self,
         write: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, E> + Send + 'static,
     ) -> impl std::future::Future<Output = Result<R, E>> + Send + '_
@@ -196,14 +175,15 @@ impl Store {
     /// and `sql` gets it once the write has taken the staged files. The
     /// staging future is boxed, as the write's is, to keep coven's buffers off
     /// the caller's async stack.
-    pub async fn write_staged<T, R>(
+    pub async fn write_staged<T, R, E>(
         &self,
-        stage: impl FnOnce(&mut coven::WriteBatch<'_>) -> Result<T, CovenError> + Send + 'static,
-        sql: impl for<'ctx> FnOnce(CovenWrite<'ctx>, T) -> Result<R, CovenError> + Send + 'static,
-    ) -> Result<R, CovenError>
+        stage: impl FnOnce(&mut coven::WriteBatch<'_>) -> Result<T, E> + Send + 'static,
+        sql: impl for<'ctx> FnOnce(CovenWrite<'ctx>, T) -> Result<R, E> + Send + 'static,
+    ) -> Result<R, E>
     where
         T: Send + 'static,
         R: Send + 'static,
+        E: coven::WriteFailure + Send + 'static,
     {
         let staged = self.reported(Box::pin(self.inner.handle.stage_files(stage)).await)?;
         self.write(move |write| {

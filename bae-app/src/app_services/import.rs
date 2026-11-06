@@ -305,7 +305,7 @@ impl AppServices {
     ) -> coven::ReconfigurableLiveQuery<
         Option<bae_import::CandidateKey>,
         Option<bae_import::ImportCandidateDetailProjection>,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         self.inner.import.subscribe_candidate(None)
     }
@@ -316,7 +316,7 @@ impl AppServices {
         query: coven::ReconfigurableLiveQuery<
             Option<bae_import::CandidateKey>,
             Option<bae_import::ImportCandidateDetailProjection>,
-            coven::CovenError,
+            bae_store::DbError,
         >,
     ) -> crate::live_reads::LiveImportCandidate {
         crate::live_reads::LiveImportCandidate::new(

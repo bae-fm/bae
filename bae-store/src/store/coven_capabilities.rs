@@ -1,6 +1,6 @@
 use crate::store::Store;
 use crate::DbError;
-use coven::{CovenError, SqlReadContext};
+use coven::SqlReadContext;
 use std::sync::Arc;
 
 /// Whether the person paused uploads, as coven's one row says.
@@ -80,7 +80,7 @@ impl Store {
         make: fn(coven::SyncStatus, R) -> T,
     ) -> crate::WithSyncState<R, T>
     where
-        F: Fn(SqlReadContext<'_>) -> Result<R, CovenError> + Send + Sync + 'static,
+        F: Fn(SqlReadContext<'_>) -> Result<R, DbError> + Send + Sync + 'static,
         R: Clone + PartialEq + Send + 'static,
         T: Clone + PartialEq + Send + 'static,
     {
@@ -119,7 +119,7 @@ impl Store {
         make: fn(coven::SyncStatus, R) -> T,
     ) -> Result<T, DbError>
     where
-        F: FnOnce(SqlReadContext<'_>) -> Result<R, CovenError> + Send + 'static,
+        F: FnOnce(SqlReadContext<'_>) -> Result<R, DbError> + Send + 'static,
         R: Send + 'static,
     {
         let state = self.reported(self.inner.handle.sync_status().await)?;

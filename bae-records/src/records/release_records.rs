@@ -125,11 +125,11 @@ impl Records {
     pub fn subscribe_library_statuses(
         &self,
         initial: LibraryChecks,
-    ) -> coven::ReconfigurableLiveQuery<LibraryChecks, Vec<LibraryStatus>, coven::CovenError> {
+    ) -> coven::ReconfigurableLiveQuery<LibraryChecks, Vec<LibraryStatus>, DbError> {
         self.store
             .subscribe_reconfigurable(initial, |checks, sql| {
                 let checks: Vec<LibraryCheck> = checks.iter().cloned().collect();
-                check_releases_in_library_on(&sql, &checks).map_err(CovenError::from)
+                check_releases_in_library_on(&sql, &checks)
             })
             .process(Ok)
     }

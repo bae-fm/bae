@@ -24,8 +24,8 @@ pub async fn load_playback_state(store: &Store) -> Result<Option<PlaybackResumeR
 #[cfg(any(test, feature = "test-utils"))]
 pub fn subscribe_playback_state(
     store: &Store,
-) -> coven::LiveQuery<Option<PlaybackResumeRow>, coven::CovenError> {
-    store.subscribe(|sql| playback_state_on(&sql).map_err(CovenError::from))
+) -> coven::LiveQuery<Option<PlaybackResumeRow>, bae_store::DbError> {
+    store.subscribe(|sql| playback_state_on(&sql))
 }
 
 /// The `playback_state` row `sql` reads, `None` when none is stored.

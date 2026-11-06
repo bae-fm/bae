@@ -248,12 +248,11 @@ impl ImportTables {
     pub(crate) fn subscribe_candidate_runtime(
         &self,
         key: &CandidateKey,
-    ) -> coven::LiveQuery<Option<crate::CandidateRuntimeSnapshot>, coven::CovenError> {
+    ) -> coven::LiveQuery<Option<crate::CandidateRuntimeSnapshot>, bae_store::DbError> {
         let key = key.clone();
         self.store.subscribe(move |sql| {
             load_stored_runtime_on(&sql, &key)
                 .map(|stored| crate::candidate_runtime::compose(&key, &stored))
-                .map_err(CovenError::from)
         })
     }
 

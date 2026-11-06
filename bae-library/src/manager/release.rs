@@ -152,7 +152,7 @@ impl LibraryManager {
     ) -> coven::ReconfigurableLiveQuery<
         bae_records::LibraryChecks,
         Vec<bae_records::LibraryStatus>,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         self.records.subscribe_library_statuses(initial)
     }

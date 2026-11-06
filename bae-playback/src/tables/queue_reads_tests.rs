@@ -74,7 +74,7 @@ async fn the_live_query_delivers_each_addition() {
 
 /// The query's next value.
 async fn next(
-    additions: &mut coven::LiveQuery<Option<QueueAddition>, coven::CovenError>,
+    additions: &mut coven::LiveQuery<Option<QueueAddition>, bae_store::DbError>,
 ) -> Option<QueueAddition> {
     tokio::time::timeout(HANG_GUARD, additions.next())
         .await

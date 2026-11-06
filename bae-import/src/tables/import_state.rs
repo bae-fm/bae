@@ -117,10 +117,8 @@ impl ImportTables {
     #[cfg(test)]
     pub(crate) fn subscribe_import_candidate_states(
         &self,
-    ) -> coven::LiveQuery<HashMap<String, DbImportCandidateState>, coven::CovenError> {
-        self.store.subscribe(|sql| {
-            rows::load_states_on(&sql, CandidateRows::All).map_err(coven::CovenError::from)
-        })
+    ) -> coven::LiveQuery<HashMap<String, DbImportCandidateState>, bae_store::DbError> {
+        self.store.subscribe(|sql| rows::load_states_on(&sql, CandidateRows::All))
     }
 
     pub async fn load_import_candidate_state(

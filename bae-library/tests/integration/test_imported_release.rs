@@ -199,7 +199,7 @@ async fn next_detail(
     values: &mut coven::ReconfigurableLiveQuery<
         Option<String>,
         bae_views::AlbumDetailProjection,
-        coven::CovenError,
+        bae_store::DbError,
     >,
     waiting_for: &str,
 ) -> bae_views::album_detail::AlbumDetail {

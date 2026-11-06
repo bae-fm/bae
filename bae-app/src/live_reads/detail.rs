@@ -83,7 +83,7 @@ pub fn subscribe_work_detail(
 /// resolved for the id it was read for. A new id points the same query at it.
 pub fn detail_read<Projection, Value, Id>(
     library: &LibraryManager,
-    query: coven::ReconfigurableLiveQuery<Option<Id>, Projection, coven::CovenError>,
+    query: coven::ReconfigurableLiveQuery<Option<Id>, Projection, bae_store::DbError>,
     resolve: impl Fn(Projection) -> Option<Value> + Send + 'static,
 ) -> bae_library::LiveDetail<Value, Id>
 where

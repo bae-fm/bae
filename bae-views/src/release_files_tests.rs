@@ -43,7 +43,7 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
         files: &mut coven::ReconfigurableLiveQuery<
             Option<ReleaseFilesRequest>,
             Option<Vec<DbFile>>,
-            coven::CovenError,
+            bae_store::DbError,
         >,
         asked: &Option<ReleaseFilesRequest>,
     ) -> Vec<String> {

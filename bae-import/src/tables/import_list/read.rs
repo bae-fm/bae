@@ -127,14 +127,14 @@ impl ImportTables {
     pub(crate) fn subscribe_import_list(
         &self,
         initial: ImportListRequest,
-    ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection, coven::CovenError>
+    ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection, bae_store::DbError>
     {
         let places = KnownPlaces::new();
         self.store
             .subscribe_reconfigurable(initial, move |request, sql| {
-                load_import_list_on(&sql, request, &places).map_err(CovenError::from)
+                load_import_list_on(&sql, request, &places)
             })
-            .process(|rows| rows.process().map_err(CovenError::from))
+            .process(|rows| rows.process())
     }
 
     /// One read of the list, for a caller with no subscription.

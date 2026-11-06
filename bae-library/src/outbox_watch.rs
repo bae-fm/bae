@@ -109,7 +109,7 @@ pub enum OutboxTransferChange {
 /// The transfers each delivery of the files being sent, or each move of
 /// their bytes, measures.
 struct SendingTransfers {
-    sending: coven::LiveQuery<DbSendingUploads, coven::CovenError>,
+    sending: coven::LiveQuery<DbSendingUploads, bae_store::DbError>,
     /// The files being sent as the query last read them; `None` until it
     /// first does.
     read: Option<DbSendingUploads>,
@@ -122,7 +122,7 @@ struct SendingTransfers {
 
 impl SendingTransfers {
     fn of(
-        sending: coven::LiveQuery<DbSendingUploads, coven::CovenError>,
+        sending: coven::LiveQuery<DbSendingUploads, bae_store::DbError>,
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
     ) -> Self {
@@ -139,7 +139,7 @@ impl SendingTransfers {
     /// The transfers once the query next reads or the watch next moves, or
     /// the failure that kept the query from reading; `None` once either has
     /// ended with its store.
-    async fn next(&mut self) -> Option<coven::CovenResult<OutboxTransfers>> {
+    async fn next(&mut self) -> Option<Result<OutboxTransfers, bae_store::DbError>> {
         loop {
             tokio::select! {
                 read = self.sending.next() => match read? {
@@ -173,7 +173,7 @@ pub struct OutboxTransfersWatch {
 
 impl OutboxTransfersWatch {
     pub(crate) fn of(
-        sending: coven::LiveQuery<DbSendingUploads, coven::CovenError>,
+        sending: coven::LiveQuery<DbSendingUploads, bae_store::DbError>,
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
     ) -> Self {
@@ -185,7 +185,7 @@ impl OutboxTransfersWatch {
     /// failed read is handed on, and the next read that succeeds is a first
     /// read again: a reader holds nothing it knows to be current once a read
     /// failed. `None` once the query has ended with its store.
-    pub async fn next(&mut self) -> Option<coven::CovenResult<Vec<OutboxTransferChange>>> {
+    pub async fn next(&mut self) -> Option<Result<Vec<OutboxTransferChange>, bae_store::DbError>> {
         loop {
             let next = match self.transfers.next().await? {
                 Ok(next) => next,
@@ -223,7 +223,7 @@ pub struct OutboxTotalTransferWatch {
 
 impl OutboxTotalTransferWatch {
     pub(crate) fn of(
-        sending: coven::LiveQuery<DbSendingUploads, coven::CovenError>,
+        sending: coven::LiveQuery<DbSendingUploads, bae_store::DbError>,
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
     ) -> Self {
@@ -234,7 +234,7 @@ impl OutboxTotalTransferWatch {
     /// failed read is handed on, and the next read that succeeds tells the
     /// total whether or not it moved. `None` once the query has ended with
     /// its store.
-    pub async fn next(&mut self) -> Option<coven::CovenResult<UploadTransfer>> {
+    pub async fn next(&mut self) -> Option<Result<UploadTransfer, bae_store::DbError>> {
         loop {
             let total = match self.transfers.next().await? {
                 Ok(next) => next.total,

@@ -9,9 +9,9 @@ use std::collections::BTreeSet;
 /// read into the same run, so one touching anything the query reads makes the
 /// cause `RequestAndDatabaseChanged`.
 pub async fn next_run_is_only_the_request<Request, Value>(
-    live: &mut coven::ReconfigurableLiveQuery<Request, Value, coven::CovenError>,
+    live: &mut coven::ReconfigurableLiveQuery<Request, Value, crate::DbError>,
     request: Request,
-) -> coven::ReconfigurableLiveQueryEvent<Request, Value, coven::CovenError>
+) -> coven::ReconfigurableLiveQueryEvent<Request, Value, crate::DbError>
 where
     Request: Clone + PartialEq + Send + Sync + 'static,
     Value: Clone + PartialEq + Send + 'static,

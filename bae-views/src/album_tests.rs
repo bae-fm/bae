@@ -51,7 +51,7 @@ async fn next_album_page_is_only_a_rename(
     live: &mut coven::ReconfigurableLiveQuery<
         bae_store::LibraryPageWindows,
         AlbumBrowseProjection,
-        coven::CovenError,
+        bae_store::DbError,
     >,
     shown: AlbumBrowseProjection,
     title: &str,

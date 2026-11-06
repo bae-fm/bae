@@ -15,13 +15,13 @@
 //! rows newer than the state are as they should be, such as a pending record
 //! listed before the state names it.
 
-use coven::CovenResult;
+use crate::DbError;
 use std::sync::Arc;
 
 /// A read of the library's tables the sync status puts beside coven's sync
 /// state.
 pub(crate) type RowsRead<R> =
-    Arc<dyn Fn(coven::SqlReadContext<'_>) -> CovenResult<R> + Send + Sync>;
+    Arc<dyn Fn(coven::SqlReadContext<'_>) -> Result<R, DbError> + Send + Sync>;
 
 /// coven's sync state and a read of the library's tables made after it, put
 /// into one value each time either changes.
@@ -33,7 +33,7 @@ pub struct WithSyncState<R, T> {
     state: coven::LiveQuery<coven::SyncStatus, coven::CovenError>,
     /// The rows' own live query, which says when they change; each value's
     /// rows are read afresh, after the latest state.
-    changes: coven::LiveQuery<R, coven::CovenError>,
+    changes: coven::LiveQuery<R, DbError>,
     rows: RowsRead<R>,
     make: fn(coven::SyncStatus, R) -> T,
     latest_state: Option<coven::SyncStatus>,
@@ -49,7 +49,7 @@ where
     pub(crate) fn new(
         handle: coven::CovenHandle,
         state: coven::LiveQuery<coven::SyncStatus, coven::CovenError>,
-        changes: coven::LiveQuery<R, coven::CovenError>,
+        changes: coven::LiveQuery<R, DbError>,
         rows: RowsRead<R>,
         make: fn(coven::SyncStatus, R) -> T,
     ) -> Self {
@@ -60,12 +60,12 @@ where
     /// the state or the rows change the value. A failed read is handed on;
     /// the next value comes once the reads succeed again. `None` once either
     /// source has ended with its store.
-    pub async fn next(&mut self) -> Option<CovenResult<T>> {
+    pub async fn next(&mut self) -> Option<Result<T, DbError>> {
         loop {
             tokio::select! {
                 state = self.state.next() => match state? {
                     Ok(state) => self.latest_state = Some(state),
-                    Err(error) => return Some(Err(error)),
+                    Err(error) => return Some(Err(error.into())),
                 },
                 changed = self.changes.next() => {
                     if let Err(error) = changed? {

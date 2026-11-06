@@ -176,7 +176,9 @@ pub struct SyncStatusRows {
 }
 
 /// The sync status's rows as one read of the library's tables sees them.
-pub fn sync_status_rows_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncStatusRows> {
+pub fn sync_status_rows_on(
+    sql: coven::SqlReadContext<'_>,
+) -> Result<SyncStatusRows, bae_store::DbError> {
     let pending = pending::pending_rows_on(&sql)?.into_iter().map(PendingItem::listed).collect();
     let start_failure = start_failure::start_failure_on(&sql)?;
     let storage_setup = storage_setup::storage_setup_on(&sql)?;

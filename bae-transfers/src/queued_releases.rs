@@ -216,10 +216,8 @@ where
     #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe(
         &self,
-    ) -> coven::LiveQuery<ReleaseQueueSnapshot<Extra, ()>, coven::CovenError> {
-        self.store.subscribe(|sql| {
-            tables::release_queue_on::<Extra>(&sql).map_err(coven::CovenError::from)
-        })
+    ) -> coven::LiveQuery<ReleaseQueueSnapshot<Extra, ()>, bae_store::DbError> {
+        self.store.subscribe(|sql| tables::release_queue_on::<Extra>(&sql))
     }
 
     /// Follow how many entries the queue holds and the windows `initial`
@@ -230,13 +228,12 @@ where
     ) -> coven::ReconfigurableLiveQuery<
         bae_store::LibraryPageWindows,
         crate::release_queue::ReleaseQueueWindows<Extra>,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         let places = bae_store::list_windows::KnownPlaces::new();
         self.store
             .subscribe_reconfigurable(initial, move |windows, sql| {
                 tables::release_queue_windows_on::<Extra>(&sql, windows, &places)
-                    .map_err(coven::CovenError::from)
             })
             .process(Ok)
     }
@@ -247,10 +244,8 @@ where
     }
 
     /// Follow how many entries are in each phase, and whether it is paused.
-    pub fn subscribe_counts(&self) -> coven::LiveQuery<ReleaseQueueCounts, coven::CovenError> {
-        self.store.subscribe(|sql| {
-            tables::release_queue_counts_on::<Extra>(&sql).map_err(coven::CovenError::from)
-        })
+    pub fn subscribe_counts(&self) -> coven::LiveQuery<ReleaseQueueCounts, bae_store::DbError> {
+        self.store.subscribe(|sql| tables::release_queue_counts_on::<Extra>(&sql))
     }
 
     fn register(&self, release_id: &str, abort: tokio::task::AbortHandle, progress: Progress) {

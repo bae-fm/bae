@@ -29,7 +29,7 @@ where
     /// ends the query, and the follow reads nothing more. A follow that panics
     /// is reported through `diagnostics` and reads nothing more either.
     pub(super) fn new(
-        mut query: coven::ReconfigurableLiveQuery<Request, Value, coven::CovenError>,
+        mut query: coven::ReconfigurableLiveQuery<Request, Value, bae_store::DbError>,
         request: Request,
         what: &'static str,
         diagnostics: &bae_diagnostics::Diagnostics,
@@ -98,16 +98,23 @@ fn failed_read(
     operation: &str,
     what: &str,
     request: &impl std::fmt::Debug,
-    error: &coven::CovenError,
+    error: &bae_store::DbError,
 ) {
-    match error {
-        coven::CovenError::Database(coven::DbError::StoreClosed) => {
+    let coven_database_error = match error {
+        bae_store::DbError::Coven(error) => match error.as_ref() {
+            coven::CovenError::Database(error) => Some(error),
+            _ => None,
+        },
+        _ => None,
+    };
+    match coven_database_error {
+        Some(coven::DbError::StoreClosed) => {
             debug!("the store closed, so {what} is read no more");
         }
-        coven::CovenError::Database(coven::DbError::StoreFailed(bug)) => {
+        Some(coven::DbError::StoreFailed(bug)) => {
             warn!("the store failed on a bug, so {what} is read no more: {bug}");
         }
-        error => match coven::task::CarriesBug::bug(error) {
+        _ => match coven::task::CarriesBug::bug(error) {
             Some(bug) => {
                 bugs.panicked(bug.clone());
             }

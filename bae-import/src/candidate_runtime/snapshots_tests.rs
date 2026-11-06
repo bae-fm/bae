@@ -116,7 +116,7 @@ async fn a_re_identify_run_is_held_by_the_runtime_alone() {
 
 /// The next value `query` delivers; the test fails if none ever comes.
 async fn next_runtime(
-    query: &mut coven::LiveQuery<Option<crate::CandidateRuntimeSnapshot>, coven::CovenError>,
+    query: &mut coven::LiveQuery<Option<crate::CandidateRuntimeSnapshot>, bae_store::DbError>,
 ) -> Option<crate::CandidateRuntimeSnapshot> {
     tokio::time::timeout(HANG_GUARD, query.next())
         .await
@@ -127,7 +127,7 @@ async fn next_runtime(
 
 /// Pull from `query` until a value satisfies `wanted`, and return it.
 async fn runtime_until(
-    query: &mut coven::LiveQuery<Option<crate::CandidateRuntimeSnapshot>, coven::CovenError>,
+    query: &mut coven::LiveQuery<Option<crate::CandidateRuntimeSnapshot>, bae_store::DbError>,
     wanted: impl Fn(&Option<crate::CandidateRuntimeSnapshot>) -> bool,
 ) -> Option<crate::CandidateRuntimeSnapshot> {
     loop {

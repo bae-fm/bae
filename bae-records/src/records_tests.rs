@@ -226,10 +226,9 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
     // The request only gives the test a change of its own to make; the query
     // reads the same row whatever it is.
     let mut live = db.subscribe_reconfigurable(0_u8, |_, sql| {
-        sql.query_row("SELECT title FROM albums WHERE id = ?1", params![ALBUM_ID], |row| {
+        Ok(sql.query_row("SELECT title FROM albums WHERE id = ?1", params![ALBUM_ID], |row| {
             row.get::<_, String>(0)
-        })
-        .map_err(CovenError::from)
+        })?)
     });
     assert_eq!(live.next().await.expect("the query stays open").result.unwrap(), "Album Title");
 

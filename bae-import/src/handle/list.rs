@@ -106,7 +106,7 @@ impl ImportServiceHandle {
     ) -> coven::ReconfigurableLiveQuery<
         Option<crate::CandidateKey>,
         Option<crate::ImportCandidateDetailProjection>,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         self.services.tables.subscribe_import_candidate(initial)
     }
@@ -120,7 +120,7 @@ impl ImportServiceHandle {
     ) -> coven::ReconfigurableLiveQuery<
         Option<crate::CandidateKey>,
         Option<crate::InvalidCandidateDetail>,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         self.services.tables.subscribe_invalid_candidate(initial)
     }

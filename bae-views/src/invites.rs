@@ -50,7 +50,7 @@ impl LibraryViews {
     /// This device's open invites, each with the pending record of its
     /// operation when coven holds one that is a hold, live from coven's
     /// `coven_invites` and `coven_pending` in one read.
-    pub fn subscribe_invites(&self) -> coven::LiveQuery<Vec<OpenInvite>, coven::CovenError> {
+    pub fn subscribe_invites(&self) -> coven::LiveQuery<Vec<OpenInvite>, bae_store::DbError> {
         self.store.subscribe(|sql| {
             let records = sql.query("SELECT record, cause FROM coven_pending", [], |row| {
                 let mut record = row.get::<_, coven::PendingRecord>(0)?;

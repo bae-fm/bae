@@ -358,19 +358,14 @@ impl ImportTables {
     ) -> coven::ReconfigurableLiveQuery<
         Option<crate::CandidateKey>,
         Option<ImportCandidateDetailProjection>,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         self.store
             .subscribe_reconfigurable(initial, |key, sql| match key {
                 None => Ok(None),
-                Some(key) => pane::load_candidate_detail_on(&sql, key).map_err(CovenError::from),
+                Some(key) => pane::load_candidate_detail_on(&sql, key),
             })
-            .process(|process| {
-                process
-                    .map(pane::CandidateDetailRows::process)
-                    .transpose()
-                    .map_err(CovenError::from)
-            })
+            .process(|process| process.map(pane::CandidateDetailRows::process).transpose())
     }
 
     /// The folder that failed validation at the key the read is set to, as
@@ -383,7 +378,7 @@ impl ImportTables {
     ) -> coven::ReconfigurableLiveQuery<
         Option<crate::CandidateKey>,
         Option<crate::InvalidCandidateDetail>,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         self.store.subscribe_reconfigurable(initial, |key, sql| match key {
             None => Ok(None),
@@ -398,8 +393,7 @@ impl ImportTables {
                     return Ok(None);
                 }
                 let stored =
-                    folder_scans::load_item_by_key(&sql, key, folder_scans::RowSources::Any)
-                        .map_err(CovenError::from)?;
+                    folder_scans::load_item_by_key(&sql, key, folder_scans::RowSources::Any)?;
                 Ok(match stored.map(|(_, stored)| stored.item) {
                     Some(crate::folder_scanner::ScanItem::Invalid(candidate)) => {
                         Some(crate::InvalidCandidateDetail::of(candidate))

@@ -442,6 +442,18 @@ impl DatabaseFault for coven::CovenError {
     }
 }
 
+impl DatabaseFault for bae_store::DbError {
+    fn database_fault(self) -> String {
+        match self {
+            bae_store::DbError::Coven(error) => match *error {
+                coven::CovenError::Database(inner) => inner.to_string(),
+                other => other.to_string(),
+            },
+            other => other.to_string(),
+        }
+    }
+}
+
 impl DatabaseFault for bae_library::LibraryError {
     fn database_fault(self) -> String {
         match self {

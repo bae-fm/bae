@@ -60,3 +60,16 @@ async fn a_call_that_panics_is_reported_once_by_the_store() {
     assert_eq!(error.reported_bug(), Some(&reported[0]));
     db.close().await.unwrap();
 }
+
+/// A closure's own failure comes back from a read and from a write as the
+/// error it was, not as a coven error that wraps it.
+#[tokio::test]
+async fn a_closure_failure_comes_back_as_itself() {
+    let (db, _tmp) = crate::test_fixtures::temp_db(Schema::new(&[])).await;
+
+    let read = db.read(|_| Err::<(), _>(DbError::unreadable("x", 1))).await.unwrap_err();
+    assert!(matches!(read, DbError::Unreadable { .. }), "{read:?}");
+
+    let write = db.call(|_| Err::<(), _>(DbError::unreadable("x", 1))).await.unwrap_err();
+    assert!(matches!(write, DbError::Unreadable { .. }), "{write:?}");
+}

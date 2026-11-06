@@ -55,14 +55,13 @@ impl LibraryViews {
     pub fn subscribe_release_detail(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, ReleaseDetailProjection, coven::CovenError>
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, ReleaseDetailProjection, bae_store::DbError>
     {
         self.store
             .subscribe_reconfigurable(initial, |release_id, sql| {
                 let has_cloud_home = cloud_home_on(&sql)?;
                 let context = match release_id {
-                    Some(release_id) => find_release_detail_context_on(&sql, release_id)
-                        .map_err(CovenError::from)?,
+                    Some(release_id) => find_release_detail_context_on(&sql, release_id)?,
                     None => None,
                 };
                 Ok((context, has_cloud_home))

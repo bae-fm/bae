@@ -1,5 +1,5 @@
 use crate::DbError;
-use coven::{CovenError, SqlReadContext};
+use coven::SqlReadContext;
 use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 
@@ -14,9 +14,7 @@ pub struct StoreRead<'a, F> {
 
 impl<'a, F, R> StoreRead<'a, F>
 where
-    F: for<'connection> FnOnce(SqlReadContext<'connection>) -> Result<R, CovenError>
-        + Send
-        + 'static,
+    F: for<'connection> FnOnce(SqlReadContext<'connection>) -> Result<R, DbError> + Send + 'static,
     R: Send + 'static,
 {
     pub(crate) fn new(read: coven::Read<'a, F>, bugs: &'a dyn coven::task::BugSink) -> Self {
@@ -29,18 +27,13 @@ where
         T: Send + 'static,
     {
         let bugs = self.bugs;
-        self.read
-            .process(move |rows| process(rows).map_err(CovenError::from))
-            .await
-            .map_err(|error| DbError::from(coven::task::reported(bugs, error)))
+        self.read.process(process).await.map_err(|error| coven::task::reported(bugs, error))
     }
 }
 
 impl<'a, F, R> IntoFuture for StoreRead<'a, F>
 where
-    F: for<'connection> FnOnce(SqlReadContext<'connection>) -> Result<R, CovenError>
-        + Send
-        + 'static,
+    F: for<'connection> FnOnce(SqlReadContext<'connection>) -> Result<R, DbError> + Send + 'static,
     R: Send + 'static,
 {
     type Output = Result<R, DbError>;
@@ -49,7 +42,7 @@ where
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {
             let bugs = self.bugs;
-            self.read.await.map_err(|error| DbError::from(coven::task::reported(bugs, error)))
+            self.read.await.map_err(|error| coven::task::reported(bugs, error))
         })
     }
 }

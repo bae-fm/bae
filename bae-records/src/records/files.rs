@@ -49,20 +49,18 @@ impl Records {
                 move |sql, file| {
                     // Refuse a replacement when another write of the image landed
                     // since planning: the row names another file than it did.
-                    let current = image_file_on(&sql, &image.image_type, &image.id)
-                        .map_err(CovenError::from)?;
+                    let current = image_file_on(&sql, &image.image_type, &image.id)?;
                     if current != planned {
-                        return Err(CovenError::from(DbError::Message(format!(
+                        return Err(DbError::Message(format!(
                             "{} image for {} changed after planning",
                             namespace, image.id
-                        ))));
+                        )));
                     }
-                    upsert_library_image_row(&sql, &image, &file).map_err(CovenError::from)?;
+                    upsert_library_image_row(&sql, &image, &file)?;
                     Ok(())
                 },
             )
             .await
-            .map_err(DbError::from)
     }
 
     /// Find a host-provided image (cover / artist image) by its subject id. The
@@ -243,8 +241,8 @@ impl Records {
     pub fn subscribe_release_file_pins(
         &self,
         release_id: &str,
-    ) -> coven::LiveQuery<std::collections::BTreeMap<String, DbFilePin>, coven::CovenError> {
+    ) -> coven::LiveQuery<std::collections::BTreeMap<String, DbFilePin>, DbError> {
         let release_id = release_id.to_string();
-        self.store.subscribe(move |sql| Ok(release_file_pins_on(&sql, &release_id)?))
+        self.store.subscribe(move |sql| release_file_pins_on(&sql, &release_id))
     }
 }

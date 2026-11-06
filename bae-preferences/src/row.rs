@@ -12,7 +12,7 @@ use super::{
     SidePauseCountdown, SubsonicConfig,
 };
 use bae_store::{DbError, Store};
-use coven::{BulkSqlContext, CovenError, CovenWrite, SqlRead};
+use coven::{BulkSqlContext, CovenWrite, SqlRead};
 use rusqlite::{params, Params, Row};
 use std::collections::HashMap;
 use std::num::NonZeroU32;
@@ -28,8 +28,8 @@ pub async fn preferences(store: &Store) -> Result<Preferences, DbError> {
 
 /// Follow this device's preferences: the first value at once, then one
 /// after each write that changes them.
-pub fn subscribe_preferences(store: &Store) -> coven::LiveQuery<Preferences, coven::CovenError> {
-    store.subscribe(|sql| preferences_on(&sql).map_err(CovenError::from))
+pub fn subscribe_preferences(store: &Store) -> coven::LiveQuery<Preferences, bae_store::DbError> {
+    store.subscribe(|sql| Ok(preferences_on(&sql)?))
 }
 
 /// The owner of the `preferences` row: the one place it is written, one

@@ -100,7 +100,7 @@ pub fn store_under(handle: coven::CovenHandle, clock: coven::ClockRef) -> Store 
 /// ended.
 fn pass_ends(
     store: &Store,
-) -> coven::LiveQuery<(Option<coven::LastPass>, Option<i64>), coven::CovenError> {
+) -> coven::LiveQuery<(Option<coven::LastPass>, Option<i64>), crate::DbError> {
     store.subscribe(|sql| {
         Ok(sql.query_row("SELECT last_pass, last_synced FROM coven_sync_status", [], |row| {
             Ok((row.get(0)?, row.get(1)?))

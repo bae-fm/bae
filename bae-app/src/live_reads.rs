@@ -30,7 +30,7 @@ use bae_views::LibraryViews;
 /// a snapshot of the request it was read for.
 pub(crate) fn follow_request<Request, Projection, Snapshot>(
     library: &LibraryManager,
-    query: coven::ReconfigurableLiveQuery<Option<Request>, Projection, coven::CovenError>,
+    query: coven::ReconfigurableLiveQuery<Option<Request>, Projection, bae_store::DbError>,
     snapshot: impl Fn(&Option<Request>, Projection) -> Snapshot + Send + 'static,
 ) -> LiveRead<Option<Request>, Snapshot>
 where

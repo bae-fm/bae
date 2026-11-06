@@ -45,7 +45,7 @@ impl People {
         self.inner.store.read(|sql| Ok(people_on(&sql, &everyone_sql())?)).await
     }
 
-    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>, coven::CovenError> {
+    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>, bae_store::DbError> {
         self.inner.store.subscribe(|sql| Ok(profile_rows(&sql)?))
     }
 
@@ -117,8 +117,7 @@ impl People {
                     })?;
                 match matching.as_slice() {
                     [] => {
-                        let (circle, operation) =
-                            sql.create_circle(&circle_name).map_err(coven::CovenError::from)?;
+                        let (circle, operation) = sql.create_circle(&circle_name)?;
                         insert_profile_request(sql, operation, circle, &name)?;
                     }
                     [(circle, true)] => {
@@ -147,7 +146,7 @@ impl People {
     pub async fn finish_profile_requests(&self) -> Result<(), DbError> {
         let mut requests = self.subscribe_profile_request();
         while let Some(request) = requests.next().await {
-            if let Some(request) = request.map_err(DbError::from)? {
+            if let Some(request) = request? {
                 if request.state()? == ProfileRequestState::Made {
                     self.finish_profile(request).await?;
                 }
@@ -259,7 +258,7 @@ impl People {
                     .store
                     .write_staged(
                         move |batch| {
-                            Ok(batch.put_file(
+                            Ok::<_, DbError>(batch.put_file(
                                 crate::synced::AVATARS_NAMESPACE,
                                 bytes,
                                 coven::Place::Cloud,

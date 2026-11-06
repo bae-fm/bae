@@ -93,7 +93,7 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<
         crate::ArtistSearchView,
         ArtistSearchProjection,
-        coven::CovenError,
+        bae_store::DbError,
     > {
         self.store.subscribe_reconfigurable(initial, |view, sql| {
             let Some(query) = &view.query else {
@@ -109,7 +109,7 @@ impl LibraryViews {
                     total_count: 0,
                 });
             };
-            let total_count = artist_search_count_on(&sql, query).map_err(CovenError::from)?;
+            let total_count = artist_search_count_on(&sql, query)?;
             let windows = view
                 .windows
                 .iter()
@@ -119,8 +119,7 @@ impl LibraryViews {
                         rows: artist_search_rows_on(&sql, query, window)?,
                     })
                 })
-                .collect::<Result<Vec<_>, DbError>>()
-                .map_err(CovenError::from)?;
+                .collect::<Result<Vec<_>, DbError>>()?;
             Ok(ArtistSearchProjection { windows, total_count })
         })
     }

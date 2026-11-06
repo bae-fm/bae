@@ -9,7 +9,7 @@ pub(crate) const SCHEMA: bae_store::SchemaPart =
 
 use bae_store::DbError;
 use bae_store::Store;
-use coven::{CovenError, SqlReadContext};
+use coven::SqlReadContext;
 use rusqlite::{params, Row};
 
 /// Which flavor of remote renderer a device is. Shown as a tag; the picker
@@ -92,8 +92,8 @@ impl CastPicker {
     }
 
     /// Follow the receivers the picker lists.
-    pub fn subscribe(&self) -> coven::LiveQuery<Vec<CastDevice>, coven::CovenError> {
-        self.store.subscribe(|sql| cast_devices_on(&sql).map_err(CovenError::from))
+    pub fn subscribe(&self) -> coven::LiveQuery<Vec<CastDevice>, bae_store::DbError> {
+        self.store.subscribe(|sql| cast_devices_on(&sql))
     }
 
     /// Empty the list: what the library opens with, since no discovery

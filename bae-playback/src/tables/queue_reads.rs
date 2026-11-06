@@ -12,16 +12,16 @@ use crate::{ContextSource, QueueItem, RepeatMode};
 /// lane plays from, and whether the transport can step either way.
 pub fn subscribe_queue_value(
     store: &Store,
-) -> coven::LiveQuery<crate::ResolvedQueueSnapshot, coven::CovenError> {
-    store.subscribe(|sql| queue_value_on(&sql).map_err(CovenError::from))
+) -> coven::LiveQuery<crate::ResolvedQueueSnapshot, bae_store::DbError> {
+    store.subscribe(|sql| queue_value_on(&sql))
 }
 
 /// Follow the queue's last addition to Up Next; `None` until there is one
 /// since playback started with the library.
 pub fn subscribe_queue_addition(
     store: &Store,
-) -> coven::LiveQuery<Option<crate::QueueAddition>, coven::CovenError> {
-    store.subscribe(|sql| queue_addition_on(&sql).map_err(CovenError::from))
+) -> coven::LiveQuery<Option<crate::QueueAddition>, bae_store::DbError> {
+    store.subscribe(|sql| queue_addition_on(&sql))
 }
 
 /// The queue's last addition to Up Next, as `subscribe_queue_addition` reads
@@ -63,12 +63,10 @@ pub fn subscribe_queue_upcoming(
 ) -> coven::ReconfigurableLiveQuery<
     bae_store::LibraryPageWindows,
     QueueUpcomingRead,
-    coven::CovenError,
+    bae_store::DbError,
 > {
     store
-        .subscribe_reconfigurable(initial, |windows, sql| {
-            queue_upcoming_on(&sql, windows).map_err(CovenError::from)
-        })
+        .subscribe_reconfigurable(initial, |windows, sql| queue_upcoming_on(&sql, windows))
         .process(Ok)
 }
 

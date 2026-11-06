@@ -4,9 +4,7 @@
 //! are one.
 
 use super::*;
-use bae_records::records::artist_resolution::{
-    identity_write_failure, relink, relink_album_artists, relink_track_artists,
-};
+use bae_records::records::artist_resolution::{relink, relink_album_artists, relink_track_artists};
 use bae_records::records::label_resolution::label_write;
 use bae_records::records::write::{
     insert_audio_format_row, insert_audio_segment_row, insert_release_artist_role_row,
@@ -46,31 +44,47 @@ impl From<rusqlite::Error> for ImportCommitError {
     }
 }
 
-/// Carry an [`ImportCommitError`] out of the commit's coven write closure
-/// with its type intact, so [`import_commit_error`] can hand it back.
-fn import_commit_failure(error: ImportCommitError) -> CovenError {
-    match error {
-        ImportCommitError::Write(error) => identity_write_failure(error),
-        other => rusqlite::Error::UserFunctionError(Box::new(other)).into(),
+impl From<DbError> for ImportCommitError {
+    fn from(error: DbError) -> Self {
+        Self::Write(error.into())
     }
 }
 
-/// The [`ImportCommitError`] the commit's coven write closure failed with.
-fn import_commit_error(error: CovenError) -> ImportCommitError {
-    match error {
-        CovenError::Database(coven::DbError::Sqlite(rusqlite::Error::UserFunctionError(host))) => {
-            match host.downcast::<ImportCommitError>() {
-                Ok(error) => *error,
-                Err(other) => ImportCommitError::Write(
-                    bae_records::records::artist_resolution::identity_write_error(
-                        rusqlite::Error::UserFunctionError(other).into(),
-                    ),
-                ),
-            }
+impl From<coven::DbError> for ImportCommitError {
+    fn from(error: coven::DbError) -> Self {
+        Self::Write(error.into())
+    }
+}
+
+impl coven::task::CarriesBug for ImportCommitError {
+    fn bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Write(error) => error.bug(),
+            Self::LibraryChanged | Self::FilesAlreadyImported { .. } => None,
         }
-        other => ImportCommitError::Write(
-            bae_records::records::artist_resolution::identity_write_error(other),
-        ),
+    }
+}
+
+/// A failed rollback or byte removal is a database failure first: it joins a
+/// database error beside the refusal it followed, as that error's text.
+impl coven::WriteFailure for ImportCommitError {
+    fn with_rollback(self, rollback: rusqlite::Error) -> Self {
+        match self {
+            Self::Write(error) => Self::Write(error.with_rollback(rollback)),
+            refusal => Self::Write(IdentityWriteError::Db(
+                DbError::Message(refusal.to_string()).with_rollback(rollback),
+            )),
+        }
+    }
+
+    fn with_cleanup(write: Self, failures: Vec<coven::DbError>) -> Self {
+        match write {
+            Self::Write(error) => Self::Write(IdentityWriteError::with_cleanup(error, failures)),
+            refusal => Self::Write(IdentityWriteError::Db(DbError::with_cleanup(
+                DbError::Message(refusal.to_string()),
+                failures,
+            ))),
+        }
     }
 }
 
@@ -364,11 +378,11 @@ impl ImportTables {
                     // before the links below point at them.
                     let credits =
                         ArtistCredits { credits: &artist_credits, picked: &picked_artists };
-                    let resolved = credits.resolve_on(tx).map_err(identity_write_failure)?;
+                    let resolved = credits.resolve_on(tx)?;
                     let inserted: BTreeSet<String> =
                         resolved.inserts.iter().map(|artist| artist.id.clone()).collect();
                     if inserted != expected_new_artists {
-                        return Err(import_commit_failure(ImportCommitError::LibraryChanged));
+                        return Err(ImportCommitError::LibraryChanged);
                     }
                     resolved.write_on(tx)?;
                     let artist_ids = resolved.id_map(&artist_credits);
@@ -396,10 +410,8 @@ impl ImportTables {
                         replace_album_artists(tx, &album.id, &album_artists, &now)?;
                     }
 
-                    insert_release_row(tx, &release, &label_write(&labels))
-                        .map_err(identity_write_failure)?;
-                    record_import_origin_on(tx, &guard, &release.id)
-                        .map_err(import_commit_failure)?;
+                    insert_release_row(tx, &release, &label_write(&labels))?;
+                    record_import_origin_on(tx, &guard, &release.id)?;
                     // The credits are resolved above, so the artist decisions
                     // this deletes have been read.
                     delete_what_the_import_spent_on(tx, &guard)?;
@@ -451,7 +463,7 @@ impl ImportTables {
                     }
 
                     for (row, file) in rows_to_insert.iter().zip(original_file_ids) {
-                        insert_release_file_row(tx, row, file).map_err(identity_write_failure)?;
+                        insert_release_file_row(tx, row, file)?;
                     }
 
                     for af in &audio_formats {
@@ -475,7 +487,6 @@ impl ImportTables {
             )
             .await
             .map(|_| ())
-            .map_err(import_commit_error)
     }
 }
 
