@@ -83,7 +83,8 @@ impl ImportServiceHandle {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<Option<crate::folder_scanner::FolderCandidate>, crate::ImportError> {
-        self.services.tables
+        self.services
+            .tables
             .load_release_candidate(key)
             .await?
             .map_err(|reason| crate::ImportError::GroupingBlocked { reason })

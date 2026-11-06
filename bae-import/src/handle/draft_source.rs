@@ -15,12 +15,14 @@ impl ImportServiceHandle {
         crate::ImportError,
     > {
         let candidate = self.require_release_candidate(candidate_key).await?;
-        let current =
-            crate::preparations::stored_preparation(&self.services.tables, &candidate.files.content_hash())
-                .await?
-                .ok_or_else(|| crate::ImportError::Internal {
-                    detail: format!("{candidate_key} has no stored import preparation"),
-                })?;
+        let current = crate::preparations::stored_preparation(
+            &self.services.tables,
+            &candidate.files.content_hash(),
+        )
+        .await?
+        .ok_or_else(|| crate::ImportError::Internal {
+            detail: format!("{candidate_key} has no stored import preparation"),
+        })?;
         Ok((candidate, current))
     }
 
@@ -57,7 +59,8 @@ impl ImportServiceHandle {
                 current.file_edits.revision,
             )
             .await?;
-        self.services.preparations
+        self.services
+            .preparations
             .apply_source(
                 &candidate.watched_folder_path,
                 &crate::CandidateAsRead {
@@ -98,7 +101,8 @@ impl ImportServiceHandle {
                 current.file_edits.revision,
             )
             .await?;
-        self.services.preparations
+        self.services
+            .preparations
             .keep_own_draft(&crate::CandidateAsRead {
                 content_hash: content_hash.clone(),
                 file_edit_revision: candidate.file_edit_revision,
@@ -135,7 +139,8 @@ impl ImportServiceHandle {
                 current.file_edits.revision,
             )
             .await?;
-        self.services.preparations
+        self.services
+            .preparations
             .unlink(&crate::CandidateAsRead {
                 content_hash,
                 file_edit_revision: candidate.file_edit_revision,
@@ -145,7 +150,8 @@ impl ImportServiceHandle {
     }
 
     pub(crate) fn announce_metadata_changed(&self, candidate_key: crate::CandidateKey) {
-        self.services.event_tx
+        self.services
+            .event_tx
             .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }));
     }
 }

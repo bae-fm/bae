@@ -79,7 +79,8 @@ impl ImportServiceHandle {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<Option<crate::ImportCandidateDetail>, crate::ImportError> {
-        Ok(self.services
+        Ok(self
+            .services
             .tables
             .load_import_candidate(key)
             .await?

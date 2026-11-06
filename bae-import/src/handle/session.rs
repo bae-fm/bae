@@ -26,7 +26,8 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
     ) -> Result<bool, crate::ImportError> {
         self.move_candidate_pane(candidate_key, PaneMove::Automatic).await?;
-        let stored = self.services
+        let stored = self
+            .services
             .tables
             .load_import_candidate(candidate_key)
             .await?
@@ -46,7 +47,10 @@ impl ImportServiceHandle {
         content_hashes: Vec<String>,
     ) -> Result<(), crate::ImportError> {
         let _commit = self.services.folder_state_commit.lock("open panes on Find online").await;
-        self.services.tables.move_import_candidate_panes(content_hashes, PaneMove::Admitted).await?;
+        self.services
+            .tables
+            .move_import_candidate_panes(content_hashes, PaneMove::Admitted)
+            .await?;
         Ok(())
     }
 

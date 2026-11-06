@@ -41,7 +41,8 @@ impl ImportServiceHandle {
             }
             return Ok(());
         }
-        let changed = self.services.tables.set_import_candidate_skipped(&candidate.path, skipped).await?;
+        let changed =
+            self.services.tables.set_import_candidate_skipped(&candidate.path, skipped).await?;
         if changed {
             if skipped {
                 self.identification_ended(&candidate_key).await;

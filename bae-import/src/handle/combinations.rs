@@ -69,14 +69,17 @@ impl ImportServiceHandle {
         }
         let key = CandidateKey::grouping(&self.services.ids.new_id().to_string());
         let _commit = self.services.folder_state_commit.lock("combine releases").await;
-        let regrouped = self.services
+        let regrouped = self
+            .services
             .tables
             .combine_releases(key.clone(), members)
             .await?
             .map_err(|reason| ImportError::GroupingBlocked { reason })?;
         for candidate_key in keys {
             self.identification_ended(&candidate_key).await;
-            self.services.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }));
+            self.services
+                .event_tx
+                .send(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }));
         }
         self.announce_regrouped(&regrouped).await?;
         Ok(key)
@@ -126,11 +129,13 @@ impl ImportServiceHandle {
             FolderReleaseDecision::CombineAsOneRelease,
         )
         .await?;
-        self.services.tables.folder_reading_grouping(&folder).await?.ok_or_else(|| ImportError::Internal {
-            detail: format!(
-                "{} was combined but no grouping is stored for it",
-                folder.relative_folder.text()
-            ),
+        self.services.tables.folder_reading_grouping(&folder).await?.ok_or_else(|| {
+            ImportError::Internal {
+                detail: format!(
+                    "{} was combined but no grouping is stored for it",
+                    folder.relative_folder.text()
+                ),
+            }
         })
     }
 
@@ -150,7 +155,8 @@ impl ImportServiceHandle {
         key: &CandidateKey,
     ) -> Result<Vec<CandidateKey>, ImportError> {
         {
-            let _commit = self.services.folder_state_commit.lock("check a release to separate").await;
+            let _commit =
+                self.services.folder_state_commit.lock("check a release to separate").await;
             self.ensure_combination_idle(key).await?;
         }
         match self.services.tables.load_grouping(key).await? {
@@ -162,12 +168,16 @@ impl ImportServiceHandle {
                 .await
             }
             Some(crate::tables::GroupingFacts::Picked { .. }) => {
-                let _commit = self.services.folder_state_commit.lock("separate a picked release").await;
-                let (returned, regrouped) = self.services.tables.separate_picked_grouping(key).await?;
+                let _commit =
+                    self.services.folder_state_commit.lock("separate a picked release").await;
+                let (returned, regrouped) =
+                    self.services.tables.separate_picked_grouping(key).await?;
                 let keys = crate::list::release_keys_in_path_order(&returned);
                 self.identification_ended(key).await;
-                let automatic =
-                    bae_preferences::preferences(&self.services.store).await?.identification.automatic;
+                let automatic = bae_preferences::preferences(&self.services.store)
+                    .await?
+                    .identification
+                    .automatic;
                 self.services.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
                     candidate_key: key.clone(),
                 }));
@@ -206,7 +216,8 @@ impl ImportServiceHandle {
                 candidate_key: candidate_key.clone(),
             }));
         }
-        let automatic = bae_preferences::preferences(&self.services.store).await?.identification.automatic;
+        let automatic =
+            bae_preferences::preferences(&self.services.store).await?.identification.automatic;
         for item in &regrouped.written {
             let event = match item.clone() {
                 ScanItem::Valid(candidate) => ScanEvent::FolderCandidate {

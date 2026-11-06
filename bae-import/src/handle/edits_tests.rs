@@ -413,8 +413,10 @@ async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
 async fn a_track_edit_cannot_change_the_audio_it_plays() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let before = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
-    let stored =
-        crate::preparations::stored_preparation(&handle.services.tables, &hash).await.unwrap().unwrap();
+    let stored = crate::preparations::stored_preparation(&handle.services.tables, &hash)
+        .await
+        .unwrap()
+        .unwrap();
 
     let error = handle
         .set_candidate_track_edit(

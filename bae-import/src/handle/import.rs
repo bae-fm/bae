@@ -127,8 +127,10 @@ impl ImportServiceHandle {
                 return;
             }
         };
-        let failure = crate::ImportFailure::of(error, bae_store::utc_now(self.services.clock.as_ref()));
-        if let Err(write) = self.services
+        let failure =
+            crate::ImportFailure::of(error, bae_store::utc_now(self.services.clock.as_ref()));
+        if let Err(write) = self
+            .services
             .tables
             .save_import_candidate_failure(
                 &candidate.files.content_hash(),
@@ -171,14 +173,17 @@ impl ImportServiceHandle {
             }
         }
         let content_hash = candidate.files.content_hash();
-        let preparation = crate::preparations::stored_preparation(&self.services.tables, &content_hash)
-            .await?
-            .filter(|preparation| preparation.file_edits.revision == candidate.file_edit_revision)
-            .ok_or_else(|| crate::ImportError::Internal {
-                detail: format!(
-                    "{candidate_key} has no complete preparation for its current files"
-                ),
-            })?;
+        let preparation =
+            crate::preparations::stored_preparation(&self.services.tables, &content_hash)
+                .await?
+                .filter(|preparation| {
+                    preparation.file_edits.revision == candidate.file_edit_revision
+                })
+                .ok_or_else(|| crate::ImportError::Internal {
+                    detail: format!(
+                        "{candidate_key} has no complete preparation for its current files"
+                    ),
+                })?;
         let metadata_provenance = preparation.metadata.provenance.clone();
         let needs_file_tag_snapshot =
             matches!(metadata_provenance, Some(crate::MetadataProvenance::FileMetadata))
@@ -187,7 +192,8 @@ impl ImportServiceHandle {
                     Some(crate::cover_art::PreparedCover::Embedded(_))
                 );
         let file_tag_snapshot = if needs_file_tag_snapshot {
-            let Some(stored) = self.services
+            let Some(stored) = self
+                .services
                 .tables
                 .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, candidate_key)
                 .await?
@@ -317,7 +323,8 @@ impl ImportServiceHandle {
             Arc::new(crate::folder_scanner::FileReads::new(self.services.file_tags.clone())),
         )
         .await?;
-        if self.services
+        if self
+            .services
             .tables
             .save_folder_scan_items(
                 &watched_folder,
@@ -335,7 +342,13 @@ impl ImportServiceHandle {
                 detail: format!("test import scan for {candidate_key} was superseded"),
             });
         }
-        if self.services.tables.finish_folder_scan(&watched_folder, generation, None).await?.is_none() {
+        if self
+            .services
+            .tables
+            .finish_folder_scan(&watched_folder, generation, None)
+            .await?
+            .is_none()
+        {
             return Err(crate::ImportError::Internal {
                 detail: format!("test import scan for {candidate_key} was superseded"),
             });
@@ -354,16 +367,18 @@ impl ImportServiceHandle {
             self.read_candidate_file_tags_write(command.candidate_key.clone()).await?;
         }
         if let Some(edit) = command.user_edit.clone() {
-            let preparation = crate::preparations::stored_preparation(&self.services.tables, &content_hash)
-                .await?
-                .ok_or_else(|| crate::ImportError::Internal {
-                    detail: "test import has no candidate state".into(),
-                })?;
+            let preparation =
+                crate::preparations::stored_preparation(&self.services.tables, &content_hash)
+                    .await?
+                    .ok_or_else(|| crate::ImportError::Internal {
+                        detail: "test import has no candidate state".into(),
+                    })?;
             let draft = crate::pane::edit_over_audio(
                 crate::RawReleaseEdit::from_user_edit(edit, "test-import-track"),
                 &preparation.metadata.draft,
             )?;
-            self.services.preparations
+            self.services
+                .preparations
                 .apply_source(
                     &candidate.watched_folder_path,
                     &crate::CandidateAsRead {
@@ -389,7 +404,8 @@ impl ImportServiceHandle {
         if let Some(cover) = command.selected_cover.clone() {
             self.set_candidate_cover(&command.candidate_key, cover).await?;
         }
-        let metadata_revision = self.services
+        let metadata_revision = self
+            .services
             .tables
             .load_import_candidate_state(&content_hash)
             .await?
@@ -400,7 +416,8 @@ impl ImportServiceHandle {
         let file_tag_snapshot = if command.read_file_tags
             || matches!(command.selected_cover, Some(crate::CoverSelection::Embedded(_)))
         {
-            let snapshot = self.services
+            let snapshot = self
+                .services
                 .tables
                 .load_candidate_file_tag_snapshot(
                     &candidate.watched_folder_path,

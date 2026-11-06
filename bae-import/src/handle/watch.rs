@@ -75,7 +75,9 @@ impl ImportServiceHandle {
             self.services.tables.remove_watched_import_folders(vec![path], None).await?;
             return Err(error);
         }
-        self.services.event_tx.send(ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }));
+        self.services
+            .event_tx
+            .send(ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }));
         Ok(())
     }
 

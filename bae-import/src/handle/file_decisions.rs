@@ -9,7 +9,9 @@ impl ImportServiceHandle {
         &self,
         candidate: crate::folder_scanner::FolderCandidate,
     ) {
-        self.services.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }));
+        self.services
+            .event_tx
+            .send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }));
     }
 
     /// For each FILE reference of the track sheet at `sheet_file_id`, the
@@ -205,14 +207,15 @@ impl ImportServiceHandle {
                 crate::preparations::CandidateWrite::FileDecisions,
             ));
         }
-        let preparation = crate::preparations::stored_preparation(&self.services.tables, &content_hash)
-            .await?
-            .filter(|preparation| preparation.file_edits.revision == expected_revision)
-            .ok_or_else(|| crate::ImportError::Internal {
-                detail: format!(
+        let preparation =
+            crate::preparations::stored_preparation(&self.services.tables, &content_hash)
+                .await?
+                .filter(|preparation| preparation.file_edits.revision == expected_revision)
+                .ok_or_else(|| crate::ImportError::Internal {
+                    detail: format!(
                 "{candidate_key} has no complete preparation for file revision {expected_revision}"
             ),
-            })?;
+                })?;
         let mut edits = self.services.tables.load_candidate_file_edits(&content_hash).await?;
         if edits.revision != expected_revision {
             return Err(crate::ImportError::Internal {
@@ -224,8 +227,11 @@ impl ImportServiceHandle {
         decide(&mut edits);
 
         loop {
-            let matching_files =
-                self.services.tables.load_releases_reading(&content_hash, expected_revision).await?;
+            let matching_files = self
+                .services
+                .tables
+                .load_releases_reading(&content_hash, expected_revision)
+                .await?;
             let matching_keys = matching_files
                 .iter()
                 .map(|(key, _)| key.clone())
@@ -251,7 +257,8 @@ impl ImportServiceHandle {
                         "file decision produced no settled candidate for {candidate_key}"
                     ),
                 })?;
-            let stored = self.services
+            let stored = self
+                .services
                 .tables
                 .load_candidate_file_tag_snapshot(
                     &current_candidate.watched_folder_path,
@@ -294,7 +301,8 @@ impl ImportServiceHandle {
                 .await?;
             // A scan may have added or dropped a folder with these files while
             // this was prepared; if so, prepare again.
-            let matching_now = self.services
+            let matching_now = self
+                .services
                 .tables
                 .load_releases_reading(&content_hash, expected_revision)
                 .await?
@@ -308,7 +316,8 @@ impl ImportServiceHandle {
             // One write stores the decision and clears the verdict it
             // invalidates, and refuses a metadata revision that moved since it
             // was read.
-            let (_next_revision, candidates) = self.services
+            let (_next_revision, candidates) = self
+                .services
                 .preparations
                 .store_file_decisions(
                     &crate::CandidateAsRead {

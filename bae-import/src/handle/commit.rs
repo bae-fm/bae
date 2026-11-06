@@ -29,7 +29,11 @@ impl ImportServiceHandle {
     ) -> Result<crate::CandidateStanding, crate::ImportError> {
         Ok(crate::CandidateStanding {
             skipped: self.services.tables.is_release_candidate_skipped(candidate).await?,
-            imported: self.services.tables.release_imported_from(&candidate.files.content_hash()).await?,
+            imported: self
+                .services
+                .tables
+                .release_imported_from(&candidate.files.content_hash())
+                .await?,
             claimed: self.runtime.import_claimed(key).await?,
         })
     }

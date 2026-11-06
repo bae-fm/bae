@@ -57,8 +57,11 @@ impl ImportServiceHandle {
         key: &crate::CandidateKey,
     ) -> Result<RemoteCoverGallery, crate::ImportError> {
         let candidate = self.require_release_candidate(key).await?;
-        let state =
-            self.services.tables.load_import_candidate_state(&candidate.files.content_hash()).await?;
+        let state = self
+            .services
+            .tables
+            .load_import_candidate_state(&candidate.files.content_hash())
+            .await?;
         let link = match state.and_then(|state| state.release_link) {
             None => return Ok(RemoteCoverGallery::Unlinked),
             // An album's artwork is what each catalog shows for the album.
@@ -71,15 +74,17 @@ impl ImportServiceHandle {
         };
         let mut claimed_releases = Vec::new();
         for claimed in link.claimed() {
-            claimed_releases.push(self.services.tables.load_source_release(claimed).await?.ok_or_else(
-                || crate::ImportError::Internal {
-                    detail: format!(
-                        "{key} names {} release {} that is not stored",
-                        claimed.catalog.as_str(),
-                        claimed.key
-                    ),
-                },
-            )?);
+            claimed_releases.push(
+                self.services.tables.load_source_release(claimed).await?.ok_or_else(|| {
+                    crate::ImportError::Internal {
+                        detail: format!(
+                            "{key} names {} release {} that is not stored",
+                            claimed.catalog.as_str(),
+                            claimed.key
+                        ),
+                    }
+                })?,
+            );
         }
         let (primary, partners) =
             claimed_releases.split_first().expect("a pick claims at least its primary");
@@ -117,23 +122,30 @@ impl ImportServiceHandle {
                     ReleaseRecord::Pressing { release, album_key, .. },
                     LookupCatalog::MusicBrainz,
                 ) => {
-                    self.services.catalogs
+                    self.services
+                        .catalogs
                         .musicbrainz()
                         .musicbrainz_gallery(&release.key, album_key.as_deref())
                         .await?
                 }
                 (ReleaseRecord::Pressing { release, .. }, LookupCatalog::Discogs) => {
-                    self.services.catalogs
+                    self.services
+                        .catalogs
                         .session()
                         .await?
                         .release_covers(&release.key, CallClass::AWAITED)
                         .await?
                 }
                 (ReleaseRecord::Album { album }, LookupCatalog::MusicBrainz) => {
-                    self.services.catalogs.musicbrainz().musicbrainz_group_gallery(&album.key).await?
+                    self.services
+                        .catalogs
+                        .musicbrainz()
+                        .musicbrainz_group_gallery(&album.key)
+                        .await?
                 }
                 (ReleaseRecord::Album { album }, LookupCatalog::Discogs) => {
-                    self.services.catalogs
+                    self.services
+                        .catalogs
                         .session()
                         .await?
                         .master_covers(&album.key, CallClass::AWAITED)

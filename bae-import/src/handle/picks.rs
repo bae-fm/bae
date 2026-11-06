@@ -46,8 +46,11 @@ impl ImportServiceHandle {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Ok(false);
         };
-        let Some(row) =
-            self.services.tables.load_import_candidate_state(&candidate.files.content_hash()).await?
+        let Some(row) = self
+            .services
+            .tables
+            .load_import_candidate_state(&candidate.files.content_hash())
+            .await?
         else {
             return Ok(false);
         };
@@ -183,7 +186,9 @@ impl ImportServiceHandle {
         loop {
             // Read tags before taking the commit lock: a network share can be
             // slow, and every pane control waits on this lock.
-            let read = self.read_file_tag_snapshot(&candidate_key, self.services.file_tags.clone()).await?;
+            let read = self
+                .read_file_tag_snapshot(&candidate_key, self.services.file_tags.clone())
+                .await?;
             let seed = crate::file_metadata_seed::FileMetadataSeed::project(
                 &read.candidate,
                 read.snapshot,
@@ -200,7 +205,8 @@ impl ImportServiceHandle {
             // A scan that stored the candidate while its tags were read gave it
             // a newer generation, and the write only accepts tags read at the
             // current one: read again.
-            let stored_generation = self.services
+            let stored_generation = self
+                .services
                 .tables
                 .load_candidate_file_tag_snapshot(
                     &read.candidate.watched_folder_path,
@@ -212,7 +218,8 @@ impl ImportServiceHandle {
                 drop(commit);
                 continue;
             }
-            return self.services
+            return self
+                .services
                 .preparations
                 .apply_file_metadata(
                     &read.candidate.watched_folder_path,
@@ -244,7 +251,8 @@ impl ImportServiceHandle {
         let release = &prepared.release;
         // Picking a result of a typed search reads its documents: what they
         // state its album is joins the search's cards.
-        self.services.tables
+        self.services
+            .tables
             .land_candidate_search_pick(&candidate_key, release.release(), release.album_links())
             .await?;
         let audio = crate::audio_layout::read_audio(&candidate.files)?;
@@ -265,7 +273,8 @@ impl ImportServiceHandle {
             .partners(&link.record, &link.partners, CallClass::AWAITED, steps)
             .await?;
         for partner in &prepared_partners {
-            self.services.tables
+            self.services
+                .tables
                 .land_candidate_search_pick(
                     &candidate_key,
                     partner.release.release(),
@@ -313,7 +322,8 @@ impl ImportServiceHandle {
                 current.file_edits.revision,
             )
             .await?;
-        self.services.preparations
+        self.services
+            .preparations
             .apply_pick(
                 &candidate.watched_folder_path,
                 &crate::CandidateAsRead {

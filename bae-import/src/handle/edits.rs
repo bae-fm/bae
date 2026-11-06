@@ -35,7 +35,8 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::ImportError> {
         let candidate = self.require_release_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
-        let revision = self.services
+        let revision = self
+            .services
             .tables
             .load_import_candidate_state(&hash)
             .await?
@@ -63,7 +64,8 @@ impl ImportServiceHandle {
                 candidate.file_edit_revision,
             )
             .await?;
-        self.services.preparations
+        self.services
+            .preparations
             .set_prepared_cover(
                 &candidate.watched_folder_path,
                 &candidate.key(),
@@ -132,7 +134,8 @@ impl ImportServiceHandle {
                 candidate.file_edit_revision,
             )
             .await?;
-        self.services.preparations
+        self.services
+            .preparations
             .set_field_prepared(
                 &candidate.watched_folder_path,
                 &candidate.key(),
@@ -175,7 +178,8 @@ impl ImportServiceHandle {
                 base.candidate.file_edit_revision,
             )
             .await?;
-        self.services.preparations
+        self.services
+            .preparations
             .set_album_artists_prepared(
                 &base.watched_folder_path,
                 &base.candidate_path,
@@ -215,7 +219,8 @@ impl ImportServiceHandle {
                 base.candidate.file_edit_revision,
             )
             .await?;
-        self.services.preparations
+        self.services
+            .preparations
             .set_track_edit_prepared(
                 &base.watched_folder_path,
                 &base.candidate_path,
@@ -257,7 +262,8 @@ impl ImportServiceHandle {
                 base.candidate.file_edit_revision,
             )
             .await?;
-        self.services.preparations
+        self.services
+            .preparations
             .set_track_artists_prepared(
                 &base.watched_folder_path,
                 &base.candidate_path,
