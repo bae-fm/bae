@@ -3,11 +3,13 @@ import BaeKit
 import ScreenCaptureKit
 import SwiftUI
 
-/// Renders a `ShotScene` offscreen into a deterministic 2x PNG. The view is
-/// hosted in a window with the requested appearance, laid out, settled, then
-/// captured at a fixed pixel scale regardless of the host machine's display:
-/// into a manually sized bitmap, or for a scene shown in its window, through
-/// the window server, which draws the toolbar's glass.
+/// Renders a `ShotScene` into a deterministic 2x PNG. The view is hosted in a
+/// window with the requested appearance, laid out, settled, then captured at
+/// a fixed pixel scale regardless of the host machine's display: a scene's
+/// view alone from a window past the edge of every display into a manually
+/// sized bitmap, without the app ever taking the focus; a scene shown in its
+/// window through the window server, which draws the toolbar's glass, from a
+/// window brought to the front of the active app.
 @MainActor
 enum ShotRenderer {
     /// Backing-store scale for every capture. Fixed rather than read from the
@@ -35,9 +37,14 @@ enum ShotRenderer {
             named: mode == .dark ? .darkAqua : .aqua
         )
         window.isReleasedWhenClosed = false
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        window.makeMain()
+        switch scene.frame {
+        case .content:
+            window.orderFront(nil)
+        case .window:
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+            window.makeMain()
+        }
         defer {
             window.contentViewController = nil
             window.contentView = nil
@@ -141,14 +148,23 @@ enum ShotRenderer {
         let bounds = NSRect(origin: .zero, size: scene.size)
         switch scene.frame {
         case .content:
-            let host = NSHostingView(rootView: rootView)
+            // Drawn as in the key window of the active app, as the app is
+            // seen in use, without making it either: a window of an app that
+            // is not active is never key, and draws its controls inactive.
+            let host = NSHostingView(
+                rootView: rootView.environment(\.controlActiveState, .key)
+            )
             host.frame = bounds
             let window = ShotWindow(
-                contentRect: bounds,
+                contentRect: NSRect(origin: offscreenOrigin, size: scene.size),
                 styleMask: [.borderless],
                 backing: .buffered,
                 defer: false
             )
+            // Ordering a window in plays its zoom-in on a thread of its own,
+            // paced by the display it is on; past every display there is
+            // none, and the animation would never end.
+            window.animationBehavior = .none
             window.contentView = host
             return (window, host)
         case .window(let title):
@@ -168,6 +184,13 @@ enum ShotRenderer {
             }
             return (window, frame)
         }
+    }
+
+    /// A point past the right edge of every display, where a window shows
+    /// on none of them.
+    private static var offscreenOrigin: NSPoint {
+        let right = NSScreen.screens.map(\.frame.maxX).max() ?? 0
+        return NSPoint(x: right + 1_000, y: 0)
     }
 
     /// `host`'s pixels at `size` points and `scale`, over the window

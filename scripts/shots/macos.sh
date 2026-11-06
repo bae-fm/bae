@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 # Capture the macOS UI scenes as PNGs for the cross-platform screenshot gallery.
 #
-# Usage: scripts/shots/macos.sh <output-dir> [--scene <id-prefix>]... [--tone <tone>]...
+# Usage: scripts/shots/macos.sh <output-dir> [--windows] [--scene <id-prefix>]... [--tone <tone>]...
 #
 # --scene renders only the scenes whose id starts with one of the prefixes, and
 # --tone only those surface tones (neutral, slate, plum, ...); both modes always
 # render. Without them every scene renders in every tone, as the gallery needs.
+#
+# A scene's view alone renders in a window past the edge of every display and
+# never takes the focus. --windows also renders the scenes shown in their
+# windows, which the window server draws only for the key window of the active
+# app: each brings the app to the front, so only the screenshot workflow passes
+# it.
 #
 # Builds the Rust bridge, generates the Xcode project, and runs the `baeShots`
 # test bundle, which renders each registered scene offscreen and writes
@@ -15,7 +21,7 @@
 set -euo pipefail
 
 usage() {
-    echo "Usage: scripts/shots/macos.sh <output-dir> [--scene <id-prefix>]... [--tone <tone>]..." >&2
+    echo "Usage: scripts/shots/macos.sh <output-dir> [--windows] [--scene <id-prefix>]... [--tone <tone>]..." >&2
     exit 1
 }
 [[ $# -ge 1 ]] || usage
@@ -23,8 +29,10 @@ OUT_DIR="$1"
 shift
 SCENES=()
 TONES=()
+WINDOWS=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --windows) WINDOWS=1; shift ;;
         --scene) [[ $# -ge 2 ]] || usage; SCENES+=("$2"); shift 2 ;;
         --tone) [[ $# -ge 2 ]] || usage; TONES+=("$2"); shift 2 ;;
         *) usage ;;
@@ -64,7 +72,9 @@ echo "Capturing scenes into $OUT_DIR ..."
 export TEST_RUNNER_BAE_SHOTS_OUT="$OUT_DIR"
 TEST_RUNNER_BAE_SHOTS_SCENES="$(IFS=,; echo "${SCENES[*]-}")"
 TEST_RUNNER_BAE_SHOTS_TONES="$(IFS=,; echo "${TONES[*]-}")"
-export TEST_RUNNER_BAE_SHOTS_SCENES TEST_RUNNER_BAE_SHOTS_TONES
+TEST_RUNNER_BAE_SHOTS_WINDOWS="$WINDOWS"
+export TEST_RUNNER_BAE_SHOTS_SCENES TEST_RUNNER_BAE_SHOTS_TONES \
+    TEST_RUNNER_BAE_SHOTS_WINDOWS
 xcodebuild -project bae.xcodeproj -scheme baeShots -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \

@@ -32,7 +32,9 @@ jobs:
       - name: Install xcodegen
         run: brew install xcodegen
       - name: Capture
-        run: ./scripts/shots/macos.sh shots-out
+        # The runner has no one at it, so the scenes shown in their windows,
+        # which bring the app to the front, render here too.
+        run: ./scripts/shots/macos.sh shots-out --windows
       - uses: actions/upload-artifact@v4
         with:
           name: shots-macos

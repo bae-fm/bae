@@ -12,6 +12,11 @@ import Testing
 /// `BAE_SHOTS_SCENES` (comma-separated scene id prefixes) and `BAE_SHOTS_TONES`
 /// (comma-separated surface tones) narrow the run to the scenes and tones a
 /// change touches; unset, every scene renders in every tone, both modes.
+///
+/// A scene shown in its window brings the app to the front and makes its
+/// window key, taking the focus from whatever the person at the machine is
+/// doing, so those scenes render only when `BAE_SHOTS_WINDOWS` is `1`, as the
+/// screenshot workflow sets it.
 @MainActor
 struct CaptureSceneTests {
     @Test
@@ -64,16 +69,27 @@ struct CaptureSceneTests {
     /// The scenes whose id starts with one of `BAE_SHOTS_SCENES`'s prefixes,
     /// or every scene when it is unset. A prefix matching no scene fails loud.
     static func selectedScenes() throws -> [ShotScene] {
+        let rendered = ShotScene.all.filter { scene in
+            switch scene.frame {
+            case .content: true
+            case .window: Self.rendersWindows
+            }
+        }
         guard let prefixes = Self.listed("BAE_SHOTS_SCENES") else {
-            return ShotScene.all
+            return rendered
         }
         for prefix in prefixes
-        where !ShotScene.all.contains(where: { $0.id.hasPrefix(prefix) }) {
+        where !rendered.contains(where: { $0.id.hasPrefix(prefix) }) {
             throw ShotError.unknownSelection("scene", prefix)
         }
-        return ShotScene.all.filter { scene in
+        return rendered.filter { scene in
             prefixes.contains { scene.id.hasPrefix($0) }
         }
+    }
+
+    /// Whether the run renders the scenes shown in their windows.
+    private static var rendersWindows: Bool {
+        ProcessInfo.processInfo.environment["BAE_SHOTS_WINDOWS"] == "1"
     }
 
     /// The tones `BAE_SHOTS_TONES` names, or every tone when it is unset.
