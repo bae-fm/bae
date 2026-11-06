@@ -410,7 +410,16 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
         vec![file.file],
     )
     .await;
-    assert!(refused.is_err(), "no unpin was admitted for the write to end");
+    assert!(
+        matches!(
+            refused,
+            Err(bae_transfers::StorageTransitionError::NotInTransition {
+                transition: bae_transfers::StoredTransition::Unpin,
+                ..
+            })
+        ),
+        "no unpin was admitted for the write to end: {refused:?}"
+    );
     assert!(pinned().await, "a write that can't end the transition releases no pin");
 
     manager.unpin_release(&release.id).await.unwrap();
@@ -464,7 +473,16 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
         prepared,
     )
     .await;
-    assert!(refused.is_err(), "no make-local was admitted for the write to end");
+    assert!(
+        matches!(
+            refused,
+            Err(bae_transfers::StorageTransitionError::NotInTransition {
+                transition: bae_transfers::StoredTransition::DetachAudio,
+                ..
+            })
+        ),
+        "no make-local was admitted for the write to end: {refused:?}"
+    );
     assert!(
         release_files(manager, &release.id).await.iter().all(|file| file.stored),
         "a write that can't end the transition switches no file"

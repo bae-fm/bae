@@ -81,7 +81,7 @@ impl From<LibraryError> for AutomationError {
             error @ LibraryError::Closed(_) => Self::Unavailable(error.to_string()),
             error @ LibraryError::FileRead { .. } => Self::Unavailable(error.to_string()),
             error @ LibraryError::MakeLocal(_) => Self::Unavailable(error.to_string()),
-            error @ LibraryError::Cleanup { .. } => {
+            error @ (LibraryError::Cleanup { .. } | LibraryError::StorageTransition(_)) => {
                 bae_diagnostics::UiError::diagnostic(error.category(), error).into()
             }
             LibraryError::Playback(e) => Self::Unavailable(e),

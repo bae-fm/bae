@@ -171,6 +171,11 @@ pub enum LibraryError {
         #[source]
         error: Box<coven::FileReadError>,
     },
+    /// A write ending a release's storage transition did not commit: the
+    /// release was in no such transition, it held no files to move, or the
+    /// store failed.
+    #[error(transparent)]
+    StorageTransition(bae_transfers::StorageTransitionError),
     /// Making a release local again failed; coven removed what the call
     /// made, so the release stays in the cloud.
     #[error("make release local: {0}")]
@@ -316,6 +321,7 @@ impl bae_util::task_failure::ReportedBug for LibraryError {
             LibraryError::Import(error) => error.reported_bug(),
             LibraryError::FileRead { error, .. } => error.reported_bug(),
             LibraryError::MakeLocal(error) => error.reported_bug(),
+            LibraryError::StorageTransition(error) => error.reported_bug(),
             LibraryError::Sync(error) | LibraryError::InviteJoining(error) => error.reported_bug(),
             LibraryError::Keyring(error) => error.bug(),
             LibraryError::AppDir(error) => error.bug(),
@@ -367,6 +373,7 @@ impl LibraryError {
             LibraryError::Save(_) => C::Save,
             LibraryError::FileRead { error, .. } => file_read_category(error),
             LibraryError::MakeLocal(error) => device_only_category(error),
+            LibraryError::StorageTransition(error) => storage_transition_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
             #[cfg(desktop)]
             LibraryError::ReleaseEditLoad(_) => C::Internal,
@@ -392,6 +399,33 @@ impl From<bae_import::CatalogSessionError> for LibraryError {
         match error {
             bae_import::CatalogSessionError::Preferences(error) => Self::Database(error),
             bae_import::CatalogSessionError::Keyring(error) => Self::Keyring(error),
+        }
+    }
+}
+
+/// The class a surface words a storage transition's failed write in. Its
+/// work runs only for a transition the library admitted, on a release with
+/// files, so either refusal is the library breaking its own guarantee.
+fn storage_transition_category(
+    error: &bae_transfers::StorageTransitionError,
+) -> bae_diagnostics::UiErrorCategory {
+    use bae_transfers::StorageTransitionError as E;
+    match error {
+        E::Database(error) => bae_diagnostics::database_category(error),
+        E::Rollback { operation: failed, .. } | E::FileCleanup { write: failed, .. } => {
+            storage_transition_category(failed)
+        }
+        E::NotInTransition { .. } | E::NoFiles { .. } => bae_diagnostics::UiErrorCategory::Internal,
+    }
+}
+
+/// A storage transition's write that failed in the store is the library's
+/// store failure.
+impl From<bae_transfers::StorageTransitionError> for LibraryError {
+    fn from(error: bae_transfers::StorageTransitionError) -> Self {
+        match error {
+            bae_transfers::StorageTransitionError::Database(error) => Self::Database(error),
+            error => Self::StorageTransition(error),
         }
     }
 }

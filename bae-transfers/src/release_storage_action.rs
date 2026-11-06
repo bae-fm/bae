@@ -16,6 +16,94 @@ use rusqlite::{params, Row};
 /// Ends the storage transition of the release `?1`, whatever it is.
 const END_RELEASE_STORAGE_ACTION: &str = "DELETE FROM release_storage_action WHERE release_id = ?1";
 
+/// Why a write that ends a release's storage transition did not commit.
+/// Nothing of it landed.
+#[derive(Debug, thiserror::Error)]
+pub enum StorageTransitionError {
+    /// The release is not in the transition the write ends: its work would
+    /// finish a transition nobody admitted.
+    #[error("release {release_id} is not in the {transition:?} transition its write ends")]
+    NotInTransition { release_id: String, transition: StoredTransition },
+    /// The release holds no files to move to the cloud.
+    #[error("release {release_id} has no files")]
+    NoFiles { release_id: String },
+    #[error(transparent)]
+    Database(#[from] DbError),
+    /// The write was refused, and rolling it back failed too.
+    #[error("{operation}; rollback failed: {rollback}")]
+    Rollback {
+        operation: Box<StorageTransitionError>,
+        #[source]
+        rollback: rusqlite::Error,
+    },
+    /// The write was refused, and removing the bytes it released failed too,
+    /// each failure kept.
+    #[error("file cleanup failed: {failures:?}; write: {write}")]
+    FileCleanup { write: Box<StorageTransitionError>, failures: Vec<coven::DbError> },
+}
+
+impl From<rusqlite::Error> for StorageTransitionError {
+    fn from(error: rusqlite::Error) -> Self {
+        Self::Database(error.into())
+    }
+}
+
+impl From<coven::DbError> for StorageTransitionError {
+    fn from(error: coven::DbError) -> Self {
+        Self::Database(error.into())
+    }
+}
+
+impl coven::task::CarriesBug for StorageTransitionError {
+    fn bug(&self) -> Option<&coven::task::Bug> {
+        use coven::task::CarriesBug;
+        match self {
+            Self::Database(error) => error.bug(),
+            Self::Rollback { operation, .. } => operation.bug(),
+            Self::FileCleanup { write, failures } => {
+                write.bug().or_else(|| failures.iter().find_map(CarriesBug::bug))
+            }
+            Self::NotInTransition { .. } | Self::NoFiles { .. } => None,
+        }
+    }
+}
+
+/// A bug a coven call carried back, which the store reported as it returned.
+impl bae_util::task_failure::ReportedBug for StorageTransitionError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Database(error) => error.reported_bug(),
+            Self::Rollback { operation, .. } => operation.reported_bug(),
+            Self::FileCleanup { write, failures } => write.reported_bug().or_else(|| {
+                failures.iter().find_map(bae_util::task_failure::ReportedBug::reported_bug)
+            }),
+            Self::NotInTransition { .. } | Self::NoFiles { .. } => None,
+        }
+    }
+}
+
+/// A failed rollback or byte removal is kept beside the failure it followed:
+/// a store failure keeps it in its own, a refusal stays the refusal it is.
+impl coven::WriteFailure for StorageTransitionError {
+    fn with_rollback(self, rollback: rusqlite::Error) -> Self {
+        match self {
+            Self::Database(error) => {
+                Self::Database(coven::WriteFailure::with_rollback(error, rollback))
+            }
+            operation => Self::Rollback { operation: Box::new(operation), rollback },
+        }
+    }
+
+    fn with_cleanup(write: Self, failures: Vec<coven::DbError>) -> Self {
+        match write {
+            Self::Database(error) => {
+                Self::Database(coven::WriteFailure::with_cleanup(error, failures))
+            }
+            write => Self::FileCleanup { write: Box::new(write), failures },
+        }
+    }
+}
+
 /// End `release_id`'s transition `action` in the write that finishes its
 /// work, so the release shows the transition until that work has committed
 /// and never after. A release not in `action` fails the write: the work
@@ -24,16 +112,16 @@ fn end_transition_on(
     sql: &CovenWrite<'_>,
     release_id: &str,
     action: StoredTransition,
-) -> Result<(), DbError> {
+) -> Result<(), StorageTransitionError> {
     let ended = sql.execute(
         "DELETE FROM release_storage_action WHERE release_id = ?1 AND action = ?2",
         params![release_id, action.column()],
     )?;
     if ended == 0 {
-        return Err(DbError::Message(format!(
-            "release {release_id} is not in the {} transition its write ends",
-            action.column()
-        )));
+        return Err(StorageTransitionError::NotInTransition {
+            release_id: release_id.to_string(),
+            transition: action,
+        });
     }
     Ok(())
 }
@@ -155,7 +243,7 @@ pub async fn attach_release_files(
     store: &Store,
     release_id: &str,
     keep_here: bool,
-) -> Result<(), DbError> {
+) -> Result<(), StorageTransitionError> {
     let release_id = release_id.to_string();
     let files = store
         .read({
@@ -164,7 +252,7 @@ pub async fn attach_release_files(
         })
         .await?;
     if files.is_empty() {
-        return Err(DbError::Message("release has no files".into()));
+        return Err(StorageTransitionError::NoFiles { release_id });
     }
     let moving: Vec<coven::MoveFile> = files
         .into_iter()
@@ -174,7 +262,7 @@ pub async fn attach_release_files(
         })
         .collect();
     store
-        .call_sql(move |sql| {
+        .write(move |sql| {
             sql.move_to_cloud(moving)?;
             end_transition_on(&sql, &release_id, StoredTransition::Upload)
         })
@@ -189,10 +277,10 @@ pub async fn unpin_release(
     store: &Store,
     release_id: &str,
     files: Vec<coven::FileId>,
-) -> Result<(), DbError> {
+) -> Result<(), StorageTransitionError> {
     let release_id = release_id.to_string();
     store
-        .call_sql(move |sql| {
+        .write(move |sql| {
             sql.unpin(&files)?;
             end_transition_on(&sql, &release_id, StoredTransition::Unpin)
         })
@@ -210,10 +298,10 @@ pub async fn make_release_local(
     store: &Store,
     release_id: &str,
     prepared: coven::PreparedDeviceOnly,
-) -> Result<(), DbError> {
+) -> Result<(), StorageTransitionError> {
     let release_id = release_id.to_string();
     store
-        .call_sql(move |sql| {
+        .write(move |sql| {
             sql.make_device_only(prepared)?;
             crate::queued_releases::tables::end_download_entry_on(&sql, &release_id)?;
             end_transition_on(&sql, &release_id, StoredTransition::DetachAudio)
