@@ -5,7 +5,7 @@ import os.log
 private let logger = Logger.bae("InvitePersonSheet")
 
 /// An admin invites a person: their name, role and how they reach storage,
-/// and whether the invite is shown in person or sent, and for how long.
+/// and how long the invite lasts.
 /// `onCreated` receives the new invite's id, for People to show its code.
 struct InvitePersonSheet: View {
     let onCreated: (String) -> Void
@@ -15,12 +15,6 @@ struct InvitePersonSheet: View {
     private var sync
     @Environment(ConfigStore.self)
     private var configStore
-
-    /// How the invite reaches the person, as the form chooses it.
-    private enum Delivery: Hashable {
-        case inPerson
-        case send
-    }
 
     @State
     private var name = ""
@@ -32,8 +26,6 @@ struct InvitePersonSheet: View {
     private var accessKeyId = ""
     @State
     private var secretAccessKey = ""
-    @State
-    private var delivery: Delivery = .inPerson
     @State
     private var lifetime: BridgeInviteLifetime = .day
     @State
@@ -98,14 +90,6 @@ struct InvitePersonSheet: View {
                     }
                 }
                 Section {
-                    Picker(selection: $delivery) {
-                        Text("In person").tag(Delivery.inPerson)
-                        Text("Send").tag(Delivery.send)
-                    } label: {
-                        EmptyView()
-                    }
-                    .pickerStyle(.segmented)
-                    // Present in either choice so the form keeps its size.
                     Picker(selection: $lifetime) {
                         Text("1 hour").tag(BridgeInviteLifetime.hour)
                         Text("1 day").tag(BridgeInviteLifetime.day)
@@ -114,9 +98,6 @@ struct InvitePersonSheet: View {
                         EmptyView()
                     }
                     .pickerStyle(.segmented)
-                    .opacity(delivery == .send ? 1 : 0)
-                    .allowsHitTesting(delivery == .send)
-                    .accessibilityHidden(delivery != .send)
                 }
             }
             .formStyle(.grouped)
@@ -145,11 +126,7 @@ struct InvitePersonSheet: View {
             : .providerAccount(
                 email: email.trimmingCharacters(in: .whitespaces)
             )
-        let chosen: BridgeInviteDelivery =
-            switch delivery {
-            case .inPerson: .inPerson
-            case .send: .sent(lifetime: lifetime)
-            }
+        let lifetime = lifetime
         let role = role
         let name = trimmedName
         error = nil
@@ -160,7 +137,7 @@ struct InvitePersonSheet: View {
                     role,
                     name,
                     access,
-                    chosen
+                    lifetime
                 )
                 onCreated(inviteId)
             }

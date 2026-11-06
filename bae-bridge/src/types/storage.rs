@@ -38,13 +38,19 @@ impl BridgeStorageLocation {
                 endpoint: endpoint.map(Into::into),
                 profile: profile.map(BridgeS3Profile::from_core),
             },
-            coven::StorageConfig::Dropbox { location, account_label } => Self::Dropbox {
-                location: BridgeDropboxLocation::from_core(location),
-                account_label,
-            },
-            coven::StorageConfig::OneDrive { drive_id, folder_id, account_label } => {
-                Self::OneDrive { drive_id, folder_id, account_label }
+            // No screen shows the folder's name or address yet.
+            coven::StorageConfig::Dropbox { location, account_label, folder_label: _ } => {
+                Self::Dropbox {
+                    location: BridgeDropboxLocation::from_core(location),
+                    account_label,
+                }
             }
+            coven::StorageConfig::OneDrive {
+                drive_id,
+                folder_id,
+                account_label,
+                folder_label: _,
+            } => Self::OneDrive { drive_id, folder_id, account_label },
             coven::StorageConfig::CloudKit { container, owner, zone } => {
                 Self::CloudKit { container, owner, zone }
             }
@@ -59,11 +65,20 @@ impl BridgeStorageLocation {
                 endpoint: endpoint.map(|s| s.parse()).transpose().map_err(BridgeError::config)?,
                 profile: profile.map(BridgeS3Profile::into_core),
             },
-            Self::Dropbox { location, account_label } => {
-                coven::StorageConfig::Dropbox { location: location.into_core(), account_label }
-            }
+            // A location the app passes names a folder to set up or list;
+            // setup reads the folder's label itself (coven §20.2).
+            Self::Dropbox { location, account_label } => coven::StorageConfig::Dropbox {
+                location: location.into_core(),
+                account_label,
+                folder_label: None,
+            },
             Self::OneDrive { drive_id, folder_id, account_label } => {
-                coven::StorageConfig::OneDrive { drive_id, folder_id, account_label }
+                coven::StorageConfig::OneDrive {
+                    drive_id,
+                    folder_id,
+                    account_label,
+                    folder_label: None,
+                }
             }
             Self::CloudKit { container, owner, zone } => {
                 coven::StorageConfig::CloudKit { container, owner, zone }

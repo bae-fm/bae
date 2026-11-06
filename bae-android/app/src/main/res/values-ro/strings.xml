@@ -295,8 +295,6 @@
     <string name="device_removed_title">Dispozitivul va fi eliminat</string>
     <string name="members_invite">Invită o persoană</string>
     <string name="invite_name">Nume</string>
-    <string name="invite_in_person">În persoană</string>
-    <string name="invite_send">Trimite</string>
     <string name="invite_lifetime_hour">1 oră</string>
     <string name="invite_lifetime_day">1 zi</string>
     <string name="invite_lifetime_week">1 săptămână</string>

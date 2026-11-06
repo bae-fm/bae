@@ -6,8 +6,8 @@ use super::*;
 /// operation when coven holds one that is not the invite's own waiting: a
 /// refused check, a failed grant, or a failure to read its request, which the
 /// person ends by cancelling the invite (§5.6). The invite's own waiting is
-/// not shown: the join request it hasn't found yet, and a sent invite's
-/// request awaiting the admin's decision.
+/// not shown: the join request it hasn't found yet, and a request awaiting
+/// the admin's decision.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OpenInvite {
     pub invite: coven::Invite,

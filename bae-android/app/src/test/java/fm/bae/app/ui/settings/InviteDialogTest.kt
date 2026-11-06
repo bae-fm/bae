@@ -20,7 +20,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeInviteAccess
-import uniffi.bae_bridge.BridgeInviteDelivery
+import uniffi.bae_bridge.BridgeInviteLifetime
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeStorageLocation
 
@@ -42,7 +42,7 @@ class InviteDialogTest {
             role: BridgeMemberRole,
             name: String,
             access: BridgeInviteAccess,
-            delivery: BridgeInviteDelivery,
+            lifetime: BridgeInviteLifetime,
         ): String {
             asked += name to access
             return "invite-1"

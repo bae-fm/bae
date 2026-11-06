@@ -6,8 +6,8 @@ private let logger = Logger.bae("MembersSection")
 
 /// The library's people and their devices, and the invites this device has
 /// open. Admins invite people, change roles and remove people; each person
-/// adds and removes their own devices, and an admin can remove anyone's. A
-/// sent invite's request opens a sheet to approve or decline it.
+/// adds and removes their own devices, and an admin can remove anyone's. An
+/// invite's request opens a sheet to approve or decline it.
 struct MembersSection: View {
     @Environment(MembershipStore.self)
     private var store
@@ -31,7 +31,7 @@ struct MembersSection: View {
 
     @State
     private var inviteSheet: InviteSheet?
-    /// Sent invites whose request sheet the person closed; the invite's row
+    /// Invites whose request sheet the person closed; the invite's row
     /// opens it again.
     @State
     private var closedRequests: Set<String> = []
@@ -184,7 +184,7 @@ struct MembersSection: View {
         }
     }
 
-    /// The first sent invite whose request waits for a decision, unless the
+    /// The first invite whose request waits for a decision, unless the
     /// person closed its sheet.
     private var requestShown: BridgeInvite? {
         store.invites.first {
@@ -460,7 +460,7 @@ private struct InviteRow: View {
     }
 }
 
-/// A sent invite's request: the person's name and the number their device
+/// An invite's request: the person's name and the number their device
 /// shows, to compare before approving. Closing it keeps the request; the
 /// invite's row opens it again.
 private struct JoinRequestSheet: View {

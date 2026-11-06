@@ -102,7 +102,7 @@ internal class MembersModel(
     var selfIsAdmin by mutableStateOf(false)
         private set
 
-    /** This device's open invites, each with a sent invite's request once it arrives. */
+    /** This device's open invites, each with its request once it arrives. */
     var invites by mutableStateOf<List<BridgeInvite>>(emptyList())
         private set
     var storage by mutableStateOf<BridgeStorageLocation?>(null)

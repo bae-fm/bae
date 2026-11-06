@@ -169,25 +169,7 @@ impl BridgeInviteAccess {
         }
     }
 }
-/// How an invite reaches the person, which fixes how it is approved: in
-/// person, the inviting device lets them in itself; sent, the admin approves
-/// after comparing the confirmation number (§5.6).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeInviteDelivery {
-    InPerson,
-    Sent { lifetime: BridgeInviteLifetime },
-}
-impl BridgeInviteDelivery {
-    pub(crate) fn into_core(self) -> coven::InviteDelivery {
-        match self {
-            Self::InPerson => coven::InviteDelivery::InPerson,
-            Self::Sent { lifetime } => {
-                coven::InviteDelivery::Sent { lifetime: lifetime.into_core() }
-            }
-        }
-    }
-}
-/// How long a sent invite stays open.
+/// How long an invite stays open after it is made.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeInviteLifetime {
     Hour,
@@ -197,15 +179,6 @@ pub enum BridgeInviteLifetime {
 mirror_enum! { BridgeInviteLifetime = coven::InviteLifetime,
     into_core: pub(crate) fn, variants: { Hour, Day, Week },
 }
-/// In person or sent, as an invite carries it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeInviteDeliveryKind {
-    InPerson,
-    Sent,
-}
-mirror_enum! { BridgeInviteDeliveryKind = coven::InviteDeliveryKind,
-    from_core: pub(crate) fn, variants: { InPerson, Sent },
-}
 /// One of this device's open invites.
 #[derive(Clone, uniffi::Record)]
 pub struct BridgeInvite {
@@ -213,7 +186,6 @@ pub struct BridgeInvite {
     pub member: String,
     /// The person's name; `None` for a replacement.
     pub invitee: Option<String>,
-    pub delivery: BridgeInviteDeliveryKind,
     /// The access the invite grants; on S3 the id of the key it carries.
     pub access: BridgeMemberAccess,
     pub expires_at: std::time::SystemTime,
@@ -235,8 +207,8 @@ pub enum BridgeInviteShown {
 pub enum BridgeInviteProgress {
     /// Waiting for its person's request.
     Waiting,
-    /// A sent invite's checked request, waiting for the admin to approve or
-    /// decline; an in-person invite's needs nobody.
+    /// Its person's checked request, waiting for the admin to approve or
+    /// decline after comparing the confirmation number.
     Deciding { request: Arc<crate::BridgeJoinRequest> },
     /// Its person is being let in; it can no longer be cancelled.
     Joining,
@@ -262,7 +234,6 @@ impl BridgeInvite {
             id: invite.id.0.to_string(),
             member: invite.member.0.to_string(),
             invitee: invite.invitee,
-            delivery: BridgeInviteDeliveryKind::from_core(invite.delivery),
             access: BridgeMemberAccess::from_core(invite.access),
             expires_at: invite.expires_at,
             shown,

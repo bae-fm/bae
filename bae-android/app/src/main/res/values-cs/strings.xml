@@ -300,8 +300,6 @@
     <string name="device_removed_title">Zařízení bude odebráno</string>
     <string name="members_invite">Pozvat osobu</string>
     <string name="invite_name">Jméno</string>
-    <string name="invite_in_person">Osobně</string>
-    <string name="invite_send">Odeslat</string>
     <string name="invite_lifetime_hour">1 hodina</string>
     <string name="invite_lifetime_day">1 den</string>
     <string name="invite_lifetime_week">1 týden</string>

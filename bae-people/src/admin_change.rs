@@ -32,7 +32,7 @@ pub enum AdminChangeKind {
         device: coven::DeviceId,
         name: Option<String>,
     },
-    /// Letting in the person a sent invite's request names: by the name
+    /// Letting in the person an invite's request names: by the name
     /// the invite gave them, or for a replacement invite, which names
     /// nobody, their profile's.
     Approve {

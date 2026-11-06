@@ -45,10 +45,10 @@ pub enum BridgeBootstrapStatus {
     /// before it connects.
     Opening,
     Connecting,
-    /// The request is sent. `confirmation` is set for a sent invite, as coven
-    /// writes it (`041 778`).
+    /// The request is sent. `confirmation` is the number the admin compares
+    /// before approving, as coven writes it (`041 778`).
     WaitingForApproval {
-        confirmation: Option<String>,
+        confirmation: String,
         next_check: BridgeNextCheck,
     },
     /// Loading the library from storage.
@@ -115,7 +115,7 @@ impl BridgeBootstrapStatus {
             coven::BootstrapStatus::Connecting => Self::Connecting,
             coven::BootstrapStatus::WaitingForApproval { confirmation, next_check } => {
                 Self::WaitingForApproval {
-                    confirmation: confirmation.map(|number| number.to_string()),
+                    confirmation: confirmation.to_string(),
                     next_check: BridgeNextCheck::from_core(next_check),
                 }
             }

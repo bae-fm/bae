@@ -299,8 +299,6 @@
     <string name="device_removed_title">Zariadenie bude odstránené</string>
     <string name="members_invite">Pozvať osobu</string>
     <string name="invite_name">Meno</string>
-    <string name="invite_in_person">Osobne</string>
-    <string name="invite_send">Odoslať</string>
     <string name="invite_lifetime_hour">1 hodina</string>
     <string name="invite_lifetime_day">1 deň</string>
     <string name="invite_lifetime_week">1 týždeň</string>

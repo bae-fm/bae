@@ -28,11 +28,11 @@ public final class Sync: Sendable, Observable {
     /// Dismiss a finished admin change by its operation.
     public let acknowledgeAdminChange: @Sendable (Int64) async throws -> Void
     /// Invite a person by name, with a role, the access they reach storage
-    /// with, and whether the invite is shown in person or sent; answers the
-    /// new invite's id, which the open invites list from its write on.
+    /// with, and how long the invite lasts; answers the new invite's id,
+    /// which the open invites list from its write on.
     public let invitePerson:
         @Sendable (
-            BridgeMemberRole, String, BridgeInviteAccess, BridgeInviteDelivery
+            BridgeMemberRole, String, BridgeInviteAccess, BridgeInviteLifetime
         ) async throws -> String
     public let approveJoinRequest:
         @Sendable (BridgeJoinRequest) async throws -> Void
@@ -96,7 +96,7 @@ public final class Sync: Sendable, Observable {
         invitePerson:
             @escaping @Sendable (
                 BridgeMemberRole, String, BridgeInviteAccess,
-                BridgeInviteDelivery
+                BridgeInviteLifetime
             ) async throws -> String = { _, _, _, _ in
                 throw StubError.notImplemented
             },
@@ -213,7 +213,7 @@ public final class Sync: Sendable, Observable {
                     role: $0,
                     name: $1,
                     access: $2,
-                    delivery: $3
+                    lifetime: $3
                 )
             },
             approveJoinRequest: {

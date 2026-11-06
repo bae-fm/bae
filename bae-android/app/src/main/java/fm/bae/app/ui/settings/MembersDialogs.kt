@@ -50,7 +50,7 @@ internal class MembersDialogs {
     /** The open invite shown again, by id; it closes when the invite ends. */
     var shownInvite by mutableStateOf<String?>(null)
 
-    /** Sent invites whose request dialog the person closed; the invite's row opens it again. */
+    /** Invites whose request dialog the person closed; the invite's row opens it again. */
     var closedRequests by mutableStateOf<Set<String>>(emptySet())
 
     /** Open an invite from its row: its request to decide, or its code. */
@@ -190,7 +190,7 @@ private fun SignOutDialog(
 }
 
 /**
- * A sent invite's request: the person's name and the number their device
+ * An invite's request: the person's name and the number their device
  * shows, to compare before approving. Closing it keeps the request; the
  * invite's row opens it again.
  */

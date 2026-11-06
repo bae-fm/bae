@@ -91,15 +91,18 @@ mod conversion_roundtrip {
                     namespace_id: "namespace-1".into(),
                 },
                 account_label: Some("person@example.com".into()),
+                folder_label: None,
             },
             coven::StorageConfig::OneDrive {
                 drive_id: "drive-1".into(),
                 folder_id: "folder-1".into(),
                 account_label: Some("person@example.org".into()),
+                folder_label: None,
             },
             coven::StorageConfig::Dropbox {
                 location: coven::DropboxLocation::AppFolder,
                 account_label: None,
+                folder_label: None,
             },
         ];
         for location in locations {

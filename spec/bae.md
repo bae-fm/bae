@@ -2464,7 +2464,8 @@ and the code screen goes on with the call under way instead, a join first, as
 at launch.
 
 Dan joins. In People, Ana taps **Invite** and enters "Dan", his Dropbox email
-and a role, then picks **In person** or **Send**. Her laptop records the
+and a role, then picks how long the invite lasts: an hour, a day or a week.
+Her laptop records the
 invite in one write, offline too, and shows it at once, marked as sharing
 access: sync then checks it again and shares the store's folder with his
 account, and the invite's code shows once it has. On S3, Ana makes an access
@@ -2476,16 +2477,15 @@ library's current name and Dan's, and Dan's phone starts joining as soon as it
 reads the code, with no form to fill in
 ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)):
 
-- **In person:** Dan taps **Scan code** and scans Ana's screen. Ana's laptop
-  lets him in as soon as it reads his request, and neither of them taps anything
-  else. The invite expires after an hour.
-- **Send:** Ana picks how long the invite lasts, an hour, a day or a week, and
-  sends the code. Dan taps **Enter code** and pastes it. His waiting screen
-  shows until when it waits, which is when the invite expires, his
-  confirmation number, a countdown to the next check in whole seconds, rounded
-  up so it never reads 0 before the check, and **Check now**. When his request arrives, Ana's laptop shows a dialog with Dan's name,
-  the same number, **Approve** and **Decline**. Ana asks Dan for his number and
-  approves if it matches.
+Dan taps **Scan code** and scans Ana's screen, or Ana sends him the code and
+he taps **Enter code** and pastes it. His waiting screen shows until when it
+waits, which is when the invite expires, his confirmation number, a countdown
+to the next check in whole seconds, rounded up so it never reads 0 before the
+check, and **Check now**. When his request arrives, Ana's laptop shows a
+dialog with Dan's name, the same number, **Approve** and **Decline**. Ana
+compares it with Dan's screen, or asks him for his number, and approves if it
+matches. Every invite waits for her approval: someone who saw the code could
+use it before Dan, and only the number shows whose request it is.
 
 His phone then writes his `people` row with that name while it joins.
 Everyone's devices show Dan by name.
@@ -2502,8 +2502,8 @@ shows the moment Dan says he has entered the code, without waiting for the next
 check. Opening the row shows the invite again, with **Cancel invite**. A row
 shows coven's pending record for its invite when it is a hold: a refused check,
 a failed grant, or a failure to read Dan's request. The invite's own waiting is
-not shown: the request it hasn't found yet, and a sent invite's request that
-awaits Ana's decision. Closing
+not shown: the request it hasn't found yet, and a request that awaits Ana's
+decision. Closing
 the request dialog keeps the request, and the row opens it again. Approving is
 one write on Ana's laptop that records the approval, offline too; sync then
 lets Dan in. From that write until the invite ends, Dan's row is marked
@@ -2528,7 +2528,9 @@ can't take a sent request back: the join ends when Ana approves, declines or
 cancels, the invite expires, or Ana's laptop is gone for good (removed,
 replaced by a restore, or its person's keys replaced elsewhere), whose
 requests the library's other admins end. Before then, while Dan signs in to
-his provider, Cancel works, and the invite stays open for him to scan again.
+his provider, Cancel works, and the invite stays open for him to scan again;
+on Dropbox, cancelling also takes the library's folder back out of his
+Dropbox if his phone had added it.
 Dan's phone sends no request once the invite has expired by its clock, and a
 request that arrives after the invite ended is turned away rather than left
 waiting. A code he enters after it expired, with no join of that library under
@@ -4025,11 +4027,10 @@ pin and unpin, cancel a transition, export and save; set up a cloud home,
 cancel a running setup and dismiss one that ended undone (§6.2),
 reconnect, pause, read the pending list and act on its records; list people
 and their devices, watch for a device of this person's that joins after the
-watch begins, invite a person in person or by sending the code, list this
-device's open invites, approve or decline a sent invite's request,
-change a role, remove a person or a device, rename the library; make a restore
-code; create and rename a profile, set its avatar and history setting, rate,
-and make and edit playlists.
+watch begins, invite a person, list this device's open invites, approve or
+decline an invite's request, change a role, remove a person or a device,
+rename the library; make a restore code; create and rename a profile, set
+its avatar and history setting, rate, and make and edit playlists.
 
 ### 9.6 Settings
 

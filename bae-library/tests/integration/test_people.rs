@@ -311,13 +311,10 @@ impl Household {
             },
             _ => coven::InviteAccess::ProviderAccount { email: GUEST_ACCOUNT.into() },
         };
-        let (id, member, _operation) = Box::pin(self.owner.create_invite(
-            target,
-            access,
-            coven::InviteDelivery::Sent { lifetime: coven::InviteLifetime::Day },
-        ))
-        .await
-        .unwrap();
+        let (id, member, _operation) =
+            Box::pin(self.owner.create_invite(target, access, coven::InviteLifetime::Day))
+                .await
+                .unwrap();
         let mut invites =
             self.owner.subscribe(|sql| Ok::<_, coven::CovenError>(coven::Invite::list(sql)?));
         let granted = |invite: &coven::Invite| match bae_library::people::invite_shown(invite) {

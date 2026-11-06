@@ -33,7 +33,6 @@ import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInviteAccess
-import uniffi.bae_bridge.BridgeInviteDelivery
 import uniffi.bae_bridge.BridgeInviteLifetime
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -43,7 +42,7 @@ private val logger = BaeLogger("bae.InviteDialog")
 /**
  * Invite a person: their name, role and the access they reach the storage
  * with — an S3 access key, or the provider account they sign in with — and
- * whether the invite is shown in person or sent. [onCreated] receives the new
+ * how long the invite lasts. [onCreated] receives the new
  * invite's id, for the people screen to show it.
  */
 @Composable
@@ -66,7 +65,7 @@ internal fun InviteDialog(
             error = null
             scope.launch {
                 performBridgeAction(logger, "invite a person", errors, { error = it }) {
-                    onCreated(session.appHandle.invitePerson(form.role, form.name, form.access, form.delivery))
+                    onCreated(session.appHandle.invitePerson(form.role, form.name, form.access, form.lifetime))
                 }
                 busy = false
             }
@@ -94,32 +93,22 @@ private class InviteAccessInput {
         }
 }
 
-/** A complete invite form: who, with what role and access, and how it reaches them. */
+/** A complete invite form: who, with what role and access, and how long it lasts. */
 private class InviteForm(
     val name: String,
     val role: BridgeMemberRole,
     val access: BridgeInviteAccess,
-    val delivery: BridgeInviteDelivery,
+    val lifetime: BridgeInviteLifetime,
 )
 
-/** How the invite reaches the person, as the form chooses it. */
-private enum class DeliveryChoice { IN_PERSON, SEND }
-
-/** The person, role and delivery the form asks for. */
+/** The person, role and lifetime the form asks for. */
 private class InviteFields {
     var name by mutableStateOf("")
     var role by mutableStateOf(BridgeMemberRole.MEMBER)
-    var delivery by mutableStateOf(DeliveryChoice.IN_PERSON)
     var lifetime by mutableStateOf(BridgeInviteLifetime.DAY)
-
-    fun delivery(): BridgeInviteDelivery =
-        when (delivery) {
-            DeliveryChoice.IN_PERSON -> BridgeInviteDelivery.InPerson
-            DeliveryChoice.SEND -> BridgeInviteDelivery.Sent(lifetime)
-        }
 }
 
-/** The form's fields: name, role, the storage's access, and in person or sent. */
+/** The form's fields: name, role, the storage's access, and how long the invite lasts. */
 @Composable
 private fun InviteFormFields(
     storage: BridgeStorageLocation?,
@@ -143,35 +132,22 @@ private fun InviteFormFields(
         // Where the library is stored is a local read; its fields show once it lands.
         storage?.let { InviteAccessFields(it, input) }
         Choice(
-            choices = DeliveryChoice.entries,
-            chosen = fields.delivery,
+            choices = BridgeInviteLifetime.entries,
+            chosen = fields.lifetime,
             label = { choice ->
                 when (choice) {
-                    DeliveryChoice.IN_PERSON -> R.string.invite_in_person
-                    DeliveryChoice.SEND -> R.string.invite_send
+                    BridgeInviteLifetime.HOUR -> R.string.invite_lifetime_hour
+                    BridgeInviteLifetime.DAY -> R.string.invite_lifetime_day
+                    BridgeInviteLifetime.WEEK -> R.string.invite_lifetime_week
                 }
             },
-            onChoose = { fields.delivery = it },
+            onChoose = { fields.lifetime = it },
         )
-        if (fields.delivery == DeliveryChoice.SEND) {
-            Choice(
-                choices = BridgeInviteLifetime.entries,
-                chosen = fields.lifetime,
-                label = { choice ->
-                    when (choice) {
-                        BridgeInviteLifetime.HOUR -> R.string.invite_lifetime_hour
-                        BridgeInviteLifetime.DAY -> R.string.invite_lifetime_day
-                        BridgeInviteLifetime.WEEK -> R.string.invite_lifetime_week
-                    }
-                },
-                onChoose = { fields.lifetime = it },
-            )
-        }
         error?.let { ErrorDetailDisclosure(it) }
     }
 }
 
-/** The invite's person, role, access and delivery, asked for as the library's storage needs it. */
+/** The invite's person, role, access and lifetime, asked for as the library's storage needs it. */
 @Composable
 private fun InviteFormDialog(
     storage: BridgeStorageLocation?,
@@ -198,7 +174,7 @@ private fun InviteFormDialog(
             val name = fields.name.trim()
             TextButton(
                 enabled = access != null && name.isNotEmpty() && !busy,
-                onClick = { access?.let { onCreate(InviteForm(name, fields.role, it, fields.delivery())) } },
+                onClick = { access?.let { onCreate(InviteForm(name, fields.role, it, fields.lifetime)) } },
             ) {
                 Text(stringResource(R.string.invite_create))
             }

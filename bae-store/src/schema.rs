@@ -273,7 +273,7 @@ const STAND_IN_COVEN_TABLES: &str = "CREATE TABLE coven_files (id TEXT PRIMARY K
     position INTEGER NOT NULL) STRICT, WITHOUT ROWID; \
     CREATE TABLE coven_sync_status (singleton INTEGER PRIMARY KEY NOT NULL, \
     storage TEXT NOT NULL, provider TEXT, last_pass BLOB, moving INTEGER NOT NULL, \
-    last_synced INTEGER, starts INTEGER NOT NULL) STRICT;";
+    last_synced INTEGER, starts INTEGER NOT NULL, halted INTEGER NOT NULL) STRICT;";
 
 /// Open an in-memory library on `schema` on `conn`, a fresh in-memory
 /// connection, as [`BareLibraryParts`] says: this crate's own tests'.

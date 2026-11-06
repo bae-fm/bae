@@ -294,8 +294,6 @@
     <string name="device_removed_title">Il dispositivo verrà rimosso</string>
     <string name="members_invite">Invita una persona</string>
     <string name="invite_name">Nome</string>
-    <string name="invite_in_person">Di persona</string>
-    <string name="invite_send">Invia</string>
     <string name="invite_lifetime_hour">1 ora</string>
     <string name="invite_lifetime_day">1 giorno</string>
     <string name="invite_lifetime_week">1 settimana</string>

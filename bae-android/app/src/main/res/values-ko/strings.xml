@@ -288,8 +288,6 @@
     <string name="device_removed_title">기기가 제거됩니다</string>
     <string name="members_invite">사람 초대</string>
     <string name="invite_name">이름</string>
-    <string name="invite_in_person">직접</string>
-    <string name="invite_send">보내기</string>
     <string name="invite_lifetime_hour">1시간</string>
     <string name="invite_lifetime_day">1일</string>
     <string name="invite_lifetime_week">1주</string>

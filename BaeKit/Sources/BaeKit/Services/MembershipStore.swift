@@ -22,8 +22,7 @@ public final class MembershipStore {
     public private(set) var selfProfile: BridgePersonProfile?
     /// The profile this device's person asked for, until it is written.
     public private(set) var requestedProfile: BridgeRequestedProfile?
-    /// This device's open invites, each with a sent invite's request once
-    /// it arrives.
+    /// This device's open invites, each with its request once it arrives.
     public private(set) var invites: [BridgeInvite] = []
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.

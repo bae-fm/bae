@@ -291,8 +291,6 @@
     <string name="device_removed_title">Η συσκευή θα αφαιρεθεί</string>
     <string name="members_invite">Πρόσκληση ατόμου</string>
     <string name="invite_name">Όνομα</string>
-    <string name="invite_in_person">Αυτοπροσώπως</string>
-    <string name="invite_send">Αποστολή</string>
     <string name="invite_lifetime_hour">1 ώρα</string>
     <string name="invite_lifetime_day">1 ημέρα</string>
     <string name="invite_lifetime_week">1 εβδομάδα</string>

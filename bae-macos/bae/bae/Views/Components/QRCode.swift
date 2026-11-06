@@ -6,7 +6,7 @@ import os.log
 private let logger = Logger.bae("QRCode")
 
 /// A string drawn as a QR code for another device's camera to read: the
-/// device-join and in-person invite codes. A code carrying an S3 location with
+/// device-join and invite codes. A code carrying an S3 location with
 /// detected settings and a key reaches QR version 20, so it is drawn 360 points
 /// wide at the low error-correction level, whose fewer, larger modules a phone
 /// camera resolves from 25 to 30 cm, inside the four-module quiet zone the QR

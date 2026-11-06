@@ -284,7 +284,7 @@ fn an_invite_is_listed_until_it_is_cancelled() {
                     access_key_id: "dan-key".into(),
                     secret_access_key: coven::SecretText::new("dan-secret".into()),
                 },
-                coven::InviteDelivery::Sent { lifetime: coven::InviteLifetime::Day },
+                coven::InviteLifetime::Day,
             )
             .await
             .unwrap();

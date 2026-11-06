@@ -1,7 +1,7 @@
 import Foundation
 
 extension BridgeInvite {
-    /// A sent invite's request waiting for the admin to approve or decline;
+    /// The invite's request waiting for the admin to approve or decline;
     /// nil while access is granted or a request awaited, and once its person
     /// is joining.
     public var requestToDecide: BridgeJoinRequest? {

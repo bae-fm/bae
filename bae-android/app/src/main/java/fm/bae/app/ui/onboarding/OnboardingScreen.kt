@@ -54,7 +54,6 @@ import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeDropboxLocation
-import uniffi.bae_bridge.BridgeInviteDeliveryKind
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeNextCheck
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -229,7 +228,7 @@ internal fun OnboardingStartColumn(
 
 /**
  * A restore or join running: what it waits on now, and Cancel while it can
- * be. A join waiting for approval shows a sent invite's confirmation number,
+ * be. A join waiting for approval shows its confirmation number,
  * when it checks next, and Check now.
  */
 @Composable
@@ -299,7 +298,7 @@ internal fun OnboardingProgress(
 
 /**
  * A join waiting for approval: until when it waits, which is when its invite
- * expires, a sent invite's confirmation number, a countdown to the next
+ * expires, its confirmation number, a countdown to the next
  * check, and Check now, which a provider's cooldown holds.
  */
 @Composable
@@ -318,15 +317,13 @@ private fun WaitingForApproval(
         textAlign = TextAlign.Center,
     )
     Spacer(modifier = Modifier.height(ThemeSpace.related))
-    status.confirmation?.let { number ->
-        Text(
-            text = stringResource(R.string.join_request_confirmation),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(text = number, style = ThemeText.hero.style)
-        Spacer(modifier = Modifier.height(ThemeSpace.related))
-    }
+    Text(
+        text = stringResource(R.string.join_request_confirmation),
+        style = ThemeText.detail.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Text(text = status.confirmation, style = ThemeText.hero.style)
+    Spacer(modifier = Modifier.height(ThemeSpace.related))
     val due =
         when (val next = status.nextCheck) {
             BridgeNextCheck.Checking -> null
@@ -386,7 +383,6 @@ private fun OnboardingProgressWaitingPreview() {
                                         ),
                                     libraryName = "Household",
                                     invitee = "Dan",
-                                    delivery = BridgeInviteDeliveryKind.SENT,
                                     expiresAt = Instant.now().plusSeconds(PREVIEW_INVITE_SECONDS),
                                 ),
                             entry = CodeEntry.NewDevice,

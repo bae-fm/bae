@@ -231,7 +231,7 @@ private struct AttemptDetailsSection: View {
 }
 
 /// A join running: the library's name, what it waits on, and, while it waits
-/// for approval, until when it waits and a sent invite's confirmation number
+/// for approval, until when it waits and its confirmation number
 /// with when it checks next and Check now. Cancel shows only until the
 /// request may have been sent.
 private struct JoinWaitingView: View {

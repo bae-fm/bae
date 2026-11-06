@@ -172,9 +172,9 @@ impl LibraryManager {
         role: coven::MemberRole,
         name: String,
         access: coven::InviteAccess,
-        delivery: coven::InviteDelivery,
+        lifetime: coven::InviteLifetime,
     ) -> Result<coven::InviteId, LibraryError> {
-        Ok(self.store.invite_person(role, name, access, delivery).await?)
+        Ok(self.store.invite_person(role, name, access, lifetime).await?)
     }
 
     pub async fn approve_join_request(

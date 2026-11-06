@@ -21,7 +21,6 @@ import uniffi.bae_bridge.BridgeAdminChangeState
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
-import uniffi.bae_bridge.BridgeInviteDeliveryKind
 import uniffi.bae_bridge.BridgeInviteProgress
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberAccess
@@ -102,7 +101,6 @@ class MembersModelTest {
                 id = "11",
                 member = "member-1",
                 invitee = "Dan",
-                delivery = BridgeInviteDeliveryKind.SENT,
                 access = BridgeMemberAccess.ProviderAccount("dan@example.com"),
                 expiresAt = Instant.ofEpochSecond(2_000_000_000),
                 shown = BridgeInviteShown.Code(code = "invite-code", progress = BridgeInviteProgress.Waiting),

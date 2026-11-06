@@ -292,8 +292,6 @@
     <string name="device_removed_title">Cihaz kaldırılacak</string>
     <string name="members_invite">Bir kişiyi davet et</string>
     <string name="invite_name">Ad</string>
-    <string name="invite_in_person">Yüz yüze</string>
-    <string name="invite_send">Gönder</string>
     <string name="invite_lifetime_hour">1 saat</string>
     <string name="invite_lifetime_day">1 gün</string>
     <string name="invite_lifetime_week">1 hafta</string>

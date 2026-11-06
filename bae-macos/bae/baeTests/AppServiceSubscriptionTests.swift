@@ -232,7 +232,6 @@ struct InvitesSubscriptionTests {
             id: id,
             member: "member-1",
             invitee: "Dan",
-            delivery: .sent,
             access: .providerAccount(email: "dan@example.com"),
             expiresAt: Date(timeIntervalSince1970: 2_000_000_000),
             shown: .code(code: "invite-code", progress: .waiting),

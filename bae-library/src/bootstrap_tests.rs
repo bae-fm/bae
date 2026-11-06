@@ -37,7 +37,7 @@ fn a_join_can_be_cancelled_until_its_request_may_have_been_sent() {
     assert!(join_cancellable(&coven::BootstrapStatus::Connecting));
     for status in [
         coven::BootstrapStatus::WaitingForApproval {
-            confirmation: None,
+            confirmation: coven::ConfirmationNumber(41_778),
             next_check: coven::NextCheck::Checking,
         },
         coven::BootstrapStatus::Loading(load),

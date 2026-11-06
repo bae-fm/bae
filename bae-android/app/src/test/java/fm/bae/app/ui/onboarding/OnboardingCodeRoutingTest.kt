@@ -5,7 +5,6 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
-import uniffi.bae_bridge.BridgeInviteDeliveryKind
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeStorageLocation
 import java.time.Instant
@@ -47,7 +46,6 @@ class OnboardingCodeRoutingTest {
             metadata = metadata,
             libraryName = "Household",
             invitee = "Dan",
-            delivery = BridgeInviteDeliveryKind.IN_PERSON,
             expiresAt = Instant.parse("2026-11-01T17:00:00Z"),
         )
 

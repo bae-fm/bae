@@ -236,7 +236,7 @@ impl Membership {
         .await
     }
 
-    /// Approve a sent invite's request: the write journals the approval,
+    /// Approve an invite's request: the write journals the approval,
     /// which a pass binds, and records it to show by the name the invite
     /// gave its person (§5.6).
     pub async fn approve_join_request(

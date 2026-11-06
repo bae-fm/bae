@@ -288,8 +288,6 @@
     <string name="device_removed_title">デバイスは削除されます</string>
     <string name="members_invite">メンバーを招待</string>
     <string name="invite_name">名前</string>
-    <string name="invite_in_person">対面</string>
-    <string name="invite_send">送信</string>
     <string name="invite_lifetime_hour">1時間</string>
     <string name="invite_lifetime_day">1日</string>
     <string name="invite_lifetime_week">1週間</string>

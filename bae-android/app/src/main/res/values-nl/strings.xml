@@ -292,8 +292,6 @@
     <string name="device_removed_title">Het apparaat wordt verwijderd</string>
     <string name="members_invite">Iemand uitnodigen</string>
     <string name="invite_name">Naam</string>
-    <string name="invite_in_person">Persoonlijk</string>
-    <string name="invite_send">Versturen</string>
     <string name="invite_lifetime_hour">1 uur</string>
     <string name="invite_lifetime_day">1 dag</string>
     <string name="invite_lifetime_week">1 week</string>

@@ -300,8 +300,6 @@
     <string name="device_removed_title">Пристрій буде вилучено</string>
     <string name="members_invite">Запросити людину</string>
     <string name="invite_name">Ім’я</string>
-    <string name="invite_in_person">Особисто</string>
-    <string name="invite_send">Надіслати</string>
     <string name="invite_lifetime_hour">1 година</string>
     <string name="invite_lifetime_day">1 день</string>
     <string name="invite_lifetime_week">1 тиждень</string>

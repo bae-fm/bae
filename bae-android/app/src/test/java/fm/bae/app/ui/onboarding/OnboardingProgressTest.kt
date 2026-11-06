@@ -23,7 +23,6 @@ import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeBootstrapStep
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
-import uniffi.bae_bridge.BridgeInviteDeliveryKind
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeLoadProgress
 import uniffi.bae_bridge.BridgeLoadStep
@@ -58,15 +57,14 @@ class OnboardingProgressTest {
                         ),
                     libraryName = "Household",
                     invitee = "Dan",
-                    delivery = BridgeInviteDeliveryKind.SENT,
                     expiresAt = Instant.parse("2026-11-03T16:15:00Z"),
                 ),
             entry = CodeEntry.NewDevice,
         )
 
-    /** A sent invite's join, waiting, shows until when it waits: the invite's expiry. */
+    /** A join, waiting, shows until when it waits: the invite's expiry. */
     @Test
-    fun aSentInvitesJoinShowsTheLibraryUntilWhenItWaitsItsNumberAndCheckNowButNoCancel() {
+    fun aWaitingJoinShowsTheLibraryUntilWhenItWaitsItsNumberAndCheckNowButNoCancel() {
         val waiting =
             OnboardingStep.Running(
                 invite,
@@ -101,7 +99,7 @@ class OnboardingProgressTest {
                 invite,
                 BridgeBootstrapState(
                     BridgeBootstrapStatus.WaitingForApproval(
-                        confirmation = null,
+                        confirmation = "041 778",
                         nextCheck = BridgeNextCheck.At(Instant.ofEpochMilli(clockMs + 300_000L)),
                     ),
                     cancellable = false,

@@ -17,9 +17,8 @@ pub enum InviteShown {
 pub enum InviteProgress {
     /// Waiting for its person's request.
     Waiting,
-    /// A sent invite's request, waiting for the admin, who approves it only
-    /// after comparing the confirmation number. An in-person invite's
-    /// request is approved without the admin.
+    /// Its person's request, waiting for the admin, who approves it only
+    /// after comparing the confirmation number.
     Deciding(coven::JoinRequest),
     /// Its person is being let in, which finishes without the admin; the
     /// invite can no longer be cancelled.
@@ -32,13 +31,9 @@ pub fn invite_shown(invite: &coven::Invite) -> InviteShown {
         coven::InviteStage::Granting => InviteShown::Granting,
         coven::InviteStage::Waiting { code, request } => InviteShown::Code {
             code: code.clone(),
-            progress: match (request, invite.delivery) {
-                (Some(request), coven::InviteDeliveryKind::Sent) => {
-                    InviteProgress::Deciding(request.clone())
-                }
-                (Some(_), coven::InviteDeliveryKind::InPerson) | (None, _) => {
-                    InviteProgress::Waiting
-                }
+            progress: match request {
+                Some(request) => InviteProgress::Deciding(request.clone()),
+                None => InviteProgress::Waiting,
             },
         },
         coven::InviteStage::Approving { code, .. } => {

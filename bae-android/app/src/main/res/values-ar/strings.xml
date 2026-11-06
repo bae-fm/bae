@@ -308,8 +308,6 @@
     <string name="device_removed_title">ستتم إزالة الجهاز</string>
     <string name="members_invite">دعوة شخص</string>
     <string name="invite_name">الاسم</string>
-    <string name="invite_in_person">شخصيًا</string>
-    <string name="invite_send">إرسال</string>
     <string name="invite_lifetime_hour">ساعة واحدة</string>
     <string name="invite_lifetime_day">يوم واحد</string>
     <string name="invite_lifetime_week">أسبوع واحد</string>

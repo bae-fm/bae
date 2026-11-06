@@ -37,7 +37,6 @@ import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInvite
-import uniffi.bae_bridge.BridgeInviteDeliveryKind
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgePendingWait
@@ -50,8 +49,7 @@ private val logger = BaeLogger("bae.InviteShownDialog")
 /**
  * One of this device's open invites, shown again: while sync grants its
  * access, that it is doing so, and why coven holds it when it does; then the
- * QR code of an in-person invite, or the code of a sent one with Copy and
- * Share; and Cancel invite.
+ * QR code with Copy and Share; and Cancel invite.
  */
 @Composable
 internal fun InviteShownDialog(
@@ -128,8 +126,8 @@ internal fun Context.inviteExpiry(expiresAt: Instant): String =
         .format(Date.from(expiresAt))
 
 /**
- * The invite to give the person joining: in person, a QR code to scan in
- * bae; sent, the code to copy or share. Either says when it expires.
+ * The invite to give the person joining: a QR code to scan in bae, and the
+ * code to copy or share. It says when it expires.
  */
 @Composable
 private fun InviteCodeDialog(
@@ -159,7 +157,6 @@ private fun InviteCodeDialog(
 
                     is BridgeInviteShown.Code -> {
                         InviteCode(
-                            delivery = invite.delivery,
                             code = shown.code,
                             title = title,
                             onCopy = { copy(shown.code) },
@@ -207,33 +204,27 @@ private fun InviteGranting(held: BridgePendingWait?) {
     }
 }
 
-/** The code to give the person joining: in person, a QR code to scan in bae; sent, the code to copy or share. */
+/**
+ * The code to give the person joining: a QR code for one beside the admin to
+ * scan in bae, and the code to copy or share for one elsewhere.
+ */
 @Composable
 private fun InviteCode(
-    delivery: BridgeInviteDeliveryKind,
     code: String,
     title: String,
     onCopy: () -> Unit,
 ) {
     val context = LocalContext.current
-    when (delivery) {
-        BridgeInviteDeliveryKind.IN_PERSON -> {
-            QRCodeImage(text = code, contentDescription = title)
-        }
-
-        BridgeInviteDeliveryKind.SENT -> {
-            SelectionContainer { Text(text = code, style = ThemeText.mono.style) }
-            Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                TextButton(onClick = onCopy) { Text(stringResource(R.string.copy_code)) }
-                TextButton(onClick = { context.shareInviteCode(code) }) {
-                    Text(stringResource(R.string.invite_share))
-                }
-            }
+    QRCodeImage(text = code, contentDescription = title)
+    Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+        TextButton(onClick = onCopy) { Text(stringResource(R.string.copy_code)) }
+        TextButton(onClick = { context.shareInviteCode(code) }) {
+            Text(stringResource(R.string.invite_share))
         }
     }
 }
 
-/** Hand a sent invite's code to the app the person picks: a message, an email. */
+/** Hand an invite's code to the app the person picks: a message, an email. */
 private fun Context.shareInviteCode(code: String) {
     val send =
         Intent(Intent.ACTION_SEND).apply {

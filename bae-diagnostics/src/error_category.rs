@@ -171,6 +171,9 @@ pub fn sync_category(error: &coven::SyncError) -> C {
         E::SecureStorage(error) => key_category(error),
         E::Database(error) => database_category(error),
         E::NoStorage => C::Config,
+        // A replacement of this member's S3 key by another key is under way:
+        // entering that key again finishes it.
+        E::ReplacementPending { .. } => C::Credentials,
         // A code that can't be used here, such as one for another library:
         // the person's state, as a refused code is in a bootstrap.
         E::Code(_) => C::Config,
@@ -334,6 +337,12 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
         E::Sync(coven::SyncError::MemberKeysReplaced { .. }) => C::MemberKeysReplaced,
         E::Sync(error) => sync_category(error),
         E::OAuth(_) => C::Credentials,
+        // A join cancelled before sending whose undo of its provider
+        // acceptance failed: the undo's failure is the one to act on, and
+        // the join stays for another cancel.
+        E::Cleanup { operation, cleanup } if matches!(**operation, E::Cancelled) => {
+            bootstrap_category(cleanup)
+        }
         E::Cleanup { operation, .. } => bootstrap_category(operation),
         E::Published { source, .. } => bootstrap_category(source),
         // A restore or reset of a library this device is removing: only

@@ -296,8 +296,6 @@
     <string name="device_removed_title">המכשיר יוסר</string>
     <string name="members_invite">הזמנת אדם</string>
     <string name="invite_name">שם</string>
-    <string name="invite_in_person">פנים אל פנים</string>
-    <string name="invite_send">שליחה</string>
     <string name="invite_lifetime_hour">שעה אחת</string>
     <string name="invite_lifetime_day">יום אחד</string>
     <string name="invite_lifetime_week">שבוע אחד</string>

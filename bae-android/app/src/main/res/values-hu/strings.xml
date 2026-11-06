@@ -291,8 +291,6 @@
     <string name="device_removed_title">Az eszköz el lesz távolítva</string>
     <string name="members_invite">Személy meghívása</string>
     <string name="invite_name">Név</string>
-    <string name="invite_in_person">Személyesen</string>
-    <string name="invite_send">Küldés</string>
     <string name="invite_lifetime_hour">1 óra</string>
     <string name="invite_lifetime_day">1 nap</string>
     <string name="invite_lifetime_week">1 hét</string>

@@ -300,8 +300,6 @@
     <string name="device_removed_title">Urządzenie zostanie usunięte</string>
     <string name="members_invite">Zaproś osobę</string>
     <string name="invite_name">Imię</string>
-    <string name="invite_in_person">Osobiście</string>
-    <string name="invite_send">Wyślij</string>
     <string name="invite_lifetime_hour">1 godzina</string>
     <string name="invite_lifetime_day">1 dzień</string>
     <string name="invite_lifetime_week">1 tydzień</string>

@@ -20,14 +20,12 @@ public struct BootstrapStatusView: View {
             progress("Connecting…")
         case .waitingForApproval(let confirmation, let nextCheck):
             VStack(spacing: ThemeSpace.related) {
-                if let confirmation {
-                    Text("Confirmation number")
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
-                    Text(verbatim: confirmation)
-                        .themeText(.title)
-                        .textSelection(.enabled)
-                }
+                Text("Confirmation number")
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                Text(verbatim: confirmation)
+                    .themeText(.title)
+                    .textSelection(.enabled)
                 NextCheckLine(nextCheck: nextCheck)
             }
         case .registering:

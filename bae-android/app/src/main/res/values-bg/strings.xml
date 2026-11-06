@@ -292,8 +292,6 @@
     <string name="device_removed_title">Устройството ще бъде премахнато</string>
     <string name="members_invite">Поканване на човек</string>
     <string name="invite_name">Име</string>
-    <string name="invite_in_person">Лично</string>
-    <string name="invite_send">Изпращане</string>
     <string name="invite_lifetime_hour">1 час</string>
     <string name="invite_lifetime_day">1 ден</string>
     <string name="invite_lifetime_week">1 седмица</string>

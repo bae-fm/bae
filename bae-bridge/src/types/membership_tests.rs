@@ -9,7 +9,6 @@ fn an_invite_carries_its_key_id_and_person() {
             id: coven::InviteId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
             member: coven::MemberId("00000000-0000-4000-8000-000000000002".parse().unwrap()),
             invitee: Some("Dan".into()),
-            delivery: coven::InviteDeliveryKind::Sent,
             access: coven::MemberAccess::S3AccessKey { access_key_id: "dan-key".into() },
             expires_at: std::time::UNIX_EPOCH,
             operation: coven::OperationId(1),
@@ -19,7 +18,6 @@ fn an_invite_carries_its_key_id_and_person() {
     });
     assert_eq!(invite.access, BridgeMemberAccess::S3AccessKey { access_key_id: "dan-key".into() });
     assert_eq!(invite.invitee.as_deref(), Some("Dan"));
-    assert_eq!(invite.delivery, BridgeInviteDeliveryKind::Sent);
     assert!(matches!(
         &invite.shown,
         BridgeInviteShown::Code { code, progress: BridgeInviteProgress::Waiting } if code == "code"

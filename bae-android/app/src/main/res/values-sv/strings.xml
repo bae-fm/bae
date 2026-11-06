@@ -291,8 +291,6 @@
     <string name="device_removed_title">Enheten tas bort</string>
     <string name="members_invite">Bjud in en person</string>
     <string name="invite_name">Namn</string>
-    <string name="invite_in_person">Personligen</string>
-    <string name="invite_send">Skicka</string>
     <string name="invite_lifetime_hour">1 timme</string>
     <string name="invite_lifetime_day">1 dag</string>
     <string name="invite_lifetime_week">1 vecka</string>

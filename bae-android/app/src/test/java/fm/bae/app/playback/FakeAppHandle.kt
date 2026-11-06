@@ -32,7 +32,7 @@ import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteAccess
-import uniffi.bae_bridge.BridgeInviteDelivery
+import uniffi.bae_bridge.BridgeInviteLifetime
 import uniffi.bae_bridge.BridgeJoinRequest
 import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryRemoval
@@ -601,7 +601,7 @@ internal open class FakeAppHandle(
         role: BridgeMemberRole,
         name: String,
         access: BridgeInviteAccess,
-        delivery: BridgeInviteDelivery,
+        lifetime: BridgeInviteLifetime,
     ): String = unfaked("invitePerson")
 
     override suspend fun people(): List<BridgePerson> = unfaked("people")

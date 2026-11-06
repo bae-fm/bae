@@ -394,12 +394,12 @@ impl Store {
         role: coven::MemberRole,
         name: String,
         access: coven::InviteAccess,
-        delivery: coven::InviteDelivery,
+        lifetime: coven::InviteLifetime,
     ) -> Result<coven::InviteId, coven::SyncError> {
         let (invite, _member, _operation) = self.reported(
             self.inner
                 .handle
-                .create_invite(coven::InviteTarget::NewMember { role, name }, access, delivery)
+                .create_invite(coven::InviteTarget::NewMember { role, name }, access, lifetime)
                 .await,
         )?;
         Ok(invite)

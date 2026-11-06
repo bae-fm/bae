@@ -291,8 +291,6 @@
     <string name="device_removed_title">Laite poistetaan</string>
     <string name="members_invite">Kutsu henkilö</string>
     <string name="invite_name">Nimi</string>
-    <string name="invite_in_person">Henkilökohtaisesti</string>
-    <string name="invite_send">Lähetä</string>
     <string name="invite_lifetime_hour">1 tunti</string>
     <string name="invite_lifetime_day">1 päivä</string>
     <string name="invite_lifetime_week">1 viikko</string>
