@@ -311,6 +311,7 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
     .await
     .expect("import the CUE/FLAC album");
     library
+        .manager()
         .write_resume_point(&imported.release_id, imported.track_ids[1].clone(), None)
         .await
         .unwrap();

@@ -13,7 +13,8 @@ use chrono::Utc;
 /// a row that isn't there.
 #[tokio::test]
 async fn track_display_carries_the_cover_version() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let release = create_test_release(&album.id);
     let track = bae_records::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
@@ -24,7 +25,7 @@ async fn track_display_carries_the_cover_version() {
         Utc::now(),
     );
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
     manager.records.insert_track(&track).await.unwrap();
     manager.records.insert_track_artist(&track_artist).await.unwrap();
 
@@ -32,7 +33,7 @@ async fn track_display_carries_the_cover_version() {
     let display = manager.get_track_display(&track.id).await.unwrap();
     assert_eq!(display.cover_image, None);
 
-    store_test_cover(&manager, &release.id, b"cover").await;
+    store_test_cover(manager, &release.id, b"cover").await;
     let version = manager
         .records
         .cover_version(&release.id)
@@ -84,8 +85,9 @@ async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) 
 /// order — by release, then side, track number, id.
 #[tokio::test]
 async fn test_get_all_track_ids_returns_library_in_base_order() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    seed_two_release_library(&manager).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    seed_two_release_library(manager).await;
     let all = manager.get_all_track_ids().await.unwrap();
     assert_eq!(
         all,
@@ -103,8 +105,9 @@ async fn test_get_all_track_ids_returns_library_in_base_order() {
 /// position — the order a release plays its own tracks in.
 #[tokio::test]
 async fn test_library_play_unshuffles_into_the_library_order() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let (rel1, _rel2) = seed_two_release_library(&manager).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let (rel1, _rel2) = seed_two_release_library(manager).await;
     let tables = bae_playback::tables::PlaybackQueueTables::new(manager.store.clone());
     let library_order = [
         "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
@@ -172,13 +175,14 @@ async fn play_seeded(manager: &LibraryManager, first_track: &str) {
 /// long it is; the queue value says only that it has one.
 #[tokio::test]
 async fn the_context_tail_reads_in_order_after_the_playing_track() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let track_ids = seed_release_tracks(&manager, 151).await;
-    play_seeded(&manager, &track_ids[0]).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let track_ids = seed_release_tracks(manager, 151).await;
+    play_seeded(manager, &track_ids[0]).await;
 
-    let value = bae_playback::tables::queue_value(manager.store()).await.unwrap();
+    let value = bae_playback::tables::queue_value(test.library.store()).await.unwrap();
     assert!(value.context.is_some() && value.has_next);
-    let upcoming: Vec<String> = bae_playback::tables::queue_upcoming(manager.store())
+    let upcoming: Vec<String> = bae_playback::tables::queue_upcoming(test.library.store())
         .await
         .unwrap()
         .into_iter()
@@ -191,8 +195,9 @@ async fn the_context_tail_reads_in_order_after_the_playing_track() {
 /// queue value carries it in full.
 #[tokio::test]
 async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let track_ids = seed_release_tracks(&manager, 110).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let track_ids = seed_release_tracks(manager, 110).await;
     let manual_count = 103;
     bae_playback::tables::PlaybackQueueTables::new(manager.store.clone())
         .add_manual(track_ids[..manual_count].to_vec(), bae_playback::tables::ManualPlace::End)
@@ -200,7 +205,7 @@ async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
         .unwrap();
 
     assert_eq!(
-        bae_playback::tables::queue_value(manager.store()).await.unwrap().manual.len(),
+        bae_playback::tables::queue_value(test.library.store()).await.unwrap().manual.len(),
         manual_count,
         "the manual lane is never windowed"
     );
@@ -210,13 +215,14 @@ async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
 /// repeated track once per entry.
 #[tokio::test]
 async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let track_ids = seed_release_tracks(&manager, 3).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let track_ids = seed_release_tracks(manager, 3).await;
     let tables = bae_playback::tables::PlaybackQueueTables::new(manager.store.clone());
     let mut queued = track_ids.clone();
     queued.push(track_ids[0].clone());
     tables.add_manual(queued, bae_playback::tables::ManualPlace::End).await.unwrap();
-    let entries: Vec<String> = bae_playback::tables::queue_value(manager.store())
+    let entries: Vec<String> = bae_playback::tables::queue_value(test.library.store())
         .await
         .unwrap()
         .manual
@@ -226,7 +232,7 @@ async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
     let id = |index: usize| entries[index].parse::<bae_playback::QueueEntryId>().unwrap();
     tables.reorder(id(2), Some(id(0))).await.unwrap();
 
-    let shown: Vec<(String, String)> = bae_playback::tables::queue_value(manager.store())
+    let shown: Vec<(String, String)> = bae_playback::tables::queue_value(test.library.store())
         .await
         .unwrap()
         .manual
@@ -250,7 +256,8 @@ async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
 /// play the chosen release.
 #[tokio::test]
 async fn resolve_to_track_ids_expands_album_to_primary_release() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     // release1 is the album's first release; release2 is then made primary.
     let mut release1 = create_test_release(&album.id);
@@ -258,8 +265,8 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
     let release2 = create_test_release(&album.id);
 
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release1).await;
-    insert_release(&manager, &release2).await;
+    insert_release(manager, &release1).await;
+    insert_release(manager, &release2).await;
 
     let old = bae_records::DbTrack::new_test(
         &release1.id,
@@ -297,7 +304,8 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
 
 #[tokio::test]
 async fn resolve_to_track_ids_rejects_unknown_id() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let err = manager.resolve_to_track_ids(&["missing-id".to_string()]).await.unwrap_err();
     assert!(
         matches!(err, LibraryError::TrackMapping(message) if message.contains("missing-id")),

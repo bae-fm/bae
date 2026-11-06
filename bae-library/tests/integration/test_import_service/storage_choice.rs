@@ -36,8 +36,8 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
 
-    f.library.set_import_to_cloud(true).await.unwrap();
-    f.library.set_import_pinned(true).await.unwrap();
+    f.library.manager().set_import_to_cloud(true).await.unwrap();
+    f.library.manager().set_import_pinned(true).await.unwrap();
     let outcome = import_outcome(&f, &keys[0]).await;
     let bae_import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
         panic!("the cloud choice queues the release's upload: {outcome:?}");
@@ -46,6 +46,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     // queue pins them, and once the move finishes coven keeps each whole.
     assert!(
         !f.library
+            .manager()
             .download_snapshot()
             .await
             .unwrap()
@@ -57,11 +58,11 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     // No sync loop runs behind this connection, so the test drives the
     // release's upload itself.
     assert_eq!(
-        f.library.drain_uploads_expecting_work().await.unwrap(),
+        f.library.manager().drain_uploads_expecting_work().await.unwrap(),
         1,
         "the release's one file uploads"
     );
-    f.library.wait_for_kept_release_for_test(&id).await;
+    f.library.manager().wait_for_kept_release_for_test(&id).await;
     let storage = bae_views::LibraryViews::new(f.library.store().clone())
         .find_release_detail(&id)
         .await
@@ -74,7 +75,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         "the import keeps the selected offline pin"
     );
 
-    f.library.set_import_to_cloud(false).await.unwrap();
+    f.library.manager().set_import_to_cloud(false).await.unwrap();
     assert!(
         matches!(import_outcome(&f, &keys[1]).await, bae_import::ImportProgress::Complete { .. }),
         "the local choice completes the release where it is"

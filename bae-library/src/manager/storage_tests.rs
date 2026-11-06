@@ -13,7 +13,8 @@ const TIEBREAK_HI: &str = "2153cb27-8335-4523-ae52-be2d6f577ba3";
 
 #[tokio::test]
 async fn storage_page_id_tiebreaker_stable_across_pages() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     // Two releases sharing album title + created_at — the ORDER BY clause
     // falls through to the `r.id` tiebreaker. The ids are canonical UUIDs
@@ -36,9 +37,9 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
         direction: bae_store::SortDirection::Ascending,
     };
     let first_page =
-        views(&manager).get_storage_page(&sort, bae_views::StorageFilter::All, 0, 1).await.unwrap();
+        views(manager).get_storage_page(&sort, bae_views::StorageFilter::All, 0, 1).await.unwrap();
     let second_page =
-        views(&manager).get_storage_page(&sort, bae_views::StorageFilter::All, 1, 1).await.unwrap();
+        views(manager).get_storage_page(&sort, bae_views::StorageFilter::All, 1, 1).await.unwrap();
 
     assert_eq!(first_page.rows.len(), 1);
     assert_eq!(second_page.rows.len(), 1);
@@ -105,8 +106,9 @@ async fn probed_uploading_releases(manager: &LibraryManager) -> Vec<String> {
 #[tokio::test]
 async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
     use rand::{Rng, SeedableRng};
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let mut rng = rand::rngs::StdRng::seed_from_u64(0x9e7e);
     let mut releases: Vec<HarnessRelease> = Vec::new();
     let mut ran: std::collections::BTreeMap<&'static str, usize> =
@@ -126,7 +128,7 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
                 let files: Vec<(&str, &[u8])> =
                     files.iter().map(|(name, bytes)| (name.as_str(), bytes.as_slice())).collect();
                 let release = insert_local_release_with_files(
-                    &manager,
+                    manager,
                     &temp_dir.path().join(format!("release-{step}")),
                     &format!("Album Title {step}"),
                     &files,
@@ -168,7 +170,7 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
                     continue;
                 }
                 let index = rng.random_range(0..releases.len());
-                store_test_cover(&manager, &releases[index].id, format!("cover {step}").as_bytes())
+                store_test_cover(manager, &releases[index].id, format!("cover {step}").as_bytes())
                     .await;
                 "queue cover"
             }
@@ -183,11 +185,11 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
         *ran.entry(op).or_default() += 1;
 
         assert_eq!(
-            queue_storage_disagreements(&manager).await,
+            queue_storage_disagreements(manager).await,
             Vec::<String>::new(),
             "after step {step}, {op}"
         );
-        let probed = probed_uploading_releases(&manager).await;
+        let probed = probed_uploading_releases(manager).await;
         most_uploading = most_uploading.max(probed.len());
         assert_eq!(
             manager.records.uploading_releases().await.unwrap(),
@@ -214,20 +216,21 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
 /// to its own cover rather than the album's primary.
 #[tokio::test]
 async fn storage_page_rows_carry_each_releases_own_cover() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release1).await;
-    insert_release(&manager, &release2).await;
+    insert_release(manager, &release1).await;
+    insert_release(manager, &release2).await;
     // release1 is the album's primary, so its cover is the album-level cover.
     manager.set_album_primary_release(&album.id, &release1.id).await.unwrap();
 
-    store_test_cover(&manager, &release1.id, b"cover").await;
-    store_test_cover(&manager, &release2.id, b"cover").await;
+    store_test_cover(manager, &release1.id, b"cover").await;
+    store_test_cover(manager, &release2.id, b"cover").await;
 
-    let page = views(&manager)
+    let page = views(manager)
         .get_storage_page(
             &bae_views::StorageSortCriterion {
                 field: bae_views::StorageSortField::AlbumTitle,
@@ -274,22 +277,24 @@ async fn seed_albums(manager: &LibraryManager, count: usize) -> (Vec<DbAlbum>, V
 
 #[tokio::test]
 async fn storage_page_returns_all_rows_for_all_filter() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    seed_albums(&manager, 3).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    seed_albums(manager, 3).await;
 
-    let page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
+    let page = storage_page(manager, bae_views::StorageFilter::All, 0, 10).await;
     assert_eq!(page.rows.len(), 3);
     assert_eq!(page.total_count, 3);
 }
 
 #[tokio::test]
 async fn storage_page_paginates() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    seed_albums(&manager, 5).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    seed_albums(manager, 5).await;
 
-    let page1 = storage_page(&manager, bae_views::StorageFilter::All, 0, 2).await;
-    let page2 = storage_page(&manager, bae_views::StorageFilter::All, 2, 2).await;
-    let page3 = storage_page(&manager, bae_views::StorageFilter::All, 4, 2).await;
+    let page1 = storage_page(manager, bae_views::StorageFilter::All, 0, 2).await;
+    let page2 = storage_page(manager, bae_views::StorageFilter::All, 2, 2).await;
+    let page3 = storage_page(manager, bae_views::StorageFilter::All, 4, 2).await;
 
     assert_eq!(page1.rows.len(), 2);
     assert_eq!(page2.rows.len(), 2);
@@ -302,27 +307,27 @@ async fn storage_page_paginates() {
 
 #[tokio::test]
 async fn storage_page_sorts_album_title_ascending() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    seed_albums(&manager, 3).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    seed_albums(manager, 3).await;
 
-    let page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
+    let page = storage_page(manager, bae_views::StorageFilter::All, 0, 10).await;
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album 0", "Album 1", "Album 2"]);
 }
 
 #[tokio::test]
 async fn storage_page_sorts_album_title_descending() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    seed_albums(&manager, 3).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    seed_albums(manager, 3).await;
 
     let sort = bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::AlbumTitle,
         direction: bae_store::SortDirection::Descending,
     };
-    let page = views(&manager)
-        .get_storage_page(&sort, bae_views::StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let page =
+        views(manager).get_storage_page(&sort, bae_views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album 2", "Album 1", "Album 0"]);
 }
@@ -335,16 +340,18 @@ async fn storage_page_sorts_album_title_descending() {
 async fn storage_page_rows_carry_state_appropriate_actions() {
     use bae_types::release_storage::ReleaseStorageAction::{DetachAudio, Pin, Unpin, Upload};
 
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_uploading(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+
+    let manager = test.library.manager();
+    connect_test_cloud_uploading(&test).await;
 
     // Pinned: made Remote with pin, so its file lands in coven's offline cache.
     let pinned =
-        upload_release_unpaused(&manager, &temp_dir.path().join("pinned"), "Pinned Album", true)
+        upload_release_unpaused(manager, &temp_dir.path().join("pinned"), "Pinned Album", true)
             .await;
     // Cloud-only: made Remote without pin, so its file is evictable, not pinned.
     let cloud_only =
-        upload_release_unpaused(&manager, &temp_dir.path().join("cloud"), "Cloud Album", false)
+        upload_release_unpaused(manager, &temp_dir.path().join("cloud"), "Cloud Album", false)
             .await;
 
     // Local: not remote, files at a local path.
@@ -352,9 +359,9 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     local_album.title = "Local Album".to_string();
     let local = create_test_release(&local_album.id);
     manager.records.insert_album(&local_album).await.unwrap();
-    insert_release(&manager, &local).await;
+    insert_release(manager, &local).await;
 
-    let page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
+    let page = storage_page(manager, bae_views::StorageFilter::All, 0, 10).await;
     let actions: std::collections::HashMap<_, _> = page
         .rows
         .iter()
@@ -370,32 +377,34 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
 /// transitions — the context menu is empty everywhere.
 #[tokio::test]
 async fn storage_page_rows_have_no_actions_without_cloud_home() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
 
-    let page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
+    let page = storage_page(manager, bae_views::StorageFilter::All, 0, 10).await;
     assert_eq!(page.rows.len(), 1);
     assert!(page.rows[0].release.storage_actions.is_empty());
 }
 
 #[tokio::test]
 async fn storage_page_local_filter_matches_local_path() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let remote_id =
-        uploaded_release(&manager, &temp_dir.path().join("remote"), "Remote Album", false).await;
+        uploaded_release(manager, &temp_dir.path().join("remote"), "Remote Album", false).await;
     let local_release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("local"),
         "Local Album",
         &[("track.flac", b"local")],
     )
     .await;
 
-    let local = storage_page(&manager, bae_views::StorageFilter::Local, 0, 10).await;
+    let local = storage_page(manager, bae_views::StorageFilter::Local, 0, 10).await;
     assert_eq!(local.rows.len(), 1);
     assert_eq!(local.total_count, 1);
     assert_eq!(local.rows[0].release.id, local_release.id);
@@ -404,7 +413,7 @@ async fn storage_page_local_filter_matches_local_path() {
         bae_views::album_detail::ReleaseStorageState::OnOneDevice
     );
 
-    let remote = storage_page(&manager, bae_views::StorageFilter::Remote, 0, 10).await;
+    let remote = storage_page(manager, bae_views::StorageFilter::Remote, 0, 10).await;
     assert_eq!(remote.rows.len(), 1);
     assert_eq!(remote.rows[0].release.id, remote_id);
     assert_ne!(
@@ -415,12 +424,13 @@ async fn storage_page_local_filter_matches_local_path() {
 
 #[tokio::test]
 async fn storage_count_matches_filtered_page_total() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let mut inserted_local = None;
     for i in 0..3 {
         let release = insert_local_release_with_files(
-            &manager,
+            manager,
             &temp_dir.path().join(format!("album-{i}")),
             &format!("Album {i}"),
             &[("track.flac", b"track")],
@@ -434,20 +444,17 @@ async fn storage_count_matches_filtered_page_total() {
         }
     }
 
-    assert_eq!(views(&manager).get_storage_count(bae_views::StorageFilter::All).await.unwrap(), 3);
+    assert_eq!(views(manager).get_storage_count(bae_views::StorageFilter::All).await.unwrap(), 3);
+    assert_eq!(views(manager).get_storage_count(bae_views::StorageFilter::Local).await.unwrap(), 1);
     assert_eq!(
-        views(&manager).get_storage_count(bae_views::StorageFilter::Local).await.unwrap(),
-        1
-    );
-    assert_eq!(
-        views(&manager).get_storage_count(bae_views::StorageFilter::Remote).await.unwrap(),
+        views(manager).get_storage_count(bae_views::StorageFilter::Remote).await.unwrap(),
         2
     );
 
-    let all_page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
+    let all_page = storage_page(manager, bae_views::StorageFilter::All, 0, 10).await;
     assert_eq!(all_page.total_count, 3);
 
-    let local_page = storage_page(&manager, bae_views::StorageFilter::Local, 0, 10).await;
+    let local_page = storage_page(manager, bae_views::StorageFilter::Local, 0, 10).await;
     assert_eq!(local_page.rows.len(), 1);
     assert_eq!(local_page.rows[0].release.id, inserted_local.unwrap());
 }
@@ -458,18 +465,19 @@ async fn storage_count_matches_filtered_page_total() {
 /// sum of `total_size` over that filter's full (unpaginated) storage page.
 #[tokio::test]
 async fn storage_total_size_matches_page_total_size_sum() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
 
     insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("local"),
         "Local Album",
         &[("a.flac", &vec![0u8; 1_000])],
     )
     .await;
     uploaded_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("remote"),
         "Remote Album",
         &[("a.flac", &[0u8; 100])],
@@ -477,7 +485,7 @@ async fn storage_total_size_matches_page_total_size_sum() {
     )
     .await;
     insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &temp_dir.path().join("uploading"),
         "Uploading Album",
         &[("a.flac", &vec![0u8; 10_000])],
@@ -489,13 +497,13 @@ async fn storage_total_size_matches_page_total_size_sum() {
         bae_views::StorageFilter::Local,
         bae_views::StorageFilter::Remote,
     ] {
-        let page = views(&manager)
+        let page = views(manager)
             .get_storage_page(&sort_by_album_title_asc(), filter, 0, 10)
             .await
             .unwrap();
         let page_sum: i64 = page.rows.iter().map(|row| row.release.total_size).sum();
 
-        let aggregate = views(&manager).get_storage_total_size(filter).await.unwrap();
+        let aggregate = views(manager).get_storage_total_size(filter).await.unwrap();
         assert_eq!(
             aggregate, page_sum as u64,
             "{filter:?}: aggregate must equal the page's own total_size sum"
@@ -505,22 +513,23 @@ async fn storage_total_size_matches_page_total_size_sum() {
     // A release stays local while its upload is pending: its rows name no
     // file until storage holds it.
     assert_eq!(
-        views(&manager).get_storage_total_size(bae_views::StorageFilter::All).await.unwrap(),
+        views(manager).get_storage_total_size(bae_views::StorageFilter::All).await.unwrap(),
         11_100
     );
     assert_eq!(
-        views(&manager).get_storage_total_size(bae_views::StorageFilter::Local).await.unwrap(),
+        views(manager).get_storage_total_size(bae_views::StorageFilter::Local).await.unwrap(),
         11_000
     );
     assert_eq!(
-        views(&manager).get_storage_total_size(bae_views::StorageFilter::Remote).await.unwrap(),
+        views(manager).get_storage_total_size(bae_views::StorageFilter::Remote).await.unwrap(),
         100
     );
 }
 
 #[tokio::test]
 async fn storage_page_sort_by_artist_names() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     // Two artists with distinct sort-orderings; ArtistNames sort triggers
     // the `needs_artist_sort_join` branch.
@@ -546,7 +555,7 @@ async fn storage_page_sort_by_artist_names() {
             .insert_album_artist(&bae_records::DbAlbumArtist::new_test(&album.id, artist_id))
             .await
             .unwrap();
-        insert_release(&manager, &release).await;
+        insert_release(manager, &release).await;
     }
 
     let asc = bae_views::StorageSortCriterion {
@@ -554,7 +563,7 @@ async fn storage_page_sort_by_artist_names() {
         direction: bae_store::SortDirection::Ascending,
     };
     let page =
-        views(&manager).get_storage_page(&asc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
+        views(manager).get_storage_page(&asc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
     let names: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(names, vec!["Album by Alpha", "Album by Zulu"]);
 
@@ -562,17 +571,16 @@ async fn storage_page_sort_by_artist_names() {
         field: bae_views::StorageSortField::ArtistNames,
         direction: bae_store::SortDirection::Descending,
     };
-    let page = views(&manager)
-        .get_storage_page(&desc, bae_views::StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let page =
+        views(manager).get_storage_page(&desc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
     let names: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(names, vec!["Album by Zulu", "Album by Alpha"]);
 }
 
 #[tokio::test]
 async fn storage_page_sort_by_media_nulls_last() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     for (title, media) in &[
         ("Album No Media", None),
@@ -585,7 +593,7 @@ async fn storage_page_sort_by_media_nulls_last() {
         release.pressing.facts =
             media.map(|medium| bae_types::pressing::made_of(medium, 1)).unwrap_or_default();
         manager.records.insert_album(&album).await.unwrap();
-        insert_release(&manager, &release).await;
+        insert_release(manager, &release).await;
     }
 
     let asc = bae_views::StorageSortCriterion {
@@ -593,7 +601,7 @@ async fn storage_page_sort_by_media_nulls_last() {
         direction: bae_store::SortDirection::Ascending,
     };
     let page =
-        views(&manager).get_storage_page(&asc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
+        views(manager).get_storage_page(&asc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     // Unknown media sorts last in both directions.
     assert_eq!(titles, vec!["Album CD", "Album Vinyl", "Album No Media"]);
@@ -602,17 +610,16 @@ async fn storage_page_sort_by_media_nulls_last() {
         field: bae_views::StorageSortField::Media,
         direction: bae_store::SortDirection::Descending,
     };
-    let page = views(&manager)
-        .get_storage_page(&desc, bae_views::StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let page =
+        views(manager).get_storage_page(&desc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album Vinyl", "Album CD", "Album No Media"]);
 }
 
 #[tokio::test]
 async fn storage_page_sort_by_file_count() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     // Three releases, each with a distinct number of files.
     for (title, file_count) in &[("Album A", 1usize), ("Album B", 3), ("Album C", 2)] {
@@ -620,7 +627,7 @@ async fn storage_page_sort_by_file_count() {
         album.title = title.to_string();
         let release = create_test_release(&album.id);
         manager.records.insert_album(&album).await.unwrap();
-        insert_release(&manager, &release).await;
+        insert_release(manager, &release).await;
         for i in 0..*file_count {
             let file = NewReleaseFile {
                 id: bae_util::test_ids::test_uuid(&format!("{}-file-{i}", release.id)),
@@ -638,24 +645,23 @@ async fn storage_page_sort_by_file_count() {
         field: bae_views::StorageSortField::FileCount,
         direction: bae_store::SortDirection::Descending,
     };
-    let page = views(&manager)
-        .get_storage_page(&desc, bae_views::StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let page =
+        views(manager).get_storage_page(&desc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album B", "Album C", "Album A"]);
 }
 
 #[tokio::test]
 async fn storage_page_sort_by_total_size() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     for (title, file_size) in &[("Small", 100u64), ("Big", 10_000), ("Medium", 1_000)] {
         let mut album = create_test_album();
         album.title = title.to_string();
         let release = create_test_release(&album.id);
         manager.records.insert_album(&album).await.unwrap();
-        insert_release(&manager, &release).await;
+        insert_release(manager, &release).await;
         let file = NewReleaseFile {
             id: bae_util::test_ids::test_uuid(&format!("{}-file", release.id)),
             release_id: release.id.clone(),
@@ -672,7 +678,7 @@ async fn storage_page_sort_by_total_size() {
         direction: bae_store::SortDirection::Ascending,
     };
     let page =
-        views(&manager).get_storage_page(&asc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
+        views(manager).get_storage_page(&asc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Small", "Medium", "Big"]);
 }
@@ -682,7 +688,8 @@ async fn storage_page_sort_by_total_size() {
 /// title either way. Each row carries when its release was added.
 #[tokio::test]
 async fn storage_page_sort_by_date_added() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let at = |seconds: i64| chrono::DateTime::from_timestamp(1_700_000_000 + seconds, 0).unwrap();
     for (title, added) in &[
         ("Album First", at(0)),
@@ -695,7 +702,7 @@ async fn storage_page_sort_by_date_added() {
         let mut release = create_test_release(&album.id);
         release.created_at = *added;
         manager.records.insert_album(&album).await.unwrap();
-        insert_release(&manager, &release).await;
+        insert_release(manager, &release).await;
     }
 
     let page = |direction| {
@@ -741,25 +748,26 @@ async fn storage_page_sort_by_date_added() {
 /// filter keeps the order among the releases it shows.
 #[tokio::test]
 async fn storage_page_sort_by_storage_state() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let dir = |name: &str| temp_dir.path().join(name);
 
-    let cloud = uploaded_release(&manager, &dir("cloud"), "Album Title A", false).await;
-    let pinned = uploaded_release(&manager, &dir("pinned"), "Album Title B", true).await;
+    let cloud = uploaded_release(manager, &dir("cloud"), "Album Title A", false).await;
+    let pinned = uploaded_release(manager, &dir("pinned"), "Album Title B", true).await;
     let local = insert_local_release_with_files(
-        &manager,
+        manager,
         &dir("local"),
         "Album Title C",
         &[("track.flac", b"local")],
     )
     .await
     .id;
-    let pinning = uploaded_release(&manager, &dir("pinning"), "Album Title D", false).await;
+    let pinning = uploaded_release(manager, &dir("pinning"), "Album Title D", false).await;
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![pinning.clone()]).await.unwrap();
     let uploading = insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &dir("uploading"),
         "Album Title E",
         &[("track.flac", b"uploading")],
@@ -771,14 +779,14 @@ async fn storage_page_sort_by_storage_state() {
     use bae_views::StorageFilter;
     let ascending =
         vec![uploading.clone(), pinning.clone(), local.clone(), pinned.clone(), cloud.clone()];
-    assert_eq!(by_storage(&manager, StorageFilter::All, SortDirection::Ascending).await, ascending);
+    assert_eq!(by_storage(manager, StorageFilter::All, SortDirection::Ascending).await, ascending);
     let sort = bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::Storage,
         direction: SortDirection::Ascending,
     };
     use bae_views::album_detail::StorageRowStatus;
     assert_eq!(
-        views(&manager)
+        views(manager)
             .get_storage_page(&sort, StorageFilter::All, 0, 10)
             .await
             .unwrap()
@@ -798,15 +806,15 @@ async fn storage_page_sort_by_storage_state() {
     let mut descending = ascending.clone();
     descending.reverse();
     assert_eq!(
-        by_storage(&manager, StorageFilter::All, SortDirection::Descending).await,
+        by_storage(manager, StorageFilter::All, SortDirection::Descending).await,
         descending
     );
     assert_eq!(
-        by_storage(&manager, StorageFilter::Local, SortDirection::Ascending).await,
+        by_storage(manager, StorageFilter::Local, SortDirection::Ascending).await,
         vec![uploading.clone(), local.clone()]
     );
     assert_eq!(
-        by_storage(&manager, StorageFilter::Remote, SortDirection::Ascending).await,
+        by_storage(manager, StorageFilter::Remote, SortDirection::Ascending).await,
         vec![pinning.clone(), pinned.clone(), cloud.clone()]
     );
 }

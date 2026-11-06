@@ -38,13 +38,6 @@ pub(super) struct TestManager {
     pub(super) installation: coven::Coven,
 }
 
-impl std::ops::Deref for TestManager {
-    type Target = TestLibrary;
-    fn deref(&self) -> &TestLibrary {
-        &self.library
-    }
-}
-
 pub(super) async fn setup_test_manager() -> (TestManager, TempDir) {
     setup_test_manager_with_clock(Arc::new(coven::SystemClock)).await
 }
@@ -91,7 +84,7 @@ pub(super) async fn setup_test_manager_with(
         musicbrainz_artist_id: None,
         created_at: Utc::now(),
     };
-    manager.records.insert_artist(&artist).await.unwrap();
+    manager.records().insert_artist(&artist).await.unwrap();
     (TestManager { library: manager, fakes, storage, installation }, temp_dir)
 }
 
@@ -176,12 +169,13 @@ pub(super) fn create_test_release(album_id: &str) -> DbRelease {
 /// tests start from before adding tracks, files, or covers of their own. The
 /// `TempDir` owns the library directory, so callers keep it.
 pub(super) async fn manager_with_release() -> (TestManager, TempDir, DbAlbum, DbRelease) {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
-    (manager, temp_dir, album, release)
+    insert_release(manager, &release).await;
+    (test, temp_dir, album, release)
 }
 
 // Fixtures for the cloud-backed release states the storage, upload, pin and
@@ -194,7 +188,7 @@ pub(super) async fn manager_with_release() -> (TestManager, TempDir, DbAlbum, Db
 /// uploads only while it is, so the test's own drain sends what it seeds.
 pub(super) async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
     connect_test_cloud_uploading(manager).await;
-    manager.store.set_uploads_paused(true).await.unwrap();
+    manager.library.manager().store.set_uploads_paused(true).await.unwrap();
     manager.storage.clone()
 }
 
@@ -202,6 +196,8 @@ pub(super) async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStora
 /// and uploads run.
 pub(super) async fn connect_test_cloud_uploading(manager: &TestManager) -> Arc<MemoryStorage> {
     manager
+        .library
+        .manager()
         .store
         .setup_s3_storage(
             manager.storage.config(),
@@ -212,7 +208,7 @@ pub(super) async fn connect_test_cloud_uploading(manager: &TestManager) -> Arc<M
         )
         .await
         .unwrap();
-    let mut status = manager.subscribe_sync_status();
+    let mut status = manager.library.manager().subscribe_sync_status();
     crate::followed::value_matching(&mut status, |status| {
         status.coven.state == coven::SyncState::Synced
     })
@@ -481,10 +477,10 @@ pub(super) async fn file_pinned(manager: &LibraryManager, namespace: &str, row_i
 /// Upload one real file and evict its cache so the release needs a download.
 pub(super) async fn insert_pinnable_release(manager: &TestManager) -> String {
     connect_test_cloud(manager).await;
-    let source = manager.library_path().join("pin-source");
-    let release = uploaded_release(manager, &source, "Test Album", false).await;
-    let file = release_files(manager, &release).await.remove(0);
-    manager.evict_file_for_test(file.file).await.unwrap();
+    let source = manager.library.manager().library_path().join("pin-source");
+    let release = uploaded_release(manager.library.manager(), &source, "Test Album", false).await;
+    let file = release_files(manager.library.manager(), &release).await.remove(0);
+    manager.library.manager().evict_file_for_test(file.file).await.unwrap();
     release
 }
 
@@ -870,15 +866,16 @@ pub(super) async fn by_storage(
 pub(super) async fn queued_upload_fixture(
     folder: &str,
 ) -> (TestManager, TempDir, DbRelease, String) {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let release = insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &temp_dir.path().join(folder),
         "Test Album",
         &[("a.flac", &vec![b'a'; 1000])],
     )
     .await;
-    let file_id = release_files(&manager, &release.id).await[0].id.clone();
-    (manager, temp_dir, release, file_id)
+    let file_id = release_files(manager, &release.id).await[0].id.clone();
+    (test, temp_dir, release, file_id)
 }

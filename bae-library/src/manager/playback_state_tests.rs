@@ -43,10 +43,11 @@ async fn insert_partially_uploaded_release(
 #[tokio::test]
 async fn remote_read_with_sync_stopped_reports_sync_disconnected() {
     use bae_playback::PlaybackErrorReason;
-    let (manager, dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let release_id = uploaded_release_with_files(
-        &manager,
+        manager,
         dir.path(),
         "Album Title",
         &[("track.flac", b"track-bytes")],
@@ -55,9 +56,9 @@ async fn remote_read_with_sync_stopped_reports_sync_disconnected() {
     .await;
     manager.stop_sync().await.unwrap();
 
-    let files = release_files(&manager, &release_id).await;
+    let files = release_files(manager, &release_id).await;
     let file = files.first().expect("the release has a file");
-    let reason = playback_error_reason_for_file(&manager, file).await;
+    let reason = playback_error_reason_for_file(manager, file).await;
     assert!(matches!(reason, PlaybackErrorReason::SyncDisconnected), "got {reason:?}");
 }
 
@@ -66,16 +67,17 @@ async fn remote_read_with_sync_stopped_reports_sync_disconnected() {
 #[tokio::test]
 async fn pending_upload_with_missing_source_reports_the_missing_original() {
     use bae_playback::PlaybackErrorReason;
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release = insert_partially_uploaded_release(&manager, temp_dir.path()).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    let release = insert_partially_uploaded_release(manager, temp_dir.path()).await;
 
-    let files = release_files(&manager, &release.id).await;
+    let files = release_files(manager, &release.id).await;
     let file = files
         .iter()
         .find(|f| f.original_filename == "b.flac")
         .expect("the un-uploaded file whose source was removed");
-    let reason = playback_error_reason_for_file(&manager, file).await;
+    let reason = playback_error_reason_for_file(manager, file).await;
     assert!(matches!(reason, PlaybackErrorReason::OriginalMissing), "got {reason:?}");
     assert!(manager
         .pending()

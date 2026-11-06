@@ -20,14 +20,18 @@ fn handle_over_one_album(
         playing: None,
     };
     let track_ids = runtime.block_on(async {
-        library.write_fixture(&fixture).await.expect("write the library fixture");
+        library.manager().write_fixture(&fixture).await.expect("write the library fixture");
         let albums = bae_views::LibraryViews::new(library.store().clone())
             .get_albums(&[])
             .await
             .expect("read the albums");
-        let releases =
-            library.get_releases_for_album(&albums[0].id).await.expect("read the releases");
+        let releases = library
+            .manager()
+            .get_releases_for_album(&albums[0].id)
+            .await
+            .expect("read the releases");
         library
+            .manager()
             .get_tracks_for_release(&releases[0].id)
             .await
             .expect("read the tracks")

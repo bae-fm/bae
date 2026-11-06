@@ -192,8 +192,8 @@ async fn a_name_two_library_artists_share_imports_as_a_new_artist() {
     let f = ImportFixture::new().await;
     let first = library_artist("Artist Name", None);
     let second = library_artist("Artist Name", Some("discogs-other"));
-    f.library.insert_artist(&first).await.unwrap();
-    f.library.insert_artist(&second).await.unwrap();
+    f.library.manager().insert_artist(&first).await.unwrap();
+    f.library.manager().insert_artist(&second).await.unwrap();
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
     let (_, album) =
@@ -212,7 +212,7 @@ async fn a_library_artist_with_another_discogs_id_is_not_the_credit() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let other = library_artist("Artist Name", Some("discogs-other"));
-    f.library.insert_artist(&other).await.unwrap();
+    f.library.manager().insert_artist(&other).await.unwrap();
     let (catalog_dir, catalog) = discogs_album_folder(&f, "album-one", "Album One");
 
     let (_, album) = import_and_wait(&f, catalog_dir, catalog).await;
@@ -229,7 +229,7 @@ async fn a_credit_meets_its_artist_however_the_name_is_cased_or_accented() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let existing = library_artist("artist name", None);
-    f.library.insert_artist(&existing).await.unwrap();
+    f.library.manager().insert_artist(&existing).await.unwrap();
     let accented_dir = tagged_album_folder(&f, "album-two", "Album Two", "Ärtist Name");
     let cased_dir = tagged_album_folder(&f, "album-three", "Album Three", "ARTIST NAME");
 
@@ -350,8 +350,8 @@ async fn a_pane_offers_the_library_artists_a_shared_name_could_be() {
     let f = ImportFixture::new().await;
     let first = library_artist("Artist Name", None);
     let second = library_artist("Artist Name", Some("discogs-other"));
-    f.library.insert_artist(&first).await.unwrap();
-    f.library.insert_artist(&second).await.unwrap();
+    f.library.manager().insert_artist(&first).await.unwrap();
+    f.library.manager().insert_artist(&second).await.unwrap();
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
     let (_, mut pane) = open_tagged_pane(&f, &tagged_dir).await;
 

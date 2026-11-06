@@ -46,7 +46,7 @@ async fn opening_a_library_empties_its_transfer_queues() {
     )
     .await;
 
-    let queue = manager.download_snapshot().await.unwrap();
+    let queue = manager.manager().download_snapshot().await.unwrap();
     assert!(queue.rows.is_empty(), "{queue:?}");
     assert!(!queue.paused);
 }
@@ -62,7 +62,7 @@ async fn done_with_two_uploading(
     dir: &std::path::Path,
 ) -> Vec<(String, bae_import::CandidateKey)> {
     connect_test_cloud(manager).await;
-    let import = manager.start_discogs_import().await;
+    let import = manager.library.start_discogs_import().await;
     let mut keys = Vec::new();
     for name in ["A", "C", "B", "D"] {
         let folder = std::fs::canonicalize(dir).unwrap().join(name);
@@ -94,7 +94,7 @@ async fn done_with_two_uploading(
         )
         .await;
         if name == "C" || name == "B" {
-            manager.upload_release(&release_id, false).await.unwrap();
+            manager.library.manager().upload_release(&release_id, false).await.unwrap();
         }
         keys.push((name.to_string(), bae_import::CandidateKey::folder(&folder)));
     }
@@ -146,9 +146,10 @@ async fn read_list(
 /// view asks for, what is still uploading leads.
 #[tokio::test]
 async fn done_runs_the_releases_still_uploading_first() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let tables = bae_import::tables::ImportTables::new(manager.store.clone());
-    let keys = done_with_two_uploading(&manager, temp_dir.path()).await;
+    let keys = done_with_two_uploading(&test, temp_dir.path()).await;
     let done = |order| bae_import::ImportListView {
         tab: bae_import::TriageTab::Done,
         order,
@@ -226,10 +227,11 @@ fn done_uploads(
 /// once they are stored. The list's live read follows each step.
 #[tokio::test]
 async fn a_done_row_carries_its_release_upload() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    done_with_two_uploading(&manager, temp_dir.path()).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    done_with_two_uploading(&test, temp_dir.path()).await;
     let subscription = open_list(
-        &manager,
+        &test.library,
         bae_import::ImportListView {
             tab: bae_import::TriageTab::Done,
             order: bae_import::ImportListOrder::PathAscending,
@@ -253,8 +255,7 @@ async fn a_done_row_carries_its_release_upload() {
     // Held in flight until its start is read.
     let (started, created) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
-    manager
-        .storage
+    test.storage
         .hold_next_creation(
             coven::ObjectPrefix::files(manager.store.store_id_for_test()),
             started,
@@ -262,7 +263,7 @@ async fn a_done_row_carries_its_release_upload() {
         )
         .await;
     let drain = tokio::spawn({
-        let manager = manager.library.clone();
+        let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
     let sending = Some(bae_records::UploadProgress { queued: 0, uploading: 1 });
@@ -291,9 +292,10 @@ async fn a_done_row_carries_its_release_upload() {
 /// part still uploading and the rest, both ends included.
 #[tokio::test]
 async fn extending_on_done_selects_the_run_across_its_two_parts() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let tables = bae_import::tables::ImportTables::new(manager.store.clone());
-    let keys = done_with_two_uploading(&manager, temp_dir.path()).await;
+    let keys = done_with_two_uploading(&test, temp_dir.path()).await;
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
     let list = tables
         .open_import_list(bae_import::ImportListView {
@@ -328,9 +330,9 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
 /// request change, and leaves the view's revision where it was.
 #[tokio::test]
 async fn setting_the_windows_reruns_the_list_as_a_request_change() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
     let subscription = open_list(
-        &manager,
+        &test.library,
         bae_import::ImportListView::default(),
         bae_store::LibraryPageWindows::default(),
     )
@@ -366,9 +368,10 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
 /// later change to it is refused.
 #[tokio::test]
 async fn cancelling_closes_the_list() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let subscription = open_list(
-        &manager,
+        &test.library,
         bae_import::ImportListView::default(),
         bae_store::LibraryPageWindows::default(),
     )
@@ -396,10 +399,10 @@ async fn cancelling_closes_the_list() {
 /// is closed. The app quits with the import tab's read waiting like this.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
     let subscription = Arc::new(
         open_list(
-            &manager,
+            &test.library,
             bae_import::ImportListView::default(),
             bae_store::LibraryPageWindows::default(),
         )
@@ -412,7 +415,7 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
         async move { subscription.next().await }
     });
 
-    manager.library.close().await.unwrap();
+    test.library.manager().close().await.unwrap();
 
     let read = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, waiting)
         .await
@@ -433,15 +436,16 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
 /// read is closed, and takes no more requests.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn closing_the_library_cancels_a_waiting_live_read() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let read = Arc::new(crate::subscribe_queue_upcoming(&manager));
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let read = Arc::new(crate::subscribe_queue_upcoming(manager));
     read.next().await.expect("the initial value");
     let waiting = tokio::spawn({
         let read = read.clone();
         async move { read.next().await }
     });
 
-    manager.library.close().await.unwrap();
+    test.library.manager().close().await.unwrap();
 
     let ended = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, waiting)
         .await
@@ -458,7 +462,8 @@ async fn closing_the_library_cancels_a_waiting_live_read() {
 /// reported once, and leaves the library able to close.
 #[tokio::test]
 async fn a_file_operation_that_panics_fails_and_is_reported() {
-    let (manager, _temp_dir, bugs) = setup_test_manager_reporting_bugs().await;
+    let (test, _temp_dir, bugs) = setup_test_manager_reporting_bugs().await;
+    let manager = test.library.manager();
 
     let error = manager
         .run_file_operation("test operation", |_closing| async { broken_operation() })
@@ -478,7 +483,8 @@ fn broken_operation() -> Result<(), LibraryError> {
 /// rather than a log line: starting sync after close is refused.
 #[tokio::test]
 async fn starting_work_after_close_is_refused_to_the_caller() {
-    let (manager, _temp) = setup_test_manager().await;
+    let (test, _temp) = setup_test_manager().await;
+    let manager = test.library.manager();
     manager.close().await.unwrap();
     let error = manager.start_sync_at_startup().expect_err("a closed library starts no work");
     assert!(matches!(error, LibraryError::Closed("startup sync attachment")), "got {error:?}");
@@ -487,7 +493,8 @@ async fn starting_work_after_close_is_refused_to_the_caller() {
 
 #[tokio::test]
 async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
-    let (manager, _home) = setup_test_manager().await;
+    let (test, _home) = setup_test_manager().await;
+    let manager = test.library.manager();
     let (entered, reached) = tokio::sync::oneshot::channel();
     let (release, released) = tokio::sync::oneshot::channel();
     let db = manager.store.clone();
@@ -557,10 +564,11 @@ fn apply_transfer_changes(
 /// once every file is sent the file and its release leave and the bar goes.
 #[tokio::test]
 async fn the_transfers_name_only_the_files_being_sent() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let home = connect_test_cloud(&test).await;
     let release = insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &temp_dir.path().join("sending"),
         "Album Title",
         &[("a.flac", b"bytes-a"), ("b.flac", b"bytes-b")],
@@ -591,7 +599,7 @@ async fn the_transfers_name_only_the_files_being_sent() {
     )
     .await;
     let drain = tokio::spawn({
-        let manager = manager.library.clone();
+        let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
     let sending = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
@@ -630,10 +638,11 @@ async fn the_transfers_name_only_the_files_being_sent() {
 /// first, and then only as they change.
 #[tokio::test]
 async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let home = connect_test_cloud(&test).await;
     insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &temp_dir.path().join("sending"),
         "Album Title",
         &[("a.flac", b"bytes-a")],
@@ -652,7 +661,7 @@ async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
     )
     .await;
     let drain = tokio::spawn({
-        let manager = manager.library.clone();
+        let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
     let sending = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, total.next())
@@ -682,10 +691,11 @@ async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
 /// answers. Its file's own share is told by file.
 #[tokio::test]
 async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let home = connect_test_cloud(&test).await;
     let release = insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &temp_dir.path().join("sending"),
         "Album Title",
         &[("a.flac", b"bytes-a")],
@@ -707,7 +717,7 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
     )
     .await;
     let drain = tokio::spawn({
-        let manager = manager.library.clone();
+        let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
     let bar = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {

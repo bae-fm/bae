@@ -39,7 +39,8 @@ async fn seed_grouped_releases(
 
 #[tokio::test]
 async fn set_records_to_file_metadata_moves_release_to_fresh_album() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     let album = create_test_album();
     let release = create_test_release(&album.id);
@@ -55,7 +56,7 @@ async fn set_records_to_file_metadata_moves_release_to_fresh_album() {
     manager.set_records(&release.id, vec![]).await.unwrap();
 
     // The original album was a one-release album → empty and unlisted now.
-    assert!(views(&manager).find_album_detail(&album.id).await.unwrap().is_none());
+    assert!(views(manager).find_album_detail(&album.id).await.unwrap().is_none());
 
     // Release moved to a brand-new album, holds nothing else.
     let new_album_id =
@@ -72,12 +73,13 @@ async fn set_records_to_file_metadata_moves_release_to_fresh_album() {
 
 #[tokio::test]
 async fn set_records_replaces_rows_when_the_new_records_fit_the_current_album() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     // Album has two releases, both MB identities on group g1.
     let album = create_test_album();
     let releases =
-        seed_grouped_releases(&manager, &album, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
+        seed_grouped_releases(manager, &album, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
     let release1 = &releases[0];
 
     // Re-point release1 at another pressing within g1. The new row still
@@ -102,10 +104,11 @@ async fn set_records_replaces_rows_when_the_new_records_fit_the_current_album() 
 /// can't disagree with them: the release stays in its album.
 #[tokio::test]
 async fn set_records_on_another_catalog_keeps_the_release_in_its_album() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let releases =
-        seed_grouped_releases(&manager, &album, &[("g1", "g1-rel"), ("g1", "g1-other")]).await;
+        seed_grouped_releases(manager, &album, &[("g1", "g1-rel"), ("g1", "g1-other")]).await;
 
     manager
         .set_records(&releases[0].id, vec![discogs_identity("master-1", "d-rel-1")])
@@ -120,17 +123,18 @@ async fn set_records_on_another_catalog_keeps_the_release_in_its_album() {
 
 #[tokio::test]
 async fn set_records_creates_a_new_album_when_no_existing_album_fits() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     // Two albums, neither matching the new MB group g2.
     let album_a = create_test_album();
     let mut album_b = create_test_album();
     album_b.title = "Other Album".to_string();
     let album_a_releases =
-        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
+        seed_grouped_releases(manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
     let release_alpha = &album_a_releases[0];
     let release_beta = &album_a_releases[1];
-    seed_grouped_releases(&manager, &album_b, &[("g3", "g3-rel")]).await;
+    seed_grouped_releases(manager, &album_b, &[("g3", "g3-rel")]).await;
 
     // release_alpha takes on a brand-new MB group (g2). Its current
     // album (album_a) holds release_beta on g1, so it can't stay.
@@ -150,7 +154,8 @@ async fn set_records_creates_a_new_album_when_no_existing_album_fits() {
 
 #[tokio::test]
 async fn set_records_moves_the_release_to_the_matching_album() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     // Source album (album_a) carries release_alpha solo at MB g1.
     // Target album (album_b) carries release_other at MB g2 — that
@@ -159,8 +164,8 @@ async fn set_records_moves_the_release_to_the_matching_album() {
     let mut album_b = create_test_album();
     album_b.title = "Other Album".to_string();
     let release_alpha =
-        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel")]).await.remove(0);
-    seed_grouped_releases(&manager, &album_b, &[("g2", "g2-rel")]).await;
+        seed_grouped_releases(manager, &album_a, &[("g1", "g1-rel")]).await.remove(0);
+    seed_grouped_releases(manager, &album_b, &[("g2", "g2-rel")]).await;
 
     manager
         .set_records(&release_alpha.id, vec![mb_identity("g2", "mb-rel-pressing")])
@@ -175,18 +180,19 @@ async fn set_records_moves_the_release_to_the_matching_album() {
     assert_eq!(target_siblings.len(), 2);
 
     // album_a was a single-release album → empty and unlisted now.
-    assert!(views(&manager).find_album_detail(&album_a.id).await.unwrap().is_none());
+    assert!(views(manager).find_album_detail(&album_a.id).await.unwrap().is_none());
 }
 
 #[tokio::test]
 async fn set_records_keeps_the_vacated_album_when_other_releases_remain() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     // album_a holds two releases, both on MB g1. Move release_alpha
     // out by giving it a different group.
     let album_a = create_test_album();
     let releases =
-        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
+        seed_grouped_releases(manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
     let release_alpha = &releases[0];
     let release_beta = &releases[1];
 
@@ -202,7 +208,8 @@ async fn set_records_keeps_the_vacated_album_when_other_releases_remain() {
 
 #[tokio::test]
 async fn set_records_does_not_touch_metadata_columns() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     let mut album = create_test_album();
     album.title = "Initial Title".to_string();
@@ -271,7 +278,8 @@ async fn set_records_does_not_touch_metadata_columns() {
 
 #[tokio::test]
 async fn set_records_to_a_fresh_album_preserves_album_artists() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     // Two artists so the album's credit list holds two rows.
     let artist = |id: &str, name: &str| DbArtist {
@@ -293,7 +301,7 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
     // creation of a fresh album.
     let album_a = create_test_album();
     let releases =
-        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
+        seed_grouped_releases(manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
     let release_alpha = &releases[0];
     for (position, artist_id) in [(0, &primary.id), (1, &secondary.id)] {
         manager
@@ -319,7 +327,8 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
 
 #[tokio::test]
 async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let now = Utc::now();
     let beta_track_id = TRACK_BETA.to_string();
 
@@ -327,7 +336,7 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
     // release_alpha out: the release left, release_beta, is the primary.
     let album_a = create_test_album();
     let releases =
-        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
+        seed_grouped_releases(manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
     let release_alpha = &releases[0];
     let release_beta = &releases[1];
 
@@ -380,11 +389,12 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
     // API directly with `current_album_id` at the source album, after seeding an
     // extra release into it. The atomic call must NOT delete the source — its
     // in-transaction recheck sees the surviving release.
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     let album_a = create_test_album();
     let release_alpha =
-        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel")]).await.remove(0);
+        seed_grouped_releases(manager, &album_a, &[("g1", "g1-rel")]).await.remove(0);
 
     // Build the fresh-album row the manager would have produced —
     // we're driving the atomic API by hand.
@@ -430,7 +440,8 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
 async fn album_records_merge_albums_but_never_match_pressings() {
     use bae_catalogs::catalog::Catalog;
     use bae_catalogs::records::{MetadataRef, ReleaseRecord};
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     manager.records.insert_album(&album).await.unwrap();
     let release = create_test_release(&album.id);
@@ -486,7 +497,8 @@ async fn album_records_merge_albums_but_never_match_pressings() {
 async fn ungrouped_pressings_do_not_invent_album_matches() {
     use bae_catalogs::catalog::Catalog;
     use bae_catalogs::records::{MetadataRef, ReleaseRecord};
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     manager.records.insert_album(&album).await.unwrap();
     let release = create_test_release(&album.id);

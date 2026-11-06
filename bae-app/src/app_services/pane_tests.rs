@@ -75,7 +75,7 @@ impl Library {
         let import = library.start_import().await.unwrap();
         let identification = import.start_identification_queue();
         let services = AppServices::new(
-            LibraryManager::clone(&library),
+            LibraryManager::clone(library.manager()),
             bae_views::LibraryViews::new(library.store().clone()),
             library.start_playback().await,
             library.cast_picker(),

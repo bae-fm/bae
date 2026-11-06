@@ -98,6 +98,7 @@ async fn invalid_edits_are_rejected_on_the_write_path() {
         let (album_id, release_id) = seed(&records).await;
 
         let result = library
+            .manager()
             .apply_release_metadata_user_edit(
                 &release_id,
                 &wire_edit(album_title, album_artist_seed_names),
@@ -123,6 +124,7 @@ async fn an_untrimmed_album_title_is_stored_trimmed() {
     let (album_id, release_id) = seed(&records).await;
 
     library
+        .manager()
         .apply_release_metadata_user_edit(
             &release_id,
             &wire_edit("  Album Alpha  ", &["Artist Alpha"]),
@@ -142,6 +144,7 @@ async fn new_artist_names_are_stored_trimmed() {
     let (album_id, release_id) = seed(&records).await;
 
     library
+        .manager()
         .apply_release_metadata_user_edit(
             &release_id,
             &wire_edit("Album Alpha", &["  Artist Alpha  "]),
@@ -172,6 +175,7 @@ async fn editing_the_album_artist_decides_whether_it_is_a_compilation() {
         (&["Various Artists", "Artist Alpha"][..], false),
     ] {
         library
+            .manager()
             .apply_release_metadata_user_edit(&release_id, &wire_edit("Album Alpha", artists))
             .await
             .unwrap();

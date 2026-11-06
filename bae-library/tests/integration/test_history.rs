@@ -35,8 +35,8 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     local.set_played(Duration::from_secs(20));
     assert!(people.record_play(&local).await.unwrap());
     assert_eq!(people.history().await.unwrap()[0].audience, HistoryAudience::DevicePrivate);
-    connect_storage(&library, &storage).await;
-    let person = bae_library::test_libraries::made_profile(&library, "Robin").await;
+    connect_storage(library.manager(), &storage).await;
+    let person = bae_library::test_libraries::made_profile(library.manager(), "Robin").await;
     let private = HistoryAudience::Person {
         person: person.id,
         audience: coven::Audience::Circle(person.private_circle),
@@ -47,7 +47,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     assert_eq!(rows[0].audience, private);
     assert_eq!(rows[0].started_at, started);
     assert!(store.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
-    library.set_history_sharing(Sharing::Household).await.unwrap();
+    library.manager().set_history_sharing(Sharing::Household).await.unwrap();
     local.set_played(Duration::from_secs(24));
     people.record_play(&local).await.unwrap();
     assert_eq!(people.history().await.unwrap()[0].audience, private);
@@ -55,7 +55,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
         .begin_play(uuid::Uuid::new_v4(), &track, Some(Duration::from_secs(100)), started)
         .await
         .unwrap();
-    library.set_history_sharing(Sharing::Private).await.unwrap();
+    library.manager().set_history_sharing(Sharing::Private).await.unwrap();
     shared.set_played(Duration::from_secs(29));
     assert!(!people.record_play(&shared).await.unwrap());
     shared.set_played(Duration::from_secs(30));
@@ -77,7 +77,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     assert!(!people.record_play(&unknown).await.unwrap());
     unknown.finish_at(Duration::from_secs(8));
     assert!(people.record_play(&unknown).await.unwrap());
-    library.close().await.unwrap();
+    library.manager().close().await.unwrap();
 }
 
 /// A profile can arrive from another device while this device still has
@@ -96,7 +96,7 @@ fn retrying_profile_setup_adopts_listening_from_before_the_profile_arrived() {
         .await;
         devices.converge("SELECT id FROM tracks").await;
         devices.b().stop_sync().await;
-        let people = devices.b().people_owner();
+        let people = devices.b().people();
         let started = "2026-10-18T16:00:00Z".parse().unwrap();
         let mut awaiting_profile = people
             .begin_play(uuid::Uuid::new_v4(), &track, Some(Duration::from_secs(40)), started)

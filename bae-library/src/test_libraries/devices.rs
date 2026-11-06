@@ -47,9 +47,8 @@ impl TestDevice {
         &self.library.records
     }
 
-    /// The device's People owner, distinct from `LibraryManager::people()`,
-    /// which lists the library's people.
-    pub fn people_owner(&self) -> &bae_people::People {
+    /// The device's people.
+    pub fn people(&self) -> &bae_people::People {
         &self.library.people
     }
 
@@ -57,9 +56,8 @@ impl TestDevice {
         &self.library.membership
     }
 
-    /// The device's SyncStatus owner, distinct from `LibraryManager::sync_status()`,
-    /// which reads the sync status.
-    pub fn sync_status_owner(&self) -> &SyncStatus {
+    /// The device's sync status.
+    pub fn sync_status(&self) -> &SyncStatus {
         &self.library.sync_status
     }
 
@@ -282,15 +280,15 @@ impl RunningLibrary {
             bae_util::http::Http::for_test(),
         )
         .await;
-        let manager = LibraryManager::clone(&library);
+        let manager = LibraryManager::clone(library.manager());
         let cycles = SyncCycles::follow(&store);
         Self {
             manager,
             store,
             records: library.records().clone(),
-            people: library.people_owner().clone(),
+            people: library.people().clone(),
             membership: library.membership().clone(),
-            sync_status: library.sync_status_owner().clone(),
+            sync_status: library.sync_status().clone(),
             cycles,
         }
     }

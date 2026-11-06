@@ -24,7 +24,8 @@ fn fixture_of_albums(albums: Vec<crate::FixtureAlbum>) -> crate::LibraryFixture 
 /// its tracks in order.
 #[tokio::test]
 async fn fixture_albums_land_in_the_order_they_were_added() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let fixture = fixture_of_albums(vec![
         fixture_album("First", &["Artist A"], &["One"]),
         fixture_album("Second", &["Artist A"], &["One"]),
@@ -33,7 +34,7 @@ async fn fixture_albums_land_in_the_order_they_were_added() {
 
     manager.write_fixture(&fixture).await.unwrap();
 
-    let newest_first = views(&manager)
+    let newest_first = views(manager)
         .get_albums(&[bae_views::AlbumSortCriterion {
             field: bae_views::AlbumSortField::DateAdded,
             direction: bae_store::SortDirection::Descending,
@@ -60,7 +61,8 @@ async fn fixture_albums_land_in_the_order_they_were_added() {
 /// grid grouped by artist lists it under each.
 #[tokio::test]
 async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let fixture = fixture_of_albums(vec![
         fixture_album("Shared Album", &["Artist A", "Artist B"], &["One"]),
         fixture_album("Own Album", &["Artist B"], &["One"]),
@@ -68,7 +70,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
 
     manager.write_fixture(&fixture).await.unwrap();
 
-    let albums = views(&manager).get_albums(&[]).await.unwrap();
+    let albums = views(manager).get_albums(&[]).await.unwrap();
     let shared = albums
         .iter()
         .find(|album| album.title == "Shared Album")
@@ -82,7 +84,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
         .collect();
     assert_eq!(credited, ["Artist A", "Artist B"]);
 
-    let mut browse = views(&manager).subscribe_album_browse(
+    let mut browse = views(manager).subscribe_album_browse(
         &[],
         true,
         [bae_store::LibraryPageWindow { offset: 0, limit: 10 }].into(),
@@ -114,7 +116,8 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
 /// every stored cover is.
 #[tokio::test]
 async fn a_fixture_albums_cover_is_its_releases_cover() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let cover = temp_dir.path().join("cover.png");
     ::image::RgbImage::from_pixel(4, 4, ::image::Rgb([200, 40, 40])).save(&cover).unwrap();
     let mut album = fixture_album("Covered Album", &["Artist A"], &["One"]);
@@ -122,7 +125,7 @@ async fn a_fixture_albums_cover_is_its_releases_cover() {
 
     manager.write_fixture(&fixture_of_albums(vec![album])).await.unwrap();
 
-    let albums = views(&manager).get_albums(&[]).await.unwrap();
+    let albums = views(manager).get_albums(&[]).await.unwrap();
     let release_id = manager.get_releases_for_album(&albums[0].id).await.unwrap()[0].id.clone();
     let stored = manager
         .read_cover_image_bytes(&release_id)
@@ -139,7 +142,8 @@ async fn a_fixture_albums_cover_is_its_releases_cover() {
 /// fixture naming it writes nothing.
 #[tokio::test]
 async fn a_fixture_album_crediting_no_artist_writes_nothing() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let fixture = fixture_of_albums(vec![
         fixture_album("Credited Album", &["Artist A"], &["One"]),
         fixture_album("Uncredited Album", &[], &["One"]),
@@ -151,7 +155,7 @@ async fn a_fixture_album_crediting_no_artist_writes_nothing() {
         error,
         crate::LibraryFixtureError::NoArtist { ref album } if album == "Uncredited Album"
     ));
-    assert!(views(&manager).get_albums(&[]).await.unwrap().is_empty());
+    assert!(views(manager).get_albums(&[]).await.unwrap().is_empty());
 }
 
 /// A fixture candidate in `state`, its folder named `folder`, of two tracks.
@@ -184,7 +188,8 @@ async fn found_rows(manager: &LibraryManager) -> bae_import::ImportListProjectio
 async fn fixture_candidates_land_on_found_in_their_states() {
     use crate::FixtureCandidateState as State;
     use bae_import::PendingStanding;
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let tables = bae_import::tables::ImportTables::new(manager.store.clone());
     let root = temp_dir.path().join("watched").to_path_buf();
     let states = [
@@ -210,7 +215,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
 
     manager.write_fixture(&fixture).await.unwrap();
 
-    let projection = found_rows(&manager).await;
+    let projection = found_rows(manager).await;
     let standings: std::collections::BTreeMap<String, Option<PendingStanding>> = projection
         .windows
         .iter()
@@ -273,7 +278,8 @@ async fn fixture_candidates_land_on_found_in_their_states() {
 #[tokio::test]
 async fn fixture_candidates_carry_what_their_states_name() {
     use crate::FixtureCandidateState as State;
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let fixture = crate::LibraryFixture {
         albums: Vec::new(),
         watched_folders: vec![crate::FixtureWatchedFolder {
@@ -288,7 +294,7 @@ async fn fixture_candidates_carry_what_their_states_name() {
 
     manager.write_fixture(&fixture).await.unwrap();
 
-    let rows: Vec<bae_import::TriageRow> = found_rows(&manager)
+    let rows: Vec<bae_import::TriageRow> = found_rows(manager)
         .await
         .windows
         .into_iter()
@@ -381,7 +387,8 @@ fn fixture_playing(playing: crate::FixturePlaying) -> crate::LibraryFixture {
 /// with its pregap, which the library reads from the user's own file.
 #[tokio::test]
 async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let sheet = fixture_disc_image(temp_dir.path());
 
     manager
@@ -395,7 +402,7 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
         .await
         .unwrap();
 
-    let albums = views(&manager).get_albums(&[]).await.unwrap();
+    let albums = views(manager).get_albums(&[]).await.unwrap();
     assert_eq!(
         albums.iter().map(|album| album.title.as_str()).collect::<Vec<_>>(),
         ["Album Title"]
@@ -436,7 +443,8 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
 /// names, at the start of that track's pregap.
 #[tokio::test(flavor = "multi_thread")]
 async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let sheet = fixture_disc_image(temp_dir.path());
     manager
         .write_fixture(&fixture_playing(crate::FixturePlaying {
@@ -448,12 +456,13 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
         }))
         .await
         .unwrap();
-    let album_id = views(&manager).get_albums(&[]).await.unwrap()[0].id.clone();
+    let album_id = views(manager).get_albums(&[]).await.unwrap()[0].id.clone();
     let release_id = manager.get_releases_for_album(&album_id).await.unwrap()[0].id.clone();
     let pregap_track = manager.get_tracks_for_release(&release_id).await.unwrap()[1].id.clone();
 
     let (device, _capture, _audio_clock) = bae_playback::test_capture::manual_capture_device();
-    let playback = manager
+    let playback = test
+        .library
         .start_playback_on(device, bae_playback::test_capture::wall_playback_clock(), true)
         .await;
     let values = manager.values_until_closed(manager.subscribe_now_playing());

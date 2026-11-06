@@ -646,7 +646,7 @@ async fn a_done_row_follows_its_folder_and_its_release() {
     let moved = done_row(&f, "the renamed folder", &renamed_key).await;
     assert_eq!(moved.import_status, Some(bae_import::TriageImportStatus::Complete { release }));
 
-    f.library.delete_release(&release_id).await.unwrap();
+    f.library.manager().delete_release(&release_id).await.unwrap();
     wait_for_candidates(&f, "the folder back in Found", |projection| {
         candidate_rows(projection)
             .iter()

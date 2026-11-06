@@ -115,18 +115,19 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         uuid::Uuid::new_v4().to_string(),
         chrono::Utc::now(),
     );
-    library.add_external_file_for_test(&file, &source).await.unwrap();
-    library.upload_release(&release.id, false).await.unwrap();
-    library.cancel_release_transition(&release.id).await.unwrap();
+    library.manager().add_external_file_for_test(&file, &source).await.unwrap();
+    library.manager().upload_release(&release.id, false).await.unwrap();
+    library.manager().cancel_release_transition(&release.id).await.unwrap();
     // Cancelling the move retires its uploads; the file stays on this
     // device only, read from its original.
     assert!(handle.uploads().await.unwrap().files.is_empty());
     assert!(library
+        .manager()
         .get_files_for_release(&release.id)
         .await
         .unwrap()
         .iter()
         .all(|file| !file.stored));
-    assert_eq!(library.file_local_path(&file.id).await.unwrap(), Some(source));
+    assert_eq!(library.manager().file_local_path(&file.id).await.unwrap(), Some(source));
     handle.close().await.unwrap();
 }

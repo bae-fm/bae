@@ -9,7 +9,7 @@ async fn test_cue_ape_records_correct_durations() {
     let (library, release_id, _temp_root) = import_cue_ape_fixture().await;
     info!("Import completed, release_id: {}", release_id);
 
-    let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.manager().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
 
     // Core assertion: each track must have its own duration, NOT the full file duration
@@ -131,7 +131,7 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
 #[tokio::test]
 async fn test_cue_ape_records_track_timing() {
     let (library, release_id, _temp_root) = import_cue_ape_fixture().await;
-    let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.manager().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3);
 
     // Expected CUE timings in samples at 44100Hz:
@@ -142,6 +142,7 @@ async fn test_cue_ape_records_track_timing() {
 
     for (i, track) in tracks.iter().enumerate() {
         let af = library
+            .manager()
             .get_audio_format_by_track_id(&track.id)
             .await
             .expect("get audio format")
@@ -149,7 +150,8 @@ async fn test_cue_ape_records_track_timing() {
 
         assert_eq!(af.content_type, ContentType::Ape, "Track {} should be APE", i + 1);
 
-        let resolved = library.resolve_track_audio(&track.id).await.expect("resolve track audio");
+        let resolved =
+            library.manager().resolve_track_audio(&track.id).await.expect("resolve track audio");
         assert_eq!(resolved.segments.len(), 1);
         let segment = &resolved.segments[0];
 

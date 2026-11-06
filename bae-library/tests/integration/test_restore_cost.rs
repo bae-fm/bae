@@ -153,7 +153,7 @@ async fn restore_cost(library: Library) {
     .await;
     let building = Instant::now();
     for write in 0..library.albums / library.albums_per_write {
-        opened.write_fixture(&albums(write, library.albums_per_write)).await.unwrap();
+        opened.manager().write_fixture(&albums(write, library.albums_per_write)).await.unwrap();
         pass(&handle, &clock).await;
     }
     let edited: String = opened

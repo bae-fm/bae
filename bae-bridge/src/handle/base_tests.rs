@@ -9,7 +9,7 @@ fn bridge_handle_holding(
     fixture: &bae_library::LibraryFixture,
 ) -> crate::handle::tests::TestHandle {
     let (runtime, library, root) = crate::handle::tests::fresh_test_library(test_name);
-    runtime.block_on(library.write_fixture(fixture)).expect("write the library fixture");
+    runtime.block_on(library.manager().write_fixture(fixture)).expect("write the library fixture");
     crate::handle::tests::start_test_handle(runtime, library, root)
 }
 

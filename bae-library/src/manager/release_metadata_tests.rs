@@ -6,15 +6,16 @@ use crate::manager::tests::*;
 
 #[tokio::test]
 async fn release_metadata_edit_preserves_records_and_audio() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let release = create_test_release(&album.id);
     let track = bae_records::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
     manager.records.insert_track(&track).await.unwrap();
     add_track_audio_sources(
-        &manager,
+        manager,
         &track,
         &[("track.flac", bae_records::source_audio::SourceAudioLayout::File)],
     )
@@ -126,12 +127,12 @@ async fn a_named_album_artist_already_in_the_library_is_linked() {
         pressing: bae_types::pressing::Pressing::blank(),
         tracks: Vec::new(),
     };
-    manager.apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
-    let artists = manager.get_artists_for_album(&album.id).await.unwrap();
+    manager.library.manager().apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
+    let artists = manager.library.manager().get_artists_for_album(&album.id).await.unwrap();
 
-    manager.apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
+    manager.library.manager().apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
 
-    assert_eq!(manager.get_artists_for_album(&album.id).await.unwrap(), artists);
+    assert_eq!(manager.library.manager().get_artists_for_album(&album.id).await.unwrap(), artists);
     assert_eq!(
         artists.into_iter().map(|artist| artist.artist.name).collect::<Vec<_>>(),
         vec!["Album Artist One", "Album Artist Two"]
@@ -155,9 +156,9 @@ async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
         tracks: Vec::new(),
     };
 
-    manager.apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
+    manager.library.manager().apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
 
-    let artists = manager.get_artists_for_album(&album.id).await.unwrap();
+    let artists = manager.library.manager().get_artists_for_album(&album.id).await.unwrap();
     assert_eq!(
         artists.iter().map(|artist| artist.artist.name.as_str()).collect::<Vec<_>>(),
         vec!["Album Artist One", "Album Artist Two", "Album Artist One"]
@@ -204,17 +205,17 @@ async fn queued_write_rows(manager: &LibraryManager) -> Vec<Vec<String>> {
 #[tokio::test]
 async fn saving_unchanged_metadata_writes_nothing() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    insert_n_tracks(&manager.records, &release.id, 2).await;
+    insert_n_tracks(&manager.library.manager().records, &release.id, 2).await;
     let edit = credited_release_edit([
         &["Track Artist One", "Track Artist Two"],
         &["Track Artist One", "Track Artist Three"],
     ]);
-    manager.apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
-    let writes = queued_write_rows(&manager).await;
+    manager.library.manager().apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
+    let writes = queued_write_rows(manager.library.manager()).await;
 
-    manager.apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
+    manager.library.manager().apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
 
-    assert_eq!(queued_write_rows(&manager).await, writes);
+    assert_eq!(queued_write_rows(manager.library.manager()).await, writes);
 }
 
 /// Changing one track's credit rewrites the row of that place in its list
@@ -223,8 +224,10 @@ async fn saving_unchanged_metadata_writes_nothing() {
 #[tokio::test]
 async fn changing_one_track_credit_writes_only_that_credit() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    insert_n_tracks(&manager.records, &release.id, 2).await;
+    insert_n_tracks(&manager.library.manager().records, &release.id, 2).await;
     manager
+        .library
+        .manager()
         .apply_release_metadata_user_edit(
             &release.id,
             &credited_release_edit([
@@ -234,9 +237,11 @@ async fn changing_one_track_credit_writes_only_that_credit() {
         )
         .await
         .unwrap();
-    let writes = queued_write_rows(&manager).await.len();
+    let writes = queued_write_rows(manager.library.manager()).await.len();
 
     manager
+        .library
+        .manager()
         .apply_release_metadata_user_edit(
             &release.id,
             &credited_release_edit([
@@ -247,7 +252,7 @@ async fn changing_one_track_credit_writes_only_that_credit() {
         .await
         .unwrap();
 
-    let rows = queued_write_rows(&manager).await;
+    let rows = queued_write_rows(manager.library.manager()).await;
     assert_eq!(rows.len(), writes + 1);
     let credit_rows = rows[writes]
         .iter()
@@ -255,9 +260,12 @@ async fn changing_one_track_credit_writes_only_that_credit() {
         .collect::<Vec<_>>();
     assert_eq!(credit_rows, ["track_artists"], "the one place whose artist changed");
     assert_eq!(rows[writes].iter().filter(|row| *row == "artists").count(), 1, "the new artist");
-    let first_track = &manager.get_tracks_for_release(&release.id).await.unwrap()[0];
+    let first_track =
+        &manager.library.manager().get_tracks_for_release(&release.id).await.unwrap()[0];
     assert_eq!(
         manager
+            .library
+            .manager()
             .get_shown_artists_for_track(&first_track.id)
             .await
             .unwrap()

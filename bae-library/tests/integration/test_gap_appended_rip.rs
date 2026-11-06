@@ -76,7 +76,7 @@ async fn import_rip() -> (bae_library::test_libraries::TestLibrary, String, temp
 #[tokio::test]
 async fn the_editor_s_rows_each_name_the_file_their_body_plays_from() {
     let (library, release_id, _dir) = import_rip().await;
-    let session = library.open_release_edit(&release_id).await.expect("open the editor");
+    let session = library.manager().open_release_edit(&release_id).await.expect("open the editor");
 
     let sources: Vec<&str> =
         session.opened().display.tracks().map(|track| track.source.name.as_str()).collect();

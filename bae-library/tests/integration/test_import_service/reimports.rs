@@ -116,7 +116,7 @@ async fn repeated_imports_keep_independent_copies() {
             );
         }
         if matches!(destination, ImportDestination::Remote { .. }) {
-            assert_eq!(f.library.drain_uploads_expecting_work().await.unwrap(), 1);
+            assert_eq!(f.library.manager().drain_uploads_expecting_work().await.unwrap(), 1);
             assert!(f
                 .library
                 .records()
@@ -133,7 +133,7 @@ async fn repeated_imports_keep_independent_copies() {
         copies.push((release, tracks, files));
     }
     for (release, _, files) in &copies {
-        let bytes = f.library.materialize_release_file_for_test(&files[0].id).await;
+        let bytes = f.library.manager().materialize_release_file_for_test(&files[0].id).await;
         assert!(bytes.is_ok(), "copy {} remains readable: {bytes:?}", release.id);
     }
 }

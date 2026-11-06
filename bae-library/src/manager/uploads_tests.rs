@@ -14,23 +14,35 @@ use tempfile::TempDir;
 async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
     let (manager, temp, first, _) = queued_upload_fixture("first").await;
     let second = insert_release_with_queued_uploads(
-        &manager,
+        manager.library.manager(),
         &temp.path().join("second"),
         "Album",
         &[("a.flac", b"first"), ("b.flac", b"second")],
     )
     .await;
     std::fs::remove_file(temp.path().join("second/b.flac")).unwrap();
-    manager.cancel_all_release_uploads().await.unwrap();
-    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
+    manager.library.manager().cancel_all_release_uploads().await.unwrap();
+    assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
     for release in [&first, &second] {
-        for file in release_files(&manager, &release.id).await {
+        for file in release_files(manager.library.manager(), &release.id).await {
             assert!(!file.stored);
-            assert!(manager.records.external_file(&file.id).await.unwrap().is_some());
+            assert!(manager
+                .library
+                .manager()
+                .records
+                .external_file(&file.id)
+                .await
+                .unwrap()
+                .is_some());
         }
     }
     assert_eq!(
-        views(&manager).find_release_detail(&second.id).await.unwrap().unwrap().playability,
+        views(manager.library.manager())
+            .find_release_detail(&second.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .playability,
         bae_views::album_detail::ReleasePlayability::Playable,
         "the release is back on this device, as the library records it"
     );
@@ -39,15 +51,18 @@ async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
 #[tokio::test]
 async fn cancelling_every_upload_beside_a_new_cover_preserves_completed_audio_and_its_download() {
     let (manager, _temp, release, _) = queued_upload_fixture("completed").await;
-    manager.drain_uploads_expecting_work().await.unwrap();
-    manager.set_downloads_paused(true).await.unwrap();
-    manager.enqueue_pins(vec![release.id.clone()]).await.unwrap();
-    store_test_cover(&manager, &release.id, b"cover").await;
-    assert_eq!(download_queue_now(&manager).await.rows.len(), 1);
-    manager.cancel_all_release_uploads().await.unwrap();
-    assert_eq!(download_queue_now(&manager).await.rows.len(), 1);
-    assert!(release_files(&manager, &release.id).await.iter().all(|file| file.stored));
-    cover_file(&manager, &release.id).await;
+    manager.library.manager().drain_uploads_expecting_work().await.unwrap();
+    manager.library.manager().set_downloads_paused(true).await.unwrap();
+    manager.library.manager().enqueue_pins(vec![release.id.clone()]).await.unwrap();
+    store_test_cover(manager.library.manager(), &release.id, b"cover").await;
+    assert_eq!(download_queue_now(manager.library.manager()).await.rows.len(), 1);
+    manager.library.manager().cancel_all_release_uploads().await.unwrap();
+    assert_eq!(download_queue_now(manager.library.manager()).await.rows.len(), 1);
+    assert!(release_files(manager.library.manager(), &release.id)
+        .await
+        .iter()
+        .all(|file| file.stored));
+    cover_file(manager.library.manager(), &release.id).await;
 }
 
 /// Attaching files requires a configured provider; absence is a setup issue.
@@ -55,7 +70,7 @@ async fn cancelling_every_upload_beside_a_new_cover_preserves_completed_audio_an
 async fn making_a_release_remote_without_storage_requires_configuration() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     let transfer = crate::storage::transfer::ReleaseTransfer::new(
-        manager.library.clone(),
+        manager.library.manager().clone(),
         release.id,
         ReleaseStorageAction::Upload,
     );
@@ -124,10 +139,11 @@ async fn check_upload_offered(
 /// have uploaded.
 #[tokio::test]
 async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let release = insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &temp_dir.path().join("queued"),
         "Album Title",
         &[("a.flac", b"bytes-a"), ("b.flac", b"bytes-b")],
@@ -152,7 +168,7 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
             .expect("the release is listed")
     };
     let summary = |row: bae_views::album_detail::StorageRow| row.release;
-    let queued = summary(row(manager.library.clone(), release.id.clone()).await);
+    let queued = summary(row(test.library.manager().clone(), release.id.clone()).await);
     assert_eq!(
         queued.upload,
         Some(bae_views::album_detail::ReleaseUpload {
@@ -170,7 +186,7 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
     assert!(queued.storage_actions.is_empty());
 
     manager.drain_uploads_expecting_work().await.unwrap();
-    let uploaded = summary(row(manager.library.clone(), release.id.clone()).await);
+    let uploaded = summary(row(test.library.manager().clone(), release.id.clone()).await);
     assert_eq!(uploaded.upload, None);
     assert!(!uploaded.transitioning);
 }
@@ -179,16 +195,17 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
 /// upload is in flight.
 #[tokio::test]
 async fn a_storage_row_counts_the_file_being_sent() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let home = connect_test_cloud(&test).await;
     let release = insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &temp_dir.path().join("sending"),
         "Album Title",
         &[("a.flac", b"bytes-a")],
     )
     .await;
-    let mut browse = views(&manager).subscribe_storage_browse(bae_views::StorageBrowseRequest {
+    let mut browse = views(manager).subscribe_storage_browse(bae_views::StorageBrowseRequest {
         sort: bae_views::StorageSortCriterion {
             field: bae_views::StorageSortField::AlbumTitle,
             direction: bae_store::SortDirection::Ascending,
@@ -207,7 +224,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
     )
     .await;
     let drain = tokio::spawn({
-        let manager = manager.library.clone();
+        let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
@@ -234,16 +251,17 @@ async fn a_storage_row_counts_the_file_being_sent() {
 /// nothing joins or leaves the queue, and drops it as the send ends.
 #[tokio::test]
 async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let home = connect_test_cloud(&test).await;
     insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &temp_dir.path().join("sending"),
         "Album Title",
         &[("a.flac", b"bytes-a")],
     )
     .await;
-    let mut activity = views(&manager.library).subscribe_sync_activity();
+    let mut activity = views(test.library.manager()).subscribe_sync_activity();
     assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.uploads, None);
     // Held in flight until its start is read.
     let (started, created) = tokio::sync::oneshot::channel();
@@ -255,7 +273,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     )
     .await;
     let drain = tokio::spawn({
-        let manager = manager.library.clone();
+        let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
     let sending = loop {
@@ -275,18 +293,19 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
 /// in their titles' order.
 #[tokio::test]
 async fn uploading_releases_keep_their_admission_order() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
 
     let first = insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &temp_dir.path().join("first-upload"),
         "Album Z",
         &[("track.flac", b"first")],
     )
     .await;
     let second = insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &temp_dir.path().join("second-upload"),
         "Album A",
         &[("track.flac", b"second")],
@@ -298,13 +317,14 @@ async fn uploading_releases_keep_their_admission_order() {
 
 #[tokio::test]
 async fn upload_keeps_every_file_in_the_queue() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let mut album = create_test_album();
     album.title = "Album Title".to_string();
     manager.records.insert_album(&album).await.unwrap();
     let release = create_test_release(&album.id);
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
     let source_dir = temp_dir.path().join("ordered-upload");
     std::fs::create_dir_all(&source_dir).unwrap();
     let created_at = Utc::now();
@@ -323,7 +343,7 @@ async fn upload_keeps_every_file_in_the_queue() {
         );
         manager.add_external_file_for_test(&file, &path).await.unwrap();
     }
-    let files = release_files(&manager, &release.id).await;
+    let files = release_files(manager, &release.id).await;
 
     manager.upload_release(&release.id, false).await.unwrap();
 
@@ -404,9 +424,12 @@ async fn check_release_surfaces(manager: &LibraryManager, release: &DbRelease) {
 #[tokio::test]
 async fn cancelling_a_completed_upload_preserves_the_attachment() {
     let (manager, temp, release, _) = queued_upload_fixture("completed").await;
-    manager.drain_uploads_expecting_work().await.unwrap();
-    manager.cancel_release_transition(&release.id).await.unwrap();
-    assert!(release_files(&manager, &release.id).await.iter().all(|file| file.stored));
+    manager.library.manager().drain_uploads_expecting_work().await.unwrap();
+    manager.library.manager().cancel_release_transition(&release.id).await.unwrap();
+    assert!(release_files(manager.library.manager(), &release.id)
+        .await
+        .iter()
+        .all(|file| file.stored));
     assert_eq!(std::fs::read(temp.path().join("completed/a.flac")).unwrap().len(), 1000);
 }
 
@@ -415,41 +438,54 @@ async fn cancelling_a_completed_upload_preserves_the_attachment() {
 #[tokio::test]
 async fn a_missing_upload_source_is_pending_until_its_move_is_cancelled() {
     let (manager, temp, release, file_id) = queued_upload_fixture("queued").await;
-    assert_eq!(manager.count_pending_uploads_for_release(&release.id).await.unwrap(), 1);
+    assert_eq!(
+        manager.library.manager().count_pending_uploads_for_release(&release.id).await.unwrap(),
+        1
+    );
     std::fs::remove_file(temp.path().join("queued/a.flac")).unwrap();
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
-    assert!(!manager.pending().await.unwrap().is_empty());
-    manager.cancel_release_upload(&release.id).await.unwrap();
-    assert!(!manager.records.find_file_by_id(&file_id).await.unwrap().unwrap().stored);
-    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
-    assert!(manager.pending().await.unwrap().is_empty());
+    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
+    assert!(!manager.library.manager().pending().await.unwrap().is_empty());
+    manager.library.manager().cancel_release_upload(&release.id).await.unwrap();
+    assert!(
+        !manager.library.manager().records.find_file_by_id(&file_id).await.unwrap().unwrap().stored
+    );
+    assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
+    assert!(manager.library.manager().pending().await.unwrap().is_empty());
 }
 
 #[tokio::test]
 async fn cancelling_all_release_uploads_restores_their_originals() {
     let (manager, temp, first, _) = queued_upload_fixture("first").await;
     let second = insert_release_with_queued_uploads(
-        &manager,
+        manager.library.manager(),
         &temp.path().join("second"),
         "Album",
         &[("b.flac", b"audio")],
     )
     .await;
-    manager.cancel_all_release_uploads().await.unwrap();
+    manager.library.manager().cancel_all_release_uploads().await.unwrap();
     // Cancelling retires each move, so its uploads leave the queue.
-    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
-    assert!(manager.pending().await.unwrap().is_empty());
+    assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
+    assert!(manager.library.manager().pending().await.unwrap().is_empty());
     for release in [first, second] {
-        for file in release_files(&manager, &release.id).await {
+        for file in release_files(manager.library.manager(), &release.id).await {
             assert!(!file.stored);
             assert!(
-                manager.records.external_file(&file.id).await.unwrap().is_some(),
+                manager.library.manager().records.external_file(&file.id).await.unwrap().is_some(),
                 "the original plays again"
             );
             assert_eq!(
-                manager.records.read_release_file(&file.id).await.unwrap().len(),
+                manager.library.manager().records.read_release_file(&file.id).await.unwrap().len(),
                 std::fs::metadata(
-                    manager.records.external_file(&file.id).await.unwrap().unwrap().path
+                    manager
+                        .library
+                        .manager()
+                        .records
+                        .external_file(&file.id)
+                        .await
+                        .unwrap()
+                        .unwrap()
+                        .path
                 )
                 .unwrap()
                 .len() as usize
@@ -463,9 +499,9 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
 #[tokio::test]
 async fn an_upload_whose_release_is_deleted_leaves_the_queue() {
     let (manager, _temp, release, _file_id) = queued_upload_fixture("changed").await;
-    manager.delete_release(&release.id).await.unwrap();
-    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
-    assert!(manager.pending().await.unwrap().is_empty());
+    manager.library.manager().delete_release(&release.id).await.unwrap();
+    assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
+    assert!(manager.library.manager().pending().await.unwrap().is_empty());
 }
 
 /// An original that changes before its upload fails its release's move: the
@@ -475,9 +511,9 @@ async fn an_upload_whose_release_is_deleted_leaves_the_queue() {
 async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("changed").await;
     std::fs::write(temp.path().join("changed/a.flac"), b"changed after the move").unwrap();
-    manager.drain_uploads_expecting_work().await.unwrap();
-    manager.start().unwrap();
-    let mut values = manager.subscribe_sync_status();
+    manager.library.manager().drain_uploads_expecting_work().await.unwrap();
+    manager.library.manager().start().unwrap();
+    let mut values = manager.library.manager().subscribe_sync_status();
     let listed = pending_list_until(&mut values, |items| {
         items.iter().any(|item| {
             matches!(item.wait.action, bae_sync_status::PendingAction::CancelUpload { .. })
@@ -500,11 +536,14 @@ async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
     let bae_sync_status::PendingAction::CancelUpload { id } = item.wait.action.clone() else {
         unreachable!("found by its action");
     };
-    manager.cancel_failed_release_move(id).await.unwrap();
-    for file in release_files(&manager, &release.id).await {
+    manager.library.manager().cancel_failed_release_move(id).await.unwrap();
+    for file in release_files(manager.library.manager(), &release.id).await {
         assert!(!file.stored, "the release stays on this device");
     }
-    assert_eq!(manager.count_pending_uploads_for_release(&release.id).await.unwrap(), 0);
+    assert_eq!(
+        manager.library.manager().count_pending_uploads_for_release(&release.id).await.unwrap(),
+        0
+    );
     pending_list_until(&mut values, |items| {
         !items.iter().any(|item| {
             matches!(item.wait.action, bae_sync_status::PendingAction::CancelUpload { .. })
@@ -519,9 +558,9 @@ async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
 async fn an_upload_missing_its_original_is_listed_by_name() {
     let (manager, temp, _release, _file_id) = queued_upload_fixture("listed").await;
     std::fs::remove_file(temp.path().join("listed/a.flac")).unwrap();
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
-    manager.start().unwrap();
-    let mut values = manager.subscribe_sync_status();
+    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
+    manager.library.manager().start().unwrap();
+    let mut values = manager.library.manager().subscribe_sync_status();
     let items = pending_list_until(&mut values, |items| !items.is_empty()).await;
     let item = items
         .iter()
@@ -544,10 +583,11 @@ async fn an_upload_missing_its_original_is_listed_by_name() {
 /// uploads through the pause that keeps the release's file waiting.
 #[tokio::test]
 async fn a_releases_cover_is_no_file_of_its_upload() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("cover-upload"),
         "Album Title",
         &[("track.flac", b"track-bytes")],
@@ -557,7 +597,7 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
     let cover = DbLibraryImage::cover(&release.id);
     manager.store_library_image(&cover, cover_bytes).await.unwrap();
     manager.upload_release(&release.id, false).await.unwrap();
-    finish_bound_uploads(&manager).await;
+    finish_bound_uploads(manager).await;
 
     assert_eq!(
         manager.count_pending_uploads_for_release(&release.id).await.unwrap(),
@@ -570,7 +610,7 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
         "the cover uploads through the pause"
     );
     assert!(matches!(
-        cover_file(&manager, &release.id).await.place(),
+        cover_file(manager, &release.id).await.place(),
         coven::FilePlace::Cloud { .. }
     ));
 }
@@ -580,18 +620,19 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
 /// finishes.
 #[tokio::test]
 async fn an_upload_queues_each_release_before_returning() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     // Uploads paused: nothing drains the queue behind the test.
-    connect_test_cloud(&manager).await;
+    connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("publish-queue"),
         "Album Title",
         &[("track.flac", b"track-bytes")],
     )
     .await;
     let second_release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("publish-queue-second"),
         "Second Album Title",
         &[("second.flac", b"second-track-bytes")],
@@ -605,30 +646,31 @@ async fn an_upload_queues_each_release_before_returning() {
     };
     assert_eq!(receipt.release_ids, vec![release.id.clone(), second_release.id.clone()]);
     for release in [release, second_release] {
-        assert!(has_pending_uploads(&manager, &release.id).await);
+        assert!(has_pending_uploads(manager, &release.id).await);
     }
 }
 
 #[tokio::test]
 async fn an_active_target_does_not_block_sibling_cloud_admissions() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let first_new_release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("first-new-target"),
         "First Album",
         &[("first.flac", b"first-bytes")],
     )
     .await;
     let active_release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("active-target"),
         "Second Album",
         &[("second.flac", b"second-bytes")],
     )
     .await;
     let last_new_release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("last-new-target"),
         "Third Album",
         &[("third.flac", b"third-bytes")],
@@ -666,16 +708,17 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
     assert!(detail.contains(&active_release.id));
 
     for release in [first_new_release, last_new_release] {
-        assert_eq!(moving_file_count(&manager, &release.id).await, 1);
+        assert_eq!(moving_file_count(manager, &release.id).await, 1);
     }
 }
 
 #[tokio::test]
 async fn an_upload_batch_refuses_duplicate_release_ids_without_admission() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("duplicate-target"),
         "Album Title",
         &[("track.flac", b"track-bytes")],
@@ -687,7 +730,7 @@ async fn an_upload_batch_refuses_duplicate_release_ids_without_admission() {
         .await
         .expect_err("a duplicate target refuses the whole batch");
 
-    assert_eq!(moving_file_count(&manager, &release.id).await, 0);
+    assert_eq!(moving_file_count(manager, &release.id).await, 0);
 }
 
 /// A user retry without a connected cloud must report the refusal to its
@@ -695,7 +738,8 @@ async fn an_upload_batch_refuses_duplicate_release_ids_without_admission() {
 /// Storage Manager claims the retry ran.
 #[tokio::test]
 async fn retry_outbox_now_surfaces_a_missing_cloud_connection() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     let error = manager
         .retry_outbox_now()
@@ -708,15 +752,15 @@ async fn retry_outbox_now_surfaces_a_missing_cloud_connection() {
 #[tokio::test]
 async fn upload_pause_survives_retry_and_resuming_allows_progress() {
     let (manager, _temp, _release, _) = queued_upload_fixture("paused").await;
-    manager.set_sync_paused(true).await.unwrap();
+    manager.library.manager().set_sync_paused(true).await.unwrap();
     // Sync runs, so passes make requests of their own; the retry sends no
     // file.
     let before = manager.storage.request_trace().len();
     assert!(matches!(
-        manager.store.retry_uploads_now().await.unwrap(),
+        manager.library.manager().store.retry_uploads_now().await.unwrap(),
         coven::DrainOutcome::Paused
     ));
-    let files = coven::ObjectPrefix::files(manager.store.store_id_for_test());
+    let files = coven::ObjectPrefix::files(manager.library.manager().store.store_id_for_test());
     let sent: Vec<_> = manager.storage.request_trace()[before..]
         .iter()
         .filter(
@@ -725,40 +769,41 @@ async fn upload_pause_survives_retry_and_resuming_allows_progress() {
         .cloned()
         .collect();
     assert!(sent.is_empty(), "a paused retry sent {sent:?}");
-    assert!(manager.is_sync_paused().await.unwrap());
-    manager.set_sync_paused(false).await.unwrap();
-    manager.retry_outbox_now().await.unwrap();
-    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
+    assert!(manager.library.manager().is_sync_paused().await.unwrap());
+    manager.library.manager().set_sync_paused(false).await.unwrap();
+    manager.library.manager().retry_outbox_now().await.unwrap();
+    assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
 }
 
 #[tokio::test]
 async fn retry_outbox_surfaces_a_provider_failure_and_can_be_retried() {
     let (manager, _temp, _release, _) = queued_upload_fixture("retry").await;
     manager.storage.set_online(false);
-    manager.set_sync_paused(false).await.unwrap();
-    manager.retry_outbox_now().await.unwrap();
-    assert!(!manager.pending().await.unwrap().is_empty());
-    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 1);
+    manager.library.manager().set_sync_paused(false).await.unwrap();
+    manager.library.manager().retry_outbox_now().await.unwrap();
+    assert!(!manager.library.manager().pending().await.unwrap().is_empty());
+    assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 1);
     manager.storage.set_online(true);
-    manager.retry_outbox_now().await.unwrap();
-    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
+    manager.library.manager().retry_outbox_now().await.unwrap();
+    assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
 }
 
 /// A move to the cloud keeps the release here as the stored import storage
 /// choice says at the moment it moves, with nothing passed beside the releases.
 #[tokio::test]
 async fn upload_pins_as_the_stored_choice_says() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let kept = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("kept"),
         "Album Title",
         &[("track.flac", b"kept-bytes")],
     )
     .await;
     let evictable = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("evictable"),
         "Other Album Title",
         &[("track.flac", b"evictable-bytes")],
@@ -771,9 +816,9 @@ async fn upload_pins_as_the_stored_choice_says() {
     manager.upload_releases(std::slice::from_ref(&evictable.id)).await.unwrap();
 
     manager.drain_uploads_expecting_work().await.unwrap();
-    wait_for_kept_release(&manager, &kept.id).await;
+    wait_for_kept_release(manager, &kept.id).await;
     let pinned = |release_id: String| {
-        let manager = manager.library.clone();
+        let manager = test.library.manager().clone();
         async move {
             bae_views::LibraryViews::new(manager.store.clone())
                 .find_release_detail(&release_id)
@@ -810,16 +855,17 @@ async fn release_storage_version(manager: &LibraryManager) -> i64 {
 /// elsewhere now.
 #[tokio::test]
 async fn a_release_joining_the_upload_queue_moves_the_import_list_s_version() {
-    let (manager, temp) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp.path().join("queued"),
         "Album",
         &[("a.flac", b"audio")],
     )
     .await;
-    let before = release_storage_version(&manager).await;
+    let before = release_storage_version(manager).await;
     manager.upload_release(&release.id, false).await.unwrap();
-    assert!(release_storage_version(&manager).await > before);
+    assert!(release_storage_version(manager).await > before);
 }

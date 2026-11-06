@@ -31,9 +31,9 @@ use bae_sync_status::SyncStatus;
 use coven::{ClockRef, IdSourceRef};
 use std::sync::Arc;
 
-/// An open test library: its manager, which it reads as, and what the app
-/// would hand the library's services beside it. A test starts the services it
-/// needs over it, each over the same store, catalog sessions and image cache.
+/// An open test library: its manager, and what the app would hand the
+/// library's services beside it. A test starts the services it needs over it,
+/// each over the same store, catalog sessions and image cache.
 pub struct TestLibrary {
     manager: LibraryManager,
     store: Store,
@@ -47,13 +47,6 @@ pub struct TestLibrary {
     ids: IdSourceRef,
     diagnostics: Diagnostics,
     remote_images: RemoteImageCache,
-}
-
-impl std::ops::Deref for TestLibrary {
-    type Target = LibraryManager;
-    fn deref(&self) -> &LibraryManager {
-        &self.manager
-    }
 }
 
 impl TestLibrary {
@@ -139,6 +132,11 @@ impl TestLibrary {
         }
     }
 
+    /// The library's manager.
+    pub fn manager(&self) -> &LibraryManager {
+        &self.manager
+    }
+
     /// The library's store.
     pub fn store(&self) -> &Store {
         &self.store
@@ -149,9 +147,8 @@ impl TestLibrary {
         &self.records
     }
 
-    /// The People owner, distinct from `LibraryManager::people()`, which lists
-    /// the library's people.
-    pub fn people_owner(&self) -> &bae_people::People {
+    /// The library's people.
+    pub fn people(&self) -> &bae_people::People {
         &self.people
     }
 
@@ -160,9 +157,8 @@ impl TestLibrary {
         &self.membership
     }
 
-    /// The SyncStatus owner, distinct from `LibraryManager::sync_status()`,
-    /// which reads the sync status.
-    pub fn sync_status_owner(&self) -> &SyncStatus {
+    /// The library's sync status.
+    pub fn sync_status(&self) -> &SyncStatus {
         &self.sync_status
     }
 
@@ -514,7 +510,7 @@ where
     let (release_id, _album_id) = library
         .import_folder_as(album_dir.clone(), release_id_key, candidate_key, import_id)
         .await?;
-    let tracks = library.get_tracks_for_release(&release_id).await?;
+    let tracks = library.manager().get_tracks_for_release(&release_id).await?;
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
 
     Ok((library, ImportedRelease { track_ids, release_id, album_dir, temp_dir }))

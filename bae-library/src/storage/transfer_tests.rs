@@ -51,7 +51,7 @@ async fn manager_with_recording_transport(
         diagnostics.clone(),
     )
     .await;
-    let manager = LibraryManager::clone(&library);
+    let manager = LibraryManager::clone(library.manager());
     (manager, diagnostics, transport, home)
 }
 

@@ -35,7 +35,7 @@ impl RemoteMultiWindowPlayback {
             bae_util::http::Http::for_test(),
         )
         .await;
-        bae_library::test_libraries::connect_storage(&library, &cloud).await;
+        bae_library::test_libraries::connect_storage(library.manager(), &cloud).await;
         generate_multi_window_cue_flac_files(&album_dir);
         let release_key = fakes.seed_discogs_test_release(create_multi_window_cue_album());
         let import_handle = library.start_discogs_import().await;
@@ -53,23 +53,27 @@ impl RemoteMultiWindowPlayback {
             .await?;
         let (release_id, _) =
             wait_for_import_complete(&mut import_handle.subscribe_import(import_id)).await;
-        library.drain_uploads_expecting_work().await?;
-        let files = library.get_files_for_release(&release_id).await?;
+        library.manager().drain_uploads_expecting_work().await?;
+        let files = library.manager().get_files_for_release(&release_id).await?;
         let flac = files
             .iter()
             .find(|file| file.original_filename.ends_with(".flac"))
             .expect("the album has its FLAC");
-        let flac_ref = library.release_file_ref_for_test(&flac.id).await?;
+        let flac_ref = library.manager().release_file_ref_for_test(&flac.id).await?;
         let coven::FilePlace::Cloud { location, .. } = flac_ref.place() else {
             panic!("the uploaded FLAC is stored");
         };
-        let flac_object =
-            coven::ObjectPath::file(library.store_id(), location.uploader(), location.object());
+        let flac_object = coven::ObjectPath::file(
+            library.manager().store_id(),
+            location.uploader(),
+            location.object(),
+        );
         for file in files {
-            library.evict_file_for_test(file.file).await?;
+            library.manager().evict_file_for_test(file.file).await?;
         }
         std::fs::remove_dir_all(album_dir)?;
         let track_ids = library
+            .manager()
             .get_tracks_for_release(&release_id)
             .await?
             .into_iter()
@@ -99,7 +103,7 @@ impl RemoteMultiWindowPlayback {
 impl PlaybackFixture for RemoteMultiWindowPlayback {
     async fn close(self) {
         self.playback_handle.shutdown().await;
-        self.library.close().await.expect("close the test library");
+        self.library.manager().close().await.expect("close the test library");
     }
 }
 
@@ -410,10 +414,11 @@ async fn a_resume_at_a_position_reads_from_there_not_the_track_start() {
         // storage only for what it no longer holds.
         let flac = playback
             .library
+            .manager()
             .release_file_ref_for_test(&resolved.segments[0].file_id)
             .await
             .expect("the FLAC's coven file");
-        playback.library.evict_file_for_test(flac.id()).await.expect("evict the FLAC");
+        playback.library.manager().evict_file_for_test(flac.id()).await.expect("evict the FLAC");
         let first_read = playback.cloud.reads().await.len();
 
         let (handle, _capture_rx, audio_clock) = start_capture_service(&playback.library).await;

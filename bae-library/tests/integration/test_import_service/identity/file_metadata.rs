@@ -221,9 +221,10 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
 
     // The embedded picture (≤600) keeps its dimensions but the store path
     // re-encodes it to JPEG, so assert on the decoded image, not raw bytes.
-    let bytes = bae_library::test_libraries::read_cover_image_bytes(&f.library, &release_id)
-        .await
-        .expect("cover file readable");
+    let bytes =
+        bae_library::test_libraries::read_cover_image_bytes(f.library.manager(), &release_id)
+            .await
+            .expect("cover file readable");
     assert_eq!(image::guess_format(&bytes).unwrap(), image::ImageFormat::Jpeg);
     let decoded = image::load_from_memory(&bytes).unwrap();
     assert_eq!((decoded.width(), decoded.height()), EMBEDDED_COVER_DIMS);
@@ -274,9 +275,10 @@ async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
         .await
         .unwrap()
         .expect("a cover should be written");
-    let bytes = bae_library::test_libraries::read_cover_image_bytes(&f.library, &release_id)
-        .await
-        .expect("cover file readable");
+    let bytes =
+        bae_library::test_libraries::read_cover_image_bytes(f.library.manager(), &release_id)
+            .await
+            .expect("cover file readable");
     let decoded = image::load_from_memory(&bytes).unwrap();
     (decoded.width(), decoded.height())
 }

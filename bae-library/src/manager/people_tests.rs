@@ -314,7 +314,8 @@ fn an_invite_is_listed_until_it_is_cancelled() {
 
 #[tokio::test]
 async fn membership_reads_committed_local_state_without_a_provider() {
-    let (manager, _temp) = setup_test_manager().await;
+    let (test, _temp) = setup_test_manager().await;
+    let manager = test.library.manager();
     let membership = manager.get_members().await.unwrap();
     assert!(!manager.is_sync_configured().await.unwrap());
     assert!(membership.members.iter().all(|member| member.is_self));

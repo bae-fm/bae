@@ -39,11 +39,12 @@ async fn change_cover_stores_gif_and_webp_as_jpeg_without_replacing_source() {
 /// read, the class the import gives the same failure, and stores nothing.
 #[tokio::test]
 async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
     let source_dir = TempDir::new().unwrap();
     let source_path = source_dir.path().join("broken.png");
     let bytes = b"not an image".as_slice();
@@ -75,11 +76,12 @@ async fn assert_changed_cover(
     content_type: ContentType,
     dimensions: (u32, u32),
 ) {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
 
     let source_dir = TempDir::new().unwrap();
     let source_path = source_dir.path().join(filename);
@@ -114,7 +116,7 @@ async fn assert_changed_cover(
         .unwrap()
         .expect("cover row stored");
     assert_eq!(row.content_type, ContentType::Jpeg);
-    assert_eq!(cover_file(&manager, &release.id).await.size(), stored.len() as u64);
+    assert_eq!(cover_file(manager, &release.id).await.size(), stored.len() as u64);
 }
 
 /// A cover can be changed again and again. A coven file never changes its
@@ -124,11 +126,12 @@ async fn assert_changed_cover(
 /// reads nothing.
 #[tokio::test]
 async fn change_cover_twice_replaces_the_cover_file() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
 
     // Two visibly different release images, so the two stored thumbnails differ.
     let source_dir = TempDir::new().unwrap();
@@ -174,7 +177,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
     change_to(&green).await.unwrap();
     cover_row().await;
     let first_version = cover_version().await;
-    let first_ref = cover_file(&manager, &release.id).await;
+    let first_ref = cover_file(manager, &release.id).await;
 
     // The second change points the row that already has a cover at a new
     // file.
@@ -182,7 +185,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
     cover_row().await;
 
     // The row names a new file, which holds the second image's bytes.
-    let second_ref = cover_file(&manager, &release.id).await;
+    let second_ref = cover_file(manager, &release.id).await;
     assert_ne!(
         second_ref.id(),
         first_ref.id(),
@@ -210,19 +213,20 @@ async fn change_cover_twice_replaces_the_cover_file() {
 /// reference, and the row's new file reads the new bytes.
 #[tokio::test]
 async fn replacing_an_uploaded_cover_deletes_its_file_record() {
-    let (manager, _temp) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, _temp) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
-    store_test_cover(&manager, &release.id, b"first cover").await;
-    finish_bound_uploads(&manager).await;
-    let first = cover_file(&manager, &release.id).await;
+    insert_release(manager, &release).await;
+    store_test_cover(manager, &release.id, b"first cover").await;
+    finish_bound_uploads(manager).await;
+    let first = cover_file(manager, &release.id).await;
     assert!(matches!(first.place(), coven::FilePlace::Cloud { .. }), "{:?}", first.place());
-    store_test_cover(&manager, &release.id, b"second cover").await;
-    finish_bound_uploads(&manager).await;
-    let second = cover_file(&manager, &release.id).await;
+    store_test_cover(manager, &release.id, b"second cover").await;
+    finish_bound_uploads(manager).await;
+    let second = cover_file(manager, &release.id).await;
     assert!(matches!(second.place(), coven::FilePlace::Cloud { .. }), "{:?}", second.place());
     assert_ne!(first.id(), second.id());
     assert!(matches!(

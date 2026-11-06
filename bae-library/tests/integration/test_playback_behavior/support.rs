@@ -431,7 +431,7 @@ pub(super) struct PlaybackTestFixture {
 impl PlaybackFixture for PlaybackTestFixture {
     async fn close(self) {
         self.playback_handle.shutdown().await;
-        self.library.close().await.expect("close the test library");
+        self.library.manager().close().await.expect("close the test library");
     }
 }
 
@@ -546,5 +546,5 @@ impl SkipDirection {
 pub(super) fn playback_values(
     fixture: &PlaybackTestFixture,
 ) -> bae_store::live_query::LiveValues<Option<bae_playback::NowPlayingValues>> {
-    fixture.library.values_until_closed(fixture.library.subscribe_now_playing())
+    fixture.library.manager().values_until_closed(fixture.library.manager().subscribe_now_playing())
 }

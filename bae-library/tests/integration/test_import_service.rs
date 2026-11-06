@@ -63,7 +63,7 @@ impl ImportFixture {
     /// No sync loop behind the connection: the remote-import tests drain the
     /// upload queue themselves and assert what that pass moved.
     async fn connect_cloud(&self) {
-        bae_library::test_libraries::connect_storage(&self.library, &self.storage).await;
+        bae_library::test_libraries::connect_storage(self.library.manager(), &self.storage).await;
     }
 }
 
@@ -297,11 +297,13 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
         .await
         .unwrap()
         .expect("cover row");
-    let bytes = bae_library::test_libraries::read_cover_image_bytes(&f.library, release_id)
-        .await
-        .expect("cover file readable");
+    let bytes =
+        bae_library::test_libraries::read_cover_image_bytes(f.library.manager(), release_id)
+            .await
+            .expect("cover file readable");
     let file = f
         .library
+        .manager()
         .library_image_file_for_test(release_id, &LibraryImageType::Cover)
         .await
         .unwrap()

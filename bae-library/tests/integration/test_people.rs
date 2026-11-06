@@ -17,28 +17,31 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let people = library.people_owner().clone();
-    assert!(matches!(library.create_profile("Robin").await, Err(ProfileError::NotRegistered)));
+    let people = library.people().clone();
+    assert!(matches!(
+        library.manager().create_profile("Robin").await,
+        Err(ProfileError::NotRegistered)
+    ));
     assert!(people.profiles().await.unwrap().is_empty());
-    connect_storage(&library, &storage).await;
-    let profile = made_profile(&library, "Robin").await;
+    connect_storage(library.manager(), &storage).await;
+    let profile = made_profile(library.manager(), "Robin").await;
     assert_eq!(profile.history_sharing, Sharing::Private);
-    library.create_profile("Robin").await.unwrap();
+    library.manager().create_profile("Robin").await.unwrap();
     assert_eq!(people.profile(profile.id).await.unwrap(), Some(profile.clone()));
     assert!(matches!(
-        library.create_profile("Another Name").await,
+        library.manager().create_profile("Another Name").await,
         Err(ProfileError::AlreadyExists)
     ));
-    let listed = library.people().await.unwrap();
+    let listed = library.manager().people().await.unwrap();
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].profile.as_ref(), Some(&profile));
     assert!(listed[0].membership.is_self);
-    library.rename_profile("New Name").await.unwrap();
-    library.set_history_sharing(Sharing::Household).await.unwrap();
+    library.manager().rename_profile("New Name").await.unwrap();
+    library.manager().set_history_sharing(Sharing::Household).await.unwrap();
     let profile = people.profile(profile.id).await.unwrap().unwrap();
     assert_eq!(profile.name, "New Name");
     assert_eq!(profile.history_sharing, Sharing::Household);
-    library.close().await.unwrap();
+    library.manager().close().await.unwrap();
 }
 
 /// A PNG of `width` by `height` pixels in one color.
@@ -61,10 +64,10 @@ async fn a_profile_names_each_new_avatar_at_once() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let people = library.people_owner().clone();
-    connect_storage(&library, &storage).await;
-    let profile = made_profile(&library, "Rowan").await;
-    assert_eq!(library.avatar(profile.id).await.unwrap(), None);
+    let people = library.people().clone();
+    connect_storage(library.manager(), &storage).await;
+    let profile = made_profile(library.manager(), "Rowan").await;
+    assert_eq!(library.manager().avatar(profile.id).await.unwrap(), None);
     let first_source = solid_png(16, 16, [120, 40, 200]);
     let second_source = solid_png(16, 16, [20, 160, 90]);
     let first_jpeg = bae_util::stored_image::stored_jpeg(&first_source).unwrap();
@@ -74,11 +77,11 @@ async fn a_profile_names_each_new_avatar_at_once() {
     // long as the test holds the provider's creates.
     let gate = std::sync::Arc::new(tokio::sync::Semaphore::new(0));
     storage.gate_creations(gate.clone()).await;
-    library.set_avatar(Some(first_source)).await.unwrap();
+    library.manager().set_avatar(Some(first_source)).await.unwrap();
     let avatar = async || people.profile(profile.id).await.unwrap().unwrap().avatar;
     let first = avatar().await.expect("the first avatar");
-    assert_eq!(library.avatar(profile.id).await.unwrap().unwrap(), first_jpeg);
-    library.set_avatar(Some(second_source)).await.unwrap();
+    assert_eq!(library.manager().avatar(profile.id).await.unwrap().unwrap(), first_jpeg);
+    library.manager().set_avatar(Some(second_source)).await.unwrap();
     let second = avatar().await.expect("the second avatar");
     // The profile row references each new avatar's coven file from the write
     // that sets it; a new avatar is a new file.
@@ -86,9 +89,9 @@ async fn a_profile_names_each_new_avatar_at_once() {
     // Its version is the file's, naming this device too while the file is on
     // it only.
     assert!(second.version.starts_with(&format!("{}@", second.file.0)), "{}", second.version);
-    assert_eq!(library.avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
+    assert_eq!(library.manager().avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
     gate.add_permits(tokio::sync::Semaphore::MAX_PERMITS);
-    let mut profiles = library.subscribe_profiles();
+    let mut profiles = library.manager().subscribe_profiles();
     let stored = bae_library::followed::value_matching(&mut profiles, |profiles| {
         profiles.iter().find(|candidate| candidate.id == profile.id).is_some_and(|candidate| {
             candidate
@@ -108,11 +111,11 @@ async fn a_profile_names_each_new_avatar_at_once() {
         second.file.0.to_string(),
         "the version moves to the file's alone as the file is stored"
     );
-    assert_eq!(library.avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
-    library.set_avatar(None).await.unwrap();
-    assert_eq!(library.avatar(profile.id).await.unwrap(), None);
+    assert_eq!(library.manager().avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
+    library.manager().set_avatar(None).await.unwrap();
+    assert_eq!(library.manager().avatar(profile.id).await.unwrap(), None);
     assert_eq!(avatar().await, None);
-    library.close().await.unwrap();
+    library.manager().close().await.unwrap();
 }
 
 /// A camera-sized photo is stored as a cover is: a JPEG downscaled to fit the
@@ -127,8 +130,8 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    connect_storage(&library, &storage).await;
-    let profile = made_profile(&library, "Rowan").await;
+    connect_storage(library.manager(), &storage).await;
+    let profile = made_profile(library.manager(), "Rowan").await;
     let edge = bae_util::stored_image::STORED_MAX_EDGE;
     let photo = png(image::RgbImage::from_fn(edge * 5, edge * 10 / 3, |x, y| {
         let mixed = x.wrapping_mul(2_654_435_761) ^ y.wrapping_mul(2_246_822_519);
@@ -136,9 +139,9 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
         image::Rgb([r, g, b])
     }));
 
-    library.set_avatar(Some(photo)).await.unwrap();
+    library.manager().set_avatar(Some(photo)).await.unwrap();
 
-    let stored = library.avatar(profile.id).await.unwrap().unwrap();
+    let stored = library.manager().avatar(profile.id).await.unwrap().unwrap();
     assert_eq!(image::guess_format(&stored).unwrap(), image::ImageFormat::Jpeg);
     let decoded = image::load_from_memory(&stored).unwrap();
     assert_eq!(
@@ -146,7 +149,7 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
         (edge, edge * 2 / 3),
         "downscaled to fit the stored edge, aspect kept"
     );
-    library.close().await.unwrap();
+    library.manager().close().await.unwrap();
 }
 
 /// A picked PNG is stored as a cover or an artist picture would be: the
@@ -160,16 +163,16 @@ async fn a_png_avatar_is_stored_as_covers_are() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    connect_storage(&library, &storage).await;
-    let profile = made_profile(&library, "Rowan").await;
+    connect_storage(library.manager(), &storage).await;
+    let profile = made_profile(library.manager(), "Rowan").await;
     let picked = solid_png(16, 16, [120, 40, 200]);
 
-    library.set_avatar(Some(picked.clone())).await.unwrap();
+    library.manager().set_avatar(Some(picked.clone())).await.unwrap();
 
-    let stored = library.avatar(profile.id).await.unwrap().unwrap();
+    let stored = library.manager().avatar(profile.id).await.unwrap().unwrap();
     assert_eq!(stored, bae_util::stored_image::stored_jpeg(&picked).unwrap());
     assert_eq!(image::guess_format(&stored).unwrap(), image::ImageFormat::Jpeg);
-    library.close().await.unwrap();
+    library.manager().close().await.unwrap();
 }
 
 /// Bytes that are no image make no avatar: the setting is refused and the
@@ -183,17 +186,18 @@ async fn an_undecodable_avatar_is_refused() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    connect_storage(&library, &storage).await;
-    let profile = made_profile(&library, "Rowan").await;
+    connect_storage(library.manager(), &storage).await;
+    let profile = made_profile(library.manager(), "Rowan").await;
 
     let error = library
+        .manager()
         .set_avatar(Some(b"not an image".to_vec()))
         .await
         .expect_err("bytes that are no image make no avatar");
 
     assert!(matches!(error, bae_library::people::AvatarError::Image { .. }), "{error}");
-    assert_eq!(library.avatar(profile.id).await.unwrap(), None);
-    library.close().await.unwrap();
+    assert_eq!(library.manager().avatar(profile.id).await.unwrap(), None);
+    library.manager().close().await.unwrap();
 }
 
 /// Run a test body on the worker stack the app gives native invite and

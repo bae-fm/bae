@@ -16,7 +16,7 @@ struct HighSampleRateTestFixture {
 impl PlaybackFixture for HighSampleRateTestFixture {
     async fn close(self) {
         self.playback_handle.shutdown().await;
-        self.library.close().await.expect("close the test library");
+        self.library.manager().close().await.expect("close the test library");
     }
 }
 
@@ -53,12 +53,13 @@ impl HighSampleRateTestFixture {
         library.import_folder(album_dir, release_id_key).await;
 
         let albums = bae_views::LibraryViews::new(library.store().clone()).get_albums(&[]).await?;
-        let releases = library.get_releases_for_album(&albums[0].id).await?;
-        let tracks = library.get_tracks_for_release(&releases[0].id).await?;
+        let releases = library.manager().get_releases_for_album(&albums[0].id).await?;
+        let tracks = library.manager().get_tracks_for_release(&releases[0].id).await?;
         let track_id = tracks[0].id.clone();
 
         // Verify the audio format was correctly detected as 96kHz
         let audio_format = library
+            .manager()
             .get_audio_format_by_track_id(&track_id)
             .await?
             .expect("Audio format should be detected for 96kHz track");
@@ -394,6 +395,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
     // Build a library + import tracks, but do NOT start a playback service.
     let (library, _temp_dir) = imported_library_without_playback().await;
     let releases = library
+        .manager()
         .get_releases_for_album(
             &bae_views::LibraryViews::new(library.store().clone()).get_albums(&[]).await.unwrap()
                 [0]
@@ -401,12 +403,12 @@ async fn test_restore_emits_seeked_at_saved_position() {
         )
         .await
         .unwrap();
-    let tracks = library.get_tracks_for_release(&releases[0].id).await.unwrap();
+    let tracks = library.manager().get_tracks_for_release(&releases[0].id).await.unwrap();
     let track_id = tracks[0].id.clone();
 
     // Write a snapshot before the service starts, so no one can consume it
     // before our test service starts.
-    library.write_resume_point(&releases[0].id, track_id.clone(), Some(0)).await.unwrap();
+    library.manager().write_resume_point(&releases[0].id, track_id.clone(), Some(0)).await.unwrap();
 
     // Start the playback service — restore() runs on the audio thread before
     // run() and calls emit_position_display at its tail.
@@ -434,6 +436,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
 
     let (library, _temp_dir) = imported_library_without_playback().await;
     let release_id = library
+        .manager()
         .get_releases_for_album(
             &bae_views::LibraryViews::new(library.store().clone()).get_albums(&[]).await.unwrap()
                 [0]
@@ -443,7 +446,8 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         .unwrap()[0]
         .id
         .clone();
-    let first_track = library.get_tracks_for_release(&release_id).await.unwrap()[0].id.clone();
+    let first_track =
+        library.manager().get_tracks_for_release(&release_id).await.unwrap()[0].id.clone();
 
     let (handle, _capture_rx, _audio_clock) = start_capture_service(&library).await;
 

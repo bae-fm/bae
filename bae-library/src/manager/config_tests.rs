@@ -11,7 +11,9 @@ use crate::manager::tests::*;
 async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
     use bae_preferences::DiscogsValidation;
 
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+
+    let manager = test.library.manager();
     // Config claims an Unvalidated key; the keyring has none — the torn state.
     manager
         .update_preferences(|prefs| {
@@ -21,7 +23,7 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
         .await
         .unwrap();
 
-    let handle = manager.start_import().await.unwrap();
+    let handle = test.library.start_import().await.unwrap();
 
     assert!(
         handle.revalidate_discogs_token().await.is_err(),
@@ -39,8 +41,10 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
     use bae_import::ImportError;
     use bae_preferences::DiscogsValidation;
 
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let handle = manager.start_import().await.unwrap();
+    let (test, _temp_dir) = setup_test_manager().await;
+
+    let manager = test.library.manager();
+    let handle = test.library.start_import().await.unwrap();
 
     let outcome = handle
         .save_discogs_token("discogs-test-key")
@@ -67,7 +71,8 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
 
 #[tokio::test]
 async fn set_save_presets_rejects_removing_selected_default() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     manager.set_default_track_save_preset("mp3".to_string()).await.unwrap();
 
     let presets_without_mp3: Vec<_> = manager
@@ -89,7 +94,8 @@ async fn set_save_presets_rejects_removing_selected_default() {
 /// A save default must name a preset that exists and applies to its level.
 #[tokio::test]
 async fn set_default_save_preset_rejects_unknown_and_wrong_level() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     assert!(
         manager.set_default_track_save_preset("no-such-preset".to_string()).await.is_err(),
@@ -112,7 +118,8 @@ async fn set_default_save_preset_rejects_unknown_and_wrong_level() {
 
 #[tokio::test]
 async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let invalid = bae_preferences::McpConfig { enabled: true, port: 0 };
     assert!(manager.set_mcp_config(invalid).await.is_err());
     assert_eq!(
@@ -128,7 +135,8 @@ async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
 
 #[tokio::test]
 async fn mcp_token_is_keyring_backed_and_sets_target() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     assert!(manager.get_mcp_token().await.unwrap().is_none());
 
     let token = manager.ensure_mcp_token().await.unwrap();
@@ -143,7 +151,8 @@ async fn mcp_token_is_keyring_backed_and_sets_target() {
 
 #[tokio::test]
 async fn subsonic_password_is_keyring_backed() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     assert!(manager.get_subsonic_password().await.unwrap().is_none());
 
     manager.set_subsonic_password("s3cret".to_string()).await.unwrap();
@@ -155,7 +164,8 @@ async fn subsonic_password_is_keyring_backed() {
 
 #[tokio::test]
 async fn subsonic_config_rejects_invalid_and_persists_valid() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let enabled_without_username = bae_preferences::SubsonicConfig {
         enabled: true,
         port: bae_preferences::SUBSONIC_DEFAULT_PORT,
@@ -186,7 +196,9 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
     use bae_catalogs::catalog::LookupCatalog;
     use bae_preferences::SourceAvailability;
 
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+
+    let manager = test.library.manager();
 
     // No Discogs key in a fresh library, so MusicBrainz is the only one asked.
     let states: Vec<_> = manager
@@ -225,7 +237,9 @@ async fn an_unreachable_source_keeps_the_switch_underneath_it() {
     use bae_catalogs::catalog::LookupCatalog;
     use bae_preferences::SourceAvailability;
 
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+
+    let manager = test.library.manager();
 
     manager
         .set_metadata_source_enabled(LookupCatalog::Discogs, false)
@@ -253,7 +267,8 @@ async fn an_unreachable_source_keeps_the_switch_underneath_it() {
 /// just set.
 #[tokio::test]
 async fn transfer_concurrency_settings_apply_to_the_open_store() {
-    let (manager, _temp) = setup_test_manager().await;
+    let (test, _temp) = setup_test_manager().await;
+    let manager = test.library.manager();
     let before = manager.transfer_limits();
 
     manager.set_max_concurrent_uploads(5).await.unwrap();

@@ -235,6 +235,7 @@ async fn a_track_whose_name_is_not_utf8_exports_under_the_name_coven_writes() {
     let target = f.temp_path().join("Export");
     fs::create_dir_all(&target).unwrap();
     f.library
+        .manager()
         .export_release(&release_id, &target, bae_transfers::OutputKind::Export)
         .await
         .expect("the release exports");
@@ -262,7 +263,7 @@ async fn a_track_whose_name_is_not_utf8_uploads() {
     let key = bae_import::CandidateKey::folder(&album);
     f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
 
-    f.library.set_import_to_cloud(true).await.unwrap();
+    f.library.manager().set_import_to_cloud(true).await.unwrap();
     let import_id = f.handle.start_import(&key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let outcome = bae_import::test_imports::wait_for_import_end(&mut progress_rx).await;
@@ -271,7 +272,7 @@ async fn a_track_whose_name_is_not_utf8_uploads() {
     };
 
     assert_eq!(
-        f.library.drain_uploads_expecting_work().await.unwrap(),
+        f.library.manager().drain_uploads_expecting_work().await.unwrap(),
         1,
         "the release's one track uploads"
     );

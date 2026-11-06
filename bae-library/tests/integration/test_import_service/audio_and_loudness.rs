@@ -42,7 +42,7 @@ async fn local_folder_import() {
         .iter()
         .all(|file| !file.stored));
     let files = f.library.records().get_files_for_release(&release_id).await.unwrap();
-    let local_path = f.library.file_local_path(&files[0].id).await.unwrap().unwrap();
+    let local_path = f.library.manager().file_local_path(&files[0].id).await.unwrap().unwrap();
     assert_eq!(local_path.parent().unwrap(), album_dir);
 
     let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
@@ -335,8 +335,8 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     );
 
     // ── Playback gain per track ──
-    let quiet_audio = f.library.resolve_track_audio(&quiet.id).await.unwrap();
-    let loud_audio = f.library.resolve_track_audio(&loud.id).await.unwrap();
+    let quiet_audio = f.library.manager().resolve_track_audio(&quiet.id).await.unwrap();
+    let loud_audio = f.library.manager().resolve_track_audio(&loud.id).await.unwrap();
 
     let quiet_gain = bae_playback::replay_gain_linear(&quiet_audio, ReplayGainMode::Track);
     let loud_gain = bae_playback::replay_gain_linear(&loud_audio, ReplayGainMode::Track);

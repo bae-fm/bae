@@ -105,7 +105,7 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
     let library = temp.path().join("library");
     std::fs::create_dir_all(&library).unwrap();
     let test_library = bae_library::test_libraries::open_test_library(&library).await;
-    test_library.set_identify_automatically(false).await.unwrap();
+    test_library.manager().set_identify_automatically(false).await.unwrap();
     let services = bae_app::test_services::start_services(&test_library)
         .await
         .expect("the test library's services start");

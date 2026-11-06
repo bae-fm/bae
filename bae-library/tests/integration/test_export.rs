@@ -33,7 +33,7 @@ impl ExportFixture {
             bae_util::http::Http::for_test(),
         )
         .await;
-        bae_library::test_libraries::connect_storage(&library, &cloud).await;
+        bae_library::test_libraries::connect_storage(library.manager(), &cloud).await;
         let handle = library.start_import().await.expect("test import service starts");
 
         Self { library, handle, cloud, _temp: temp }
@@ -63,16 +63,16 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     let (release_id, _album_id) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    let files = f.library.get_files_for_release(&release_id).await.unwrap();
+    let files = f.library.manager().get_files_for_release(&release_id).await.unwrap();
     assert_eq!(files.len(), 1);
     let original_bytes = fs::read(album_dir.join(&files[0].original_filename)).unwrap();
 
-    f.library.upload_release(&release_id, false).await.unwrap();
-    let uploaded = f.library.drain_uploads_expecting_work().await.unwrap();
+    f.library.manager().upload_release(&release_id, false).await.unwrap();
+    let uploaded = f.library.manager().drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, files.len(), "each release file uploaded");
 
     for file in files {
-        f.library.evict_file_for_test(file.file).await.unwrap();
+        f.library.manager().evict_file_for_test(file.file).await.unwrap();
     }
     fs::remove_dir_all(album_dir).unwrap();
     (release_id, original_bytes)
@@ -106,11 +106,15 @@ async fn export_track_from_cloud_only_release() {
         bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
     let (release_id, _) = import_then_strand_in_cloud(&f, &album_dir).await;
 
-    let tracks = f.library.get_tracks_for_release(&release_id).await.unwrap();
+    let tracks = f.library.manager().get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 1);
 
     let out = f.temp_path().join("exported.flac");
-    f.library.save_track(&tracks[0].id, &out, "flac").await.expect("cloud-only track must save");
+    f.library
+        .manager()
+        .save_track(&tracks[0].id, &out, "flac")
+        .await
+        .expect("cloud-only track must save");
 
     // FLAC is lossless: the exported file decodes to the same PCM as the
     // cloud copy.
@@ -141,9 +145,9 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
     fs::create_dir_all(&album_dir).unwrap();
     bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
     let release_id = import_unknown_local(&f, &album_dir).await;
-    let tracks = f.library.get_tracks_for_release(&release_id).await.unwrap();
+    let tracks = f.library.manager().get_tracks_for_release(&release_id).await.unwrap();
 
-    let mut presets = f.library.save_presets().await.unwrap();
+    let mut presets = f.library.manager().save_presets().await.unwrap();
     presets.push(SavePreset {
         id: "title-only".to_string(),
         name: "Title only".to_string(),
@@ -164,15 +168,17 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
         applies_to_release: false,
         embed_cover: true,
     });
-    f.library.set_save_presets(presets).await.unwrap();
+    f.library.manager().set_save_presets(presets).await.unwrap();
 
     let title_only = f
         .library
+        .manager()
         .save_track_suggested_name(&tracks[0].id, "title-only")
         .await
         .expect("title-only preset renders a stem");
     let num_title = f
         .library
+        .manager()
         .save_track_suggested_name(&tracks[0].id, "num-title")
         .await
         .expect("num-title preset renders a stem");
@@ -185,7 +191,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
     );
 
     // An unknown preset id can't back a track suggestion.
-    let err = f.library.save_track_suggested_name(&tracks[0].id, "no-such-preset").await;
+    let err = f.library.manager().save_track_suggested_name(&tracks[0].id, "no-such-preset").await;
     assert!(err.is_err(), "an unknown preset id is rejected");
 }
 
@@ -203,12 +209,20 @@ async fn save_cover_image_skips_the_read_when_not_embedding() {
     bae_import::test_fixtures::write_cover_png(&album_dir.join("cover.png"));
     let release_id = import_unknown_local(&f, &album_dir).await;
 
-    let with_cover =
-        f.library.save_cover_image(&release_id, true).await.expect("cover when embedding");
+    let with_cover = f
+        .library
+        .manager()
+        .save_cover_image(&release_id, true)
+        .await
+        .expect("cover when embedding");
     assert!(with_cover.is_some(), "embedding reads the release's cover");
 
-    let without_cover =
-        f.library.save_cover_image(&release_id, false).await.expect("no cover when not embedding");
+    let without_cover = f
+        .library
+        .manager()
+        .save_cover_image(&release_id, false)
+        .await
+        .expect("no cover when not embedding");
     assert!(without_cover.is_none(), "not embedding skips the cover read");
 }
 
@@ -226,6 +240,7 @@ async fn export_release_from_cloud_only_release() {
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
     f.library
+        .manager()
         .export_release(&release_id, &target, OutputKind::Export)
         .await
         .expect("cloud-only release must export");
@@ -264,13 +279,14 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
         applies_to_release: true,
         embed_cover: true,
     };
-    let mut presets = f.library.save_presets().await.unwrap();
+    let mut presets = f.library.manager().save_presets().await.unwrap();
     presets.push(image_preset.clone());
-    f.library.set_save_presets(presets).await.unwrap();
+    f.library.manager().set_save_presets(presets).await.unwrap();
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
     f.library
+        .manager()
         .export_release(&release_id, &target, OutputKind::Save { preset: image_preset })
         .await
         .expect("single-file CUE release save must succeed");
@@ -332,13 +348,14 @@ async fn a_release_image_is_named_as_its_folder_is() {
     let release_id = import_unknown_local(&f, &album_dir).await;
 
     let image_preset = flac_save_preset("image", SavePregapPlacement::SingleFileWithCue);
-    let mut presets = f.library.save_presets().await.unwrap();
+    let mut presets = f.library.manager().save_presets().await.unwrap();
     presets.push(image_preset.clone());
-    f.library.set_save_presets(presets).await.unwrap();
+    f.library.manager().set_save_presets(presets).await.unwrap();
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
     f.library
+        .manager()
         .export_release(&release_id, &target, OutputKind::Save { preset: image_preset })
         .await
         .expect("the release image saves");
@@ -369,6 +386,7 @@ async fn two_names_written_as_one_fail_the_export() {
     let release_id = import_unknown_local(&f, &album_dir).await;
     let mut names: Vec<String> = f
         .library
+        .manager()
         .get_files_for_release(&release_id)
         .await
         .unwrap()
@@ -382,6 +400,7 @@ async fn two_names_written_as_one_fail_the_export() {
     fs::create_dir_all(&target).unwrap();
     let error = f
         .library
+        .manager()
         .export_release(&release_id, &target, OutputKind::Export)
         .await
         .expect_err("two files written at one path fail the export");
@@ -424,14 +443,15 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
     let release_id = import_unknown_local(&f, &album_dir).await;
     let mut preset = flac_save_preset("titles", SavePregapPlacement::AppendToPreviousExceptHtoa);
     preset.filename_tokens = vec![SaveFilenameToken::Title];
-    let mut presets = f.library.save_presets().await.unwrap();
+    let mut presets = f.library.manager().save_presets().await.unwrap();
     presets.push(preset.clone());
-    f.library.set_save_presets(presets).await.unwrap();
+    f.library.manager().set_save_presets(presets).await.unwrap();
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
     let error = f
         .library
+        .manager()
         .export_release(&release_id, &target, OutputKind::Save { preset })
         .await
         .expect_err("two tracks written at one path fail the save");
@@ -458,12 +478,13 @@ async fn export_release_missing_file_is_hard_error() {
     let (release_id, _) = import_then_strand_in_cloud(&f, &album_dir).await;
 
     // Blow away the seeded file.
-    let files = f.library.get_files_for_release(&release_id).await.unwrap();
-    bae_library::test_libraries::remove_uploaded_file(&f.library, &f.cloud, &files[0].id).await;
+    let files = f.library.manager().get_files_for_release(&release_id).await.unwrap();
+    bae_library::test_libraries::remove_uploaded_file(f.library.manager(), &f.cloud, &files[0].id)
+        .await;
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
-    let result = f.library.export_release(&release_id, &target, OutputKind::Export).await;
+    let result = f.library.manager().export_release(&release_id, &target, OutputKind::Export).await;
     assert!(result.is_err(), "missing file must fail the export");
     assert!(
         fs::read_dir(&target).unwrap().next().is_none(),
@@ -494,14 +515,15 @@ async fn peak_sources_open_saving(
     source_dir: &Path,
     preset: SavePreset,
 ) -> usize {
-    let mut presets = f.library.save_presets().await.unwrap();
+    let mut presets = f.library.manager().save_presets().await.unwrap();
     presets.push(preset.clone());
-    f.library.set_save_presets(presets).await.unwrap();
+    f.library.manager().set_save_presets(presets).await.unwrap();
     let target = f.temp_path().join(format!("export-{}", preset.id));
     fs::create_dir_all(&target).unwrap();
 
     let sampler = bae_util::open_files_peak::OpenFilesPeak::start(source_dir);
     f.library
+        .manager()
         .export_release(release_id, &target, OutputKind::Save { preset })
         .await
         .expect("the release save succeeds");
@@ -531,7 +553,7 @@ async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
         );
     }
     let release_id = import_unknown_local(&f, &album_dir).await;
-    assert_eq!(f.library.get_tracks_for_release(&release_id).await.unwrap().len(), 24);
+    assert_eq!(f.library.manager().get_tracks_for_release(&release_id).await.unwrap().len(), 24);
 
     let per_track = peak_sources_open_saving(
         &f,
@@ -583,7 +605,7 @@ async fn a_release_save_reads_a_cue_image_through_one_open_file() {
     }
     fs::write(album_dir.join("Test Album.cue"), cue).unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
-    assert_eq!(f.library.get_tracks_for_release(&release_id).await.unwrap().len(), 12);
+    assert_eq!(f.library.manager().get_tracks_for_release(&release_id).await.unwrap().len(), 12);
 
     for preset in [
         flac_save_preset("tracks", SavePregapPlacement::AppendToPreviousExceptHtoa),

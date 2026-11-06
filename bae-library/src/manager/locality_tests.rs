@@ -119,20 +119,17 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
 /// only: nothing is left to keep, and it plays from its original.
 #[tokio::test]
 async fn cancelling_the_upload_of_a_release_kept_here_detaches_audio() {
-    let (manager, temp) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release = insert_local_release_with_files(
-        &manager,
-        temp.path(),
-        "Album",
-        &[("track.flac", b"audio")],
-    )
-    .await;
+    let (test, temp) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    let release =
+        insert_local_release_with_files(manager, temp.path(), "Album", &[("track.flac", b"audio")])
+            .await;
     manager.upload_release(&release.id, true).await.unwrap();
     manager.cancel_release_transition(&release.id).await.unwrap();
-    assert!(download_queue_now(&manager).await.rows.is_empty());
+    assert!(download_queue_now(manager).await.rows.is_empty());
     assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
-    let files = release_files(&manager, &release.id).await;
+    let files = release_files(manager, &release.id).await;
     assert!(files.iter().all(|file| !file.stored));
     assert_eq!(manager.records.read_release_file(&files[0].id).await.unwrap(), b"audio");
 }
@@ -298,40 +295,41 @@ fn a_release_on_a_removed_device_names_it_as_removed() {
 /// Audio stays pinned while the cover remains in its separate evictable cache.
 #[tokio::test]
 async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("pinned-with-cover"),
         "Pinned With Cover",
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    store_test_cover(&manager, &release.id, b"cover-bytes").await;
-    finish_bound_uploads(&manager).await;
+    store_test_cover(manager, &release.id, b"cover-bytes").await;
+    finish_bound_uploads(manager).await;
 
     manager.upload_release(&release.id, true).await.unwrap();
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, 1, "the release's file uploads; its cover is stored already");
-    wait_for_kept_release(&manager, &release.id).await;
-    let file_id = release_files(&manager, &release.id).await[0].id.clone();
+    wait_for_kept_release(manager, &release.id).await;
+    let file_id = release_files(manager, &release.id).await[0].id.clone();
     assert!(
-        file_pinned(&manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
+        file_pinned(manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
         "a move to be kept here leaves the release file pinned"
     );
     assert!(
-        !file_pinned(&manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
         "covers remain evictable when audio is pinned"
     );
 
     manager.unpin_release(&release.id).await.unwrap();
 
     assert!(
-        !file_pinned(&manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
+        !file_pinned(manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
         "the release file unpinned"
     );
     assert!(
-        !file_pinned(&manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
         "the cover remains evictable"
     );
 }
@@ -344,12 +342,17 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
 async fn a_failed_transition_ends_in_a_write_of_its_own() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     let shown = || async {
-        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &release.id)
-            .await
-            .unwrap()
+        bae_transfers::release_storage_action::release_transfer_action(
+            &manager.library.manager().store,
+            &release.id,
+        )
+        .await
+        .unwrap()
     };
 
     let failed = manager
+        .library
+        .manager()
         .run_storage_action(&release.id, StoredTransition::Unpin, async {
             Err::<(), _>(LibraryError::Storage(format!(
                 "the work failed, showing {:?}",
@@ -364,6 +367,8 @@ async fn a_failed_transition_ends_in_a_write_of_its_own() {
     assert_eq!(shown().await, None, "a failure ends it");
 
     let panicked = manager
+        .library
+        .manager()
         .run_storage_action(&release.id, StoredTransition::Unpin, async {
             if release.id.is_empty() {
                 return Ok(());
@@ -380,10 +385,11 @@ async fn a_failed_transition_ends_in_a_write_of_its_own() {
 /// never shows the unpin once its files are evictable.
 #[tokio::test]
 async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("kept"),
         "Kept",
         &[("track.flac", b"track-bytes")],
@@ -391,10 +397,10 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
     .await;
     manager.upload_release(&release.id, true).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
-    wait_for_kept_release(&manager, &release.id).await;
-    let file = release_files(&manager, &release.id).await.remove(0);
+    wait_for_kept_release(manager, &release.id).await;
+    let file = release_files(manager, &release.id).await.remove(0);
     let pinned = || async {
-        file_pinned(&manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file.id).await
+        file_pinned(manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file.id).await
     };
     assert!(pinned().await);
 
@@ -423,10 +429,11 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
 /// never shows the transition once its files are here.
 #[tokio::test]
 async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("uploaded"),
         "Uploaded",
         &[("track.flac", b"track-bytes")],
@@ -434,7 +441,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
     .await;
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
-    let files = release_files(&manager, &release.id).await;
+    let files = release_files(manager, &release.id).await;
     assert!(files.iter().all(|file| file.stored));
 
     let refused_folder = temp_dir.path().join("refused");
@@ -459,7 +466,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
     .await;
     assert!(refused.is_err(), "no make-local was admitted for the write to end");
     assert!(
-        release_files(&manager, &release.id).await.iter().all(|file| file.stored),
+        release_files(manager, &release.id).await.iter().all(|file| file.stored),
         "a write that can't end the transition switches no file"
     );
 
@@ -470,7 +477,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
         .await
         .unwrap();
     assert!(
-        release_files(&manager, &release.id).await.iter().all(|file| !file.stored),
+        release_files(manager, &release.id).await.iter().all(|file| !file.stored),
         "making it local switched every file here"
     );
     assert_eq!(
@@ -488,7 +495,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
 async fn a_release_in_a_transition_refuses_another() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     assert!(bae_transfers::release_storage_action::begin_release_storage_action(
-        &manager.store,
+        &manager.library.manager().store,
         &release.id,
         StoredTransition::Unpin
     )
@@ -497,6 +504,8 @@ async fn a_release_in_a_transition_refuses_another() {
 
     let ran = std::sync::atomic::AtomicBool::new(false);
     let refused = manager
+        .library
+        .manager()
         .run_storage_action(&release.id, StoredTransition::DetachAudio, async {
             ran.store(true, std::sync::atomic::Ordering::SeqCst);
             Ok(())
@@ -505,9 +514,12 @@ async fn a_release_in_a_transition_refuses_another() {
     assert!(matches!(refused, Err(LibraryError::Storage(_))), "{refused:?}");
     assert!(!ran.load(std::sync::atomic::Ordering::SeqCst), "the refused work never runs");
     assert_eq!(
-        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &release.id)
-            .await
-            .unwrap(),
+        bae_transfers::release_storage_action::release_transfer_action(
+            &manager.library.manager().store,
+            &release.id
+        )
+        .await
+        .unwrap(),
         Some(ReleaseStorageAction::Unpin)
     );
 }
@@ -517,17 +529,18 @@ async fn a_release_in_a_transition_refuses_another() {
 /// of its own.
 #[tokio::test]
 async fn the_write_that_queues_a_moves_files_ends_its_transition() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("moved"),
         "Moved",
         &[("track.flac", b"track-bytes")],
     )
     .await;
     manager.upload_release(&release.id, false).await.unwrap();
-    assert_eq!(moving_file_count(&manager, &release.id).await, 1);
+    assert_eq!(moving_file_count(manager, &release.id).await, 1);
     assert_eq!(
         bae_transfers::release_storage_action::release_transfer_action(&manager.store, &release.id)
             .await
@@ -535,7 +548,7 @@ async fn the_write_that_queues_a_moves_files_ends_its_transition() {
         None
     );
 
-    let empty = insert_release_without_files(&manager).await;
+    let empty = insert_release_without_files(&test).await;
     let refused = manager.upload_release(&empty, false).await;
     assert!(refused.is_err(), "a release with no files has none to queue");
     assert_eq!(
@@ -550,8 +563,8 @@ async fn the_write_that_queues_a_moves_files_ends_its_transition() {
 async fn insert_release_without_files(manager: &TestManager) -> String {
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.records.insert_album(&album).await.unwrap();
-    insert_release(manager, &release).await;
+    manager.library.manager().records.insert_album(&album).await.unwrap();
+    insert_release(manager.library.manager(), &release).await;
     release.id
 }
 
@@ -560,11 +573,12 @@ async fn insert_release_without_files(manager: &TestManager) -> String {
 /// release; once its files have switched it is listed no more.
 #[tokio::test]
 async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let home = connect_test_cloud(&test).await;
     let release_id =
-        uploaded_release(&manager, &temp_dir.path().join("made-local"), "Made Local", false).await;
-    let file = release_files(&manager, &release_id).await.remove(0);
+        uploaded_release(manager, &temp_dir.path().join("made-local"), "Made Local", false).await;
+    let file = release_files(manager, &release_id).await.remove(0);
     let reference = manager.release_file_ref(&file.id).await.unwrap();
     manager.evict_file_for_test(file.file).await.unwrap();
     let coven::FilePlace::Cloud { location, .. } = reference.place() else {
@@ -589,7 +603,7 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
     let making = tokio::spawn({
-        let manager = manager.library.clone();
+        let manager = test.library.manager().clone();
         let release_id = release_id.clone();
         async move {
             manager
@@ -623,7 +637,8 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
 
 #[tokio::test]
 async fn cancel_release_transition_fires_a_registered_transfer_token() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     // A registered audio detachment token is fired by the unified cancel.
     let token = crate::CancellationToken::new();
@@ -643,13 +658,14 @@ async fn cancel_release_transition_fires_a_registered_transfer_token() {
 // to run all the way through a cycle and retire its intent first.
 #[tokio::test]
 async fn unmanage_cancelled_before_copy_leaves_release_remote() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_uploading(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud_uploading(&test).await;
     // Really Remote, through the real transition: audio detachment resolves the
     // release's current locality from coven, which a fabricated `remote` column
     // with no cloud objects behind it cannot answer.
     let release_id =
-        upload_release_unpaused(&manager, &temp_dir.path().join("r1"), "Album One", false).await;
+        upload_release_unpaused(manager, &temp_dir.path().join("r1"), "Album One", false).await;
 
     // A token cancelled before coven downloads anything: the call stops
     // before its write and removes whatever it made.
@@ -663,7 +679,7 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
         .expect_err("a cancelled audio detachment must not report completion");
 
     assert!(
-        release_files(&manager, &release_id).await.iter().all(|file| file.stored),
+        release_files(manager, &release_id).await.iter().all(|file| file.stored),
         "cancellation leaves every file in the cloud"
     );
     assert_eq!(std::fs::read_dir(&dest).unwrap().count(), 0, "no copy is left");
@@ -678,18 +694,19 @@ const REL_X: &str = "e6b79143-6ab2-4358-8f53-460594936d69"; // was "rel-x"
 /// switches its files.
 #[tokio::test]
 async fn making_a_release_local_ends_its_failed_download() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let release_id = insert_pinnable_release(&manager).await;
-    manager.storage.set_online(false);
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = insert_pinnable_release(&test).await;
+    test.storage.set_online(false);
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    download_queue_until(&manager, |queue| {
+    download_queue_until(manager, |queue| {
         matches!(
             queue.rows.first().map(|row| &row.op.state),
             Some(bae_transfers::DownloadPhase::Failed { .. })
         )
     })
     .await;
-    manager.storage.set_online(true);
+    test.storage.set_online(true);
 
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
@@ -699,7 +716,7 @@ async fn making_a_release_local_ends_its_failed_download() {
         .unwrap();
 
     assert!(
-        download_queue_now(&manager).await.rows.is_empty(),
+        download_queue_now(manager).await.rows.is_empty(),
         "a release made local has no download entry"
     );
 }

@@ -396,9 +396,9 @@ ImageHold = "RemoteImageHost"
     "TestDevice::manager",
     "TestDevice::store",
     "TestDevice::records",
-    "TestDevice::people_owner",
+    "TestDevice::people",
     "TestDevice::membership",
-    "TestDevice::sync_status_owner",
+    "TestDevice::sync_status",
     "TwoDevices::a",
     "TwoDevices::b",
     "TwoDevices::a_mut",
@@ -412,12 +412,12 @@ ImageHold = "RemoteImageHost"
 # them. It is test-utils code, which the tests of the crates above
 # compile, so the checker reads it as production code.
 "bae-library/src/test_libraries.rs" = [
-    "TestLibrary::deref",
+    "TestLibrary::manager",
     "TestLibrary::store",
     "TestLibrary::records",
-    "TestLibrary::people_owner",
+    "TestLibrary::people",
     "TestLibrary::membership",
-    "TestLibrary::sync_status_owner",
+    "TestLibrary::sync_status",
     "TestLibrary::catalogs",
     "TestLibrary::closing",
     "TestLibrary::clock",

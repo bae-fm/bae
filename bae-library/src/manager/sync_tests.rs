@@ -17,11 +17,11 @@ fn cause_text(item: &bae_sync_status::PendingItem) -> Option<String> {
 #[tokio::test]
 async fn a_waiting_upload_is_named_by_its_file_and_album() {
     let (manager, temp, _release, _file_id) = queued_upload_fixture("named").await;
-    let mut values = manager.subscribe_sync_status();
-    manager.start().unwrap();
+    let mut values = manager.library.manager().subscribe_sync_status();
+    manager.library.manager().start().unwrap();
     // The upload can't read a source that moved, so it waits on the file.
     std::fs::remove_file(temp.path().join("named/a.flac")).unwrap();
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
 
     pending_list_until(&mut values, |items| {
         items.iter().any(|item| {
@@ -42,13 +42,13 @@ async fn a_waiting_upload_is_named_by_its_file_and_album() {
 #[tokio::test]
 async fn an_original_changed_since_its_import_fails_the_move() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("changed").await;
-    let mut values = manager.subscribe_sync_status();
-    manager.start().unwrap();
+    let mut values = manager.library.manager().subscribe_sync_status();
+    manager.library.manager().start().unwrap();
     let path = temp.path().join("changed/a.flac");
     let modified = std::fs::metadata(&path).unwrap().modified().unwrap();
     std::fs::write(&path, vec![b'b'; 1000]).unwrap();
     std::fs::File::options().write(true).open(&path).unwrap().set_modified(modified).unwrap();
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
 
     pending_list_until(&mut values, |items| {
         items.iter().any(|item| {
@@ -62,7 +62,10 @@ async fn an_original_changed_since_its_import_fails_the_move() {
         })
     })
     .await;
-    assert!(release_files(&manager, &release.id).await.iter().all(|file| !file.stored));
+    assert!(release_files(manager.library.manager(), &release.id)
+        .await
+        .iter()
+        .all(|file| !file.stored));
 }
 
 /// A retry that fails for the same reason keeps its record as it was, and the
@@ -70,8 +73,8 @@ async fn an_original_changed_since_its_import_fails_the_move() {
 #[tokio::test]
 async fn a_retry_that_fails_again_shows_its_own_error() {
     let (manager, _temp, _release, _file_id) = queued_upload_fixture("retried").await;
-    let mut values = manager.subscribe_sync_status();
-    manager.start().unwrap();
+    let mut values = manager.library.manager().subscribe_sync_status();
+    manager.library.manager().start().unwrap();
     let refuse = |status: u16| coven::Faults {
         refuse_file_uploads: 1,
         failure: coven::StorageFailure::Network,
@@ -80,14 +83,14 @@ async fn a_retry_that_fails_again_shows_its_own_error() {
     };
 
     manager.storage.set_faults(refuse(500)).await;
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     let first = pending_list_until(&mut values, |items| {
         items.iter().any(|item| cause_text(item).is_some_and(|text| text.contains("500")))
     })
     .await;
 
     manager.storage.set_faults(refuse(503)).await;
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     let again = pending_list_until(&mut values, |items| {
         items.iter().any(|item| cause_text(item).is_some_and(|text| text.contains("503")))
     })
@@ -105,11 +108,11 @@ async fn a_retry_that_fails_again_shows_its_own_error() {
 #[tokio::test]
 async fn the_pending_list_keeps_the_order_its_records_arose_in() {
     let (manager, temp, first, _file_id) = queued_upload_fixture("first").await;
-    let mut values = manager.subscribe_sync_status();
-    manager.start().unwrap();
+    let mut values = manager.library.manager().subscribe_sync_status();
+    manager.library.manager().start().unwrap();
     // The move whose original at `path` is missing, from its record.
     let missing_move = |path: std::path::PathBuf| {
-        let manager = manager.library.clone();
+        let manager = manager.library.manager().clone();
         async move {
             manager
                 .store
@@ -133,7 +136,7 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
         |id: coven::MoveId| serde_json::to_vec(&coven::PendingSubject::Move { id }).unwrap();
     let first_path = temp.path().join("first/a.flac");
     std::fs::remove_file(&first_path).unwrap();
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     let first_move = missing_move(first_path).await;
 
     // This device numbers its moves in the order it makes them, each write
@@ -142,11 +145,12 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
     // an order by record would put the second failure first.
     let mut next = first_move.0 + 1;
     while stored(coven::MoveId(next)) >= stored(first_move) {
-        store_test_cover(&manager, &first.id, format!("cover {next}").as_bytes()).await;
+        store_test_cover(manager.library.manager(), &first.id, format!("cover {next}").as_bytes())
+            .await;
         next += 1;
     }
     let second = insert_release_with_queued_uploads(
-        &manager,
+        manager.library.manager(),
         &temp.path().join("second"),
         "Album Title Second",
         &[("b.flac", b"second-bytes")],
@@ -154,7 +158,7 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
     .await;
     let second_path = temp.path().join("second/b.flac");
     std::fs::remove_file(&second_path).unwrap();
-    manager.drain_uploads_expecting_work().await.unwrap();
+    manager.library.manager().drain_uploads_expecting_work().await.unwrap();
     assert!(
         stored(missing_move(second_path).await) < stored(first_move),
         "the second failure's record sorts first"
@@ -190,12 +194,13 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
 
 #[tokio::test]
 async fn failed_storage_setup_keeps_the_library_unconfigured() {
-    let (manager, _temp) = setup_test_manager().await;
-    manager.storage.set_online(false);
+    let (test, _temp) = setup_test_manager().await;
+    let manager = test.library.manager();
+    test.storage.set_online(false);
     manager
         .store
         .setup_s3_storage(
-            manager.storage.config(),
+            test.storage.config(),
             "Device",
             "key".into(),
             coven::SecretText::new("secret".into()),
@@ -210,14 +215,15 @@ async fn failed_storage_setup_keeps_the_library_unconfigured() {
 #[tokio::test]
 async fn a_local_library_does_not_need_storage_for_its_rows() {
     let (manager, _temp, album, release) = manager_with_release().await;
-    assert!(!manager.is_sync_configured().await.unwrap());
-    assert!(find_album(&manager, &album.id).await.is_some());
-    assert!(find_release(&manager, &release.id).await.is_some());
+    assert!(!manager.library.manager().is_sync_configured().await.unwrap());
+    assert!(find_album(manager.library.manager(), &album.id).await.is_some());
+    assert!(find_release(manager.library.manager(), &release.id).await.is_some());
 }
 
 #[tokio::test]
 async fn reconnect_sync_refuses_a_library_with_no_provider() {
-    let (manager, _temp) = setup_test_manager().await;
+    let (test, _temp) = setup_test_manager().await;
+    let manager = test.library.manager();
     let error = manager.reconnect_sync().await.unwrap_err();
     assert!(matches!(error, LibraryError::Sync(coven::SyncError::NoStorage)));
     assert!(manager.sync_status().await.unwrap().error.is_none());
@@ -226,9 +232,10 @@ async fn reconnect_sync_refuses_a_library_with_no_provider() {
 #[tokio::test]
 async fn startup_and_retry_publish_the_native_connection_status() {
     let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
-    let (manager, _temp) = setup_test_manager_with_clock(clock).await;
-    connect_test_cloud(&manager).await;
-    manager.storage.set_online(false);
+    let (test, _temp) = setup_test_manager_with_clock(clock).await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    test.storage.set_online(false);
     manager.start().unwrap();
     let mut values = manager.subscribe_sync_status();
     manager.attach_and_start_sync_at_startup().await;
@@ -243,7 +250,7 @@ async fn startup_and_retry_publish_the_native_connection_status() {
         manager.is_sync_ready().await.unwrap(),
         "the loop keeps the failed connection retryable"
     );
-    manager.storage.set_online(true);
+    test.storage.set_online(true);
     // The failed pass left the connection backing off. The clock is fixed, so
     // the backoff ends only by the person's retry, which also answers when
     // the pass it runs has ended. Moving the clock instead would race the
@@ -263,9 +270,10 @@ async fn startup_and_retry_publish_the_native_connection_status() {
 #[tokio::test]
 async fn reconnect_sync_runs_the_pass_a_backing_off_loop_was_waiting_for() {
     let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
-    let (manager, _temp) = setup_test_manager_with_clock(clock).await;
-    connect_test_cloud(&manager).await;
-    manager.storage.set_online(false);
+    let (test, _temp) = setup_test_manager_with_clock(clock).await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    test.storage.set_online(false);
     manager.start().unwrap();
     let mut values = manager.subscribe_sync_status();
     manager.attach_and_start_sync_at_startup().await;
@@ -277,7 +285,7 @@ async fn reconnect_sync_runs_the_pass_a_backing_off_loop_was_waiting_for() {
     })
     .await;
     assert!(manager.is_sync_ready().await.unwrap());
-    manager.storage.set_online(true);
+    test.storage.set_online(true);
     manager.reconnect_sync().await.unwrap();
     // A guard so a pass stuck behind the backoff fails instead of hanging.
     tokio::time::timeout(
@@ -300,14 +308,20 @@ async fn reconnect_sync_runs_the_pass_a_backing_off_loop_was_waiting_for() {
 /// of the one that already failed.
 #[tokio::test]
 async fn reconnect_sync_clears_the_failure_it_retries() {
-    let (manager, temp) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let manager = reopen_without_credentials(manager, &temp).await;
-    manager.start().unwrap();
+    let (test, temp) = setup_test_manager().await;
+    connect_test_cloud(&test).await;
+    let manager = reopen_without_credentials(test, &temp).await;
+    manager.library.manager().start().unwrap();
     manager.installation.fail_next_keychain_operation();
-    manager.attach_and_start_sync_at_startup().await;
-    let recorded =
-        manager.sync_status().await.unwrap().error.expect("the failed startup connect is recorded");
+    manager.library.manager().attach_and_start_sync_at_startup().await;
+    let recorded = manager
+        .library
+        .manager()
+        .sync_status()
+        .await
+        .unwrap()
+        .error
+        .expect("the failed startup connect is recorded");
     let bae_diagnostics::UiError::Diagnostic { category, .. } = &recorded;
     assert_eq!(
         *category,
@@ -315,12 +329,12 @@ async fn reconnect_sync_clears_the_failure_it_retries() {
         "a keychain refused for this session reads as locked: {recorded:?}"
     );
 
-    manager.reconnect_sync().await.expect("the keychain answers the retry");
+    manager.library.manager().reconnect_sync().await.expect("the keychain answers the retry");
     assert!(
-        manager.sync_status().await.unwrap().error.is_none(),
+        manager.library.manager().sync_status().await.unwrap().error.is_none(),
         "the stale failure is gone the moment the retry runs"
     );
-    manager.close().await.unwrap();
+    manager.library.manager().close().await.unwrap();
 }
 
 /// A launch whose start failed with storage set up on this device, here
@@ -330,8 +344,9 @@ async fn reconnect_sync_clears_the_failure_it_retries() {
 /// is no sync to start, and signing in again is the way back.
 #[tokio::test]
 async fn only_a_failed_start_with_storage_set_up_offers_reconnect() {
-    let (manager, temp) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     manager.forget_encryption_key().await.unwrap();
     manager.start().unwrap();
     manager.attach_and_start_sync_at_startup().await;
@@ -340,14 +355,14 @@ async fn only_a_failed_start_with_storage_set_up_offers_reconnect() {
     assert!(status.error.is_some(), "the failed start is recorded: {status:?}");
     assert!(status.reconnect_offered(), "{status:?}");
 
-    let manager = reopen_without_credentials(manager, &temp).await;
-    manager.start().unwrap();
+    let manager = reopen_without_credentials(test, &temp).await;
+    manager.library.manager().start().unwrap();
     manager.installation.fail_next_keychain_operation();
-    manager.attach_and_start_sync_at_startup().await;
-    let status = manager.sync_status().await.unwrap();
+    manager.library.manager().attach_and_start_sync_at_startup().await;
+    let status = manager.library.manager().sync_status().await.unwrap();
     assert!(status.error.is_some(), "the failed start is recorded: {status:?}");
     assert!(!status.reconnect_offered(), "{status:?}");
-    manager.close().await.unwrap();
+    manager.library.manager().close().await.unwrap();
 }
 
 /// A device whose start failed, here on a keychain locked for the session
@@ -356,21 +371,23 @@ async fn only_a_failed_start_with_storage_set_up_offers_reconnect() {
 /// says sync runs, never beside it.
 #[tokio::test]
 async fn a_storage_setup_ends_the_failed_start_before_it() {
-    let (manager, temp) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let manager = reopen_without_credentials(manager, &temp).await;
-    manager.start().unwrap();
+    let (test, temp) = setup_test_manager().await;
+    connect_test_cloud(&test).await;
+    let manager = reopen_without_credentials(test, &temp).await;
+    manager.library.manager().start().unwrap();
     manager.installation.fail_next_keychain_operation();
-    manager.attach_and_start_sync_at_startup().await;
-    let failed = manager.sync_status().await.unwrap();
+    manager.library.manager().attach_and_start_sync_at_startup().await;
+    let failed = manager.library.manager().sync_status().await.unwrap();
     assert!(
         matches!(failed.coven.state, coven::SyncState::SignedOut { cause: None, .. }),
         "{failed:?}"
     );
     assert!(failed.error.is_some(), "the failed start is recorded: {failed:?}");
 
-    let mut values = manager.subscribe_sync_status();
+    let mut values = manager.library.manager().subscribe_sync_status();
     manager
+        .library
+        .manager()
         .store
         .setup_s3_storage(
             manager.storage.config(),
@@ -393,7 +410,7 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
     })
     .await;
     assert_eq!(synced.indicator(), Some(bae_sync_status::SyncIndicator::Synced), "{synced:?}");
-    manager.close().await.unwrap();
+    manager.library.manager().close().await.unwrap();
 }
 
 /// A start that gets under way ends the failed start before it even when its
@@ -403,18 +420,18 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
 #[tokio::test]
 async fn a_start_whose_pass_ends_as_the_last_did_ends_the_failed_start() {
     let (manager, _temp, _clock) = library_on_a_stopped_clock().await;
-    manager.forget_encryption_key().await.unwrap();
-    manager.attach_and_start_sync_at_startup().await;
+    manager.library.manager().forget_encryption_key().await.unwrap();
+    manager.library.manager().attach_and_start_sync_at_startup().await;
     assert!(
-        manager.sync_status().await.unwrap().error.is_some(),
+        manager.library.manager().sync_status().await.unwrap().error.is_some(),
         "the start without the store keys failed"
     );
 
-    manager.unlock_store_key().await.unwrap();
-    manager.attach_and_start_sync().await.unwrap();
-    let status = manager.sync_status().await.unwrap();
+    manager.library.manager().unlock_store_key().await.unwrap();
+    manager.library.manager().attach_and_start_sync().await.unwrap();
+    let status = manager.library.manager().sync_status().await.unwrap();
     assert!(status.error.is_none(), "a start under way shows the failed one: {status:?}");
-    manager.close().await.unwrap();
+    manager.library.manager().close().await.unwrap();
 }
 
 // Retry now as the activity list offers it, against coven's own retry: each
@@ -427,10 +444,11 @@ async fn a_start_whose_pass_ends_as_the_last_did_ends_the_failed_start() {
 /// wait.
 async fn library_on_a_stopped_clock() -> (TestManager, TempDir, Arc<coven::FixedClock>) {
     let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
-    let (manager, temp_dir) = setup_test_manager_with_clock(clock.clone()).await;
-    connect_test_cloud_uploading(&manager).await;
+    let (test, temp_dir) = setup_test_manager_with_clock(clock.clone()).await;
+    let manager = test.library.manager();
+    connect_test_cloud_uploading(&test).await;
     manager.start().unwrap();
-    (manager, temp_dir, clock)
+    (test, temp_dir, clock)
 }
 
 /// Follow the status until `accept` takes it.
@@ -438,7 +456,7 @@ async fn status_until(
     manager: &TestManager,
     accept: impl Fn(&bae_sync_status::SyncStatusSnapshot) -> bool,
 ) -> bae_sync_status::SyncStatusSnapshot {
-    let mut values = manager.subscribe_sync_status();
+    let mut values = manager.library.manager().subscribe_sync_status();
     crate::followed::value_matching(&mut values, accept).await
 }
 
@@ -458,9 +476,9 @@ async fn fail_a_pass(
     faults: coven::Faults,
     shown: impl Fn(&bae_sync_status::SyncStatusSnapshot) -> bool,
 ) -> bae_sync_status::SyncStatusSnapshot {
-    let mut values = manager.subscribe_sync_status();
+    let mut values = manager.library.manager().subscribe_sync_status();
     manager.storage.set_faults(faults).await;
-    manager.trigger_sync();
+    manager.library.manager().trigger_sync();
     let failed = crate::followed::value_matching(&mut values, |value| {
         value
             .pending
@@ -494,7 +512,7 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
         assert!(failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.coven);
         let requests = manager.storage.request_trace().len();
         let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-            manager.retry_now().await.unwrap().await
+            manager.library.manager().retry_now().await.unwrap().await
         })
         .await
         .expect("the retry's pass ends");
@@ -506,7 +524,7 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
             manager.storage.request_trace().len() > requests,
             "{failure:?} {response:?}: the retry ran a pass"
         );
-        manager.close().await.unwrap();
+        manager.library.manager().close().await.unwrap();
     }
 }
 
@@ -534,7 +552,7 @@ async fn each_failure_the_person_clears_offers_no_retry() {
         assert!(!failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.coven);
         let requests = manager.storage.request_trace().len();
         let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-            manager.retry_now().await.unwrap().await
+            manager.library.manager().retry_now().await.unwrap().await
         })
         .await
         .expect("a held pass answers the retry at once");
@@ -547,7 +565,7 @@ async fn each_failure_the_person_clears_offers_no_retry() {
             requests,
             "{failure:?} {response:?}: no pass ran"
         );
-        manager.close().await.unwrap();
+        manager.library.manager().close().await.unwrap();
     }
 }
 
@@ -570,7 +588,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     assert_eq!(cooling.retry_effect, coven::RetryEffect::CoolingDown { until: ends });
     assert!(!cooling.retry_offered(), "{:?}", cooling.coven);
     let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        manager.retry_now().await.unwrap().await
+        manager.library.manager().retry_now().await.unwrap().await
     })
     .await
     .expect("a cooldown answers the retry at once");
@@ -591,13 +609,13 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     manager.storage.set_faults(coven::Faults::none()).await;
     let requests = manager.storage.request_trace().len();
     let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        manager.retry_now().await.unwrap().await
+        manager.library.manager().retry_now().await.unwrap().await
     })
     .await
     .expect("the retry's pass ends");
     assert!(matches!(answer, bae_sync_status::SyncRetryOutcome::Synced), "{answer:?}");
     assert!(manager.storage.request_trace().len() > requests, "the retry ran a pass");
-    manager.close().await.unwrap();
+    manager.library.manager().close().await.unwrap();
 }
 
 /// An upload a server error refused waits on coven's backoff, which a
@@ -606,9 +624,9 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
 #[tokio::test]
 async fn a_refused_upload_offers_retry_and_retrying_uploads_it() {
     let (manager, temp_dir, _clock) = library_on_a_stopped_clock().await;
-    manager.store.set_uploads_paused(true).await.unwrap();
+    manager.library.manager().store.set_uploads_paused(true).await.unwrap();
     let release = insert_release_with_queued_uploads(
-        &manager,
+        manager.library.manager(),
         &temp_dir.path().join("refused"),
         "Test Album",
         &[("a.flac", &vec![b'a'; 1000])],
@@ -623,7 +641,7 @@ async fn a_refused_upload_offers_retry_and_retrying_uploads_it() {
             ..coven::Faults::none()
         })
         .await;
-    manager.store.set_uploads_paused(false).await.unwrap();
+    manager.library.manager().store.set_uploads_paused(false).await.unwrap();
 
     let refused = status_until(&manager, |value| {
         value.pending.iter().any(|item| cause_text(item).is_some_and(|text| text.contains("500")))
@@ -631,26 +649,27 @@ async fn a_refused_upload_offers_retry_and_retrying_uploads_it() {
     .await;
     assert!(refused.retry_offered(), "{:?} {:?}", refused.retry_effect, refused.pending);
     let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        manager.retry_now().await.unwrap().await
+        manager.library.manager().retry_now().await.unwrap().await
     })
     .await
     .expect("the retry's pass ends");
     assert!(matches!(answer, bae_sync_status::SyncRetryOutcome::Synced), "{answer:?}");
-    inspector_rows_until(&manager, &release.id, |rows| {
+    inspector_rows_until(manager.library.manager(), &release.id, |rows| {
         rows.files.iter().all(|file| file.file.stored)
     })
     .await;
     let settled = status_until(&manager, |value| value.pending.is_empty()).await;
     assert!(!settled.retry_offered(), "nothing is left to retry: {:?}", settled.pending);
-    manager.close().await.unwrap();
+    manager.library.manager().close().await.unwrap();
 }
 
 /// Whether uploads are paused reads from coven's pause, with nothing queued
 /// too, and follows each change.
 #[tokio::test]
 async fn the_upload_pause_follows_each_change_with_an_empty_queue() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let mut paused = views(&manager).subscribe_uploads_paused();
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let mut paused = views(manager).subscribe_uploads_paused();
     assert!(!paused.next().await.unwrap().unwrap());
     manager.set_sync_paused(true).await.unwrap();
     assert!(paused.next().await.unwrap().unwrap());
@@ -679,11 +698,12 @@ fn memory_s3_config(manager: &TestManager) -> crate::sync::S3ConfigData {
 /// nothing for the sync status to show.
 #[tokio::test]
 async fn a_failed_setup_call_leaves_nothing_for_the_status() {
-    let (manager, _temp) = setup_test_manager().await;
-    manager.storage.set_online(false);
+    let (test, _temp) = setup_test_manager().await;
+    let manager = test.library.manager();
+    test.storage.set_online(false);
 
     manager
-        .save_s3_config(memory_s3_config(&manager), "Test Device", &|_| ())
+        .save_s3_config(memory_s3_config(&test), "Test Device", &|_| ())
         .await
         .expect_err("offline storage cannot be set up");
 
@@ -707,11 +727,12 @@ async fn a_failed_setup_call_leaves_nothing_for_the_status() {
 #[tokio::test]
 async fn setting_up_s3_storage_tells_each_step_coven_reports() {
     use coven::StorageSetupStep::*;
-    let (manager, _temp) = setup_test_manager().await;
+    let (test, _temp) = setup_test_manager().await;
+    let manager = test.library.manager();
     let told = std::sync::Mutex::new(Vec::new());
 
     manager
-        .save_s3_config(memory_s3_config(&manager), "Test Device", &|progress| {
+        .save_s3_config(memory_s3_config(&test), "Test Device", &|progress| {
             told.lock().unwrap().push(progress)
         })
         .await
@@ -741,24 +762,25 @@ async fn setting_up_s3_storage_tells_each_step_coven_reports() {
 /// shows nothing, and the library stays unconfigured.
 #[tokio::test]
 async fn a_dropped_setup_call_cancels_its_setup() {
-    let (manager, _temp) = setup_test_manager().await;
+    let (test, _temp) = setup_test_manager().await;
+    let manager = test.library.manager();
     // Every write to storage waits, so setup can't pass its point of no
     // return while the call runs.
     let writes = Arc::new(tokio::sync::Semaphore::new(0));
-    manager.storage.gate_creations(writes.clone()).await;
+    test.storage.gate_creations(writes.clone()).await;
     let mut setup =
-        Box::pin(manager.save_s3_config(memory_s3_config(&manager), "Test Device", &|_| ()));
+        Box::pin(manager.save_s3_config(memory_s3_config(&test), "Test Device", &|_| ()));
     let running = |status: &bae_sync_status::SyncStatusSnapshot| {
         status.storage_setup == Some(bae_sync_status::StorageSetupState::Running)
     };
     tokio::select! {
         returned = setup.as_mut() => panic!("a setup whose writes wait returned: {returned:?}"),
-        _ = status_until(&manager, running) => {}
+        _ = status_until(&test, running) => {}
     }
 
     drop(setup);
     writes.add_permits(usize::MAX >> 4);
-    status_until(&manager, |status| status.storage_setup.is_none()).await;
+    status_until(&test, |status| status.storage_setup.is_none()).await;
     let outcomes = manager
         .store
         .read(|sql| {
@@ -778,8 +800,8 @@ async fn a_dropped_setup_call_cancels_its_setup() {
 /// entry deleted by hand does, and open the library again: its location
 /// stays recorded, with no storage set up on this device.
 async fn reopen_without_credentials(manager: TestManager, temp_dir: &TempDir) -> TestManager {
-    let store = manager.store.store_id();
-    manager.close().await.unwrap();
+    let store = manager.library.manager().store.store_id();
+    manager.library.manager().close().await.unwrap();
     manager.installation.lose_storage_credentials(store).unwrap();
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
@@ -867,7 +889,7 @@ mod sign_in {
             bae_diagnostics::Diagnostics::noop(),
         )
         .await;
-        let manager = LibraryManager::clone(&library);
+        let manager = LibraryManager::clone(library.manager());
         (manager, storage, temp_dir)
     }
 

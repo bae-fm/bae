@@ -9,6 +9,7 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
     let lib = restore_test_library().await;
     let release_id = lib
         .library
+        .manager()
         .get_track_display(&lib.track_ids[0])
         .await
         .expect("the imported track")
@@ -136,7 +137,7 @@ struct CloudOnlyPlaybackFixture {
 impl PlaybackFixture for CloudOnlyPlaybackFixture {
     async fn close(self) {
         self.playback_handle.shutdown().await;
-        self.library.close().await.expect("close the test library");
+        self.library.manager().close().await.expect("close the test library");
     }
 }
 
@@ -157,7 +158,7 @@ impl CloudOnlyPlaybackFixture {
             bae_util::http::Http::for_test(),
         )
         .await;
-        bae_library::test_libraries::connect_storage(&library, &cloud).await;
+        bae_library::test_libraries::connect_storage(library.manager(), &cloud).await;
 
         let discogs_release = create_test_album();
         let release_id_key = fakes.seed_discogs_test_release(discogs_release);
@@ -183,18 +184,18 @@ impl CloudOnlyPlaybackFixture {
         // clears — after this the track resolves cloud-only (no local copy, no
         // pending upload).
         while matches!(
-            library.drain_uploads_for_test().await?,
+            library.manager().drain_uploads_for_test().await?,
             coven::DrainOutcome::Drained { uploaded, .. } if uploaded > 0
         ) {}
 
-        for file in library.get_files_for_release(&release_id).await? {
-            library.evict_file_for_test(file.file).await?;
+        for file in library.manager().get_files_for_release(&release_id).await? {
+            library.manager().evict_file_for_test(file.file).await?;
         }
 
         // Delete the import originals so file resolution can't fall back to them.
         std::fs::remove_dir_all(&album_dir)?;
 
-        let tracks = library.get_tracks_for_release(&release_id).await?;
+        let tracks = library.manager().get_tracks_for_release(&release_id).await?;
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert!(!track_ids.is_empty(), "Should have imported tracks");
 
@@ -255,7 +256,8 @@ async fn mid_flight_cloud_read_failure_ends_in_stopped() {
     );
     let state = fixture
         .library
-        .values_until_closed(fixture.library.subscribe_now_playing())
+        .manager()
+        .values_until_closed(fixture.library.manager().subscribe_now_playing())
         .next()
         .await
         .expect("the playback values resolve")

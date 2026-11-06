@@ -171,13 +171,14 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
 /// table, the column, the file's size and the limit.
 #[tokio::test]
 async fn an_image_over_the_bound_limit_is_refused() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
-    store_test_cover(&manager, &release.id, b"the first cover").await;
-    let first = cover_file(&manager, &release.id).await;
+    insert_release(manager, &release).await;
+    store_test_cover(manager, &release.id, b"the first cover").await;
+    let first = cover_file(manager, &release.id).await;
 
     let oversized = vec![0u8; usize::try_from(coven::BOUND_FILE_LIMIT).unwrap() + 1];
     let cover = DbLibraryImage::cover(&release.id);
@@ -201,7 +202,7 @@ async fn an_image_over_the_bound_limit_is_refused() {
         }
         other => panic!("expected BoundFileTooLarge, got {other:?}"),
     }
-    assert_eq!(cover_file(&manager, &release.id).await.id(), first.id());
+    assert_eq!(cover_file(manager, &release.id).await.id(), first.id());
 }
 
 /// Every image bae stores fits a bound reference: noise at the largest size
@@ -237,12 +238,14 @@ fn the_largest_image_bae_stores_fits_a_bound_reference() {
 #[tokio::test]
 async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    store_test_cover(&manager, &release.id, b"first cover").await;
-    let concurrent = manager.clone();
+    store_test_cover(manager.library.manager(), &release.id, b"first cover").await;
+    let concurrent = manager.library.manager().clone();
     let concurrent_release = release.id.clone();
     let late = DbLibraryImage::cover(&release.id);
 
     let error = manager
+        .library
+        .manager()
         .records
         .write_library_image_after_planning_for_test(&late, b"late cover", move || async move {
             store_test_cover(&concurrent, &concurrent_release, b"between cover").await;
@@ -252,7 +255,7 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
 
     assert!(error.to_string().contains("changed after planning"));
     assert_eq!(
-        manager.read_cover_image_bytes(&release.id).await.unwrap(),
+        manager.library.manager().read_cover_image_bytes(&release.id).await.unwrap(),
         Some(b"between cover".to_vec()),
         "the replacement that landed first stands"
     );

@@ -65,21 +65,25 @@ async fn test_local_import() {
 
     info!("Import completed, release_id: {}", release_id);
 
-    let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.manager().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), file_data.len(), "Should have all tracks");
 
     info!("All {} tracks created", tracks.len());
 
     for track in &tracks {
-        let audio_format =
-            library.get_audio_format_by_track_id(&track.id).await.expect("get audio_format");
+        let audio_format = library
+            .manager()
+            .get_audio_format_by_track_id(&track.id)
+            .await
+            .expect("get audio_format");
         assert!(
             audio_format.is_some(),
             "Track '{}' should have an audio_format record",
             track.title
         );
         let _af = audio_format.unwrap();
-        let resolved = library.resolve_track_audio(&track.id).await.expect("resolve track audio");
+        let resolved =
+            library.manager().resolve_track_audio(&track.id).await.expect("resolve track audio");
         assert!(
             resolved.segments.iter().any(|segment| !segment.file_id.is_empty()),
             "Track '{}' should have a segment file_id",
@@ -97,8 +101,9 @@ async fn test_local_import() {
         .iter()
         .all(|file| !file.stored));
     // A local release's original paths live in bae's device-local table.
-    let files = library.get_files_for_release(&release_id).await.expect("get files");
+    let files = library.manager().get_files_for_release(&release_id).await.expect("get files");
     let local_path = library
+        .manager()
         .file_local_path(&files[0].id)
         .await
         .expect("query")
@@ -165,14 +170,17 @@ async fn test_local_delete_preserves_files() {
 
     info!("Import completed, release_id: {}", release_id);
 
-    let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.manager().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks after import");
 
     info!("Deleting release {}", release_id);
-    library.delete_release(&release_id).await.expect("delete release");
+    library.manager().delete_release(&release_id).await.expect("delete release");
 
-    let tracks_after =
-        library.get_tracks_for_release(&release_id).await.expect("get tracks after delete");
+    let tracks_after = library
+        .manager()
+        .get_tracks_for_release(&release_id)
+        .await
+        .expect("get tracks after delete");
     assert!(tracks_after.is_empty(), "Tracks should be deleted from database");
 
     let album_after = bae_views::LibraryViews::new(db.clone())
@@ -245,8 +253,10 @@ async fn run_import_with_cover_test() {
         .unwrap()
         .iter()
         .all(|file| !file.stored));
-    let local_files = library.get_files_for_release(&release_id).await.expect("get files");
+    let local_files =
+        library.manager().get_files_for_release(&release_id).await.expect("get files");
     let local_path = library
+        .manager()
         .file_local_path(&local_files[0].id)
         .await
         .expect("query")
@@ -257,14 +267,21 @@ async fn run_import_with_cover_test() {
     );
     info!("Release has device-local original paths");
 
-    let releases =
-        library.get_releases_for_album(&release.album_id).await.expect("Failed to get releases");
-    let tracks =
-        library.get_tracks_for_release(&releases[0].id).await.expect("Failed to get tracks");
+    let releases = library
+        .manager()
+        .get_releases_for_album(&release.album_id)
+        .await
+        .expect("Failed to get releases");
+    let tracks = library
+        .manager()
+        .get_tracks_for_release(&releases[0].id)
+        .await
+        .expect("Failed to get tracks");
     assert_eq!(tracks.len(), 3, "Expected 3 tracks");
     info!("All {} tracks created", tracks.len());
 
-    let files = library.get_files_for_release(&release_id).await.expect("Failed to get files");
+    let files =
+        library.manager().get_files_for_release(&release_id).await.expect("Failed to get files");
     assert!(!files.is_empty(), "Should have file records");
 
     for file in &files {
@@ -280,13 +297,17 @@ async fn run_import_with_cover_test() {
 
     for track in &tracks {
         let audio_format = library
+            .manager()
             .get_audio_format_by_track_id(&track.id)
             .await
             .expect("Failed to get audio format")
             .expect("Audio format should exist for track");
         assert_eq!(audio_format.content_type, ContentType::Flac, "Should be FLAC format");
-        let resolved =
-            library.resolve_track_audio(&track.id).await.expect("Failed to resolve track audio");
+        let resolved = library
+            .manager()
+            .resolve_track_audio(&track.id)
+            .await
+            .expect("Failed to resolve track audio");
         assert!(
             resolved.segments.iter().any(|segment| !segment.file_id.is_empty()),
             "Track '{}' should have a segment file_id",
@@ -296,15 +317,17 @@ async fn run_import_with_cover_test() {
     }
 
     let cover = library
+        .manager()
         .get_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .expect("Failed to get cover")
         .expect("Cover should exist in the covers table");
     assert_eq!(cover.content_type, ContentType::Jpeg);
     // Only the selected image is BACK_SCAN_DIMS; every other one is 1x1.
-    let stored = bae_library::test_libraries::read_cover_image_bytes(&library, &release_id)
-        .await
-        .expect("the cover file is readable");
+    let stored =
+        bae_library::test_libraries::read_cover_image_bytes(library.manager(), &release_id)
+            .await
+            .expect("the cover file is readable");
     let decoded = image::load_from_memory(&stored).expect("the stored cover decodes");
     assert_eq!(
         (decoded.width(), decoded.height()),
@@ -312,8 +335,11 @@ async fn run_import_with_cover_test() {
         "the stored cover is made from {selected_cover}"
     );
     info!("Cover library_image record exists, made from the selected image");
-    let album_id =
-        library.get_album_id_for_release(&release_id).await.expect("Failed to get album_id");
+    let album_id = library
+        .manager()
+        .get_album_id_for_release(&release_id)
+        .await
+        .expect("Failed to get album_id");
     let album = bae_views::LibraryViews::new(db.clone())
         .find_album_detail(&album_id)
         .await

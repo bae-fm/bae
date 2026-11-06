@@ -14,7 +14,7 @@ fn an_unfinished_removal_is_reported_and_finished_by_the_host() {
         .build()
         .unwrap();
     let (library, root) = bae_library::test_libraries::setup_fresh_library(&runtime);
-    std::fs::create_dir_all(library.library_path().join("cache")).unwrap();
+    std::fs::create_dir_all(library.manager().library_path().join("cache")).unwrap();
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)
             .await

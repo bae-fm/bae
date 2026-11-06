@@ -38,7 +38,7 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
             .iter()
             .find_map(deciding)
             .unwrap();
-            library.approve_join_request(&request).await.unwrap();
+            library.manager().approve_join_request(&request).await.unwrap();
         };
         let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(joining, approving)
@@ -47,7 +47,7 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
         .unwrap();
         let (guest, _profile) = joined.unwrap().unwrap();
 
-        let mut changes = library.subscribe_admin_changes();
+        let mut changes = library.manager().subscribe_admin_changes();
         let done = bae_library::followed::value_matching(&mut changes, |changes| {
             changes.iter().any(|change| change.state == AdminChangeState::Done)
         })
@@ -61,9 +61,9 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
             panic!("one approval, done: {done:?}");
         };
         assert_eq!((*member, person.as_deref()), (invite.member, Some("Rowan")));
-        library.acknowledge_admin_change(*operation).await.unwrap();
+        library.manager().acknowledge_admin_change(*operation).await.unwrap();
         bae_library::followed::value_matching(&mut changes, Vec::is_empty).await;
         guest.close().await.unwrap();
-        library.close().await.unwrap();
+        library.manager().close().await.unwrap();
     });
 }

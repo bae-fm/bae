@@ -12,7 +12,8 @@ use uuid::Uuid;
 
 #[tokio::test]
 async fn work_detail_release_rows_are_display_ready() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1);
@@ -36,7 +37,7 @@ async fn work_detail_release_rows_are_display_ready() {
     );
 
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
     manager.records.insert_track(&track).await.unwrap();
     manager
         .records
@@ -47,9 +48,9 @@ async fn work_detail_release_rows_are_display_ready() {
         })
         .await
         .unwrap();
-    store_test_cover(&manager, &release.id, b"cover").await;
+    store_test_cover(manager, &release.id, b"cover").await;
 
-    let detail = views(&manager).get_work_detail(&work.id).await.unwrap().expect("work detail");
+    let detail = views(manager).get_work_detail(&work.id).await.unwrap().expect("work detail");
 
     assert_eq!(detail.releases.len(), 1);
     let row = &detail.releases[0];
@@ -74,11 +75,11 @@ async fn work_detail_release_rows_are_display_ready() {
 async fn test_delete_release_with_single_release_empties_album() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
 
-    manager.delete_release(&release.id).await.unwrap();
+    manager.library.manager().delete_release(&release.id).await.unwrap();
 
-    let album_result = views(&manager).find_album_detail(&album.id).await.unwrap();
+    let album_result = views(manager.library.manager()).find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
-    let releases = album_releases(&manager, &album.id).await;
+    let releases = album_releases(manager.library.manager(), &album.id).await;
     assert!(releases.is_empty());
 }
 
@@ -87,10 +88,10 @@ async fn test_delete_release_with_single_release_empties_album() {
 #[tokio::test]
 async fn delete_release_refuses_a_release_the_library_does_not_hold() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    manager.delete_release(&release.id).await.unwrap();
+    manager.library.manager().delete_release(&release.id).await.unwrap();
 
     for release_id in [release.id.as_str(), "not-a-release"] {
-        let error = manager.delete_release(release_id).await.unwrap_err();
+        let error = manager.library.manager().delete_release(release_id).await.unwrap_err();
         assert!(
             matches!(error, LibraryError::ReleaseMissing { work: ReleaseWork::Edit, .. }),
             "{release_id}: {error}"
@@ -100,20 +101,21 @@ async fn delete_release_refuses_a_release_the_library_does_not_hold() {
 
 #[tokio::test]
 async fn test_delete_release_with_multiple_releases_preserves_album() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
 
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release1).await;
-    insert_release(&manager, &release2).await;
+    insert_release(manager, &release1).await;
+    insert_release(manager, &release2).await;
 
     manager.delete_release(&release1.id).await.unwrap();
 
-    let album_result = find_album(&manager, &album.id).await;
+    let album_result = find_album(manager, &album.id).await;
     assert!(album_result.is_some());
-    let releases = album_releases(&manager, &album.id).await;
+    let releases = album_releases(manager, &album.id).await;
     assert_eq!(releases.len(), 1);
     assert_eq!(releases[0].id, release2.id);
 }
@@ -123,25 +125,26 @@ async fn test_delete_release_with_multiple_releases_preserves_album() {
 #[tokio::test]
 async fn deletion_retires_queued_file_uploads_and_keeps_the_originals() {
     for delete_album in [false, true] {
-        let (manager, temp) = setup_test_manager().await;
-        let storage = connect_test_cloud(&manager).await;
+        let (test, temp) = setup_test_manager().await;
+        let manager = test.library.manager();
+        let storage = connect_test_cloud(&test).await;
         let source = temp.path().join("source");
         let release = insert_release_with_queued_uploads(
-            &manager,
+            manager,
             &source,
             "Album",
             &[("track.flac", b"audio")],
         )
         .await;
-        store_test_cover(&manager, &release.id, b"cover").await;
-        finish_bound_uploads(&manager).await;
+        store_test_cover(manager, &release.id, b"cover").await;
+        finish_bound_uploads(manager).await;
         storage.set_online(false);
         if delete_album {
             manager.delete_album(&release.album_id).await.unwrap();
         } else {
             manager.delete_release(&release.id).await.unwrap();
         }
-        assert!(find_release(&manager, &release.id).await.is_none());
+        assert!(find_release(manager, &release.id).await.is_none());
         assert_eq!(std::fs::read(source.join("track.flac")).unwrap(), b"audio");
         assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     }
@@ -152,21 +155,22 @@ async fn deletion_retires_queued_file_uploads_and_keeps_the_originals() {
 async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
     for delete_album in [false, true] {
         let (manager, _temp, album, release) = manager_with_release().await;
-        store_test_cover(&manager, &release.id, b"cover").await;
-        let before = manager.store.every_row_for_test().await.unwrap();
-        let id = manager.store.store_id();
-        manager.store.close().await.unwrap();
+        store_test_cover(manager.library.manager(), &release.id, b"cover").await;
+        let before = manager.library.manager().store.every_row_for_test().await.unwrap();
+        let id = manager.library.manager().store.store_id();
+        manager.library.manager().store.close().await.unwrap();
         let error = if delete_album {
-            manager.delete_album(&album.id).await.unwrap_err()
+            manager.library.manager().delete_album(&album.id).await.unwrap_err()
         } else {
-            manager.delete_release(&release.id).await.unwrap_err()
+            manager.library.manager().delete_release(&release.id).await.unwrap_err()
         };
         assert!(matches!(error, LibraryError::Database(_)), "{error}");
         let handle = bae_store::configure_store(manager.installation.builder(), crate::SCHEMA)
             .open(id, |_| ())
             .await
             .unwrap();
-        let reopened = bae_store::test_devices::store_under(handle, manager.clock.clone());
+        let reopened =
+            bae_store::test_devices::store_under(handle, manager.library.manager().clock.clone());
         assert_eq!(reopened.every_row_for_test().await.unwrap(), before);
         reopened.close().await.unwrap();
     }
@@ -178,24 +182,25 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
 /// goes, so a lookup failure there would take the delete down with it.
 #[tokio::test]
 async fn delete_release_removes_its_cover_image() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_uploading(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud_uploading(&test).await;
 
     // A genuinely Remote release, so storing its cover publishes the file and
     // the delete runs against a cover that names a real cloud object.
     let release1 = ReleaseRef::of(
-        &manager,
-        upload_release_unpaused(&manager, &temp_dir.path().join("r1"), "Album One", false).await,
+        manager,
+        upload_release_unpaused(manager, &temp_dir.path().join("r1"), "Album One", false).await,
     )
     .await;
     // A sibling release so the album survives the single-release delete.
     let release2 = create_test_release(&release1.album_id);
-    insert_release(&manager, &release2).await;
+    insert_release(manager, &release2).await;
 
     // Give release1 a cover: a `covers` row plus its file in one coven batch.
-    store_test_cover(&manager, &release1.id, b"image").await;
+    store_test_cover(manager, &release1.id, b"image").await;
 
-    wait_for_published_file(&manager, bae_records::synced::COVERS_NAMESPACE, &release1.id).await;
+    wait_for_published_file(manager, bae_records::synced::COVERS_NAMESPACE, &release1.id).await;
 
     manager.delete_release(&release1.id).await.unwrap();
 
@@ -213,18 +218,27 @@ async fn delete_release_removes_its_cover_image() {
 #[tokio::test]
 async fn delete_release_refuses_a_plan_whose_cover_changed() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    store_test_cover(&manager, &release.id, b"cover").await;
-    let plan = manager.records.plan_release_deletion(&release.id).await.unwrap().unwrap();
-    store_test_cover(&manager, &release.id, b"replacement cover").await;
+    store_test_cover(manager.library.manager(), &release.id, b"cover").await;
+    let plan = manager
+        .library
+        .manager()
+        .records
+        .plan_release_deletion(&release.id)
+        .await
+        .unwrap()
+        .unwrap();
+    store_test_cover(manager.library.manager(), &release.id, b"replacement cover").await;
 
     let error = manager
+        .library
+        .manager()
         .records
         .delete_release_with_cleanup(plan)
         .await
         .expect_err("a stale delete plan is refused");
 
     assert!(error.to_string().contains("changed after planning"));
-    assert!(find_release(&manager, &release.id).await.is_some());
+    assert!(find_release(manager.library.manager(), &release.id).await.is_some());
 }
 
 /// Two devices that each make a different release primary while apart agree
@@ -271,7 +285,7 @@ async fn check_converging_primaries(devices: &mut crate::test_libraries::TwoDevi
 #[tokio::test]
 async fn release_detail_has_no_cover_without_a_cover_row() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    let detail = views(&manager)
+    let detail = views(manager.library.manager())
         .find_release_detail(&release.id)
         .await
         .unwrap()
@@ -288,12 +302,13 @@ async fn release_detail_has_no_cover_without_a_cover_row() {
 /// here crash-loops every device, every cycle.
 #[tokio::test]
 async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
 
     // An image file whose stored filename is a traversal token, written
     // straight onto the row the way coven applies a peer's changeset — the seam
@@ -312,7 +327,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
 
     // The resolver that fires when a synced release surfaces in the UI. The
     // name must resolve to "no cover" / "no local gallery path", not a panic.
-    let detail = views(&manager)
+    let detail = views(manager)
         .find_release_detail(&release.id)
         .await
         .expect("resolving a release with a traversal filename must not error")
@@ -335,8 +350,8 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
 async fn release_cover_version_moves_when_the_cover_row_is_reupserted() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
-    store_test_cover(&manager, &release.id, b"cover").await;
-    let before = views(&manager)
+    store_test_cover(manager.library.manager(), &release.id, b"cover").await;
+    let before = views(manager.library.manager())
         .find_release_detail(&release.id)
         .await
         .unwrap()
@@ -347,8 +362,8 @@ async fn release_cover_version_moves_when_the_cover_row_is_reupserted() {
     assert_eq!(before.id, release.id, "the cover id is the release id");
 
     // Replace (what change_cover does): same row, new bytes.
-    store_test_cover(&manager, &release.id, b"replacement cover").await;
-    let after = views(&manager)
+    store_test_cover(manager.library.manager(), &release.id, b"replacement cover").await;
+    let after = views(manager.library.manager())
         .find_release_detail(&release.id)
         .await
         .unwrap()
@@ -364,15 +379,15 @@ async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
 
     // No cover row yet: the detail carries no cover reference.
-    let detail = views(&manager)
+    let detail = views(manager.library.manager())
         .find_album_detail(&album.id)
         .await
         .unwrap()
         .expect("detail present for known album");
     assert!(detail.cover.is_none());
 
-    store_test_cover(&manager, &release.id, b"cover").await;
-    let before = views(&manager)
+    store_test_cover(manager.library.manager(), &release.id, b"cover").await;
+    let before = views(manager.library.manager())
         .find_album_detail(&album.id)
         .await
         .unwrap()
@@ -382,8 +397,8 @@ async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
     assert_eq!(before.id, release.id);
 
     // Replace the cover (what change_cover does): new bytes.
-    store_test_cover(&manager, &release.id, b"replacement cover").await;
-    let after = views(&manager)
+    store_test_cover(manager.library.manager(), &release.id, b"replacement cover").await;
+    let after = views(manager.library.manager())
         .find_album_detail(&album.id)
         .await
         .unwrap()
@@ -398,11 +413,12 @@ async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
 
 #[tokio::test]
 async fn find_album_detail_returns_none_when_releases_vanish() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     manager.records.insert_album(&album).await.unwrap();
 
-    let detail = views(&manager)
+    let detail = views(manager)
         .find_album_detail(&album.id)
         .await
         .expect("empty album aggregate must resolve without an error");
@@ -412,16 +428,17 @@ async fn find_album_detail_returns_none_when_releases_vanish() {
 
 #[tokio::test]
 async fn find_release_detail_returns_some_for_known_id() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.year = None;
     release.pressing.facts = Default::default();
     release.release_name = None;
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
 
-    let detail = views(&manager)
+    let detail = views(manager)
         .find_release_detail(&release.id)
         .await
         .unwrap()
@@ -469,11 +486,14 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
             Utc::now(),
         );
         file.source_audio = Some(facts);
-        manager.add_file(&file, 1000).await.unwrap();
+        manager.library.manager().add_file(&file, 1000).await.unwrap();
     }
 
-    let detail =
-        views(&manager).find_release_detail(&release.id).await.unwrap().expect("detail present");
+    let detail = views(manager.library.manager())
+        .find_release_detail(&release.id)
+        .await
+        .unwrap()
+        .expect("detail present");
     assert!(detail.tracks.is_empty());
     assert_eq!(
         detail.source_audio,
@@ -501,11 +521,14 @@ async fn find_release_detail_surfaces_seeded_tracks() {
     // titles and track numbers (not just report emptiness).
     let t1 = bae_records::DbTrack::new_test(&release.id, TRACK_1, "Opening", 1);
     let t2 = bae_records::DbTrack::new_test(&release.id, TRACK_2, "Closing", 2);
-    manager.records.insert_track(&t1).await.unwrap();
-    manager.records.insert_track(&t2).await.unwrap();
+    manager.library.manager().records.insert_track(&t1).await.unwrap();
+    manager.library.manager().records.insert_track(&t2).await.unwrap();
 
-    let detail =
-        views(&manager).find_release_detail(&release.id).await.unwrap().expect("detail present");
+    let detail = views(manager.library.manager())
+        .find_release_detail(&release.id)
+        .await
+        .unwrap()
+        .expect("detail present");
     assert_eq!(detail.tracks.len(), 2);
     let opening =
         detail.tracks.iter().find(|t| t.title == "Opening").expect("opening track surfaced");
@@ -520,7 +543,8 @@ async fn find_release_detail_surfaces_seeded_tracks() {
 #[tokio::test]
 async fn display_artist_is_set_only_for_a_compilation() {
     async fn resolve_display_artist(is_compilation: bool) -> Option<String> {
-        let (manager, _temp_dir) = setup_test_manager().await;
+        let (test, _temp_dir) = setup_test_manager().await;
+        let manager = test.library.manager();
         let mut album = create_test_album();
         album.is_compilation = is_compilation;
         let release = create_test_release(&album.id);
@@ -535,16 +559,13 @@ async fn display_artist_is_set_only_for_a_compilation() {
         };
         let track_artist = bae_records::DbTrackArtist::new(&track.id, &guest.id, 0, Utc::now());
         manager.records.insert_album(&album).await.unwrap();
-        insert_release(&manager, &release).await;
+        insert_release(manager, &release).await;
         manager.records.insert_artist(&guest).await.unwrap();
         manager.records.insert_track(&track).await.unwrap();
         manager.records.insert_track_artist(&track_artist).await.unwrap();
 
-        let detail = views(&manager)
-            .find_release_detail(&release.id)
-            .await
-            .unwrap()
-            .expect("detail present");
+        let detail =
+            views(manager).find_release_detail(&release.id).await.unwrap().expect("detail present");
         detail.tracks[0].display_artist.clone()
     }
 
@@ -573,10 +594,13 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         Uuid::new_v4().to_string(),
         Utc::now(),
     );
-    manager.add_file(&image, 1234).await.unwrap();
+    manager.library.manager().add_file(&image, 1234).await.unwrap();
 
-    let detail =
-        views(&manager).find_release_detail(&release.id).await.unwrap().expect("detail present");
+    let detail = views(manager.library.manager())
+        .find_release_detail(&release.id)
+        .await
+        .unwrap()
+        .expect("detail present");
 
     // The lightbox shows every image the release has: the image file is
     // surfaced as a gallery item read by file id (fetched on demand), a
@@ -613,13 +637,14 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
             Uuid::new_v4().to_string(),
             Utc::now(),
         );
-        manager.add_file(&file, 100).await.unwrap();
+        manager.library.manager().add_file(&file, 100).await.unwrap();
         if supports_cover {
             eligible.push(file.id.clone());
         }
         all_images.push(file.id);
     }
-    let detail = views(&manager).find_release_detail(&release.id).await.unwrap().unwrap();
+    let detail =
+        views(manager.library.manager()).find_release_detail(&release.id).await.unwrap().unwrap();
     let mut cover_ids: Vec<_> = detail.cover_files.iter().map(|file| file.id.clone()).collect();
     let mut image_ids: Vec<_> = detail.image_files.iter().map(|file| file.id.clone()).collect();
     let mut gallery_ids: Vec<_> = detail.gallery_items.iter().map(|item| item.id.clone()).collect();
@@ -635,15 +660,16 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
 
 #[tokio::test]
 async fn find_release_detail_name_uses_year_and_media() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.year = Some(2024);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 2);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
 
-    let detail = views(&manager).find_release_detail(&release.id).await.unwrap().unwrap();
+    let detail = views(manager).find_release_detail(&release.id).await.unwrap().unwrap();
     assert_eq!(
         detail.name,
         bae_views::album_detail::ReleaseName::Described {
@@ -655,16 +681,17 @@ async fn find_release_detail_name_uses_year_and_media() {
 
 #[tokio::test]
 async fn find_release_detail_name_prefers_release_name() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.release_name = Some("Deluxe Edition".to_string());
     release.pressing.year = Some(2024);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1);
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
 
-    let detail = views(&manager).find_release_detail(&release.id).await.unwrap().unwrap();
+    let detail = views(manager).find_release_detail(&release.id).await.unwrap().unwrap();
     assert_eq!(
         detail.name,
         bae_views::album_detail::ReleaseName::Named("Deluxe Edition".to_string())
@@ -673,7 +700,8 @@ async fn find_release_detail_name_prefers_release_name() {
 
 #[tokio::test]
 async fn find_release_detail_uses_position_for_second_release() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let album = create_test_album();
     let mut release1 = create_test_release(&album.id);
     release1.pressing.year = None;
@@ -682,17 +710,18 @@ async fn find_release_detail_uses_position_for_second_release() {
     release2.pressing.year = None;
     release2.pressing.facts = Default::default();
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release1).await;
-    insert_release(&manager, &release2).await;
+    insert_release(manager, &release1).await;
+    insert_release(manager, &release2).await;
 
-    let detail2 = views(&manager).find_release_detail(&release2.id).await.unwrap().unwrap();
+    let detail2 = views(manager).find_release_detail(&release2.id).await.unwrap().unwrap();
     assert_eq!(detail2.name, bae_views::album_detail::ReleaseName::Numbered(2));
 }
 
 #[tokio::test]
 async fn find_release_detail_returns_none_for_unknown_id() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let detail = views(&manager).find_release_detail("nonexistent-id").await.unwrap();
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let detail = views(manager).find_release_detail("nonexistent-id").await.unwrap();
     assert!(detail.is_none());
 }
 
@@ -704,7 +733,7 @@ async fn find_release_detail_returns_none_for_unknown_id() {
 async fn a_gallery_read_refuses_another_releases_file() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
     let other = create_test_release(&album.id);
-    insert_release(&manager, &other).await;
+    insert_release(manager.library.manager(), &other).await;
     let file = NewReleaseFile::new(
         &other.id,
         "cover.jpg",
@@ -712,9 +741,11 @@ async fn a_gallery_read_refuses_another_releases_file() {
         Uuid::new_v4().to_string(),
         Utc::now(),
     );
-    manager.add_file(&file, 5).await.unwrap();
+    manager.library.manager().add_file(&file, 5).await.unwrap();
 
     let error = manager
+        .library
+        .manager()
         .read_gallery_bytes(
             &release.id,
             &bae_records::GallerySource::ReleaseFile { file_id: file.id.clone() },
@@ -729,9 +760,9 @@ async fn a_gallery_read_refuses_another_releases_file() {
 #[tokio::test]
 async fn deleting_a_release_retires_its_queued_uploads() {
     let (manager, temp, release, _) = queued_upload_fixture("queued").await;
-    manager.delete_release(&release.id).await.unwrap();
-    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
-    assert!(manager.pending().await.unwrap().is_empty());
+    manager.library.manager().delete_release(&release.id).await.unwrap();
+    assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
+    assert!(manager.library.manager().pending().await.unwrap().is_empty());
     assert_eq!(std::fs::read(temp.path().join("queued/a.flac")).unwrap().len(), 1000);
 }
 

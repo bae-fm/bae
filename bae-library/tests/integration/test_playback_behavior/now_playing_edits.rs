@@ -5,6 +5,7 @@ use crate::test_playback_behavior::support::*;
 async fn playing_first_track(fixture: &PlaybackTestFixture) -> String {
     let release_id = fixture
         .library
+        .manager()
         .get_track_display(&fixture.track_ids[0])
         .await
         .expect("read the first track's release")
@@ -86,7 +87,7 @@ async fn first_upcoming_until(
 
 /// The queue's upcoming read over its first track.
 fn first_upcoming(library: &TestLibrary) -> bae_library::LiveQueueUpcoming {
-    let queue = bae_library::subscribe_queue_upcoming(library);
+    let queue = bae_library::subscribe_queue_upcoming(library.manager());
     queue
         .set(bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow {
             offset: 0,
@@ -121,9 +122,10 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
             uuid::Uuid::new_v4().to_string(),
             chrono::Utc::now(),
         );
-        fixture.library.add_external_file_for_test(&file, &image_path).await.unwrap();
+        fixture.library.manager().add_external_file_for_test(&file, &image_path).await.unwrap();
         fixture
             .library
+            .manager()
             .change_cover(
                 &release_id,
                 bae_library::CoverSelection::ReleaseImage { file_id: file.id },
@@ -163,6 +165,7 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
 
         let mut edit = fixture
             .library
+            .manager()
             .open_release_edit(&release_id)
             .await
             .expect("read the release's edit form")
@@ -174,6 +177,7 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
         edit.tracks[1].title = "Renamed Second Track".to_string();
         fixture
             .library
+            .manager()
             .apply_release_metadata_user_edit(&release_id, &edit.shape().expect("the edit shapes"))
             .await
             .expect("apply the edit");

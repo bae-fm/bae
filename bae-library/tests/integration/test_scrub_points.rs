@@ -238,7 +238,7 @@ async fn import(release: DiscogsRelease, write_files: impl FnOnce(&Path)) -> Imp
     .await
     .expect("import the release");
     Imported {
-        tracks: tracks(&library, &imported.release_id).await,
+        tracks: tracks(library.manager(), &imported.release_id).await,
         album_dir: imported.album_dir,
         _temp_dir: imported.temp_dir,
     }
@@ -467,8 +467,8 @@ async fn a_served_mp3_decode_holds_the_files_samples() {
     )
     .await
     .expect("import the release");
-    let audio = tracks(&library, &imported.release_id).await.remove(0);
-    let decode = library.open_track_decode(&audio);
+    let audio = tracks(library.manager(), &imported.release_id).await.remove(0);
+    let decode = library.manager().open_track_decode(&audio);
     let served = tokio::task::spawn_blocking(move || {
         let mut sink = Collected::default();
         decode

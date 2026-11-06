@@ -59,7 +59,7 @@ async fn queued_upload_library(
     folder: &str,
 ) -> (TestLibrary, Arc<MemoryStorage>, TempDir, DbRelease, String) {
     let (library, storage, dir) = open_library().await;
-    bae_library::test_libraries::connect_storage(&library, &storage).await;
+    bae_library::test_libraries::connect_storage(library.manager(), &storage).await;
     let release = insert_release_with_queued_uploads(
         &library,
         &dir.path().join(folder),
@@ -149,7 +149,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
         }
     }));
 
-    let values = bae_app::live_reads::subscribe_album_detail(&manager, &views(&manager));
+    let values = bae_app::live_reads::subscribe_album_detail(manager.manager(), &views(&manager));
     values.set(Some(album.id.clone())).unwrap();
     let delivered = tokio::time::timeout(HANG_GUARD, async {
         loop {
@@ -189,7 +189,7 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
         insert_release(manager.records(), &test_release(&album.id)).await;
         albums.push(album);
     }
-    let values = bae_app::live_reads::subscribe_album_detail(&manager, &views(&manager));
+    let values = bae_app::live_reads::subscribe_album_detail(manager.manager(), &views(&manager));
     let next_for = |id: Option<String>| {
         let values = &values;
         async move {
@@ -230,7 +230,7 @@ async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
         &[("a.flac", b"aaa")],
     )
     .await;
-    let values = bae_app::live_reads::subscribe_release_detail(&manager, &views(&manager));
+    let values = bae_app::live_reads::subscribe_release_detail(manager.manager(), &views(&manager));
     values.set(Some(release.id.clone())).unwrap();
     let actions_until =
         |accept: fn(&[bae_types::release_storage::ReleaseStorageAction]) -> bool| {
@@ -251,7 +251,7 @@ async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
             }
         };
     actions_until(|actions| actions.is_empty()).await;
-    bae_library::test_libraries::connect_storage(&manager, &storage).await;
+    bae_library::test_libraries::connect_storage(manager.manager(), &storage).await;
     assert_eq!(
         actions_until(|actions| !actions.is_empty()).await,
         vec![bae_types::release_storage::ReleaseStorageAction::Upload]
@@ -263,7 +263,7 @@ async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
 #[tokio::test]
 async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     let (manager, storage, temp_dir) = open_library().await;
-    bae_library::test_libraries::connect_storage(&manager, &storage).await;
+    bae_library::test_libraries::connect_storage(manager.manager(), &storage).await;
     let release = insert_local_release_with_files(
         &manager,
         &temp_dir.path().join("pin-watch"),
@@ -271,11 +271,11 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    manager.upload_release(&release.id, false).await.unwrap();
-    manager.drain_uploads_expecting_work().await.unwrap();
+    manager.manager().upload_release(&release.id, false).await.unwrap();
+    manager.manager().drain_uploads_expecting_work().await.unwrap();
 
     let values = bae_app::live_reads::subscribe_storage_browse(
-        &manager,
+        manager.manager(),
         &views(&manager),
         bae_views::StorageBrowseRequest {
             sort: bae_views::StorageSortCriterion {
@@ -304,7 +304,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     let first = values.next().await.unwrap();
     assert_eq!(pinned(&first), Some(false));
 
-    manager.enqueue_pins(vec![release.id.clone()]).await.unwrap();
+    manager.manager().enqueue_pins(vec![release.id.clone()]).await.unwrap();
 
     loop {
         let value = tokio::time::timeout(HANG_GUARD, values.next())
@@ -356,7 +356,7 @@ async fn the_storage_view_moves_one_subscription() {
     let ascending = bae_store::SortDirection::Ascending;
     let all = bae_views::StorageFilter::All;
     let values = bae_app::live_reads::subscribe_storage_browse(
-        &manager,
+        manager.manager(),
         &views(&manager),
         view(ascending, all, &[window(0, 2)]),
     );
@@ -391,12 +391,12 @@ async fn the_storage_view_moves_one_subscription() {
 async fn a_transition_reaches_the_reads_from_its_row() {
     let (manager, _temp_dir, album, release) = library_with_release().await;
     let views = views(&manager);
-    let album_detail = bae_app::live_reads::subscribe_album_detail(&manager, &views);
+    let album_detail = bae_app::live_reads::subscribe_album_detail(manager.manager(), &views);
     album_detail.set(Some(album.id.clone())).unwrap();
-    let release_detail = bae_app::live_reads::subscribe_release_detail(&manager, &views);
+    let release_detail = bae_app::live_reads::subscribe_release_detail(manager.manager(), &views);
     release_detail.set(Some(release.id.clone())).unwrap();
     let storage = bae_app::live_reads::subscribe_storage_browse(
-        &manager,
+        manager.manager(),
         &views,
         bae_views::StorageBrowseRequest {
             sort: bae_views::StorageSortCriterion {
@@ -481,7 +481,8 @@ async fn inspector_until(
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_shows_each_files_upload_and_its_error() {
     let (manager, _storage, temp, release, file_id) = queued_upload_library("inspected").await;
-    let inspector = bae_app::live_reads::subscribe_storage_inspector(&manager, &views(&manager));
+    let inspector =
+        bae_app::live_reads::subscribe_storage_inspector(manager.manager(), &views(&manager));
     inspector.set(Some(release.id.clone())).unwrap();
     use bae_views::storage_inspector::StorageInspectorTransfer;
     let waiting = inspector_until(&inspector, |value| {
@@ -496,7 +497,7 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
     // The upload can't read a source that moved, so it waits on the file
     // with the error it met.
     std::fs::remove_file(temp.path().join("inspected/a.flac")).unwrap();
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    assert_eq!(manager.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     inspector_until(&inspector, |value| {
         value.files.iter().any(|row| {
             row.file.id == file_id
@@ -515,7 +516,8 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
 #[tokio::test]
 async fn the_inspector_shows_the_error_an_upload_met() {
     let (manager, storage, _temp, release, file_id) = queued_upload_library("refused").await;
-    let inspector = bae_app::live_reads::subscribe_storage_inspector(&manager, &views(&manager));
+    let inspector =
+        bae_app::live_reads::subscribe_storage_inspector(manager.manager(), &views(&manager));
     inspector.set(Some(release.id.clone())).unwrap();
     storage
         .set_faults(coven::Faults {
@@ -525,7 +527,7 @@ async fn the_inspector_shows_the_error_an_upload_met() {
             ..coven::Faults::none()
         })
         .await;
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    assert_eq!(manager.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     inspector_until(&inspector, |value| {
         value.files.iter().any(|row| {
             row.file.id == file_id

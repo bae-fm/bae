@@ -6,7 +6,8 @@ use crate::manager::tests::*;
 /// before any track work — the id need not even exist as a track.
 #[tokio::test]
 async fn save_track_rejects_release_only_preset() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let mut presets = manager.save_presets().await.unwrap();
     presets.push(release_only_image_preset());
     manager.set_save_presets(presets).await.unwrap();
@@ -22,7 +23,8 @@ async fn save_track_rejects_release_only_preset() {
 /// export as an export: the refusal is the operation's.
 #[tokio::test]
 async fn a_missing_release_fails_as_the_output_asked_for() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let preset = manager.preferences().await.unwrap().default_release_save_preset;
 
     let saved = manager

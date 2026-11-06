@@ -521,9 +521,13 @@ mod release_album {
                 &[("Track One", "0:10")],
             ));
         let picked_release = library.import_folder(&picked_dir, picked_key).await;
-        let picked_album =
-            library.get_album_id_for_release(&picked_release).await.expect("the picked album");
+        let picked_album = library
+            .manager()
+            .get_album_id_for_release(&picked_release)
+            .await
+            .expect("the picked album");
         let moved_from = library
+            .manager()
             .get_album_id_for_release(&imported.release_id)
             .await
             .expect("the release's own album");
@@ -545,11 +549,12 @@ mod release_album {
             .expect("the release moves");
 
         assert_eq!(
-            library.get_album_id_for_release(&imported.release_id).await.unwrap(),
+            library.manager().get_album_id_for_release(&imported.release_id).await.unwrap(),
             picked_album
         );
         assert_eq!(
             library
+                .manager()
                 .get_album_by_id(&picked_album)
                 .await
                 .unwrap()

@@ -18,7 +18,7 @@ use tempfile::TempDir;
 /// test acts on the candidates.
 pub(crate) async fn open(dir: &Path) -> AppServices {
     let library = bae_library::test_libraries::open_test_library(dir).await;
-    library.set_identify_automatically(false).await.unwrap();
+    library.manager().set_identify_automatically(false).await.unwrap();
     bae_app::test_services::start_services(&library)
         .await
         .expect("the test library's services start")

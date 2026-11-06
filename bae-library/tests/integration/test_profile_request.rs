@@ -20,8 +20,8 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     .await;
     let db = library.store().clone();
     let people = bae_people::People::new(db.clone());
-    connect_storage(&library, &storage).await;
-    library.stop_sync().await.unwrap();
+    connect_storage(library.manager(), &storage).await;
+    library.manager().stop_sync().await.unwrap();
     let track = bae_util::test_ids::test_uuid("waiting-track");
     let release = bae_util::test_ids::test_uuid("waiting-release");
     let play = bae_util::test_ids::test_uuid("waiting-play");
@@ -38,7 +38,7 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     played.set_played(std::time::Duration::from_secs(30));
     assert!(people.record_play(&played).await.unwrap());
 
-    library.create_profile("Robin").await.unwrap();
+    library.manager().create_profile("Robin").await.unwrap();
     assert!(people.profiles().await.unwrap().is_empty());
     let requested = db.query_texts_for_test("SELECT name FROM profile_request").await.unwrap();
     assert_eq!(requested, ["Robin"]);
@@ -54,9 +54,12 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
         db.query_texts_for_test("SELECT id FROM local_history").await.unwrap(),
         [play.as_str()]
     );
-    assert!(matches!(library.create_profile("Robin").await, Err(ProfileError::CirclePending(_))));
+    assert!(matches!(
+        library.manager().create_profile("Robin").await,
+        Err(ProfileError::CirclePending(_))
+    ));
 
-    let profile = requested_profile(&library).await;
+    let profile = requested_profile(library.manager()).await;
     assert_eq!(profile.name, "Robin");
     assert_eq!(profile.history_sharing, Sharing::Private);
     let members = db
@@ -82,5 +85,5 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
             .is_empty(),
         "the profile's write acknowledged the circle's outcome"
     );
-    library.close().await.unwrap();
+    library.manager().close().await.unwrap();
 }

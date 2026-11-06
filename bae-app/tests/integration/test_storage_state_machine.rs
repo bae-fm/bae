@@ -38,7 +38,7 @@ async fn setup_with_cloud(
     tmp: &TempDir,
 ) -> (bae_library::test_libraries::TestLibrary, Arc<MemoryStorage>) {
     let (library, storage) = setup_manager(tmp).await;
-    bae_library::test_libraries::connect_storage(&library, &storage).await;
+    bae_library::test_libraries::connect_storage(library.manager(), &storage).await;
     (library, storage)
 }
 
@@ -149,19 +149,19 @@ async fn test_multiple_releases_independent_completion() {
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
 
     let (release_a, _a) =
-        create_local_release(&mgr, &tmp.path().join("a"), &[("track.flac", b"aaa")]).await;
+        create_local_release(mgr.manager(), &tmp.path().join("a"), &[("track.flac", b"aaa")]).await;
     let (release_b, _b) =
-        create_local_release(&mgr, &tmp.path().join("b"), &[("track.flac", b"bbb")]).await;
-    mgr.upload_release(&release_a, true).await.unwrap();
-    mgr.upload_release(&release_b, true).await.unwrap();
+        create_local_release(mgr.manager(), &tmp.path().join("b"), &[("track.flac", b"bbb")]).await;
+    mgr.manager().upload_release(&release_a, true).await.unwrap();
+    mgr.manager().upload_release(&release_b, true).await.unwrap();
 
-    assert_eq!(mgr.count_pending_uploads_for_release(&release_a).await.unwrap(), 1);
-    assert_eq!(mgr.count_pending_uploads_for_release(&release_b).await.unwrap(), 1);
-    assert_eq!(mgr.drain_uploads_expecting_work().await.unwrap(), 2);
-    assert_eq!(mgr.count_pending_uploads_for_release(&release_a).await.unwrap(), 0);
-    assert_eq!(mgr.count_pending_uploads_for_release(&release_b).await.unwrap(), 0);
+    assert_eq!(mgr.manager().count_pending_uploads_for_release(&release_a).await.unwrap(), 1);
+    assert_eq!(mgr.manager().count_pending_uploads_for_release(&release_b).await.unwrap(), 1);
+    assert_eq!(mgr.manager().drain_uploads_expecting_work().await.unwrap(), 2);
+    assert_eq!(mgr.manager().count_pending_uploads_for_release(&release_a).await.unwrap(), 0);
+    assert_eq!(mgr.manager().count_pending_uploads_for_release(&release_b).await.unwrap(), 0);
 
-    let mut downloads = mgr.subscribe_download_snapshot();
+    let mut downloads = mgr.manager().subscribe_download_snapshot();
     let settled = tokio::time::timeout(HANG_GUARD, async {
         loop {
             let queue = downloads.next().await.expect("the query stays open").unwrap();
@@ -181,7 +181,7 @@ async fn test_multiple_releases_independent_completion() {
     // is pinned once its copy from storage lands.
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     for release_id in [&release_a, &release_b] {
-        let release = bae_app::live_reads::subscribe_release_detail(&mgr, &views);
+        let release = bae_app::live_reads::subscribe_release_detail(mgr.manager(), &views);
         release.set(Some(release_id.clone())).unwrap();
         tokio::time::timeout(HANG_GUARD, async {
             loop {
@@ -221,13 +221,16 @@ async fn test_manage_refused_without_cloud_storage() {
     let (mgr, _cloud) = setup_manager(&tmp).await;
     let db = mgr.store().clone();
     assert!(
-        !mgr.is_sync_ready().await.unwrap(),
+        !mgr.manager().is_sync_ready().await.unwrap(),
         "precondition: no cloud home / sync loop not running"
     );
-    assert!(!mgr.has_cloud_home().await.unwrap(), "precondition: no cloud home connected");
+    assert!(
+        !mgr.manager().has_cloud_home().await.unwrap(),
+        "precondition: no cloud home connected"
+    );
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(
-        &mgr,
+        mgr.manager(),
         &source_dir,
         &[("a.flac", b"cloud-only-a"), ("b.flac", b"cloud-only-b")],
     )
@@ -235,6 +238,7 @@ async fn test_manage_refused_without_cloud_storage() {
 
     // No configured destination: refuse before attaching any files.
     let result = mgr
+        .manager()
         .upload_releases(std::slice::from_ref(&release_id))
         .await
         .expect("the batch reports a per-release refusal");
@@ -261,18 +265,18 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
     let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
-        &mgr,
+        mgr.manager(),
         &source_dir,
         &[("a.flac", b"cloud-only-a"), ("b.flac", b"cloud-only-b")],
     )
     .await;
 
-    mgr.upload_release(&release_id, false).await.unwrap();
+    mgr.manager().upload_release(&release_id, false).await.unwrap();
 
     // Queued uploads leave every row without a stored file.
     assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
 
-    let count = mgr.drain_uploads_expecting_work().await.unwrap();
+    let count = mgr.manager().drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, files.len());
 
     // Each completed upload names its file, and the pin state is unchanged.
@@ -290,22 +294,22 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
     let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(
-        &mgr,
+        mgr.manager(),
         &source_dir,
         &[("a.flac", b"survive-a"), ("b.flac", b"survive-b")],
     )
     .await;
 
-    mgr.upload_release(&release_id, false).await.unwrap();
+    mgr.manager().upload_release(&release_id, false).await.unwrap();
 
     // The connect bootstrap already wrote through the home; arm the failure only
     // now, so the upload drain fails every file.
     cloud.set_online(false);
-    let count = mgr.drain_uploads_expecting_work().await.unwrap();
+    let count = mgr.manager().drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, 0, "no upload should succeed");
 
     assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
-    assert_ne!(mgr.count_pending_uploads_for_release(&release_id).await.unwrap(), 0);
+    assert_ne!(mgr.manager().count_pending_uploads_for_release(&release_id).await.unwrap(), 0);
 }
 
 /// An original changed since import fails its release's move: the move
@@ -319,7 +323,7 @@ async fn truncated_source_fails_its_move_without_sending() {
     let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
-        &mgr,
+        mgr.manager(),
         &source_dir,
         &[("a.flac", b"full-length-bytes"), ("b.flac", b"second-file")],
     )
@@ -329,10 +333,10 @@ async fn truncated_source_fails_its_move_without_sending() {
     let changed = source_dir.join("a.flac");
     tokio::fs::write(&changed, b"x").await.unwrap();
 
-    mgr.upload_release(&release_id, false).await.unwrap();
-    assert_eq!(mgr.drain_uploads_expecting_work().await.unwrap(), 0);
+    mgr.manager().upload_release(&release_id, false).await.unwrap();
+    assert_eq!(mgr.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     assert_eq!(db.queued_upload_count_for_test().await.unwrap(), 0);
-    let pending = mgr.sync_status().await.unwrap().pending;
+    let pending = mgr.manager().sync_status().await.unwrap().pending;
     assert!(
         pending.iter().any(|item| matches!(
             &item.wait.reason,
@@ -363,7 +367,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
-        &mgr,
+        mgr.manager(),
         &source_dir,
         &[("x.flac", b"download-x"), ("y.flac", b"download-yy")],
     )
@@ -371,12 +375,15 @@ async fn detaching_audio_updates_summary_and_original_paths() {
 
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
-    mgr.detach_release_audio_into(&release_id, &new_path, &CancellationToken::new()).await.unwrap();
+    mgr.manager()
+        .detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
+        .await
+        .unwrap();
 
     // Release is Local, and each file's original path names its new copy.
     assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
     for (file_id, name, _) in &files {
-        let path = mgr.file_local_path(file_id).await.unwrap().unwrap();
+        let path = mgr.manager().file_local_path(file_id).await.unwrap().unwrap();
         assert_eq!(path, new_path.join(name), "device-local path names the new copy");
     }
 }
@@ -392,7 +399,7 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
-        &mgr,
+        mgr.manager(),
         &source_dir,
         &[("x.flac", b"present"), ("y.flac", b"missing")],
     )
@@ -400,12 +407,14 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
 
     // Remove the SECOND file's file from the cloud so its cache-miss read 404s.
     // `files` carries `(file_id, original_filename, plaintext)`.
-    bae_library::test_libraries::remove_uploaded_file(&mgr, &cloud, &files[1].0).await;
+    bae_library::test_libraries::remove_uploaded_file(mgr.manager(), &cloud, &files[1].0).await;
 
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
-    let result =
-        mgr.detach_release_audio_into(&release_id, &new_path, &CancellationToken::new()).await;
+    let result = mgr
+        .manager()
+        .detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
+        .await;
     assert!(result.is_err(), "missing file must be a hard error");
 
     assert_eq!(
@@ -426,7 +435,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
     let db = mgr.store().clone();
     let (release_id, _files) = create_remote_cloud_only_release(
         &db,
-        &mgr,
+        mgr.manager(),
         &tmp.path().join("originals"),
         &[("Why?.flac", b"first"), ("Why\u{FF1F}.flac", b"second")],
     )
@@ -435,6 +444,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
     let error = mgr
+        .manager()
         .detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
         .await
         .expect_err("two copies at one path can't both be made");
@@ -488,11 +498,12 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     // The status subscription folds coven's connection lifecycle into the
     // sync values the storage view re-resolves on.
     let source_dir = tmp.path().join("originals");
-    let (release_id, _files) = create_local_release(&mgr, &source_dir, &[("a.flac", b"a")]).await;
+    let (release_id, _files) =
+        create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"a")]).await;
 
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     let values = bae_app::live_reads::subscribe_storage_browse(
-        &mgr,
+        mgr.manager(),
         &views,
         StorageBrowseRequest {
             sort: StorageSortCriterion {
@@ -508,7 +519,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     let before = next_storage_release(&values, &release_id).await;
     assert!(before.storage_actions.is_empty(), "no cloud home → no storage actions");
 
-    bae_library::test_libraries::connect_storage(&mgr, &cloud).await;
+    bae_library::test_libraries::connect_storage(mgr.manager(), &cloud).await;
     // The disk's answer for the release's originals is a value of its own,
     // and may land before or after the cloud home's.
     tokio::time::timeout(HANG_GUARD, async {

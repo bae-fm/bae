@@ -155,14 +155,15 @@ enum PeerName<'a> {
 /// without the export path racing the assertions.
 #[tokio::test]
 async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let release_id = insert_pinnable_release(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = insert_pinnable_release(&test).await;
 
     manager.set_outputs_paused(true).await.unwrap();
 
     let target = temp_dir.path().join("export-out");
     manager.enqueue_export(&release_id, target.clone()).await.unwrap();
-    let snap = output_queue_now(&manager).await;
+    let snap = output_queue_now(manager).await;
     assert_eq!(snap.total.queued, 1);
     assert_eq!(snap.rows.len(), 1);
     assert_eq!(snap.rows[0].op.payload.target_dir, target);
@@ -171,11 +172,11 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
 
     // Re-enqueuing the same release is a no-op: still one entry.
     manager.enqueue_export(&release_id, target.clone()).await.unwrap();
-    assert_eq!(output_queue_now(&manager).await.rows.len(), 1);
+    assert_eq!(output_queue_now(manager).await.rows.len(), 1);
 
     // Cancel drops the entry.
     manager.cancel_output(&release_id).await.unwrap();
-    assert!(output_queue_now(&manager).await.rows.is_empty());
+    assert!(output_queue_now(manager).await.rows.is_empty());
 }
 
 /// The verbatim copy-out: exported bytes equal the source bytes, laid out at
@@ -184,24 +185,25 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
 /// no new cloud-outbox rows.
 #[tokio::test]
 async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_uploading(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud_uploading(&test).await;
 
     let source_dir = temp_dir.path().join("source");
     let files: &[(&str, &[u8])] =
         &[("cover.jpg", b"cover-bytes-abc"), ("CD1/track.flac", b"flac-bytes-0123456789")];
     let release_id =
-        make_exportable_release(&manager, &source_dir, "Album Title (2020)", files).await;
+        make_exportable_release(manager, &source_dir, "Album Title (2020)", files).await;
 
     // Precondition: Remote, no pending uploads after the drain.
-    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.stored));
-    assert!(!has_pending_uploads(&manager, &release_id).await);
+    assert!(release_files(manager, &release_id).await.iter().all(|file| file.stored));
+    assert!(!has_pending_uploads(manager, &release_id).await);
 
     let target = temp_dir.path().join("export-out");
     manager.enqueue_export(&release_id, target.clone()).await.unwrap();
 
     // Success removes the entry from the queue.
-    output_queue_until(&manager, |queue| queue.rows.is_empty()).await;
+    output_queue_until(manager, |queue| queue.rows.is_empty()).await;
 
     // Byte-accuracy + folder layout.
     for (name, bytes) in files {
@@ -222,17 +224,18 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
     );
 
     // Export changed no release state: still Remote, no new outbox rows.
-    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.stored));
-    assert!(!has_pending_uploads(&manager, &release_id).await, "export enqueues no cloud uploads");
+    assert!(release_files(manager, &release_id).await.iter().all(|file| file.stored));
+    assert!(!has_pending_uploads(manager, &release_id).await, "export enqueues no cloud uploads");
 }
 
 /// A file named `..` is an ordinary name: coven writes it as `.．`, so the
 /// export writes the file inside its folder and nothing outside the target.
 #[tokio::test]
 async fn export_writes_a_parent_name_inside_its_folder() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let release_id = insert_local_export_release_named(
-        &manager,
+        manager,
         &temp_dir.path().join("source"),
         b"escape-bytes",
         PeerName::OriginalFilename("../escape.flac"),
@@ -257,9 +260,10 @@ async fn export_writes_a_parent_name_inside_its_folder() {
 /// the export writes nothing.
 #[tokio::test]
 async fn export_refuses_an_absolute_original_filename() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let release_id = insert_local_export_release_named(
-        &manager,
+        manager,
         &temp_dir.path().join("source"),
         b"escape-bytes",
         PeerName::OriginalFilename("/absolute-escape.flac"),
@@ -280,9 +284,10 @@ async fn export_refuses_an_absolute_original_filename() {
 /// as `..／escape-folder`, one folder inside the target.
 #[tokio::test]
 async fn export_writes_a_folder_name_holding_a_slash_as_one_folder() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let release_id = insert_local_export_release_named(
-        &manager,
+        manager,
         &temp_dir.path().join("source"),
         b"track-bytes",
         PeerName::SourceFolderName("../escape-folder"),
@@ -306,12 +311,13 @@ async fn export_writes_a_folder_name_holding_a_slash_as_one_folder() {
 /// and keeps it in the queue until it is cancelled.
 #[tokio::test]
 async fn export_write_error_marks_failed_until_cancelled() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_uploading(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud_uploading(&test).await;
 
     let source_dir = temp_dir.path().join("source");
     let release_id = make_exportable_release(
-        &manager,
+        manager,
         &source_dir,
         "Album Title",
         &[("track.flac", b"track-bytes")],
@@ -326,7 +332,7 @@ async fn export_write_error_marks_failed_until_cancelled() {
     manager.enqueue_export(&release_id, blocker.clone()).await.unwrap();
 
     // An unwritable target marks the export Failed.
-    let failed = output_queue_until(&manager, |queue| {
+    let failed = output_queue_until(manager, |queue| {
         matches!(
             queue.rows.first().map(|row| &row.op.state),
             Some(bae_transfers::OutputPhase::Failed { .. })
@@ -336,7 +342,7 @@ async fn export_write_error_marks_failed_until_cancelled() {
     assert_eq!(failed.total.failed, 1);
 
     manager.cancel_output(&release_id).await.unwrap();
-    assert!(output_queue_now(&manager).await.rows.is_empty(), "cancel removes the entry");
+    assert!(output_queue_now(manager).await.rows.is_empty(), "cancel removes the entry");
 }
 
 /// A failure partway through the export (a read error on a later file, after an
@@ -345,7 +351,8 @@ async fn export_write_error_marks_failed_until_cancelled() {
 /// removed, so the export is all-or-nothing.
 #[tokio::test]
 async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     // A Local release whose two source files live on disk as device-local paths
     // (UserProvided reads straight from the user's own file). Keeping it Local —
@@ -357,7 +364,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     let mut release = create_test_release(&album.id);
     release.source_folder_name = Some("Album Title".to_string());
     manager.records.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    insert_release(manager, &release).await;
 
     let files: &[(&str, &[u8])] = &[("01.flac", b"first-ok"), ("02.flac", b"second-fails")];
     for (name, bytes) in files {
@@ -382,7 +389,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     manager.set_outputs_paused(false).await.unwrap();
 
     // A read error on a later file marks the export Failed.
-    output_queue_until(&manager, |queue| {
+    output_queue_until(manager, |queue| {
         matches!(
             queue.rows.first().map(|row| &row.op.state),
             Some(bae_transfers::OutputPhase::Failed { .. })
@@ -404,8 +411,9 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
 /// can't change or break the already-queued save.
 #[tokio::test]
 async fn enqueue_release_save_captures_the_preset() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let release_id = insert_pinnable_release(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = insert_pinnable_release(&test).await;
     manager.set_outputs_paused(true).await.unwrap();
 
     let target = temp_dir.path().join("save-out");
@@ -426,7 +434,7 @@ async fn enqueue_release_save_captures_the_preset() {
         .collect();
     manager.set_save_presets(edited).await.unwrap();
 
-    let snap = output_queue_now(&manager).await;
+    let snap = output_queue_now(manager).await;
     let bae_transfers::OutputKind::Save { preset } = &snap.rows[0].op.payload.kind else {
         panic!("expected a queued save op");
     };
@@ -503,7 +511,8 @@ mod imported_names {
     /// it, the same on every platform.
     #[tokio::test(flavor = "multi_thread")]
     async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
-        let (manager, temp) = setup_test_manager().await;
+        let (test, temp) = setup_test_manager().await;
+        let manager = test.library.manager();
         let root = temp.path().join("watched");
         let folder = root.join("Album");
         std::fs::create_dir_all(&folder).unwrap();
@@ -513,7 +522,7 @@ mod imported_names {
         let name: Vec<u16> =
             "Caf".encode_utf16().chain([0xD800]).chain(".flac".encode_utf16()).collect();
         std::fs::write(folder.join(std::ffi::OsString::from_wide(&name)), &flac).unwrap();
-        let import = manager.start_import().await.unwrap();
+        let import = test.library.start_import().await.unwrap();
         import.add_watched_folder(root.clone()).await.unwrap();
         import.refresh_watched_folder(root.clone()).await.unwrap();
         let key = bae_import::CandidateKey::folder(&folder);

@@ -94,6 +94,7 @@ fn loudness_of(samples: &[i32]) -> f64 {
 async fn check_track2_loudness(extension: &str, format: EncodeFormat) {
     let (library, track2, image, _dir) = import_image(extension, format).await;
     let measured = library
+        .manager()
         .resolve_track_audio(&track2)
         .await
         .expect("resolve track 2")
@@ -111,7 +112,7 @@ async fn check_track2_loudness(extension: &str, format: EncodeFormat) {
 async fn check_track2_save(extension: &str, format: EncodeFormat) {
     let (library, track2, image, dir) = import_image(extension, format).await;
     let out = dir.path().join("saved.flac");
-    library.save_track(&track2, &out, "flac").await.expect("save track 2");
+    library.manager().save_track(&track2, &out, "flac").await.expect("save track 2");
     let saved = bae_audio::decode_audio(
         bae_audio::test_samples::filled_sparse_buffer(&std::fs::read(&out).unwrap()),
         None,

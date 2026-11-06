@@ -138,7 +138,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     )
     .await;
     if let ImportDestination::Remote { .. } = destination {
-        bae_library::test_libraries::connect_storage(&library, &storage).await;
+        bae_library::test_libraries::connect_storage(library.manager(), &storage).await;
     }
 
     // Discogs multi-disc tracklist: positions "1-1".."1-3", "2-1".."2-3",
@@ -183,15 +183,16 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
 
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _) =
-        wait_for_multi_disc_cue_ape_import_ready(&library, destination, &mut progress_rx).await;
+        wait_for_multi_disc_cue_ape_import_ready(library.manager(), destination, &mut progress_rx)
+            .await;
 
-    let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.manager().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 6, "should have 6 tracks (2 discs × 3 tracks)");
 
     // `original_filename` in release_files must be the full relative path
     // (`CD1/CDImage.ape`), not the bare filename — otherwise the two discs'
     // APE rows would collide on the same `"CDImage.ape"` string.
-    let files = library.get_files_for_release(&release_id).await.expect("get files");
+    let files = library.manager().get_files_for_release(&release_id).await.expect("get files");
     let mut ape_filenames: Vec<String> = files
         .iter()
         .filter(|f| f.original_filename.ends_with(".ape"))
@@ -209,7 +210,8 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         files.iter().map(|f| (f.id.clone(), f.original_filename.clone())).collect();
 
     for track in &tracks {
-        let resolved = library.resolve_track_audio(&track.id).await.expect("resolve track audio");
+        let resolved =
+            library.manager().resolve_track_audio(&track.id).await.expect("resolve track audio");
         let segment = resolved
             .segments
             .iter()

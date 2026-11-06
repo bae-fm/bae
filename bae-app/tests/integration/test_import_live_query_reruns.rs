@@ -103,7 +103,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     std::fs::create_dir_all(&library).unwrap();
     let test_library = bae_library::test_libraries::open_test_library(&library).await;
     let tables = bae_import::tables::ImportTables::new(test_library.store().clone());
-    test_library.set_identify_automatically(false).await.unwrap();
+    test_library.manager().set_identify_automatically(false).await.unwrap();
     let services = bae_app::test_services::start_services(&test_library)
         .await
         .expect("the test library's services start");

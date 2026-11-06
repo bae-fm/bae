@@ -178,7 +178,7 @@ pub(super) struct CueFlacTestFixture {
 impl PlaybackFixture for CueFlacTestFixture {
     async fn close(self) {
         self.playback_handle.shutdown().await;
-        self.library.close().await.expect("close the test library");
+        self.library.manager().close().await.expect("close the test library");
     }
 }
 
@@ -237,7 +237,7 @@ pub(super) struct SidePauseTestFixture {
 impl PlaybackFixture for SidePauseTestFixture {
     async fn close(self) {
         self.playback_handle.shutdown().await;
-        self.library.close().await.expect("close the test library");
+        self.library.manager().close().await.expect("close the test library");
     }
 }
 
@@ -276,8 +276,8 @@ impl SidePauseTestFixture {
         .await?;
         // Set before the playback service starts, so its first preload reads
         // them.
-        library.set_pause_between_sides(pause_between_sides).await?;
-        library.set_side_pause_countdown(countdown).await?;
+        library.manager().set_pause_between_sides(pause_between_sides).await?;
+        library.manager().set_side_pause_countdown(countdown).await?;
         assert_eq!(imported.track_ids.len(), 3, "side-pause fixture imports 3 tracks");
 
         let clock = Arc::new(bae_playback::ManualPlaybackClock::new(side_pause_clock_start()));
@@ -301,7 +301,11 @@ impl SidePauseTestFixture {
     /// Toggle `pause_between_sides` the way `AppServices::set_pause_between_sides`
     /// does; this fixture has no `AppServices`.
     pub(super) async fn set_pause_between_sides_mid_track(&self, enabled: bool) {
-        self.library.set_pause_between_sides(enabled).await.expect("set_pause_between_sides");
+        self.library
+            .manager()
+            .set_pause_between_sides(enabled)
+            .await
+            .expect("set_pause_between_sides");
         if enabled {
             self.playback_handle.reevaluate_side_pause_staging();
         }
@@ -513,7 +517,7 @@ impl MultiWindowPlayback {
 impl PlaybackFixture for MultiWindowPlayback {
     async fn close(self) {
         self.playback_handle.shutdown().await;
-        self.library.close().await.expect("close the test library");
+        self.library.manager().close().await.expect("close the test library");
     }
 }
 
@@ -589,6 +593,7 @@ pub(super) async fn restore_test_library() -> RestoreTestLibrary {
     let release_id_key = fakes.seed_discogs_test_release(create_test_album());
     library.import_folder(album_dir, release_id_key).await;
     let releases = library
+        .manager()
         .get_releases_for_album(
             &bae_views::LibraryViews::new(library.store().clone()).get_albums(&[]).await.unwrap()
                 [0]
@@ -596,7 +601,7 @@ pub(super) async fn restore_test_library() -> RestoreTestLibrary {
         )
         .await
         .unwrap();
-    let tracks = library.get_tracks_for_release(&releases[0].id).await.unwrap();
+    let tracks = library.manager().get_tracks_for_release(&releases[0].id).await.unwrap();
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
     assert!(!track_ids.is_empty(), "the test album imported some tracks");
     RestoreTestLibrary { library, fakes, track_ids, _temp_dir: temp_dir }
@@ -639,6 +644,7 @@ pub(super) async fn import_second_release(
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
     let tracks = lib
         .library
+        .manager()
         .get_tracks_for_release(&release_id)
         .await
         .unwrap()

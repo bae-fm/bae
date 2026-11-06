@@ -109,7 +109,7 @@ impl ImportingLibrary {
 
     /// The release editor's copy of `release_id`, as it opens.
     async fn release_edit(&self, release_id: &str) -> bae_import::ReleaseEditSeed {
-        self.library.open_release_edit(release_id).await.unwrap().opened().clone()
+        self.library.manager().open_release_edit(release_id).await.unwrap().opened().clone()
     }
 
     /// Stop the import service, which joins its threads, off the runtime.
@@ -485,7 +485,7 @@ async fn an_imported_artist_is_searchable_with_its_picture() {
         })
         .expect("the track artist is searchable");
     let image = result.image.expect("the searched artist shows its picture");
-    let bytes = fixture.library.read_image_bytes(&image).await.unwrap();
+    let bytes = fixture.library.manager().read_image_bytes(&image).await.unwrap();
     assert!(bytes.is_some_and(|bytes| !bytes.is_empty()), "the picture's bytes read back");
     fixture.shut_down().await;
 }

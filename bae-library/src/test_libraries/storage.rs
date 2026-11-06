@@ -24,7 +24,7 @@ pub async fn storage_library(
         .await
         .unwrap();
     let library = super::test_library_from_handle(handle, directory, providers, http).await;
-    library.start().unwrap();
+    library.manager().start().unwrap();
     (library, storage)
 }
 

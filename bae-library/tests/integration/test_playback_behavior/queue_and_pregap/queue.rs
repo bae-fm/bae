@@ -913,6 +913,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     let first = lib.track_ids[0].clone();
     let a_release_id = lib
         .library
+        .manager()
         .get_releases_for_album(
             &bae_views::LibraryViews::new(lib.library.store().clone())
                 .get_albums(&[])
@@ -949,7 +950,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     // Delete B: current (A) survives, the preloaded next (B) is cleared and its
     // queued entry purged — no stop. A read sent after the deletion returns
     // sees it applied.
-    lib.library.delete_release(&b_release_id).await.expect("delete release B");
+    lib.library.manager().delete_release(&b_release_id).await.expect("delete release B");
     let after = handle.queue_value().await.expect("queue value");
     assert!(
         !after.manual.iter().any(|e| e.track_id == b_first),
@@ -962,7 +963,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     );
 
     // Delete A: the current track is deleted → playback stops.
-    lib.library.delete_release(&a_release_id).await.expect("delete release A");
+    lib.library.manager().delete_release(&a_release_id).await.expect("delete release A");
     wait_for_state_on(&mut progress, |s| matches!(s, PlaybackState::Stopped))
         .await
         .expect("deleting the current track's release stops playback");

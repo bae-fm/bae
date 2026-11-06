@@ -33,7 +33,7 @@ async fn setup_with_cloud(tmp: &TempDir) -> bae_library::test_libraries::TestLib
         bae_util::http::Http::for_test(),
     )
     .await;
-    bae_library::test_libraries::connect_storage(&library, &storage).await;
+    bae_library::test_libraries::connect_storage(library.manager(), &storage).await;
     library
 }
 
@@ -159,17 +159,17 @@ async fn uploads_are_counted_before_drain() {
     let mgr = setup_with_cloud(&tmp).await;
     let source = tmp.path().join("src");
     let (_album_id, release_id, named) = create_local_release(
-        &mgr,
+        mgr.manager(),
         &source,
         &[("01.flac", b"aaaaaaaa"), ("02.flac", b"bbbbbbbbbbbb")],
     )
     .await;
 
     // Enqueue upload through the real coven path; do NOT drain.
-    mgr.upload_release(&release_id, false).await.unwrap();
+    mgr.manager().upload_release(&release_id, false).await.unwrap();
 
     assert_eq!(
-        mgr.count_pending_uploads_for_release(&release_id).await.unwrap(),
+        mgr.manager().count_pending_uploads_for_release(&release_id).await.unwrap(),
         named.len() as i64,
         "every file is queued immediately after upload"
     );
@@ -188,30 +188,34 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
-    let (_a, release_id, _f) = create_local_release(&mgr, &tmp.path().join("src"), &[]).await;
+    let (_a, release_id, _f) =
+        create_local_release(mgr.manager(), &tmp.path().join("src"), &[]).await;
 
     // No cover row yet → no bytes.
     assert!(
-        bae_library::test_libraries::read_cover_image_bytes(&mgr, &release_id).await.is_none(),
+        bae_library::test_libraries::read_cover_image_bytes(mgr.manager(), &release_id)
+            .await
+            .is_none(),
         "no cover before one is stored"
     );
 
     // Store the cover bytes and `covers` row in one coven batch, exactly as
     // import / change_cover does.
     let bytes = b"cover-jpeg-bytes";
-    mgr.store_library_image(
-        &bae_records::DbLibraryImage {
-            id: release_id.clone(),
-            image_type: bae_records::LibraryImageType::Cover,
-            content_type: bae_util::content_type::ContentType::Jpeg,
-        },
-        bytes,
-    )
-    .await
-    .unwrap();
+    mgr.manager()
+        .store_library_image(
+            &bae_records::DbLibraryImage {
+                id: release_id.clone(),
+                image_type: bae_records::LibraryImageType::Cover,
+                content_type: bae_util::content_type::ContentType::Jpeg,
+            },
+            bytes,
+        )
+        .await
+        .unwrap();
 
     // read_image_bytes serves it from coven's local store, byte-for-byte.
-    let read = bae_library::test_libraries::read_cover_image_bytes(&mgr, &release_id)
+    let read = bae_library::test_libraries::read_cover_image_bytes(mgr.manager(), &release_id)
         .await
         .expect("cover resolves to bytes once stored");
     assert_eq!(read, bytes, "the stored cover reads back byte-for-byte");
@@ -229,15 +233,16 @@ async fn test_pin_rejects_local_release() {
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
     let (_a, release_id, _f) =
-        create_local_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
+        create_local_release(mgr.manager(), &tmp.path().join("src"), &[("a.flac", b"a")]).await;
 
     let events =
-        mgr.start_pin_transfer(release_id, |progress| async move {
-            Ok(collect_progress(progress).await)
-        })
-        .finish()
-        .await
-        .expect("pin task completes");
+        mgr.manager()
+            .start_pin_transfer(release_id, |progress| async move {
+                Ok(collect_progress(progress).await)
+            })
+            .finish()
+            .await
+            .expect("pin task completes");
     assert!(failed(&events), "pin must fail for a local release");
 }
 
@@ -248,9 +253,12 @@ async fn test_unpin_rejects_local_release() {
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
     let (_a, release_id, _f) =
-        create_local_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
+        create_local_release(mgr.manager(), &tmp.path().join("src"), &[("a.flac", b"a")]).await;
 
-    assert!(mgr.unpin_release(&release_id).await.is_err(), "unpin must fail for a local release");
+    assert!(
+        mgr.manager().unpin_release(&release_id).await.is_err(),
+        "unpin must fail for a local release"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -266,8 +274,13 @@ async fn a_release_detail_says_where_its_download_stands() {
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
-    let release_id =
-        create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"bytes-a")]).await;
+    let release_id = create_remote_release(
+        mgr.manager(),
+        &db,
+        &tmp.path().join("src"),
+        &[("a.flac", b"bytes-a")],
+    )
+    .await;
     let status = |db: bae_store::Store, release_id: String| async move {
         bae_views::LibraryViews::new(db)
             .find_release_detail(&release_id)
@@ -281,8 +294,8 @@ async fn a_release_detail_says_where_its_download_stands() {
         Some(ReleaseDownloadStatus::Available)
     );
 
-    mgr.set_downloads_paused(true).await.unwrap();
-    mgr.enqueue_pins(vec![release_id.clone()]).await.unwrap();
+    mgr.manager().set_downloads_paused(true).await.unwrap();
+    mgr.manager().enqueue_pins(vec![release_id.clone()]).await.unwrap();
     assert_eq!(status(db.clone(), release_id.clone()).await, Some(ReleaseDownloadStatus::Queued));
 }
 
@@ -298,7 +311,7 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
     let mgr = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let release_id = create_remote_release(
-        &mgr,
+        mgr.manager(),
         &db,
         &tmp.path().join("src"),
         &[("a.flac", b"pin-bytes-a"), ("b.flac", b"pin-bytes-b")],
@@ -306,6 +319,7 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
     .await;
 
     let events = mgr
+        .manager()
         .start_pin_transfer(release_id.clone(), |progress| async move {
             Ok(collect_progress(progress).await)
         })
@@ -349,22 +363,23 @@ async fn the_detail_views_follow_a_releases_pin() {
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
-        &mgr,
+        mgr.manager(),
         mgr.store(),
         &tmp.path().join("src"),
         &[("a.flac", b"follow-bytes")],
     )
     .await;
     let album_id = mgr
+        .manager()
         .get_release_by_id(&release_id)
         .await
         .unwrap()
         .expect("the library holds the release")
         .album_id;
     let views = bae_views::LibraryViews::new(mgr.store().clone());
-    let release = bae_app::live_reads::subscribe_release_detail(&mgr, &views);
+    let release = bae_app::live_reads::subscribe_release_detail(mgr.manager(), &views);
     release.set(Some(release_id.clone())).unwrap();
-    let album = bae_app::live_reads::subscribe_album_detail(&mgr, &views);
+    let album = bae_app::live_reads::subscribe_album_detail(mgr.manager(), &views);
     album.set(Some(album_id)).unwrap();
     let shown = |pinned: bool| {
         let (release, album) = (&release, &album);
@@ -394,15 +409,16 @@ async fn the_detail_views_follow_a_releases_pin() {
     };
     shown(false).await;
 
-    mgr.start_pin_transfer(release_id.clone(), |progress| async move {
-        Ok(collect_progress(progress).await)
-    })
-    .finish()
-    .await
-    .expect("pin task completes");
+    mgr.manager()
+        .start_pin_transfer(release_id.clone(), |progress| async move {
+            Ok(collect_progress(progress).await)
+        })
+        .finish()
+        .await
+        .expect("pin task completes");
     shown(true).await;
 
-    mgr.unpin_release(&release_id).await.unwrap();
+    mgr.manager().unpin_release(&release_id).await.unwrap();
     shown(false).await;
 }
 
@@ -414,22 +430,27 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
-    let release_id =
-        create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"unpin-bytes")])
-            .await;
+    let release_id = create_remote_release(
+        mgr.manager(),
+        &db,
+        &tmp.path().join("src"),
+        &[("a.flac", b"unpin-bytes")],
+    )
+    .await;
 
-    mgr.start_pin_transfer(release_id.clone(), |progress| async move {
-        Ok(collect_progress(progress).await)
-    })
-    .finish()
-    .await
-    .expect("pin task completes");
+    mgr.manager()
+        .start_pin_transfer(release_id.clone(), |progress| async move {
+            Ok(collect_progress(progress).await)
+        })
+        .finish()
+        .await
+        .expect("pin task completes");
     assert_eq!(
         crate::release_storage(&db, &release_id).await,
         ReleaseStorageState::InStorage { pinned: true }
     );
 
-    mgr.unpin_release(&release_id).await.unwrap();
+    mgr.manager().unpin_release(&release_id).await.unwrap();
     assert_eq!(
         crate::release_storage(&db, &release_id).await,
         ReleaseStorageState::InStorage { pinned: false }
@@ -448,14 +469,17 @@ async fn test_missing_external_source_maps_to_error() {
     let mgr = setup(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _f) =
-        create_local_release(&mgr, &source_dir, &[("a.flac", b"present")]).await;
-    let file = mgr.get_files_for_release(&release_id).await.unwrap().into_iter().next().unwrap();
+        create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"present")]).await;
+    let file =
+        mgr.manager().get_files_for_release(&release_id).await.unwrap().into_iter().next().unwrap();
 
     // The user moved or deleted their original file.
     tokio::fs::remove_file(source_dir.join("a.flac")).await.unwrap();
 
-    let result =
-        mgr.read_gallery_bytes(&release_id, &GallerySource::ReleaseFile { file_id: file.id }).await;
+    let result = mgr
+        .manager()
+        .read_gallery_bytes(&release_id, &GallerySource::ReleaseFile { file_id: file.id })
+        .await;
     assert!(result.is_err(), "a vanished external source must surface a read error");
 }
 
@@ -472,10 +496,10 @@ async fn transition_completions_deliver_storage_values() {
     let mgr = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
-        create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
+        create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     let values = bae_app::live_reads::subscribe_storage_browse(
-        &mgr,
+        mgr.manager(),
         &views,
         StorageBrowseRequest {
             sort: StorageSortCriterion {
@@ -490,14 +514,17 @@ async fn transition_completions_deliver_storage_values() {
     );
     expect_storage_state(&values, &release_id, ReleaseStorageState::OnOneDevice).await;
 
-    mgr.upload_release(&release_id, false).await.unwrap();
-    mgr.drain_uploads_expecting_work().await.unwrap();
+    mgr.manager().upload_release(&release_id, false).await.unwrap();
+    mgr.manager().drain_uploads_expecting_work().await.unwrap();
     expect_storage_state(&values, &release_id, ReleaseStorageState::InStorage { pinned: false })
         .await;
 
     let dest = tmp.path().join("brought-back");
     std::fs::create_dir(&dest).unwrap();
-    mgr.detach_release_audio_into(&release_id, &dest, &CancellationToken::new()).await.unwrap();
+    mgr.manager()
+        .detach_release_audio_into(&release_id, &dest, &CancellationToken::new())
+        .await
+        .unwrap();
     expect_storage_state(&values, &release_id, ReleaseStorageState::OnOneDevice).await;
 }
 
@@ -512,17 +539,19 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
     let (_a, first, _) =
-        create_local_release(&mgr, &tmp.path().join("first"), &[("a.flac", b"first")]).await;
+        create_local_release(mgr.manager(), &tmp.path().join("first"), &[("a.flac", b"first")])
+            .await;
     let (_b, second, _) =
-        create_local_release(&mgr, &tmp.path().join("second"), &[("b.flac", b"second")]).await;
-    mgr.upload_release(&first, false).await.unwrap();
-    mgr.upload_release(&second, false).await.unwrap();
+        create_local_release(mgr.manager(), &tmp.path().join("second"), &[("b.flac", b"second")])
+            .await;
+    mgr.manager().upload_release(&first, false).await.unwrap();
+    mgr.manager().upload_release(&second, false).await.unwrap();
 
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     let selected: std::collections::BTreeSet<String> =
         [first.clone(), second.clone()].into_iter().collect();
     let values = bae_app::live_reads::subscribe_storage_browse(
-        &mgr,
+        mgr.manager(),
         &views,
         StorageBrowseRequest {
             sort: StorageSortCriterion {
@@ -566,7 +595,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
         "the row of a selected release outside every window is read whole"
     );
 
-    mgr.drain_uploads_expecting_work().await.unwrap();
+    mgr.manager().drain_uploads_expecting_work().await.unwrap();
     loop {
         let value = next().await;
         if value.total_count == 0 {
@@ -588,25 +617,26 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
     let pinned = create_remote_release(
-        &mgr,
+        mgr.manager(),
         mgr.store(),
         &tmp.path().join("pinned"),
         &[("a.flac", b"pinned")],
     )
     .await;
     let unpinned = create_remote_release(
-        &mgr,
+        mgr.manager(),
         mgr.store(),
         &tmp.path().join("unpinned"),
         &[("b.flac", b"unpinned")],
     )
     .await;
-    mgr.start_pin_transfer(pinned.clone(), |progress| async move {
-        Ok(collect_progress(progress).await)
-    })
-    .finish()
-    .await
-    .expect("pin task completes");
+    mgr.manager()
+        .start_pin_transfer(pinned.clone(), |progress| async move {
+            Ok(collect_progress(progress).await)
+        })
+        .finish()
+        .await
+        .expect("pin task completes");
 
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     let view = |selected: &[&String]| StorageBrowseRequest {
@@ -620,8 +650,11 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         windows: [bae_store::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
         selected: selected.iter().map(|id| (*id).clone()).collect(),
     };
-    let values =
-        bae_app::live_reads::subscribe_storage_browse(&mgr, &views, view(&[&pinned, &unpinned]));
+    let values = bae_app::live_reads::subscribe_storage_browse(
+        mgr.manager(),
+        &views,
+        view(&[&pinned, &unpinned]),
+    );
     let next = || async {
         tokio::time::timeout(HANG_GUARD, values.next())
             .await

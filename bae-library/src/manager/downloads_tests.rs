@@ -11,14 +11,15 @@ use crate::manager::tests::*;
 /// deterministically without the download path racing the assertions.
 #[tokio::test]
 async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let release_id = insert_pinnable_release(&manager).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = insert_pinnable_release(&test).await;
 
     // Park the worker up front so nothing drains while we inspect state.
     manager.set_downloads_paused(true).await.unwrap();
 
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    let snap = download_queue_now(&manager).await;
+    let snap = download_queue_now(manager).await;
     assert_eq!(snap.total.queued, 1);
     assert_eq!(snap.rows.len(), 1);
     assert_eq!(snap.rows[0].op.state, bae_transfers::DownloadPhase::Queued);
@@ -26,25 +27,26 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
 
     // Re-enqueuing the same release is a no-op: still one entry.
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    assert_eq!(download_queue_now(&manager).await.rows.len(), 1);
+    assert_eq!(download_queue_now(manager).await.rows.len(), 1);
 
     // Cancel drops the entry.
     manager.cancel_download(&release_id).await.unwrap();
-    let snap = download_queue_now(&manager).await;
+    let snap = download_queue_now(manager).await;
     assert!(snap.rows.is_empty());
 }
 
 /// An already-pinned release is skipped at enqueue rather than re-downloaded.
 #[tokio::test]
 async fn download_queue_skips_already_pinned() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
 
     // A genuinely pinned release: made Remote with pin, so its file lands in
     // coven's offline cache.
-    connect_test_cloud(&manager).await;
+    connect_test_cloud(&test).await;
     let release_id =
-        uploaded_release(&manager, &temp_dir.path().join("pinned"), "Test Album", true).await;
-    let summary = views(&manager).find_release_detail(&release_id).await.unwrap().unwrap().summary;
+        uploaded_release(manager, &temp_dir.path().join("pinned"), "Test Album", true).await;
+    let summary = views(manager).find_release_detail(&release_id).await.unwrap().unwrap().summary;
     assert_eq!(
         summary.storage_state,
         bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true },
@@ -53,17 +55,18 @@ async fn download_queue_skips_already_pinned() {
 
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    assert!(download_queue_now(&manager).await.rows.is_empty());
+    assert!(download_queue_now(manager).await.rows.is_empty());
 }
 
 /// A pin request queues, in the order asked, each release it can, in one
 /// write: an unknown id, a repeat and one already queued are passed over.
 #[tokio::test]
 async fn a_pin_request_queues_what_it_can_in_the_order_asked() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let first = insert_pinnable_release(&manager).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let first = insert_pinnable_release(&test).await;
     let source = manager.library_path().join("second-source");
-    let second = uploaded_release(&manager, &source, "Album Title", false).await;
+    let second = uploaded_release(manager, &source, "Album Title", false).await;
     manager.set_downloads_paused(true).await.unwrap();
 
     manager
@@ -77,7 +80,7 @@ async fn a_pin_request_queues_what_it_can_in_the_order_asked() {
         .unwrap();
 
     assert_eq!(
-        download_queue_now(&manager)
+        download_queue_now(manager)
             .await
             .rows
             .iter()
@@ -92,22 +95,23 @@ async fn a_pin_request_queues_what_it_can_in_the_order_asked() {
 /// album grid's bulk pin reaches this path with a mixed local/remote selection.
 #[tokio::test]
 async fn download_queue_skips_local_release() {
-    let (manager, temp_dir) = setup_test_manager().await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     manager.set_downloads_paused(true).await.unwrap();
 
     let release = insert_local_release_with_files(
-        &manager,
+        manager,
         &temp_dir.path().join("local-source"),
         "Test Album",
         &[("a.flac", b"aaa")],
     )
     .await;
-    let summary = views(&manager).find_release_detail(&release.id).await.unwrap().unwrap().summary;
+    let summary = views(manager).find_release_detail(&release.id).await.unwrap().unwrap().summary;
     assert_eq!(summary.storage_state, bae_views::album_detail::ReleaseStorageState::OnOneDevice);
 
     manager.enqueue_pins(vec![release.id.clone()]).await.unwrap();
     assert!(
-        download_queue_now(&manager).await.rows.is_empty(),
+        download_queue_now(manager).await.rows.is_empty(),
         "a local release is not enqueued for pinning"
     );
 }
@@ -116,15 +120,16 @@ async fn download_queue_skips_local_release() {
 /// and stays in the queue; `retry_downloads` flips it back to `Queued`.
 #[tokio::test]
 async fn download_queue_failed_pin_retries() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let release_id = insert_pinnable_release(&manager).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = insert_pinnable_release(&test).await;
 
-    manager.storage.set_online(false);
+    test.storage.set_online(false);
     // The evicted file cannot be fetched while storage is offline.
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
 
     // Let the worker pick it up, fail, and mark it Failed.
-    let failed = download_queue_until(&manager, |queue| {
+    let failed = download_queue_until(manager, |queue| {
         matches!(
             queue.rows.first().map(|row| &row.op.state),
             Some(bae_transfers::DownloadPhase::Failed { .. })
@@ -136,7 +141,7 @@ async fn download_queue_failed_pin_retries() {
     // Retry flips it back to Queued; while storage is offline it will fail again,
     // but the immediate post-retry state is Queued (or already re-failed).
     manager.retry_downloads().await.unwrap();
-    let snap = download_queue_now(&manager).await;
+    let snap = download_queue_now(manager).await;
     assert!(
         snap.rows.first().is_some_and(|row| matches!(
             row.op.state,
@@ -149,21 +154,22 @@ async fn download_queue_failed_pin_retries() {
 
     // Cancelling clears it regardless of the in-flight retry.
     manager.cancel_download(&release_id).await.unwrap();
-    assert!(download_queue_now(&manager).await.rows.is_empty(), "cancel removes the entry");
+    assert!(download_queue_now(manager).await.rows.is_empty(), "cancel removes the entry");
 }
 
 /// Pinning a release whose download failed queues that entry again, in its
 /// place ahead of one queued after it, with its error gone.
 #[tokio::test]
 async fn pinning_a_failed_download_queues_it_again_in_its_place() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let failed = insert_pinnable_release(&manager).await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let failed = insert_pinnable_release(&test).await;
     let source = manager.library_path().join("second-source");
-    let later = uploaded_release(&manager, &source, "Album Title", false).await;
+    let later = uploaded_release(manager, &source, "Album Title", false).await;
 
-    manager.storage.set_online(false);
+    test.storage.set_online(false);
     manager.enqueue_pins(vec![failed.clone()]).await.unwrap();
-    download_queue_until(&manager, |queue| {
+    download_queue_until(manager, |queue| {
         matches!(
             queue.rows.first().map(|row| &row.op.state),
             Some(bae_transfers::DownloadPhase::Failed { .. })
@@ -176,7 +182,7 @@ async fn pinning_a_failed_download_queues_it_again_in_its_place() {
 
     manager.enqueue_pins(vec![failed.clone()]).await.unwrap();
 
-    let queue = download_queue_now(&manager).await;
+    let queue = download_queue_now(manager).await;
     assert_eq!(
         queue
             .rows
@@ -197,7 +203,9 @@ async fn pinning_a_failed_download_queues_it_again_in_its_place() {
 async fn download_transfers_report_each_driven_file_progress() {
     use crate::storage::transfer::TransferProgress;
 
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+
+    let manager = test.library.manager();
     let release_id = "release-progress".to_string();
     // The manager's own worker leaves the entry to this test.
     manager.set_downloads_paused(true).await.unwrap();
@@ -272,12 +280,13 @@ async fn download_transfers_report_each_driven_file_progress() {
 /// send it no new value; the download's start and its end each do.
 #[tokio::test]
 async fn download_bytes_send_no_new_sync_activity() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
     let release_id = "release-activity".to_string();
     let progress = |bytes_done| {
         bae_transfers::DownloadTransferProgress::new(&release_id, bytes_done, 7).unwrap()
     };
-    let mut activity = views(&manager.library).subscribe_sync_activity();
+    let mut activity = views(test.library.manager()).subscribe_sync_activity();
     assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.downloads, None);
 
     // The manager's own worker leaves the entry to this test.
@@ -322,11 +331,12 @@ async fn download_bytes_send_no_new_sync_activity() {
 /// record goes.
 #[tokio::test]
 async fn a_failed_pins_retry_pins_the_release_again() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let home = connect_test_cloud(&test).await;
     let release_id =
-        uploaded_release(&manager, &temp_dir.path().join("retry-pin"), "Retry Pin", false).await;
-    for file in release_files(&manager, &release_id).await {
+        uploaded_release(manager, &temp_dir.path().join("retry-pin"), "Retry Pin", false).await;
+    for file in release_files(manager, &release_id).await {
         manager.evict_file_for_test(file.file).await.unwrap();
     }
     let mut values = manager.subscribe_sync_status();
@@ -343,7 +353,7 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     pending_list_until(&mut values, |items| items.iter().any(|item| item.wait.action == retry))
         .await;
 
-    download_queue_until(&manager, |queue| {
+    download_queue_until(manager, |queue| {
         queue.rows.iter().any(|row| {
             row.op.release_id == release_id
                 && matches!(row.op.state, bae_transfers::DownloadPhase::Failed { .. })
@@ -352,11 +362,11 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     .await;
     home.set_faults(coven::Faults::none()).await;
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    wait_for_kept_release(&manager, &release_id).await;
+    wait_for_kept_release(manager, &release_id).await;
     pending_list_until(&mut values, |items| !items.iter().any(|item| item.wait.action == retry))
         .await;
     assert!(
-        views(&manager.library)
+        views(test.library.manager())
             .find_release_detail(&release_id)
             .await
             .unwrap()
@@ -375,10 +385,11 @@ async fn a_failed_pins_retry_pins_the_release_again() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_kept() {
     use bae_views::album_detail::FilePin;
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let cloud =
-        uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
+        uploaded_release(manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
     let kept = |value: &bae_views::DbStorageInspector| {
         value.files.iter().all(|file| file.pin == Some(FilePin::Kept))
     };
@@ -435,16 +446,17 @@ async fn inspector_until(
 async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     use bae_views::album_detail::FilePin;
     use bae_views::storage_inspector::StorageInspectorTransfer;
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let cloud =
-        uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
-    inspector_rows_until(&manager, &cloud, |rows| rows.files.iter().all(|file| file.pin.is_none()))
+        uploaded_release(manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
+    inspector_rows_until(manager, &cloud, |rows| rows.files.iter().all(|file| file.pin.is_none()))
         .await;
 
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
-    let pinning = inspector_until(&manager, &cloud, |value| !value.transfers.is_empty()).await;
+    let pinning = inspector_until(manager, &cloud, |value| !value.transfers.is_empty()).await;
     assert!(pinning.files.iter().all(|file| file.pin == Some(FilePin::Waiting)));
     let [StorageInspectorTransfer::Download { summary: Some(summary), .. }] =
         pinning.transfers.as_slice()
@@ -461,9 +473,9 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     );
 
     manager.set_downloads_paused(false).await.unwrap();
-    let pinned = inspector_until(&manager, &cloud, |value| value.transfers.is_empty()).await;
+    let pinned = inspector_until(manager, &cloud, |value| value.transfers.is_empty()).await;
     assert!(pinned.files.iter().all(|file| file.pin.is_none()));
-    inspector_rows_until(&manager, &cloud, |rows| {
+    inspector_rows_until(manager, &cloud, |rows| {
         rows.files.iter().all(|file| file.pin == Some(FilePin::Kept))
     })
     .await;
@@ -475,13 +487,14 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
 /// resting place, and a retry or a refreshed listing row keep it pinning.
 #[tokio::test]
 async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let dir = |name: &str| temp_dir.path().join(name);
-    let first = uploaded_release(&manager, &dir("first"), "Album Title A", false).await;
-    let second = uploaded_release(&manager, &dir("second"), "Album Title B", false).await;
+    let first = uploaded_release(manager, &dir("first"), "Album Title A", false).await;
+    let second = uploaded_release(manager, &dir("second"), "Album Title B", false).await;
     let ascending =
-        || by_storage(&manager, bae_views::StorageFilter::All, bae_store::SortDirection::Ascending);
+        || by_storage(manager, bae_views::StorageFilter::All, bae_store::SortDirection::Ascending);
     let resting = vec![first.clone(), second.clone()];
     let second_pinning = vec![second.clone(), first.clone()];
     assert_eq!(ascending().await, resting);
@@ -490,10 +503,10 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
     assert_eq!(ascending().await, second_pinning, "queued");
 
-    assert!(activate_download(&manager, &second).await.unwrap());
+    assert!(activate_download(manager, &second).await.unwrap());
     assert_eq!(ascending().await, second_pinning, "downloading");
 
-    assert!(fail_download(&manager, &second, "the network connection was lost".into())
+    assert!(fail_download(manager, &second, "the network connection was lost".into())
         .await
         .unwrap());
     assert_eq!(ascending().await, resting, "failed");
@@ -516,12 +529,12 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     assert_eq!(ascending().await, resting, "cancelled");
 
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
-    assert!(activate_download(&manager, &second).await.unwrap());
-    assert!(finish_download(&manager, &second).await.unwrap());
+    assert!(activate_download(manager, &second).await.unwrap());
+    assert!(finish_download(manager, &second).await.unwrap());
     assert_eq!(ascending().await, resting, "finished");
 
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
-    clear_transfers_as_opening(&manager).await.unwrap();
+    clear_transfers_as_opening(manager).await.unwrap();
     assert_eq!(ascending().await, resting, "emptied as the library opens");
 }
 
@@ -549,16 +562,17 @@ async fn listed_queues(manager: &LibraryManager) -> bae_views::StorageQueues {
 #[tokio::test]
 async fn the_storage_list_carries_the_queues_holding_work() {
     use bae_views::{ReleaseQueueRun, StorageQueues, UploadQueueRun};
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
     let pinning =
-        uploaded_release(&manager, &temp_dir.path().join("pin"), "Album Title", false).await;
+        uploaded_release(manager, &temp_dir.path().join("pin"), "Album Title", false).await;
     let idle = StorageQueues { uploads: None, pins: None, outputs: None };
-    assert_eq!(listed_queues(&manager).await, idle);
+    assert_eq!(listed_queues(manager).await, idle);
 
     manager.set_sync_paused(true).await.unwrap();
     let uploading = insert_release_with_queued_uploads(
-        &manager,
+        manager,
         &temp_dir.path().join("upload"),
         "Album Title B",
         &[("track.flac", b"uploading")],
@@ -568,7 +582,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
     manager.enqueue_pins(vec![pinning.clone()]).await.unwrap();
     let uploads = Some(UploadQueueRun { paused: true });
     assert_eq!(
-        listed_queues(&manager).await,
+        listed_queues(manager).await,
         StorageQueues {
             uploads,
             pins: Some(ReleaseQueueRun { paused: true, active: None }),
@@ -576,13 +590,13 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         }
     );
 
-    assert!(activate_download(&manager, &pinning).await.unwrap());
+    assert!(activate_download(manager, &pinning).await.unwrap());
     // Paused, the export stays queued: running, the worker would take it.
     manager.set_outputs_paused(true).await.unwrap();
     manager.enqueue_export(&uploading.id, std::path::PathBuf::from("/exports")).await.unwrap();
     let outputs = Some(ReleaseQueueRun { paused: true, active: None });
     assert_eq!(
-        listed_queues(&manager).await,
+        listed_queues(manager).await,
         StorageQueues {
             uploads,
             pins: Some(ReleaseQueueRun { paused: true, active: Some(pinning.clone()) }),
@@ -590,11 +604,11 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         }
     );
 
-    assert!(fail_download(&manager, &pinning, "the network connection was lost".into())
+    assert!(fail_download(manager, &pinning, "the network connection was lost".into())
         .await
         .unwrap());
     assert_eq!(
-        listed_queues(&manager).await,
+        listed_queues(manager).await,
         StorageQueues { uploads, pins: None, outputs },
         "a failed pin is no work"
     );

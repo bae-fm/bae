@@ -262,6 +262,7 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
     let before = cover_art(&call(&router, "getAlbum", &album_query).await);
 
     lib.library
+        .manager()
         .store_library_image(
             &bae_records::DbLibraryImage {
                 id: lib.per_track_release.clone(),
@@ -296,6 +297,7 @@ async fn an_artist_cover_art_is_the_artist_image() {
     let artist_id = artist_wire_id.strip_prefix("ar-").unwrap().to_string();
     let image = bae_catalogs::test_image_host::cover_png();
     lib.library
+        .manager()
         .store_library_image(
             &bae_records::DbLibraryImage {
                 id: artist_id,
@@ -348,7 +350,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         musicbrainz_artist_id: Some("mbid-abc-123".to_string()),
         created_at: chrono::Utc::now(),
     };
-    library.insert_artist(&artist).await.unwrap();
+    library.manager().insert_artist(&artist).await.unwrap();
     let now = chrono::Utc::now();
     let album = DbAlbum {
         id: bae_util::test_ids::test_uuid("mb-album-1"),
@@ -384,6 +386,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         created_at: now,
     };
     library
+        .manager()
         .insert_album_with_release_and_tracks(
             &album,
             &[bae_records::DbAlbumArtist::new_test(&album.id, &artist.id)],
@@ -418,7 +421,7 @@ async fn musicbrainz_id_surfaces_when_present() {
             Some(pressing.key.as_str()),
         ),
     ] {
-        library.set_records(&release.id, vec![record]).await.unwrap();
+        library.manager().set_records(&release.id, vec![record]).await.unwrap();
         let response =
             call(&router, "getAlbumList2", &authed("f=json&type=alphabeticalByName")).await;
         assert_eq!(
@@ -546,6 +549,7 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
     let artist_b = bae_util::test_ids::test_uuid("credit-artist-b");
     for (id, name) in [(&artist_a, "Artist A"), (&artist_b, "Artist B")] {
         library
+            .manager()
             .insert_artist(&DbArtist {
                 id: id.clone(),
                 name: name.to_string(),
@@ -588,6 +592,7 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
         },
     ];
     library
+        .manager()
         .insert_album_with_release_and_tracks(&album, &credits, &release, &[], &[], &[])
         .await
         .unwrap();

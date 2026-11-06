@@ -70,7 +70,7 @@ pub async fn insert_local_release_with_files(
             bae_util::test_ids::test_uuid(&format!("{}-test-file-{index}", release.id)),
             created_at,
         );
-        library.add_external_file_for_test(&file, &path).await.unwrap();
+        library.manager().add_external_file_for_test(&file, &path).await.unwrap();
     }
     release
 }
@@ -85,7 +85,7 @@ pub async fn insert_release_with_queued_uploads(
     files: &[(&str, &[u8])],
 ) -> DbRelease {
     let release = insert_local_release_with_files(library, dir, album_title, files).await;
-    library.upload_release(&release.id, false).await.unwrap();
+    library.manager().upload_release(&release.id, false).await.unwrap();
     assert_eq!(
         library
             .records()
