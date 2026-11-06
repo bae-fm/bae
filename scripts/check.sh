@@ -274,6 +274,10 @@ check "xcodebuild (macOS baeium)" \
     "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution build
+# The baeium edition's compiled strings must exist and be translated; the
+# catalog also holds the full edition's keys, which the full build below owns.
+check "localizable strings (baeium)" \
+  python3 scripts/check_localizable_strings.py --allow-unreferenced-catalog-keys
 
 check "bridge build" ./bae-bridge/build-macos.sh
 check "install macOS bridge binding" \
@@ -286,6 +290,7 @@ check "xcodebuild" \
     "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution build
+check "localizable strings" python3 scripts/check_localizable_strings.py
 
 check "xcodebuild test (baeTests)" \
   env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast bae-macos/test.sh
