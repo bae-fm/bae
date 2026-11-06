@@ -253,13 +253,6 @@ impl CandidateRuntime {
         }
     }
 
-    /// Run `statements` against this runtime's library, for a test that
-    /// stores the rows a scan would.
-    #[cfg(test)]
-    pub(crate) async fn execute_local_sql_for_test(&self, statements: &str) {
-        self.tables.execute_local_sql_for_test(statements).await.expect("a test's statements run");
-    }
-
     /// `key`'s row as the standings table reads it, for a test.
     #[cfg(test)]
     pub(crate) async fn stored_standing_for_test(&self, key: &CandidateKey) -> StoredStanding {

@@ -58,6 +58,55 @@ pub(crate) fn candidate(root: &std::path::Path, name: &str) -> FolderCandidate {
     )
 }
 
+/// The release a scan reads at `key`'s folder below the watched folder
+/// `root`: one audio file, named for the folder so that each folder's files
+/// hash apart.
+pub(crate) fn key_candidate(root: &std::path::Path, key: &crate::CandidateKey) -> FolderCandidate {
+    let folder = key.test_folder();
+    let relative = folder.strip_prefix(root).expect("the key's folder is below the root");
+    let name = relative.to_str().expect("a test's folder is UTF-8").replace('\\', "/");
+    let file_name = format!("{}.flac", hex::encode(coven::path_bytes(relative)));
+    candidate_with(
+        root,
+        &name,
+        CategorizedFiles {
+            files: vec![CandidateFile {
+                file: ScannedFile::new(folder.join(&file_name), file_name, 1_000, 1)
+                    .with_test_flac_audio(),
+                role: FileRole::Audio,
+            }],
+            parts: Vec::new(),
+        },
+        ReleaseFileScope::Recursive,
+    )
+}
+
+/// `key`'s release scanned under the watched folder `root`, in a pass that
+/// reads again every release the last one stored: the files it is
+/// identified as.
+pub(crate) async fn scan_key(
+    tables: &crate::tables::ImportTables,
+    root: &std::path::Path,
+    key: &crate::CandidateKey,
+) -> crate::CandidateFiles {
+    let candidate = key_candidate(root, key);
+    tables.add_watched_import_folder(root).await.unwrap();
+    let kept: Vec<_> = tables
+        .load_folder_scan_items(root)
+        .await
+        .unwrap()
+        .into_iter()
+        .filter(|item| item.key() != *key)
+        .collect();
+    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
+    for item in kept.into_iter().chain([crate::folder_scanner::ScanItem::Valid(candidate.clone())])
+    {
+        tables.save_folder_scan_item(root, generation, &item).await.unwrap();
+    }
+    tables.finish_folder_scan(root, generation, None).await.unwrap();
+    crate::CandidateFiles { content_hash: candidate.files.content_hash(), file_edit_revision: 0 }
+}
+
 /// `empty_db` plus a watched-folder root that exists on disk.
 pub(crate) async fn watched_root() -> (Store, tempfile::TempDir, std::path::PathBuf) {
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;

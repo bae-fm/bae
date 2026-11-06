@@ -84,13 +84,6 @@ impl ImportTables {
         Self { store }
     }
 
-    /// Run `statements` against the store, for a test that stores the rows a
-    /// scan would.
-    #[cfg(test)]
-    pub(crate) async fn execute_local_sql_for_test(&self, statements: &str) -> Result<(), DbError> {
-        self.store.execute_local_sql_for_test(statements).await
-    }
-
     /// How many rows of `table` have `column` equal to `value`, for a test.
     #[cfg(test)]
     pub(crate) async fn count_rows_for_test(

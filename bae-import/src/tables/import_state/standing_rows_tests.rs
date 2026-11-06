@@ -9,40 +9,21 @@ use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use crate::IdentifyRunId;
 use crate::{Admission, CandidateFiles, SaveFailure};
-use bae_store::test_fixtures::{empty_db, exec_batch};
+use bae_store::test_fixtures::empty_db;
 use bae_store::Store;
 
-/// Store `key` as a candidate the scan holds with `files`, as the scan would.
-async fn scanned(db: &Store, key: &crate::CandidateKey, files: &CandidateFiles) {
-    exec_batch(
-        db,
-        &format!(
-            "INSERT OR IGNORE INTO watched_import_folders (path, position)
-                 VALUES (CAST('/music' AS BLOB), 0);
-             INSERT OR IGNORE INTO folder_scan_roots (watched_folder_path, generation, status, volume)
-                 VALUES (CAST('/music' AS BLOB), 1, 'complete', 'local');
-             DELETE FROM scan_candidate WHERE path = X'{key}';
-             INSERT INTO scan_candidate (watched_folder_path, path, generation, kind, name,
-                 relative_folder, folder, file_root, scope, content_hash, file_edit_revision)
-                 VALUES (CAST('/music' AS BLOB), X'{key}', 1, 'valid', 'Album', X'{relative}',
-                     X'{key}', X'{key}', 'recursive', '{hash}', {revision});",
-            key = hex::encode(key.as_bytes()),
-            relative = hex::encode(
-                crate::RelativeFolder::of(
-                    key.test_folder().strip_prefix("/music").unwrap()
-                )
-                .unwrap()
-                .as_bytes()
-            ),
-            hash = files.content_hash,
-            revision = files.file_edit_revision,
-        ),
-    )
-    .await;
+/// `key`'s release scanned under `/music`, as the scan stores it.
+async fn scanned(db: &Store, key: &crate::CandidateKey) {
+    let tables = crate::tables::ImportTables::new(db.clone());
+    scan_key(&tables, std::path::Path::new("/music"), key).await;
 }
 
+/// The files the scan identifies `key`'s release as.
 fn files_of(key: &crate::CandidateKey) -> CandidateFiles {
-    CandidateFiles { content_hash: format!("hash:{key}"), file_edit_revision: 0 }
+    CandidateFiles {
+        content_hash: key_candidate(std::path::Path::new("/music"), key).files.content_hash(),
+        file_edit_revision: 0,
+    }
 }
 
 fn run(number: u64) -> IdentifyRunId {
@@ -118,7 +99,7 @@ async fn every_standing_reads_back_as_written() {
     ];
     for (key, changes, stage) in cases {
         let key = &crate::CandidateKey::test(key);
-        scanned(&db, key, &files_of(key)).await;
+        scanned(&db, key).await;
         change(&db, key, changes).await;
         assert_eq!(
             tables.load_candidate_standing(key).await.unwrap(),
@@ -156,7 +137,7 @@ async fn nothing_running_removes_the_row() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let key = &crate::CandidateKey::test("/music/Album");
-    scanned(&db, key, &files_of(key)).await;
+    scanned(&db, key).await;
     change(
         &db,
         key,
@@ -180,7 +161,7 @@ async fn a_claim_while_another_stands_is_refused_whole() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let key = &crate::CandidateKey::test("/music/Album");
-    scanned(&db, key, &files_of(key)).await;
+    scanned(&db, key).await;
     change(
         &db,
         key,
@@ -210,7 +191,7 @@ async fn clearing_removes_every_standing() {
     let tables = crate::tables::ImportTables::new(db.clone());
     for key in ["/music/One", "/music/Two"] {
         let key = &crate::CandidateKey::test(key);
-        scanned(&db, key, &files_of(key)).await;
+        scanned(&db, key).await;
         change(
             &db,
             key,
@@ -251,7 +232,7 @@ async fn the_imports_in_flight_are_the_rows_an_import_holds() {
     let tables = crate::tables::ImportTables::new(db.clone());
     for key in ["/music/One", "/music/Two", "/music/Three"] {
         let key = &crate::CandidateKey::test(key);
-        scanned(&db, key, &files_of(key)).await;
+        scanned(&db, key).await;
         change(
             &db,
             key,

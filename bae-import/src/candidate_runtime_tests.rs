@@ -129,44 +129,13 @@ pub(crate) fn published(state: bae_identify::IdentifyState) -> bae_identify::Pub
     }
 }
 
-/// Store `key` as a candidate the scan holds under `/watch` with `revision`
-/// of its file decisions, as the scan would, and return the files it is
-/// identified as.
-pub(super) async fn scanned_at(
-    runtime: &CandidateRuntime,
-    key: &crate::CandidateKey,
-    revision: u64,
-) -> CandidateFiles {
-    let files =
-        CandidateFiles { content_hash: format!("hash:{key}"), file_edit_revision: revision };
-    runtime
-        .execute_local_sql_for_test(&format!(
-            "INSERT OR IGNORE INTO watched_import_folders (path, position)
-                 VALUES (CAST('/watch' AS BLOB), 0);
-             INSERT OR IGNORE INTO folder_scan_roots (watched_folder_path, generation, status, volume)
-                 VALUES (CAST('/watch' AS BLOB), 1, 'complete', 'local');
-             DELETE FROM scan_candidate WHERE path = X'{key}';
-             INSERT INTO scan_candidate (watched_folder_path, path, generation, kind, name,
-                 relative_folder, folder, file_root, scope, content_hash, file_edit_revision)
-                 VALUES (CAST('/watch' AS BLOB), X'{key}', 1, 'valid', 'Candidate', X'{relative}',
-                     X'{key}', X'{key}', 'recursive', '{hash}', {revision});",
-            key = hex::encode(key.as_bytes()),
-            relative = hex::encode(
-                crate::RelativeFolder::of(key.test_folder().strip_prefix("/watch").unwrap())
-                    .unwrap()
-                    .as_bytes()
-            ),
-            hash = files.content_hash,
-        ))
-        .await;
-    files
-}
-
+/// `key`'s release scanned under `/watch`, as the scan stores it: the files
+/// it is identified as.
 pub(super) async fn scanned_key(
     runtime: &CandidateRuntime,
     key: &crate::CandidateKey,
 ) -> CandidateFiles {
-    scanned_at(runtime, key, 0).await
+    crate::tables::tests::scan_key(&runtime.tables, std::path::Path::new("/watch"), key).await
 }
 
 /// Make every write of a candidate's standing that one of `failing` names —
