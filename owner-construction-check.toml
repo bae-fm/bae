@@ -3,9 +3,10 @@
 # revision and runs on this workspace.
 
 # The rule groups bae holds itself to: its crates depend only downward, no
-# struct exists only to be taken apart, and an owner never hands out what it
-# holds.
-rules = ["component-bundles", "crate-dependencies", "owner-dependencies"]
+# struct exists only to be taken apart, each library table is written only
+# from its domain's homes (the [database] rows below), and an owner never
+# hands out what it holds.
+rules = ["component-bundles", "crate-dependencies", "database-boundary", "owner-dependencies"]
 
 # The code generator for the bindings answers only to the conventions.
 tools = ["bae-uniffi-bindgen"]
