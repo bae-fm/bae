@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_cover (
     source       TEXT CHECK (source IS NULL OR source IN ('musicbrainz', 'discogs')),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((kind IN ('local', 'embedded')) = (file_id IS NOT NULL)),
-    CHECK ((kind = 'remote') = (url IS NOT NULL AND source IS NOT NULL)),
+    -- Each on its own: a folder's or a tag's cover holds neither half.
+    CHECK ((kind = 'remote') = (url IS NOT NULL)),
+    CHECK ((kind = 'remote') = (source IS NOT NULL)),
     -- Referenced by import_candidate_cover_copy; only a remote cover has a url.
     UNIQUE (content_hash, url)
 ) STRICT;

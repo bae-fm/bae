@@ -144,3 +144,41 @@ async fn a_remote_cover_stored_without_its_bytes_fails_its_read() {
         .expect_err("a remote cover without its bytes is a damaged row");
     assert!(error.to_string().contains("remote cover has no stored bytes"), "{error}");
 }
+
+/// A cover row holds a file, or a catalog's address and the catalog, as its
+/// kind says, and never a part of the other: a folder's or a tag's cover
+/// with an address or a catalog is refused, as is a catalog's cover missing
+/// either.
+#[tokio::test]
+async fn a_cover_row_holds_only_what_its_kind_names() {
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let url = Some("https://example.invalid/front");
+    let source = Some("discogs");
+    for (kind, file_id, url, source) in [
+        ("local", Some("cover.jpg"), url, None),
+        ("local", Some("cover.jpg"), None, source),
+        ("embedded", Some("01.flac"), url, None),
+        ("embedded", Some("01.flac"), None, source),
+        ("remote", None, url, None),
+        ("remote", None, None, source),
+        ("remote", Some("cover.jpg"), url, source),
+    ] {
+        let hash = hash.clone();
+        let refused = db
+            .call(move |conn| {
+                conn.execute(
+                    "INSERT INTO import_candidate_cover (content_hash, kind, file_id, url, source) \
+                     VALUES (?, ?, ?, ?, ?)",
+                    rusqlite::params![hash, kind, file_id, url, source],
+                )
+                .map_err(bae_store::DbError::from)
+            })
+            .await
+            .expect_err("the row states what its kind does not hold");
+        assert!(
+            refused.to_string().contains("CHECK constraint failed"),
+            "{kind} {file_id:?} {url:?} {source:?}: {refused}"
+        );
+    }
+}
