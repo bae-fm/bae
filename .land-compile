@@ -1,0 +1,37 @@
+#!/bin/bash
+# Compile check that land.sh runs on a cherry-picked result before pushing it
+# (see .land-checks for the static ones). Builds what the pre-commit hook
+# builds, with its feature set and crate selection, so the landing worktree
+# reuses the hook's warm build: clippy with --all-targets over the crates the
+# landed commits touch and the crates that depend on them, warnings denied.
+# Two commits that each pass the hook can break each other's tests; this is
+# where that shows.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+source scripts/hooks/lib/file-list.sh
+
+CHANGED_FILES=$(git --no-pager diff --name-only origin/main HEAD)
+scripts/build-layout.sh
+
+CRATES=$(workspace_crates)
+DIRECT=()
+while IFS= read -r crate; do
+    [ -n "$crate" ] && DIRECT+=("$crate")
+done < <(changed_workspace_crates <<< "$CRATES")
+
+ARGS=(clippy --all-targets)
+if [ "${#DIRECT[@]}" -gt 0 ]; then
+    while read -r kind value; do
+        case "$kind" in
+            crate) ARGS+=(-p "$value") ;;
+            feature) ARGS+=(--features "$value") ;;
+        esac
+    done < <(crate_check_plan "${DIRECT[@]}")
+elif grep -qxE 'Cargo\.toml|Cargo\.lock' <<< "$CHANGED_FILES"; then
+    # A change to the workspace manifest or lockfile reaches every crate.
+    ARGS+=(--workspace)
+else
+    echo "no Rust crate changed; nothing to compile"
+    exit 0
+fi
+scripts/cargo.sh "${ARGS[@]}" -- -D warnings
