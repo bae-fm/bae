@@ -43,33 +43,17 @@ export FFMPEG_DIR="${FFMPEG_DIR:-$REPO/bae-ffmpeg/dist}"
 ./scripts/check-ffmpeg-dist.sh scripts/setup-ffmpeg.sh "$FFMPEG_DIR"
 
 # The bridge is copied out of Cargo's target directory as soon as it is built,
-# so another build in a shared target directory cannot change it between the
-# build and the binding generation that reads it.
+# so a later build there cannot change it between the build and the binding
+# generation that reads it.
 LIB_DIR="$REPO/bae-avalonia/bin/smoke"
 mkdir -p "$LIB_DIR"
 # test-keyring: the smoke test starts its host with an in-memory keychain.
-cargo rustc -p bae-bridge --lib --features oauth-providers,cast,test-keyring \
-    --crate-type cdylib --message-format=json-render-diagnostics \
-    > "$LIB_DIR/cargo-artifacts.jsonl"
-./scripts/record-build-use.sh < "$LIB_DIR/cargo-artifacts.jsonl"
+./scripts/cargo.sh rustc -p bae-bridge --lib --features oauth-providers,cast,test-keyring \
+    --crate-type cdylib
 # The bindings import uniffi_bae_bridge, which .NET resolves to
 # libuniffi_bae_bridge.dylib on macOS.
 BRIDGE="$LIB_DIR/libuniffi_bae_bridge.dylib"
-python3 - "$LIB_DIR/cargo-artifacts.jsonl" "$BRIDGE" <<'PY'
-import json
-from pathlib import Path
-import shutil
-import sys
-
-artifacts = [json.loads(line) for line in Path(sys.argv[1]).read_text().splitlines()]
-libraries = [Path(name) for artifact in artifacts
-             if artifact.get("reason") == "compiler-artifact"
-             and artifact["target"]["name"] == "bae_bridge"
-             for name in artifact["filenames"] if name.endswith(".dylib")]
-if len(libraries) != 1:
-    raise SystemExit(f"Expected one bridge dylib from Cargo, got {libraries}")
-shutil.copy2(libraries[0], sys.argv[2])
-PY
+cp target/debug/libbae_bridge.dylib "$BRIDGE"
 
 BINDINGS="bae-bridge/csharp-bindings-full"
 rm -rf "$BINDINGS"

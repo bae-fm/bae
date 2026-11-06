@@ -76,9 +76,11 @@ case "$(rustc -vV | awk '/^host:/ {print $2}')" in
 esac
 
 CONFIG=Debug
+CARGO_PROFILE=debug
 CARGO_FLAGS=()
 if [[ "$RELEASE" == true ]]; then
     CONFIG=Release
+    CARGO_PROFILE=release
     CARGO_FLAGS+=(--release)
 fi
 export FFMPEG_DIR="${FFMPEG_DIR:-$REPO/bae-ffmpeg/dist}"
@@ -95,25 +97,9 @@ mkdir -p "$RUN_DIR"
 # target directory cannot silently change the bridge this runner reuses.
 BRIDGE="$RUN_DIR/libbae_bridge.dylib"
 if [[ "$SKIP_RUST" == false ]]; then
-    cargo rustc ${CARGO_FLAGS[@]+"${CARGO_FLAGS[@]}"} -p bae-bridge --lib \
-        --features "$FEATURES" --crate-type cdylib --message-format=json-render-diagnostics \
-        > "$RUN_DIR/cargo-artifacts.jsonl"
-    ./scripts/record-build-use.sh < "$RUN_DIR/cargo-artifacts.jsonl"
-    python3 - "$RUN_DIR/cargo-artifacts.jsonl" "$BRIDGE" <<'PY'
-import json
-from pathlib import Path
-import shutil
-import sys
-
-artifacts = [json.loads(line) for line in Path(sys.argv[1]).read_text().splitlines()]
-libraries = [Path(name) for artifact in artifacts
-             if artifact.get("reason") == "compiler-artifact"
-             and artifact["target"]["name"] == "bae_bridge"
-             for name in artifact["filenames"] if name.endswith(".dylib")]
-if len(libraries) != 1:
-    raise SystemExit(f"Expected one bridge dylib from Cargo, got {libraries}")
-shutil.copy2(libraries[0], sys.argv[2])
-PY
+    ./scripts/cargo.sh rustc ${CARGO_FLAGS[@]+"${CARGO_FLAGS[@]}"} -p bae-bridge --lib \
+        --features "$FEATURES" --crate-type cdylib
+    cp "target/$CARGO_PROFILE/libbae_bridge.dylib" "$BRIDGE"
 elif [[ ! -f "$BRIDGE" ]]; then
     echo "No cached bridge at $BRIDGE; run without --skip-rust first." >&2
     exit 1
