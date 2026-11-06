@@ -209,6 +209,7 @@ task_types = [
     "LiveReleaseFiles",
     "LiveStorageBrowse",
     "LiveDetail",
+    "LiveImportCandidate",
     "LiveValues",
     "WithSyncState",
     "CancellableLiveQuery",
