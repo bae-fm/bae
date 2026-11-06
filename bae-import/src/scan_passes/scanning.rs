@@ -59,6 +59,7 @@ fn refusal_is_a_bug(error: &bae_store::DbError) -> bool {
                 | coven::DbError::StoreFailed(_)
                 | coven::DbError::StatePersistence(_)
                 | coven::DbError::CheckpointFailed(_)
+                | coven::DbError::StatisticsFailed(_)
                 | coven::DbError::WallTimer(_)
                 | coven::DbError::DamagedDatabase => false,
                 coven::DbError::Sqlite(error) => !sqlite_is_the_disk(error),

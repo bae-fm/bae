@@ -566,6 +566,8 @@ fn a_refused_scan_write_is_a_bug_unless_the_disk_or_the_store_failed() {
     assert!(!refusal_is_a_bug(&sqlite(rusqlite::ffi::SQLITE_IOERR)));
     assert!(!refusal_is_a_bug(&coven(coven::DbError::StoreClosed)));
     assert!(!refusal_is_a_bug(&coven(coven::DbError::RollbackFailed)));
+    let damaged = std::sync::Arc::new(coven::DbError::DamagedDatabase);
+    assert!(!refusal_is_a_bug(&coven(coven::DbError::StatisticsFailed(damaged))));
     // An earlier bug that failed the store's handle, reported as it happened.
     let bug = coven::task::Bug { operation: "authorize a statement", message: "boom".into() };
     assert!(!refusal_is_a_bug(&coven(coven::DbError::StoreFailed(bug))));

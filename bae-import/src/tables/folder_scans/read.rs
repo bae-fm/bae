@@ -196,12 +196,9 @@ pub(crate) enum Readers<'a> {
 /// `coverage`'s, one above it read whole, or — for `coverage` over a whole
 /// folder — one below it.
 ///
-/// Each of those is a lookup by folder in `idx_scan_candidate_file_root`.
-/// With statistics on `scan_candidate` SQLite picks that index itself. The
-/// `+` is for a library whose `scan_candidate` has never been analyzed — its
-/// first scan, before coven's `PRAGMA optimize` at the next open or close
-/// gathers them: without statistics SQLite takes a root to hold few rows and
-/// would read every one of them in key order instead.
+/// Each of those is a lookup by folder in `idx_scan_candidate_file_root`,
+/// which SQLite picks from its statistics on `scan_candidate`. Coven gathers
+/// them while a scan fills the table, once it holds 100 rows.
 pub(crate) fn entries_reading(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &Path,
@@ -239,7 +236,7 @@ pub(crate) fn entries_reading(
     Ok(sql.query(
         &format!(
             "SELECT path FROM scan_candidate \
-             WHERE +watched_folder_path = :root AND source_kind = 'folder' \
+             WHERE watched_folder_path = :root AND source_kind = 'folder' \
                AND {readers_clause} \
                AND (file_root = :folder \
                     OR (scope = 'recursive' \
