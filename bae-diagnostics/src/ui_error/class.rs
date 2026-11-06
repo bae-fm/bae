@@ -42,11 +42,15 @@ pub enum UiErrorClass {
     InviteJoining,
     StoreOwnerAccount,
     Renderer,
+    QueueChanged,
+    AirPlayUnsupported,
+    AirPlayUnreadableSettings,
+    ReplacementUnfinished,
 }
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 35] = [
+    const ALL: [Self; 39] = [
         Self::Database,
         Self::Config,
         Self::Internal,
@@ -82,6 +86,10 @@ impl UiErrorClass {
         Self::InviteJoining,
         Self::StoreOwnerAccount,
         Self::Renderer,
+        Self::QueueChanged,
+        Self::AirPlayUnsupported,
+        Self::AirPlayUnreadableSettings,
+        Self::ReplacementUnfinished,
     ];
 
     /// The name a stored failure of this class goes by.
@@ -122,6 +130,10 @@ impl UiErrorClass {
             Self::InviteJoining => "invite_joining",
             Self::StoreOwnerAccount => "store_owner_account",
             Self::Renderer => "renderer",
+            Self::QueueChanged => "queue_changed",
+            Self::AirPlayUnsupported => "airplay_unsupported",
+            Self::AirPlayUnreadableSettings => "airplay_unreadable_settings",
+            Self::ReplacementUnfinished => "replacement_unfinished",
         }
     }
 
@@ -159,6 +171,10 @@ impl UiErrorClass {
             | Self::Network
             // What the device playback was sent to said when it refused.
             | Self::Renderer
+            // Which AirPlay limit a receiver hit, and the setting it
+            // advertises that can't be read.
+            | Self::AirPlayUnsupported
+            | Self::AirPlayUnreadableSettings
             // The cause the line leaves out: why the device must be reset (a
             // damaged database, another copy using its id), why the keychain
             // refused this second, whether the invite's person is joining or
@@ -187,7 +203,9 @@ impl UiErrorClass {
             | Self::KeychainEntitlementMissing
             | Self::SavedRestoreCodesFull
             | Self::SavedRestoreCodeTooLarge
-            | Self::StoreOwnerAccount => false,
+            | Self::StoreOwnerAccount
+            | Self::QueueChanged
+            | Self::ReplacementUnfinished => false,
         }
     }
 }
@@ -232,6 +250,10 @@ impl UiErrorCategory {
             Self::InviteJoining => K::InviteJoining,
             Self::StoreOwnerAccount => K::StoreOwnerAccount,
             Self::Renderer => K::Renderer,
+            Self::QueueChanged => K::QueueChanged,
+            Self::AirPlayUnsupported => K::AirPlayUnsupported,
+            Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
+            Self::ReplacementUnfinished(_) => K::ReplacementUnfinished,
         }
     }
 
@@ -267,6 +289,9 @@ impl UiErrorCategory {
             K::InviteJoining => Self::InviteJoining,
             K::StoreOwnerAccount => Self::StoreOwnerAccount,
             K::Renderer => Self::Renderer,
+            K::QueueChanged => Self::QueueChanged,
+            K::AirPlayUnsupported => Self::AirPlayUnsupported,
+            K::AirPlayUnreadableSettings => Self::AirPlayUnreadableSettings,
             K::MetadataTrackCount
             | K::TiedMediums
             | K::GroupingBlocked
@@ -274,7 +299,8 @@ impl UiErrorCategory {
             | K::StorageCheck
             | K::S3VersioningUnknown
             | K::S3VersioningUnsupported
-            | K::S3Prefix => return None,
+            | K::S3Prefix
+            | K::ReplacementUnfinished => return None,
         })
     }
 }

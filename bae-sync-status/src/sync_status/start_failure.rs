@@ -73,7 +73,11 @@ impl FailureColumns {
             | K::Network
             | K::InviteJoining
             | K::StoreOwnerAccount
-            | K::Renderer => {
+            | K::Renderer
+            | K::QueueChanged
+            | K::AirPlayUnsupported
+            | K::AirPlayUnreadableSettings
+            | K::ReplacementUnfinished => {
                 Err(DbError::Message(format!("a sync start can't fail as {category:?}")))
             }
         }

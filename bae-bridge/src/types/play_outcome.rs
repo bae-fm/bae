@@ -50,19 +50,13 @@ pub fn bridge_play_outcome_key(outcome: &BridgePlayOutcome) -> Option<String> {
     }
 }
 
-/// A queue command that changed nothing: the queue changed under the screen
-/// that asked, a database failure, or the playback service had stopped, which
-/// is a bug of whoever still sent it the command.
+/// A queue command that changed nothing, in the class core gave it. A
+/// database failure crosses as its own text, as every database failure does.
 impl From<bae_playback::QueueEditError> for super::BridgeError {
     fn from(error: bae_playback::QueueEditError) -> Self {
         match error {
-            changed @ bae_playback::QueueEditError::QueueChanged => {
-                Self::diagnostic(super::BridgeErrorCategory::QueueChanged, changed)
-            }
             bae_playback::QueueEditError::Queue(error) => error.into(),
-            stopped @ bae_playback::QueueEditError::Stopped(_) => {
-                Self::diagnostic(super::BridgeErrorCategory::Internal, stopped)
-            }
+            error => Self::categorized(error.category(), error),
         }
     }
 }

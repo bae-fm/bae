@@ -139,6 +139,28 @@ pub enum CastError {
     Setting(bae_store::DbError),
 }
 
+impl CastError {
+    /// The class a surface words this failure in. An AirPlay receiver the
+    /// sender can't drive, or whose settings can't be read, has its own line;
+    /// a setting that couldn't be read is the library's database; anything
+    /// else is a fault the person can only report.
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        use bae_diagnostics::UiErrorCategory as C;
+        match self {
+            Self::AirPlayPinRequired
+            | Self::AirPlayPairingUnsupported
+            | Self::AirPlayEncryptionUnsupported => C::AirPlayUnsupported,
+            Self::AirPlayUnreadableSettings(_) => C::AirPlayUnreadableSettings,
+            Self::Setting(_) => C::Database,
+            Self::Disabled
+            | Self::DeviceNotFound
+            | Self::Connect(_)
+            | Self::Serving(_)
+            | Self::Internal(_) => C::Internal,
+        }
+    }
+}
+
 /// Where the ephemeral server listens, and the address its URLs name.
 #[derive(Debug, Clone, Copy)]
 enum ServingNetwork {

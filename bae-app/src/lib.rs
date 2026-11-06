@@ -109,6 +109,30 @@ pub(crate) fn classify_key_state_error(error: bae_library::LibraryError) -> Boot
 }
 
 impl BootstrapError {
+    /// This failure as a surface states it: its class, with its own text as
+    /// the untranslated detail, or for a library that isn't there, that
+    /// library's id, which a surface says as not found rather than as a class.
+    pub fn ui_error(&self) -> Result<bae_diagnostics::UiError, &str> {
+        use bae_diagnostics::UiErrorCategory as C;
+        let category = match self {
+            Self::LibraryNotFound(id) => return Err(id),
+            Self::Config(_) => C::Config,
+            Self::Database(_) => C::Database,
+            Self::DeviceResetRequired(_) => C::DeviceResetRequired,
+            // The class names the one call that finishes the replacement, so
+            // the host offers that call and never the other.
+            Self::ReplacementUnfinished(by) => C::ReplacementUnfinished(*by),
+            Self::Internal(_) => C::Internal,
+            // Its own class, not `Keyring`: that one reads as "the keyring
+            // broke", and this one is "it is locked this second, try again
+            // after you unlock". The host branches on the class to keep the
+            // handle path open and retry.
+            Self::KeyringUnavailable => C::KeyringLocked,
+            Self::KeychainEntitlementMissing(_) => C::KeychainEntitlementMissing,
+        };
+        Ok(bae_diagnostics::UiError::diagnostic(category, self))
+    }
+
     /// The bootstrap outcome of a keychain that refused the read, or `key`
     /// back when it failed some other way.
     fn from_keychain_refusal(key: coven::KeyError) -> Result<Self, coven::KeyError> {

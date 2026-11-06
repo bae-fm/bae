@@ -506,13 +506,10 @@ impl BridgeErrorCategory {
             Self::InviteJoining => K::InviteJoining,
             Self::StoreOwnerAccount => K::StoreOwnerAccount,
             Self::Renderer => K::Renderer,
-            // The categories core has no counterpart for, which the bridge
-            // gives the errors it classes itself. The queue's refusal and the
-            // unfinished replacement are said whole by their lines; which
-            // AirPlay limit a receiver hit, and the setting it advertises
-            // that can't be read, are in the detail only.
-            Self::QueueChanged | Self::ReplacementUnfinished { .. } => return false,
-            Self::AirPlayUnsupported | Self::AirPlayUnreadableSettings => return true,
+            Self::QueueChanged => K::QueueChanged,
+            Self::AirPlayUnsupported => K::AirPlayUnsupported,
+            Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
+            Self::ReplacementUnfinished { .. } => K::ReplacementUnfinished,
         };
         class.detail_adds_to_line()
     }
@@ -577,10 +574,6 @@ pub fn bridge_playback_error_reason_line(
 // =========================================================================
 
 mirror_enum! {
-    /// The bridge enum carries variants core's has no counterpart for — an
-    /// AirPlay receiver bae cannot drive, and a library whose replacement of
-    /// this device's copy is unfinished, which the bootstrap reports — so
-    /// only the outward direction is a mirror.
     BridgeErrorCategory = bae_diagnostics::UiErrorCategory,
     from_core: pub(crate) fn,
     variants: {
@@ -619,6 +612,10 @@ mirror_enum! {
         InviteJoining,
         StoreOwnerAccount,
         Renderer,
+        QueueChanged,
+        AirPlayUnsupported,
+        AirPlayUnreadableSettings,
+        ReplacementUnfinished(by: (BridgeReplacedBy)),
     },
 }
 

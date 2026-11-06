@@ -60,6 +60,20 @@ pub enum QueueEditError {
     Stopped(#[source] oneshot::error::RecvError),
 }
 
+impl QueueEditError {
+    /// The class a surface words this failure in: the queue changed under
+    /// the screen that asked, a database failure, or a service that had
+    /// stopped, which is a bug of whoever still sent it the command.
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        use bae_diagnostics::UiErrorCategory as C;
+        match self {
+            Self::QueueChanged => C::QueueChanged,
+            Self::Queue(_) => C::Database,
+            Self::Stopped(_) => C::Internal,
+        }
+    }
+}
+
 /// Where a queue command's answer goes: what the command gives back (a
 /// reorder, the lane's version the move made).
 pub(crate) type QueueEditReply<T> = oneshot::Sender<Result<T, QueueEditError>>;

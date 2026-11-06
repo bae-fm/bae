@@ -566,37 +566,15 @@ fn diagnostics_error_to_bridge(e: DiagnosticsError) -> BridgeError {
     BridgeError::internal(format!("diagnostics failed: {e}"))
 }
 
+/// A bootstrap failure in the class core gave it, with its text as the
+/// untranslated detail; a library that isn't there crosses as not found.
 fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
-    match e {
-        BootstrapError::LibraryNotFound(id) => {
-            BridgeError::NotFound { entity: crate::types::BridgeEntityKind::Library, id }
-        }
-        BootstrapError::Config(msg) => BridgeError::config(msg),
-        BootstrapError::Database(msg) => BridgeError::database(msg),
-        BootstrapError::DeviceResetRequired(msg) => {
-            BridgeError::diagnostic(crate::BridgeErrorCategory::DeviceResetRequired, msg)
-        }
-        // The category names the one call that finishes the replacement, so
-        // the host offers that call and never the other.
-        error @ BootstrapError::ReplacementUnfinished(by) => BridgeError::diagnostic(
-            crate::BridgeErrorCategory::ReplacementUnfinished {
-                by: crate::BridgeReplacedBy::from_core(by),
-            },
-            error,
-        ),
-        BootstrapError::Internal(msg) => BridgeError::internal(msg),
-        // Its own category, not `Keyring`: that one reads as "the keyring
-        // broke", and this one is "it is locked this second, try again after
-        // you unlock". The host branches on the category to keep the handle
-        // path open and retry, so the distinction has to survive the bridge.
-        BootstrapError::KeyringUnavailable => BridgeError::diagnostic(
-            crate::types::BridgeErrorCategory::KeyringLocked,
-            "the OS keychain refused the read while the session is locked",
-        ),
-        error @ BootstrapError::KeychainEntitlementMissing(_) => BridgeError::diagnostic(
-            crate::types::BridgeErrorCategory::KeychainEntitlementMissing,
-            error,
-        ),
+    match e.ui_error() {
+        Ok(error) => BridgeError::from_core(error),
+        Err(id) => BridgeError::NotFound {
+            entity: crate::types::BridgeEntityKind::Library,
+            id: id.to_string(),
+        },
     }
 }
 

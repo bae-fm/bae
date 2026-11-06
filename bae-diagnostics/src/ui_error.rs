@@ -105,6 +105,19 @@ pub enum UiErrorCategory {
     /// The device playback was sent to (Cast, DLNA) refused a command — a load,
     /// a play, a seek — while the link to it stayed up.
     Renderer,
+    /// A queue command named an entry, or an entry to go before, that the
+    /// queue no longer holds there, and changed nothing.
+    QueueChanged,
+    /// An AirPlay receiver can't be driven: it demands a PIN, a pairing the
+    /// sender doesn't do, or audio encryption the sender doesn't implement.
+    AirPlayUnsupported,
+    /// An AirPlay receiver advertises a setting bae can't read, so how to
+    /// connect to it can't be decided.
+    AirPlayUnreadableSettings,
+    /// The library didn't open because a reset or a restore of this device's
+    /// copy stopped partway; only running the call `by` names again finishes
+    /// it.
+    ReplacementUnfinished(coven::ReplacedBy),
 }
 
 /// Why a release read from several folders cannot be worked on as it stands,

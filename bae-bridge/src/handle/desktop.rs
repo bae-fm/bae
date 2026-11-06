@@ -88,24 +88,10 @@ forward! {
     async this => {
         /// Cast playback to the device with `device_id`.
         fn cast_to(device_id: String) -> () {
-            this.cast.cast_to(&device_id).await.map_err(|error| {
-                let detail = error.to_string();
-                match error {
-                    // AirPlay receivers the sender can't drive get their own localized
-                    // picker line, not the generic internal-error one.
-                    bae_cast::CastError::AirPlayPinRequired
-                    | bae_cast::CastError::AirPlayPairingUnsupported
-                    | bae_cast::CastError::AirPlayEncryptionUnsupported => BridgeError::diagnostic(
-                        crate::types::BridgeErrorCategory::AirPlayUnsupported,
-                        detail,
-                    ),
-                    bae_cast::CastError::AirPlayUnreadableSettings(_) => BridgeError::diagnostic(
-                        crate::types::BridgeErrorCategory::AirPlayUnreadableSettings,
-                        detail,
-                    ),
-                    _ => BridgeError::internal(detail),
-                }
-            })
+            this.cast
+                .cast_to(&device_id)
+                .await
+                .map_err(|error| BridgeError::categorized(error.category(), error))
         }
     }
 }

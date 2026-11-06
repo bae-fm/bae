@@ -143,7 +143,11 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::Membership
             | UiErrorCategory::InviteJoining
             | UiErrorCategory::StoreOwnerAccount
-            | UiErrorCategory::Renderer => Self::Unavailable(detail),
+            | UiErrorCategory::Renderer
+            | UiErrorCategory::QueueChanged
+            | UiErrorCategory::AirPlayUnsupported
+            | UiErrorCategory::AirPlayUnreadableSettings
+            | UiErrorCategory::ReplacementUnfinished(_) => Self::Unavailable(detail),
         }
     }
 }

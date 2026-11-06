@@ -119,6 +119,9 @@ fn category_column(category: UiErrorCategory) -> String {
             "{class}.{}",
             serde_json::to_string(&error).expect("S3 prefix error serializes")
         ),
+        C::ReplacementUnfinished(by) => {
+            format!("{class}.{}", serde_json::to_string(&by).expect("a replacing call serializes"))
+        }
         _ => class.to_string(),
     }
 }
@@ -223,6 +226,9 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
         K::S3VersioningUnsupported => {
             C::S3VersioningUnsupported(versioning_of(stored).ok_or_else(unreadable)?)
         }
+        K::ReplacementUnfinished => C::ReplacementUnfinished(
+            serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?,
+        ),
         K::TiedMediums => C::TiedMediums {
             mediums: stored
                 .split('.')

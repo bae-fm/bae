@@ -61,6 +61,11 @@ fn every_failure_class_reads_back_as_itself() {
         C::InviteJoining,
         C::StoreOwnerAccount,
         C::Renderer,
+        C::QueueChanged,
+        C::AirPlayUnsupported,
+        C::AirPlayUnreadableSettings,
+        C::ReplacementUnfinished(coven::ReplacedBy::Reset),
+        C::ReplacementUnfinished(coven::ReplacedBy::Restore),
     ];
     for class in classes {
         assert_eq!(category_of(&category_column(class.clone())).unwrap(), class);
