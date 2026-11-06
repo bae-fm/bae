@@ -3,8 +3,22 @@
 # Swift test types (`Type` or `Type/test`), and fails when a name ran no tests:
 # xcodebuild passes a filter that matches nothing, such as a file name.
 #
-# Usage: bae-macos/test.sh [<Type>[/<test>] ...]
+# `--build-only` compiles the app and baeTests into the same tree and stops,
+# running nothing: the check after a change to a bridge shape or Swift code,
+# which `run.sh` alone misses because it never builds the test target.
+#
+# Usage: bae-macos/test.sh [--build-only | <Type>[/<test>] ...]
 set -euo pipefail
+
+ACTION=test
+if [[ "${1:-}" == "--build-only" ]]; then
+    if [[ $# -ne 1 ]]; then
+        echo "--build-only takes no test names" >&2
+        exit 2
+    fi
+    ACTION=build-for-testing
+    shift
+fi
 
 cd "$(dirname "$0")/.."
 source scripts/xcode-trees.sh
@@ -34,10 +48,10 @@ xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution \
     -resultBundlePath "$BUNDLE" \
-    ${ONLY_TESTING[@]+"${ONLY_TESTING[@]}"} test || status=$?
+    ${ONLY_TESTING[@]+"${ONLY_TESTING[@]}"} "$ACTION" || status=$?
 
 # A build that failed before testing leaves no bundle; its own status says so.
-if [[ -d "$BUNDLE" ]]; then
+if [[ "$ACTION" == test && -d "$BUNDLE" ]]; then
     xcrun xcresulttool get test-results tests --path "$BUNDLE" > "$RESULTS/tests.json"
     python3 scripts/xcresult-tests-ran.py "$RESULTS/tests.json" "$@" || status=1
 fi
