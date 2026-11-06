@@ -67,8 +67,9 @@ extension BridgeSetupProgress: ProgressStep {
 
 /// The step a library's open, a setup call, a close or an apply of a catalog
 /// release runs, over a bar of how much of it is done, set straight from the
-/// call's stream once per display frame. Between steps it is hidden and tells `onStepping`, so SwiftUI
-/// swaps what it shows only as a step starts or ends, never as one moves.
+/// call's stream once per display frame. Between steps it is hidden. A step
+/// starting or ending in the stream it follows tells `onStepping`, so SwiftUI
+/// swaps what it shows only then, never as one moves.
 final class StepProgressNSView<Step: ProgressStep>: NSView {
     private let label = NSTextField(labelWithString: "")
     private let bar: ProgressTrackNSView
@@ -77,10 +78,11 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         view: self
     ) { [weak self] progress in self?.show(progress) }
     var onStepping: (Bool) -> Void = { _ in }
-    /// Whether a step runs, as last told to `onStepping`; nil until the
-    /// line shows what the stream it follows holds.
-    private var told: Bool?
-    var stepping: Bool { told ?? false }
+    /// Whether the line shows a step.
+    private(set) var stepping = false
+    /// Whether the line is starting to follow a stream, which shows what the
+    /// stream holds during SwiftUI's update of the line.
+    private var joining = false
 
     var accent: NSColor {
         get { bar.accent }
@@ -121,19 +123,14 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         stack.fittingSize.height
     }
 
-    /// Follow `progress`. A new stream tells `onStepping` whether a step
-    /// runs as soon as the line shows what it holds, whatever was told
-    /// before; the stream already followed keeps what was told, which
-    /// SwiftUI's next size of the line reads.
+    /// Follow `progress`, showing at once what it holds. That show tells
+    /// `onStepping` nothing: it runs in SwiftUI's update of the line, which
+    /// mustn't change SwiftUI's state, and the line reads where a stream it
+    /// starts to follow stands itself.
     func follow(_ progress: LatestSource<Step>) {
-        let toldBefore = told
-        told = nil
+        joining = true
         following.follow(progress)
-        // Following a stream shows what it holds at once, which tells;
-        // the one already followed shows nothing anew.
-        if told == nil {
-            told = toldBefore
-        }
+        joining = false
     }
 
     func stopFollowing() {
@@ -150,9 +147,11 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         }
         let stepping = progress != nil
         isHidden = !stepping
-        guard stepping != told else { return }
-        told = stepping
-        onStepping(stepping)
+        guard stepping != self.stepping else { return }
+        self.stepping = stepping
+        if !joining {
+            onStepping(stepping)
+        }
     }
 }
 
@@ -204,12 +203,14 @@ private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
 
 /// What shows while a library opens or a setup call runs: `idle` until the
 /// call runs a step, then the step's name over a bar of how much of it is
-/// done, in its place. With no call to follow, `idle` alone.
+/// done, in its place. With no call to follow, `idle` alone. Whether a step
+/// runs is read from the call's stream as the line starts to follow it, and
+/// set as the native line tells a step starting or ending.
 struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
     let steps: LatestSource<Step>?
     let idle: Idle
     @State
-    private var stepping = false
+    private var stepping: Bool
 
     init(
         steps: LatestSource<Step>?,
@@ -217,6 +218,7 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
     ) {
         self.steps = steps
         self.idle = idle()
+        _stepping = State(initialValue: steps?.holdsValue ?? false)
     }
 
     var body: some View {
@@ -226,11 +228,12 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
             }
             if let steps {
                 StepProgressBar(steps: steps) { started in
-                    // The line can start following during a SwiftUI
-                    // update, which mustn't change state itself.
-                    DispatchQueue.main.async { stepping = started }
+                    stepping = started
                 }
             }
+        }
+        .onChange(of: steps) { _, steps in
+            stepping = steps?.holdsValue ?? false
         }
     }
 }

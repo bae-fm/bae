@@ -723,9 +723,20 @@ public struct LatestSource<Value: Sendable & Equatable>: Sendable {
 
     fileprivate var latest: Value? { stream.latest(for: key) }
 
+    /// Whether the key holds a value now, which says whether a line drawing
+    /// it shows anything, never what.
+    public var holdsValue: Bool { latest != nil }
+
     /// Whether `other` names the same key of the same stream.
     fileprivate func isSame(as other: Self) -> Bool {
         stream === other.stream && key == other.key
+    }
+}
+
+extension LatestSource: Equatable {
+    /// Two sources are equal when they name the same key of the same stream.
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.isSame(as: rhs)
     }
 }
 
