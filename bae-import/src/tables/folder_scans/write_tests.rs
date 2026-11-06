@@ -2,7 +2,7 @@
 /// tables naming `scan_candidate` in a foreign key are exactly those.
 #[test]
 fn an_entry_written_again_clears_every_table_below_its_row() {
-    let conn = bae_store::schema::bare_library_connection(crate::TEST_SCHEMA);
+    let conn = crate::tables::tests::bare_library();
     let mut referencing: Vec<String> = conn
         .prepare(
             "SELECT DISTINCT m.name FROM sqlite_schema AS m, pragma_foreign_key_list(m.name) AS f \

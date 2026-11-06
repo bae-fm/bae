@@ -281,7 +281,7 @@ fn rows_whose_titles_arrive_late_wait_for_them() {
     // keys to the commit and may put a row before the rows it names when a
     // unique claim orders it so: here a part before its parent, and a credit
     // before its release and album. The keys hold once the write commits.
-    let mut conn = bae_store::schema::bare_library_connection(crate::TEST_SCHEMA);
+    let mut conn = crate::tests::bare_library();
     conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
     let apply = conn.transaction().unwrap();
     apply.execute_batch(

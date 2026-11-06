@@ -6,7 +6,8 @@ use crate::Schema;
 /// The tables `schema` creates that aren't `STRICT`, which store a value of
 /// the wrong type rather than refuse it.
 pub fn loose_tables(schema: Schema) -> Vec<String> {
-    let conn = crate::schema::bare_library_connection(schema);
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    crate::schema::open_bare_library(&conn, schema);
     let loose = conn
         .prepare(
             "SELECT name FROM pragma_table_list
@@ -25,7 +26,8 @@ pub fn loose_tables(schema: Schema) -> Vec<String> {
 /// doesn't have, as `trigger: table.column`. SQLite accepts a name no column
 /// has, and the trigger then never fires on it.
 pub fn absent_update_of_columns(schema: Schema) -> Vec<String> {
-    let conn = crate::schema::bare_library_connection(schema);
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    crate::schema::open_bare_library(&conn, schema);
     let update_of = regex::Regex::new(r"(?is)UPDATE OF\s+(.+?)\s+ON\s+(\w+)").unwrap();
     let triggers: Vec<(String, String)> = conn
         .prepare("SELECT name, sql FROM sqlite_master WHERE type = 'trigger'")

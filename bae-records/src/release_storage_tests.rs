@@ -40,7 +40,8 @@ fn storage_row(
 /// upload queue after moves the row's queued count and first place.
 #[test]
 fn a_release_s_storage_counts_files_that_arrived_before_it() {
-    let conn = bae_store::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA);
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    crate::test_fixtures::bare_library::open_bare_library(&conn);
     conn.execute_batch(
         "PRAGMA foreign_keys = OFF;
          INSERT INTO coven_files (id, audience, size, hash, coordinates, namespace) VALUES

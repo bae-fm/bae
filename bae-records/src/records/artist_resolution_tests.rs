@@ -14,7 +14,9 @@ use uuid::Uuid;
 const NOW: &str = "2026-01-01T00:00:00Z";
 
 fn library() -> Connection {
-    bae_store::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA)
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    crate::test_fixtures::bare_library::open_bare_library(&conn);
+    conn
 }
 
 fn add_artist(

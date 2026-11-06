@@ -214,29 +214,76 @@ pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::C
     builder
 }
 
-/// An in-memory database on `schema` outside coven, with the SQL functions
-/// the schema calls: for unit tests of SQL that runs on a bare connection.
+/// What a home's test opens an in-memory library on a schema with, outside
+/// coven, on a connection the home opens itself: the SQL functions to
+/// register, the collations, and the statements that create the library.
 #[cfg(any(test, feature = "test-utils"))]
-pub fn bare_library_connection(schema: Schema) -> rusqlite::Connection {
-    use rusqlite::functions::FunctionFlags;
-    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
-    let deterministic = FunctionFlags::SQLITE_UTF8
-        | FunctionFlags::SQLITE_DETERMINISTIC
-        | FunctionFlags::SQLITE_INNOCUOUS;
-    // coven registers `coven_path_text` on every connection it opens; this one
-    // shows a path's bytes the same way, through coven's exports.
-    conn.create_scalar_function("coven_path_text", 1, deterministic, |context| {
-        context
-            .get::<Option<Vec<u8>>>(0)?
-            .map(|bytes| {
-                coven::path_from_bytes(bytes)
-                    .map(|path| coven::path_text(&path))
-                    .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
-            })
-            .transpose()
+pub struct BareLibraryParts {
+    /// The schema's functions, and the `coven_path_text` coven registers on
+    /// every connection it opens.
+    pub functions: Vec<&'static SchemaFunction>,
+    pub collations: Vec<&'static SchemaCollation>,
+    /// Stand-ins for the coven tables the schema's triggers follow, then the
+    /// schema's own statements, in order.
+    pub statements: Vec<&'static str>,
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl Schema {
+    /// What an in-memory library on this schema is opened with.
+    pub fn bare_library_parts(self) -> BareLibraryParts {
+        let mut functions = vec![&COVEN_PATH_TEXT];
+        functions.extend(self.functions());
+        BareLibraryParts {
+            functions,
+            collations: self.collations(),
+            statements: std::iter::once(STAND_IN_COVEN_TABLES).chain(self.sql()).collect(),
+        }
+    }
+}
+
+/// `coven_path_text` as coven registers it: a path's bytes shown through
+/// coven's exports.
+#[cfg(any(test, feature = "test-utils"))]
+static COVEN_PATH_TEXT: SchemaFunction =
+    SchemaFunction { name: "coven_path_text", arguments: 1, version: 0, compute: coven_path_text };
+
+#[cfg(any(test, feature = "test-utils"))]
+fn coven_path_text(arguments: &SqlArguments<'_>) -> rusqlite::Result<rusqlite::types::Value> {
+    Ok(match arguments.get::<Option<Vec<u8>>>(0)? {
+        None => rusqlite::types::Value::Null,
+        Some(bytes) => rusqlite::types::Value::Text(coven::path_text(
+            &coven::path_from_bytes(bytes)
+                .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?,
+        )),
     })
-    .expect("coven_path_text registers");
-    for function in schema.functions() {
+}
+
+/// The schema's triggers follow coven's `coven_files`, `coven_pins`,
+/// `coven_upload_queue` and `coven_sync_status`, which coven creates before it
+/// migrates; a bare library pins, queues and syncs nothing, so tables of the
+/// same shape let the triggers exist, and a test whose rows reference a file
+/// writes the file's stand-in record itself.
+#[cfg(any(test, feature = "test-utils"))]
+const STAND_IN_COVEN_TABLES: &str = "CREATE TABLE coven_files (id TEXT PRIMARY KEY NOT NULL, \
+    audience TEXT NOT NULL, size INTEGER NOT NULL, hash BLOB, coordinates TEXT NOT NULL, \
+    namespace TEXT NOT NULL, shares TEXT) STRICT, WITHOUT ROWID; \
+    CREATE TABLE coven_pins (file TEXT PRIMARY KEY NOT NULL) STRICT, WITHOUT ROWID; \
+    CREATE TABLE coven_upload_queue (file TEXT PRIMARY KEY NOT NULL, \
+    position INTEGER NOT NULL) STRICT, WITHOUT ROWID; \
+    CREATE TABLE coven_sync_status (singleton INTEGER PRIMARY KEY NOT NULL, \
+    storage TEXT NOT NULL, provider TEXT, last_pass BLOB, moving INTEGER NOT NULL, \
+    last_synced INTEGER, starts INTEGER NOT NULL) STRICT;";
+
+/// Open an in-memory library on `schema` on `conn`, a fresh in-memory
+/// connection, as [`BareLibraryParts`] says: this crate's own tests'.
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) fn open_bare_library(conn: &rusqlite::Connection, schema: Schema) {
+    let parts = schema.bare_library_parts();
+    let deterministic = rusqlite::functions::FunctionFlags::SQLITE_UTF8
+        | rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC
+        | rusqlite::functions::FunctionFlags::SQLITE_INNOCUOUS;
+    for function in parts.functions {
         let compute = function.compute;
         conn.create_scalar_function(
             function.name,
@@ -246,29 +293,11 @@ pub fn bare_library_connection(schema: Schema) -> rusqlite::Connection {
         )
         .unwrap_or_else(|error| panic!("{} registers: {error}", function.name));
     }
-    for collation in schema.collations() {
+    for collation in parts.collations {
         conn.create_collation(collation.name, collation.compare)
             .unwrap_or_else(|error| panic!("{} registers: {error}", collation.name));
     }
-    // The schema's triggers follow coven's `coven_files`, `coven_pins`,
-    // `coven_upload_queue` and `coven_sync_status`, which coven creates
-    // before it migrates; these tests pin, queue and sync nothing, so tables
-    // of the same shape let the triggers exist, and a test whose rows
-    // reference a file writes the file's stand-in record itself.
-    conn.execute_batch(
-        "CREATE TABLE coven_files (id TEXT PRIMARY KEY NOT NULL, audience TEXT NOT NULL, \
-         size INTEGER NOT NULL, hash BLOB, coordinates TEXT NOT NULL, \
-         namespace TEXT NOT NULL, shares TEXT) STRICT, WITHOUT ROWID; \
-         CREATE TABLE coven_pins (file TEXT PRIMARY KEY NOT NULL) STRICT, WITHOUT ROWID; \
-         CREATE TABLE coven_upload_queue (file TEXT PRIMARY KEY NOT NULL, \
-         position INTEGER NOT NULL) STRICT, WITHOUT ROWID; \
-         CREATE TABLE coven_sync_status (singleton INTEGER PRIMARY KEY NOT NULL, \
-         storage TEXT NOT NULL, provider TEXT, last_pass BLOB, moving INTEGER NOT NULL, \
-         last_synced INTEGER, starts INTEGER NOT NULL) STRICT;",
-    )
-    .expect("the stand-in coven tables create");
-    for sql in schema.sql() {
-        conn.execute_batch(sql).expect("the schema applies");
+    for statement in parts.statements {
+        conn.execute_batch(statement).expect("the bare library's schema applies");
     }
-    conn
 }

@@ -619,3 +619,31 @@ mod window_cost {
         .await;
     }
 }
+
+/// An in-memory library on the views' test schema, outside coven: for tests
+/// of SQL that runs on a bare connection.
+pub(crate) fn bare_library() -> rusqlite::Connection {
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    let parts = crate::TEST_SCHEMA.bare_library_parts();
+    let deterministic = rusqlite::functions::FunctionFlags::SQLITE_UTF8
+        | rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC
+        | rusqlite::functions::FunctionFlags::SQLITE_INNOCUOUS;
+    for function in parts.functions {
+        let compute = function.compute;
+        conn.create_scalar_function(
+            function.name,
+            i32::from(function.arguments),
+            deterministic,
+            move |context| compute(&bae_store::schema::SqlArguments::Bare(context)),
+        )
+        .unwrap_or_else(|error| panic!("{} registers: {error}", function.name));
+    }
+    for collation in parts.collations {
+        conn.create_collation(collation.name, collation.compare)
+            .unwrap_or_else(|error| panic!("{} registers: {error}", collation.name));
+    }
+    for statement in parts.statements {
+        conn.execute_batch(statement).expect("the bare library's schema applies");
+    }
+    conn
+}

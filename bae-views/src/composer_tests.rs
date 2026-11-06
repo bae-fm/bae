@@ -289,7 +289,7 @@ fn a_composer_merged_before_it_arrived_is_listed_with_what_was_counted_under_it(
     // keys to the commit and may put a row before the rows it names when a
     // unique claim orders it so: here a merge and a work credit before either
     // artist. The keys hold once the write commits.
-    let mut conn = bae_store::schema::bare_library_connection(crate::TEST_SCHEMA);
+    let mut conn = crate::tests::bare_library();
     conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
     let apply = conn.transaction().unwrap();
     apply.execute_batch(

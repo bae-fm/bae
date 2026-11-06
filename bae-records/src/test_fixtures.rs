@@ -134,6 +134,7 @@ pub fn seed_artist_album_release(conn: &coven::CovenWrite<'_>) -> Result<(), bae
 pub mod aggregate_ordering;
 pub mod album_listing;
 pub mod artists_apart;
+pub(crate) mod bare_library;
 pub mod bulk_library;
 pub mod bulk_tracks;
 pub mod chunked_tracks;
