@@ -80,7 +80,7 @@
       "title": "Home: \u22ee menu with Libraries",
       "w": 412,
       "x": 0,
-      "y": 5668
+      "y": 11180
     },
     "InviteForm.dc.html": {
       "h": 916,
@@ -104,7 +104,7 @@
       "title": "Libraries (from \u22ee)",
       "w": 412,
       "x": 492,
-      "y": 5668
+      "y": 11180
     },
     "Library.dc.html": {
       "h": 916,
@@ -1107,24 +1107,6 @@
       "x": 1476,
       "y": 260
     },
-    "loading/Main.dc.html": {
-      "h": 960,
-      "is_interactive": true,
-      "page": "loading",
-      "title": "Today: the download bar swaps in",
-      "w": 928,
-      "x": 0,
-      "y": 0
-    },
-    "loading/ScrubFill.dc.html": {
-      "h": 960,
-      "is_interactive": true,
-      "page": "loading",
-      "title": "C: the scrub bar shows what has arrived",
-      "w": 928,
-      "x": 1008,
-      "y": 0
-    },
     "storage/Main.dc.html": {
       "h": 900,
       "page": "storage",
@@ -1711,11 +1693,11 @@
     },
     "LibAndroidSearch.dc.html": {
       "h": 916,
-      "page": "home",
-      "title": "Search, before typing",
+      "page": "search",
+      "title": "Search open, before typing",
       "w": 412,
-      "x": 2460,
-      "y": 3032
+      "x": 0,
+      "y": 240
     },
     "LibMacScrolled.dc.html": {
       "h": 760,
@@ -1748,6 +1730,286 @@
       "w": 1200,
       "x": 3840,
       "y": 4428
+    },
+    "LibAndroidEmpty.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Empty library",
+      "w": 412,
+      "x": 0,
+      "y": 5668
+    },
+    "LibAndroidFailed.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "The library failed to load",
+      "w": 412,
+      "x": 492,
+      "y": 5668
+    },
+    "LibAndroidNoCovers.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Albums without covers",
+      "w": 412,
+      "x": 984,
+      "y": 5668
+    },
+    "LibMacEmpty.dc.html": {
+      "h": 760,
+      "page": "home",
+      "title": "macOS: empty library",
+      "w": 1200,
+      "x": 0,
+      "y": 7064
+    },
+    "LibMacNoCredits.dc.html": {
+      "h": 760,
+      "page": "home",
+      "title": "macOS: Artists, nobody credited",
+      "w": 1200,
+      "x": 1280,
+      "y": 7064
+    },
+    "LibMacFailed.dc.html": {
+      "h": 760,
+      "page": "home",
+      "title": "macOS: the library failed to load",
+      "w": 1200,
+      "x": 2560,
+      "y": 7064
+    },
+    "LibMacNoCovers.dc.html": {
+      "h": 760,
+      "page": "home",
+      "title": "macOS: albums without covers",
+      "w": 1200,
+      "x": 3840,
+      "y": 7064
+    },
+    "LibAndroidAlbumReleases.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Album: two releases, downloading",
+      "w": 412,
+      "x": 0,
+      "y": 8304
+    },
+    "LibAndroidAlbumQueued.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Album: waiting to download",
+      "w": 412,
+      "x": 492,
+      "y": 8304
+    },
+    "LibAndroidAlbumFailed.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Album: download failed",
+      "w": 412,
+      "x": 984,
+      "y": 8304
+    },
+    "LibAndroidAlbumElsewhere.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Album: on another device",
+      "w": 412,
+      "x": 1476,
+      "y": 8304
+    },
+    "LibMacAlbumReleases.dc.html": {
+      "h": 1000,
+      "page": "home",
+      "title": "macOS: album with two releases, on another Mac",
+      "w": 1200,
+      "x": 0,
+      "y": 9700
+    },
+    "LibMacAlbumMenu.dc.html": {
+      "h": 1000,
+      "page": "home",
+      "title": "macOS: the album menu",
+      "w": 1200,
+      "x": 1280,
+      "y": 9700
+    },
+    "SearchAndroidTyping.dc.html": {
+      "h": 916,
+      "page": "search",
+      "title": "Typing: blank until results land",
+      "w": 412,
+      "x": 492,
+      "y": 240
+    },
+    "SearchAndroidResults.dc.html": {
+      "h": 916,
+      "page": "search",
+      "title": "Results",
+      "w": 412,
+      "x": 984,
+      "y": 240
+    },
+    "SearchAndroidNone.dc.html": {
+      "h": 916,
+      "page": "search",
+      "title": "No results",
+      "w": 412,
+      "x": 1476,
+      "y": 240
+    },
+    "SearchAndroidFailed.dc.html": {
+      "h": 916,
+      "page": "search",
+      "title": "Search failed",
+      "w": 412,
+      "x": 1968,
+      "y": 240
+    },
+    "SearchMacResults.dc.html": {
+      "h": 760,
+      "page": "search",
+      "title": "macOS: results",
+      "w": 1200,
+      "x": 0,
+      "y": 1636
+    },
+    "SearchMacNone.dc.html": {
+      "h": 760,
+      "page": "search",
+      "title": "macOS: no matches",
+      "w": 1200,
+      "x": 1280,
+      "y": 1636
+    },
+    "PlayAndroidWaiting.dc.html": {
+      "h": 916,
+      "page": "loading",
+      "title": "Waiting on storage",
+      "w": 412,
+      "x": 0,
+      "y": 240
+    },
+    "PlayAndroidCasting.dc.html": {
+      "h": 916,
+      "page": "loading",
+      "title": "Casting",
+      "w": 412,
+      "x": 492,
+      "y": 240
+    },
+    "PlayAndroidNothing.dc.html": {
+      "h": 916,
+      "page": "loading",
+      "title": "Nothing played yet: no bar",
+      "w": 412,
+      "x": 984,
+      "y": 240
+    },
+    "PlayMacWaiting.dc.html": {
+      "h": 760,
+      "page": "loading",
+      "title": "macOS: waiting on storage",
+      "w": 1200,
+      "x": 0,
+      "y": 1636
+    },
+    "PlayMacCasting.dc.html": {
+      "h": 760,
+      "page": "loading",
+      "title": "macOS: casting",
+      "w": 1200,
+      "x": 1280,
+      "y": 1636
+    },
+    "PlayMacNothing.dc.html": {
+      "h": 760,
+      "page": "loading",
+      "title": "macOS: nothing played yet",
+      "w": 1200,
+      "x": 2560,
+      "y": 1636
+    },
+    "PlayAndroidQueue.dc.html": {
+      "h": 916,
+      "page": "loading",
+      "title": "The queue",
+      "w": 412,
+      "x": 0,
+      "y": 2876
+    },
+    "PlayAndroidFullPlayer.dc.html": {
+      "h": 916,
+      "page": "loading",
+      "title": "The full player",
+      "w": 412,
+      "x": 492,
+      "y": 2876
+    },
+    "PlayAndroidCastPicker.dc.html": {
+      "h": 916,
+      "page": "loading",
+      "title": "The cast picker",
+      "w": 412,
+      "x": 984,
+      "y": 2876
+    },
+    "PlayAndroidSidePause.dc.html": {
+      "h": 916,
+      "page": "loading",
+      "title": "Side ended, with a countdown",
+      "w": 412,
+      "x": 1476,
+      "y": 2876
+    },
+    "PlayMacQueue.dc.html": {
+      "h": 760,
+      "page": "loading",
+      "title": "macOS: the queue",
+      "w": 1200,
+      "x": 0,
+      "y": 4272
+    },
+    "PlayMacQueueEmpty.dc.html": {
+      "h": 760,
+      "page": "loading",
+      "title": "macOS: the queue, nothing up next",
+      "w": 1200,
+      "x": 1280,
+      "y": 4272
+    },
+    "PlayMacQueueDrop.dc.html": {
+      "h": 760,
+      "page": "loading",
+      "title": "macOS: dropping into Up Next, shuffled, rows loading",
+      "w": 1200,
+      "x": 2560,
+      "y": 4272
+    },
+    "PlayMacCastPicker.dc.html": {
+      "h": 760,
+      "page": "loading",
+      "title": "macOS: the cast popover",
+      "w": 1200,
+      "x": 3840,
+      "y": 4272
+    },
+    "PlayMacSidePause.dc.html": {
+      "h": 760,
+      "page": "loading",
+      "title": "macOS: side ended, with a countdown",
+      "w": 1200,
+      "x": 5120,
+      "y": 4272
+    },
+    "PlayMacSidePauseOff.dc.html": {
+      "h": 760,
+      "page": "loading",
+      "title": "macOS: side ended, pausing turned off",
+      "w": 1200,
+      "x": 6400,
+      "y": 4272
     }
   },
   "createdOnFiles": {
@@ -1833,12 +2095,22 @@
     "code-make-admin",
     "code-rename",
     "code-switch",
-    "row-loading-track",
     "row-lib-flow-android",
     "row-lib-flow-mac",
     "lib-today",
     "row-lib-head-android",
-    "row-lib-head-mac"
+    "row-lib-head-mac",
+    "row-lib-states-android",
+    "row-lib-states-mac",
+    "row-album-states-android",
+    "row-album-states-mac",
+    "row-search-android",
+    "row-search-mac",
+    "search-today",
+    "row-play-np-android",
+    "row-play-np-mac",
+    "row-play-android",
+    "row-play-mac"
   ],
   "notes": {
     "canvas-key-library": {
@@ -2173,7 +2445,7 @@
       "text": "macOS keeps switching libraries from the main window's menu.",
       "w": 380,
       "x": 984,
-      "y": 5668
+      "y": 11180
     },
     "sync-rules": {
       "fill": "blue",
@@ -2362,7 +2634,7 @@
       "text": "Switch library (Android, proposed)",
       "w": 240,
       "x": 0,
-      "y": 5428
+      "y": 10940
     },
     "code-casting": {
       "page": "settings",
@@ -2409,17 +2681,8 @@
       "size": 24,
       "w": 420,
       "x": 1424,
-      "y": 5668,
+      "y": 11180,
       "text": "What the code needs for these boards:\n- Android switches libraries from the home screen's \u22ee menu: Libraries opens the list of this device's libraries, each with Remove. Today it is \u201cSwitch to another library on this device\u201d in Library settings (SettingsLibrarySection.kt:111), and the \u22ee menu holds Sort by, Shuffle library and Settings (decisions.md 2026-11-01). The list is the one the welcome screen shows (code-welcome). bae change, Android."
-    },
-    "row-loading-track": {
-      "kind": "title1",
-      "maxW": 1936,
-      "page": "loading",
-      "text": "Track loading",
-      "w": 240,
-      "x": 0,
-      "y": -240
     },
     "row-lib-flow-android": {
       "kind": "title1",
@@ -2465,6 +2728,105 @@
       "w": 240,
       "x": 0,
       "y": 4188
+    },
+    "row-lib-states-android": {
+      "kind": "title1",
+      "maxW": 1396,
+      "page": "home",
+      "text": "Library states: Android (today)",
+      "w": 240,
+      "x": 0,
+      "y": 5428
+    },
+    "row-lib-states-mac": {
+      "kind": "title1",
+      "maxW": 4960,
+      "page": "home",
+      "text": "Library states: macOS (today)",
+      "w": 240,
+      "x": 0,
+      "y": 6824
+    },
+    "row-album-states-android": {
+      "kind": "title1",
+      "maxW": 1888,
+      "page": "home",
+      "text": "Album states: Android (today)",
+      "w": 240,
+      "x": 0,
+      "y": 8064
+    },
+    "row-album-states-mac": {
+      "kind": "title1",
+      "maxW": 2480,
+      "page": "home",
+      "text": "Album states: macOS (today)",
+      "w": 240,
+      "x": 0,
+      "y": 9460
+    },
+    "row-search-android": {
+      "kind": "title1",
+      "maxW": 1888,
+      "page": "search",
+      "text": "Search: Android (today)",
+      "w": 240,
+      "x": 0,
+      "y": 0
+    },
+    "row-search-mac": {
+      "kind": "title1",
+      "maxW": 2480,
+      "page": "search",
+      "text": "Search: macOS (today)",
+      "w": 240,
+      "x": 0,
+      "y": 1396
+    },
+    "search-today": {
+      "page": "search",
+      "size": 24,
+      "w": 460,
+      "x": 2560,
+      "y": 1636,
+      "fill": "blue",
+      "text": "Today's differences between the apps: macOS shows results in a card under the field and keeps the last results while typing; Android takes over the screen and goes blank until results land. macOS reports a failure in a window alert, Android inline. A track opens its album on Android; on macOS it also shows the track."
+    },
+    "row-play-np-android": {
+      "kind": "title1",
+      "maxW": 1396,
+      "page": "loading",
+      "text": "Now playing: Android (today)",
+      "w": 240,
+      "x": 0,
+      "y": 0
+    },
+    "row-play-np-mac": {
+      "kind": "title1",
+      "maxW": 3760,
+      "page": "loading",
+      "text": "Now playing: macOS (today)",
+      "w": 240,
+      "x": 0,
+      "y": 1396
+    },
+    "row-play-android": {
+      "kind": "title1",
+      "maxW": 1888,
+      "page": "loading",
+      "text": "Queue, full player, cast picker, pause between sides: Android (today)",
+      "w": 240,
+      "x": 0,
+      "y": 2636
+    },
+    "row-play-mac": {
+      "kind": "title1",
+      "maxW": 7600,
+      "page": "loading",
+      "text": "Queue, cast, pause between sides: macOS (today)",
+      "w": 240,
+      "x": 0,
+      "y": 4032
     }
   },
   "order": [
@@ -2503,8 +2865,6 @@
     "storage/WindowProposed.dc.html",
     "storage/WindowFilter.dc.html",
     "storage/WindowBoth.dc.html",
-    "loading/Main.dc.html",
-    "loading/ScrubFill.dc.html",
     "Library.dc.html",
     "MacLibraryNotSynced.dc.html",
     "MacLibrary.dc.html",
@@ -2684,7 +3044,42 @@
     "LibMacScrolled.dc.html",
     "LibMacViewMenu.dc.html",
     "LibMacGrouped.dc.html",
-    "LibMacSortTwo.dc.html"
+    "LibMacSortTwo.dc.html",
+    "LibAndroidEmpty.dc.html",
+    "LibAndroidFailed.dc.html",
+    "LibAndroidNoCovers.dc.html",
+    "LibMacEmpty.dc.html",
+    "LibMacNoCredits.dc.html",
+    "LibMacFailed.dc.html",
+    "LibMacNoCovers.dc.html",
+    "LibAndroidAlbumReleases.dc.html",
+    "LibAndroidAlbumQueued.dc.html",
+    "LibAndroidAlbumFailed.dc.html",
+    "LibAndroidAlbumElsewhere.dc.html",
+    "LibMacAlbumReleases.dc.html",
+    "LibMacAlbumMenu.dc.html",
+    "SearchAndroidTyping.dc.html",
+    "SearchAndroidResults.dc.html",
+    "SearchAndroidNone.dc.html",
+    "SearchAndroidFailed.dc.html",
+    "SearchMacResults.dc.html",
+    "SearchMacNone.dc.html",
+    "PlayAndroidWaiting.dc.html",
+    "PlayAndroidCasting.dc.html",
+    "PlayAndroidNothing.dc.html",
+    "PlayMacWaiting.dc.html",
+    "PlayMacCasting.dc.html",
+    "PlayMacNothing.dc.html",
+    "PlayAndroidQueue.dc.html",
+    "PlayAndroidFullPlayer.dc.html",
+    "PlayAndroidCastPicker.dc.html",
+    "PlayAndroidSidePause.dc.html",
+    "PlayMacQueue.dc.html",
+    "PlayMacQueueEmpty.dc.html",
+    "PlayMacQueueDrop.dc.html",
+    "PlayMacCastPicker.dc.html",
+    "PlayMacSidePause.dc.html",
+    "PlayMacSidePauseOff.dc.html"
   ],
   "pages": [
     {

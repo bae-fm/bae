@@ -236,3 +236,31 @@ export interface AndroidMenuProps { top?: number; left?: number; right?: number;
 export declare function AndroidMenu(props: AndroidMenuProps): React.ReactElement;
 export interface AndroidMenuItemProps { selected?: boolean; check?: boolean; heading?: boolean; divider?: boolean; highlighted?: boolean; children?: React.ReactNode }
 export declare function AndroidMenuItem(props: AndroidMenuItemProps): React.ReactElement;
+export interface MacSearchCardProps { top?: number; right?: number; empty?: string; children?: React.ReactNode }
+export declare function MacSearchCard(props: MacSearchCardProps): React.ReactElement;
+export declare function MacSearchSection(props: { title: string }): React.ReactElement;
+export interface SearchRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; hover?: boolean }
+export declare function MacSearchRow(props: SearchRowProps): React.ReactElement;
+export declare function AndroidSearchSection(props: { title: string }): React.ReactElement;
+export declare function AndroidSearchRow(props: SearchRowProps): React.ReactElement;
+export interface MacQueuePanelProps { title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; children?: React.ReactNode }
+export declare function MacQueuePanel(props: MacQueuePanelProps): React.ReactElement;
+export interface MacQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean }
+export declare function MacQueueSection(props: MacQueueSectionProps): React.ReactElement;
+export declare function MacQueuePlaceholderRow(props: {}): React.ReactElement;
+export declare function MacQueueInsertLine(props: {}): React.ReactElement;
+export interface SidePauseProps { kind?: 'side' | 'disc'; label?: string; countdown?: number; unchecked?: boolean }
+export declare function MacSidePause(props: SidePauseProps): React.ReactElement;
+export interface MacCastPopoverProps { devices?: string; casting?: string; connecting?: string; right?: number; bottom?: number }
+export declare function MacCastPopover(props: MacCastPopoverProps): React.ReactElement;
+export declare function AndroidSheet(props: { top?: number; children?: React.ReactNode }): React.ReactElement;
+export interface AndroidQueueLabelProps { title: string; clear?: boolean; shuffle?: boolean }
+export declare function AndroidQueueLabel(props: AndroidQueueLabelProps): React.ReactElement;
+export interface AndroidQueueRowProps { title: string; artist?: string; album?: string; duration?: string; current?: boolean; dragging?: boolean }
+export declare function AndroidQueueRow(props: AndroidQueueRowProps): React.ReactElement;
+export interface AndroidFullPlayerProps { title: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean }
+export declare function AndroidFullPlayer(props: AndroidFullPlayerProps): React.ReactElement;
+export interface AndroidCastRowProps { name?: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; casting?: string; waiting?: string }
+export declare function AndroidCastRow(props: AndroidCastRowProps): React.ReactElement;
+export interface AndroidCheckboxProps { label: string; on?: boolean }
+export declare function AndroidCheckbox(props: AndroidCheckboxProps): React.ReactElement;

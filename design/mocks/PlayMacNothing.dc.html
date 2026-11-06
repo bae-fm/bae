@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: nothing played yet</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--background)}
+
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacMainWindow"><x-import component-from-global-scope="Bae.MacLibraryHeading" view="Albums"><x-import component-from-global-scope="Bae.MacCheckbox" label="Group by artist"></x-import><x-import component-from-global-scope="Bae.MacSortCriteria" criteria="Date Added:down"></x-import></x-import><x-import component-from-global-scope="Bae.MacAlbumGrid" columns="4"><x-import component-from-global-scope="Bae.MacAlbumTile" title="Low Tide Hours" artist="Mara Quill" year="1992"></x-import><x-import component-from-global-scope="Bae.MacAlbumTile" title="Paper Lanterns" artist="The Slow Orchards" year="1971"></x-import><x-import component-from-global-scope="Bae.MacAlbumTile" title="Glass Harbor" artist="Ines Varga Trio" year="1959"></x-import><x-import component-from-global-scope="Bae.MacAlbumTile" title="Copper Sky" artist="Odile Fen" year="1972"></x-import><x-import component-from-global-scope="Bae.MacAlbumTile" title="Salt and Cedar" artist="The Slow Orchards" year="1976"></x-import><x-import component-from-global-scope="Bae.MacAlbumTile" title="Field Recordings" artist="Mara Quill" year="1979"></x-import><x-import component-from-global-scope="Bae.MacAlbumTile" title="Winter Kitchen" artist="Odile Fen" year="1971"></x-import><x-import component-from-global-scope="Bae.MacAlbumTile" title="Small Hours" artist="Tomas Brell" year="1965"></x-import></x-import></x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

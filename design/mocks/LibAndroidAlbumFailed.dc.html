@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Album: download failed</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:var(--background)}
+
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.AndroidDetailScreen" menu="{{yes}}" track-title="Low Tide Hours" track-artist="Mara Quill" track-album="Low Tide Hours" playing="{{yes}}" position="0.35" held="0.6" elapsed="1:42" duration="5:03"><x-import component-from-global-scope="Bae.AndroidAlbumHeader" title="Low Tide Hours" artist="Mara Quill" year="1992" pressing="CD · Harbor Records HR-1042" labels="Harbor Records"></x-import><x-import component-from-global-scope="Bae.AndroidDownloadControl" state="failed"></x-import><div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;gap:8px"><x-import component-from-global-scope="Bae.AndroidButton">Play</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Shuffle</x-import></div><div style="display:flex;gap:8px"><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Play Next</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Add to Queue</x-import></div></div><div><x-import component-from-global-scope="Bae.AndroidEyebrow">Disc 1</x-import><x-import component-from-global-scope="Bae.AndroidTrackRow" position="1" title="Harbor Lights" duration="4:32"></x-import><x-import component-from-global-scope="Bae.AndroidTrackRow" position="2" title="The Long Way Home" duration="5:12"></x-import><x-import component-from-global-scope="Bae.AndroidTrackRow" position="3" title="Second Floor" duration="3:45"></x-import><x-import component-from-global-scope="Bae.AndroidTrackRow" position="4" title="Low Tide Hours" duration="5:03"></x-import></div></x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

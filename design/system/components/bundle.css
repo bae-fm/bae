@@ -440,3 +440,72 @@
 .bae-a-menu-check { display: inline-flex; fill: var(--accent); }
 .bae-a-menu-heading { padding: 4px 12px; font: 400 12px var(--font-android); color: var(--text-secondary); }
 .bae-a-menu-divider { height: 1px; margin: 8px 0; background: var(--hairline); }
+.bae-m-menu-sep { height: 1px; margin: 5px 7px; background: var(--hairline); }
+.bae-m-searchcard { box-sizing: border-box; max-height: 455px; overflow: hidden; padding: 8px; display: flex; flex-direction: column; gap: 1px; border-radius: var(--radius-card); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 6px 12px var(--shadow); }
+.bae-m-searchcard-empty { height: 240px; display: flex; align-items: center; justify-content: center; font: 700 17px var(--font-sans); }
+.bae-m-searchsection { padding: 12px 12px 8px; font: 700 10px var(--font-sans); letter-spacing: 1px; text-transform: uppercase; color: var(--text-secondary); }
+.bae-m-searchrow { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: var(--radius-control); }
+.bae-m-searchrow-hover { background: var(--hover); }
+.bae-m-searchrow-text { flex: 1; min-width: 0; }
+.bae-m-searchrow-title { font: 500 13px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-searchrow-sub { font: 400 11.5px/14px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-searchrow-trail { font: 400 11.5px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.bae-a-searchsection { padding: 8px 16px; font: 600 16px var(--font-android); color: var(--text-secondary); }
+.bae-a-searchrow { display: flex; align-items: center; gap: 12px; padding: 8px 16px; }
+.bae-a-searchrow-text { flex: 1; min-width: 0; }
+.bae-a-searchrow-title { font: 500 16px/24px var(--font-android); white-space: nowrap; overflow: hidden; }
+.bae-a-searchrow-sub { font: 400 12px/16px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
+.bae-a-searchrow-trail { font: 400 12px var(--font-android); color: var(--text-secondary); }
+.bae-m-queue { width: 420px; flex: none; display: flex; flex-direction: column; background: var(--surface); box-shadow: inset 1px 0 0 var(--hairline); overflow: hidden; }
+.bae-m-queue-head { display: flex; align-items: flex-start; padding: 16px 16px 12px; }
+.bae-m-queue-head h2 { flex: 1; margin: 0; font: 700 22px var(--font-sans); letter-spacing: -0.3px; }
+.bae-m-queue-np { margin: 0 12px 6px; display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: var(--radius-card); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 6px 12px var(--shadow); }
+.bae-m-queue-np-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bae-m-queue-np-eyebrow { font: 700 10px var(--font-sans); letter-spacing: 1px; text-transform: uppercase; color: var(--accent); }
+.bae-m-queue-strip { display: flex; align-items: center; gap: 8px; padding-top: 6px; height: 10px; }
+.bae-m-queue-strip-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--hairline); overflow: hidden; }
+.bae-m-queue-strip-bar > div { height: 100%; background: var(--accent); }
+.bae-m-queue-strip > span { width: 34px; text-align: right; font: 600 10px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.bae-m-queue-np-play { width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-control); background: var(--hover); color: var(--text-secondary); fill: currentColor; }
+.bae-m-queue-body { flex: 1; min-height: 0; overflow: hidden; padding: 0 8px; display: flex; flex-direction: column; gap: 1px; }
+.bae-m-queue-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+.bae-m-cu-title { font: 700 17px var(--font-sans); }
+.bae-m-cu-desc { font: 400 13px var(--font-sans); color: var(--text-secondary); }
+.bae-m-queue-section { display: flex; align-items: center; gap: 6px; padding: 12px 8px 4px; }
+.bae-m-queue-section-title { flex: 1; min-width: 0; font: 700 10px var(--font-sans); letter-spacing: 1px; text-transform: uppercase; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-queue-clear { font: 700 10px var(--font-sans); letter-spacing: 1px; text-transform: uppercase; color: var(--text-secondary); }
+.bae-m-queue-shuffle { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--text-secondary); fill: currentColor; }
+.bae-m-queue-shuffle-on { color: var(--accent); background: var(--accent-tint); }
+.bae-m-queue-insert { height: 2px; margin: 0 8px; background: var(--accent); }
+.bae-m-scrim { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; background: var(--scrim); }
+.bae-m-sidepause { width: 500px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: var(--radius-panel); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 10px 20px var(--shadow); font: 400 13px var(--font-sans); }
+.bae-m-sidepause-title { font: 600 15px var(--font-sans); }
+.bae-m-sidepause-count { font: 600 13px var(--font-sans); font-variant-numeric: tabular-nums; }
+.bae-m-sidepause-buttons { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; }
+.bae-m-castpop { z-index: 7; width: 260px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: var(--radius-control); background: var(--tile); box-shadow: 0 8px 24px var(--shadow); font: 400 13px var(--font-sans); }
+.bae-m-castpop-row, .bae-m-castpop-casting, .bae-m-castpop-wait { display: flex; align-items: center; gap: 8px; padding: 4px; }
+.bae-m-castpop-row > span { flex: 1; font-weight: 500; }
+.bae-m-castpop-casting > strong { flex: 1; font-weight: 600; }
+.bae-a-scrim { position: absolute; inset: 0; z-index: 8; background: rgba(0,0,0,0.32); }
+.bae-a-sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 120px; overflow: hidden; border-radius: 28px 28px 0 0; background: var(--surface); font-family: var(--font-android); }
+.bae-a-sheet-handle { width: 32px; height: 4px; margin: 22px auto; border-radius: 2px; background: var(--text-secondary); opacity: 0.4; }
+.bae-a-queuelabel { display: flex; align-items: center; padding: 0 8px 0 16px; min-height: 48px; }
+.bae-a-qrow { display: flex; align-items: center; gap: 12px; padding: 8px 4px 8px 12px; background: var(--surface); }
+.bae-a-qrow-drag { box-shadow: 0 4px 12px var(--shadow); }
+.bae-a-qrow-text { flex: 1; min-width: 0; }
+.bae-a-fullplayer { display: flex; flex-direction: column; padding: 8px 24px; }
+.bae-a-fullplayer > .bae-a-iconbtn:first-child { margin-left: -12px; margin-bottom: 8px; }
+.bae-a-fp-title { margin-top: 24px; font: 700 24px/30px var(--font-android); letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; }
+.bae-a-fp-artist { margin-bottom: 24px; font: 600 16px/24px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
+.bae-a-fp-transport { display: flex; align-items: center; justify-content: center; gap: 24px; margin-top: 16px; }
+.bae-a-fp-transport .bae-a-iconbtn { width: 56px; height: 56px; }
+.bae-a-fp-repeat { display: flex; justify-content: center; margin-top: 16px; }
+.bae-a-fp-volume { display: flex; align-items: center; margin-top: 8px; }
+.bae-a-fp-slider { position: relative; flex: 1; height: 4px; margin: 0 8px; border-radius: 2px; background: var(--accent-tint-strong); }
+.bae-a-fp-slider > div { height: 100%; border-radius: 2px; background: var(--accent); }
+.bae-a-fp-slider > span { position: absolute; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 10px; background: var(--accent); }
+.bae-a-castrow { display: flex; align-items: center; gap: 12px; padding: 12px 16px; font-family: var(--font-android); }
+.bae-a-castrow-name { flex: 1; min-width: 0; font: 500 16px/24px var(--font-android); white-space: nowrap; overflow: hidden; }
+.bae-a-checkrow { display: flex; align-items: center; gap: 8px; font: 400 14px var(--font-android); }
+.bae-a-checkbox { width: 18px; height: 18px; margin: 11px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 2px; box-shadow: inset 0 0 0 2px var(--text-secondary); color: var(--background); fill: currentColor; }
+.bae-a-checkbox-on { background: var(--accent); box-shadow: none; }
