@@ -148,6 +148,25 @@ impl BridgeStorageSetup {
     }
 }
 
+/// What cancelling the running storage setup did. Mirrors
+/// `coven::SetupCancellation`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSetupCancellation {
+    /// The setup hadn't reached its point of no return: it undoes what it
+    /// wrote, and its call fails as cancelled.
+    Undoing,
+    /// The setup is past its point of no return, and finishes: Cancel no
+    /// longer applies to it.
+    Finishing,
+    /// No setup was running.
+    NoSetup,
+}
+mirror_enum! {
+    BridgeSetupCancellation = coven::SetupCancellation,
+    from_core: pub(crate) fn,
+    variants: { Undoing, Finishing, NoSetup },
+}
+
 /// A step of setting up storage, in the order they run. Mirrors
 /// `coven::StorageSetupStep`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

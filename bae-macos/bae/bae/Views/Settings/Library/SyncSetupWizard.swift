@@ -48,6 +48,21 @@ private struct ProviderRow: View {
     }
 }
 
+// MARK: - Setup Run
+
+/// Whether the wizard's storage setup runs, and whether Cancel still undoes
+/// it: past its point of no return the setup finishes, so Cancel goes.
+@Observable
+final class StorageSetupRun {
+    enum State {
+        case idle
+        case cancellable
+        case finishing
+    }
+
+    var state: State = .idle
+}
+
 // MARK: - SyncSetupWizard
 
 /// Sets up the library's cloud home: pick a provider, then its short form or
@@ -66,6 +81,8 @@ struct SyncSetupWizard: View {
 
     @State
     private var step: WizardStep = .selectProvider
+    @State
+    private var run = StorageSetupRun()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -84,13 +101,14 @@ struct SyncSetupWizard: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: 460, height: 560)
+        .environment(run)
     }
 
     // MARK: - Header
 
     private var header: some View {
         HStack {
-            if case .configure = step {
+            if case .configure = step, run.state == .idle {
                 Button {
                     withAnimation(.easeInOut(duration: 0.15)) {
                         step = .selectProvider
@@ -106,12 +124,29 @@ struct SyncSetupWizard: View {
 
             Spacer()
 
-            Button("Cancel") {
-                onDone()
+            if run.state != .finishing {
+                Button("Cancel") {
+                    cancel()
+                }
+                .buttonStyle(.borderless)
             }
-            .buttonStyle(.borderless)
         }
         .padding()
+    }
+
+    /// Close the wizard, undoing a running setup first. One past its point
+    /// of no return finishes, so the wizard stays to show it.
+    private func cancel() {
+        guard run.state == .cancellable else {
+            onDone()
+            return
+        }
+        switch sync.cancelStorageSetup() {
+        case .finishing:
+            run.state = .finishing
+        case .undoing, .noSetup:
+            onDone()
+        }
     }
 
     private var headerTitle: String {
@@ -230,6 +265,8 @@ struct SetupStep<Fields: View>: View {
 
     @Environment(Sync.self)
     private var sync
+    @Environment(StorageSetupRun.self)
+    private var run
     @State
     private var task: Task<Void, Never>?
     /// The running setup's steps; nil while none runs.
@@ -276,10 +313,12 @@ struct SetupStep<Fields: View>: View {
         error = nil
         let running = sync.storageSetupSteps()
         steps = running
+        run.state = .cancellable
         task = Task {
             defer {
                 task = nil
                 steps = nil
+                run.state = .idle
             }
             do {
                 onConnected(try await operation(running.setup))

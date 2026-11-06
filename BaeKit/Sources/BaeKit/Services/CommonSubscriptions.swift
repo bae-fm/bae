@@ -110,8 +110,7 @@ final class CommonSubscriptions {
     private func startSync() {
         syncStatus = ScreenSubscription(
             appHandle.subscribeSyncStatus(),
-            onValue: { [syncStatusStore] value in syncStatusStore.apply(value)
-            },
+            onValue: { [weak self] value in self?.applySyncStatus(value) },
             onError: { [syncStatusStore] error in syncStatusStore.fail(error) }
         )
         syncActivity = ScreenSubscription(
@@ -123,5 +122,26 @@ final class CommonSubscriptions {
                 syncActivityStore.fail(error)
             }
         )
+    }
+
+    /// Apply a sync status. A storage setup records the library's location
+    /// as it ends, and one can end with no setup screen to hear it: one sync
+    /// finishes after a relaunch, or one whose screen closed past its point
+    /// of no return. So the location is read again once a setup stops
+    /// running, and at the first status of a library opened with none,
+    /// whose setup may have ended between that read and this status.
+    private func applySyncStatus(_ value: BridgeSyncStatusSnapshot) {
+        let wasRunning =
+            syncStatusStore.snapshot.map(\.setupRunning)
+            ?? (configStore.storage == nil)
+        let setupEnded = wasRunning && !value.setupRunning
+        syncStatusStore.apply(value)
+        guard setupEnded else { return }
+        Task { [appHandle, configStore, syncStatusStore] in
+            do {
+                configStore.applyStorage(try await appHandle.storageLocation())
+            }
+            catch { syncStatusStore.fail(error) }
+        }
     }
 }

@@ -22,6 +22,7 @@ fn read(
                 .collect(),
             start_failure: error,
             retry_effect,
+            storage_setup: None,
         },
     )
 }
@@ -258,6 +259,27 @@ fn with_nothing_pending_the_line_names_the_status() {
         ),
         Some(SyncIndicator::Failed)
     );
+}
+
+/// While a setup runs, the line names it in place of every state that
+/// names no problem, and a problem still shows.
+#[test]
+fn a_running_setup_names_the_line_until_a_problem_does() {
+    let setting_up = |state| {
+        let mut status = alone(state);
+        status.storage_setup = Some(StorageSetupState::Running);
+        status.indicator()
+    };
+    let setup = Some(SyncIndicator::SettingUpStorage);
+    assert_eq!(setting_up(disconnected()), setup);
+    assert_eq!(setting_up(moving()), setup);
+    assert_eq!(setting_up(synced()), setup);
+    assert_eq!(setting_up(offline()), Some(SyncIndicator::Offline));
+    assert_eq!(
+        setting_up(failed_status(coven::StatusFailure::Removed, coven::SyncState::Removed)),
+        Some(SyncIndicator::Failed)
+    );
+    assert_eq!(alone(disconnected()).indicator(), None);
 }
 
 /// While coven's sync state is syncing, the status shows no failure: the

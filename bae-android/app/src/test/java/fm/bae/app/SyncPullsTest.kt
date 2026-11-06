@@ -98,5 +98,7 @@ class SyncPullsTest {
             pending = emptyList(),
             indicator = indicator,
             reconnectOffered = false,
+            setupRunning = false,
+            undoneSetup = null,
         )
 }

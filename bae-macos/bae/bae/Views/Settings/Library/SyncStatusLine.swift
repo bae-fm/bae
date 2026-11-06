@@ -156,6 +156,44 @@ struct SyncFailureLines: View {
     }
 }
 
+/// A storage setup that ended undone with no setup screen there to hear it,
+/// such as one bae was stopped partway through: why, and Dismiss.
+struct UndoneSetupLine: View {
+    @Environment(SyncStatusStore.self)
+    private var status
+    @Environment(Sync.self)
+    private var sync
+    @Environment(UiStore.self)
+    private var uiStore
+
+    /// The Dismiss running; nil while none runs.
+    @State
+    private var dismissTask: Task<Void, Never>?
+
+    var body: some View {
+        if let undone = status.snapshot?.undoneSetup,
+            let error = DisplayError(undone.error)
+        {
+            ErrorDetailDisclosure(error: error)
+            Button("Dismiss") { dismiss(undone.operation) }
+                .disabled(dismissTask != nil)
+        }
+    }
+
+    private func dismiss(_ operation: Int64) {
+        dismissTask = Task {
+            defer { dismissTask = nil }
+            do { try await sync.dismissUndoneStorageSetup(operation) }
+            catch {
+                logger.error(
+                    "Dismissing the undone setup failed: \(String(reflecting: error))"
+                )
+                uiStore.showError(error)
+            }
+        }
+    }
+}
+
 private struct PendingActionSheetView: View {
     let sheet: PendingActionSheet
     let location: BridgeStorageLocation
@@ -294,6 +332,10 @@ struct S3KeySheet: View {
     /// The running reconnect's steps; nil while none runs.
     @State
     private var steps: StorageSetupSteps?
+    /// The reconnect is past its point of no return, so Cancel no longer
+    /// undoes it and the sheet stays until it finishes.
+    @State
+    private var finishing = false
     @State
     private var error: DisplayError?
 
@@ -318,8 +360,10 @@ struct S3KeySheet: View {
             }
             HStack {
                 Spacer()
-                Button("Cancel", action: onDismiss)
-                    .keyboardShortcut(.cancelAction)
+                if !finishing {
+                    Button("Cancel", action: cancel)
+                        .keyboardShortcut(.cancelAction)
+                }
                 Button("Connect") { connect() }
                     .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
@@ -331,6 +375,21 @@ struct S3KeySheet: View {
         }
         .frame(width: 440)
         .onDisappear { task?.cancel() }
+    }
+
+    /// Close the sheet, undoing a running reconnect first. One past its
+    /// point of no return finishes, so the sheet stays to show it.
+    private func cancel() {
+        guard task != nil else {
+            onDismiss()
+            return
+        }
+        switch sync.cancelStorageSetup() {
+        case .finishing:
+            finishing = true
+        case .undoing, .noSetup:
+            onDismiss()
+        }
     }
 
     private func connect() {
@@ -345,6 +404,7 @@ struct S3KeySheet: View {
             defer {
                 task = nil
                 steps = nil
+                finishing = false
             }
             do {
                 _ = try await sync.saveSyncConfig(config, running.setup)

@@ -149,6 +149,8 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::ReplacementUnfinished(_)
             | UiErrorCategory::RestoreRegistered
             | UiErrorCategory::MemberKeysReplaced
+            | UiErrorCategory::StorageSetupUndone
+            | UiErrorCategory::StorageSetupFinishing
             | UiErrorCategory::DeletionUnfinished
             | UiErrorCategory::DeletionSignInRequired => Self::Unavailable(detail),
         }

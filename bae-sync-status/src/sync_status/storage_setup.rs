@@ -1,0 +1,191 @@
+//! This device's storage setups as coven's `coven_operations` lists them
+//! (coven §11.6): one running, and one that ended undone with no call there
+//! to hear it, which the sync status shows until the person dismisses it. A
+//! setup's own call hears how it ended, so the call's end acknowledges every
+//! ended setup. One that finished, or that the person cancelled, with nobody
+//! to hear it says nothing the sync state doesn't, and opening the library
+//! acknowledges it.
+//!
+//! The list shows whether a setup runs, not whether it passed its point of
+//! no return. Opening undoes every setup cut before it, so a setup running
+//! when the library opens is past it, and only sync's connection finishes
+//! it.
+
+use super::*;
+use bae_diagnostics::UiErrorCategory;
+
+/// Where this device's storage setup stands, as the sync status shows it.
+#[derive(Debug, Clone, PartialEq)]
+pub enum StorageSetupState {
+    /// A setup runs: its call's, or, from when the library opened, one past
+    /// its point of no return, which sync's connection finishes with the
+    /// credentials the setup kept.
+    Running,
+    /// It ended undone, `why`, and nothing has told the person yet:
+    /// acknowledging `operation` dismisses it.
+    Undone { operation: coven::OperationId, why: UiError },
+}
+
+/// How a storage setup's row in `coven_operations` reads.
+#[derive(Debug, Clone, PartialEq)]
+enum SetupRow {
+    Running,
+    /// Finished; cancelled, which only the person does; or ended by this
+    /// device's stop, which the sync state shows.
+    Settled,
+    Undone(UiError),
+}
+
+impl SetupRow {
+    fn of(outcome: Option<coven::OperationOutcome>) -> Self {
+        use coven::OperationOutcome as O;
+        let undone = |detail: String| {
+            Self::Undone(UiError::diagnostic(UiErrorCategory::StorageSetupUndone, detail))
+        };
+        match outcome {
+            None => Self::Running,
+            Some(O::Landed(_) | O::Satisfied | O::Stopped(_) | O::Cancelled) => Self::Settled,
+            Some(O::Undone(coven::UndoCause::Interrupted)) => {
+                undone("bae stopped before the setup could finish".into())
+            }
+            Some(O::Undone(coven::UndoCause::Failed { error })) => undone(error),
+            // The account that holds the storage keeps its member: setting
+            // up with another account is refused (§20.9).
+            Some(O::Rejected(coven::OperationRejection::StoreOwner)) => {
+                Self::Undone(UiError::diagnostic(
+                    UiErrorCategory::StoreOwnerAccount,
+                    "the storage's owner must set it up with the account that holds it",
+                ))
+            }
+            Some(O::Rejected(rejection)) => {
+                undone(format!("the library refused the setup: {rejection:?}"))
+            }
+        }
+    }
+}
+
+/// Where this device's storage setup stands: running while any setup
+/// runs, or else the newest setup that ended undone, or `None`.
+pub(super) fn storage_setup_on(
+    sql: &SqlReadContext<'_>,
+) -> Result<Option<StorageSetupState>, DbError> {
+    let rows = sql.query(
+        "SELECT operation, outcome FROM coven_operations \
+         WHERE kind = 'StorageSetup' ORDER BY operation",
+        [],
+        |row| {
+            Ok((coven::OperationId(row.get(0)?), row.get::<_, Option<coven::OperationOutcome>>(1)?))
+        },
+    )?;
+    Ok(standing(
+        rows.into_iter().map(|(operation, outcome)| (operation, SetupRow::of(outcome))).collect(),
+    ))
+}
+
+/// Where setup stands from its rows, oldest first: running while any
+/// runs, or else the newest that ended undone.
+fn standing(rows: Vec<(coven::OperationId, SetupRow)>) -> Option<StorageSetupState> {
+    if rows.iter().any(|(_, row)| *row == SetupRow::Running) {
+        return Some(StorageSetupState::Running);
+    }
+    rows.into_iter().rev().find_map(|(operation, row)| match row {
+        SetupRow::Undone(why) => Some(StorageSetupState::Undone { operation, why }),
+        SetupRow::Running | SetupRow::Settled => None,
+    })
+}
+
+/// Which ended setups a write acknowledges.
+#[derive(Debug, Clone, Copy)]
+enum Ended {
+    /// Every one: a setup call returned, with how it ended in hand.
+    All,
+    /// Those whose end tells the person nothing.
+    Settled,
+}
+
+impl SyncStatus {
+    /// Whether a storage setup runs on this device. Read as the library
+    /// opens, before any setup call, it is one past its point of no return,
+    /// which only sync's connection finishes.
+    pub async fn storage_setup_running(&self) -> Result<bool, DbError> {
+        Ok(self
+            .store
+            .read(|sql| storage_setup_on(&sql))
+            .await?
+            .is_some_and(|state| state == StorageSetupState::Running))
+    }
+
+    /// A storage setup call returned, with how it ended: every ended setup
+    /// leaves `coven_operations`, an undone one the person was shown before
+    /// among them, since the call's own end is the newest word on setup.
+    pub async fn acknowledge_storage_setups(&self) -> Result<(), DbError> {
+        self.acknowledge_ended(Ended::All).await
+    }
+
+    /// The library opened: every setup that finished, that the person
+    /// cancelled, or that this device's stop ended, leaves
+    /// `coven_operations`. None tells the person anything. An undone one
+    /// stays for the status to show.
+    pub async fn acknowledge_settled_storage_setups(&self) -> Result<(), DbError> {
+        self.acknowledge_ended(Ended::Settled).await
+    }
+
+    /// The person dismissed `operation`, a storage setup that ended undone.
+    /// Anything else is refused.
+    pub async fn acknowledge_undone_storage_setup(
+        &self,
+        operation: coven::OperationId,
+    ) -> Result<(), DbError> {
+        self.store
+            .call(move |sql| {
+                let outcome = sql
+                    .query_row(
+                        "SELECT outcome FROM coven_operations \
+                         WHERE operation = ?1 AND kind = 'StorageSetup'",
+                        [operation.0],
+                        |row| row.get::<_, Option<coven::OperationOutcome>>(0),
+                    )
+                    .optional()?;
+                match outcome.map(SetupRow::of) {
+                    Some(SetupRow::Undone(_)) => Ok(sql.acknowledge_operation(operation)?),
+                    other => Err(DbError::Message(format!(
+                        "operation {operation:?} is no undone storage setup: {other:?}"
+                    ))),
+                }
+            })
+            .await
+    }
+
+    async fn acknowledge_ended(&self, which: Ended) -> Result<(), DbError> {
+        self.store
+            .call(move |sql| {
+                let ended = sql.query(
+                    "SELECT operation, outcome FROM coven_operations \
+                     WHERE kind = 'StorageSetup' AND outcome IS NOT NULL",
+                    [],
+                    |row| {
+                        Ok((
+                            coven::OperationId(row.get(0)?),
+                            row.get::<_, Option<coven::OperationOutcome>>(1)?,
+                        ))
+                    },
+                )?;
+                for (operation, outcome) in ended {
+                    let acknowledged = match (which, SetupRow::of(outcome)) {
+                        (_, SetupRow::Running) => false,
+                        (Ended::All, _) | (Ended::Settled, SetupRow::Settled) => true,
+                        (Ended::Settled, SetupRow::Undone(_)) => false,
+                    };
+                    if acknowledged {
+                        sql.acknowledge_operation(operation)?;
+                    }
+                }
+                Ok(())
+            })
+            .await
+    }
+}
+
+#[cfg(test)]
+#[path = "storage_setup_tests.rs"]
+mod tests;

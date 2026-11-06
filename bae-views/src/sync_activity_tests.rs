@@ -15,6 +15,7 @@ fn status() -> SyncStatusSnapshot {
         coven: coven::SyncStatus { state: coven::SyncState::Synced, last_synced: None },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
+        storage_setup: None,
         error: None,
     }
 }

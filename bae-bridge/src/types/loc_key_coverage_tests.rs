@@ -282,6 +282,8 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::ReplacementUnfinished { by: BridgeReplacedBy::Restore },
         BridgeErrorCategory::RestoreRegistered,
         BridgeErrorCategory::MemberKeysReplaced,
+        BridgeErrorCategory::StorageSetupUndone,
+        BridgeErrorCategory::StorageSetupFinishing,
         BridgeErrorCategory::DeletionUnfinished,
         BridgeErrorCategory::DeletionSignInRequired,
     ] {
@@ -373,6 +375,7 @@ fn produced_keys() -> Vec<String> {
     }
     assert!(BridgePendingAction::Wait.key().is_none());
     for indicator in [
+        BridgeSyncIndicator::SettingUpStorage,
         BridgeSyncIndicator::Stopped,
         BridgeSyncIndicator::Syncing,
         BridgeSyncIndicator::Synced,

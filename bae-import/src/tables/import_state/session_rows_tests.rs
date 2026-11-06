@@ -61,6 +61,8 @@ fn every_failure_class_reads_back_as_itself() {
         C::ReplacementUnfinished(coven::ReplacedBy::Restore),
         C::RestoreRegistered,
         C::MemberKeysReplaced,
+        C::StorageSetupUndone,
+        C::StorageSetupFinishing,
         C::DeletionUnfinished,
         C::DeletionSignInRequired,
     ];

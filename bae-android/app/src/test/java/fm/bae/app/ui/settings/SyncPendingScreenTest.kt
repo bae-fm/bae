@@ -61,6 +61,8 @@ class SyncPendingScreenTest {
                 // No line, whose words come from the bridge's native catalog lookup, which a JVM test can't load.
                 indicator = null,
                 reconnectOffered = false,
+                setupRunning = false,
+                undoneSetup = null,
             ),
             NoErrorDisplays,
         )

@@ -29,6 +29,16 @@ forward! { sync this => {
     fn trigger_sync() {
         this.services.trigger_sync();
     }
+
+    /// Cancel the storage setup running on this library. Before its point
+    /// of no return it is undone, and its call fails as cancelled; past it,
+    /// from its `CreatingStore` or `RecordingAccess` step on, it finishes,
+    /// and Cancel no longer applies. Leaving a setup's screen while it runs
+    /// cancels it this way: dropping the call alone leaves it running to
+    /// its end.
+    fn cancel_storage_setup() -> crate::types::BridgeSetupCancellation {
+        crate::types::BridgeSetupCancellation::from_core(this.services.cancel_storage_setup())
+    }
 } }
 
 forward! { async this => {
@@ -62,6 +72,15 @@ forward! { async this => {
     fn reconnect_sync() -> () {
         this.services
             .reconnect_sync()
+            .await
+            .map_err(BridgeError::from)
+    }
+
+    /// Dismiss `BridgeSyncStatusSnapshot::undone_setup`, the storage setup
+    /// `operation` that ended undone: the status no longer shows it.
+    fn dismiss_undone_storage_setup(operation: i64) -> () {
+        this.services
+            .dismiss_undone_storage_setup(coven::OperationId(operation))
             .await
             .map_err(BridgeError::from)
     }

@@ -339,6 +339,11 @@ open class AppService: @unchecked Sendable, Observable {
             syncStatusStore
         }
 
+        /// The library's location as the config store holds it.
+        public var storageForTesting: BridgeStorageLocation? {
+            configStore.storage
+        }
+
         public var syncActivityStoreForTesting: SyncActivityStore {
             syncActivityStore
         }

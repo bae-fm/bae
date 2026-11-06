@@ -12,8 +12,10 @@ use rusqlite::{params, OptionalExtension, Row};
 mod file_row;
 mod pending;
 mod start_failure;
+mod storage_setup;
 pub use file_row::FileRow;
 pub use pending::PendingRow;
+pub use storage_setup::StorageSetupState;
 
 /// Sync status's part of the schema: `sync_status.sql`.
 pub(crate) const SCHEMA: bae_store::SchemaPart =
@@ -53,11 +55,17 @@ pub struct SyncStatusSnapshot {
     /// What the person's retry would do now, as coven decides it: run a
     /// pass, or be answered at once without one.
     pub retry_effect: coven::RetryEffect,
+    /// A storage setup running, or one that ended undone and that the
+    /// person hasn't dismissed.
+    pub storage_setup: Option<StorageSetupState>,
 }
 
 /// The settings status line. Platforms localize these cases and the item count.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncIndicator {
+    /// A storage setup runs: its call's, or one past its point of no return
+    /// that sync's connection finishes.
+    SettingUpStorage,
     /// Storage is set up, but the sync loop isn't running.
     Stopped,
     Syncing,
@@ -155,7 +163,8 @@ fn blocked_failure(
 /// What the sync status reads of the library's tables in one go, beside
 /// coven's sync state: coven's pending records (`coven_pending`) each named
 /// by its row, why this device's last attempt to start sync failed
-/// (`sync_start_failure`), and what a retry would do (`coven_retry_effect`).
+/// (`sync_start_failure`), what a retry would do (`coven_retry_effect`), and
+/// where this device's storage setup stands (`coven_operations`).
 /// Two reads are equal only when every record's error behind it is too:
 /// coven's records compare by subject and reason alone.
 #[derive(Debug, Clone, PartialEq)]
@@ -163,24 +172,27 @@ pub struct SyncStatusRows {
     pub pending: Vec<PendingItem>,
     pub start_failure: Option<UiError>,
     pub retry_effect: coven::RetryEffect,
+    pub storage_setup: Option<StorageSetupState>,
 }
 
 /// The sync status's rows as one read of the library's tables sees them.
 pub fn sync_status_rows_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncStatusRows> {
     let pending = pending::pending_rows_on(&sql)?.into_iter().map(PendingItem::listed).collect();
     let start_failure = start_failure::start_failure_on(&sql)?;
+    let storage_setup = storage_setup::storage_setup_on(&sql)?;
     let retry_effect = coven::RetryEffect::read(sql)?;
-    Ok(SyncStatusRows { pending, start_failure, retry_effect })
+    Ok(SyncStatusRows { pending, start_failure, retry_effect, storage_setup })
 }
 
 impl SyncStatusSnapshot {
     /// The sync status from coven's sync state and the library's rows
     /// beside it: the pending records each named by its row, why the last
-    /// attempt to start sync failed, while that stands, and what a retry
-    /// would do.
+    /// attempt to start sync failed, while that stands, what a retry would
+    /// do, and where this device's storage setup stands.
     pub fn read(coven: coven::SyncStatus, rows: SyncStatusRows) -> Self {
-        let SyncStatusRows { pending, start_failure, retry_effect } = rows;
-        let mut snapshot = Self { coven, pending, error: start_failure, retry_effect };
+        let SyncStatusRows { pending, start_failure, retry_effect, storage_setup } = rows;
+        let mut snapshot =
+            Self { coven, pending, error: start_failure, retry_effect, storage_setup };
         snapshot.name_connection_cause();
         snapshot
     }
@@ -409,22 +421,33 @@ impl SyncStatusSnapshot {
     }
 
     /// What the status line names, or `None` while coven reports no storage
-    /// set up on this device: there is no sync to describe. A library with a
-    /// recorded location in that state has lost this device's credentials
-    /// for it, and signs in to it again.
+    /// set up on this device and no setup runs: there is no sync to
+    /// describe. A library with a recorded location in that state has lost
+    /// this device's credentials for it, and signs in to it again.
     ///
     /// Pending records come first, since the list shows what each waits on.
     /// With none, the line names coven's sync state: syncing; offline, with
     /// or without changes waiting to go out; a failure coven names, ranked
     /// above activity; and synced, or waiting to sync, which is stopped
     /// while the loop isn't running. Its error, when it has one, is
-    /// `failure()`.
+    /// `failure()`. While a setup runs, the line names it in place of any
+    /// state that names no problem: the setup is what sync is doing.
     pub fn indicator(&self) -> Option<SyncIndicator> {
         use coven::SyncState as S;
+        let setting_up = self.storage_setup == Some(StorageSetupState::Running);
         let named = match &self.coven.state {
+            S::Offline(_) | S::OfflineWithUnsentChanges(_) => SyncIndicator::Offline,
+            S::NotSynced
+            | S::SignedOut { cause: None, .. }
+            | S::Syncing
+            | S::Synced
+            | S::WaitingToSync(_)
+                if setting_up =>
+            {
+                SyncIndicator::SettingUpStorage
+            }
             S::NotSynced | S::SignedOut { cause: None, .. } => return None,
             S::Syncing => SyncIndicator::Syncing,
-            S::Offline(_) | S::OfflineWithUnsentChanges(_) => SyncIndicator::Offline,
             S::Synced | S::WaitingToSync(_) if !self.running() => SyncIndicator::Stopped,
             S::Synced | S::WaitingToSync(_) => SyncIndicator::Synced,
             S::SignedOut { cause: Some(_), .. }

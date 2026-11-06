@@ -62,6 +62,7 @@ struct LibrarySettingsTab: View {
             }
 
             Section("Sync") {
+                UndoneSetupLine()
                 if let location = configStore.storage {
                     CloudProviderConnectedSection(location: location)
                     if syncStatus.line == .noStorage {
@@ -77,6 +78,15 @@ struct LibrarySettingsTab: View {
                         )
                         UploadPauseToggle()
                     }
+                }
+                else if syncStatus.snapshot?.setupRunning == true {
+                    // A setup bae finishes on its own, such as one it was
+                    // stopped partway through, records the location as it
+                    // ends.
+                    if let statusText = syncStatus.statusText {
+                        Text(statusText)
+                    }
+                    SyncFailureLines(onResetDevice: onResetDevice)
                 }
                 else {
                     Button("Set up sync…") {
@@ -231,7 +241,9 @@ private struct UploadPauseToggle: View {
                     error: nil,
                     pending: [],
                     indicator: indicator,
-                    reconnectOffered: false
+                    reconnectOffered: false,
+                    setupRunning: false,
+                    undoneSetup: nil
                 )
             )
         )

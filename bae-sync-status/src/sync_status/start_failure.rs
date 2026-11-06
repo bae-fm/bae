@@ -76,6 +76,8 @@ impl FailureColumns {
             | K::ReplacementUnfinished
             | K::RestoreRegistered
             | K::MemberKeysReplaced
+            | K::StorageSetupUndone
+            | K::StorageSetupFinishing
             | K::DeletionUnfinished
             | K::DeletionSignInRequired => {
                 Err(DbError::Message(format!("a sync start can't fail as {category:?}")))

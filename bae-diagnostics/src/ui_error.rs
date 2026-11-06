@@ -119,6 +119,14 @@ pub enum UiErrorCategory {
     /// the replaced keys, can't add this device: only the current recovery
     /// code restores the library.
     MemberKeysReplaced,
+    /// A storage setup ended undone with no call there to hear it, such as
+    /// one bae stopped partway, or one sync's connection finished and the
+    /// library refused: storage isn't set up, and setting it up again is the
+    /// way on.
+    StorageSetupUndone,
+    /// A storage setup past its point of no return is still finishing, so
+    /// another can't start until it has.
+    StorageSetupFinishing,
     /// The library didn't open because this device is removing it: its
     /// removal stopped partway, and only finishing the removal ends it.
     DeletionUnfinished,

@@ -46,6 +46,8 @@ class SettingsSyncSectionTest {
                 pending = emptyList(),
                 indicator = null,
                 reconnectOffered = false,
+                setupRunning = false,
+                undoneSetup = null,
             ),
             NoErrorDisplays,
         )

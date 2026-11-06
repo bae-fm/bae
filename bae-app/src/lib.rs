@@ -516,8 +516,18 @@ where
         let provider_configured = runtime
             .block_on(library_manager.is_sync_configured())
             .map_err(|error| BootstrapError::Config(error.to_string()))?;
+        // A storage setup running as the library opens was cut past its
+        // point of no return (opening undid any before it), and commits its
+        // location only once sync's connection finishes it.
+        let setup_finishing = runtime
+            .block_on(library_manager.storage_setup_running())
+            .map_err(|error| BootstrapError::Database(error.to_string()))?;
+        runtime
+            .block_on(library_manager.acknowledge_settled_storage_setups())
+            .map_err(|error| BootstrapError::Database(error.to_string()))?;
+        let connects = provider_configured || setup_finishing;
         let key_state = library_manager.store_key_state().map_err(classify_key_state_error)?;
-        let locked = provider_configured && key_state == coven::StoreKeyState::Locked;
+        let locked = connects && key_state == coven::StoreKeyState::Locked;
         let advance_active_pointer = !locked;
         if locked {
             warn!("store key unavailable at startup; opening library locked");
@@ -532,7 +542,7 @@ where
             .map_err(|e| BootstrapError::Internal(e.to_string()))?;
 
         let startup_sync_manager =
-            if provider_configured && !locked { Some(library_manager.clone()) } else { None };
+            if connects && !locked { Some(library_manager.clone()) } else { None };
 
         // A fixture states what its watched folders hold, and nothing on disk
         // backs it, so reading them would replace it with what is there.

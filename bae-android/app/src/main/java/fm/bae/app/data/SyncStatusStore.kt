@@ -23,6 +23,15 @@ data class SyncFailure(
 )
 
 /**
+ * A storage setup that ended undone with no setup screen there to hear it, such as one bae was stopped partway
+ * through: why, and the [operation] that dismisses it.
+ */
+data class UndoneSetup(
+    val operation: Long,
+    val error: DisplayError,
+)
+
+/**
  * What the sync status line shows: checking, until the sync status's first read; unreadable, after a read that failed,
  * until the next succeeds; no storage, while this device has none set up; or the indicator of the status as read.
  */
@@ -54,6 +63,17 @@ class SyncStatusStore {
     private val _pending = MutableStateFlow<List<BridgePendingRecord>?>(null)
     val pending: StateFlow<List<BridgePendingRecord>?> = _pending.asStateFlow()
 
+    /**
+     * A storage setup runs: a setup screen's, or one past its point of no return that sync's connection finishes after
+     * a relaunch. It records the library's location as it finishes, so Settings reads the location again once this
+     * turns false.
+     */
+    private val _setupRunning = MutableStateFlow(false)
+    val setupRunning: StateFlow<Boolean> = _setupRunning.asStateFlow()
+
+    private val _undoneSetup = MutableStateFlow<UndoneSetup?>(null)
+    val undoneSetup: StateFlow<UndoneSetup?> = _undoneSetup.asStateFlow()
+
     fun apply(
         status: BridgeSyncStatusSnapshot,
         errors: ErrorDisplays,
@@ -71,6 +91,11 @@ class SyncStatusStore {
             }
         _line.value = status.indicator?.let(SyncLine::Read) ?: SyncLine.NoStorage
         _pending.value = status.pending
+        _setupRunning.value = status.setupRunning
+        _undoneSetup.value =
+            status.undoneSetup?.let { undone ->
+                errors.display(undone.error)?.let { shown -> UndoneSetup(undone.operation, shown) }
+            }
     }
 
     /** The sync status couldn't be read: the line shows the read's failure until a read succeeds. */

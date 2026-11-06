@@ -8,6 +8,13 @@ public final class Sync: Sendable, Observable {
             BridgeStorageSetup
     /// A new storage setup's steps, for the view that shows the setup.
     public let storageSetupSteps: @Sendable () -> StorageSetupSteps
+    /// Cancel the running storage setup. Before its point of no return it
+    /// is undone and its call throws `BridgeError.Cancelled`; past it, it
+    /// finishes, and Cancel no longer applies.
+    public let cancelStorageSetup: @Sendable () -> BridgeSetupCancellation
+    /// Dismiss the storage setup the sync status shows ended undone, by its
+    /// operation.
+    public let dismissUndoneStorageSetup: @Sendable (Int64) async throws -> Void
     public let generateRestoreCode:
         @Sendable () async throws -> BridgeRestoreCodeShare
     /// Add Device's code, with the watch for the person's device that joins
@@ -59,6 +66,14 @@ public final class Sync: Sendable, Observable {
         storageSetupSteps: @escaping @Sendable () -> StorageSetupSteps = {
             preconditionFailure("this Sync sets no storage up")
         },
+        cancelStorageSetup:
+            @escaping @Sendable () -> BridgeSetupCancellation = {
+                .noSetup
+            },
+        dismissUndoneStorageSetup:
+            @escaping @Sendable (Int64) async throws -> Void = { _ in
+                throw StubError.notImplemented
+            },
         generateRestoreCode:
             @escaping @Sendable () async throws -> BridgeRestoreCodeShare = {
                 throw StubError.notImplemented
@@ -137,6 +152,8 @@ public final class Sync: Sendable, Observable {
     ) {
         self.saveSyncConfig = saveSyncConfig
         self.storageSetupSteps = storageSetupSteps
+        self.cancelStorageSetup = cancelStorageSetup
+        self.dismissUndoneStorageSetup = dismissUndoneStorageSetup
         self.generateRestoreCode = generateRestoreCode
         self.addDevice = addDevice
         self.removeMember = removeMember
@@ -177,6 +194,10 @@ public final class Sync: Sendable, Observable {
                 )
             },
             storageSetupSteps: { StorageSetupSteps(host: host) },
+            cancelStorageSetup: { handle.cancelStorageSetup() },
+            dismissUndoneStorageSetup: {
+                try await handle.dismissUndoneStorageSetup(operation: $0)
+            },
             generateRestoreCode: { try await handle.generateRestoreCode() },
             addDevice: { try await handle.addDevice() },
             removeMember: { try await handle.removeMember(member: $0) },

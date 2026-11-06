@@ -12,6 +12,7 @@ import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
+import uniffi.bae_bridge.BridgeUndoneStorageSetup
 
 class SyncStatusStoreTest {
     private val errors =
@@ -94,6 +95,21 @@ class SyncStatusStoreTest {
         assertEquals(null, sync.error.value)
     }
 
+    /** A setup that ended undone shows why with the operation that dismisses it; one running shows as running. */
+    @Test
+    fun aStorageSetupShowsRunningOrUndone() {
+        val sync = SyncStatusStore()
+        val why = BridgeException.Diagnostic(BridgeErrorCategory.StorageSetupUndone, "bae stopped partway")
+
+        sync.apply(status(error = null).copy(setupRunning = true), errors)
+        assertEquals(true, sync.setupRunning.value)
+        assertEquals(null, sync.undoneSetup.value)
+
+        sync.apply(status(error = null).copy(undoneSetup = BridgeUndoneStorageSetup(7, why)), errors)
+        assertEquals(false, sync.setupRunning.value)
+        assertEquals(UndoneSetup(7, shown(why)), sync.undoneSetup.value)
+    }
+
     private fun shown(error: BridgeException) = DisplayError("line for $error", "detail of $error")
 
     private fun status(
@@ -105,5 +121,7 @@ class SyncStatusStoreTest {
         pending = emptyList(),
         indicator = indicator,
         reconnectOffered = reconnectOffered,
+        setupRunning = false,
+        undoneSetup = null,
     )
 }

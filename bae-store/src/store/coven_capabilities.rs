@@ -181,6 +181,13 @@ impl Store {
             .await
     }
 
+    /// Cancel the storage setup running on this store: before its point of
+    /// no return it is undone and its call fails as cancelled; past it, it
+    /// finishes.
+    pub fn cancel_storage_setup(&self) -> coven::SetupCancellation {
+        self.inner.handle.cancel_storage_setup()
+    }
+
     pub async fn setup_cloudkit_storage(
         &self,
         device_name: &str,

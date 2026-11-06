@@ -73,9 +73,12 @@ pub fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
         E::StoreOwner => C::StoreOwnerAccount,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Internal(_) => C::Internal,
-        // bae never cancels a setup it started, and starts none while one
-        // finishes: either means bae went wrong.
-        E::Cancelled | E::SetupRunning => C::Internal,
+        // A setup from before is past its point of no return: only sync's
+        // connection finishes it, and another starts once it has.
+        E::SetupRunning => C::StorageSetupFinishing,
+        // The cancel the person asked for reaches them as a cancel, never
+        // as an error with a line.
+        E::Cancelled => C::Internal,
         // The runtime is shutting down under the work: the process is
         // ending it, which no line the person reads can help with. A panic
         // in coven's work is a bug the person can only report.

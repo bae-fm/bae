@@ -92,14 +92,13 @@ impl LibraryManager {
             .into_location()
             .map_err(|error| LibraryError::Validation(format!("invalid S3 endpoint: {error}")))?;
         let setup = self
-            .store
-            .setup_s3_storage(
+            .heard_setup(self.store.setup_s3_storage(
                 storage,
                 device_name,
                 credentials.access_key_id,
                 credentials.secret_access_key,
                 steps,
-            )
+            ))
             .await?;
         self.diagnostics
             .event(TelemetryEvent::CloudProviderConnected { provider: coven::CloudProvider::S3 });
@@ -154,7 +153,8 @@ impl LibraryManager {
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
         let provider = storage.provider();
-        let setup = self.store.setup_oauth_storage(storage, device_name, steps).await?;
+        let setup =
+            self.heard_setup(self.store.setup_oauth_storage(storage, device_name, steps)).await?;
         self.diagnostics.event(TelemetryEvent::CloudProviderConnected { provider });
         Ok(setup)
     }
@@ -191,11 +191,63 @@ impl LibraryManager {
         device_name: &str,
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        let setup = self.store.setup_cloudkit_storage(device_name, steps).await?;
+        let setup = self.heard_setup(self.store.setup_cloudkit_storage(device_name, steps)).await?;
         self.diagnostics.event(TelemetryEvent::CloudProviderConnected {
             provider: coven::CloudProvider::CloudKit,
         });
         Ok(setup)
+    }
+
+    /// Run a storage setup call, then acknowledge every ended setup: the
+    /// call returns how it ended, so the sync status needn't say it again.
+    /// A failed acknowledgement leaves the rows, which repeat what the call
+    /// said, and is logged.
+    ///
+    /// Dropping the call, as leaving a setup's screen does, cancels the
+    /// setup: coven runs a dropped setup to its end, with nobody waiting
+    /// for it. A setup past its point of no return finishes anyway.
+    async fn heard_setup<T>(
+        &self,
+        setup: impl std::future::Future<Output = Result<T, coven::StorageSetupError>>,
+    ) -> Result<T, LibraryError> {
+        let mut dropped = CancelSetupOnDrop { store: &self.store, returned: false };
+        let result = setup.await;
+        dropped.returned = true;
+        if let Err(error) = self.sync_status.acknowledge_storage_setups().await {
+            warn!("acknowledging the storage setups a call ended failed: {error}");
+        }
+        Ok(result?)
+    }
+
+    /// Cancel the storage setup running on this library: before its point
+    /// of no return it is undone and its call fails as cancelled; past it,
+    /// it finishes, and the answer says so.
+    pub fn cancel_storage_setup(&self) -> coven::SetupCancellation {
+        self.store.cancel_storage_setup()
+    }
+
+    /// Whether a storage setup runs on this device. As the library opens,
+    /// before any setup call, one that runs is past its point of no return,
+    /// and starting sync finishes it.
+    pub async fn storage_setup_running(&self) -> Result<bool, LibraryError> {
+        Ok(self.sync_status.storage_setup_running().await?)
+    }
+
+    /// The library opened: a storage setup that finished, or that the
+    /// person cancelled, with nobody to hear it tells them nothing, so it
+    /// leaves `coven_operations`. One that ended undone stays for the
+    /// status to show.
+    pub async fn acknowledge_settled_storage_setups(&self) -> Result<(), LibraryError> {
+        Ok(self.sync_status.acknowledge_settled_storage_setups().await?)
+    }
+
+    /// The person dismissed the undone storage setup `operation` the sync
+    /// status showed.
+    pub async fn dismiss_undone_storage_setup(
+        &self,
+        operation: coven::OperationId,
+    ) -> Result<(), LibraryError> {
+        Ok(self.sync_status.acknowledge_undone_storage_setup(operation).await?)
     }
 
     pub async fn unlock_store_key(&self) -> Result<(), LibraryError> {
@@ -277,10 +329,13 @@ impl LibraryManager {
     ///
     /// A start that fails becomes this retry's recorded sync-status error, so
     /// the status line shows why the retry didn't take; it is cleared the moment a retry is under way. A library
-    /// with no provider is not failing sync, it has none, so that refusal goes
-    /// back to the caller alone rather than posing as a sync failure.
+    /// with no provider, and no setup running toward one, is not failing sync,
+    /// it has none, so that refusal goes back to the caller alone rather than
+    /// posing as a sync failure. A setup past its point of no return commits
+    /// its provider only once sync's connection finishes it, so it starts sync
+    /// as a provider does.
     pub async fn reconnect_sync(&self) -> Result<(), LibraryError> {
-        if !self.is_sync_configured().await? {
+        if !self.is_sync_configured().await? && !self.storage_setup_running().await? {
             return Err(coven::SyncError::NoStorage.into());
         }
         if !self.is_sync_ready().await? {
@@ -319,6 +374,22 @@ impl LibraryManager {
     }
     pub async fn storage_location(&self) -> Result<Option<coven::StorageConfig>, LibraryError> {
         Ok(self.store.storage_config().await?)
+    }
+}
+
+/// Cancels the storage setup a call runs when the call is dropped before it
+/// returns: see [`LibraryManager::heard_setup`].
+struct CancelSetupOnDrop<'a> {
+    store: &'a bae_store::Store,
+    returned: bool,
+}
+
+impl Drop for CancelSetupOnDrop<'_> {
+    fn drop(&mut self) {
+        if !self.returned {
+            let answer = self.store.cancel_storage_setup();
+            tracing::info!(?answer, "a dropped storage setup call cancelled its setup");
+        }
     }
 }
 

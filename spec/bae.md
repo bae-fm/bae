@@ -2715,6 +2715,31 @@ the browser, listing the provider's folders, and making a new OneDrive folder
 each say so while they run, on both apps. The dev reset connects its
 storage without such a stream: it reports connecting storage as its own step.
 
+**Cancelling, and a setup bae was stopped partway through.** coven journals
+each setup before its first write to storage, and from its point of no return,
+creating the library in storage or recording changed access, a setup finishes
+rather than undoing ([coven
+§11.6](https://github.com/bae-fm/coven/blob/main/spec/coven.md#116-every-call-that-writes-to-storage-in-steps)).
+Cancel on a setup sheet asks core to cancel the setup: before that point coven
+undoes it and the call ends as cancelled, which shows nothing; past it the
+setup finishes, and the sheet stays to show it, with Cancel gone. A setup call
+that is dropped, as closing its screen or leaving it on Android drops it,
+cancels its setup the same way: coven would otherwise run it to its end with
+nobody waiting. A setup bae was stopped partway through is undone as the
+library opens if it hadn't reached that point, and otherwise finishes once
+sync starts, which the library does at launch for it as for a library with
+storage set up. While a setup runs, the status line says "Setting up storage…"
+in place of any state that names no problem; a library with no location
+recorded yet shows that line where Settings would offer setting up sync, and
+Settings reads the location again once the setup stops running, since it
+records the location as it ends. A setup's call hears how it ended, and
+acknowledges it in coven's list of operations; one that finished or was
+cancelled with nobody to hear it is acknowledged as the library opens. One
+that ended undone with nobody to hear it, such as one bae was stopped partway
+through, shows in Settings' sync section, why with *Dismiss*, until the person
+dismisses it. Starting a setup while another finishes is refused, saying to
+try again once it has.
+
 Every library has its storage location to itself: an S3 bucket, a Dropbox
 shared folder or a OneDrive folder
 ([coven §20.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#203-where-a-store-lives)).
@@ -2850,7 +2875,9 @@ without changes waiting to go out; Sync failed for any failure coven names
 update needed, removed, a reset needed, or any other); and Synced, or Sync
 stopped when the library has a cloud home but isn't syncing, for synced or
 waiting to sync. A failure shows above activity, as coven ranks its own sync
-state, and the line never works out that state again from coven's tables. A
+state, and the line never works out that state again from coven's tables.
+While a storage setup runs, the line says Setting up storage in place of
+syncing, synced, waiting to sync or no storage (§6.2). A
 failure's error is the last pass's when the pass names the state, and sits
 under the line unless a pending record shows it; a state a pending record
 names shows its error in that record. The line is made from two sources, each
@@ -3973,6 +4000,7 @@ the queue's strip — shows where they dropped it meanwhile.
 
 Through `AppServices`: move releases to storage and make them local again,
 pin and unpin, cancel a transition, export and save; set up a cloud home,
+cancel a running setup and dismiss one that ended undone (§6.2),
 reconnect, pause, read the pending list and act on its records; list people
 and their devices, watch for a device of this person's that joins after the
 watch begins, invite a person in person or by sending the code, list this
@@ -4253,7 +4281,7 @@ bindings export none of their symbols.
 | bae-store | the library's store over coven, with no table: the `Store` every read, write and live query runs through, the coven calls bae makes on a library (storage setup, sync, keys, files, pins, uploads, invites, restore codes), the schema's shape (each crate's parts, run in crate order as one migration) and the SQL functions and collation the parts declare, list windows, the cancellable live queries a surface pulls values from, and the names a person enters |
 | bae-records | the library's records and where each release's files are: artists, albums, releases, tracks, works and labels with their files, the rules that resolve credits and labels and merge identities, the row writers an import and an edit call inside their own writes, and release storage, with the `Records` owner over them |
 | bae-people | the library's members and each person's own data: who is in the library and on which devices, the admin changes this device asked for, profiles, plays, ratings and playlists, with the `Membership` and `People` owners |
-| bae-sync-status | the sync status as the status line and the activity list show it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do and why this device's last start failed, with the `SyncStatus` owner |
+| bae-sync-status | the sync status as the status line and the activity list show it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do, why this device's last start failed and where its storage setup stands, with the `SyncStatus` owner |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the tasks and threads whose panics are reported, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through, which reports a panic in its own disk work; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |
@@ -4902,6 +4930,8 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 | `RestoreRegistered` | finishes the restore: it was cancelled after this device was added to the library, so it can't be taken back (§6.4) |
 | `MemberKeysReplaced` | restores the library with their current recovery code: another of their devices replaced their keys, which the code used, or this device's copy, doesn't hold (§6.4) |
+| `StorageSetupUndone` | sets the library's storage up again: a setup ended undone with nobody there to hear it, such as one bae was stopped partway through (§6.2) |
+| `StorageSetupFinishing` | waits for the storage setup already finishing, then tries again (§6.2) |
 | `DeletionUnfinished` | finishes removing the library from this device, which stopped partway (§6.4) |
 | `DeletionSignInRequired` | signs in to the library's storage again, then removes the library (§6.4) |
 
@@ -4912,8 +4942,8 @@ These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 `KeychainEntitlementMissing`, `SavedRestoreCodesFull`,
 `SavedRestoreCodeTooLarge`, `StoreOwnerAccount`, `QueueChanged`,
 `ReplacementUnfinished`, `RestoreRegistered`, `MemberKeysReplaced`,
-`DeletionUnfinished` and `DeletionSignInRequired`. Every other category shows
-its detail under its line.
+`StorageSetupFinishing`, `DeletionUnfinished` and `DeletionSignInRequired`.
+Every other category shows its detail under its line.
 
 ### G.2 Why a found release isn't picked
 

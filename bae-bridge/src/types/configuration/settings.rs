@@ -221,6 +221,14 @@ pub enum BridgeErrorCategory {
     /// the replaced keys, can't add this device: only the current recovery
     /// code restores the library.
     MemberKeysReplaced,
+    /// A storage setup ended undone with no call there to hear it, such as
+    /// one bae stopped partway, or one sync's connection finished and the
+    /// library refused: storage isn't set up, and setting it up again is the
+    /// way on.
+    StorageSetupUndone,
+    /// A storage setup past its point of no return is still finishing, so
+    /// another can't start until it has.
+    StorageSetupFinishing,
     /// The library didn't open because this device is removing it; only
     /// finishing the removal ends it.
     DeletionUnfinished,
@@ -391,6 +399,8 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         },
         BridgeErrorCategory::RestoreRegistered => "core.error.restore_registered",
         BridgeErrorCategory::MemberKeysReplaced => "core.error.member_keys_replaced",
+        BridgeErrorCategory::StorageSetupUndone => "core.error.storage_setup_undone",
+        BridgeErrorCategory::StorageSetupFinishing => "core.error.storage_setup_finishing",
         BridgeErrorCategory::DeletionUnfinished => "core.error.deletion_unfinished",
         BridgeErrorCategory::DeletionSignInRequired => "core.error.deletion_sign_in_required",
     }
@@ -513,6 +523,8 @@ impl BridgeErrorCategory {
             Self::ReplacementUnfinished { .. } => K::ReplacementUnfinished,
             Self::RestoreRegistered => K::RestoreRegistered,
             Self::MemberKeysReplaced => K::MemberKeysReplaced,
+            Self::StorageSetupUndone => K::StorageSetupUndone,
+            Self::StorageSetupFinishing => K::StorageSetupFinishing,
             Self::DeletionUnfinished => K::DeletionUnfinished,
             Self::DeletionSignInRequired => K::DeletionSignInRequired,
         };
@@ -621,6 +633,8 @@ mirror_enum! {
         ReplacementUnfinished(by: (BridgeReplacedBy)),
         RestoreRegistered,
         MemberKeysReplaced,
+        StorageSetupUndone,
+        StorageSetupFinishing,
         DeletionUnfinished,
         DeletionSignInRequired,
     },
@@ -689,11 +703,14 @@ impl From<bae_import::ImportError> for BridgeError {
 /// rides along as opaque diagnostic detail.
 impl From<bae_library::LibraryError> for BridgeError {
     fn from(error: bae_library::LibraryError) -> Self {
+        // A sign-in the person dismissed, or a setup they cancelled before
+        // its point of no return, which coven undid.
         if matches!(
             error,
-            bae_library::LibraryError::CloudSetup(coven::StorageSetupError::OAuth(
-                coven::OAuthError::Cancelled
-            ))
+            bae_library::LibraryError::CloudSetup(
+                coven::StorageSetupError::OAuth(coven::OAuthError::Cancelled)
+                    | coven::StorageSetupError::Cancelled
+            )
         ) {
             return BridgeError::Cancelled;
         }

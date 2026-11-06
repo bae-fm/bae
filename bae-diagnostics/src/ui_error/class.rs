@@ -46,13 +46,15 @@ pub enum UiErrorClass {
     ReplacementUnfinished,
     RestoreRegistered,
     MemberKeysReplaced,
+    StorageSetupUndone,
+    StorageSetupFinishing,
     DeletionUnfinished,
     DeletionSignInRequired,
 }
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 41] = [
+    const ALL: [Self; 43] = [
         Self::Database,
         Self::Config,
         Self::Internal,
@@ -92,6 +94,8 @@ impl UiErrorClass {
         Self::ReplacementUnfinished,
         Self::RestoreRegistered,
         Self::MemberKeysReplaced,
+        Self::StorageSetupUndone,
+        Self::StorageSetupFinishing,
         Self::DeletionUnfinished,
         Self::DeletionSignInRequired,
     ];
@@ -138,6 +142,8 @@ impl UiErrorClass {
             Self::ReplacementUnfinished => "replacement_unfinished",
             Self::RestoreRegistered => "restore_registered",
             Self::MemberKeysReplaced => "member_keys_replaced",
+            Self::StorageSetupUndone => "storage_setup_undone",
+            Self::StorageSetupFinishing => "storage_setup_finishing",
             Self::DeletionUnfinished => "deletion_unfinished",
             Self::DeletionSignInRequired => "deletion_sign_in_required",
         }
@@ -191,7 +197,10 @@ impl UiErrorClass {
             // What the line names without saying which: the folder a grouped
             // release can't be read from, the bucket's versioning state.
             | Self::GroupingBlocked
-            | Self::S3VersioningUnsupported => true,
+            | Self::S3VersioningUnsupported
+            // Why a storage setup was undone: bae stopping, or the failure
+            // or refusal that ended it.
+            | Self::StorageSetupUndone => true,
             // The line names the whole fault, with the counts, discs or
             // folder it carries; the detail says it again, at most with an id
             // the person can't use.
@@ -212,6 +221,7 @@ impl UiErrorClass {
             | Self::ReplacementUnfinished
             | Self::RestoreRegistered
             | Self::MemberKeysReplaced
+            | Self::StorageSetupFinishing
             | Self::DeletionUnfinished
             | Self::DeletionSignInRequired => false,
         }
@@ -262,6 +272,8 @@ impl UiErrorCategory {
             Self::ReplacementUnfinished(_) => K::ReplacementUnfinished,
             Self::RestoreRegistered => K::RestoreRegistered,
             Self::MemberKeysReplaced => K::MemberKeysReplaced,
+            Self::StorageSetupUndone => K::StorageSetupUndone,
+            Self::StorageSetupFinishing => K::StorageSetupFinishing,
             Self::DeletionUnfinished => K::DeletionUnfinished,
             Self::DeletionSignInRequired => K::DeletionSignInRequired,
         }
@@ -303,6 +315,8 @@ impl UiErrorCategory {
             K::AirPlayUnreadableSettings => Self::AirPlayUnreadableSettings,
             K::RestoreRegistered => Self::RestoreRegistered,
             K::MemberKeysReplaced => Self::MemberKeysReplaced,
+            K::StorageSetupUndone => Self::StorageSetupUndone,
+            K::StorageSetupFinishing => Self::StorageSetupFinishing,
             K::DeletionUnfinished => Self::DeletionUnfinished,
             K::DeletionSignInRequired => Self::DeletionSignInRequired,
             K::MetadataTrackCount

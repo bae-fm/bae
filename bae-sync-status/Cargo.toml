@@ -28,6 +28,7 @@ bae-store = { workspace = true, features = ["test-utils"] }
 bae-records = { workspace = true, features = ["test-utils"] }
 bae-people = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
+tempfile = { workspace = true }
 uuid = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
 

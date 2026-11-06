@@ -47,7 +47,9 @@ struct SyncStatusStoreTests {
                 error: .Diagnostic(category: .internal, detail: fault),
                 pending: [],
                 indicator: nil,
-                reconnectOffered: false
+                reconnectOffered: false,
+                setupRunning: false,
+                undoneSetup: nil
             )
         )
 
@@ -86,7 +88,9 @@ struct SyncStatusStoreTests {
                 error: nil,
                 pending: [record],
                 indicator: .waiting(items: 1),
-                reconnectOffered: false
+                reconnectOffered: false,
+                setupRunning: false,
+                undoneSetup: nil
             )
         )
 
@@ -133,7 +137,9 @@ struct SyncStatusStoreTests {
                 ),
                 pending: [],
                 indicator: .failed,
-                reconnectOffered: true
+                reconnectOffered: true,
+                setupRunning: false,
+                undoneSetup: nil
             )
         )
         #expect(sync.offersReconnect)
@@ -159,7 +165,9 @@ struct SyncStatusStoreTests {
                 ),
                 pending: [],
                 indicator: .synced,
-                reconnectOffered: false
+                reconnectOffered: false,
+                setupRunning: false,
+                undoneSetup: nil
             )
         )
         #expect(
@@ -175,7 +183,9 @@ struct SyncStatusStoreTests {
             error: nil,
             pending: [],
             indicator: indicator,
-            reconnectOffered: false
+            reconnectOffered: false,
+            setupRunning: false,
+            undoneSetup: nil
         )
     }
 

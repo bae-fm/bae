@@ -548,6 +548,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
         coven: coven::SyncStatus { state: coven::SyncState::NotSynced, last_synced: None },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
+        storage_setup: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -568,6 +569,7 @@ fn a_healthy_sync_status_crosses_without_an_error() {
         coven: coven::SyncStatus { state: coven::SyncState::Synced, last_synced: None },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
+        storage_setup: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -575,6 +577,44 @@ fn a_healthy_sync_status_crosses_without_an_error() {
     assert!(bridge.error.is_none());
     assert_eq!(bridge.indicator, Some(crate::types::BridgeSyncIndicator::Synced));
     assert!(!bridge.reconnect_offered);
+}
+
+/// A setup that ended undone crosses with the operation that dismisses it
+/// and its own line; one running crosses as the status line naming it.
+#[test]
+fn a_storage_setup_crosses_undone_or_running() {
+    let snapshot = |storage_setup| bae_sync_status::SyncStatusSnapshot {
+        error: None,
+        coven: coven::SyncStatus { state: coven::SyncState::NotSynced, last_synced: None },
+        pending: Vec::new(),
+        retry_effect: coven::RetryEffect::Pass,
+        storage_setup: Some(storage_setup),
+    };
+    let undone = bae_sync_status::StorageSetupState::Undone {
+        operation: coven::OperationId(7),
+        why: bae_diagnostics::UiError::diagnostic(
+            bae_diagnostics::UiErrorCategory::StorageSetupUndone,
+            "bae stopped before the setup could finish",
+        ),
+    };
+
+    let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot(undone));
+    let Some(crate::types::BridgeUndoneStorageSetup {
+        operation: 7,
+        error: crate::types::BridgeError::Diagnostic { category, .. },
+    }) = bridge.undone_setup
+    else {
+        panic!("the undone setup crosses with its operation and why");
+    };
+    assert_eq!(category, crate::types::BridgeErrorCategory::StorageSetupUndone);
+    assert_eq!(bridge.indicator, None);
+    assert!(!bridge.setup_running);
+
+    let running = snapshot(bae_sync_status::StorageSetupState::Running);
+    let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(running);
+    assert!(bridge.undone_setup.is_none());
+    assert!(bridge.setup_running);
+    assert_eq!(bridge.indicator, Some(crate::types::BridgeSyncIndicator::SettingUpStorage));
 }
 
 /// A start that failed with storage set up crosses with why and with
@@ -586,6 +626,7 @@ fn a_failed_start_crosses_offering_reconnect() {
         coven: coven::SyncStatus { state: coven::SyncState::Synced, last_synced: None },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::NotSyncing,
+        storage_setup: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -618,6 +659,7 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
             },
         ))],
         retry_effect: coven::RetryEffect::Pass,
+        storage_setup: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);

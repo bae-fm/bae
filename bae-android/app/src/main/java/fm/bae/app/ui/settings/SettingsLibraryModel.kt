@@ -87,6 +87,12 @@ internal class SettingsLibraryModel(
     private var nameGeneration = 0
 
     suspend fun load() {
+        loadCloudHome()
+        loadSelf()
+    }
+
+    /** Read the cloud home: as Settings opens, and again once a storage setup stops running, which records it. */
+    suspend fun loadCloudHome() {
         try {
             cloudHome = appHandle.storageLocation()?.let(CloudHome::At) ?: CloudHome.None
         } catch (e: CancellationException) {
@@ -95,7 +101,6 @@ internal class SettingsLibraryModel(
             logger.error("reading the library's cloud home failed", e)
             errors.display(e)?.let { cloudHome = CloudHome.Failed(it) }
         }
-        loadSelf()
     }
 
     suspend fun loadSelf() {

@@ -381,6 +381,25 @@ pub struct BridgeSyncStatusSnapshot {
     /// left sync not running with storage set up on this device.
     /// `AppHandle::reconnect_sync` starts it again.
     pub reconnect_offered: bool,
+    /// A storage setup runs: a setup screen's, or one past its point of no
+    /// return that sync's connection finishes after a relaunch. It records
+    /// the library's location as it finishes, so a surface that shows the
+    /// location reads it again (`AppHandle::storage_location`) once this
+    /// turns false.
+    pub setup_running: bool,
+    /// A storage setup that ended undone with no setup screen there to hear
+    /// it, shown until the person dismisses it with
+    /// `AppHandle::dismiss_undone_storage_setup`.
+    pub undone_setup: Option<BridgeUndoneStorageSetup>,
+}
+
+/// A storage setup that ended undone, and why: its line says storage isn't
+/// set up and to set it up again.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeUndoneStorageSetup {
+    /// Which setup it was, for dismissing it.
+    pub operation: i64,
+    pub error: BridgeError,
 }
 
 impl BridgeSyncStatusSnapshot {
@@ -388,11 +407,28 @@ impl BridgeSyncStatusSnapshot {
         let indicator = snapshot.indicator().map(crate::types::BridgeSyncIndicator::from_core);
         let error = snapshot.shown_failure();
         let reconnect_offered = snapshot.reconnect_offered();
-        let bae_sync_status::SyncStatusSnapshot { coven: _, pending, error: _, retry_effect: _ } =
-            snapshot;
+        let bae_sync_status::SyncStatusSnapshot {
+            coven: _,
+            pending,
+            error: _,
+            retry_effect: _,
+            storage_setup,
+        } = snapshot;
+        let setup_running = storage_setup == Some(bae_sync_status::StorageSetupState::Running);
+        let undone_setup = match storage_setup {
+            Some(bae_sync_status::StorageSetupState::Undone { operation, why }) => {
+                Some(BridgeUndoneStorageSetup {
+                    operation: operation.0,
+                    error: crate::types::BridgeError::from_core(why),
+                })
+            }
+            Some(bae_sync_status::StorageSetupState::Running) | None => None,
+        };
         Self {
             indicator,
             reconnect_offered,
+            setup_running,
+            undone_setup,
             error: error.map(crate::types::BridgeError::from_core),
             pending: pending
                 .into_iter()
@@ -404,16 +440,22 @@ impl BridgeSyncStatusSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSyncIndicator {
+    /// A storage setup runs: its call's, or one past its point of no return
+    /// that sync's connection finishes.
+    SettingUpStorage,
     Stopped,
     Syncing,
     Synced,
     Offline,
     Failed,
-    Waiting { items: u64 },
+    Waiting {
+        items: u64,
+    },
 }
 impl BridgeSyncIndicator {
     pub(crate) fn from_core(value: bae_sync_status::SyncIndicator) -> Self {
         match value {
+            bae_sync_status::SyncIndicator::SettingUpStorage => Self::SettingUpStorage,
             bae_sync_status::SyncIndicator::Stopped => Self::Stopped,
             bae_sync_status::SyncIndicator::Syncing => Self::Syncing,
             bae_sync_status::SyncIndicator::Synced => Self::Synced,
@@ -430,6 +472,7 @@ impl BridgeSyncIndicator {
 #[uniffi::export]
 pub fn bridge_sync_indicator_key(indicator: &BridgeSyncIndicator) -> String {
     match indicator {
+        BridgeSyncIndicator::SettingUpStorage => "core.sync.setting_up_storage",
         BridgeSyncIndicator::Stopped => "core.sync.stopped",
         BridgeSyncIndicator::Syncing => "core.sync.syncing",
         BridgeSyncIndicator::Synced => "core.sync.synced",

@@ -419,6 +419,8 @@ impl AppServices {
     delegate_async!(manager, release_memory => release_memory() -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, retry_now => retry_now() -> Result<impl std::future::Future<Output = bae_sync_status::SyncRetryOutcome> + Send + 'static, bae_library::LibraryError>);
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), bae_library::LibraryError>);
+    delegate_sync!(manager, cancel_storage_setup => cancel_storage_setup() -> coven::SetupCancellation);
+    delegate_async!(manager, dismiss_undone_storage_setup => dismiss_undone_storage_setup(operation: coven::OperationId) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, cancel_download => cancel_download(release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, retry_downloads => retry_downloads() -> Result<(), bae_library::LibraryError>);

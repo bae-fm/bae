@@ -62,6 +62,7 @@ import uniffi.bae_bridge.BridgeS3Detection
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeSearchResults
+import uniffi.bae_bridge.BridgeSetupCancellation
 import uniffi.bae_bridge.BridgeSharing
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 import uniffi.bae_bridge.BridgeSortCriterion
@@ -759,6 +760,12 @@ internal open class FakeAppHandle(
 
     override suspend fun retryPendingOperation(id: Long) {
         unfaked("retryPendingOperation")
+    }
+
+    override fun cancelStorageSetup(): BridgeSetupCancellation = unfaked("cancelStorageSetup")
+
+    override suspend fun dismissUndoneStorageSetup(operation: Long) {
+        unfaked("dismissUndoneStorageSetup")
     }
 
     override suspend fun cancelFailedReleaseMove(id: Long) {

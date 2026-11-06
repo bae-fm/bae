@@ -96,6 +96,14 @@ internal fun SettingsScreen(
         model.watch()
         onDispose { model.stopWatching() }
     }
+    // A storage setup records the library's location as it ends, and one can end with no setup screen to hear it: one
+    // sync finishes after a relaunch, or one whose screen closed past its point of no return.
+    val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
+    var setupWasRunning by remember { mutableStateOf(setupRunning) }
+    LaunchedEffect(setupRunning) {
+        if (setupWasRunning && !setupRunning) model.loadCloudHome()
+        setupWasRunning = setupRunning
+    }
 
     val self = model.self
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
