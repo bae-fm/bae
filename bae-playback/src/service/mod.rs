@@ -652,7 +652,7 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::StopRemote
         | PlaybackCommand::RemoteEvent(_) => None,
         #[cfg(any(test, feature = "test-utils"))]
-        PlaybackCommand::GetQueue(_) => None,
+        PlaybackCommand::GetQueue(_) | PlaybackCommand::TakeFills(_) => None,
     }
 }
 
@@ -707,6 +707,6 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::SaveState(_)
         | PlaybackCommand::RemoteEvent(_) => false,
         #[cfg(any(test, feature = "test-utils"))]
-        PlaybackCommand::GetQueue(_) => false,
+        PlaybackCommand::GetQueue(_) | PlaybackCommand::TakeFills(_) => false,
     }
 }

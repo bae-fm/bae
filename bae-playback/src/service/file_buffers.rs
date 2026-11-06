@@ -30,6 +30,10 @@ pub(super) struct FileBuffers {
     /// The current track's bytes and the buffer holding them; `None` while
     /// no track is current, or the current one plays on another device.
     playing: tokio::sync::watch::Sender<Option<PlayingBytes>>,
+    /// Every fill started so far, each holding its file open until it ends,
+    /// for a test to wait on.
+    #[cfg(any(test, feature = "test-utils"))]
+    fills: Vec<bae_track_audio::data_source::FillTask>,
 }
 
 impl FileBuffers {
@@ -39,7 +43,14 @@ impl FileBuffers {
         arbiter: Arc<FetchArbiter>,
         playing: tokio::sync::watch::Sender<Option<PlayingBytes>>,
     ) -> Self {
-        Self { cached: HashMap::new(), retired: Vec::new(), arbiter, playing }
+        Self {
+            cached: HashMap::new(),
+            retired: Vec::new(),
+            arbiter,
+            playing,
+            #[cfg(any(test, feature = "test-utils"))]
+            fills: Vec::new(),
+        }
     }
 
     /// Designate this track's buffers — one per file it reads — as the
@@ -96,6 +107,12 @@ impl FileBuffers {
                 self.cached.remove(&segment.file_id);
             }
         }
+    }
+
+    /// The fills started so far, handed to a test that waits for them to end.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(super) fn take_fills(&mut self) -> Vec<bae_track_audio::data_source::FillTask> {
+        std::mem::take(&mut self.fills)
     }
 
     /// Cancel every cached buffer and empty the cache — the whole-pipeline
@@ -192,10 +209,14 @@ pub(super) async fn prepare_track_for_playback(
             is_ape,
             diagnostics.clone(),
         ));
-        reader.start_reading(
+        let fill = reader.start_reading(
             buffer.clone(),
             playback_fill_error_handler(command_tx.clone(), buffer.id()),
         );
+        #[cfg(any(test, feature = "test-utils"))]
+        file_buffers.fills.push(fill);
+        #[cfg(not(any(test, feature = "test-utils")))]
+        drop(fill);
     }
     Ok((prepared, decode))
 }

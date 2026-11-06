@@ -518,15 +518,11 @@ async fn stopping_playback_closes_the_files_it_streamed() {
 
     playback_handle.stop();
 
-    // Nothing tells when the reader closes its file, so this checks the
-    // process's open files until it has.
-    let deadline = Instant::now() + HANG_GUARD;
-    while !coven::open_files_under(&imported.album_dir).is_empty() {
-        assert!(
-            Instant::now() < deadline,
-            "files still open after stopping: {:?}",
-            coven::open_files_under(&imported.album_dir)
-        );
-        tokio::time::sleep(Duration::from_millis(10)).await;
-    }
+    // The fill holds the file open until it ends, which stopping cancels.
+    playback_handle.fills_ended().await;
+    assert!(
+        coven::open_files_under(&imported.album_dir).is_empty(),
+        "files still open after stopping: {:?}",
+        coven::open_files_under(&imported.album_dir)
+    );
 }

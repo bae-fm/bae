@@ -182,6 +182,10 @@ pub(crate) enum PlaybackCommand {
     GetQueue(
         oneshot::Sender<Result<(crate::ResolvedQueueSnapshot, Vec<crate::QueueItem>), String>>,
     ),
+    /// Test-only: replies with every fill started so far once every earlier
+    /// command has finished.
+    #[cfg(any(test, feature = "test-utils"))]
+    TakeFills(oneshot::Sender<Vec<bae_track_audio::data_source::FillTask>>),
     /// Save state, reply, then stop the loop.
     Shutdown(oneshot::Sender<()>),
     /// Save state without stopping playback, for a mobile app going to the
@@ -470,6 +474,19 @@ impl PlaybackHandle {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn queue_upcoming(&self) -> Result<Vec<crate::QueueItem>, String> {
         Ok(self.queue_read().await?.1)
+    }
+
+    /// Wait until every file fill playback has started, up to the commands
+    /// sent before this call, has ended and closed its file. A fill ends once
+    /// its buffer is cancelled, which stopping playback does.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn fills_ended(&self) {
+        let (tx, rx) = oneshot::channel();
+        self.dispatch(PlaybackCommand::TakeFills(tx));
+        let fills = rx.await.expect("the playback loop answers while it runs");
+        for fill in fills {
+            fill.ended().await;
+        }
     }
 
     #[cfg(any(test, feature = "test-utils"))]

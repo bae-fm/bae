@@ -168,6 +168,7 @@ pub trait AudioDataReader: Send + 'static {
 
 /// The task filling a buffer from its source. It holds the source open until
 /// the buffer is stopped or dropped; dropping this detaches it.
+#[derive(Debug)]
 pub struct FillTask {
     task: tokio::task::JoinHandle<()>,
     diagnostics: Diagnostics,

@@ -16,7 +16,7 @@ pub(super) use bae_types::track_time::TrackTime;
 pub(super) use bae_util::test_channels::HANG_GUARD;
 pub(super) use coven::{IdSource, SequentialIds};
 pub(super) use std::sync::Arc;
-pub(super) use std::time::{Duration, Instant};
+pub(super) use std::time::Duration;
 pub(super) use tempfile::TempDir;
 pub(super) use tracing::debug;
 
