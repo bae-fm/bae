@@ -12,7 +12,9 @@ mod pane_edits;
 mod preparation;
 
 pub(crate) use preparation::{stored_preparation, CandidateWrite};
-pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
+pub use preparation::{
+    CandidateAsRead, CandidatePreparation, MetadataAuthor, ProvenanceContradiction,
+};
 
 use crate::folder_scanner::CandidateFileEdits;
 use crate::tables::{

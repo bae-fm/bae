@@ -161,6 +161,17 @@ pub enum ImportError {
     #[error(transparent)]
     CandidateMoved(crate::service::CandidateMoved),
 
+    /// A candidate's preparation contradicts itself: its draft's author
+    /// could not have read it from where it says. No writer here builds one,
+    /// so the save that met it wrote nothing.
+    #[cfg(desktop)]
+    #[error("candidate {content_hash}: {contradiction}")]
+    Provenance {
+        content_hash: String,
+        #[source]
+        contradiction: crate::ProvenanceContradiction,
+    },
+
     /// A sheet-binding change could not be applied: the candidate, the sheet,
     /// or the audio named is not what it was when the picker offered it. Every
     /// offerable set that crosses to a UI is already filtered to what the sheet
@@ -368,6 +379,64 @@ impl bae_util::task_failure::ReportedBug for ImportError {
     }
 }
 
+/// A store failure an import's read or write met is the library's store
+/// failure.
+#[cfg(desktop)]
+impl From<coven::DbError> for ImportError {
+    fn from(error: coven::DbError) -> Self {
+        Self::Database(error.into())
+    }
+}
+
+#[cfg(desktop)]
+impl From<rusqlite::Error> for ImportError {
+    fn from(error: rusqlite::Error) -> Self {
+        Self::Database(error.into())
+    }
+}
+
+/// A bug a coven call import made carries back: the store's, through the
+/// failure that holds it.
+#[cfg(desktop)]
+impl coven::task::CarriesBug for ImportError {
+    fn bug(&self) -> Option<&coven::task::Bug> {
+        use coven::task::CarriesBug;
+        match self {
+            Self::Database(error)
+            | Self::CatalogSession(crate::CatalogSessionError::Preferences(error)) => error.bug(),
+            Self::Sync(error) => error.bug(),
+            Self::Rollback { operation, .. } => operation.bug(),
+            Self::FileCleanup { write, failures } => {
+                write.bug().or_else(|| failures.iter().find_map(CarriesBug::bug))
+            }
+            _ => None,
+        }
+    }
+}
+
+/// A failed rollback or byte removal is kept beside the failure it followed:
+/// a store failure keeps it in its own, any other failure stays what it is.
+#[cfg(desktop)]
+impl coven::WriteFailure for ImportError {
+    fn with_rollback(self, rollback: rusqlite::Error) -> Self {
+        match self {
+            Self::Database(error) => {
+                Self::Database(coven::WriteFailure::with_rollback(error, rollback))
+            }
+            operation => Self::Rollback { operation: Box::new(operation), rollback },
+        }
+    }
+
+    fn with_cleanup(write: Self, failures: Vec<coven::DbError>) -> Self {
+        match write {
+            Self::Database(error) => {
+                Self::Database(coven::WriteFailure::with_cleanup(error, failures))
+            }
+            write => Self::FileCleanup { write: Box::new(write), failures },
+        }
+    }
+}
+
 impl ImportError {
     /// This failure as a surface states it: its class, which the surface
     /// words in the person's language, and its own text as the untranslated
@@ -429,7 +498,7 @@ impl ImportError {
             Self::Catalog(error) => catalog_category(error),
             Self::Internal { .. } => C::Internal,
             #[cfg(desktop)]
-            Self::Stopped => C::Internal,
+            Self::Stopped | Self::Provenance { .. } => C::Internal,
             #[cfg(desktop)]
             Self::DiscogsKey(error) => match **error {
                 crate::DiscogsKeyError::Keyring(_) | crate::DiscogsKeyError::Preferences(_) => {

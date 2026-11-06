@@ -111,17 +111,28 @@ impl MetadataAuthor {
     /// Nobody reads a blank draft from anywhere, discovery only ever seeds
     /// from the folder's own tags, and identification only ever concludes a
     /// release. A person may have read the draft from anywhere or nowhere.
-    pub fn check_provenance(self, provenance: Option<&MetadataProvenance>) -> Result<(), String> {
+    pub fn check_provenance(
+        self,
+        provenance: Option<&MetadataProvenance>,
+    ) -> Result<(), ProvenanceContradiction> {
         match (self, provenance) {
             (Self::Nobody, None)
             | (Self::Prefill, Some(MetadataProvenance::FileMetadata))
             | (Self::Identification, Some(MetadataProvenance::ExternalRelease { .. }))
             | (Self::Person, _) => Ok(()),
             (author, provenance) => {
-                Err(format!("a draft written by {author:?} cannot be read from {provenance:?}"))
+                Err(ProvenanceContradiction { author, provenance: provenance.cloned() })
             }
         }
     }
+}
+
+/// A draft's author that could not have read it from where it says.
+#[derive(Debug, thiserror::Error)]
+#[error("a draft written by {author:?} cannot be read from {provenance:?}")]
+pub struct ProvenanceContradiction {
+    pub author: MetadataAuthor,
+    pub provenance: Option<MetadataProvenance>,
 }
 
 /// One candidate's stored state.
@@ -155,10 +166,13 @@ pub struct CandidatePreparation {
 impl CandidatePreparation {
     /// The contradictions no stored candidate may hold, named so a save can
     /// refuse them before any row moves.
-    pub fn validate(&self) -> Result<(), String> {
-        self.author
-            .check_provenance(self.metadata.provenance.as_ref())
-            .map_err(|error| format!("candidate {}: {error}", self.content_hash))
+    pub fn validate(&self) -> Result<(), crate::ImportError> {
+        self.author.check_provenance(self.metadata.provenance.as_ref()).map_err(|contradiction| {
+            crate::ImportError::Provenance {
+                content_hash: self.content_hash.clone(),
+                contradiction,
+            }
+        })
     }
 }
 

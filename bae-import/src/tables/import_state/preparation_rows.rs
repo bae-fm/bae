@@ -176,8 +176,8 @@ pub(super) fn save_preparation_on(
     prep: &CandidatePreparation,
     expected: &CandidateSaveExpectation,
     extras: &CandidateSaveExtras,
-) -> Result<CandidateSaved, DbError> {
-    prep.validate().map_err(DbError::Message)?;
+) -> Result<CandidateSaved, crate::ImportError> {
+    prep.validate()?;
     let content_hash = prep.content_hash.as_str();
     let scan_generation = expected
         .scanned
@@ -227,7 +227,8 @@ pub(super) fn save_preparation_on(
         if !exists {
             return Err(DbError::Message(format!(
                 "candidate {content_hash} has no state row to save into"
-            )));
+            ))
+            .into());
         }
         return Ok(CandidateSaved::Superseded);
     }
@@ -242,12 +243,14 @@ pub(super) fn save_preparation_on(
         Some(CandidatePreparationRead::Imported { .. }) => {
             return Err(DbError::Message(format!(
                 "candidate {content_hash} was imported, and holds no draft to save over"
-            )))
+            ))
+            .into())
         }
         None => {
             return Err(DbError::Message(format!(
                 "candidate {content_hash} has no state row to save into"
-            )))
+            ))
+            .into())
         }
     };
     if stored.identification != prep.identification {
@@ -335,7 +338,8 @@ pub(super) fn save_preparation_on(
             if settled_by_key.len() != settled_candidates.len() {
                 return Err(DbError::Message(
                     "candidate file decision received duplicate scan entry keys".to_string(),
-                ));
+                )
+                .into());
             }
             settle_scanned_candidates(sql, content_hash, expected_edit, next_edit, &settled_by_key)?
         }
@@ -349,7 +353,8 @@ pub(super) fn save_preparation_on(
             return Err(DbError::Message(format!(
                 "the draft stored for candidate {} is not drawn over its audio",
                 candidate.key(),
-            )));
+            ))
+            .into());
         }
     }
     if let Some(snapshot) = &extras.file_tag_snapshot {
@@ -368,7 +373,8 @@ pub(super) fn save_preparation_on(
             return Err(DbError::Message(format!(
                 "candidate {} changed before its file tags were stored",
                 scanned.candidate_path,
-            )));
+            ))
+            .into());
         }
     }
     // The verdict, link and provenance written above name these, or some
@@ -403,8 +409,8 @@ impl ImportTables {
         prep: CandidatePreparation,
         expected: CandidateSaveExpectation,
         extras: CandidateSaveExtras,
-    ) -> Result<CandidateSaved, DbError> {
-        self.store.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras)).await
+    ) -> Result<CandidateSaved, crate::ImportError> {
+        self.store.write(move |sql| save_preparation_on(&sql, &prep, &expected, &extras)).await
     }
 
     /// [`Self::save_candidate_preparation`] for the verdict `run` reached:
@@ -418,12 +424,12 @@ impl ImportTables {
         extras: CandidateSaveExtras,
         candidate_key: crate::CandidateKey,
         run: crate::IdentifyRunId,
-    ) -> Result<RunVerdictSaved, DbError> {
+    ) -> Result<RunVerdictSaved, crate::ImportError> {
         self.store
-            .call(move |sql| match save_preparation_on(sql, &prep, &expected, &extras)? {
+            .write(move |sql| match save_preparation_on(&sql, &prep, &expected, &extras)? {
                 CandidateSaved::Landed(_) => {
                     Ok(RunVerdictSaved::Landed(super::change_identification_on(
-                        sql,
+                        &sql,
                         &candidate_key,
                         &crate::candidate_runtime::IdentificationChange::AnswerEnded { run },
                     )?))
@@ -434,7 +440,8 @@ impl ImportTables {
                 CandidateSaved::CoverRefused(refusal) => Err(DbError::Message(format!(
                     "a run's verdict for {} keeps a cover its scan does not hold: {refusal}",
                     candidate_key
-                ))),
+                ))
+                .into()),
             })
             .await
     }

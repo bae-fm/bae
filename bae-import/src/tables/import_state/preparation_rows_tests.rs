@@ -179,3 +179,42 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
         "the refused pick left nothing behind"
     );
 }
+
+/// A preparation whose author could not have read its draft from where it
+/// says is refused as that contradiction, before any row moves.
+#[tokio::test]
+async fn a_preparation_whose_author_contradicts_its_provenance_is_refused() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (candidate, _generation) = scanned_tagged_candidate(&db, &root).await;
+    let hash = candidate.files.content_hash();
+    let before = tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
+    let expected = save_expectation(&candidate, &before);
+    let mut prep = before.clone();
+    prep.metadata_revision += 1;
+    prep.author = crate::MetadataAuthor::Nobody;
+    prep.metadata.provenance = Some(MetadataProvenance::FileMetadata);
+
+    let error = tables
+        .save_candidate_preparation(prep, expected, crate::tables::CandidateSaveExtras::default())
+        .await
+        .expect_err("nobody reads a draft from the files' tags");
+
+    assert!(
+        matches!(
+            &error,
+            crate::ImportError::Provenance {
+                contradiction: crate::ProvenanceContradiction {
+                    author: crate::MetadataAuthor::Nobody,
+                    provenance: Some(MetadataProvenance::FileMetadata),
+                },
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+    assert_eq!(
+        tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap(),
+        before
+    );
+}

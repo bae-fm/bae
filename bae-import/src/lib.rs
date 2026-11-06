@@ -282,7 +282,9 @@ pub use mapping::{
 #[cfg(desktop)]
 pub use preparations::CandidatePreparations;
 #[cfg(desktop)]
-pub use preparations::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
+pub use preparations::{
+    CandidateAsRead, CandidatePreparation, MetadataAuthor, ProvenanceContradiction,
+};
 #[cfg(desktop)]
 pub use release_reads::ReleaseReads;
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
