@@ -226,7 +226,7 @@ async fn reconnect_sync_refuses_a_library_with_no_provider() {
 #[tokio::test]
 async fn startup_and_retry_publish_the_native_connection_status() {
     let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
-    let (manager, _temp) = setup_test_manager_with_clock(clock.clone()).await;
+    let (manager, _temp) = setup_test_manager_with_clock(clock).await;
     connect_test_cloud(&manager).await;
     manager.storage.set_online(false);
     manager.start().unwrap();
@@ -244,8 +244,12 @@ async fn startup_and_retry_publish_the_native_connection_status() {
         "the loop keeps the failed connection retryable"
     );
     manager.storage.set_online(true);
-    clock.set(std::time::UNIX_EPOCH + std::time::Duration::from_secs(60));
-    manager.reconnect_sync().await.unwrap();
+    // The failed pass left the connection backing off. The clock is fixed, so
+    // the backoff ends only by the person's retry, which also answers when
+    // the pass it runs has ended. Moving the clock instead would race the
+    // loop arming its wait: a wait armed after the move waits from the new
+    // time, and a fixed clock never reaches it.
+    manager.retry_now().await.unwrap().await;
     crate::followed::value_matching(&mut values, |value| {
         value.coven.state == coven::SyncState::Synced
     })
