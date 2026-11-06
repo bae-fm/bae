@@ -42,7 +42,7 @@ impl BridgeHost {
     pub(super) async fn saved_restore_codes_now(
         &self,
     ) -> Result<Vec<coven::SavedRestoreEntry>, BridgeError> {
-        bae_library::saved_restore_codes(&self.coven)
+        bae_library::saved_restore_codes(&self.coven, &self.diagnostics)
             .await
             .map_err(|error| BridgeError::categorized(error.category(), error))
     }
@@ -53,6 +53,7 @@ impl BridgeHost {
         store: coven::StoreId,
     ) -> Result<(), BridgeError> {
         self.coven.forget_saved_restore_code(store).await.map_err(|error| {
+            let error = coven::task::reported(&self.diagnostics, error);
             BridgeError::categorized(bae_diagnostics::bootstrap_category(&error), error)
         })
     }
@@ -119,6 +120,7 @@ impl BridgeHost {
                     &device_name,
                     |status| steps.bootstrap(status, true),
                     &cancel,
+                    &self.diagnostics,
                 )
                 .await
                 {
@@ -167,6 +169,7 @@ impl BridgeHost {
                         |status| steps.bootstrap(status, true),
                         report,
                         &cancel,
+                        &self.diagnostics,
                     )
                     .await
                     {
@@ -209,6 +212,7 @@ impl BridgeHost {
                         store,
                         |status| steps.bootstrap(status, cancellable),
                         &cancel,
+                        &self.diagnostics,
                     )
                     .await
                     {
@@ -240,6 +244,7 @@ impl BridgeHost {
                     &device_name,
                     |status| steps.bootstrap(status, true),
                     &cancel,
+                    &self.diagnostics,
                 )
                 .await
                 {
@@ -275,6 +280,7 @@ impl BridgeHost {
                         steps.bootstrap(status, cancellable)
                     },
                     &control.control,
+                    &self.diagnostics,
                 )
                 .await;
                 BridgeBootstrapResult::joined(joined, self)
@@ -289,7 +295,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.unfinished_joins", move || async move {
-                bae_library::unfinished_joins(&self.builder())
+                bae_library::unfinished_joins(&self.builder(), &self.diagnostics)
                     .await
                     .map(|joins| {
                         joins
@@ -324,6 +330,7 @@ impl BridgeHost {
                         steps.bootstrap(status, cancellable)
                     },
                     &control.control,
+                    &self.diagnostics,
                 )
                 .await;
                 BridgeBootstrapResult::joined(joined, self)
@@ -339,7 +346,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.unfinished_restores", move || async move {
-                bae_library::unfinished_restores(&self.builder())
+                bae_library::unfinished_restores(&self.builder(), &self.diagnostics)
                     .await
                     .map(|restores| {
                         restores
@@ -374,6 +381,7 @@ impl BridgeHost {
                     &restore.restore,
                     |status| steps.bootstrap(status, true),
                     &cancel,
+                    &self.diagnostics,
                 )
                 .await
                 {
@@ -430,6 +438,7 @@ impl BridgeDeviceReset {
                     self.store,
                     &self.device_name,
                     |status| steps.bootstrap(status, false),
+                    &self.host.diagnostics,
                 )
                 .await
                 {

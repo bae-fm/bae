@@ -409,7 +409,7 @@ impl Queue {
 /// one, and the candidate reads as the table last held it.
 pub(super) fn record(context: &Context, doing: &str, written: Result<(), crate::ImportError>) {
     if let Err(error) = written {
-        context.diagnostics.report_bug(&format!("identification: {doing}"), &error);
+        context.diagnostics.report_failure(&format!("identification: {doing}"), &error);
     }
 }
 

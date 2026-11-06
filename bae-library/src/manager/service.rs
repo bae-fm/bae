@@ -102,10 +102,7 @@ impl LibraryManager {
             "profile request worker",
             async move {
                 if let Err(error) = manager.people.finish_profile_requests().await {
-                    manager.diagnostics.report_bug(
-                        "write the requested profile",
-                        &bae_util::error_text::CauseChain(&error),
-                    );
+                    manager.diagnostics.report_failure("write the requested profile", &error);
                 }
             },
             |_| {},
@@ -207,7 +204,11 @@ impl LibraryManager {
         Request: Clone + PartialEq + Send + Sync + 'static,
         Projection: Clone + PartialEq + Send + 'static,
     {
-        bae_store::live_query::CancellableLiveQuery::new(query, self.tasks.closing.child_token())
+        bae_store::live_query::CancellableLiveQuery::new(
+            query,
+            self.tasks.closing.child_token(),
+            self.bugs(),
+        )
     }
 
     /// `query`'s values for a surface to pull, which closing the library ends
@@ -218,7 +219,7 @@ impl LibraryManager {
         &self,
         query: impl bae_store::live_query::LiveSource<T> + 'static,
     ) -> bae_store::live_query::LiveValues<T> {
-        bae_store::live_query::LiveValues::new(query, self.tasks.closing.child_token())
+        bae_store::live_query::LiveValues::new(query, self.tasks.closing.child_token(), self.bugs())
     }
 
     /// A file operation owns its rollback even when its caller disappears. A
@@ -298,6 +299,12 @@ impl LibraryManager {
 
     pub(crate) fn record_telemetry(&self, event: TelemetryEvent) {
         self.diagnostics.event(event);
+    }
+
+    /// Where a bug a coven call or live query carries goes as it arrives:
+    /// the crash reporter.
+    pub(crate) fn bugs(&self) -> coven::task::BugSinkRef {
+        std::sync::Arc::new(self.diagnostics.clone())
     }
 
     /// Report a bug to the log and the platform's crash reporter.
@@ -511,10 +518,7 @@ impl LibraryManager {
     /// A transfer queue's own table failed to read or write in its worker,
     /// which has nobody to tell: the worker waits for the next command.
     pub(super) fn report_queue_store_failure(&self, queue: &str, error: &bae_store::DbError) {
-        self.diagnostics.report_bug(
-            &format!("read or write the {queue} queue's table"),
-            &bae_util::error_text::CauseChain(error),
-        );
+        self.diagnostics.report_failure(&format!("read or write the {queue} queue's table"), error);
     }
 }
 

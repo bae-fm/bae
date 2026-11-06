@@ -185,7 +185,9 @@ async fn land_source_search(
             candidate_key,
             source.as_str()
         ),
-        Err(error) => diagnostics
-            .report_bug(&format!("land {}'s {} search", candidate_key, source.as_str()), &error),
+        Err(error) => diagnostics.report_failure(
+            &format!("land {}'s {} search", candidate_key, source.as_str()),
+            &error,
+        ),
     }
 }

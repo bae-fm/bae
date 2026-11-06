@@ -39,7 +39,7 @@ impl ImportService {
                 // No caller waits on the worker to hear it: a bug.
                 if let Err(error) = self.runtime.move_import(&candidate_key, &import_id, None).await
                 {
-                    self.diagnostics.report_bug(
+                    self.diagnostics.report_failure(
                         &format!("end the cancelled import of {candidate_key}"),
                         &error,
                     );
@@ -79,8 +79,9 @@ impl ImportService {
                 )
                 .await
             {
-                self.diagnostics.report_bug(
+                self.diagnostics.report_failure_as(
                     &format!("record the failed import of {candidate_key}"),
+                    &write,
                     &format!("the import failed: {error}; recording that failed: {write}"),
                 );
             }

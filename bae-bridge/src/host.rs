@@ -148,7 +148,9 @@ impl BridgeHost {
                     .handle()
                     .clone();
                 if let Err(error) = runtime.block_on(handle.close()) {
-                    host.diagnostics.report_bug("close the store a released library held", &error);
+                    let error = coven::task::reported(&host.diagnostics, error);
+                    host.diagnostics
+                        .report_failure("close the store a released library held", &error);
                 }
             });
         match started {
@@ -361,7 +363,7 @@ impl BridgeHost {
             .clone()
             .run("BridgeHost.list_libraries", move || async move {
                 self.app_dir
-                    .discover_libraries(&self.coven)
+                    .discover_libraries(&self.coven, &self.diagnostics)
                     .await?
                     .into_iter()
                     .map(BridgeLibrary::from_core_info)
@@ -411,7 +413,8 @@ impl BridgeHost {
             .run("BridgeHost.unsent_before_removal", move || async move {
                 self.closed(store).await?;
                 Ok(crate::BridgeUnsentWork::from_core(
-                    bae_library::unsent_before_removal(builder, store, report).await?,
+                    bae_library::unsent_before_removal(builder, store, report, &self.diagnostics)
+                        .await?,
                 ))
             })
             .await
@@ -498,7 +501,7 @@ impl BridgeHost {
             .clone()
             .run_to_completion(self.clone(), "create library", move || async move {
                 steps.uncounted(crate::types::BridgeSetupStep::CreatingLibrary);
-                let handle = bae_library::create_library(builder, name).await?;
+                let handle = bae_library::create_library(builder, name, &self.diagnostics).await?;
                 Ok(Arc::new(crate::OpenedLibrary::new(handle, self)))
             })
             .await

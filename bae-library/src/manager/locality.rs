@@ -63,10 +63,7 @@ impl LibraryManager {
             return operation;
         };
         let cleanup = LibraryError::from(error);
-        self.report_bug(
-            "end a release's storage transition",
-            &bae_util::error_text::CauseChain(&cleanup),
-        );
+        self.diagnostics.report_failure("end a release's storage transition", &cleanup);
         LibraryError::Cleanup { operation: Box::new(operation), cleanup: Box::new(cleanup) }
     }
 

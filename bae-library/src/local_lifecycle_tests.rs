@@ -38,7 +38,8 @@ impl Home {
             &self.installation,
             &Diagnostics::noop(),
             handle.store_id(),
-            bae_store::Store::new(handle.clone(), Arc::new(coven::SystemClock)).delete_store(),
+            bae_store::test_devices::store_under(handle.clone(), Arc::new(coven::SystemClock))
+                .delete_store(),
             &|_| (),
         )
         .await
@@ -79,7 +80,7 @@ impl Home {
     /// The libraries whose saved restore codes this device offers, with the
     /// name each is offered under.
     async fn offered_codes(&self) -> Vec<(coven::StoreId, String)> {
-        crate::saved_restore_codes(&self.installation)
+        crate::saved_restore_codes(&self.installation, &bae_diagnostics::Diagnostics::noop())
             .await
             .unwrap()
             .into_iter()
@@ -550,7 +551,14 @@ async fn unsent_work_of_a_closed_library_leaves_it_closed() {
     handle.close().await.unwrap();
     drop(handle);
 
-    let work = super::unsent_before_removal(home.installation.builder(), id, |_| ()).await.unwrap();
+    let work = super::unsent_before_removal(
+        home.installation.builder(),
+        id,
+        |_| (),
+        &bae_diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .unwrap();
     assert!(work.is_empty(), "{work:?}");
     let reopened = bae_store::configure_store(home.installation.builder(), crate::SCHEMA)
         .open(id, |_| ())
@@ -578,15 +586,24 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
         "{not settings",
     )
     .unwrap();
-    let listed = home.app_dir.discover_libraries(&home.installation).await.unwrap();
+    let listed = home
+        .app_dir
+        .discover_libraries(&home.installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .unwrap();
     assert!(
         listed.iter().any(|library| library.id == id.to_string()
             && matches!(library.state, bae_app_dir::LibraryState::Unreadable(_))),
         "{listed:?}"
     );
-    super::unsent_before_removal(home.installation.builder(), id, |_| ())
-        .await
-        .expect_err("counting opens the library, and its settings can't be read");
+    super::unsent_before_removal(
+        home.installation.builder(),
+        id,
+        |_| (),
+        &bae_diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .expect_err("counting opens the library, and its settings can't be read");
 
     let steps = std::sync::Mutex::new(Vec::new());
     remove_unopenable_library(
@@ -658,7 +675,11 @@ async fn a_removal_stopped_after_leaving_is_listed_and_finished() {
         "{error}"
     );
     drop(handle);
-    let listed = home.app_dir.discover_libraries(&home.installation).await.unwrap();
+    let listed = home
+        .app_dir
+        .discover_libraries(&home.installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .unwrap();
     assert!(
         matches!(
             listed.as_slice(),

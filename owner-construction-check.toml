@@ -143,8 +143,8 @@ private_state_types = ["Condvar", "Mutex"]
 shared_pointer_types = ["Arc", "Weak"]
 
 # Types that bae's dependencies declare: std and tokio's locks, atomics,
-# shared pointers, channels, tasks and runtimes, coven's handle and store
-# files, and the libraries' own services.
+# shared pointers, channels, tasks and runtimes, coven's handle, and the
+# libraries' own services.
 external_types = [
     "AbortHandle",
     "Arc",
@@ -157,7 +157,6 @@ external_types = [
     "Condvar",
     "Coven",
     "CovenHandle",
-    "FileStream",
     "Handle",
     "IdSource",
     "IdSourceRef",
@@ -189,7 +188,7 @@ task_types = [
     "AudioOutput",
     "AudioStream",
     "AirPlayStreamControl",
-    # One open file's bytes from coven.
+    # One open file's bytes from coven, reporting a bug a read carries.
     "FileStream",
     # A client asking Discogs with the library's stored key, for one call.
     "DiscogsClient",

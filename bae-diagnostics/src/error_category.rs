@@ -169,7 +169,7 @@ pub fn sync_category(error: &coven::SyncError) -> C {
         E::Failed { failure, .. } => local_failure_category(*failure),
         E::Storage(error) => cloud_home_category(error),
         E::SecureStorage(error) => key_category(error),
-        E::Database(_) => C::Database,
+        E::Database(error) => database_category(error),
         E::NoStorage => C::Config,
         // A code that can't be used here, such as one for another library:
         // the person's state, as a refused code is in a bootstrap.
@@ -264,6 +264,7 @@ pub fn creation_category(error: &coven::StoreCreationError) -> C {
             // coven or bae went wrong.
             C::Internal
         }
+        E::Store(coven::CovenError::Database(error)) => database_category(error),
         E::Store(_) => C::Database,
         E::Identity(_) | E::Directory(_) => C::Internal,
         E::Sync(error) => sync_category(error),
@@ -323,6 +324,7 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
             // coven or bae went wrong.
             C::Internal
         }
+        E::Store(coven::CovenError::Database(error)) => database_category(error),
         E::Store(_) => C::Database,
         // Restoring as the member whose account holds the store, signed in
         // with another account.
@@ -347,6 +349,17 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
     }
 }
 
+/// A database call's failure, coven's or bae's over it. One holding a bug,
+/// its own or an earlier one that failed the store's handle, is a bug the
+/// person can only report; any other is the database's.
+pub fn database_category(error: &dyn bae_util::task_failure::ReportedBug) -> C {
+    if error.reported_bug().is_some() {
+        C::Internal
+    } else {
+        C::Database
+    }
+}
+
 /// A write coven ran for the app that failed other than in the database, as
 /// in a failed rollback: the custody it read, or the database beneath it.
 fn write_category(error: &coven::CovenError) -> C {
@@ -356,8 +369,8 @@ fn write_category(error: &coven::CovenError) -> C {
         E::Rollback { operation, .. } => write_category(operation),
         E::FileCleanup { write, .. } => write_category(write),
         E::Sync(error) => sync_category(error),
-        E::Database(_)
-        | E::Migration(_)
+        E::Database(error) => database_category(error),
+        E::Migration(_)
         | E::CovenMigration(_)
         | E::Settings(_)
         | E::Lock(_)
@@ -382,7 +395,7 @@ pub fn device_only_category(error: &coven::DeviceOnlyError) -> C {
     use coven::DeviceOnlyError as E;
     match error {
         E::Download { error, .. } => file_read_category(error),
-        E::Database(_) => C::Database,
+        E::Database(error) => database_category(error),
         E::Cleanup { error, .. } => device_only_category(error),
         E::RepeatedFile { .. } | E::Path(_) | E::Disk(_) | E::Cancelled => C::Internal,
         // A panic in coven's work is a bug the person can only report.
@@ -395,7 +408,7 @@ pub fn file_read_category(error: &coven::FileReadError) -> C {
     match error {
         E::Storage(error) => cloud_home_category(error),
         E::Sync(error) => sync_category(error),
-        E::Database(_) => C::Database,
+        E::Database(error) => database_category(error),
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::NoStorage => C::Config,
         E::Missing { .. }

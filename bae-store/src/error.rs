@@ -72,3 +72,17 @@ impl From<DbError> for coven::CovenError {
         }
     }
 }
+
+/// A bug a coven call carried back, which the store reported as the call
+/// returned, or one coven repeats; any other failure holds none.
+impl bae_util::task_failure::ReportedBug for DbError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Io(error) => error.reported_bug(),
+            Self::FileRead(error) => error.reported_bug(),
+            Self::Coven(error) => error.reported_bug(),
+            Self::Creation(error) => error.reported_bug(),
+            Self::Sqlite(_) | Self::Unreadable { .. } | Self::Message(_) => None,
+        }
+    }
+}

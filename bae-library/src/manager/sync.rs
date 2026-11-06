@@ -359,7 +359,7 @@ impl LibraryManager {
         let failure =
             error.map(|error| bae_diagnostics::UiError::diagnostic(error.category(), error));
         if let Err(error) = self.sync_status.record_sync_start_failure(failure).await {
-            self.diagnostics.report_bug("record why sync failed to start", &error);
+            self.diagnostics.report_failure("record why sync failed to start", &error);
         }
     }
 }

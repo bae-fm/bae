@@ -154,7 +154,7 @@ impl CatalogSessions {
                     match recorded {
                         Ok(Ok(())) => {}
                         Ok(Err(error)) => {
-                            diagnostics.report_bug("record a Discogs validation signal", &error)
+                            diagnostics.report_failure("record a Discogs validation signal", &error)
                         }
                         Err(bug) => {
                             diagnostics.panicked(bug);

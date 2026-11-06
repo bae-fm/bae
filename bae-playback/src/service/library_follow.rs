@@ -91,7 +91,8 @@ where
 /// read is a bug, reported under `operation`, but for two failures that are
 /// not this read's: the store closing, which ends the follow and playback
 /// with it, and the store failing on an earlier bug, which coven reported as
-/// it happened and now repeats to every call as `StoreFailed`.
+/// it happened and now repeats to every call as `StoreFailed`. A run that
+/// panicked carries its bug, which is reported as the panic it is.
 fn failed_read(
     bugs: &bae_diagnostics::Diagnostics,
     operation: &str,
@@ -106,9 +107,14 @@ fn failed_read(
         coven::CovenError::Database(coven::DbError::StoreFailed(bug)) => {
             warn!("the store failed on a bug, so {what} is read no more: {bug}");
         }
-        error => {
-            bugs.report_bug(operation, &format_args!("reading for {request:?} failed: {error}"))
-        }
+        error => match coven::task::CarriesBug::bug(error) {
+            Some(bug) => {
+                bugs.panicked(bug.clone());
+            }
+            None => {
+                bugs.report_bug(operation, &format_args!("reading for {request:?} failed: {error}"))
+            }
+        },
     }
 }
 

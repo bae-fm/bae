@@ -30,8 +30,9 @@ mod ui_error;
 pub use background::{lock_or_crash, ReportedTask, ReportedThread};
 pub use error_category::{
     bootstrap_category, cloud_home_category, cloud_setup_category, cloud_unlock_category,
-    creation_category, deletion_category, device_only_category, file_read_category, key_category,
-    pending_reason_category, storage_category, store_list_category, sync_category,
+    creation_category, database_category, deletion_category, device_only_category,
+    file_read_category, key_category, pending_reason_category, storage_category,
+    store_list_category, sync_category,
 };
 pub use telemetry::*;
 pub use ui_error::{GroupingBlockReason, UiError, UiErrorCategory, UiErrorClass};
@@ -289,6 +290,31 @@ impl Diagnostics {
         tracing::error!(operation, "bug: {detail}");
         if let Some(bugs) = &self.bugs {
             bugs.report(operation, &detail);
+        }
+    }
+
+    /// Report `error`, which `operation` failed with where nothing should
+    /// fail, as a bug, unless it holds a bug that has reached the crash
+    /// reporter already (`ReportedBug`): that one is only logged, so the
+    /// reporter hears each bug once.
+    pub fn report_failure<E>(&self, operation: &str, error: &E)
+    where
+        E: std::error::Error + bae_util::task_failure::ReportedBug + 'static,
+    {
+        self.report_failure_as(operation, error, &bae_util::error_text::CauseChain(error));
+    }
+
+    /// [`Self::report_failure`] for a failure told as `detail`, such as one
+    /// named beside the failure that led to it.
+    pub fn report_failure_as(
+        &self,
+        operation: &str,
+        failure: &dyn bae_util::task_failure::ReportedBug,
+        detail: &dyn fmt::Display,
+    ) {
+        match failure.reported_bug() {
+            Some(_) => tracing::error!(operation, "failed on a bug reported already: {detail}"),
+            None => self.report_bug(operation, detail),
         }
     }
 

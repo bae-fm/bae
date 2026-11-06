@@ -789,7 +789,7 @@ async fn reopen_without_credentials(manager: TestManager, temp_dir: &TempDir) ->
         .open(store, |_| ())
         .await
         .unwrap();
-    let database = bae_store::Store::new(handle, clock.clone());
+    let database = bae_store::test_devices::store_under(handle, clock.clone());
     let library = TestLibrary::open_with(
         database,
         app_dir,
@@ -856,7 +856,7 @@ mod sign_in {
         .create_store("Test Library")
         .await
         .unwrap();
-        let database = bae_store::Store::new(handle, clock.clone());
+        let database = bae_store::test_devices::store_under(handle, clock.clone());
         let library = TestLibrary::open_with(
             database,
             app_dir,

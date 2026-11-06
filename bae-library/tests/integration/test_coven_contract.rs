@@ -10,7 +10,10 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
         .await
         .unwrap();
     let records = bae_records::Records::new(
-        bae_store::Store::new(handle.clone(), std::sync::Arc::new(coven::SystemClock)),
+        bae_store::test_devices::store_under(
+            handle.clone(),
+            std::sync::Arc::new(coven::SystemClock),
+        ),
         std::sync::Arc::new(coven::UuidIds),
     );
     let artist = bae_records::DbArtist {

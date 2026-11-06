@@ -7,18 +7,23 @@
 /// An entry coven can't restore from is listed as unreadable, with its
 /// library's id and why, so the person can delete it. A phone without Google
 /// Play services has no Block Store and keeps no saved codes, so it lists
-/// none.
+/// none. A bug coven's calls carry back is reported to `diagnostics`.
 pub async fn saved_restore_codes(
     coven: &coven::Coven,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Vec<coven::SavedRestoreEntry>, SavedRestoreCodesError> {
-    let codes = match coven.saved_restore_codes().await {
+    let codes = match coven
+        .saved_restore_codes()
+        .await
+        .map_err(|error| coven::task::reported(diagnostics, error))
+    {
         Err(error) if keeps_no_saved_codes(&error) => {
             tracing::info!("this device keeps no saved restore codes: it has no Block Store");
             Vec::new()
         }
         listed => listed?,
     };
-    restorable_codes(codes, coven).await
+    restorable_codes(codes, coven, diagnostics).await
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -48,9 +53,15 @@ fn keeps_no_saved_codes(error: &coven::BootstrapError) -> bool {
 async fn restorable_codes(
     codes: Vec<coven::SavedRestoreEntry>,
     coven: &coven::Coven,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Vec<coven::SavedRestoreEntry>, SavedRestoreCodesError> {
-    let here: std::collections::HashSet<_> =
-        coven.stores().await?.into_iter().map(|store| store.id()).collect();
+    let here: std::collections::HashSet<_> = coven
+        .stores()
+        .await
+        .map_err(|error| coven::task::reported(diagnostics, error))?
+        .into_iter()
+        .map(|store| store.id())
+        .collect();
     Ok(codes.into_iter().filter(|code| !here.contains(&code.store_id())).collect())
 }
 

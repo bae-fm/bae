@@ -152,6 +152,12 @@ impl BootstrapError {
 }
 
 fn classify_open_error(error: bae_store::DbError) -> BootstrapError {
+    use bae_util::task_failure::ReportedBug;
+    // A bug in the open's work, or in the manager's first calls, reported as
+    // it arrived: nothing the person can do but report it.
+    if error.reported_bug().is_some() {
+        return BootstrapError::Internal(format!("Failed to open database: {error}"));
+    }
     let bae_store::DbError::Coven(coven_error) = error else {
         return BootstrapError::Database(format!("Failed to open database: {error}"));
     };
@@ -317,21 +323,25 @@ enum LibraryOpening {
 }
 
 /// The library's store as `opening` finds it: the registered store opened
-/// through coven's top-level builder, or the handle already open.
+/// through coven's top-level builder, or the handle already open. An open
+/// that fails on a bug of its own work reports it to `diagnostics`, as the
+/// store reports each of its calls'.
 async fn open_store(
     opening: LibraryOpening,
     clock: ClockRef,
+    diagnostics: &Diagnostics,
 ) -> Result<bae_store::Store, bae_store::DbError> {
     let handle = match opening {
         LibraryOpening::Registered { builder, store, on_progress } => {
             bae_store::configure_store(builder, bae_library::SCHEMA)
                 .clock(clock.clone())
                 .open(store, on_progress)
-                .await?
+                .await
+                .map_err(|error| coven::task::reported(diagnostics, error))?
         }
         LibraryOpening::Open(handle) => handle,
     };
-    Ok(bae_store::Store::new(handle, clock))
+    Ok(bae_store::Store::new(handle, clock, Arc::new(diagnostics.clone())))
 }
 
 /// The library a registered id names; an id that is no library's is not
@@ -461,7 +471,7 @@ where
     // built from it here, once, and handed to what holds it.
     let store = timing
         .stage(&library_id, "open the library's store", || {
-            runtime.block_on(open_store(builder, Arc::clone(&clock)))
+            runtime.block_on(open_store(builder, Arc::clone(&clock), &diagnostics))
         })
         .map_err(classify_open_error)?;
     let records = bae_records::Records::new(store.clone(), ids.clone());
@@ -607,7 +617,7 @@ where
         Ok(started) => started,
         Err(error) => {
             if let Err(closing) = runtime.block_on(opened.close()) {
-                diagnostics.report_bug("close the library a failed open left open", &closing);
+                diagnostics.report_failure("close the library a failed open left open", &closing);
             }
             return Err(error);
         }

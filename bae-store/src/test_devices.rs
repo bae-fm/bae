@@ -82,9 +82,16 @@ pub async fn reopen_store(
         .expect("open the device's store again")
 }
 
-/// The store over a device's opened store, under the system clock.
+/// The store over a device's opened store, under the system clock. A bug
+/// one of its calls carries back fails the test as the store drops.
 pub fn device_store(handle: coven::CovenHandle) -> Store {
-    Store::new(handle, Arc::new(coven::SystemClock))
+    store_under(handle, Arc::new(coven::SystemClock))
+}
+
+/// The store over `handle`, stamping its writes by `clock`. A bug one of its
+/// calls carries back fails the test as the store drops.
+pub fn store_under(handle: coven::CovenHandle, clock: coven::ClockRef) -> Store {
+    Store::new(handle, clock, coven::task::HeardBugs::shared())
 }
 
 /// How `store`'s last pass ended and when a pass last reached the end

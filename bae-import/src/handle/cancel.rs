@@ -44,7 +44,7 @@ impl ImportServiceHandle {
             "cancel every waiting import",
             async move {
                 if let Err(error) = this.cancel_all_imports().await {
-                    this.services.diagnostics.report_bug("cancel every waiting import", &error);
+                    this.services.diagnostics.report_failure("cancel every waiting import", &error);
                 }
             },
             // Reported; no one waits to hear more.

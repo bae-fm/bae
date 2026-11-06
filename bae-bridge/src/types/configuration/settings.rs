@@ -285,9 +285,17 @@ impl BridgeError {
     /// render as "database error: {inner}". No prefix belongs in the detail:
     /// the `Database` category beside it is what says which kind of failure
     /// this is, and each UI renders that as its own localized line. A bare
-    /// `DbError` crosses as its own text, through `From<DbError>`.
-    pub(crate) fn database_query(error: impl DatabaseFault) -> Self {
-        Self::database(error.database_fault())
+    /// `DbError` crosses as its own text, through `From<DbError>`. A failure
+    /// holding a bug, which its owner reported as it arrived, is shown as
+    /// the bug it is.
+    pub(crate) fn database_query(
+        error: impl DatabaseFault + bae_util::task_failure::ReportedBug,
+    ) -> Self {
+        if error.reported_bug().is_some() {
+            Self::internal(error.database_fault())
+        } else {
+            Self::database(error.database_fault())
+        }
     }
     pub(crate) fn config(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Config, detail)

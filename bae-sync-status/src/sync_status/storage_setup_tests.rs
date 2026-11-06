@@ -60,7 +60,7 @@ async fn library(
             .create_store("Household")
             .await
             .unwrap();
-    let store = Store::new(handle, Arc::new(coven::SystemClock));
+    let store = bae_store::test_devices::store_under(handle, Arc::new(coven::SystemClock));
     let sync_status = crate::test_fixtures::test_sync_status(&store);
     (store, sync_status)
 }

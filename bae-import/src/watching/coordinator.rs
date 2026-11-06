@@ -290,7 +290,7 @@ impl Coordinator {
                     Ok(true) => {}
                     Ok(false) => return,
                     Err(error) => {
-                        self.diagnostics.report_bug(
+                        self.diagnostics.report_failure(
                             &format!("check whether {} is watched before a rescan", path.display()),
                             &error,
                         );
@@ -391,7 +391,7 @@ impl Coordinator {
         let roots = match watched_roots(&self.tables).await {
             Ok(roots) => roots,
             Err(error) => {
-                self.diagnostics.report_bug("list the watched folders to check them", &error);
+                self.diagnostics.report_failure("list the watched folders to check them", &error);
                 return;
             }
         };
@@ -449,8 +449,10 @@ async fn check_network_folder(
     let recorded = match tables.load_folder_scan_directories(root).await {
         Ok(recorded) => recorded,
         Err(error) => {
-            diagnostics
-                .report_bug(&format!("read what the last scan of {} saw", root.display()), &error);
+            diagnostics.report_failure(
+                &format!("read what the last scan of {} saw", root.display()),
+                &error,
+            );
             return NetworkCheck::Unfinished;
         }
     };
@@ -490,7 +492,8 @@ async fn take_watch_report(
             let roots = match watched_roots(tables).await {
                 Ok(roots) => roots,
                 Err(error) => {
-                    diagnostics.report_bug("list the watched folders for a watch error", &error);
+                    diagnostics
+                        .report_failure("list the watched folders for a watch error", &error);
                     return;
                 }
             };
@@ -512,7 +515,7 @@ async fn take_watch_report(
     let roots = match watched_roots(tables).await {
         Ok(roots) => roots,
         Err(error) => {
-            diagnostics.report_bug("list the watched folders for a watch report", &error);
+            diagnostics.report_failure("list the watched folders for a watch report", &error);
             return;
         }
     };

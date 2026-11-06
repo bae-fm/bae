@@ -17,6 +17,7 @@ async fn dropbox_library(
     let owner = bae_library::create_library(
         sign_in.configure(installation_in(dir).builder().storage_connector(storage.clone())),
         bae_store::EnteredName::parse("Household").unwrap(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
@@ -41,7 +42,11 @@ async fn stop_once_recorded<T>(
         })
         .await;
         assert!(step.is_pending(), "the restore finished before its record was seen");
-        if !bae_library::unfinished_restores(&builder()).await.unwrap().is_empty() {
+        if !bae_library::unfinished_restores(&builder(), &bae_diagnostics::Diagnostics::noop())
+            .await
+            .unwrap()
+            .is_empty()
+        {
             return;
         }
         tokio::task::yield_now().await;
@@ -67,21 +72,46 @@ fn a_stopped_restore_whose_sign_in_dropbox_refuses_signs_in_again_and_finishes()
         let (_sender, cancel) = tokio::sync::watch::channel(false);
         stop_once_recorded(
             builder,
-            bae_library::restore_from_code(builder(), &code, None, "Laptop", |_| {}, &cancel),
+            bae_library::restore_from_code(
+                builder(),
+                &code,
+                None,
+                "Laptop",
+                |_| {},
+                &cancel,
+                &bae_diagnostics::Diagnostics::noop(),
+            ),
         )
         .await;
         // The owner's sign-in was the first; the restore kept the second.
         storage.reject_access_token("access-1").await;
         let presented = sign_in.presented();
 
-        let [restore] = &bae_library::unfinished_restores(&builder()).await.unwrap()[..] else {
+        let [restore] =
+            &bae_library::unfinished_restores(&builder(), &bae_diagnostics::Diagnostics::noop())
+                .await
+                .unwrap()[..]
+        else {
             panic!("one restore under way");
         };
-        let restored =
-            bae_library::resume_restore(builder, restore, |_| {}, &cancel).await.unwrap();
+        let restored = bae_library::resume_restore(
+            builder,
+            restore,
+            |_| {},
+            &cancel,
+            &bae_diagnostics::Diagnostics::noop(),
+        )
+        .await
+        .unwrap();
         assert_eq!(sign_in.presented(), presented + 1);
         assert_eq!(restored.store_name().await.unwrap(), "Household");
         restored.close().await.unwrap();
-        assert!(bae_library::unfinished_restores(&builder()).await.unwrap().is_empty());
+        assert!(bae_library::unfinished_restores(
+            &builder(),
+            &bae_diagnostics::Diagnostics::noop()
+        )
+        .await
+        .unwrap()
+        .is_empty());
     });
 }

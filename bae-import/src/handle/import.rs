@@ -92,7 +92,7 @@ impl ImportServiceHandle {
                         error,
                         crate::ImportError::Internal { .. } | crate::ImportError::Database(_)
                     ) {
-                        this.services.diagnostics.report_bug(
+                        this.services.diagnostics.report_failure(
                             &format!("start the automatic import of {candidate_key}"),
                             error,
                         );
@@ -120,8 +120,9 @@ impl ImportServiceHandle {
                 return;
             }
             Err(read) => {
-                self.services.diagnostics.report_bug(
+                self.services.diagnostics.report_failure_as(
                     &format!("read {candidate_key} to record its refused import"),
+                    &read,
                     &format!("the import was refused: {error}; reading it failed: {read}"),
                 );
                 return;
@@ -139,8 +140,9 @@ impl ImportServiceHandle {
             )
             .await
         {
-            self.services.diagnostics.report_bug(
+            self.services.diagnostics.report_failure_as(
                 &format!("record the refused import of {candidate_key}"),
+                &write,
                 &format!("the import was refused: {error}; recording that failed: {write}"),
             );
         }

@@ -238,13 +238,24 @@ pub enum PreferencesError {
     Database(#[from] bae_store::DbError),
 }
 
+/// A bug the preferences row's read or write carried back, which the store
+/// reported as it returned.
+impl bae_util::task_failure::ReportedBug for PreferencesError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Invalid(_) => None,
+            Self::Database(error) => error.reported_bug(),
+        }
+    }
+}
+
 impl PreferencesError {
     /// The class the person is shown: a row that can't be read or written
     /// is the database's failure, not a setting to fix.
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
             Self::Invalid(_) => bae_diagnostics::UiErrorCategory::Config,
-            Self::Database(_) => bae_diagnostics::UiErrorCategory::Database,
+            Self::Database(error) => bae_diagnostics::database_category(error),
         }
     }
 }

@@ -136,3 +136,25 @@ fn a_store_failed_on_an_earlier_bug_is_not_reported_again() {
     );
     assert_eq!(reporter.reports().len(), 1);
 }
+
+/// A run that panicked carries its bug back to the follow, which awaits the
+/// query, so the follow reports it once, as the panic it is.
+#[test]
+fn a_run_that_panicked_is_reported_as_its_bug() {
+    let reporter = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(reporter.clone());
+    let bug = coven::task::Bug { operation: "live query", message: "a run broke".into() };
+
+    failed_read(
+        &diagnostics,
+        "read the tracks for playback",
+        "the tracks",
+        &Vec::<String>::new(),
+        &coven::CovenError::Database(coven::DbError::Bug(bug)),
+    );
+
+    assert_eq!(
+        reporter.reports(),
+        vec![("live query".to_string(), "live query panicked: a run broke".to_string())]
+    );
+}

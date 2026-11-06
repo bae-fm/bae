@@ -476,6 +476,21 @@ fn a_database_fault_is_not_prefixed_twice() {
     assert_eq!(detail, expected);
 }
 
+/// A database failure holding a bug, which its owner reported as it
+/// arrived, or an earlier one the store failed with, shows as a bug.
+#[test]
+fn a_database_failure_holding_a_bug_shows_as_one() {
+    let bug = || coven::task::Bug { operation: "live query", message: "boom".into() };
+    for error in [coven::DbError::Bug(bug()), coven::DbError::StoreFailed(bug())] {
+        let BridgeError::Diagnostic { category, .. } =
+            BridgeError::database_query(coven::CovenError::Database(error))
+        else {
+            panic!("diagnostic")
+        };
+        assert_eq!(category, BridgeErrorCategory::Internal);
+    }
+}
+
 #[test]
 fn a_non_database_coven_error_keeps_its_own_text() {
     let error = coven::CovenError::Key(coven::KeyError::Unsupported);

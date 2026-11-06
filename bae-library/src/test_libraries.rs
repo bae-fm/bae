@@ -371,7 +371,7 @@ pub async fn test_library_from_handle(
     http: bae_util::http::Http,
 ) -> TestLibrary {
     TestLibrary::open(
-        Store::new(handle, Arc::new(coven::SystemClock)),
+        bae_store::test_devices::store_under(handle, Arc::new(coven::SystemClock)),
         bae_app_dir::AppDir::under_home(dir).unwrap(),
         providers,
         http,
@@ -426,7 +426,7 @@ pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, t
             .create_store("Test Library")
             .await
             .expect("create fresh test store");
-        let store = Store::new(handle, Arc::new(coven::SystemClock));
+        let store = bae_store::test_devices::store_under(handle, Arc::new(coven::SystemClock));
         TestLibrary::open(
             store,
             app_dir,

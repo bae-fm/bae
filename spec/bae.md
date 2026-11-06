@@ -4224,9 +4224,9 @@ release's or track's id as UTF-8, or a candidate's key.
   removing the library cancels every one before the store closes: a read
   waiting on one, or asked of it after, answers that it was cancelled, never
   with the closed store, and it takes no new request. One opened as the
-  library closes is cancelled from the start. One whose task breaks on a bug
-  answers with that failure, "Something went wrong", and ends; the bug is
-  reported.
+  library closes is cancelled from the start. One whose task breaks on a bug,
+  or whose read coven ends on a bug, answers with that failure, "Something
+  went wrong", and ends; the bug is reported.
 - **Callbacks the app provides**: the crash reporter core hands each bug it
   finds to, from startup on; the artwork reader; and on phones the audio
   focus and the sign-in presenter, which shows the provider's page and returns
@@ -4374,7 +4374,15 @@ each device and hands playback the channel or sink.
   same crash reporter: bae hands coven its reporter when it builds the
   device's libraries at launch. A later call coven answers with such a
   worker's bug, such as a retry of uploads after the upload worker
-  panicked, shows "Something went wrong" and is not reported again.
+  panicked, shows "Something went wrong" and is not reported again; so
+  does every call on a library an earlier bug failed, until it reopens. A
+  call into coven that fails on a bug of its own work, a panic in coven or in
+  core's code coven runs, carries the bug back to whatever in core awaits it:
+  the library's store for its reads, writes and other calls on the library, a
+  subscription for its live query, the code that lists, opens, creates,
+  restores, joins or removes a library. That one reports it, once, as core
+  reports its own panics, and the failure shows "Something went wrong";
+  nothing it passes the failure to reports it again.
 - **Logs stay in the platform's log.** Core's and each app's log lines go to
   the platform's own log on the device: the unified log on macOS and iOS,
   logcat on Android, ETW on Windows, the systemd journal on Linux. A

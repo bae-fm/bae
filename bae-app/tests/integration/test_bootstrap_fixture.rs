@@ -34,6 +34,7 @@ fn library_with_fixture(
         let handle = create_library(
             installation.builder(),
             bae_store::EnteredName::parse("Fixture Library").unwrap(),
+            &bae_diagnostics::Diagnostics::noop(),
         )
         .await
         .unwrap();

@@ -5,7 +5,7 @@ impl Store {
     /// This store with `clock` stamping its writes, for a test whose later
     /// writes happen at another time than its first.
     pub fn under_clock_for_test(&self, clock: ClockRef) -> Self {
-        Self::new(self.inner.handle.clone(), clock)
+        Self::new(self.inner.handle.clone(), clock, self.inner.bugs.clone())
     }
 
     /// Count the work this store's connections run from here on into the

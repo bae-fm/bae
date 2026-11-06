@@ -47,7 +47,7 @@ impl BridgeHost {
         tracing::info!("dev reset: finishing earlier unfinished removals");
         self.finish_removals_now(steps).await?;
 
-        let libraries = self.app_dir.discover_libraries(&self.coven).await?;
+        let libraries = self.app_dir.discover_libraries(&self.coven, &self.diagnostics).await?;
         let total = libraries.len() as u64;
         let mut removed = std::collections::HashSet::new();
         for (done, library) in libraries.iter().enumerate() {
@@ -88,7 +88,7 @@ impl BridgeHost {
         let name = crate::from_app::name(&profile.library_name)?;
         tracing::info!(name = %profile.library_name, "dev reset: creating the library");
         let created = Arc::new(crate::OpenedLibrary::new(
-            bae_library::create_library(self.builder(), name).await?,
+            bae_library::create_library(self.builder(), name, &self.diagnostics).await?,
             self.clone(),
         ));
         let library_id = created.library_id();

@@ -272,7 +272,7 @@ pub(super) fn dispatch_effect(
             let diagnostics = inner.diagnostics.clone();
             let keep = async move {
                 if let Err(error) = tables.replace_group_album_links(kept).await {
-                    diagnostics.report_bug("keep what a run read of albums", &error);
+                    diagnostics.report_failure("keep what a run read of albums", &error);
                 }
             };
             #[cfg(test)]

@@ -11,6 +11,8 @@ mod entered_name;
 pub use entered_name::{BlankName, EnteredName};
 mod error;
 pub use error::DbError;
+mod file_stream;
+pub use file_stream::FileStream;
 mod file_version;
 pub use file_version::file_version_sql;
 pub mod list_windows;

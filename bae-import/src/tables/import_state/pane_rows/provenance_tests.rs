@@ -20,7 +20,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
         .await
         .unwrap();
     let id = handle.store_id();
-    let db = bae_store::Store::new(handle, clock.clone());
+    let db = bae_store::test_devices::store_under(handle, clock.clone());
     fetched(&db, "release-a").await;
     let cases = [
         (
@@ -63,7 +63,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
         .open(id, |_| ())
         .await
         .unwrap();
-    let reopened = bae_store::Store::new(handle, clock);
+    let reopened = bae_store::test_devices::store_under(handle, clock);
     let loaded = ImportTables::new(reopened).load_import_candidate_states().await.unwrap();
 
     for (content_hash, _, _, provenance) in &cases {

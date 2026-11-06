@@ -166,7 +166,7 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
             .open(id, |_| ())
             .await
             .unwrap();
-        let reopened = bae_store::Store::new(handle, manager.clock.clone());
+        let reopened = bae_store::test_devices::store_under(handle, manager.clock.clone());
         assert_eq!(reopened.every_row_for_test().await.unwrap(), before);
         reopened.close().await.unwrap();
     }

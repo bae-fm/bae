@@ -303,6 +303,23 @@ impl From<crate::tables::ImportCommitError> for ImportError {
     }
 }
 
+/// A bug a coven call import made carried back, which the store reported as
+/// it returned, or one coven repeats.
+impl bae_util::task_failure::ReportedBug for ImportError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            #[cfg(desktop)]
+            Self::Database(error)
+            | Self::CatalogSession(crate::CatalogSessionError::Preferences(error)) => {
+                error.reported_bug()
+            }
+            #[cfg(desktop)]
+            Self::Sync(error) => error.reported_bug(),
+            _ => None,
+        }
+    }
+}
+
 impl ImportError {
     /// This failure as a surface states it: its class, which the surface
     /// words in the person's language, and its own text as the untranslated
@@ -323,8 +340,11 @@ impl ImportError {
             #[cfg(desktop)]
             Self::Refused(_) | Self::Unresolvable { .. } | Self::LibraryChanged => C::Import,
             #[cfg(desktop)]
-            Self::Database(_)
-            | Self::CatalogSession(crate::CatalogSessionError::Preferences(_)) => C::Database,
+            Self::Database(error) => bae_diagnostics::database_category(error),
+            #[cfg(desktop)]
+            Self::CatalogSession(crate::CatalogSessionError::Preferences(error)) => {
+                bae_diagnostics::database_category(error)
+            }
             #[cfg(desktop)]
             Self::CatalogSession(crate::CatalogSessionError::Keyring(error)) => {
                 bae_diagnostics::key_category(error)

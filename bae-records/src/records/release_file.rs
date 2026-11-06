@@ -3,7 +3,7 @@
 use super::*;
 
 impl Records {
-    pub async fn open_release_file(&self, id: &str) -> Result<coven::FileStream, DbError> {
+    pub async fn open_release_file(&self, id: &str) -> Result<bae_store::FileStream, DbError> {
         let row = self.find_file_by_id(id).await?.ok_or(rusqlite::Error::QueryReturnedNoRows)?;
         let file = self.store.file_ref(row.file).await?;
         Ok(self.store.open_file_stream(&file).await?)

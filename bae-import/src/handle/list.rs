@@ -4,6 +4,12 @@
 use super::*;
 
 impl ImportServiceHandle {
+    /// Where a bug a surface's live query carries goes as it arrives: the
+    /// crash reporter.
+    fn bugs(&self) -> coven::task::BugSinkRef {
+        std::sync::Arc::new(self.services.diagnostics.clone())
+    }
+
     /// Open an import list showing `view` through `windows`, with nothing
     /// folded and nothing selected. Closing the library ends it.
     pub async fn open_list(
@@ -14,6 +20,7 @@ impl ImportServiceHandle {
         Ok(crate::LiveImportList::open(
             self.services.tables.clone(),
             self.services.closing.child_token(),
+            self.bugs(),
             view,
             windows,
         )
@@ -47,6 +54,7 @@ impl ImportServiceHandle {
                 self.scans_in_memory.clone(),
             ),
             self.services.closing.child_token(),
+            self.bugs(),
         )
     }
 
@@ -57,6 +65,7 @@ impl ImportServiceHandle {
         bae_store::live_query::LiveValues::new(
             self.services.tables.subscribe_import_counts(),
             self.services.closing.child_token(),
+            self.bugs(),
         )
     }
 
@@ -70,6 +79,7 @@ impl ImportServiceHandle {
         bae_store::live_query::LiveValues::new(
             self.services.tables.subscribe_candidate_runtime(key),
             self.services.closing.child_token(),
+            self.bugs(),
         )
     }
 

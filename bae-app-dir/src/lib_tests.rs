@@ -20,7 +20,10 @@ async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
     let first_id = store(&installation, "First").await;
     let second_id = store(&installation, "Second").await;
     app_dir.save_active_library(second_id).unwrap();
-    let libraries = app_dir.discover_libraries(&installation).await.unwrap();
+    let libraries = app_dir
+        .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .unwrap();
     assert_eq!(
         libraries.iter().map(|l| (l.id.as_str(), l.name.as_str(), l.is_active)).collect::<Vec<_>>(),
         vec![
@@ -39,7 +42,10 @@ async fn discovery_reports_a_broken_store_instead_of_omitting_it() {
     let installation = installation(&app_dir);
     let id = coven::StoreId(uuid::Uuid::new_v4());
     installation.create_store_dir(id, &coven::UuidIds).unwrap();
-    let error = app_dir.discover_libraries(&installation).await.unwrap_err();
+    let error = app_dir
+        .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .unwrap_err();
     assert!(error.to_string().contains(&id.to_string()), "{error}");
 }
 
@@ -60,7 +66,10 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
     )
     .unwrap();
 
-    let libraries = app_dir.discover_libraries(&installation).await.unwrap();
+    let libraries = app_dir
+        .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .unwrap();
     let state = |name: &str| {
         &libraries.iter().find(|library| library.name == name).expect("every store is listed").state
     };
@@ -78,10 +87,16 @@ async fn discovery_reports_invalid_or_unreadable_active_pointers() {
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let installation = installation(&app_dir);
     std::fs::write(app_dir.active_library_pointer(), " \n").unwrap();
-    assert!(app_dir.discover_libraries(&installation).await.is_err());
+    assert!(app_dir
+        .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .is_err());
     std::fs::remove_file(app_dir.active_library_pointer()).unwrap();
     std::fs::create_dir(app_dir.active_library_pointer()).unwrap();
-    assert!(app_dir.discover_libraries(&installation).await.is_err());
+    assert!(app_dir
+        .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .is_err());
 }
 
 #[test]

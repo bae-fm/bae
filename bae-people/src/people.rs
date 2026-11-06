@@ -178,7 +178,7 @@ impl ProfileError {
                 C::Config
             }
             Self::InvalidPrivateCircle | Self::CirclePending(_) | Self::Sync(_) => C::Membership,
-            Self::Database(_) => C::Database,
+            Self::Database(error) => bae_diagnostics::database_category(error),
         }
     }
 }

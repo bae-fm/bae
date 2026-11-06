@@ -442,3 +442,31 @@ fn a_bug_coven_reports_reaches_the_crash_reporter() {
         )]
     );
 }
+
+/// A failure where nothing should fail is reported as a bug, but one that
+/// holds a bug already reported, carried back from a coven call or
+/// repeated by coven, is only logged: the crash reporter hears each bug once.
+#[test]
+fn a_failure_holding_a_reported_bug_is_not_reported_again() {
+    let reporter = Arc::new(RecordingBugReporter::default());
+    let diagnostics = Diagnostics::noop().reporting_bugs_to(reporter.clone());
+    let bug = || coven::task::Bug { operation: "write", message: "boom".to_string() };
+
+    diagnostics.report_failure("write the queue", &coven::DbError::Bug(bug()));
+    diagnostics.report_failure("write the queue", &coven::DbError::StoreFailed(bug()));
+    diagnostics.report_failure("retry uploads", &coven::SyncError::WorkerFailed(bug()));
+    assert_eq!(reporter.reports(), Vec::new());
+
+    diagnostics.report_failure("write the queue", &coven::DbError::StatementFailed);
+    assert_eq!(reporter.reports().len(), 1);
+}
+
+/// A database failure holding a bug, its own or an earlier one the store
+/// failed with, is shown as a bug; any other as the database's.
+#[test]
+fn a_database_failure_holding_a_bug_shows_as_one() {
+    let bug = || coven::task::Bug { operation: "write", message: "boom".to_string() };
+    assert_eq!(database_category(&coven::DbError::Bug(bug())), UiErrorCategory::Internal);
+    assert_eq!(database_category(&coven::DbError::StoreFailed(bug())), UiErrorCategory::Internal);
+    assert_eq!(database_category(&coven::DbError::StatementFailed), UiErrorCategory::Database);
+}

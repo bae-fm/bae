@@ -25,8 +25,11 @@ pub(crate) type RowsRead<R> =
 
 /// coven's sync state and a read of the library's tables made after it, put
 /// into one value each time either changes.
+///
+/// Its reads' failures, the live queries' and the rows', go to whoever pulls
+/// it, which reports a bug one carries, so none is reported here.
 pub struct WithSyncState<R, T> {
-    store: crate::Store,
+    handle: coven::CovenHandle,
     state: coven::LiveQuery<coven::SyncStatus, coven::CovenError>,
     /// The rows' own live query, which says when they change; each value's
     /// rows are read afresh, after the latest state.
@@ -44,13 +47,13 @@ where
     T: Clone + PartialEq + Send + 'static,
 {
     pub(crate) fn new(
-        store: crate::Store,
+        handle: coven::CovenHandle,
         state: coven::LiveQuery<coven::SyncStatus, coven::CovenError>,
         changes: coven::LiveQuery<R, coven::CovenError>,
         rows: RowsRead<R>,
         make: fn(coven::SyncStatus, R) -> T,
     ) -> Self {
-        Self { store, state, changes, rows, make, latest_state: None, told: None }
+        Self { handle, state, changes, rows, make, latest_state: None, told: None }
     }
 
     /// The first value once coven's sync state has one, then one each time
@@ -74,7 +77,7 @@ where
                 continue;
             };
             let rows = Arc::clone(&self.rows);
-            let rows = match self.store.read_coven(move |sql| rows(sql)).await {
+            let rows = match self.handle.read(move |sql| rows(sql)).await {
                 Ok(rows) => rows,
                 Err(error) => return Some(Err(error)),
             };

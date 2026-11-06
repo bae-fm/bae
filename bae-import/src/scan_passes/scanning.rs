@@ -21,7 +21,8 @@ pub(super) async fn record_scan_failure(
 }
 
 /// Say that a write of `root`'s scan state, `operation`, was refused with
-/// `error`. A refusal that is a bug is reported as one. One that is the
+/// `error`. A refusal that is a bug is reported as one, unless the store
+/// reported the bug its call carried back already. One that is the
 /// disk's — full, failing or damaged — or the store's as a whole is not a
 /// bug: the failure it kept from being stored reaches the person through the
 /// coordinator, which holds it as the root's status, and a store that failed
@@ -33,7 +34,7 @@ pub(super) fn report_refused_scan_write(
     diagnostics: &bae_diagnostics::Diagnostics,
 ) {
     if refusal_is_a_bug(error) {
-        diagnostics.report_bug(operation, &bae_util::error_text::CauseChain(error));
+        diagnostics.report_failure(operation, error);
     } else {
         warn!("{}: could not {operation}: {error}", coven::path_text(root));
     }

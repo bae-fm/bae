@@ -140,7 +140,7 @@ async fn restore_cost(library: Library) {
         .await
         .unwrap();
     handle.start_sync().await.unwrap();
-    let database = bae_store::Store::new(handle.clone(), clock.clone());
+    let database = bae_store::test_devices::store_under(handle.clone(), clock.clone());
     let opened = bae_library::test_libraries::TestLibrary::open_with(
         database,
         app_dir.clone(),
@@ -203,6 +203,7 @@ async fn restore_cost(library: Library) {
         "Ana's phone",
         |_| {},
         &cancel,
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();

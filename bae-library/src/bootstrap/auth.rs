@@ -4,6 +4,7 @@ pub(super) async fn authenticate(
     builder: &mut coven::CovenBuilder,
     access: Option<coven::OAuthAccess>,
     cancel: &watch::Receiver<bool>,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<(), RestoreFromCodeError> {
     let Some(access) = access else {
         return Ok(());
@@ -13,7 +14,7 @@ pub(super) async fn authenticate(
         return Err(RestoreFromCodeError::Cancelled);
     }
     tokio::select! {
-        result = builder.authenticate(access) => result.map_err(|error| match error {
+        result = builder.authenticate(access) => result.map_err(|error| match coven::task::reported(diagnostics, error) {
             coven::OAuthError::Cancelled => RestoreFromCodeError::Cancelled,
             error => restore_error(coven::BootstrapError::OAuth(error)),
         }),

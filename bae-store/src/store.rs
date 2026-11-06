@@ -1,6 +1,7 @@
 //! The library's store: bae's handle on coven's, which every read, write and
 //! live query of the library runs through.
 
+use coven::task::{BugSinkRef, CarriesBug};
 use coven::{ClockRef, CovenError, CovenHandle, CovenWrite, SqlReadContext};
 #[cfg(any(test, feature = "test-utils"))]
 use std::path::Path;
@@ -25,10 +26,20 @@ struct StoreInner {
     handle: CovenHandle,
     /// Wall clock for `created_at` and status timestamps bound into write SQL.
     clock: ClockRef,
+    /// Where a bug a coven call carries back goes as it arrives: the store
+    /// awaits every call it makes on its handle, so it is the one that
+    /// reports such a bug, once.
+    bugs: BugSinkRef,
 }
 
 /// The library's store over coven's owned connection. Writes to synced tables
 /// are captured by coven's attached session for changeset sync.
+///
+/// A coven call that fails on a bug of its own work, a panic in coven or in
+/// bae's closure, carries the bug back (`CarriesBug`). The store reports it
+/// to its bug sink as the call returns, so every caller above shows the
+/// failure and none reports it again (`ReportedBug`). A live query's bug is
+/// reported by whoever awaits the query.
 ///
 /// coven also owns connection pragmas such as `foreign_keys` and `journal_mode`:
 /// bae never opens a production SQLite connection or sets a production connection
@@ -45,8 +56,16 @@ impl std::fmt::Debug for Store {
 }
 
 impl Store {
-    pub fn new(handle: CovenHandle, clock: ClockRef) -> Self {
-        Store { inner: Arc::new(StoreInner { handle, clock }) }
+    /// The store over `handle`, stamping its writes by `clock`, reporting a
+    /// bug a call carries back to `bugs`, the app's crash reporter.
+    pub fn new(handle: CovenHandle, clock: ClockRef, bugs: BugSinkRef) -> Self {
+        Store { inner: Arc::new(StoreInner { handle, clock, bugs }) }
+    }
+
+    /// `result`, once the bug its coven call carried back, if any, has gone
+    /// to the store's bug sink.
+    fn reported<T, E: CarriesBug>(&self, result: Result<T, E>) -> Result<T, E> {
+        result.map_err(|error| coven::task::reported(self.inner.bugs.as_ref(), error))
     }
 
     // Reads release their connection before optional result processing. Every
@@ -64,7 +83,10 @@ impl Store {
     where
         R: Send + 'static,
     {
-        StoreRead::new(self.inner.handle.read(move |sql| f(sql).map_err(CovenError::from)))
+        StoreRead::new(
+            self.inner.handle.read(move |sql| f(sql).map_err(CovenError::from)),
+            self.inner.bugs.as_ref(),
+        )
     }
 
     /// Run a write with a borrowed transaction context.
@@ -101,11 +123,10 @@ impl Store {
     where
         R: Send + 'static,
     {
-        self.inner
-            .handle
-            .write_bulk(move |sql| f(&sql).map_err(CovenError::from))
-            .await
-            .map_err(DbError::from)
+        self.reported(
+            self.inner.handle.write_bulk(move |sql| f(&sql).map_err(CovenError::from)).await,
+        )
+        .map_err(DbError::from)
     }
 
     /// A live query: coven reruns `query` for each write that touches what it
@@ -167,7 +188,7 @@ impl Store {
         R: Send + 'static,
         E: coven::WriteFailure + Send + 'static,
     {
-        Box::pin(self.inner.handle.write(write))
+        Box::pin(async move { self.reported(self.inner.handle.write(write).await) })
     }
 
     /// Stage app bytes, then run a write that puts them in its rows: `stage`
@@ -184,7 +205,7 @@ impl Store {
         T: Send + 'static,
         R: Send + 'static,
     {
-        let staged = Box::pin(self.inner.handle.stage_files(stage)).await?;
+        let staged = self.reported(Box::pin(self.inner.handle.stage_files(stage)).await)?;
         self.write(move |write| {
             let value = write.put_staged(staged)?;
             sql(write, value)
@@ -193,6 +214,7 @@ impl Store {
     }
 
     /// Create an isolated installation on `schema`, with bae's declarations.
+    /// A bug one of its calls carries back fails the test as the store drops.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn new_test(
         schema: crate::Schema,
@@ -210,7 +232,7 @@ impl Store {
             .clock(clock.clone())
             .create_store("Test Library")
             .await?;
-        Ok(Self::new(handle, clock))
+        Ok(Self::new(handle, clock, coven::task::HeardBugs::shared()))
     }
 }
 

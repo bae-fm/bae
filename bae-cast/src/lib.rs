@@ -151,7 +151,7 @@ impl CastError {
             | Self::AirPlayPairingUnsupported
             | Self::AirPlayEncryptionUnsupported => C::AirPlayUnsupported,
             Self::AirPlayUnreadableSettings(_) => C::AirPlayUnreadableSettings,
-            Self::Setting(_) => C::Database,
+            Self::Setting(error) => bae_diagnostics::database_category(error),
             Self::Disabled
             | Self::DeviceNotFound
             | Self::Connect(_)
@@ -383,10 +383,9 @@ impl CastController {
                     Ok(merged) => {
                         let listed = merged.iter().map(RendererDevice::listed).collect();
                         if let Err(error) = controller.services.show_cast_devices(listed).await {
-                            controller.diagnostics.report_bug(
-                                "list the cast receivers",
-                                &bae_util::error_text::CauseChain(&error),
-                            );
+                            controller
+                                .diagnostics
+                                .report_failure("list the cast receivers", &error);
                         }
                     }
                     Err(bug) => {
@@ -434,7 +433,7 @@ impl CastController {
                         warn!("couldn't read whether casting is on: {error}");
                     }
                     Err(bae_store::live_query::LiveQueryError::Cancelled) => {
-                        debug!("cast setting watcher stopped: the library closed");
+                        debug!("cast setting watcher stopped: the library closed, or its read ended on a bug");
                         break;
                     }
                 }

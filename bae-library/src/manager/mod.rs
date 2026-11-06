@@ -288,6 +288,34 @@ impl From<bae_records::stored_name::StoredNameError> for LibraryError {
     }
 }
 
+/// A bug a coven call carried back, which its owner reported as it
+/// returned, or one coven repeats; whoever meets the failure above shows it
+/// and doesn't report it again.
+impl bae_util::task_failure::ReportedBug for LibraryError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        use coven::task::CarriesBug;
+        match self {
+            LibraryError::Database(error) => error.reported_bug(),
+            LibraryError::Io(error) => error.reported_bug(),
+            LibraryError::Preferences(error) => error.reported_bug(),
+            #[cfg(desktop)]
+            LibraryError::Import(error) => error.reported_bug(),
+            LibraryError::FileRead { error, .. } => error.reported_bug(),
+            LibraryError::MakeLocal(error) => error.reported_bug(),
+            LibraryError::Sync(error) | LibraryError::InviteJoining(error) => error.reported_bug(),
+            LibraryError::Keyring(error) => error.bug(),
+            LibraryError::AppDir(error) => error.bug(),
+            LibraryError::CloudHome(error) => error.bug(),
+            LibraryError::CloudSetup(error) => error.bug(),
+            LibraryError::CloudUnlock(error) => error.bug(),
+            LibraryError::Cleanup { operation, cleanup } => {
+                operation.reported_bug().or_else(|| cleanup.reported_bug())
+            }
+            _ => None,
+        }
+    }
+}
+
 impl LibraryError {
     /// The user-facing diagnostic class the bridge renders. Membership/setup
     /// failures carry the distinctions the cloud-setup and sharing flows show as
@@ -296,7 +324,7 @@ impl LibraryError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         use bae_diagnostics::UiErrorCategory as C;
         match self {
-            LibraryError::Database(_) => C::Database,
+            LibraryError::Database(error) => bae_diagnostics::database_category(error),
             LibraryError::AppDir(error) => error.category(),
             LibraryError::Preferences(error) => error.category(),
             LibraryError::Validation(_) => C::Config,

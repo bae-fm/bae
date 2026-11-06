@@ -68,7 +68,7 @@ impl QueueEditError {
         use bae_diagnostics::UiErrorCategory as C;
         match self {
             Self::QueueChanged => C::QueueChanged,
-            Self::Queue(_) => C::Database,
+            Self::Queue(error) => bae_diagnostics::database_category(error),
             Self::Stopped(_) => C::Internal,
         }
     }

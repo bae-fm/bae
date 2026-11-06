@@ -116,6 +116,7 @@ async fn restore_runs(
                 &device_name,
                 on_status,
                 &cancel,
+                &bae_diagnostics::Diagnostics::noop(),
             )
             .await
             .map_err(|error| format!("run {run}: restore failed: {error}"))?,

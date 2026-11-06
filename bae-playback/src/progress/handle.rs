@@ -117,13 +117,13 @@ impl PlaybackProgressHandle {
                                         error!(
                                             "couldn't write what playback is doing ({change:?}): {e}"
                                         );
-                                        diagnostics.report_bug("write what playback is doing", &e);
+                                        diagnostics.report_failure("write what playback is doing", &e);
                                     }
                                 }
                                 if let Some(timeline) = timeline {
                                     if let Err(e) = timeline_row.write(&timeline).await {
                                         error!("couldn't write where playback is ({timeline:?}): {e}");
-                                        diagnostics.report_bug("write where playback is", &e);
+                                        diagnostics.report_failure("write where playback is", &e);
                                     }
                                 }
                             }

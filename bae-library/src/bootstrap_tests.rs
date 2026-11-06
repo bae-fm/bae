@@ -11,6 +11,7 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
     let handle = create_library(
         installation.builder(),
         bae_store::EnteredName::parse("Created Library").unwrap(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
@@ -56,6 +57,7 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
     let handle = create_library(
         installation.builder(),
         bae_store::EnteredName::parse("Cached Library").unwrap(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
@@ -79,6 +81,7 @@ async fn failed_creation_removes_the_partial_library() {
     let error = create_library(
         installation.builder(),
         bae_store::EnteredName::parse("Failed Library").unwrap(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .err()
@@ -96,14 +99,22 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
     let handle = create_library(
         installation.builder(),
         bae_store::EnteredName::parse("Local Library").unwrap(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
     let store = handle.store_id();
     let device = handle.device_id();
     handle.close().await.unwrap();
-    let reopened =
-        reset_device(installation.builder(), store, "Replacement", |_| {}).await.unwrap();
+    let reopened = reset_device(
+        installation.builder(),
+        store,
+        "Replacement",
+        |_| {},
+        &bae_diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .unwrap();
     assert_ne!(reopened.device_id(), device);
     assert_eq!(reopened.store_name().await.unwrap(), "Local Library");
     reopened.close().await.unwrap();
@@ -175,6 +186,7 @@ async fn keys_replaced_elsewhere(
         "Phone",
         |_| {},
         &cancel,
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
@@ -245,6 +257,7 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
                 |_| {},
                 |_| {},
                 &cancel,
+                &bae_diagnostics::Diagnostics::noop(),
             )
             .await
         }
@@ -310,6 +323,7 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
         |_| {},
         |_| {},
         &cancel,
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
@@ -403,6 +417,7 @@ async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_
                 |_| {},
                 |_| {},
                 &cancel,
+                &bae_diagnostics::Diagnostics::noop(),
             )
             .await
         }
@@ -410,7 +425,10 @@ async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_
 
     stop_once_recorded(&installation, restore()).await;
 
-    let libraries = app_dir.discover_libraries(&installation).await.unwrap();
+    let libraries = app_dir
+        .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .unwrap();
     assert_eq!(libraries.len(), 1);
     assert_eq!(libraries[0].id, store.to_string());
     assert_eq!(libraries[0].name, "Household");
@@ -440,7 +458,10 @@ async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_
     let device = restored.device_id();
     assert_ne!(device, replaced.device);
     restored.close().await.unwrap();
-    let libraries = app_dir.discover_libraries(&installation).await.unwrap();
+    let libraries = app_dir
+        .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .unwrap();
     assert!(
         matches!(
             libraries[..],
@@ -476,15 +497,27 @@ async fn a_restore_stopped_after_its_record_finishes_without_the_code() {
             |_| {},
             |_| {},
             &cancel,
+            &bae_diagnostics::Diagnostics::noop(),
         ),
     )
     .await;
 
-    let finished = super::resume_replacement(builder(), store, |_| {}, &cancel).await.unwrap();
+    let finished = super::resume_replacement(
+        builder(),
+        store,
+        |_| {},
+        &cancel,
+        &bae_diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .unwrap();
     let device = finished.device_id();
     assert_ne!(device, replaced.device);
     finished.close().await.unwrap();
-    let libraries = app_dir.discover_libraries(&installation).await.unwrap();
+    let libraries = app_dir
+        .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .unwrap();
     assert!(
         matches!(
             libraries[..],
@@ -506,8 +539,21 @@ async fn a_reset_stopped_after_its_record_finishes_from_what_coven_kept() {
     let (store, device, _) = connected_library(&installation, &storage, "Household").await;
     let builder =
         || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
-    stop_once_recorded(&installation, reset_device(builder(), store, "Replacement", |_| {})).await;
-    let libraries = app_dir.discover_libraries(&installation).await.unwrap();
+    stop_once_recorded(
+        &installation,
+        reset_device(
+            builder(),
+            store,
+            "Replacement",
+            |_| {},
+            &bae_diagnostics::Diagnostics::noop(),
+        ),
+    )
+    .await;
+    let libraries = app_dir
+        .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .unwrap();
     assert!(
         matches!(
             libraries[..],
@@ -520,7 +566,15 @@ async fn a_reset_stopped_after_its_record_finishes_from_what_coven_kept() {
     );
 
     let (_sender, cancel) = watch::channel(false);
-    let finished = super::resume_replacement(builder(), store, |_| {}, &cancel).await.unwrap();
+    let finished = super::resume_replacement(
+        builder(),
+        store,
+        |_| {},
+        &cancel,
+        &bae_diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .unwrap();
     let reset = finished.device_id();
     assert_ne!(reset, device);
     finished.close().await.unwrap();
@@ -571,12 +625,14 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
             |_| {},
             |_| {},
             &cancel,
+            &bae_diagnostics::Diagnostics::noop(),
         ),
     )
     .await;
-    let counted = unsent_before_removal(builder(), store, |_| ())
-        .await
-        .expect_err("counting opens the library, which only finishing the restore allows");
+    let counted =
+        unsent_before_removal(builder(), store, |_| (), &bae_diagnostics::Diagnostics::noop())
+            .await
+            .expect_err("counting opens the library, which only finishing the restore allows");
     assert!(format!("{counted:?}").contains("ReplacementUnfinished"), "{counted:?}");
 
     // The restored copy waits in a hidden directory inside the store's.
@@ -601,7 +657,11 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
     assert!(installation.stores().await.unwrap().is_empty());
     assert_eq!(store_files(), Vec::<String>::new());
     assert!(!app_dir.registered_library(&store.to_string()).exists());
-    assert!(app_dir.discover_libraries(&installation).await.unwrap().is_empty());
+    assert!(app_dir
+        .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+        .await
+        .unwrap()
+        .is_empty());
     assert_eq!(app_dir.active_library_id().unwrap(), None);
     assert!(UnfinishedRemoval::find(
         &app_dir,
@@ -629,20 +689,41 @@ async fn a_restore_onto_a_new_device_stopped_after_its_record_finishes_without_t
     let builder = || phone.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
     let (_sender, cancel) = watch::channel(false);
     stop_once(
-        restore_from_code(builder(), &code, Some(owner_key()), "Phone", |_| {}, &cancel),
-        || async { !unfinished_restores(&builder()).await.unwrap().is_empty() },
+        restore_from_code(
+            builder(),
+            &code,
+            Some(owner_key()),
+            "Phone",
+            |_| {},
+            &cancel,
+            &bae_diagnostics::Diagnostics::noop(),
+        ),
+        || async {
+            !unfinished_restores(&builder(), &bae_diagnostics::Diagnostics::noop())
+                .await
+                .unwrap()
+                .is_empty()
+        },
     )
     .await;
 
-    let [restore] = &unfinished_restores(&builder()).await.unwrap()[..] else {
+    let [restore] =
+        &unfinished_restores(&builder(), &bae_diagnostics::Diagnostics::noop()).await.unwrap()[..]
+    else {
         panic!("one restore under way");
     };
     assert_eq!(restore.store_id, store);
-    let restored = resume_restore(builder, restore, |_| {}, &cancel).await.unwrap();
+    let restored =
+        resume_restore(builder, restore, |_| {}, &cancel, &bae_diagnostics::Diagnostics::noop())
+            .await
+            .unwrap();
     assert_eq!(restored.store_id(), store);
     assert_eq!(restored.store_name().await.unwrap(), "Household");
     restored.close().await.unwrap();
-    assert!(unfinished_restores(&builder()).await.unwrap().is_empty());
+    assert!(unfinished_restores(&builder(), &bae_diagnostics::Diagnostics::noop())
+        .await
+        .unwrap()
+        .is_empty());
 }
 
 /// A library restored onto a new device reads its history from storage under
@@ -668,6 +749,7 @@ async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
         "Phone",
         |_| {},
         &cancel,
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
@@ -684,7 +766,10 @@ async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
 /// a new library's.
 async fn change_settings(builder: coven::CovenBuilder, store: coven::StoreId) {
     let handle = configure_store(builder, crate::SCHEMA).open(store, |_| ()).await.unwrap();
-    let database = bae_store::Store::new(handle.clone(), std::sync::Arc::new(coven::SystemClock));
+    let database = bae_store::test_devices::store_under(
+        handle.clone(),
+        std::sync::Arc::new(coven::SystemClock),
+    );
     bae_preferences::edit_preferences(&database, |preferences| {
         preferences.max_concurrent_uploads = std::num::NonZeroU32::new(5).unwrap();
         preferences.replay_gain_mode = bae_preferences::ReplayGainMode::Album;
@@ -698,7 +783,10 @@ async fn change_settings(builder: coven::CovenBuilder, store: coven::StoreId) {
 
 /// The settings `handle`'s copy holds.
 async fn settings(handle: &coven::CovenHandle) -> bae_preferences::Preferences {
-    let database = bae_store::Store::new(handle.clone(), std::sync::Arc::new(coven::SystemClock));
+    let database = bae_store::test_devices::store_under(
+        handle.clone(),
+        std::sync::Arc::new(coven::SystemClock),
+    );
     bae_preferences::preferences(&database).await.unwrap()
 }
 
@@ -735,6 +823,7 @@ async fn a_restore_over_this_devices_copy_keeps_its_settings() {
         |_| {},
         |_| {},
         &cancel,
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
@@ -758,7 +847,15 @@ async fn a_reset_starts_at_a_new_librarys_settings() {
         || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
     change_settings(builder(), store).await;
 
-    let reset = reset_device(builder(), store, "Replacement", |_| {}).await.unwrap();
+    let reset = reset_device(
+        builder(),
+        store,
+        "Replacement",
+        |_| {},
+        &bae_diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .unwrap();
     assert_eq!(settings(&reset).await, bae_preferences::Preferences::default());
     reset.close().await.unwrap();
 }
@@ -782,6 +879,7 @@ async fn a_reset_reports_loading_the_library_in_order_to_its_end() {
         store,
         "Replacement",
         |status| statuses.lock().unwrap().push(status),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();

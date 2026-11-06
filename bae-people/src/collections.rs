@@ -78,7 +78,7 @@ impl CollectionError {
             Self::EmptyName | Self::Missing | Self::OrderChanged => C::Config,
             Self::NotOwner => C::Membership,
             Self::Profile(error) => error.category(),
-            Self::Database(_) => C::Database,
+            Self::Database(error) => bae_diagnostics::database_category(error),
         }
     }
 }

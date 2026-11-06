@@ -1,6 +1,10 @@
 //! Making this device's copy of a library: creating a library, restoring
 //! one from a restore code, joining one from an invite, and resetting or
 //! replacing this device's copy.
+//!
+//! Each function here awaits coven's calls on this device's installation, so
+//! it reports a bug one carries back to the `diagnostics` it is handed, as
+//! the store reports its own calls'.
 
 mod auth;
 
@@ -70,8 +74,12 @@ fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
 pub async fn create_library(
     builder: coven::CovenBuilder,
     name: bae_store::EnteredName,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, CreateLibraryError> {
-    Ok(configure_store(builder, crate::SCHEMA).create_store(name.as_str()).await?)
+    configure_store(builder, crate::SCHEMA)
+        .create_store(name.as_str())
+        .await
+        .map_err(|error| CreateLibraryError::Store(coven::task::reported(diagnostics, error)))
 }
 
 /// Restore with a separately entered S3 key and coven's own OAuth presentation.
@@ -84,9 +92,10 @@ pub async fn restore_from_code(
     device_name: &str,
     on_status: impl Fn(coven::BootstrapStatus),
     cancel: &watch::Receiver<bool>,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
     let metadata = auth::code_metadata(code)?;
-    auth::authenticate(&mut builder, metadata.oauth_access, cancel).await?;
+    auth::authenticate(&mut builder, metadata.oauth_access, cancel, diagnostics).await?;
     coven::restore_from_code(
         loading_builder(builder),
         code,
@@ -96,7 +105,7 @@ pub async fn restore_from_code(
         cancel,
     )
     .await
-    .map_err(restore_error)
+    .map_err(|error| reported_restore_error(diagnostics, error))
 }
 
 pub async fn restore_from_saved_code(
@@ -106,8 +115,9 @@ pub async fn restore_from_saved_code(
     device_name: &str,
     on_status: impl Fn(coven::BootstrapStatus),
     cancel: &watch::Receiver<bool>,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Option<coven::CovenHandle>, RestoreFromCodeError> {
-    auth::authenticate(&mut builder, saved.location.oauth_access(), cancel).await?;
+    auth::authenticate(&mut builder, saved.location.oauth_access(), cancel, diagnostics).await?;
     coven::restore_from_saved_code(
         loading_builder(builder),
         saved,
@@ -117,7 +127,7 @@ pub async fn restore_from_saved_code(
         cancel,
     )
     .await
-    .map_err(restore_error)
+    .map_err(|error| reported_restore_error(diagnostics, error))
 }
 
 /// The membership is established even if asking for its profile failed.
@@ -182,18 +192,24 @@ pub async fn join_with_invite(
     clock: coven::ClockRef,
     on_status: impl Fn(coven::BootstrapStatus),
     control: &JoinControl,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
     let invite = invite_info(code)?;
     if clock.now() >= invite.expires_at
-        && !unfinished_joins(&builder)
+        && !unfinished_joins(&builder, diagnostics)
             .await?
             .iter()
             .any(|join| join.metadata.store_id == invite.metadata.store_id)
     {
         return Ok(None);
     }
-    auth::authenticate(&mut builder, invite.metadata.oauth_access, &control.sign_in.subscribe())
-        .await?;
+    auth::authenticate(
+        &mut builder,
+        invite.metadata.oauth_access,
+        &control.sign_in.subscribe(),
+        diagnostics,
+    )
+    .await?;
     let joined = Box::pin(coven::join_with_invite(
         loading_builder(builder),
         code,
@@ -202,9 +218,11 @@ pub async fn join_with_invite(
         &control.join,
     ))
     .await
-    .map_err(restore_error)?;
+    .map_err(|error| reported_restore_error(diagnostics, error))?;
     Ok(match joined {
-        Some(handle) => Some(with_profile(handle, invite.invitee.as_deref(), clock).await),
+        Some(handle) => {
+            Some(with_profile(handle, invite.invitee.as_deref(), clock, diagnostics).await)
+        }
         None => None,
     })
 }
@@ -212,8 +230,9 @@ pub async fn join_with_invite(
 /// The joins this device has under way, each as its saved invite reads.
 pub async fn unfinished_joins(
     builder: &coven::CovenBuilder,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Vec<coven::InviteInfo>, RestoreFromCodeError> {
-    builder.unfinished_joins().await.map_err(restore_error)
+    builder.unfinished_joins().await.map_err(|error| reported_restore_error(diagnostics, error))
 }
 
 /// Continue a join from `unfinished_joins` after bae restarted. coven keeps
@@ -228,6 +247,7 @@ pub async fn resume_join(
     clock: coven::ClockRef,
     on_status: impl Fn(coven::BootstrapStatus),
     control: &JoinControl,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
     let (store, on_status, coven_control) = (join.metadata.store_id, &on_status, &control.join);
     let resume = move |builder: coven::CovenBuilder| {
@@ -240,15 +260,18 @@ pub async fn resume_join(
                 &mut signed_in,
                 join.metadata.oauth_access,
                 &control.sign_in.subscribe(),
+                diagnostics,
             )
             .await?;
             resume(signed_in).await
         }
         resumed => resumed,
     }
-    .map_err(restore_error)?;
+    .map_err(|error| reported_restore_error(diagnostics, error))?;
     Ok(match joined {
-        Some(handle) => Some(with_profile(handle, join.invitee.as_deref(), clock).await),
+        Some(handle) => {
+            Some(with_profile(handle, join.invitee.as_deref(), clock, diagnostics).await)
+        }
         None => None,
     })
 }
@@ -257,8 +280,9 @@ pub async fn resume_join(
 /// recorded themselves, each as its recorded restore code reads.
 pub async fn unfinished_restores(
     builder: &coven::CovenBuilder,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Vec<coven::CodeMetadata>, RestoreFromCodeError> {
-    builder.unfinished_restores().await.map_err(restore_error)
+    builder.unfinished_restores().await.map_err(|error| reported_restore_error(diagnostics, error))
 }
 
 /// Finish a restore from `unfinished_restores` after bae restarted, from what
@@ -275,6 +299,7 @@ pub async fn resume_restore(
     restore: &coven::CodeMetadata,
     on_status: impl Fn(coven::BootstrapStatus),
     cancel: &watch::Receiver<bool>,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
     let (store, on_status) = (restore.store_id, &on_status);
     let resume = move |builder: coven::CovenBuilder| {
@@ -283,12 +308,12 @@ pub async fn resume_restore(
     match resume(builder()).await {
         Err(coven::BootstrapError::OAuth(coven::OAuthError::Reauthorize(_))) => {
             let mut signed_in = builder();
-            auth::authenticate(&mut signed_in, restore.oauth_access, cancel).await?;
+            auth::authenticate(&mut signed_in, restore.oauth_access, cancel, diagnostics).await?;
             resume(signed_in).await
         }
         resumed => resumed,
     }
-    .map_err(restore_error)
+    .map_err(|error| reported_restore_error(diagnostics, error))
 }
 
 /// The invite a code holds; a restore code is refused before any sign-in.
@@ -312,12 +337,17 @@ async fn with_profile(
     handle: coven::CovenHandle,
     invitee: Option<&str>,
     clock: coven::ClockRef,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> JoinedLibrary {
     let profile = match invitee {
         Some(name) => Some(
-            bae_people::People::new(bae_store::Store::new(handle.clone(), clock))
-                .create_profile(name)
-                .await,
+            bae_people::People::new(bae_store::Store::new(
+                handle.clone(),
+                clock,
+                std::sync::Arc::new(diagnostics.clone()),
+            ))
+            .create_profile(name)
+            .await,
         ),
         None => None,
     };
@@ -336,11 +366,12 @@ pub async fn reset_device(
     store: coven::StoreId,
     device_name: &str,
     on_status: impl Fn(coven::BootstrapStatus),
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
     loading_builder(builder)
         .reset_device(store, device_name, on_status)
         .await
-        .map_err(restore_error)
+        .map_err(|error| reported_restore_error(diagnostics, error))
 }
 
 /// Restore a library this device holds but can no longer send for, because
@@ -372,6 +403,7 @@ pub async fn restore_replacing_device(
     on_status: impl Fn(coven::BootstrapStatus),
     on_open_progress: impl Fn(coven::Progress<coven::OpenStep>),
     cancel: &watch::Receiver<bool>,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
     // Coven refuses an invite or another library's code too, but only after
     // the provider sign-in below; refusing it first asks for no sign-in the
@@ -392,9 +424,9 @@ pub async fn restore_replacing_device(
             }))
         }
     };
-    let carried = settings_of_this_copy(builder(), store).await?;
+    let carried = settings_of_this_copy(builder(), store, diagnostics).await?;
     let mut builder = builder();
-    auth::authenticate(&mut builder, access, cancel).await?;
+    auth::authenticate(&mut builder, access, cancel, diagnostics).await?;
     let status = |status| match status {
         coven::BootstrapStatus::Opening(progress) => on_open_progress(progress),
         status => on_status(status),
@@ -406,7 +438,7 @@ pub async fn restore_replacing_device(
     loading_builder(builder)
         .restore_device(store, code, s3_credentials, device_name, prepare, status, cancel)
         .await
-        .map_err(restore_error)
+        .map_err(|error| reported_restore_error(diagnostics, error))
 }
 
 /// Finish this device's reset or restore of `store` that stopped after it
@@ -426,11 +458,12 @@ pub async fn resume_replacement(
     store: coven::StoreId,
     on_status: impl Fn(coven::BootstrapStatus),
     cancel: &watch::Receiver<bool>,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
     loading_builder(builder)
         .resume_replacement(store, on_status, cancel)
         .await
-        .map_err(restore_error)
+        .map_err(|error| reported_restore_error(diagnostics, error))
 }
 
 /// Whether a cancel can stop the call finishing a replacement that `by`
@@ -450,6 +483,7 @@ pub fn replacement_cancellable(by: coven::ReplacedBy) -> bool {
 async fn settings_of_this_copy(
     builder: coven::CovenBuilder,
     store: coven::StoreId,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Option<bae_preferences::Preferences>, RestoreFromCodeError> {
     let unread = |error: crate::LibraryError| RestoreFromCodeError::SettingsUnread(Box::new(error));
     let handle = match configure_store(builder, crate::SCHEMA).open(store, |_| ()).await {
@@ -458,14 +492,30 @@ async fn settings_of_this_copy(
             by: coven::ReplacedBy::Restore,
             ..
         })) => return Ok(None),
-        Err(error) => return Err(unread(bae_store::DbError::from(error).into())),
+        Err(error) => {
+            let error = coven::task::reported(diagnostics, error);
+            return Err(unread(bae_store::DbError::from(error).into()));
+        }
     };
-    let store = bae_store::Store::new(handle.clone(), std::sync::Arc::new(coven::SystemClock));
+    let store = bae_store::Store::new(
+        handle.clone(),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(diagnostics.clone()),
+    );
     let settings = bae_preferences::preferences(&store).await;
-    let closed = handle.close().await;
+    let closed = store.close().await;
     let settings = settings.map_err(|error| unread(error.into()))?;
     closed.map_err(|error| unread(error.into()))?;
     Ok(Some(settings))
+}
+
+/// `error`, which a coven call failed with, once the bug it carried back, if
+/// any, has gone to `diagnostics`.
+fn reported_restore_error(
+    diagnostics: &bae_diagnostics::Diagnostics,
+    error: coven::BootstrapError,
+) -> RestoreFromCodeError {
+    restore_error(coven::task::reported(diagnostics, error))
 }
 
 fn restore_error(error: coven::BootstrapError) -> RestoreFromCodeError {

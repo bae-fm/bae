@@ -4,6 +4,10 @@ use bae_library::test_libraries::{
 };
 use bae_people::people::{ProfileError, Sharing};
 
+/// The diagnostics these tests' bootstrap calls report to: none.
+static NO_DIAGNOSTICS: std::sync::LazyLock<bae_diagnostics::Diagnostics> =
+    std::sync::LazyLock::new(bae_diagnostics::Diagnostics::noop);
+
 #[tokio::test]
 async fn profile_requires_membership_and_is_idempotent_after_setup() {
     let directory = tempfile::tempdir().unwrap();
@@ -228,7 +232,10 @@ impl Household {
 
     async fn on(provider: coven::CloudProvider, sign_in: Option<&DropboxSignIn>) -> Self {
         let (dir, owner, storage, clock) = Self::owner(provider, sign_in).await;
-        let people = bae_people::People::new(bae_store::Store::new(owner.clone(), clock.clone()));
+        let people = bae_people::People::new(bae_store::test_devices::store_under(
+            owner.clone(),
+            clock.clone(),
+        ));
         let robin = made_profile_on(&owner, &people, "Robin").await;
         Self { _dir: dir, owner, storage, clock, robin }
     }
@@ -263,6 +270,7 @@ impl Household {
         let owner = bae_library::create_library(
             builder,
             bae_store::EnteredName::parse("Household").unwrap(),
+            &NO_DIAGNOSTICS,
         )
         .await
         .unwrap();
@@ -362,6 +370,7 @@ impl Household {
             self.clock.clone(),
             |_| {},
             control,
+            &NO_DIAGNOSTICS,
         )
         .await
     }
@@ -397,8 +406,10 @@ async fn joined_profile(
     requested: Option<Result<(), ProfileError>>,
 ) -> bae_people::people::PersonProfile {
     requested.expect("a new person's profile").unwrap();
-    let people =
-        bae_people::People::new(bae_store::Store::new(guest.clone(), household.clock.clone()));
+    let people = bae_people::People::new(bae_store::test_devices::store_under(
+        guest.clone(),
+        household.clock.clone(),
+    ));
     requested_profile_on(guest, &people).await
 }
 
@@ -440,7 +451,8 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
         owner.members().await.unwrap().into_iter().find(|member| member.is_self).unwrap().id;
     let name = format!("bae-person:{member}");
     let made = landed_circle(&owner, &name).await;
-    let people = bae_people::People::new(bae_store::Store::new(owner.clone(), clock.clone()));
+    let people =
+        bae_people::People::new(bae_store::test_devices::store_under(owner.clone(), clock.clone()));
     people.create_profile("Robin").await.unwrap();
     let profile = people.profile(member).await.unwrap().unwrap();
     assert_eq!(profile.private_circle, made);
@@ -453,7 +465,8 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
     for _ in 0..2 {
         landed_circle(&owner, &name).await;
     }
-    let people = bae_people::People::new(bae_store::Store::new(owner.clone(), clock));
+    let people =
+        bae_people::People::new(bae_store::test_devices::store_under(owner.clone(), clock));
     assert!(matches!(
         people.create_profile("Robin").await,
         Err(ProfileError::InvalidPrivateCircle)
@@ -471,14 +484,7 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
-        let joining = bae_library::join_with_invite(
-            household.device(&guest),
-            &invite.code,
-            "Guest Device",
-            household.clock.clone(),
-            |_| {},
-            &control,
-        );
+        let joining = household.join(&invite.code, &guest, &control);
         let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(joining, household.approve())
         })
@@ -493,11 +499,13 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         let members = guest.circles().members(profile.private_circle).await.unwrap();
         assert_eq!(members.len(), 1);
         assert_eq!(members[0].member, profile.id);
-        let error =
-            bae_people::People::new(bae_store::Store::new(guest.clone(), household.clock.clone()))
-                .rename_profile_of_for_test(owner_profile.id, "Impersonated")
-                .await
-                .expect_err("only the profile's owner may rename it");
+        let error = bae_people::People::new(bae_store::test_devices::store_under(
+            guest.clone(),
+            household.clock.clone(),
+        ))
+        .rename_profile_of_for_test(owner_profile.id, "Impersonated")
+        .await
+        .expect_err("only the profile's owner may rename it");
         assert!(
             matches!(error, coven::CovenError::Database(coven::DbError::NotOwner { .. })),
             "{error:?}"
@@ -518,14 +526,7 @@ fn a_replacement_invite_writes_no_profile() {
         let first_dir = tempfile::tempdir().unwrap();
         let first = installation_in(&first_dir);
         let control = bae_library::JoinControl::new();
-        let joining = bae_library::join_with_invite(
-            household.device(&first),
-            &invite.code,
-            "Guest Device",
-            household.clock.clone(),
-            |_| {},
-            &control,
-        );
+        let joining = household.join(&invite.code, &first, &control);
         let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(joining, household.approve())
         })
@@ -555,6 +556,7 @@ fn a_replacement_invite_writes_no_profile() {
             household.clock.clone(),
             |_| {},
             &control,
+            &NO_DIAGNOSTICS,
         );
         let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(joining, household.approve())
@@ -563,7 +565,7 @@ fn a_replacement_invite_writes_no_profile() {
         .unwrap();
         let (replacement, profile) = joined.unwrap().unwrap();
         assert!(profile.is_none());
-        let people = bae_people::People::new(bae_store::Store::new(
+        let people = bae_people::People::new(bae_store::test_devices::store_under(
             replacement.clone(),
             household.clock.clone(),
         ));
@@ -571,7 +573,8 @@ fn a_replacement_invite_writes_no_profile() {
         // The owner's membership lists each member's devices that can sync
         // apart from those that lost access, as coven's own member list has
         // them.
-        let owner_store = bae_store::Store::new(household.owner.clone(), household.clock.clone());
+        let owner_store =
+            bae_store::test_devices::store_under(household.owner.clone(), household.clock.clone());
         let owner = bae_people::Membership::new(owner_store.clone());
         let owner_people = bae_people::People::new(owner_store);
         let membership = owner.members().await.unwrap();
@@ -666,6 +669,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
                 }
             },
             &control,
+            &NO_DIAGNOSTICS,
         );
         tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::select! {
@@ -676,7 +680,8 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         .await
         .unwrap();
         let builder = household.device(&guest);
-        let [join] = &bae_library::unfinished_joins(&builder).await.unwrap()[..] else {
+        let [join] = &bae_library::unfinished_joins(&builder, &NO_DIAGNOSTICS).await.unwrap()[..]
+        else {
             panic!("one join under way");
         };
         assert_eq!(
@@ -689,6 +694,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
             household.clock.clone(),
             |_| {},
             &control,
+            &NO_DIAGNOSTICS,
         );
         let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(resuming, household.approve())
@@ -726,6 +732,7 @@ fn a_restore_onto_a_device_whose_join_waits_leaves_the_join() {
                 }
             },
             &control,
+            &NO_DIAGNOSTICS,
         );
         tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::select! {
@@ -748,6 +755,7 @@ fn a_restore_onto_a_device_whose_join_waits_leaves_the_join() {
             "Guest Device",
             |_| {},
             &cancel,
+            &NO_DIAGNOSTICS,
         )
         .await
         .unwrap_err();
@@ -765,7 +773,10 @@ fn a_restore_onto_a_device_whose_join_waits_leaves_the_join() {
             "{error:?}"
         );
         assert_eq!(
-            bae_library::unfinished_joins(&household.device(&guest)).await.unwrap().len(),
+            bae_library::unfinished_joins(&household.device(&guest), &NO_DIAGNOSTICS)
+                .await
+                .unwrap()
+                .len(),
             1
         );
         household.owner.close().await.unwrap();
@@ -798,6 +809,7 @@ async fn stopped_dropbox_join(
             }
         },
         control,
+        &NO_DIAGNOSTICS,
     );
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         tokio::select! {
@@ -807,7 +819,10 @@ async fn stopped_dropbox_join(
     })
     .await
     .unwrap();
-    let [join] = &bae_library::unfinished_joins(&household.device(guest)).await.unwrap()[..] else {
+    let [join] = &bae_library::unfinished_joins(&household.device(guest), &NO_DIAGNOSTICS)
+        .await
+        .unwrap()[..]
+    else {
         panic!("one join under way");
     };
     (invite.code, join.clone())
@@ -832,6 +847,7 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
             household.clock.clone(),
             |_| {},
             &control,
+            &NO_DIAGNOSTICS,
         );
         let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(resuming, household.approve())
@@ -867,6 +883,7 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
             household.clock.clone(),
             |_| {},
             &control,
+            &NO_DIAGNOSTICS,
         );
         let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(resuming, household.approve())
@@ -931,11 +948,15 @@ fn an_ended_dropbox_invite_ends_before_any_sign_in() {
             ended,
             |_| {},
             &bae_library::JoinControl::new(),
+            &NO_DIAGNOSTICS,
         )
         .await;
         assert!(matches!(joined, Ok(None)), "{:?}", joined.err());
         assert_eq!(sign_in.presented(), presented, "no sign-in for an ended invite");
-        assert!(bae_library::unfinished_joins(&household.device(&guest)).await.unwrap().is_empty());
+        assert!(bae_library::unfinished_joins(&household.device(&guest), &NO_DIAGNOSTICS)
+            .await
+            .unwrap()
+            .is_empty());
         household.owner.close().await.unwrap();
     });
 }
@@ -960,6 +981,7 @@ fn a_join_whose_request_was_sent_goes_on_after_its_invite_ends() {
             ended,
             |_| {},
             &control,
+            &NO_DIAGNOSTICS,
         );
         let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(joining, household.approve())

@@ -69,7 +69,7 @@ pub(super) async fn setup_test_manager_with(
         .create_store("Test Library")
         .await
         .unwrap();
-    let database = bae_store::Store::new(handle, clock.clone());
+    let database = bae_store::test_devices::store_under(handle, clock.clone());
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let manager = TestLibrary::open_with(
         database,
@@ -688,6 +688,10 @@ pub(super) fn setup_failure_classes_retain_the_actionable_category() {
         // A worker's panic answered again to a later call: the same bug,
         // shown as one.
         (coven::SyncError::WorkerFailed(bug()).into(), C::Internal),
+        // A database call's bug, reported as it returned, and the store
+        // failing on an earlier one: bugs, never the database's failure.
+        (coven::DbError::Bug(bug()).into(), C::Internal),
+        (coven::DbError::StoreFailed(bug()).into(), C::Internal),
         (LibraryError::file_read("read a cover", coven::FileReadError::Bug(bug())), C::Internal),
         (LibraryError::MakeLocal(Box::new(coven::DeviceOnlyError::Bug(bug()))), C::Internal),
     ];

@@ -24,7 +24,7 @@ async fn opening_a_library_empties_its_transfer_queues() {
         .create_store("Test Library")
         .await
         .unwrap();
-    let left = bae_store::Store::new(handle.clone(), clock.clone());
+    let left = bae_store::test_devices::store_under(handle.clone(), clock.clone());
     let left = bae_transfers::Downloads::new(left);
     left.enqueue_all(vec![bae_transfers::DownloadEntry {
         release_id: REL_1.to_string(),
@@ -36,7 +36,7 @@ async fn opening_a_library_empties_its_transfer_queues() {
     left.set_paused(true).await.unwrap();
 
     let manager = TestLibrary::open_with(
-        bae_store::Store::new(handle, clock.clone()),
+        bae_store::test_devices::store_under(handle, clock.clone()),
         app_dir,
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),

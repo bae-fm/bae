@@ -100,7 +100,9 @@ impl DesktopServices {
                             tracing::warn!("the servers' settings couldn't be read: {error}");
                         }
                         Err(bae_store::live_query::LiveQueryError::Cancelled) => {
-                            tracing::debug!("server settings follower stopped: the library closed");
+                            tracing::debug!(
+                                "server settings follower stopped: the library closed, or its read ended on a bug"
+                            );
                             break;
                         }
                     }

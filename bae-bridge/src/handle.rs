@@ -1,5 +1,6 @@
 use bae_app::AppServices;
 use bae_playback::QueueEntryId;
+use bae_util::task_failure::ReportedBug;
 use std::sync::PoisonError;
 use tracing::info;
 
@@ -186,6 +187,11 @@ impl Session {
                 end(state, closing)
             }) {
                 Ok(None | Some(Ok(()))) => {}
+                // A bug a coven call carried back was reported as it
+                // returned; the failed close is only logged then.
+                Ok(Some(Err(error))) if error.reported_bug().is_some() => {
+                    tracing::error!("closing a released library failed on a bug: {error}");
+                }
                 Ok(Some(Err(error))) => closing_failed(&error),
                 Err(panicked) => closing_failed(&panicked),
             }
@@ -288,7 +294,8 @@ impl AppHandle {
                 Err(failed) => {
                     let failed = diagnostics.bug(failed);
                     if let Err(closing) = runtime.block_on(services.close()) {
-                        services.report_bug("close the library a failed open left open", &closing);
+                        diagnostics
+                            .report_failure("close the library a failed open left open", &closing);
                     }
                     return Err(bae_app::BootstrapError::Internal(format!(
                         "desktop services failed to start: {failed}"

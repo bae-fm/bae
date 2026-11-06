@@ -55,10 +55,12 @@ pub struct LiveImportList {
 
 impl LiveImportList {
     /// Open a list showing `view` through `windows`, with nothing folded and
-    /// nothing selected, and the live query that reads it.
+    /// nothing selected, and the live query that reads it, which reports a
+    /// bug a run carries to `bugs`.
     pub(crate) async fn open(
         tables: ImportTables,
         closing: CancellationToken,
+        bugs: coven::task::BugSinkRef,
         view: ImportListView,
         windows: LibraryPageWindows,
     ) -> Result<Self, DbError> {
@@ -66,6 +68,7 @@ impl LiveImportList {
         let query = CancellableLiveQuery::new(
             tables.subscribe_import_list(ImportListRequest { list, windows }),
             closing,
+            bugs,
         );
         Ok(Self { list, tables, query })
     }

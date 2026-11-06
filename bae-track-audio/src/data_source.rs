@@ -333,7 +333,7 @@ impl CovenFileReader {
 /// fetch in flight, and told to the arbiter's storage waits; otherwise read
 /// as it comes. Says which kind of read it was, for the log.
 async fn read_window(
-    stream: &coven::FileStream,
+    stream: &bae_store::FileStream,
     playback: Option<&PlaybackRead>,
     buffer_id: u64,
     offset: u64,
@@ -461,7 +461,7 @@ impl AudioDataReader for CovenFileReader {
     }
 }
 
-// The fill fetches one window at a time off the reader's opened `coven::FileStream`, where
+// The fill fetches one window at a time off the reader's opened `bae_store::FileStream`, where
 // a read is a positioned read of an already-proven handle -- so a window costs its
 // own bytes and nothing more, and the window size is purely a
 // readahead-vs-memory choice rather than a way to amortize per-call overhead.
@@ -479,7 +479,7 @@ const CLOUD_STREAM_READ_SIZE: u64 = FILL_WINDOW_SIZE;
 /// file-end) in the log.
 fn spawn_window_prefetch(
     diagnostics: &Diagnostics,
-    stream: Arc<coven::FileStream>,
+    stream: Arc<bae_store::FileStream>,
     arbiter: Arc<FetchArbiter>,
     buffer: &SharedSparseBuffer,
     source_size: u64,

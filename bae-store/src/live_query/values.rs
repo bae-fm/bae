@@ -63,6 +63,8 @@ where
 pub struct LiveValues<T> {
     query: tokio::sync::Mutex<Option<Box<dyn LiveSource<T>>>>,
     cancellation: CancellationToken,
+    /// Where a bug a failed read carries goes as it arrives.
+    bugs: coven::task::BugSinkRef,
     /// How often the query had run when it last returned a value, kept here
     /// because a waiting pull holds the query itself.
     #[cfg(any(test, feature = "test-utils"))]
@@ -70,16 +72,24 @@ pub struct LiveValues<T> {
 }
 
 impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
-    pub fn new(query: impl LiveSource<T> + 'static, cancellation: CancellationToken) -> Self {
+    /// `query`'s values, ended by `cancellation`, reporting a bug a failed
+    /// read carries to `bugs`.
+    pub fn new(
+        query: impl LiveSource<T> + 'static,
+        cancellation: CancellationToken,
+        bugs: coven::task::BugSinkRef,
+    ) -> Self {
         Self {
             #[cfg(any(test, feature = "test-utils"))]
             runs: std::sync::Mutex::new(query.runs()),
             query: tokio::sync::Mutex::new(Some(Box::new(query))),
             cancellation,
+            bugs,
         }
     }
 
-    /// The next value, or why there is none.
+    /// The next value, or why there is none. A failed read that carries a
+    /// bug is reported as it arrives.
     pub async fn next(&self) -> Result<T, LiveQueryError> {
         tokio::select! {
             biased;
@@ -94,7 +104,9 @@ impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
                         query.runs();
                 }
                 match value {
-                    Some(value) => Ok(value?),
+                    Some(value) => {
+                        Ok(value.map_err(|error| coven::task::reported(self.bugs.as_ref(), error))?)
+                    }
                     None => Err(LiveQueryError::Cancelled),
                 }
             } => value,
@@ -122,3 +134,7 @@ impl<T> Drop for LiveValues<T> {
         self.cancellation.cancel();
     }
 }
+
+#[cfg(test)]
+#[path = "values_tests.rs"]
+mod tests;

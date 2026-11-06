@@ -23,7 +23,7 @@ impl Store {
     }
 
     pub async fn store_name(&self) -> Result<String, DbError> {
-        self.inner.handle.store_name().await.map_err(DbError::from)
+        self.reported(self.inner.handle.store_name().await).map_err(DbError::from)
     }
 
     pub fn subscribe_store_name(&self) -> coven::LiveQuery<String, coven::CovenError> {
@@ -33,7 +33,7 @@ impl Store {
     /// Delete the store, discarding what this device hasn't uploaded; the
     /// person confirmed that loss from [`Self::unsent_before_removal`].
     pub async fn delete_store(&self) -> Result<(), coven::StoreDeletionError> {
-        self.inner.handle.delete_store(coven::IfUnsent::Discard).await
+        self.reported(self.inner.handle.delete_store(coven::IfUnsent::Discard).await)
     }
 
     /// What deleting the store from this device loses: the writes and files
@@ -42,23 +42,20 @@ impl Store {
     /// nothing counts as unsent.
     pub async fn unsent_before_removal(&self) -> Result<coven::UnsentWork, DbError> {
         let storage = self
-            .inner
-            .handle
-            .storage_config()
-            .await
+            .reported(self.inner.handle.storage_config().await)
             .map_err(|error| DbError::from(coven::CovenError::Sync(error)))?;
         if storage.is_none() {
             return Ok(coven::UnsentWork { writes: 0, files: 0 });
         }
-        Ok(self.inner.handle.unsent_work().await?)
+        Ok(self.reported(self.inner.handle.unsent_work().await)?)
     }
 
     pub async fn storage_config(&self) -> Result<Option<coven::StorageConfig>, coven::SyncError> {
-        self.inner.handle.storage_config().await
+        self.reported(self.inner.handle.storage_config().await)
     }
 
     pub async fn pending(&self) -> Result<Vec<coven::PendingRecord>, DbError> {
-        self.inner.handle.pending().await.map_err(DbError::from)
+        self.reported(self.inner.handle.pending().await).map_err(DbError::from)
     }
 
     pub fn set_transfer_limits(&self, limits: coven::TransferLimits) {
@@ -71,7 +68,7 @@ impl Store {
 
     /// Give back the pages SQLite keeps cached that no statement is using.
     pub async fn release_memory(&self) -> Result<(), DbError> {
-        Ok(self.inner.handle.release_memory().await?)
+        Ok(self.reported(self.inner.handle.release_memory().await)?)
     }
 
     /// coven's sync state followed beside the read `rows` of the library's
@@ -93,7 +90,7 @@ impl Store {
             self.inner.handle.subscribe(move |sql| rows(sql))
         };
         crate::WithSyncState::new(
-            self.clone(),
+            self.inner.handle.clone(),
             self.inner.handle.subscribe_sync_status(),
             changes,
             rows,
@@ -110,7 +107,7 @@ impl Store {
         R: Send + 'static,
         E: From<coven::DbError> + coven::task::CarriesBug + Send + 'static,
     {
-        self.inner.handle.read(read).await
+        self.reported(self.inner.handle.read(read).await)
     }
 
     /// coven's sync state now beside one read `rows` of the library's
@@ -125,8 +122,8 @@ impl Store {
         F: FnOnce(SqlReadContext<'_>) -> Result<R, CovenError> + Send + 'static,
         R: Send + 'static,
     {
-        let state = self.inner.handle.sync_status().await?;
-        let rows = self.inner.handle.read(rows).await?;
+        let state = self.reported(self.inner.handle.sync_status().await)?;
+        let rows = self.reported(self.inner.handle.read(rows).await)?;
         Ok(make(state, rows))
     }
 
@@ -134,11 +131,11 @@ impl Store {
     /// finished and the provider client is released. A failed release is
     /// returned, and coven records it as the last pass's failure.
     pub async fn stop_sync(&self) -> Result<(), coven::SyncError> {
-        self.inner.handle.stop_sync().await
+        self.reported(self.inner.handle.stop_sync().await)
     }
 
     pub async fn close(&self) -> Result<(), coven::SyncError> {
-        self.inner.handle.close().await
+        self.reported(self.inner.handle.close().await)
     }
 
     pub fn sync_now(&self) {
@@ -148,7 +145,7 @@ impl Store {
     /// Retry now: the retry is in place once this returns, with its answer
     /// to await.
     pub async fn retry_now(&self) -> Result<coven::RetryAnswer, coven::SyncError> {
-        self.inner.handle.retry_now().await
+        self.reported(self.inner.handle.retry_now().await)
     }
 
     /// Idle passes at most `interval` apart until the guard drops.
@@ -160,11 +157,11 @@ impl Store {
         &self,
         operation: coven::OperationId,
     ) -> Result<(), coven::OperationError> {
-        self.inner.handle.retry_pending_operation(operation).await
+        self.reported(self.inner.handle.retry_pending_operation(operation).await)
     }
 
     pub async fn start_sync(&self) -> Result<(), coven::SyncError> {
-        self.inner.handle.start_sync().await
+        self.reported(self.inner.handle.start_sync().await)
     }
 
     pub async fn setup_s3_storage(
@@ -175,10 +172,12 @@ impl Store {
         secret_key: coven::SecretText,
         steps: StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
-        self.inner
-            .handle
-            .setup_s3_storage(storage, device_name, access_key, secret_key, steps)
-            .await
+        self.reported(
+            self.inner
+                .handle
+                .setup_s3_storage(storage, device_name, access_key, secret_key, steps)
+                .await,
+        )
     }
 
     /// Cancel the storage setup running on this store: before its point of
@@ -193,7 +192,12 @@ impl Store {
         device_name: &str,
         steps: StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
-        self.inner.handle.setup_cloudkit_storage("iCloud.fm.bae.desktop", device_name, steps).await
+        self.reported(
+            self.inner
+                .handle
+                .setup_cloudkit_storage("iCloud.fm.bae.desktop", device_name, steps)
+                .await,
+        )
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -201,7 +205,7 @@ impl Store {
         &self,
         access: coven::OAuthAccess,
     ) -> Result<(), coven::StorageSetupError> {
-        self.inner.handle.authenticate(access).await
+        self.reported(self.inner.handle.authenticate(access).await)
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -211,12 +215,12 @@ impl Store {
         device_name: &str,
         steps: StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
-        self.inner.handle.setup_oauth_storage(storage, device_name, steps).await
+        self.reported(self.inner.handle.setup_oauth_storage(storage, device_name, steps).await)
     }
 
     #[cfg(feature = "oauth-providers")]
     pub async fn onedrive_root(&self) -> Result<coven::StorageFolder, coven::StorageSetupError> {
-        self.inner.handle.onedrive_root().await
+        self.reported(self.inner.handle.onedrive_root().await)
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -224,7 +228,7 @@ impl Store {
         &self,
         parent: &coven::StorageConfig,
     ) -> Result<Vec<coven::StorageFolder>, coven::StorageSetupError> {
-        self.inner.handle.onedrive_folders(parent).await
+        self.reported(self.inner.handle.onedrive_folders(parent).await)
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -233,41 +237,41 @@ impl Store {
         parent: &coven::StorageConfig,
         name: &str,
     ) -> Result<coven::StorageFolder, coven::StorageSetupError> {
-        self.inner.handle.create_onedrive_folder(parent, name).await
+        self.reported(self.inner.handle.create_onedrive_folder(parent, name).await)
     }
 
     #[cfg(feature = "oauth-providers")]
     pub async fn dropbox_shared_folders(
         &self,
     ) -> Result<Vec<coven::StorageFolder>, coven::StorageSetupError> {
-        self.inner.handle.dropbox_shared_folders().await
+        self.reported(self.inner.handle.dropbox_shared_folders().await)
     }
 
     pub fn store_key_state(&self) -> Result<coven::StoreKeyState, coven::KeyError> {
-        self.inner.handle.store_key_state()
+        self.reported(self.inner.handle.store_key_state())
     }
 
     pub async fn unlock_store_key(
         &self,
     ) -> Result<coven::ConnectedStorage, coven::StoreKeyUnlockError> {
-        self.inner.handle.unlock_store_key().await
+        self.reported(self.inner.handle.unlock_store_key().await)
     }
 
     pub async fn forget_store_keys(&self) -> Result<(), coven::KeyError> {
-        self.inner.handle.forget_store_keys().await
+        self.reported(self.inner.handle.forget_store_keys().await)
     }
 
     pub fn host_secret(&self, name: &str) -> Result<Option<String>, coven::KeyError> {
-        self.inner.handle.host_secret(name)
+        self.reported(self.inner.handle.host_secret(name))
     }
 
     pub fn set_host_secret(&self, name: &str, value: &str) -> Result<(), coven::KeyError> {
-        self.inner.handle.set_host_secret(name, value)
+        self.reported(self.inner.handle.set_host_secret(name, value))
     }
 
     #[cfg(desktop)]
     pub fn delete_host_secret(&self, name: &str) -> Result<(), coven::KeyError> {
-        self.inner.handle.delete_host_secret(name)
+        self.reported(self.inner.handle.delete_host_secret(name))
     }
 
     /// This device's id in the store, which a file on one device only names
@@ -278,7 +282,7 @@ impl Store {
 
     /// coven's record of the file `file`, as this device reads it now.
     pub async fn file_ref(&self, file: coven::FileId) -> Result<coven::FileRef, DbError> {
-        Ok(self.inner.handle.file_ref(file).await?)
+        Ok(self.reported(self.inner.handle.file_ref(file).await)?)
     }
 
     /// The original coven records on this device for `file`: the person's
@@ -286,18 +290,19 @@ impl Store {
     /// wrote.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn user_file(&self, file: coven::FileId) -> Result<Option<coven::UserFile>, DbError> {
-        Ok(self.inner.handle.user_file(file).await?)
+        Ok(self.reported(self.inner.handle.user_file(file).await)?)
     }
 
     pub async fn read_file(&self, file: &coven::FileRef) -> Result<Vec<u8>, coven::FileReadError> {
-        self.inner.handle.read_file(file).await
+        self.reported(self.inner.handle.read_file(file).await)
     }
 
     pub async fn open_file_stream(
         &self,
         file: &coven::FileRef,
-    ) -> Result<coven::FileStream, coven::FileReadError> {
-        self.inner.handle.open_file_stream(file).await
+    ) -> Result<crate::FileStream, coven::FileReadError> {
+        let stream = self.reported(self.inner.handle.open_file_stream(file).await)?;
+        Ok(crate::FileStream::new(stream, self.inner.bugs.clone()))
     }
 
     /// Download these cloud files to their paths under `folder`, for a write
@@ -312,11 +317,13 @@ impl Store {
         cancel: &tokio::sync::watch::Receiver<bool>,
         on_progress: impl Fn(coven::Progress<coven::DeviceOnlyStep>),
     ) -> Result<coven::PreparedDeviceOnly, coven::DeviceOnlyError> {
-        self.inner.handle.prepare_device_only(folder, files, cancel, on_progress).await
+        self.reported(
+            self.inner.handle.prepare_device_only(folder, files, cancel, on_progress).await,
+        )
     }
 
     pub async fn pin(&self, files: &[coven::FileRef]) -> Result<(), coven::FileReadError> {
-        self.inner.handle.pin(files).await
+        self.reported(self.inner.handle.pin(files).await)
     }
 
     /// How far each file this process is downloading to keep whole has got,
@@ -326,25 +333,25 @@ impl Store {
     }
 
     pub async fn unpin(&self, files: &[coven::FileId]) -> Result<(), DbError> {
-        self.inner.handle.unpin(files).await.map_err(DbError::from)
+        self.reported(self.inner.handle.unpin(files).await).map_err(DbError::from)
     }
 
     pub async fn files_pinned(
         &self,
         files: &[coven::FileId],
     ) -> Result<Vec<Option<bool>>, DbError> {
-        self.inner.handle.files_pinned(files).await.map_err(DbError::from)
+        self.reported(self.inner.handle.files_pinned(files).await).map_err(DbError::from)
     }
 
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn evict_file(&self, file: coven::FileId) -> Result<(), DbError> {
-        self.inner.handle.evict_file(file).await.map_err(DbError::from)
+        self.reported(self.inner.handle.evict_file(file).await).map_err(DbError::from)
     }
 
     /// coven's whole upload queue, for a test's drain to count what left it.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn uploads(&self) -> Result<coven::UploadQueue, DbError> {
-        self.inner.handle.uploads().await.map_err(DbError::from)
+        self.reported(self.inner.handle.uploads().await).map_err(DbError::from)
     }
 
     /// Whether the person paused uploads now.
@@ -365,19 +372,19 @@ impl Store {
     }
 
     pub async fn set_uploads_paused(&self, paused: bool) -> Result<(), DbError> {
-        self.inner.handle.set_uploads_paused(paused).await.map_err(DbError::from)
+        self.reported(self.inner.handle.set_uploads_paused(paused).await).map_err(DbError::from)
     }
 
     pub async fn retry_uploads_now(&self) -> Result<coven::DrainOutcome, coven::SyncError> {
-        self.inner.handle.retry_uploads_now().await
+        self.reported(self.inner.handle.retry_uploads_now().await)
     }
 
     pub async fn generate_restore_code(&self) -> Result<String, coven::SyncError> {
-        self.inner.handle.restore_code().await
+        self.reported(self.inner.handle.restore_code().await)
     }
 
     pub async fn restore_code_for_transfer(&self) -> Result<String, coven::SyncError> {
-        self.inner.handle.restore_code_for_transfer().await
+        self.reported(self.inner.handle.restore_code_for_transfer().await)
     }
 
     /// Invite a new person: the write journals the invite, offline too,
@@ -389,11 +396,12 @@ impl Store {
         access: coven::InviteAccess,
         delivery: coven::InviteDelivery,
     ) -> Result<coven::InviteId, coven::SyncError> {
-        let (invite, _member, _operation) = self
-            .inner
-            .handle
-            .create_invite(coven::InviteTarget::NewMember { role, name }, access, delivery)
-            .await?;
+        let (invite, _member, _operation) = self.reported(
+            self.inner
+                .handle
+                .create_invite(coven::InviteTarget::NewMember { role, name }, access, delivery)
+                .await,
+        )?;
         Ok(invite)
     }
 
@@ -401,11 +409,11 @@ impl Store {
         &self,
         request: &coven::JoinRequest,
     ) -> Result<(), coven::SyncError> {
-        self.inner.handle.decline_join_request(request).await
+        self.reported(self.inner.handle.decline_join_request(request).await)
     }
 
     pub async fn cancel_invite(&self, invite: &coven::InviteId) -> Result<(), coven::SyncError> {
-        self.inner.handle.cancel_invite(invite).await
+        self.reported(self.inner.handle.cancel_invite(invite).await)
     }
 
     pub async fn detect_s3_settings(
@@ -413,9 +421,15 @@ impl Store {
         storage: coven::StorageConfig,
         credentials: coven::S3Credentials,
     ) -> Result<coven::S3Detection, coven::StorageSetupError> {
-        self.inner
-            .handle
-            .detect_s3_settings(storage, credentials.access_key_id, credentials.secret_access_key)
-            .await
+        self.reported(
+            self.inner
+                .handle
+                .detect_s3_settings(
+                    storage,
+                    credentials.access_key_id,
+                    credentials.secret_access_key,
+                )
+                .await,
+        )
     }
 }

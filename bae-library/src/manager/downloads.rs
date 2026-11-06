@@ -24,8 +24,7 @@ impl LibraryManager {
             Ok(true) => self.downloads.queued(),
             Ok(false) => debug!("enqueue_pins: nothing to pin"),
             Err(error) => {
-                self.diagnostics
-                    .report_bug("queue releases to pin", &bae_util::error_text::CauseChain(&error));
+                self.diagnostics.report_failure("queue releases to pin", &error);
                 return Err(error.into());
             }
         }

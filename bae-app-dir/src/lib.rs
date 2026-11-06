@@ -166,20 +166,24 @@ impl AppDir {
 
     /// The libraries registered on this device, the active one first, then by
     /// name, each with whether it opens: the stores `coven`, this
-    /// directory's installation, lists.
+    /// directory's installation, lists. A bug coven's listing or a library's
+    /// settings read carries back is reported to `bugs`, the crash reporter.
     pub async fn discover_libraries(
         &self,
         coven: &coven::Coven,
+        bugs: &dyn coven::task::BugSink,
     ) -> Result<Vec<LibraryInfo>, AppDirError> {
         let active_id = self.active_library_id()?;
         let mut libraries = Vec::new();
-        for listed in coven.stores().await? {
+        let listed = coven.stores().await.map_err(|error| coven::task::reported(bugs, error))?;
+        for listed in listed {
             // Sentinel: S-2's bae half lists an unreadable library beside the
             // others once the person settles what its row's title shows; until
             // then one fails the listing, as it did before coven listed it.
             let store = match listed {
                 coven::ListedStore::Readable(store) => store,
                 coven::ListedStore::Unreadable { id, reason } => {
+                    coven::task::report_carried(bugs, &reason);
                     return Err(AppDirError::UnreadableStore {
                         store: id,
                         reason: Box::new(reason),
@@ -190,7 +194,10 @@ impl AppDir {
                 // Whatever its settings say, only finishing the call opens it.
                 Some(coven::Unfinished::Replacement(by)) => LibraryState::ReplacementUnfinished(by),
                 Some(coven::Unfinished::Deletion) => LibraryState::DeletionUnfinished,
-                None => match coven::Coven::storage_config(&coven.store_dir(&store.id)).await {
+                None => match coven::Coven::storage_config(&coven.store_dir(&store.id))
+                    .await
+                    .map_err(|error| coven::task::reported(bugs, error))
+                {
                     Ok(storage) => LibraryState::Openable(storage),
                     Err(error) => {
                         tracing::warn!(store = %store.id, %error, "a library's settings can't be read");
@@ -321,6 +328,20 @@ pub enum AppDirError {
     Stores(Box<coven::StoreListError>),
     #[error("library {store} can't be read: {reason}")]
     UnreadableStore { store: coven::StoreId, reason: Box<coven::CovenError> },
+}
+
+/// The bug a coven call this directory's work made carried back, which its
+/// caller reported as it returned.
+impl coven::task::CarriesBug for AppDirError {
+    fn bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Invalid(_) => None,
+            Self::Io(error) => error.bug(),
+            Self::File(error) => error.bug(),
+            Self::Stores(error) => error.bug(),
+            Self::UnreadableStore { reason, .. } => reason.bug(),
+        }
+    }
 }
 
 impl From<coven::StoreListError> for AppDirError {

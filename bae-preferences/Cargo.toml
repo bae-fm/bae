@@ -23,6 +23,8 @@ bae-catalogs = { workspace = true }
 bae-store = { workspace = true }
 # The error categories a failed preference write is shown as.
 bae-diagnostics = { workspace = true }
+# Whether a failed read or write holds a bug already reported.
+bae-util = { workspace = true }
 # The store's id, its transfer limits, and its read and write contexts.
 coven = { workspace = true }
 rusqlite = { workspace = true }

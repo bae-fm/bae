@@ -450,7 +450,7 @@ impl Driver {
             {
                 self.inner
                     .diagnostics
-                    .report_bug(&format!("store what {key}'s run {run:?} published"), &error);
+                    .report_failure(&format!("store what {key}'s run {run:?} published"), &error);
             }
             return;
         };
@@ -461,7 +461,7 @@ impl Driver {
                 if let Err(error) = candidates.run_ended(key, run).await {
                     self.inner
                         .diagnostics
-                        .report_bug(&format!("record that {key}'s run {run:?} ended"), &error);
+                        .report_failure(&format!("record that {key}'s run {run:?} ended"), &error);
                 }
             }
             (RunStanding::NotStarted, _) => match candidates
@@ -481,9 +481,10 @@ impl Driver {
                 // The run cannot say where it stands, so it breaks: its
                 // answer says why, and the bug is reported.
                 Err(error) => {
-                    self.inner
-                        .diagnostics
-                        .report_bug(&format!("record that {key}'s run {run:?} started"), &error);
+                    self.inner.diagnostics.report_failure(
+                        &format!("record that {key}'s run {run:?} started"),
+                        &error,
+                    );
                     *standing = RunStanding::Unheld;
                     emit_step(
                         &self.event_tx,
@@ -509,10 +510,10 @@ impl Driver {
                     // No caller waits on the driver to hear it: a bug. The
                     // table still names the run, so its answer, below, still
                     // moves it.
-                    Err(error) => self
-                        .inner
-                        .diagnostics
-                        .report_bug(&format!("store what {key}'s run {run:?} published"), &error),
+                    Err(error) => self.inner.diagnostics.report_failure(
+                        &format!("store what {key}'s run {run:?} published"),
+                        &error,
+                    ),
                 }
                 if state.is_terminal() {
                     self.record_answer(state, standing).await;
@@ -537,7 +538,7 @@ impl Driver {
             Err(error) => self
                 .inner
                 .diagnostics
-                .report_bug(&format!("record that {key}'s run {run:?} answered"), &error),
+                .report_failure(&format!("record that {key}'s run {run:?} answered"), &error),
         }
     }
 }

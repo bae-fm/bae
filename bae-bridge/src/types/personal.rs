@@ -179,6 +179,6 @@ impl From<bae_people::collections::CollectionError> for BridgeError {
 }
 impl From<bae_store::DbError> for BridgeError {
     fn from(error: bae_store::DbError) -> Self {
-        Self::database(error)
+        Self::categorized(bae_diagnostics::database_category(&error), error)
     }
 }

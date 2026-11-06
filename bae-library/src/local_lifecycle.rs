@@ -105,7 +105,7 @@ impl UnfinishedRemoval {
         if records.is_empty() {
             return Ok(None);
         }
-        let listed = listed_stores(coven).await?;
+        let listed = listed_stores(coven, diagnostics).await?;
         let (not_removed, files_remain): (Vec<_>, Vec<_>) =
             records.into_iter().partition(|id| listed.contains(id));
         for &id in &not_removed {
@@ -142,7 +142,7 @@ pub async fn finish_removals(
     }
     let total = records.len() as u64;
     finished(0, total);
-    let listed = listed_stores(coven).await?;
+    let listed = listed_stores(coven, diagnostics).await?;
     for (done, id) in (1..).zip(records) {
         if !listed.contains(&id) {
             delete_library_files(app_dir, diagnostics, id).await?;
@@ -209,17 +209,26 @@ pub async fn finish_deletion(
 /// store just long enough to count, as
 /// [`crate::LibraryManager::unsent_before_removal`] does for an open
 /// one. The open reports its steps to `on_open_progress`, as any open does.
+///
+/// The open, and the store's calls, report a bug they carry back to
+/// `diagnostics`.
 pub async fn unsent_before_removal(
     builder: coven::CovenBuilder,
     store: coven::StoreId,
     on_open_progress: impl Fn(coven::Progress<coven::OpenStep>),
+    diagnostics: &Diagnostics,
 ) -> Result<coven::UnsentWork, LibraryError> {
-    let handle =
-        bae_store::configure_store(builder, crate::SCHEMA).open(store, on_open_progress).await?;
-    let unsent = bae_store::Store::new(handle.clone(), std::sync::Arc::new(coven::SystemClock))
-        .unsent_before_removal()
-        .await;
-    let closed = handle.close().await;
+    let handle = bae_store::configure_store(builder, crate::SCHEMA)
+        .open(store, on_open_progress)
+        .await
+        .map_err(|error| bae_store::DbError::from(coven::task::reported(diagnostics, error)))?;
+    let store = bae_store::Store::new(
+        handle,
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(diagnostics.clone()),
+    );
+    let unsent = store.unsent_before_removal().await;
+    let closed = store.close().await;
     let unsent = unsent?;
     closed?;
     Ok(unsent)
@@ -229,7 +238,7 @@ pub async fn unsent_before_removal(
 /// files and the record, telling `steps` as leaving and deleting start. A
 /// delete that fails closing the store after this device left it is finished
 /// by `coven` discarding the closed store. A refused delete clears the record
-/// again.
+/// again. A bug coven's calls carry back is reported to `diagnostics`.
 pub(crate) async fn remove_recorded(
     app_dir: &AppDir,
     coven: &coven::Coven,
@@ -242,13 +251,18 @@ pub(crate) async fn remove_recorded(
         RemovalLock::acquire(app_dir, diagnostics).await.map_err(LibraryRemovalError::Record)?;
     write_record(app_dir, diagnostics, store_id).await.map_err(LibraryRemovalError::Record)?;
     steps(super::ClosingStep::LeavingLibrary);
-    let deleted = match delete_store.await {
+    let deleted = match delete_store
+        .await
+        .map_err(|error| coven::task::reported(diagnostics, error))
+    {
         Err(coven::StoreDeletionError::Closing(closing)) => {
             warn!(%store_id, %closing, "closing the store failed after this device left it; discarding the closed store");
-            coven
-                .discard_store(&coven.store_dir(&store_id))
-                .await
-                .map_err(|discard| LibraryRemovalError::Closing { closing, discard })
+            coven.discard_store(&coven.store_dir(&store_id)).await.map_err(|discard| {
+                LibraryRemovalError::Closing {
+                    closing,
+                    discard: coven::task::reported(diagnostics, discard),
+                }
+            })
         }
         deleted => deleted.map_err(LibraryRemovalError::Store),
     };
@@ -333,11 +347,14 @@ pub(crate) mod removal_lock_waits {
     }
 }
 
-async fn listed_stores(coven: &coven::Coven) -> Result<HashSet<coven::StoreId>, LibraryError> {
+async fn listed_stores(
+    coven: &coven::Coven,
+    diagnostics: &Diagnostics,
+) -> Result<HashSet<coven::StoreId>, LibraryError> {
     Ok(coven
         .stores()
         .await
-        .map_err(AppDirError::from)?
+        .map_err(|error| AppDirError::from(coven::task::reported(diagnostics, error)))?
         .into_iter()
         .map(|store| store.id())
         .collect())

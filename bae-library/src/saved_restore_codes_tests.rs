@@ -55,6 +55,7 @@ async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
     let offered = restorable_codes(
         vec![code(here), unreadable(here), code(elsewhere), unreadable(unreadable_elsewhere)],
         &installation,
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
