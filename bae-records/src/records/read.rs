@@ -66,7 +66,7 @@ pub fn row_to_library_credit(row: &Row) -> rusqlite::Result<LibraryCredit> {
 
 /// The join of a credit row `credit` (an `album_artists` or `track_artists`
 /// row) to the other printed name it names, if any, as `name`.
-pub(super) fn credit_name_join(credit: &str, name: &str) -> String {
+pub fn credit_name_join(credit: &str, name: &str) -> String {
     format!(
         "LEFT JOIN artist_credits {name} \
              ON {name}.artist_id = {credit}.artist_id AND {name}.name_key = {credit}.credit_key"

@@ -656,10 +656,9 @@ fn assignments_json_sql(table: &str, belongs: &str) -> String {
              ORDER BY assignment.position) \
          FROM {table} AS assignment \
          LEFT JOIN artists picked ON picked.id = assignment.artist_id \
-         LEFT JOIN artist_credits picked_credit \
-             ON picked_credit.artist_id = assignment.artist_id \
-            AND picked_credit.name_key = assignment.credit_key \
-         WHERE {belongs})"
+         {credit_name} \
+         WHERE {belongs})",
+        credit_name = bae_records::records::read::credit_name_join("assignment", "picked_credit"),
     )
 }
 
