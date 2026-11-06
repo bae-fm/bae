@@ -115,6 +115,12 @@ pub struct CandidateFileEdits {
 }
 
 impl CandidateFileEdits {
+    /// Whether these decisions stand at `revision`: the one a candidate, a
+    /// verdict or a write read them at.
+    pub fn is_at_revision(&self, revision: u64) -> bool {
+        self.revision == revision
+    }
+
     pub fn is_empty(&self) -> bool {
         self.sheet_bindings.is_empty() && self.sheet_discs.is_empty()
     }

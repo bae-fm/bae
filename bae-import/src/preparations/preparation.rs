@@ -53,7 +53,7 @@ impl CandidateAsRead {
         prep: &CandidatePreparation,
         write: CandidateWrite,
     ) -> Result<(), crate::ImportError> {
-        if prep.file_edits.revision != self.file_edit_revision {
+        if !prep.file_edits.is_at_revision(self.file_edit_revision) {
             return Err(Self::files_moved(self.file_edit_revision, write));
         }
         if prep.metadata_revision != self.metadata_revision {

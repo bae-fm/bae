@@ -166,7 +166,7 @@ impl ImportService {
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: format!("{candidate_key} has no stored import preparation"),
                 })?;
-        if preparation.file_edits.revision != expected_edit_revision
+        if !preparation.file_edits.is_at_revision(expected_edit_revision)
             || preparation.metadata_revision != expectation.candidate.metadata_revision
         {
             return Err(crate::ImportError::Internal {

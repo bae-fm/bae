@@ -284,7 +284,7 @@ impl ImportServiceHandle {
     ) -> Result<DraftEditBase, crate::ImportError> {
         let (candidate, preparation) = self.metadata_write_base(candidate_key).await?;
         let hash = candidate.files.content_hash();
-        if preparation.file_edits.revision != candidate.file_edit_revision {
+        if !preparation.file_edits.is_at_revision(candidate.file_edit_revision) {
             return Err(crate::ImportError::Internal {
                 detail: format!("{candidate_key} changed before its edit was prepared"),
             });

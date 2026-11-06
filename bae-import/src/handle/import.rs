@@ -179,7 +179,7 @@ impl ImportServiceHandle {
             crate::preparations::stored_preparation(&self.services.tables, &content_hash)
                 .await?
                 .filter(|preparation| {
-                    preparation.file_edits.revision == candidate.file_edit_revision
+                    preparation.file_edits.is_at_revision(candidate.file_edit_revision)
                 })
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: format!(

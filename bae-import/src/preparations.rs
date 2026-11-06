@@ -111,7 +111,7 @@ impl CandidatePreparations {
         let Some(mut prep) = self.load_stored(&verdict.content_hash).await? else {
             return Ok(None);
         };
-        if prep.file_edits.revision != verdict.file_edit_revision {
+        if !prep.file_edits.is_at_revision(verdict.file_edit_revision) {
             return Ok(None);
         }
         let expected = CandidateSaveExpectation {

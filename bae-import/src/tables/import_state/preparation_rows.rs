@@ -356,7 +356,7 @@ pub(super) fn save_preparation_on(
         let scanned = expected.scanned.as_ref().ok_or_else(|| {
             DbError::Message("a file-tag snapshot is stored under a scanned candidate key".into())
         })?;
-        if snapshot.file_edit_revision != prep.file_edits.revision
+        if !prep.file_edits.is_at_revision(snapshot.file_edit_revision)
             || Some(snapshot.scan_generation) != scan_generation
             || !super::folder_scans::tag_snapshot::replace_candidate_file_tag_snapshot_on(
                 sql,

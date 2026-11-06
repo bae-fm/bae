@@ -151,7 +151,7 @@ impl CandidatePreparations {
                 "the metadata edit for {content_hash} has no candidate state row"
             ))
         })?;
-        if prep.file_edits.revision != expected_file_edit_revision {
+        if !prep.file_edits.is_at_revision(expected_file_edit_revision) {
             return Err(CandidateAsRead::files_moved(
                 expected_file_edit_revision,
                 CandidateWrite::PaneEdit,

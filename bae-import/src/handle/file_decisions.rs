@@ -210,14 +210,14 @@ impl ImportServiceHandle {
         let preparation =
             crate::preparations::stored_preparation(&self.services.tables, &content_hash)
                 .await?
-                .filter(|preparation| preparation.file_edits.revision == expected_revision)
+                .filter(|preparation| preparation.file_edits.is_at_revision(expected_revision))
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: format!(
                 "{candidate_key} has no complete preparation for file revision {expected_revision}"
             ),
                 })?;
         let mut edits = self.services.tables.load_candidate_file_edits(&content_hash).await?;
-        if edits.revision != expected_revision {
+        if !edits.is_at_revision(expected_revision) {
             return Err(crate::ImportError::Internal {
                 detail: format!(
                     "{candidate_key} file decisions changed from revision {expected_revision}"

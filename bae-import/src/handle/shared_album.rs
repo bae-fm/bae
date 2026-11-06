@@ -36,7 +36,7 @@ impl ImportServiceHandle {
             .tables
             .load_import_candidate_state(&content_hash)
             .await?
-            .filter(|state| state.file_edits.revision == candidate.file_edit_revision)
+            .filter(|state| state.file_edits.is_at_revision(candidate.file_edit_revision))
             .ok_or_else(|| crate::ImportError::Internal {
                 detail: format!("{candidate_key} has no state for its files as they stand"),
             })?;

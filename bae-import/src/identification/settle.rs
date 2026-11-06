@@ -221,7 +221,7 @@ async fn lead_metadata(
     };
     // Files decided otherwise since the run read them make this an answer
     // for files the candidate no longer has.
-    if current.file_edits.revision != candidate.file_edit_revision {
+    if !current.file_edits.is_at_revision(candidate.file_edit_revision) {
         return Err(Settled::Abandoned);
     }
     let source_draft = release

@@ -98,7 +98,8 @@ pub(super) fn load_candidate_detail_on(
     let state =
         load_states_on(sql, crate::tables::import_state::CandidateRows::One(&content_hash))?
             .remove(&content_hash);
-    let current = state.filter(|state| state.file_edits.revision == candidate.file_edit_revision);
+    let current =
+        state.filter(|state| state.file_edits.is_at_revision(candidate.file_edit_revision));
     // An imported candidate holds no draft: its pane reads the library
     // release, and the folder's files from its scan.
     let stage = match imported {
