@@ -260,7 +260,7 @@ impl StoredColumns {
 }
 
 /// Why the last attempt to start sync failed, while that stands.
-pub fn start_failure_on(sql: &SqlReadContext<'_>) -> Result<Option<UiError>, DbError> {
+pub(super) fn start_failure_on(sql: &SqlReadContext<'_>) -> Result<Option<UiError>, DbError> {
     let row = sql
         .query_row(
             "SELECT category, storage_failure, own_bucket_reason, required_access, \
@@ -285,7 +285,7 @@ pub fn start_failure_on(sql: &SqlReadContext<'_>) -> Result<Option<UiError>, DbE
         .transpose()
 }
 
-impl Database {
+impl SyncStatus {
     /// Record why starting sync failed, or with `None` that no failed start
     /// stands any more.
     pub async fn record_sync_start_failure(&self, failure: Option<UiError>) -> Result<(), DbError> {
@@ -326,5 +326,5 @@ impl Database {
 }
 
 #[cfg(test)]
-#[path = "sync_start_failure_tests.rs"]
+#[path = "start_failure_tests.rs"]
 mod tests;

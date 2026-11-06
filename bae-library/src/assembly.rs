@@ -5,9 +5,9 @@
 //! the catalog sessions and the closing token — and passes them by name.
 
 use crate::{CancellationToken, LibraryManager};
-use bae_db::Database;
 use bae_diagnostics::Diagnostics;
 use bae_store::{DbError, Store};
+use bae_sync_status::SyncStatus;
 use coven::{ClockRef, IdSourceRef};
 
 /// Open the library manager over the library's store, with the services it
@@ -17,7 +17,7 @@ pub async fn open_library_manager(
     records: bae_records::Records,
     people: bae_people::People,
     membership: bae_people::Membership,
-    database: Database,
+    sync_status: SyncStatus,
     #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
     closing: CancellationToken,
     app_dir: bae_app_dir::AppDir,
@@ -37,7 +37,7 @@ pub async fn open_library_manager(
         records,
         people,
         membership,
-        database,
+        sync_status,
         app_dir,
         clock,
         ids,

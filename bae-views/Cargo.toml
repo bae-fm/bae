@@ -18,7 +18,7 @@ path = "src/lib.rs"
 bae-catalogs = { workspace = true }
 # The store the views read, its records, list windows and live queries, and
 # the sync status the activity indicator shows.
-bae-db = { workspace = true }
+bae-sync-status = { workspace = true }
 bae-store = { workspace = true }
 bae-records = { workspace = true }
 # The error a sync failure shows.
@@ -40,7 +40,7 @@ tokio = { workspace = true, features = ["sync"] }
 [dev-dependencies]
 # Test databases with bae's schema, the rows db's fixtures seed them with,
 # and two stores syncing over shared storage.
-bae-db = { workspace = true, features = ["test-utils"] }
+bae-sync-status = { workspace = true, features = ["test-utils"] }
 bae-store = { workspace = true, features = ["test-utils"] }
 bae-people = { workspace = true, features = ["test-utils"] }
 bae-records = { workspace = true, features = ["test-utils"] }

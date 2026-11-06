@@ -517,7 +517,7 @@ fn work_detail_conversion_preserves_work_release_rows() {
 fn a_failed_sync_status_crosses_with_its_fault() {
     let fault = "sync cycle: pull Store commits: database: retained Merge replay \
                  has an unresolved foreign-key dependency";
-    let snapshot = bae_db::SyncStatusSnapshot {
+    let snapshot = bae_sync_status::SyncStatusSnapshot {
         error: Some(bae_diagnostics::UiError::internal(fault)),
         coven: coven::SyncStatus { state: coven::SyncState::NotSynced, last_synced: None },
         pending: Vec::new(),
@@ -537,7 +537,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
 /// A healthy cycle carries no error, so no surface renders a failure for it.
 #[test]
 fn a_healthy_sync_status_crosses_without_an_error() {
-    let snapshot = bae_db::SyncStatusSnapshot {
+    let snapshot = bae_sync_status::SyncStatusSnapshot {
         error: None,
         coven: coven::SyncStatus { state: coven::SyncState::Synced, last_synced: None },
         pending: Vec::new(),
@@ -555,7 +555,7 @@ fn a_healthy_sync_status_crosses_without_an_error() {
 /// Reconnect offered beside it.
 #[test]
 fn a_failed_start_crosses_offering_reconnect() {
-    let snapshot = bae_db::SyncStatusSnapshot {
+    let snapshot = bae_sync_status::SyncStatusSnapshot {
         error: Some(bae_diagnostics::UiError::internal("the store key is missing")),
         coven: coven::SyncStatus { state: coven::SyncState::Synced, last_synced: None },
         pending: Vec::new(),
@@ -574,7 +574,7 @@ fn a_failed_start_crosses_offering_reconnect() {
 #[test]
 fn a_failure_its_record_shows_crosses_only_as_the_record() {
     let failure = coven::StorageFailure::Protocol;
-    let snapshot = bae_db::SyncStatusSnapshot {
+    let snapshot = bae_sync_status::SyncStatusSnapshot {
         error: None,
         coven: coven::SyncStatus {
             state: coven::SyncState::Failed(coven::SyncCause::Pass(coven::LastPass::Failed {
@@ -583,7 +583,7 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
             })),
             last_synced: None,
         },
-        pending: vec![bae_db::PendingItem::before_open(coven::PendingRecord::new(
+        pending: vec![bae_sync_status::PendingItem::before_open(coven::PendingRecord::new(
             coven::PendingSubject::Connection,
             coven::PendingReason::Storage {
                 provider: coven::CloudProvider::S3,

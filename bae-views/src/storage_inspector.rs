@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::album_detail::{FileDetail, FilePin, ReleaseUpload};
-use bae_db::PendingWait;
+use bae_sync_status::PendingWait;
 use bae_transfers::ReleaseQueueState;
 use bae_transfers::{DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
 use coven::UploadPhase;

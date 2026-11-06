@@ -339,7 +339,7 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     })
     .await;
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    let retry = bae_db::PendingAction::RetryDownload { release_id: release_id.clone() };
+    let retry = bae_sync_status::PendingAction::RetryDownload { release_id: release_id.clone() };
     pending_list_until(&mut values, |items| items.iter().any(|item| item.wait.action == retry))
         .await;
 

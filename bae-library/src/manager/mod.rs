@@ -20,13 +20,13 @@ use tracing::{debug, warn};
 #[cfg(desktop)]
 use crate::save::SaveService;
 use crate::sync::S3ConfigData;
-use bae_db::Database;
 use bae_diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use bae_records::GallerySource;
 #[cfg(desktop)]
 use bae_records::{DbAlbum, DbArtist};
 use bae_records::{DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef, LibraryImageType};
 use bae_store::Store;
+use bae_sync_status::SyncStatus;
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::task_failure::{blocking, caught, joined, Bug, TaskFailed};
 use coven::ClockRef;
@@ -440,7 +440,7 @@ pub struct LibraryManager {
     records: bae_records::Records,
     people: bae_people::People,
     membership: bae_people::Membership,
-    database: Database,
+    sync_status: SyncStatus,
     /// The app directory this library is registered under: where renaming
     /// another library finds it, where the active-library pointer is written,
     /// and where forgetting this library removes it from.

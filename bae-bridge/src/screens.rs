@@ -319,7 +319,7 @@ pulled_read! {
 pulled_read! {
     /// What sync is doing, what it waits on, and why a start failed.
     SyncStatusSubscription:
-        LiveValues<bae_db::SyncStatusSnapshot> => crate::types::BridgeSyncStatusSnapshot,
+        LiveValues<bae_sync_status::SyncStatusSnapshot> => crate::types::BridgeSyncStatusSnapshot,
     converted by crate::types::BridgeSyncStatusSnapshot::from_core,
     built by sync_status
 }

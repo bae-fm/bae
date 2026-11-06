@@ -25,7 +25,7 @@ bae-app = { workspace = true }
 bae-library = { workspace = true }
 bae-app-dir = { workspace = true }
 # The library's records and the store the bridge mirrors.
-bae-db = { workspace = true }
+bae-sync-status = { workspace = true }
 bae-store = { workspace = true }
 bae-people = { workspace = true }
 bae-records = { workspace = true }

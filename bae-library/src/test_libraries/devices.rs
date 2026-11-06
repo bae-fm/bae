@@ -8,9 +8,9 @@ use tempfile::TempDir;
 
 use crate::LibraryManager;
 use bae_app_dir::AppDir;
-use bae_db::Database;
 use bae_store::test_devices::{self as stores, SyncCycles};
 use bae_store::Store;
+use bae_sync_status::SyncStatus;
 
 pub struct TestDevice {
     library: RunningLibrary,
@@ -30,7 +30,7 @@ struct RunningLibrary {
     records: bae_records::Records,
     people: bae_people::People,
     membership: bae_people::Membership,
-    database: Database,
+    sync_status: SyncStatus,
     cycles: SyncCycles,
 }
 
@@ -57,8 +57,10 @@ impl TestDevice {
         &self.library.membership
     }
 
-    pub fn database(&self) -> &Database {
-        &self.library.database
+    /// The device's SyncStatus owner, distinct from `LibraryManager::sync_status()`,
+    /// which reads the sync status.
+    pub fn sync_status_owner(&self) -> &SyncStatus {
+        &self.library.sync_status
     }
 
     /// Stop the device's sync loop: the pass running ends first, and once
@@ -288,7 +290,7 @@ impl RunningLibrary {
             records: library.records().clone(),
             people: library.people_owner().clone(),
             membership: library.membership().clone(),
-            database: library.database().clone(),
+            sync_status: library.sync_status_owner().clone(),
             cycles,
         }
     }

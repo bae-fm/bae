@@ -26,7 +26,7 @@ crate_order = [
     "bae-store",
     "bae-records",
     "bae-people",
-    "bae-db",
+    "bae-sync-status",
     "bae-preferences",
     "bae-track-audio",
     "bae-identify",
@@ -70,7 +70,6 @@ capability_types = [
     # every store opens with.
     "Coven",
     "CovenHandle",
-    "Database",
     "Diagnostics",
     "DiagnosticsTransport",
     "DiscogsClient",
@@ -388,11 +387,11 @@ ImageHold = "RemoteImageHost"
 # compile, so the checker reads it as production code.
 "bae-library/src/test_libraries/devices.rs" = [
     "TestDevice::manager",
-    "TestDevice::database",
     "TestDevice::store",
     "TestDevice::records",
     "TestDevice::people_owner",
     "TestDevice::membership",
+    "TestDevice::sync_status_owner",
     "TwoDevices::a",
     "TwoDevices::b",
     "TwoDevices::a_mut",
@@ -407,11 +406,11 @@ ImageHold = "RemoteImageHost"
 # compile, so the checker reads it as production code.
 "bae-library/src/test_libraries.rs" = [
     "TestLibrary::deref",
-    "TestLibrary::database",
     "TestLibrary::store",
     "TestLibrary::records",
     "TestLibrary::people_owner",
     "TestLibrary::membership",
+    "TestLibrary::sync_status_owner",
     "TestLibrary::catalogs",
     "TestLibrary::closing",
     "TestLibrary::clock",

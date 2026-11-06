@@ -582,7 +582,7 @@ impl ImportTables {
 /// [`crate::CandidatePreparations::store_verdict`]. Every outcome,
 /// failed included, becomes one `import_candidate_verdict` row. Their timestamp
 /// is stamped by the write path from the injected clock, the same convention as
-/// `created_at` in bae-db's row writers: a timestamp that
+/// `created_at` in bae-records' row writers: a timestamp that
 /// records "when this write happened" is the DB layer's to assign, not data a
 /// caller hands in.
 ///

@@ -119,8 +119,8 @@ check "clippy (bae-records + test-utils)" \
   scripts/cargo.sh clippy -p bae-records --tests --features bae-records/test-utils -- -D warnings
 check "clippy (bae-people + test-utils)" \
   scripts/cargo.sh clippy -p bae-people --tests --features bae-people/test-utils -- -D warnings
-check "clippy (bae-db + test-utils)" \
-  scripts/cargo.sh clippy -p bae-db --tests --features bae-db/test-utils -- -D warnings
+check "clippy (bae-sync-status + test-utils)" \
+  scripts/cargo.sh clippy -p bae-sync-status --tests --features bae-sync-status/test-utils -- -D warnings
 check "clippy (bae-preferences + test-utils)" \
   scripts/cargo.sh clippy -p bae-preferences --tests --features bae-preferences/test-utils -- -D warnings
 check "clippy (bae-track-audio + test-utils)" \
@@ -171,8 +171,8 @@ check "dead_code (bae-records lib only)" \
   scripts/cargo.sh rustc -p bae-records --lib --profile check -- -D warnings
 check "dead_code (bae-people lib only)" \
   scripts/cargo.sh rustc -p bae-people --lib --profile check -- -D warnings
-check "dead_code (bae-db lib only)" \
-  scripts/cargo.sh rustc -p bae-db --lib --profile check -- -D warnings
+check "dead_code (bae-sync-status lib only)" \
+  scripts/cargo.sh rustc -p bae-sync-status --lib --profile check -- -D warnings
 check "dead_code (bae-preferences lib only)" \
   scripts/cargo.sh rustc -p bae-preferences --lib --profile check -- -D warnings
 check "dead_code (bae-track-audio lib only)" \
@@ -221,7 +221,7 @@ check "cargo test (bae-app-dir)"       scripts/cargo.sh test -p bae-app-dir
 check "cargo test (bae-store)"       scripts/cargo.sh test -p bae-store
 check "cargo test (bae-records)"       scripts/cargo.sh test -p bae-records
 check "cargo test (bae-people)"       scripts/cargo.sh test -p bae-people
-check "cargo test (bae-db)"       scripts/cargo.sh test -p bae-db
+check "cargo test (bae-sync-status)"  scripts/cargo.sh test -p bae-sync-status
 check "cargo test (bae-preferences)" scripts/cargo.sh test -p bae-preferences
 check "cargo test (bae-track-audio)"  scripts/cargo.sh test -p bae-track-audio
 check "cargo test (bae-transfers)"    scripts/cargo.sh test -p bae-transfers

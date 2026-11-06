@@ -17,7 +17,7 @@ path = "src/lib.rs"
 bae-app-dir = { workspace = true }
 bae-audio = { workspace = true }
 bae-catalogs = { workspace = true }
-bae-db = { workspace = true }
+bae-sync-status = { workspace = true }
 bae-store = { workspace = true }
 bae-people = { workspace = true }
 bae-records = { workspace = true }
@@ -79,7 +79,7 @@ bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"
 # An app directory at a path the test picks.
 bae-app-dir = { workspace = true, features = ["test-utils"] }
 # Test databases with bae's schema and the rows db's fixtures seed them with.
-bae-db = { workspace = true, features = ["test-utils"] }
+bae-sync-status = { workspace = true, features = ["test-utils"] }
 bae-store = { workspace = true, features = ["test-utils"] }
 bae-people = { workspace = true, features = ["test-utils"] }
 bae-records = { workspace = true, features = ["test-utils"] }
@@ -158,15 +158,15 @@ default = []
 # Enables OAuth cloud providers (Dropbox, OneDrive) through coven. Off
 # by default → S3-only, matching the baeium build; the bae build turns it
 # on. bae-library's own oauth call sites (provider sign-in and setup) gate on this,
-# and bae-db's store calls they make.
+# and bae-store's calls they make.
 oauth-providers = ["bae-store/oauth-providers"]
 # A debug app's dev reset: the profile it recreates its library from. Debug
 # macOS bridge builds turn it on; release builds leave it out.
 dev-reset = ["bae-app-dir/dev-reset"]
 # Forwards coven's test-utils so bae-library's own integration tests get the
 # re-exported clock/id fakes (FixedClock, …), bae-app-dir's so the fixtures
-# can put an app directory at a test's path, bae-db's so they get its test
-# databases and the rows they seed, bae-playback's so they get its capture
+# can put an app directory at a test's path, bae-store's, bae-records', bae-people's and
+# bae-sync-status's so they get their test databases and the rows they seed, bae-playback's so they get its capture
 # devices and manual clock, bae-preferences' so they get a new
 # library's preferences without a library, bae-track-audio's so they read a
 # decode's windows back, bae-transfers' so they follow a whole queue and
@@ -176,7 +176,7 @@ dev-reset = ["bae-app-dir/dev-reset"]
 # service's test seams, bae-types's so they get the pressing values their
 # fixtures are built from, and bae-catalogs's so they get the catalog clients'
 # and the image cache's test constructors.
-test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-store/test-utils", "bae-people/test-utils", "bae-records/test-utils", "bae-import/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-transfers/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
+test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-sync-status/test-utils", "bae-store/test-utils", "bae-people/test-utils", "bae-records/test-utils", "bae-import/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-transfers/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
 
 [lints]
 workspace = true

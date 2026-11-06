@@ -8,7 +8,7 @@ use coven::Storage;
 use tempfile::TempDir;
 
 /// The text of the error behind `item`, with every cause below it.
-fn cause_text(item: &bae_db::PendingItem) -> Option<String> {
+fn cause_text(item: &bae_sync_status::PendingItem) -> Option<String> {
     item.wait.cause.clone()
 }
 
@@ -26,7 +26,7 @@ async fn a_waiting_upload_is_named_by_its_file_and_album() {
     pending_list_until(&mut values, |items| {
         items.iter().any(|item| {
             item.subject
-                == bae_db::PendingSubjectName::ReleaseFile {
+                == bae_sync_status::PendingSubjectName::ReleaseFile {
                     file_name: "a.flac".into(),
                     album_title: "Test Album".into(),
                 }
@@ -160,14 +160,16 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
         "the second failure's record sorts first"
     );
 
-    let album = |title: &str| bae_db::PendingSubjectName::ReleaseFile {
+    let album = |title: &str| bae_sync_status::PendingSubjectName::ReleaseFile {
         file_name: if title == "Test Album" { "a.flac" } else { "b.flac" }.into(),
         album_title: title.into(),
     };
     let listed = pending_list_until(&mut values, |items| {
         items
             .iter()
-            .filter(|item| matches!(item.subject, bae_db::PendingSubjectName::ReleaseFile { .. }))
+            .filter(|item| {
+                matches!(item.subject, bae_sync_status::PendingSubjectName::ReleaseFile { .. })
+            })
             .count()
             == 2
     })
@@ -176,7 +178,10 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
         listed
             .iter()
             .map(|item| item.subject.clone())
-            .filter(|subject| matches!(subject, bae_db::PendingSubjectName::ReleaseFile { .. }))
+            .filter(|subject| matches!(
+                subject,
+                bae_sync_status::PendingSubjectName::ReleaseFile { .. }
+            ))
             .collect::<Vec<_>>(),
         vec![album("Test Album"), album("Album Title Second")],
         "{second:?} failed after the first"
@@ -349,7 +354,7 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
         value.coven.state == coven::SyncState::Synced
     })
     .await;
-    assert_eq!(synced.indicator(), Some(bae_db::SyncIndicator::Synced), "{synced:?}");
+    assert_eq!(synced.indicator(), Some(bae_sync_status::SyncIndicator::Synced), "{synced:?}");
     manager.close().await.unwrap();
 }
 
@@ -393,8 +398,8 @@ async fn library_on_a_stopped_clock() -> (TestManager, TempDir, Arc<coven::Fixed
 /// Follow the status until `accept` takes it.
 async fn status_until(
     manager: &TestManager,
-    accept: impl Fn(&bae_db::SyncStatusSnapshot) -> bool,
-) -> bae_db::SyncStatusSnapshot {
+    accept: impl Fn(&bae_sync_status::SyncStatusSnapshot) -> bool,
+) -> bae_sync_status::SyncStatusSnapshot {
     let mut values = manager.subscribe_sync_status();
     crate::followed::value_matching(&mut values, accept).await
 }
@@ -413,13 +418,16 @@ fn next_request_fails(failure: coven::StorageFailure, response: Option<u16>) -> 
 async fn fail_a_pass(
     manager: &TestManager,
     faults: coven::Faults,
-    shown: impl Fn(&bae_db::SyncStatusSnapshot) -> bool,
-) -> bae_db::SyncStatusSnapshot {
+    shown: impl Fn(&bae_sync_status::SyncStatusSnapshot) -> bool,
+) -> bae_sync_status::SyncStatusSnapshot {
     let mut values = manager.subscribe_sync_status();
     manager.storage.set_faults(faults).await;
     manager.trigger_sync();
     let failed = crate::followed::value_matching(&mut values, |value| {
-        value.pending.iter().any(|item| item.subject == bae_db::PendingSubjectName::Connection)
+        value
+            .pending
+            .iter()
+            .any(|item| item.subject == bae_sync_status::PendingSubjectName::Connection)
             && shown(value)
     })
     .await;
@@ -453,7 +461,7 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
         .await
         .expect("the retry's pass ends");
         assert!(
-            matches!(answer, bae_db::SyncRetryOutcome::Synced),
+            matches!(answer, bae_sync_status::SyncRetryOutcome::Synced),
             "{failure:?} {response:?}: {answer:?}"
         );
         assert!(
@@ -493,7 +501,7 @@ async fn each_failure_the_person_clears_offers_no_retry() {
         .await
         .expect("a held pass answers the retry at once");
         assert!(
-            matches!(answer, bae_db::SyncRetryOutcome::Failed(_)),
+            matches!(answer, bae_sync_status::SyncRetryOutcome::Failed(_)),
             "{failure:?} {response:?}: {answer:?}"
         );
         assert_eq!(
@@ -529,7 +537,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     .await
     .expect("a cooldown answers the retry at once");
     assert!(
-        matches!(answer, bae_db::SyncRetryOutcome::CoolingDown { until } if until == ends),
+        matches!(answer, bae_sync_status::SyncRetryOutcome::CoolingDown { until } if until == ends),
         "{answer:?}"
     );
 
@@ -549,7 +557,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     })
     .await
     .expect("the retry's pass ends");
-    assert!(matches!(answer, bae_db::SyncRetryOutcome::Synced), "{answer:?}");
+    assert!(matches!(answer, bae_sync_status::SyncRetryOutcome::Synced), "{answer:?}");
     assert!(manager.storage.request_trace().len() > requests, "the retry ran a pass");
     manager.close().await.unwrap();
 }
@@ -589,7 +597,7 @@ async fn a_refused_upload_offers_retry_and_retrying_uploads_it() {
     })
     .await
     .expect("the retry's pass ends");
-    assert!(matches!(answer, bae_db::SyncRetryOutcome::Synced), "{answer:?}");
+    assert!(matches!(answer, bae_sync_status::SyncRetryOutcome::Synced), "{answer:?}");
     inspector_rows_until(&manager, &release.id, |rows| {
         rows.files.iter().all(|file| file.file.stored)
     })

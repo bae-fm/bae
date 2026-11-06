@@ -23,7 +23,7 @@ bae-catalogs = { workspace = true }
 # The library: its manager, views, transfers and what they show.
 bae-library = { workspace = true }
 # The store the bootstrap opens, and the live reads the services pass on.
-bae-db = { workspace = true }
+bae-sync-status = { workspace = true }
 bae-store = { workspace = true }
 bae-people = { workspace = true }
 bae-records = { workspace = true }
@@ -65,7 +65,7 @@ bae-app-dir = { workspace = true, features = ["test-utils"] }
 bae-catalogs = { workspace = true, features = ["test-utils"] }
 # The test libraries the services start over.
 bae-library = { workspace = true, features = ["test-utils"] }
-bae-db = { workspace = true, features = ["test-utils"] }
+bae-sync-status = { workspace = true, features = ["test-utils"] }
 bae-store = { workspace = true, features = ["test-utils"] }
 bae-people = { workspace = true, features = ["test-utils"] }
 bae-records = { workspace = true, features = ["test-utils"] }

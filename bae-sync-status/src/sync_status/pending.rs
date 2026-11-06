@@ -20,7 +20,7 @@ pub struct PendingRow {
 
 /// Every pending record with the row its file is the file of, in the order
 /// the records arose.
-pub fn pending_rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<PendingRow>, DbError> {
+pub(super) fn pending_rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<PendingRow>, DbError> {
     let rows = sql.query(&pending_rows_query(), [], |row| {
         let mut record = row.get::<_, coven::PendingRecord>(0)?;
         record.cause = row.get(1)?;

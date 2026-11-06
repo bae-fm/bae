@@ -1,5 +1,4 @@
--- bae's sync status table, part of the schema coven applies as host migration
--- 1.
+-- The sync status's table. Part of the schema coven applies as host migration 1.
 
 -- Why this device's last attempt to start sync failed, while it stands: a
 -- start that failed before coven's loop ran, such as a keychain locked for

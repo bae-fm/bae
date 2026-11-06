@@ -5,6 +5,38 @@
 
 use crate::pending_item::{PendingItem, PendingSubjectName, PendingWait};
 use bae_diagnostics::UiError;
+use bae_store::{DbError, Store};
+use coven::SqlReadContext;
+use rusqlite::{params, OptionalExtension, Row};
+
+mod file_row;
+mod pending;
+mod start_failure;
+pub use file_row::FileRow;
+pub use pending::PendingRow;
+
+/// Sync status's part of the schema: `sync_status.sql`.
+pub(crate) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("sync_status.sql")]);
+
+/// The library's sync status rows over the store.
+#[derive(Clone)]
+pub struct SyncStatus {
+    /// The store every read and write of the sync status runs through.
+    store: Store,
+}
+
+impl std::fmt::Debug for SyncStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SyncStatus").finish_non_exhaustive()
+    }
+}
+
+impl SyncStatus {
+    pub fn new(store: Store) -> Self {
+        SyncStatus { store }
+    }
+}
 
 /// Sync activity and the things coven is waiting on that need attention:
 /// coven's sync state, followed from coven, beside the rows the library
@@ -135,11 +167,8 @@ pub struct SyncStatusRows {
 
 /// The sync status's rows as one read of the library's tables sees them.
 pub fn sync_status_rows_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncStatusRows> {
-    let pending = crate::client::pending::pending_rows_on(&sql)?
-        .into_iter()
-        .map(PendingItem::listed)
-        .collect();
-    let start_failure = crate::client::sync_start_failure::start_failure_on(&sql)?;
+    let pending = pending::pending_rows_on(&sql)?.into_iter().map(PendingItem::listed).collect();
+    let start_failure = start_failure::start_failure_on(&sql)?;
     let retry_effect = coven::RetryEffect::read(sql)?;
     Ok(SyncStatusRows { pending, start_failure, retry_effect })
 }

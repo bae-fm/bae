@@ -736,7 +736,6 @@ dependencies = [
  "bae-app-dir",
  "bae-audio",
  "bae-catalogs",
- "bae-db",
  "bae-diagnostics",
  "bae-identify",
  "bae-import",
@@ -746,6 +745,7 @@ dependencies = [
  "bae-preferences",
  "bae-records",
  "bae-store",
+ "bae-sync-status",
  "bae-track-audio",
  "bae-transfers",
  "bae-types",
@@ -826,7 +826,6 @@ dependencies = [
  "bae-app-dir",
  "bae-cast",
  "bae-catalogs",
- "bae-db",
  "bae-desktop",
  "bae-diagnostics",
  "bae-identify",
@@ -839,6 +838,7 @@ dependencies = [
  "bae-preferences",
  "bae-records",
  "bae-store",
+ "bae-sync-status",
  "bae-track-audio",
  "bae-transfers",
  "bae-types",
@@ -919,21 +919,6 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
-]
-
-[[package]]
-name = "bae-db"
-version = "0.0.0-dev"
-dependencies = [
- "bae-diagnostics",
- "bae-people",
- "bae-records",
- "bae-store",
- "coven",
- "regex",
- "rusqlite",
- "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -1035,7 +1020,6 @@ dependencies = [
  "bae-app-dir",
  "bae-audio",
  "bae-catalogs",
- "bae-db",
  "bae-diagnostics",
  "bae-identify",
  "bae-import",
@@ -1044,6 +1028,7 @@ dependencies = [
  "bae-preferences",
  "bae-records",
  "bae-store",
+ "bae-sync-status",
  "bae-track-audio",
  "bae-transfers",
  "bae-types",
@@ -1244,6 +1229,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "bae-sync-status"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-diagnostics",
+ "bae-people",
+ "bae-records",
+ "bae-store",
+ "coven",
+ "rusqlite",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "bae-theme"
 version = "0.1.0"
 dependencies = [
@@ -1332,12 +1331,12 @@ name = "bae-views"
 version = "0.0.0-dev"
 dependencies = [
  "bae-catalogs",
- "bae-db",
  "bae-diagnostics",
  "bae-people",
  "bae-playback",
  "bae-records",
  "bae-store",
+ "bae-sync-status",
  "bae-transfers",
  "bae-types",
  "bae-util",

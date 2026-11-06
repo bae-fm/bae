@@ -2,7 +2,7 @@
 //! category the status line words, and refused outside the classes a start
 //! can fail in.
 
-use crate::client::*;
+use super::*;
 use bae_diagnostics::{UiError, UiErrorCategory as C};
 use bae_store::test_fixtures::temp_db;
 use coven::{DropboxAccess, OAuthAccess, OwnBucketReason, StorageFailure as F};
@@ -13,7 +13,7 @@ fn failure(category: C) -> UiError {
 
 /// The failed start the store reads back.
 async fn read_back(store: &Store) -> Option<UiError> {
-    store.read(|sql| crate::client::sync_start_failure::start_failure_on(&sql)).await.unwrap()
+    store.read(|sql| start_failure_on(&sql)).await.unwrap()
 }
 
 /// Every class a start can fail in, and every storage reason with each
@@ -21,7 +21,7 @@ async fn read_back(store: &Store) -> Option<UiError> {
 #[tokio::test]
 async fn every_class_a_start_fails_in_reads_back_as_written() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let database = crate::test_fixtures::test_database(&db);
+    let sync_status = crate::test_fixtures::test_sync_status(&db);
     let storage = [
         F::ProviderUnavailable,
         F::AccessNotRegistered { required: OAuthAccess::Dropbox(DropboxAccess::AppFolder) },
@@ -79,10 +79,10 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
     .into_iter()
     .chain(storage.into_iter().map(C::Storage));
     for category in categories {
-        database.record_sync_start_failure(Some(failure(category.clone()))).await.unwrap();
+        sync_status.record_sync_start_failure(Some(failure(category.clone()))).await.unwrap();
         assert_eq!(read_back(&db).await, Some(failure(category)));
     }
-    database.record_sync_start_failure(None).await.unwrap();
+    sync_status.record_sync_start_failure(None).await.unwrap();
     assert_eq!(read_back(&db).await, None);
 }
 
@@ -91,10 +91,10 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
 #[tokio::test]
 async fn a_class_no_start_fails_in_is_refused() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let database = crate::test_fixtures::test_database(&db);
-    database.record_sync_start_failure(Some(failure(C::KeyringLocked))).await.unwrap();
+    let sync_status = crate::test_fixtures::test_sync_status(&db);
+    sync_status.record_sync_start_failure(Some(failure(C::KeyringLocked))).await.unwrap();
     let refused =
-        database.record_sync_start_failure(Some(failure(C::ReleaseChangedSinceOpened))).await;
+        sync_status.record_sync_start_failure(Some(failure(C::ReleaseChangedSinceOpened))).await;
     assert!(refused.is_err(), "{refused:?}");
     assert_eq!(read_back(&db).await, Some(failure(C::KeyringLocked)));
 }

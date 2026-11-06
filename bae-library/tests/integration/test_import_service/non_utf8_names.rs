@@ -96,20 +96,20 @@ async fn a_folder_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escap
 
     let release_id = import_scanned(&f, &album).await;
 
-    let files = f.library.database().get_files_for_release(&release_id).await.unwrap();
+    let files = f.library.records().get_files_for_release(&release_id).await.unwrap();
     let [file] = files.as_slice() else {
         panic!("the release holds the track: {files:?}");
     };
     assert_eq!(file.original_filename, "Track.flac");
     let original = f
         .library
-        .database()
+        .records()
         .external_file(&file.id)
         .await
         .unwrap()
         .expect("the track's original is recorded");
     assert_eq!(original.path, album.join("Track.flac"));
-    let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
+    let release = f.library.records().find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.source_folder_name.as_deref(), Some(r"Caf\xE9"));
 }
 
@@ -127,7 +127,7 @@ async fn a_folder_whose_name_is_not_utf8_is_skipped_by_its_own_path() {
 
     f.handle.set_candidate_skipped(key.clone(), true).await.unwrap();
 
-    let skipped = bae_import::tables::ImportTables::new(f.library.database().clone())
+    let skipped = bae_import::tables::ImportTables::new(f.library.store().clone())
         .load_skipped_import_candidates(&collection)
         .await
         .unwrap();
@@ -166,7 +166,7 @@ async fn the_releases_in_a_folder_whose_name_is_not_utf8_combine_into_it() {
         .expect("the albums combine");
 
     assert_eq!(f.handle.candidate_source_folders(&combined).await.unwrap(), albums);
-    let reading = bae_import::tables::ImportTables::new(f.library.database().clone())
+    let reading = bae_import::tables::ImportTables::new(f.library.store().clone())
         .folder_reading_grouping(&bae_import::FolderReleaseDecisionKey {
             watched_folder_path: collection.clone(),
             relative_folder: bae_import::RelativeFolder::of(Path::new(&latin1_name(""))).unwrap(),
@@ -202,20 +202,20 @@ async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escape
 
     let release_id = import_scanned(&f, &album).await;
 
-    let files = f.library.database().get_files_for_release(&release_id).await.unwrap();
+    let files = f.library.records().get_files_for_release(&release_id).await.unwrap();
     let [file] = files.as_slice() else {
         panic!("the release holds the track: {files:?}");
     };
     assert_eq!(file.original_filename, r"Caf\xE9.flac");
     let original = f
         .library
-        .database()
+        .records()
         .external_file(&file.id)
         .await
         .unwrap()
         .expect("the track's original is recorded");
     assert_eq!(original.path, track);
-    let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
+    let release = f.library.records().find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.source_folder_name.as_deref(), Some("Album"));
 }
 
@@ -275,7 +275,7 @@ async fn a_track_whose_name_is_not_utf8_uploads() {
         1,
         "the release's one track uploads"
     );
-    let files = f.library.database().get_files_for_release(&id).await.unwrap();
+    let files = f.library.records().get_files_for_release(&id).await.unwrap();
     assert!(
         files.iter().all(|file| file.stored && file.original_filename == r"Caf\xE9.flac"),
         "the track is stored under its escaped name: {files:?}"

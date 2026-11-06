@@ -82,7 +82,8 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
         .await
         .unwrap()
         .iter()
-        .any(|record| bae_db::pending_action(record, None) == bae_db::PendingAction::RestoreFile));
+        .any(|record| bae_sync_status::pending_action(record, None)
+            == bae_sync_status::PendingAction::RestoreFile));
 }
 
 /// Each device says whether it can play a release from the library's

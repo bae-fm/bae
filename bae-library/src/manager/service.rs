@@ -43,7 +43,7 @@ impl LibraryManager {
         records: bae_records::Records,
         people: bae_people::People,
         membership: bae_people::Membership,
-        database: Database,
+        sync_status: SyncStatus,
         app_dir: bae_app_dir::AppDir,
         clock: ClockRef,
         ids: IdSourceRef,
@@ -66,7 +66,7 @@ impl LibraryManager {
         store.call(bae_transfers::tables::clear_transfers_on).await?;
         // Nor does an attempt to start sync: a failed start stands only in
         // the process that made it.
-        database.record_sync_start_failure(None).await?;
+        sync_status.record_sync_start_failure(None).await?;
         let manager = LibraryManager {
             #[cfg(desktop)]
             catalogs,
@@ -74,7 +74,7 @@ impl LibraryManager {
             records,
             people,
             membership,
-            database,
+            sync_status,
             app_dir,
             #[cfg(desktop)]
             remote_images,
@@ -357,7 +357,7 @@ impl LibraryManager {
         self.spawn_supervised_task(
             "sync status follower",
             async move {
-                let mut last: Option<bae_db::SyncStatusSnapshot> = None;
+                let mut last: Option<bae_sync_status::SyncStatusSnapshot> = None;
                 while let Some(read) = statuses.next().await {
                     let snapshot = match read {
                         Ok(snapshot) => snapshot,
@@ -380,15 +380,15 @@ impl LibraryManager {
     /// diagnostics, when `snapshot` brings it after `last`.
     async fn follow_sync_status(
         &self,
-        last: Option<&bae_db::SyncStatusSnapshot>,
-        snapshot: &bae_db::SyncStatusSnapshot,
+        last: Option<&bae_sync_status::SyncStatusSnapshot>,
+        snapshot: &bae_sync_status::SyncStatusSnapshot,
     ) {
         if let Some(bae_diagnostics::UiError::Diagnostic { category, detail }) =
             snapshot.failure_to_log(last)
         {
             tracing::warn!(?category, "sync failure: {detail}");
         }
-        let failed = |snapshot: &bae_db::SyncStatusSnapshot| match snapshot.shown_pass() {
+        let failed = |snapshot: &bae_sync_status::SyncStatusSnapshot| match snapshot.shown_pass() {
             Some(coven::LastPass::Failed { error, .. }) => Some(error.clone()),
             _ => None,
         };
@@ -408,8 +408,14 @@ impl LibraryManager {
     /// sync status's rows, each value made from the latest of both.
     pub fn subscribe_sync_status(
         &self,
-    ) -> bae_store::WithSyncState<bae_db::SyncStatusRows, bae_db::SyncStatusSnapshot> {
-        self.store.with_sync_state(bae_db::sync_status_rows_on, bae_db::SyncStatusSnapshot::read)
+    ) -> bae_store::WithSyncState<
+        bae_sync_status::SyncStatusRows,
+        bae_sync_status::SyncStatusSnapshot,
+    > {
+        self.store.with_sync_state(
+            bae_sync_status::sync_status_rows_on,
+            bae_sync_status::SyncStatusSnapshot::read,
+        )
     }
 
     /// How far and how fast each release with files being sent goes, and

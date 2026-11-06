@@ -1,56 +1,45 @@
 [package]
-name = "bae-db"
+name = "bae-sync-status"
 version = "0.0.0-dev"
 authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
-# The `desktop` cfg, defined once in bae-util's build script for every crate
-# with desktop-only code.
-build = "../bae-util/build.rs"
 
 [lib]
-name = "bae_db"
+name = "bae_sync_status"
 path = "src/lib.rs"
 
 [dependencies]
-# The error categories a person is shown for a failed sync-start write.
+# The error categories a person is shown for a failed sync start.
 bae-diagnostics = { workspace = true }
-# The avatars namespace the pending rows name.
-bae-people = { workspace = true }
 # The records' namespaces the pending rows name.
 bae-records = { workspace = true }
+# The avatars namespace the pending rows name.
+bae-people = { workspace = true }
 # The store every read and write runs through.
 bae-store = { workspace = true }
 # The store: its connection, schema migrations, sync, files and live queries.
 coven = { workspace = true }
 rusqlite = { workspace = true }
-# The locks people and history writes take.
-tokio = { workspace = true, features = ["sync"] }
-# Row ids, and the ids derived from catalog ids.
-uuid = { workspace = true, features = ["v4", "v5"] }
 
 [dev-dependencies]
 bae-store = { workspace = true, features = ["test-utils"] }
-bae-people = { workspace = true, features = ["test-utils"] }
 bae-records = { workspace = true, features = ["test-utils"] }
+bae-people = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
+uuid = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
-# The schema tests read the tables the schema creates.
-regex = { workspace = true }
 
 [features]
 default = []
-# Test databases with bae's schema, for the tests of every crate that builds on
-# this one. Dev/test-only: a production build never enables it.
+# Test stores on the sync status's schema, for the tests of every crate that
+# builds on this one. Dev/test-only: a production build never enables it.
 test-utils = [
     "bae-store/test-utils",
-    "bae-people/test-utils",
     "bae-records/test-utils",
+    "bae-people/test-utils",
     "coven/test-utils",
-    "tokio/rt",
-    "tokio/rt-multi-thread",
-    "tokio/time",
 ]
 
 [lints]

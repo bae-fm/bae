@@ -434,7 +434,7 @@ where
     let records = bae_records::Records::new(store.clone(), ids.clone());
     let people = bae_people::People::new(store.clone());
     let membership = bae_people::Membership::new(store.clone());
-    let database = bae_db::Database::new(store.clone());
+    let sync_status = bae_sync_status::SyncStatus::new(store.clone());
     #[cfg(desktop)]
     let remote_images = bae_catalogs::remote_image::RemoteImageCache::new(
         &app_dir.registered_library(&library_id),
@@ -458,7 +458,7 @@ where
                 records.clone(),
                 people.clone(),
                 membership,
-                database.clone(),
+                sync_status.clone(),
                 #[cfg(desktop)]
                 catalogs.clone(),
                 closing.clone(),

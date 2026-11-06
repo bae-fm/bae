@@ -4101,7 +4101,7 @@ bindings export none of their symbols.
 | bae-store | the library's store over coven, with no table: the `Store` every read, write and live query runs through, the coven calls bae makes on a library (storage setup, sync, keys, files, pins, uploads, invites, restore codes), the schema's shape (each crate's parts, run in crate order as one migration) and the SQL functions and collation the parts declare, list windows, the cancellable live queries a surface pulls values from, and the names a person enters |
 | bae-records | the library's records and where each release's files are: artists, albums, releases, tracks, works and labels with their files, the rules that resolve credits and labels and merge identities, the row writers an import and an edit call inside their own writes, and release storage, with the `Records` owner over them |
 | bae-people | the library's members and each person's own data: who is in the library and on which devices, the admin changes this device asked for, profiles, plays, ratings and playlists, with the `Membership` and `People` owners |
-| bae-db | the library's own part of the schema, and the sync status as the status line shows it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do and why the last start failed |
+| bae-sync-status | the sync status as the status line and the activity list show it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do and why this device's last start failed, with the `SyncStatus` owner |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the tasks and threads whose panics are reported, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through, which reports a panic in its own disk work; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |
@@ -4215,9 +4215,8 @@ crate's parts of it, in crate order, each part a domain's SQL files beside its
 code. bae-library assembles it from bae-records' parts, under
 `bae-records/src/`: the records' (`records.sql`) and release storage's
 (`release_storage.sql`), bae-people's, under `bae-people/src/`: the people's
-(`people.sql`) and membership's (`membership.sql`), bae-db's part,
-`bae-db/migrations/001_initial.sql`, which holds the sync status's table,
-bae-preferences' (`bae-preferences/src/row.sql`), bae-playback's, under
+(`people.sql`) and membership's (`membership.sql`), bae-sync-status's,
+`bae-sync-status/src/sync_status.sql`, bae-preferences' (`bae-preferences/src/row.sql`), bae-playback's, under
 `bae-playback/src/`: the queue's (`tables/queue.sql`), what playback is doing
 (`tables/now.sql`), where it is (`tables/timeline.sql`) and the cast
 picker's (`renderer/picker.sql`) and, on a desktop,
@@ -4511,6 +4510,14 @@ queue empty and running, and no release in a storage transition.
 | `preferences` | the one row of this device's settings for the library (Appendix C) |
 | `save_preset` | save preset, in the order listed: its name, codec and bit depth or bitrate, where pregaps go, the levels it applies to, and whether it embeds the cover (§4.6) |
 | `save_preset_filename_token` | token of a preset's filename pattern, in order |
+
+### A.11 Sync status (bae-sync-status)
+
+Never synced (§6.4).
+
+| Table | Holds |
+|---|---|
+| `sync_start_failure` | why this device's last attempt to start sync failed, while it stands, at most one row: the failure's class and, for a storage failure, coven's reason with what it names; emptied as the library opens, and cleared by the trigger that fires as any start gets under way (§6.4) |
 
 ---
 

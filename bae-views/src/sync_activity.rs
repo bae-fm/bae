@@ -2,8 +2,8 @@
 //! indicator in the app's title bar and the list it opens.
 
 use super::*;
-use bae_db::{PendingItem, SyncStatusRows, SyncStatusSnapshot};
 use bae_diagnostics::UiError;
+use bae_sync_status::{PendingItem, SyncStatusRows, SyncStatusSnapshot};
 use bae_transfers::ReleaseQueueCounts;
 use bae_transfers::ReleaseQueueProgress;
 use bae_types::count_label::CountLabel;
@@ -137,7 +137,7 @@ pub struct SyncActivityRows {
 fn sync_activity_rows_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncActivityRows> {
     let uploads = upload_queue_counts_on(&sql)?;
     let downloads = bae_transfers::tables::release_queue_counts_on::<()>(&sql)?;
-    let status = bae_db::sync_status_rows_on(sql)?;
+    let status = bae_sync_status::sync_status_rows_on(sql)?;
     Ok(SyncActivityRows { uploads, downloads, status })
 }
 

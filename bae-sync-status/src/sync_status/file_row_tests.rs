@@ -1,7 +1,7 @@
 //! The pending list names each file's row by index, whatever the size of the
 //! library.
 
-use crate::client::pending::pending_rows_query;
+use crate::sync_status::pending::pending_rows_query;
 use bae_store::Store;
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
@@ -9,7 +9,7 @@ async fn plan(store: &Store, statement: String) -> Vec<String> {
     store
         .read(move |sql| {
             sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| row.get::<_, String>(3))
-                .map_err(crate::client::DbError::from)
+                .map_err(bae_store::DbError::from)
         })
         .await
         .unwrap()

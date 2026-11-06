@@ -29,10 +29,13 @@ impl LibraryManager {
     }
 
     /// The sync status now, as [`Self::subscribe_sync_status`] makes each.
-    pub async fn sync_status(&self) -> Result<bae_db::SyncStatusSnapshot, LibraryError> {
+    pub async fn sync_status(&self) -> Result<bae_sync_status::SyncStatusSnapshot, LibraryError> {
         Ok(self
             .store
-            .read_with_sync_state(bae_db::sync_status_rows_on, bae_db::SyncStatusSnapshot::read)
+            .read_with_sync_state(
+                bae_sync_status::sync_status_rows_on,
+                bae_sync_status::SyncStatusSnapshot::read,
+            )
             .await?)
     }
 
@@ -70,7 +73,7 @@ impl LibraryManager {
     pub async fn retry_now(
         &self,
     ) -> Result<
-        impl std::future::Future<Output = bae_db::SyncRetryOutcome> + Send + 'static,
+        impl std::future::Future<Output = bae_sync_status::SyncRetryOutcome> + Send + 'static,
         LibraryError,
     > {
         let answer = self.store.retry_now().await?;
@@ -287,7 +290,7 @@ impl LibraryManager {
                 return Err(error);
             }
         }
-        self.database.record_sync_start_failure(None).await?;
+        self.sync_status.record_sync_start_failure(None).await?;
         self.trigger_sync();
         Ok(())
     }
@@ -300,7 +303,7 @@ impl LibraryManager {
     async fn set_sync_error(&self, error: Option<&LibraryError>) {
         let failure =
             error.map(|error| bae_diagnostics::UiError::diagnostic(error.category(), error));
-        if let Err(error) = self.database.record_sync_start_failure(failure).await {
+        if let Err(error) = self.sync_status.record_sync_start_failure(failure).await {
             self.diagnostics.report_bug("record why sync failed to start", &error);
         }
     }

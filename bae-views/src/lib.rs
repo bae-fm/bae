@@ -113,14 +113,14 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[bae_store::SchemaPart::new(
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&bae_store::FOLD_CASE];
 
 /// The schema this crate's tests open their stores on: records' and release
-/// storage's parts, people's and membership's, bae-db's part,
+/// storage's parts, people's and membership's, the sync status's part,
 /// playback's (the tables its tests read), the transfers' (the queues the
 /// release listing's pin triggers fire on) and the views'.
 #[cfg(test)]
 const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
     bae_records::SCHEMA_PARTS,
     bae_people::SCHEMA_PARTS,
-    bae_db::SCHEMA_PARTS,
+    bae_sync_status::SCHEMA_PARTS,
     bae_playback::SCHEMA_PARTS,
     bae_transfers::SCHEMA_PARTS,
     SCHEMA_PARTS,

@@ -22,10 +22,10 @@ pub use storage::{connect_storage, remove_uploaded_file, storage_library};
 
 use crate::{CancellationToken, LibraryManager};
 use bae_catalogs::remote_image::RemoteImageCache;
-use bae_db::Database;
 use bae_diagnostics::Diagnostics;
 use bae_import::{CatalogSessions, ImportServiceHandle};
 use bae_store::Store;
+use bae_sync_status::SyncStatus;
 use coven::{ClockRef, IdSourceRef};
 use std::sync::Arc;
 
@@ -38,7 +38,7 @@ pub struct TestLibrary {
     records: bae_records::Records,
     people: bae_people::People,
     membership: bae_people::Membership,
-    database: Database,
+    sync_status: SyncStatus,
     catalogs: CatalogSessions,
     closing: CancellationToken,
     clock: ClockRef,
@@ -93,7 +93,7 @@ impl TestLibrary {
         let records = bae_records::Records::new(store.clone(), ids.clone());
         let people = bae_people::People::new(store.clone());
         let membership = bae_people::Membership::new(store.clone());
-        let database = Database::new(store.clone());
+        let sync_status = SyncStatus::new(store.clone());
         let catalogs = CatalogSessions::new(
             providers,
             store.clone(),
@@ -106,7 +106,7 @@ impl TestLibrary {
             records.clone(),
             people.clone(),
             membership.clone(),
-            database.clone(),
+            sync_status.clone(),
             catalogs.clone(),
             closing.clone(),
             app_dir,
@@ -124,7 +124,7 @@ impl TestLibrary {
             records,
             people,
             membership,
-            database,
+            sync_status,
             catalogs,
             closing,
             clock,
@@ -155,9 +155,10 @@ impl TestLibrary {
         &self.membership
     }
 
-    /// The library's sync status rows.
-    pub fn database(&self) -> &Database {
-        &self.database
+    /// The SyncStatus owner, distinct from `LibraryManager::sync_status()`,
+    /// which reads the sync status.
+    pub fn sync_status_owner(&self) -> &SyncStatus {
+        &self.sync_status
     }
 
     /// The catalog sessions the library asks through.
@@ -357,9 +358,8 @@ pub async fn open_test_library_with(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
 ) -> TestLibrary {
-    let database = open_test_db(dir).await;
-    TestLibrary::open(database, bae_app_dir::AppDir::under_home(dir).unwrap(), providers, http)
-        .await
+    let store = open_test_db(dir).await;
+    TestLibrary::open(store, bae_app_dir::AppDir::under_home(dir).unwrap(), providers, http).await
 }
 
 /// A library over an installation the test created with its own storage and

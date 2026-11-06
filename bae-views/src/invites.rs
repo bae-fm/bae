@@ -8,7 +8,7 @@ use super::*;
 #[derive(Clone, Debug, PartialEq)]
 pub struct OpenInvite {
     pub invite: coven::Invite,
-    pub held: Option<bae_db::PendingWait>,
+    pub held: Option<bae_sync_status::PendingWait>,
 }
 
 impl OpenInvite {
@@ -24,7 +24,7 @@ impl OpenInvite {
                         matches!(record.subject,
                             coven::PendingSubject::Operation { id, .. } if id == invite.operation)
                     })
-                    .map(|record| bae_db::PendingWait::of(record, None));
+                    .map(|record| bae_sync_status::PendingWait::of(record, None));
                 Self { invite, held }
             })
             .collect()
