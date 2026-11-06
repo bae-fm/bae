@@ -3536,13 +3536,15 @@ hold the same level.
 
 **Fetching receivers.** A Chromecast or UPnP renderer fetches each track from
 a small HTTP server bae runs for the session, on the local network, with a
-random credential. A track stored as one whole file in a codec the receiver
-plays is served as its own bytes, declared as the type of their container:
-`audio/ogg` for an Opus file, `audio/wav` for PCM in a WAV file. Anything else — a slice of a disc image, a
-track whose pregap is in another file or generated, a codec it doesn't play —
-is converted on the way: to MP3 at 320 kbps, or to WAV at its stored depth, as
-the person chose. A UPnP renderer is never counted on to play WAV or Opus, so
-it gets MP3. (DLNA's required audio format is uncompressed PCM sent as
+random credential. A track stored as one whole file in a codec and container
+the receiver plays is served as its own bytes, declared as the type of their
+container: `audio/ogg` for an Opus file, `audio/wav` for PCM in a WAV file.
+Both kinds play FLAC, MP3 and AAC files; a Chromecast also plays Opus and WAV
+files, and neither plays AIFF. Anything else — a slice of a disc image, a
+track whose pregap is in another file or generated, a codec or container it
+doesn't play — is converted on the way: to MP3 at 320 kbps, or to WAV at its
+stored depth, as the person chose. A UPnP renderer is never counted on to play
+WAV or Opus, stored or converted, so it gets MP3. (DLNA's required audio format is uncompressed PCM sent as
 `audio/L16`, not a WAV file; bae doesn't serve L16.)
 
 **AirPlay** receivers of both generations play. A receiver that demands a PIN,

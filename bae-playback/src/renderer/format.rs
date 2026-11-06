@@ -1,9 +1,10 @@
 //! What stream a remote renderer is served for a track.
 //!
-//! A renderer decodes a limited set of codecs natively; a track stored as one
-//! whole file in one of them is served as its original bytes, and anything else
-//! — a window of a CUE image, a track whose pregap lives in another file or is
-//! generated, a codec the renderer doesn't decode — is converted on the way out
+//! A renderer plays a limited set of codecs in their containers; a track stored
+//! as one whole file in one of them is served as its original bytes, and
+//! anything else — a window of a CUE image, a track whose pregap lives in
+//! another file or is generated, a codec or container the renderer doesn't
+//! play — is converted on the way out
 //! to the format the person picked ([`CastTranscodeFormat`]), when the renderer
 //! takes it. The safe sets differ by [`RendererFlavor`]: Cast decodes Opus and
 //! plays WAV, UPnP renderers aren't counted on for either. The flavor's
@@ -55,23 +56,27 @@ pub enum RendererFlavor {
 }
 
 impl RendererFlavor {
-    /// Whether a renderer of this flavor decodes `content_type` natively. UPnP
-    /// renderers' set is narrower than Cast's: Opus is widely unsupported by
-    /// them, so it converts even though Cast plays it raw.
-    fn decodes(self, content_type: &ContentType) -> bool {
+    /// Whether a renderer of this flavor plays a stored file of `content_type`
+    /// in `container` as it is. Both play FLAC, MP3 and AAC in their own
+    /// containers. Cast also plays Opus in Ogg and PCM in WAV; UPnP renderers'
+    /// set is narrower: Opus is widely unsupported by them, and they aren't
+    /// counted on to play WAV. No flavor plays an AIFF file.
+    fn decodes(self, content_type: &ContentType, container: &AudioContainer) -> bool {
+        let both = matches!(
+            (content_type, container),
+            (ContentType::Flac, AudioContainer::Flac)
+                | (ContentType::Mp3, AudioContainer::Mp3)
+                | (ContentType::Aac, AudioContainer::Mp4 | AudioContainer::Adts)
+        );
         match self {
-            RendererFlavor::Cast => matches!(
-                content_type,
-                ContentType::Flac
-                    | ContentType::Mp3
-                    | ContentType::Aac
-                    | ContentType::Opus
-                    | ContentType::Pcm
-            ),
-            RendererFlavor::Dlna => matches!(
-                content_type,
-                ContentType::Flac | ContentType::Mp3 | ContentType::Aac | ContentType::Pcm
-            ),
+            RendererFlavor::Cast => {
+                both || matches!(
+                    (content_type, container),
+                    (ContentType::Opus, AudioContainer::Ogg)
+                        | (ContentType::Pcm, AudioContainer::Wav)
+                )
+            }
+            RendererFlavor::Dlna => both,
         }
     }
 
@@ -90,7 +95,8 @@ impl RendererFlavor {
     }
 
     /// The stream to serve a renderer of this flavor for `audio`: the stored
-    /// file, when the track is one whole file in a codec the renderer decodes;
+    /// file, when the track is one whole file in a codec and container the
+    /// renderer plays;
     /// otherwise a conversion to `transcode`, or to MP3 where the flavor
     /// doesn't take WAV.
     pub fn stream_format(
@@ -98,7 +104,9 @@ impl RendererFlavor {
         audio: &ResolvedTrackAudio,
         transcode: CastTranscodeFormat,
     ) -> RendererStreamFormat {
-        if let Some(file) = audio.whole_file().filter(|_| self.decodes(&audio.content_type)) {
+        if let Some(file) =
+            audio.whole_file().filter(|file| self.decodes(&audio.content_type, &file.container))
+        {
             return RendererStreamFormat::Raw(file.container.clone());
         }
         match transcode {

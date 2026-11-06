@@ -52,8 +52,8 @@ impl RendererMediaSource {
     /// Where the device fetches one track's stream and its `cover` from. The
     /// served bytes hold the track's stream from its first sample, so the
     /// device's position is a position in that stream: a track that is one
-    /// stored file, whole, is served as that file when the flavor decodes its
-    /// codec; any other — a window of a CUE image, a pregap read from another
+    /// stored file, whole, is served as that file when the flavor plays its
+    /// codec in its container; any other — a window of a CUE image, a pregap read from another
     /// file or generated as silence — is converted from its own segments, to
     /// `transcode` where the flavor takes it. The served format decides both
     /// the URL and the MIME type declared for it, so the two can't disagree.

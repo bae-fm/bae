@@ -67,7 +67,6 @@ fn a_whole_file_both_flavors_decode_is_served_as_stored() {
         (ContentType::Flac, AudioContainer::Flac),
         (ContentType::Mp3, AudioContainer::Mp3),
         (ContentType::Aac, AudioContainer::Mp4),
-        (ContentType::Pcm, AudioContainer::Wav),
     ] {
         let raw = Raw(container.clone());
         assert_eq!(
@@ -76,6 +75,21 @@ fn a_whole_file_both_flavors_decode_is_served_as_stored() {
             "{content_type:?}"
         );
     }
+}
+
+/// Whether stored PCM goes out as stored depends on the container it is in:
+/// Cast plays a WAV file but no AIFF, and a UPnP renderer isn't counted on to
+/// play WAV, so both convert what they don't play.
+#[test]
+fn stored_pcm_goes_raw_only_to_cast_and_only_in_wav() {
+    assert_eq!(
+        served(&track(ContentType::Pcm, AudioContainer::Wav, true)),
+        [Raw(AudioContainer::Wav), Raw(AudioContainer::Wav), TranscodeMp3, TranscodeMp3]
+    );
+    assert_eq!(
+        served(&track(ContentType::Pcm, AudioContainer::Aiff, true)),
+        [TranscodeMp3, TranscodeWav, TranscodeMp3, TranscodeMp3]
+    );
 }
 
 /// A CUE image's window is converted for every flavor: to WAV for Cast when
