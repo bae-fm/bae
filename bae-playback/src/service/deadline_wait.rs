@@ -1,24 +1,25 @@
-//! The run loop's wait for a running side-pause countdown.
+//! The run loop's wait for a deadline the service's state carries: a running
+//! side-pause countdown (`SidePauseDecision::resumes_at`), or the moment audio
+//! still in an AirPlay receiver has been heard.
 //!
-//! The countdown itself lives in the side-pause phase (`SidePauseDecision::
-//! resumes_at`); this only holds the timer for it. The loop hands it the
-//! phase's deadline every turn, so the wait follows the phase: kept while the
-//! deadline is unchanged, re-armed for a new one, dropped the moment the phase
-//! no longer carries one.
+//! The deadline itself lives in the state; this only holds the timer for it.
+//! The loop hands it the state's deadline every turn, so the wait follows the
+//! state: kept while the deadline is unchanged, re-armed for a new one, dropped
+//! the moment the state no longer carries one.
 
 use crate::{PlaybackClock, PlaybackSleep};
 use chrono::{DateTime, Utc};
 
-pub(super) struct SideCountdownWait {
+pub(super) struct DeadlineWait {
     armed: Option<(DateTime<Utc>, PlaybackSleep)>,
 }
 
-impl SideCountdownWait {
+impl DeadlineWait {
     pub(super) fn new() -> Self {
         Self { armed: None }
     }
 
-    /// Match the wait to the phase's current deadline.
+    /// Match the wait to the state's current deadline.
     pub(super) fn follow(&mut self, deadline: Option<DateTime<Utc>>, clock: &dyn PlaybackClock) {
         if self.armed.as_ref().map(|(armed, _)| *armed) != deadline {
             self.armed = deadline.map(|deadline| (deadline, clock.sleep_until(deadline)));

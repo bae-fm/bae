@@ -818,24 +818,25 @@ impl PlaybackService {
         info!("PlaybackService started");
         let mut audio_event_tick = tokio::time::interval(std::time::Duration::from_millis(10));
         audio_event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-        let mut countdown = side_countdown::SideCountdownWait::new();
+        let mut countdown = deadline_wait::DeadlineWait::new();
+        let mut audible = deadline_wait::DeadlineWait::new();
         loop {
-            let follows = caught_sync(
-                "follow the side countdown, the staged sides and the held tracks",
-                || {
+            let follows =
+                caught_sync("follow the deadlines, the staged sides and the held tracks", || {
                     countdown.follow(self.side_pause_countdown_deadline(), self.clock.as_ref());
+                    audible.follow(self.audible_deadline(), self.clock.as_ref());
                     self.follow_staged_sides();
                     self.follow_held_tracks();
-                },
-            );
+                });
             if let Err(failed) = follows {
                 self.recover_from_panic(failed).await;
                 continue;
             }
             let wake = tokio::select! {
                 (_, sides) = self.staged_sides.next() => Wake::StagedSides(sides),
-                _ = audio_event_tick.tick(), if self.output.is_some() || !self.buffered_listening.is_empty() || self.audible_completion.is_some() || self.preview.is_active() => Wake::AudioTick,
+                _ = audio_event_tick.tick(), if self.output.is_some() => Wake::AudioTick,
                 deadline = countdown.elapsed(), if countdown.is_armed() => Wake::CountdownElapsed(deadline),
+                _ = audible.elapsed(), if audible.is_armed() => Wake::AudibleDeadline,
                 Some(command) = self.command_rx.recv() => Wake::Command(command),
                 (held, infos) = self.held_tracks.next() => Wake::HeldTracks { held, infos },
                 else => break,
@@ -857,6 +858,9 @@ impl PlaybackService {
             Wake::StagedSides(sides) => self.handle_staged_crossing_sides(sides).await,
             Wake::AudioTick => {
                 self.drain_current_audio_events().await;
+                self.checkpoint_listening().await;
+            }
+            Wake::AudibleDeadline => {
                 self.checkpoint_listening().await;
                 self.publish_audible_completion();
             }
@@ -911,6 +915,9 @@ enum Wake {
     StagedSides(Vec<PlaybackTrackInfo>),
     AudioTick,
     CountdownElapsed(chrono::DateTime<chrono::Utc>),
+    /// Audio still in the AirPlay receiver has been heard, or a play in it
+    /// came to count as played (`audible_deadline`).
+    AudibleDeadline,
     Command(PlaybackCommand),
     /// The library's facts of the tracks playback holds, `held`, which
     /// leave out each one it no longer holds.

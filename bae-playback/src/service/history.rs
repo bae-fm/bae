@@ -17,6 +17,18 @@ struct AudibleTail {
     fmt: Arc<TrackFmt>,
     position: StreamPosition,
     finishes_at: chrono::DateTime<chrono::Utc>,
+    /// When the play comes to count as played partway through the tail, and
+    /// so is due a save: the tail is heard at the rate it plays. `None` when
+    /// it already counted, or counts only at the tail's end or not at all.
+    /// Cleared once passed.
+    qualifies_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl AudibleTail {
+    /// The next moment this tail makes a save due.
+    fn next_due(&self) -> chrono::DateTime<chrono::Utc> {
+        self.qualifies_at.map_or(self.finishes_at, |at| at.min(self.finishes_at))
+    }
 }
 
 impl BufferedListening {
@@ -34,6 +46,8 @@ impl BufferedListening {
         self.listening.observe_local(tail.fmt.clone(), tail.position.saturating_sub(remaining));
         if remaining.is_zero() {
             self.tail = None;
+        } else if let Some(tail) = &mut self.tail {
+            tail.qualifies_at = tail.qualifies_at.filter(|at| *at > now);
         }
     }
 }
@@ -150,19 +164,43 @@ impl PlaybackService {
         if let Some(latency) = self.renderer.airplay_latency() {
             listening.observe_local(fmt.clone(), position.saturating_sub(latency));
             let listening = self.listening.take().expect("the finishing play is present");
+            let now = self.clock.now();
+            let finishes_at = now
+                + chrono::Duration::from_std(latency)
+                    .expect("receiver latency fits a clock deadline");
+            // A tail that starts before the track body is heard slower at
+            // first, so this can come early; the save is then due at the end.
+            let qualifies_at = listening
+                .play
+                .left_to_qualify()
+                .and_then(|left| chrono::Duration::from_std(left).ok())
+                .map(|left| now + left)
+                .filter(|at| *at < finishes_at);
             self.buffered_listening.push(BufferedListening {
                 listening,
-                tail: Some(AudibleTail {
-                    fmt,
-                    position,
-                    finishes_at: self.clock.now()
-                        + chrono::Duration::from_std(latency)
-                            .expect("receiver latency fits a clock deadline"),
-                }),
+                tail: Some(AudibleTail { fmt, position, finishes_at, qualifies_at }),
             });
         } else {
             listening.observe_local(fmt, position);
         }
+    }
+
+    /// The next moment audio still in an AirPlay receiver makes something due:
+    /// a finished play whose audio has been heard, or comes to count as played,
+    /// and saves; a drained track whose last audio has been heard, and
+    /// completes. The run loop waits for it, then checkpoints and publishes.
+    pub(super) fn audible_deadline(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+        let completing = matches!(
+            &self.slot,
+            PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Completed)
+        );
+        let completion =
+            self.audible_completion.as_ref().filter(|_| completing).map(|c| c.audible_at);
+        self.buffered_listening
+            .iter()
+            .filter_map(|buffered| buffered.tail.as_ref().map(AudibleTail::next_due))
+            .chain(completion)
+            .min()
     }
 
     /// Save plays at a boundary: pause, seek, finish. Each save is a synced

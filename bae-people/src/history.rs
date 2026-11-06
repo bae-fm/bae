@@ -46,10 +46,24 @@ impl HistoryPlay {
     }
 
     pub fn qualifies(&self) -> bool {
-        let threshold = match self.duration {
+        self.entry.played > Duration::ZERO && self.entry.played >= self.threshold()
+    }
+
+    /// How much more must be heard before the play qualifies; `None` once it
+    /// does.
+    pub fn left_to_qualify(&self) -> Option<Duration> {
+        if self.qualifies() {
+            return None;
+        }
+        // A play qualifies only once something was heard, even at a zero
+        // threshold.
+        Some(self.threshold().saturating_sub(self.entry.played).max(Duration::from_nanos(1)))
+    }
+
+    fn threshold(&self) -> Duration {
+        match self.duration {
             Some(duration) => (duration / 2).min(Duration::from_secs(30)),
             None => Duration::from_secs(30),
-        };
-        self.entry.played > Duration::ZERO && self.entry.played >= threshold
+        }
     }
 }

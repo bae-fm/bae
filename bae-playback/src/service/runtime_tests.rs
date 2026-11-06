@@ -440,3 +440,55 @@ async fn a_playing_track_deleted_by_sync_stops_playback() {
 
     assert!(stopped.is_ok(), "deleting the playing track's row stops playback");
 }
+
+/// A track that drained into an AirPlay receiver completes once the audio
+/// still in the receiver has been heard: the loop waits for that deadline on
+/// the clock, with no output or tick to drive it. Sabotage: leave the audible
+/// deadline out of the loop's waits, and the track never completes.
+#[tokio::test]
+async fn the_loop_completes_an_airplay_track_when_its_last_audio_is_heard() {
+    use std::time::Duration;
+    const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
+    let (_home, mut service, mut progress) =
+        seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
+    let clock = Arc::new(crate::ManualPlaybackClock::new(test_clock_start()));
+    service.clock = clock.clone();
+    let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
+    prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), Duration::ZERO);
+    prepared.sample_rate = 100;
+    prepared.channels = 1;
+    let (mut sink, stream, _) =
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 4000);
+    sink.push_samples(&vec![0.25; 4000]);
+    sink.mark_finished();
+    let mut source = source::PlaybackSource::new(stream, prepared.track_fmt(StreamPosition::START));
+    service.slot = active_slot(prepared, TrackPhase::Playing);
+    let _airplay = install_airplay(&mut service, Duration::from_secs(2));
+    assert!(service.begin_listening().await);
+    let (mut tx, _) = audio_event_channel();
+    source.pull_samples(&mut vec![0.0; 4000], &mut tx);
+    service
+        .handle_audio_event(AudioEvent::Completion(source.take_completion_event().unwrap()))
+        .await;
+    assert!(drained_track_completed_ids(&mut progress).is_empty());
+    assert_eq!(service.audible_deadline(), Some(test_clock_start() + chrono::Duration::seconds(2)));
+
+    let commands = service.command_tx.clone();
+    let hear_the_tail = async move {
+        clock.advance(Duration::from_secs(2));
+        let completed = tokio::time::timeout(HANG_GUARD, async {
+            while let Some(progress) = progress.recv().await {
+                if matches!(progress, PlaybackProgress::TrackCompleted { .. }) {
+                    return;
+                }
+            }
+        })
+        .await;
+        let (shutdown_tx, _shutdown_rx) = oneshot::channel();
+        dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
+        completed
+    };
+    let ((), completed) = tokio::join!(service.run(), hear_the_tail);
+
+    assert!(completed.is_ok(), "the track completes once its last audio is heard");
+}

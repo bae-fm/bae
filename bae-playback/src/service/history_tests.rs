@@ -219,6 +219,48 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
     }
 }
 
+/// A play that comes to count as played while its last audio is still in the
+/// AirPlay receiver is due a save at that moment, and the loop's audible
+/// deadline is it rather than the tail's end. Sabotage: leave the moment out
+/// of the deadline, and the save waits for the tail to finish.
+#[tokio::test]
+async fn a_play_that_counts_partway_through_the_airplay_tail_is_saved_then() {
+    use std::time::Duration;
+    const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
+    let (_home, mut service, _progress) = seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
+    let clock = Arc::new(crate::ManualPlaybackClock::new(test_clock_start()));
+    service.clock = clock.clone();
+    let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
+    // Four seconds: it counts once two are heard.
+    prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(4)), Duration::ZERO);
+    prepared.sample_rate = 100;
+    prepared.channels = 1;
+    let (mut sink, stream, _) =
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 400);
+    sink.push_samples(&vec![0.25; 400]);
+    sink.mark_finished();
+    let mut source = source::PlaybackSource::new(stream, prepared.track_fmt(StreamPosition::START));
+    service.slot = active_slot(prepared, TrackPhase::Playing);
+    let _airplay = install_airplay(&mut service, Duration::from_secs(3));
+    assert!(service.begin_listening().await);
+    let (mut tx, _) = audio_event_channel();
+    source.pull_samples(&mut vec![0.0; 400], &mut tx);
+    service
+        .handle_audio_event(AudioEvent::Completion(source.take_completion_event().unwrap()))
+        .await;
+
+    // One second heard, three still in the receiver.
+    assert!(service.people.history().await.unwrap().is_empty());
+    let second = |seconds| test_clock_start() + chrono::Duration::seconds(seconds);
+    assert_eq!(service.audible_deadline(), Some(second(1)));
+
+    clock.advance(Duration::from_secs(1));
+    service.checkpoint_listening().await;
+
+    assert_eq!(service.people.history().await.unwrap()[0].played, Duration::from_secs(2));
+    assert_eq!(service.audible_deadline(), Some(second(3)), "next, the tail's end");
+}
+
 #[tokio::test]
 async fn remote_listening_keeps_one_play_across_seek_and_pause() {
     use std::time::Duration;
