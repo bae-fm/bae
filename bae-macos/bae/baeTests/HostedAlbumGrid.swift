@@ -1,6 +1,7 @@
 import AppKit
 import BaeKit
 import SwiftUI
+import Testing
 
 @testable import bae
 
@@ -30,7 +31,7 @@ struct HostedAlbumGrid {
         openAlbumId: String? = nil,
         sections: [BridgeLibraryBrowseSection] = [],
         grid: (AlbumList) -> some View
-    ) async -> HostedAlbumGrid {
+    ) async throws -> HostedAlbumGrid {
         let uiStore = UiStore()
         let albums = Self.albums
         let list = AlbumList(
@@ -72,7 +73,7 @@ struct HostedAlbumGrid {
             host: host,
             uiStore: uiStore
         )
-        await hosted.settle()
+        try await hosted.settle()
         return hosted
     }
 
@@ -93,11 +94,35 @@ struct HostedAlbumGrid {
         )
     }
 
-    /// Lets springs, scrolls, and the page loads they set off run to the end.
-    func settle() async {
+    /// Where the grid's views are and where it is scrolled to.
+    private struct Geometry: Equatable {
+        let frames: [CGRect]
+        let offset: CGPoint
+    }
+
+    private func geometry() -> Geometry {
         host.layoutSubtreeIfNeeded()
-        try? await Task.sleep(for: .seconds(1))
-        host.layoutSubtreeIfNeeded()
+        return Geometry(
+            frames: SnapshotTestSupport.descendants(of: host).map(\.frame),
+            offset: scrollView?.contentView.bounds.origin ?? .zero
+        )
+    }
+
+    /// Return once the grid's views and its scroll position have stopped
+    /// moving. With a `change` to make, it is made first and the grid must
+    /// have moved from where it stood before it counts as at rest, since a
+    /// grid that has not started to move reads as steady.
+    func settle(after change: (() -> Void)? = nil) async throws {
+        let before = change.map { _ in geometry() }
+        change?()
+        try await Wait.untilSteady(changedFrom: before) { geometry() }
+    }
+
+    /// Return once the grid is scrolled away from its top.
+    func untilScrolled() async throws {
+        let clip = try #require(scrollView).contentView
+        let moves = Wait.Notice(NSView.boundsDidChangeNotification, of: clip)
+        try await Wait.until(notices: [moves]) { clip.bounds.origin.y > 0 }
     }
 
     var scrollView: NSScrollView? {

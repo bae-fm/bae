@@ -18,6 +18,12 @@ struct AlbumGridResizeTests {
         /// Where the open album's detail sits in the visible area.
         @ObservationIgnored
         var detailTop: CGFloat?
+
+        /// Show or hide the panel, and return once the grid has moved for it
+        /// and come to rest.
+        func movePanel(show: Bool, in hosted: HostedAlbumGrid) async throws {
+            try await hosted.settle { self.showPanel = show }
+        }
     }
 
     struct Harness: View {
@@ -87,7 +93,7 @@ struct AlbumGridResizeTests {
     )
     func columnChangeKeepsTopSlot(scene: Scene) async throws {
         let stage = Stage()
-        let hosted = await HostedAlbumGrid.host(
+        let hosted = try await HostedAlbumGrid.host(
             preloaded: scene.preloaded,
             openAlbumId: scene.openAlbumId
         ) { list in
@@ -104,7 +110,7 @@ struct AlbumGridResizeTests {
 
         scrollView.contentView.scroll(to: NSPoint(x: 0, y: scene.scrolledTo))
         scrollView.reflectScrolledClipView(scrollView.contentView)
-        await hosted.settle()
+        try await hosted.settle()
         let before = place()
         let content = try #require(scrollView.documentView).frame.height
         let rowPitch =
@@ -112,27 +118,23 @@ struct AlbumGridResizeTests {
             / (Double(HostedAlbumGrid.albums.count) / Self.wideColumns)
             .rounded(.up)
 
-        stage.showPanel = true
-        await hosted.settle()
+        try await stage.movePanel(show: true, in: hosted)
         let narrowed = place()
         if scene.openAlbumId == nil {
             // Fewer columns put the slot on top further down the content.
             #expect(narrowed > before)
         }
 
-        stage.showPanel = false
-        await hosted.settle()
+        try await stage.movePanel(show: false, in: hosted)
         let back = place()
         // Back at five columns the slot on top is the one that was: the grid
         // moved by less than half a row, to line that slot up with the top.
         #expect(abs(back - before) <= rowPitch / 2)
 
         // Going back and forth again returns to the same places.
-        stage.showPanel = true
-        await hosted.settle()
+        try await stage.movePanel(show: true, in: hosted)
         #expect(abs(place() - narrowed) < 1)
-        stage.showPanel = false
-        await hosted.settle()
+        try await stage.movePanel(show: false, in: hosted)
         #expect(abs(place() - back) < 1)
 
         if scene.scrolledTo == 6450 {
