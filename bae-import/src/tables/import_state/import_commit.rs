@@ -87,8 +87,6 @@ fn require_import_commit_guard(
             let current = load_committing_candidate(sql, candidate_key, expectation)?;
             expectation.verify(candidate_key, source, current.as_ref()).map_err(DbError::Message)
         }
-        #[cfg(test)]
-        ImportCommitGuard::UncheckedTestSetup => Ok(()),
     }
 }
 
@@ -107,8 +105,6 @@ fn end_import_attempt_of_commit(
             super::delete_failure_on(sql, &expectation.candidate.content_hash)?;
             super::move_import_on(sql, candidate_key, import_id, None)
         }
-        #[cfg(test)]
-        ImportCommitGuard::UncheckedTestSetup => Ok(()),
     }
 }
 
@@ -135,8 +131,6 @@ fn record_import_origin_on(
                 }
             }
         }
-        #[cfg(test)]
-        ImportCommitGuard::UncheckedTestSetup => Ok(()),
     }
 }
 
@@ -166,8 +160,6 @@ fn delete_what_the_import_spent_on(
             super::cover_rows::delete_cover(sql, content_hash)?;
             super::release_link_rows::store_release_link(sql, content_hash, None)
         }
-        #[cfg(test)]
-        ImportCommitGuard::UncheckedTestSetup => Ok(()),
     }
 }
 
@@ -241,9 +233,6 @@ pub(crate) enum ImportCommitGuard {
         /// ends with the release.
         import_id: String,
     },
-    /// A test's import of a release no scanned candidate stands behind.
-    #[cfg(test)]
-    UncheckedTestSetup,
 }
 
 /// The row lists an import commit writes around its release — the artist, work,

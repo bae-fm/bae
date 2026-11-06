@@ -89,8 +89,8 @@ fn test_track(
 }
 
 /// What a finalize varies between these tests. Everything else it takes — the
-/// unchecked test-setup guard and opaque home storage — is the same in all of
-/// them.
+/// guard over a stored candidate and opaque home storage — is the same in all
+/// of them.
 #[derive(Default)]
 struct Commit<'a> {
     album: Option<&'a DbAlbum>,
@@ -101,15 +101,57 @@ struct Commit<'a> {
     artist_images: crate::tables::NewArtistImages<'a>,
 }
 
-/// Finalize `release` past the guard, which these tests have already satisfied
-/// by seeding the DB directly rather than going through the import queue. Its
+/// The real guard over a scanned candidate the import has claimed: stored by
+/// the scan, prepared (one edit, so it has a state row), and owned by
+/// `import-1`, as the import queue leaves it when it commits.
+async fn claimed_candidate_guard(db: &Store) -> crate::tables::ImportCommitGuard {
+    use crate::tables::import_state::tests::{
+        pane_candidate_key, pane_candidate_path, stored_pane_candidate, PaneControls,
+    };
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (_, content_hash) = stored_pane_candidate(db).await;
+    PaneControls::of_pane_candidate(db)
+        .type_field(&content_hash, crate::CandidateEditField::PressingYear, "2026")
+        .await
+        .unwrap();
+    let state = tables
+        .load_import_candidate_state(&content_hash)
+        .await
+        .unwrap()
+        .expect("the edit stored the candidate's state");
+    let candidate_key = pane_candidate_key();
+    assert_eq!(
+        tables.claim_candidate_import(&candidate_key, "import-1", None).await.unwrap(),
+        crate::tables::ImportClaim::Claimed { identification: None }
+    );
+    crate::tables::ImportCommitGuard::Candidate {
+        candidate_key,
+        source: crate::release_candidate::CandidateSource {
+            path: pane_candidate_path(),
+            scope: crate::folder_scanner::ReleaseFileScope::Direct,
+            parts: Vec::new(),
+        },
+        expectation: crate::service::ImportExpectation {
+            candidate: crate::CandidateAsRead {
+                content_hash,
+                file_edit_revision: state.file_edits.revision,
+                metadata_revision: state.metadata_revision,
+            },
+            file_tag_snapshot: None,
+        },
+        import_id: "import-1".to_string(),
+    }
+}
+
+/// Finalize `release` through the real guard over a claimed candidate. Its
 /// tracks sit on its one CD ([`test_track`]).
 async fn commit_import(db: &Store, release: &DbRelease, commit: Commit<'_>) {
+    let guard = claimed_candidate_guard(db).await;
     let mediums = [bae_records::DbReleaseMedium::new_test(&release.id)];
     ImportTables::new(db.clone())
         .finalize_import_atomic(
             &coven::UuidIds,
-            crate::tables::ImportCommitGuard::UncheckedTestSetup,
+            guard,
             commit.album,
             release,
             commit.track_files,
