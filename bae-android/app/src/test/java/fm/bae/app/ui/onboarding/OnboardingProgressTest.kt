@@ -1,16 +1,17 @@
 package fm.bae.app.ui.onboarding
 
 import android.app.Application
+import android.text.format.DateUtils
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.shownTexts
 import fm.bae.app.ui.tellStep
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
-import fm.bae.app.BaeRobolectricTestRunner
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -89,6 +90,37 @@ class OnboardingProgressTest {
         compose.onNodeWithText("041 778").assertIsDisplayed()
         compose.onNodeWithText("Check now").assertIsDisplayed()
         compose.onNodeWithText("Cancel").assertDoesNotExist()
+    }
+
+    /** The countdown to the next check reads whole seconds, rounded up, and moves each second. */
+    @Test
+    fun theNextCheckCountsDownEachSecond() {
+        var clockMs = 1_000_000L
+        val waiting =
+            OnboardingStep.Running(
+                invite,
+                BridgeBootstrapState(
+                    BridgeBootstrapStatus.WaitingForApproval(
+                        confirmation = null,
+                        nextCheck = BridgeNextCheck.At(Instant.ofEpochMilli(clockMs + 300_000L)),
+                    ),
+                    cancellable = false,
+                ),
+                LatestStream.bootstrapSteps().only,
+            )
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            OnboardingProgress(waiting, onCancel = null, onCheckNow = {}, nowMs = { clockMs })
+        }
+
+        // The first frame starts the countdown's wait.
+        compose.mainClock.advanceTimeByFrame()
+        compose.onNodeWithText(DateUtils.formatElapsedTime(300L), substring = true).assertIsDisplayed()
+
+        clockMs += 1_000L
+        compose.mainClock.advanceTimeBy(1_000L)
+
+        compose.onNodeWithText(DateUtils.formatElapsedTime(299L), substring = true).assertIsDisplayed()
     }
 
     /** Registering this device after loading names the step, uncounted. */

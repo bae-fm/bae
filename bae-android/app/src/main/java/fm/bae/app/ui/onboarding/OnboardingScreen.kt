@@ -19,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,11 +41,12 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
+import fm.bae.app.ui.countdownSecondsLeft
+import fm.bae.app.ui.rememberCountdownNow
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.settings.inviteExpiry
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
-import kotlinx.coroutines.delay
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapState
@@ -58,13 +58,9 @@ import uniffi.bae_bridge.BridgeInviteDeliveryKind
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeNextCheck
 import uniffi.bae_bridge.BridgeStorageLocation
-import java.time.Duration
 import java.time.Instant
 
 internal val actionWidth = 220.dp
-
-/** How often a waiting join's countdown redraws. */
-private const val COUNTDOWN_TICK_MS = 1_000L
 
 private const val PREVIEW_WAIT_SECONDS = 42L
 private const val PREVIEW_INVITE_SECONDS = 86_400L
@@ -241,6 +237,7 @@ internal fun OnboardingProgress(
     step: OnboardingStep.Running,
     onCancel: (() -> Unit)?,
     onCheckNow: () -> Unit,
+    nowMs: () -> Long = System::currentTimeMillis,
 ) {
     val title =
         when (val from = step.from) {
@@ -276,6 +273,7 @@ internal fun OnboardingProgress(
                     status = status,
                     expiresAt = (step.from as OnboardingStep.Invite).invite.expiresAt,
                     onCheckNow = onCheckNow,
+                    nowMs = nowMs,
                 )
             }
 
@@ -309,6 +307,7 @@ private fun WaitingForApproval(
     status: BridgeBootstrapStatus.WaitingForApproval,
     expiresAt: Instant,
     onCheckNow: () -> Unit,
+    nowMs: () -> Long,
 ) {
     val context = LocalContext.current
     val until = remember(expiresAt) { context.inviteExpiry(expiresAt) }
@@ -338,7 +337,8 @@ private fun WaitingForApproval(
         if (due == null) {
             stringResource(R.string.onboarding_checking)
         } else {
-            val remaining = rememberSecondsUntil(due)
+            val dueMs = due.toEpochMilli()
+            val remaining = countdownSecondsLeft(dueMs, rememberCountdownNow(dueMs, nowMs))
             stringResource(R.string.onboarding_next_check, DateUtils.formatElapsedTime(remaining))
         }
     Text(text = countdown, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -346,19 +346,6 @@ private fun WaitingForApproval(
     OutlinedButton(onClick = onCheckNow, enabled = status.nextCheck is BridgeNextCheck.At) {
         Text(stringResource(R.string.onboarding_check_now))
     }
-}
-
-/** The whole seconds left until [due], counting down each second. */
-@Composable
-private fun rememberSecondsUntil(due: Instant): Long {
-    var now by remember { mutableStateOf(Instant.now()) }
-    LaunchedEffect(due) {
-        while (true) {
-            now = Instant.now()
-            delay(COUNTDOWN_TICK_MS)
-        }
-    }
-    return Duration.between(now, due).seconds.coerceAtLeast(0)
 }
 
 @Composable

@@ -54,7 +54,7 @@ public struct BootstrapStatusView: View {
 }
 
 /// When a waiting join checks for approval next, counting down each second.
-private struct NextCheckLine: View {
+struct NextCheckLine: View {
     let nextCheck: BridgeNextCheck
 
     var body: some View {
@@ -70,16 +70,19 @@ private struct NextCheckLine: View {
 
     private func countdown(to due: Date) -> some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
-            let left = max(
-                0,
-                Int(due.timeIntervalSince(context.date).rounded(.up))
-            )
+            let left = Self.secondsLeft(until: due, at: context.date)
             line(
                 Text(
                     "Next check in \(Duration.seconds(left).formatted(.time(pattern: .minuteSecond)))"
                 )
             )
         }
+    }
+
+    /// Whole seconds from `now` until `due`, rounded up so the line never reads
+    /// 0 before the check, and never below 0.
+    nonisolated static func secondsLeft(until due: Date, at now: Date) -> Int {
+        max(0, Int(due.timeIntervalSince(now).rounded(.up)))
     }
 
     private func line(_ text: Text) -> some View {

@@ -133,14 +133,4 @@ class SidePauseAlertTest {
 
         compose.onNodeWithText("The next side starts", substring = true).assertDoesNotExist()
     }
-
-    @Test
-    fun secondsLeftRoundUpAndStopAtZero() {
-        assertEquals(5L, sideCountdownSecondsLeft(resumesAtMs = 5_000L, nowMs = 0L))
-        assertEquals(5L, sideCountdownSecondsLeft(resumesAtMs = 5_000L, nowMs = 999L))
-        assertEquals(4L, sideCountdownSecondsLeft(resumesAtMs = 5_000L, nowMs = 1_000L))
-        assertEquals(1L, sideCountdownSecondsLeft(resumesAtMs = 5_000L, nowMs = 4_999L))
-        assertEquals(0L, sideCountdownSecondsLeft(resumesAtMs = 5_000L, nowMs = 5_000L))
-        assertEquals(0L, sideCountdownSecondsLeft(resumesAtMs = 5_000L, nowMs = 9_000L))
-    }
 }

@@ -2480,7 +2480,8 @@ reads the code, with no form to fill in
 - **Send:** Ana picks how long the invite lasts, an hour, a day or a week, and
   sends the code. Dan taps **Enter code** and pastes it. His waiting screen
   shows until when it waits, which is when the invite expires, his
-  confirmation number, a countdown to the next check, and **Check now**. When his request arrives, Ana's laptop shows a dialog with Dan's name,
+  confirmation number, a countdown to the next check in whole seconds, rounded
+  up so it never reads 0 before the check, and **Check now**. When his request arrives, Ana's laptop shows a dialog with Dan's name,
   the same number, **Approve** and **Decline**. Ana asks Dan for his number and
   approves if it matches.
 

@@ -15,10 +15,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,8 +42,9 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
+import fm.bae.app.ui.countdownSecondsLeft
+import fm.bae.app.ui.rememberCountdownNow
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeSideCountdown
@@ -244,36 +243,17 @@ private fun SidePauseCountdownLine(
     nowMs: () -> Long,
 ) {
     val context = LocalContext.current
-    var now by remember(countdown.resumesAtMs) { mutableLongStateOf(nowMs()) }
-    LaunchedEffect(countdown.resumesAtMs) {
-        while (now < countdown.resumesAtMs) {
-            // Wake as the next whole second before the deadline passes.
-            val untilNextSecond = (countdown.resumesAtMs - now) % MILLIS_PER_SECOND
-            delay(if (untilNextSecond == 0L) MILLIS_PER_SECOND else untilNextSecond)
-            now = nowMs()
-        }
-    }
+    val now = rememberCountdownNow(countdown.resumesAtMs, nowMs)
     Text(
         text =
             context.coreString(
                 messageKey,
-                mapOf("seconds" to sideCountdownSecondsLeft(countdown.resumesAtMs, now)),
+                mapOf("seconds" to countdownSecondsLeft(countdown.resumesAtMs, now)),
             ),
         style = ThemeText.strong.style,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
 }
-
-/**
- * Whole seconds from [nowMs] until [resumesAtMs], rounded up so the line never
- * reads 0 while the side has yet to start, and never below 0.
- */
-internal fun sideCountdownSecondsLeft(
-    resumesAtMs: Long,
-    nowMs: Long,
-): Long = (maxOf(0L, resumesAtMs - nowMs) + MILLIS_PER_SECOND - 1) / MILLIS_PER_SECOND
-
-private const val MILLIS_PER_SECOND = 1_000L
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
