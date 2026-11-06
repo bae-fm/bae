@@ -69,12 +69,12 @@ impl Library {
                     size: file.version.size,
                     modified_at_ns: file.version.modified_at_ns,
                 },
-                tags: FileTags {
+                tags: crate::file_tag_snapshot::TagReading::Stated(FileTags {
                     title: track_title.map(str::to_string),
                     album_title: Some(album_title.to_string()),
                     album_artists: vec![artist.to_string()],
                     ..FileTags::untagged()
-                },
+                }),
             })
             .collect();
         let tables = self.tables();

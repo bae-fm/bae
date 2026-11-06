@@ -1,6 +1,6 @@
 //! A stable reading of one import candidate's embedded metadata.
 
-use super::file_tag_reader::{FileTagRead, FileTagReader};
+use super::file_tag_reader::{FileTagRead, FileTagReader, TagReadFailure};
 use super::folder_scanner::ScannedFile;
 use super::track_numbers::TrackNumbers;
 use super::ImportError;
@@ -36,7 +36,28 @@ impl FileObservation {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct FileTagFact {
     pub observation: FileObservation,
-    pub tags: FileTags,
+    pub tags: TagReading,
+}
+
+/// What one audio file's tags were read as.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum TagReading {
+    /// What they state.
+    Stated(FileTags),
+    /// They do not parse, for this reason, so they state nothing: the file's
+    /// name places and titles its track.
+    Unparseable(String),
+}
+
+impl TagReading {
+    /// What the tags state: nothing, where they do not parse.
+    pub(crate) fn stated(&self) -> &FileTags {
+        static NOTHING: FileTags = FileTags::untagged();
+        match self {
+            Self::Stated(tags) => tags,
+            Self::Unparseable(_) => &NOTHING,
+        }
+    }
 }
 
 /// What one file's tags state. A tag that holds a value more than once — two
@@ -61,7 +82,7 @@ pub(crate) struct FileTags {
 
 impl FileTags {
     /// What a file carrying no tag states: nothing.
-    pub(crate) fn untagged() -> Self {
+    pub(crate) const fn untagged() -> Self {
         Self {
             title: None,
             track_artists: Vec::new(),
@@ -148,25 +169,29 @@ pub(crate) fn observe_audio_files(
     audio_files.iter().map(observe_file).collect()
 }
 
-/// `file`'s tags as `reader` reads them, with the file as it was while they
-/// were read: the scanned size, at the modification time it has now.
+/// `file`'s tags as `reader` reads them, or why they do not parse, with the
+/// file as it was while they were read: the scanned size, at the modification
+/// time it has now. A read that fails at the file itself says nothing of the
+/// file, and fails.
 pub(crate) fn read_observed(
     file: &ScannedFile,
     reader: &dyn FileTagReader,
-) -> Result<(FileObservation, FileTagRead), ImportError> {
+) -> Result<(FileObservation, Result<FileTagRead, String>), ImportError> {
     let before = observe_file(file)?;
-    let read = reader
-        .read(&file.version.path)
-        .map_err(|failure| failure.into_error(&file.version.path))?;
+    let read = reader.read(&file.version.path);
     let after = observe_file(file)?;
     if before != after {
         return Err(changed_file_error(file));
     }
-    Ok((before, read))
+    match read {
+        Ok(read) => Ok((before, Ok(read))),
+        Err(TagReadFailure::Unparseable(reason)) => Ok((before, Err(reason))),
+        Err(TagReadFailure::Fault(detail)) => Err(ImportError::FileTags { detail }),
+    }
 }
 
 /// One audio file's tags as they were read from it, with what the label or
-/// store that issued it wrote there.
+/// store that issued it wrote there: nothing, where its tags do not parse.
 pub(crate) struct DeliveredFileTags {
     pub fact: FileTagFact,
     pub delivery: DeliveryTags,
@@ -182,10 +207,11 @@ pub(crate) fn read_delivered_file_tags(
         .iter()
         .map(|file| {
             let (observation, read) = read_observed(file, reader)?;
-            Ok(DeliveredFileTags {
-                fact: FileTagFact { observation, tags: read.tags },
-                delivery: read.delivery,
-            })
+            let (tags, delivery) = match read {
+                Ok(read) => (TagReading::Stated(read.tags), read.delivery),
+                Err(reason) => (TagReading::Unparseable(reason), DeliveryTags::default()),
+            };
+            Ok(DeliveredFileTags { fact: FileTagFact { observation, tags }, delivery })
         })
         .collect()
 }
@@ -200,14 +226,21 @@ pub(crate) fn extract_file_tag_snapshot(
     let mut embedded_cover = None;
     for file in audio_files {
         let (before, read) = read_observed(file, reader)?;
-        if embedded_cover.is_none() {
-            embedded_cover = read.embedded_cover.map(|(data, content_type)| EmbeddedCoverFact {
-                source_relative_path: file.relative_path.clone(),
-                content_type,
-                data,
-            });
-        }
-        facts.push(FileTagFact { observation: before, tags: read.tags });
+        let tags = match read {
+            Ok(read) => {
+                if embedded_cover.is_none() {
+                    embedded_cover =
+                        read.embedded_cover.map(|(data, content_type)| EmbeddedCoverFact {
+                            source_relative_path: file.relative_path.clone(),
+                            content_type,
+                            data,
+                        });
+                }
+                TagReading::Stated(read.tags)
+            }
+            Err(reason) => TagReading::Unparseable(reason),
+        };
+        facts.push(FileTagFact { observation: before, tags });
     }
     Ok(FileTagSnapshot { scan_generation, file_edit_revision, files: facts, embedded_cover })
 }

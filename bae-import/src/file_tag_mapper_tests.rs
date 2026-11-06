@@ -65,15 +65,17 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
                     size: file.version.size,
                     modified_at_ns: file.version.modified_at_ns,
                 },
-                tags: crate::file_tag_snapshot::FileTags {
-                    title: Some(format!("Tags {}", file.relative_path)),
-                    track_artists: vec!["Track Artist".into()],
-                    album_title: Some("Tagged Album".into()),
-                    album_artists: vec!["Album Artist".into()],
-                    compilation: false,
-                    years: Vec::new(),
-                    numbers: crate::track_numbers::TrackNumbers { disc: None, track: None },
-                },
+                tags: crate::file_tag_snapshot::TagReading::Stated(
+                    crate::file_tag_snapshot::FileTags {
+                        title: Some(format!("Tags {}", file.relative_path)),
+                        track_artists: vec!["Track Artist".into()],
+                        album_title: Some("Tagged Album".into()),
+                        album_artists: vec!["Album Artist".into()],
+                        compilation: false,
+                        years: Vec::new(),
+                        numbers: crate::track_numbers::TrackNumbers { disc: None, track: None },
+                    },
+                ),
             })
             .collect(),
     };
@@ -133,15 +135,17 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
                 size: 123,
                 modified_at_ns: 456,
             },
-            tags: crate::file_tag_snapshot::FileTags {
-                title: Some("Track Alpha".to_string()),
-                track_artists: vec!["Artist Alpha".to_string()],
-                album_title: Some("Album Alpha".to_string()),
-                album_artists: vec!["Artist Alpha".to_string()],
-                compilation: false,
-                years: vec![2001],
-                numbers: crate::track_numbers::TrackNumbers { disc: None, track: Some(1) },
-            },
+            tags: crate::file_tag_snapshot::TagReading::Stated(
+                crate::file_tag_snapshot::FileTags {
+                    title: Some("Track Alpha".to_string()),
+                    track_artists: vec!["Artist Alpha".to_string()],
+                    album_title: Some("Album Alpha".to_string()),
+                    album_artists: vec!["Artist Alpha".to_string()],
+                    compilation: false,
+                    years: vec![2001],
+                    numbers: crate::track_numbers::TrackNumbers { disc: None, track: Some(1) },
+                },
+            ),
         }],
         embedded_cover: None,
     };
@@ -198,7 +202,9 @@ pub(super) fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -
                     size: file.version.size,
                     modified_at_ns: file.version.modified_at_ns,
                 },
-                tags: crate::file_tag_snapshot::FileTags::untagged(),
+                tags: crate::file_tag_snapshot::TagReading::Stated(
+                    crate::file_tag_snapshot::FileTags::untagged(),
+                ),
             })
             .collect(),
     };
@@ -893,13 +899,15 @@ fn file_tag_import_leaves_media_blank_for_every_source_codec() {
     }
 }
 
+/// lofty parses no DSF tags, so a DSF file's tags state nothing: its name
+/// titles its track and the folder's names the album.
 #[test]
-fn dsd_file_tag_seeding_fails_through_tag_reader() {
+fn a_dsf_files_tags_state_nothing() {
     let path = bae_audio::test_fixtures::audio_format_dir().join("placeholder-dsd.dsf");
-    let err = map_tags_with_folder(&[path], Some("Album Title"))
-        .expect_err("lofty does not read DSF tags");
-    assert!(
-        matches!(&err, ImportError::FileTags { detail } if detail.contains("placeholder-dsd.dsf")),
-        "{err}"
+    let parsed = map_tags_with_folder(&[path], Some("Album Title")).unwrap();
+    assert_eq!(parsed.album_title, "Album Title");
+    assert_eq!(
+        parsed.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(),
+        ["placeholder-dsd"]
     );
 }

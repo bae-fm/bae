@@ -4,7 +4,6 @@
 
 use super::file_tag_snapshot::{DeliveryTags, FileTags};
 use super::track_numbers::TrackNumbers;
-use super::ImportError;
 use bae_catalogs::StoreMarker;
 use bae_util::content_type::ContentType;
 use lofty::config::ParseOptions;
@@ -39,19 +38,6 @@ pub(crate) enum TagReadFailure {
     /// share that went away, which says nothing of the file. The text names
     /// the file.
     Fault(String),
-}
-
-impl TagReadFailure {
-    /// The failure as an error naming the file at `path`, for a caller that
-    /// can't go on without its tags.
-    pub(crate) fn into_error(self, path: &Path) -> ImportError {
-        match self {
-            Self::Unparseable(reason) => {
-                ImportError::FileTags { detail: format!("{}: {reason}", path.display()) }
-            }
-            Self::Fault(detail) => ImportError::FileTags { detail },
-        }
-    }
 }
 
 pub(crate) struct LoftyFileTagReader;

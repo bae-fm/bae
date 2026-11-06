@@ -128,8 +128,8 @@ pub(super) fn gather_non_ocr_sources(
     }
 
     // The audio's own tags: their album, artists and label feed the pool, and
-    // their ISRCs are looked up. A reading that cannot be had is skipped like
-    // any other unreadable text.
+    // their ISRCs are looked up. A file whose tags do not parse states nothing;
+    // a reading that cannot be had is skipped like any other unreadable text.
     let audio_files: Vec<_> = categorized.audio().cloned().collect();
     match crate::file_tag_snapshot::read_delivered_file_tags(
         &audio_files,
@@ -151,7 +151,7 @@ pub(super) fn gather_non_ocr_sources(
             }
             let mut seen = HashSet::new();
             for file in &files {
-                let tagged = &file.fact.tags;
+                let tagged = file.fact.tags.stated();
                 for value in tagged
                     .album_title
                     .iter()
@@ -225,7 +225,7 @@ fn track_titles(
             .map(|file| &file.fact)
             .find(|fact| fact.observation.relative_path == file_id);
         let numbers = match fact {
-            Some(fact) => fact.tags.numbers,
+            Some(fact) => fact.tags.stated().numbers,
             None => crate::track_numbers::TrackNumbers::unstated(),
         }
         .or_file_name(&file_id);
@@ -238,7 +238,7 @@ fn track_titles(
         }
         previous = Some(position);
         let tagged = fact
-            .and_then(|fact| fact.tags.title.as_deref())
+            .and_then(|fact| fact.tags.stated().title.as_deref())
             .map(str::trim)
             .filter(|title| !title.is_empty())
             .map(str::to_string);

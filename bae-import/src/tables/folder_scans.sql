@@ -182,28 +182,42 @@ CREATE TABLE IF NOT EXISTS scan_candidate_tag_snapshot (
     )
 ) STRICT;
 
--- The tags each audio file of a candidate carried when it was probed.
+-- The tags each audio file of a candidate carried when it was probed: what
+-- they state, or, for tags that do not parse, why, with every column of what
+-- they state empty.
 CREATE TABLE IF NOT EXISTS scan_candidate_file_tag (
     watched_folder_path BLOB NOT NULL,
     candidate_path      BLOB NOT NULL,
     relative_path       TEXT NOT NULL,
     file_size           INTEGER NOT NULL CHECK (file_size >= 0),
     modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
+    -- Why the tags do not parse; NULL for tags that do.
+    unparseable_reason  TEXT CHECK (unparseable_reason <> ''),
     title               TEXT,
     -- Every value a multi-valued tag states, in order, as a JSON array of
     -- strings: the track's artists and the album's artists.
-    track_artists       TEXT NOT NULL
+    track_artists       TEXT
         CHECK (json_valid(track_artists) AND json_type(track_artists) = 'array'),
     album_title         TEXT,
-    album_artists       TEXT NOT NULL
+    album_artists       TEXT
         CHECK (json_valid(album_artists) AND json_type(album_artists) = 'array'),
     -- Whether the tags flag the file part of a compilation.
-    compilation         INTEGER NOT NULL CHECK (compilation IN (0, 1)),
+    compilation         INTEGER CHECK (compilation IN (0, 1)),
     -- Every year the file's dates name, each once, as a JSON array of integers.
-    years               TEXT NOT NULL
+    years               TEXT
         CHECK (json_valid(years) AND json_type(years) = 'array'),
     track_number        INTEGER,
     disc_number         INTEGER,
+    CHECK (
+        (unparseable_reason IS NULL
+            AND track_artists IS NOT NULL AND album_artists IS NOT NULL
+            AND compilation IS NOT NULL AND years IS NOT NULL)
+        OR
+        (unparseable_reason IS NOT NULL
+            AND title IS NULL AND track_artists IS NULL AND album_title IS NULL
+            AND album_artists IS NULL AND compilation IS NULL AND years IS NULL
+            AND track_number IS NULL AND disc_number IS NULL)
+    ),
     PRIMARY KEY (watched_folder_path, candidate_path, relative_path),
     FOREIGN KEY (watched_folder_path, candidate_path)
         REFERENCES scan_candidate_tag_snapshot (watched_folder_path, candidate_path) ON DELETE CASCADE,

@@ -46,9 +46,9 @@ impl TrackNumbers {
         Self { disc: self.disc.or(named.disc), track: self.track.or(named.track) }
     }
 
-    /// Numbers a file whose tags could not be read, or that carries no tag,
+    /// Numbers a file whose tags do not parse, or that carries no tag,
     /// states.
-    pub(crate) fn unstated() -> Self {
+    pub(crate) const fn unstated() -> Self {
         Self { disc: None, track: None }
     }
 

@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::file_tag_snapshot::{
-    EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags,
+    EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags, TagReading,
 };
 use crate::folder_scanner::FileVersion;
 use bae_util::content_type::ContentType;
@@ -109,31 +109,63 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
         ],
     )?;
     for fact in &snapshot.files {
-        let tags = &fact.tags;
+        let (unparseable_reason, stated) = match &fact.tags {
+            TagReading::Stated(tags) => (None, Some(StatedTagColumns::of(tags)?)),
+            TagReading::Unparseable(reason) => (Some(reason.as_str()), None),
+        };
+        let stated = stated.as_ref();
         sql.execute(
             "INSERT INTO scan_candidate_file_tag \
                  (watched_folder_path, candidate_path, relative_path, file_size, \
-                  modified_at_ns, title, track_artists, album_title, \
+                  modified_at_ns, unparseable_reason, title, track_artists, album_title, \
                   album_artists, compilation, years, track_number, disc_number) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 coven::path_bytes(watched_folder_path),
                 candidate_path,
                 fact.observation.relative_path,
                 to_i64(fact.observation.size, "a file-tag observation's size")?,
                 fact.observation.modified_at_ns,
-                tags.title,
-                tag_values_json(&tags.track_artists)?,
-                tags.album_title,
-                tag_values_json(&tags.album_artists)?,
-                tags.compilation,
-                tag_values_json(&tags.years)?,
-                tags.numbers.track.map(i64::from),
-                tags.numbers.disc.map(i64::from),
+                unparseable_reason,
+                stated.and_then(|tags| tags.title),
+                stated.map(|tags| tags.track_artists.as_str()),
+                stated.and_then(|tags| tags.album_title),
+                stated.map(|tags| tags.album_artists.as_str()),
+                stated.map(|tags| tags.compilation),
+                stated.map(|tags| tags.years.as_str()),
+                stated.and_then(|tags| tags.track_number),
+                stated.and_then(|tags| tags.disc_number),
             ],
         )?;
     }
     Ok(())
+}
+
+/// The columns of what one file's tags state, as a row holds them.
+struct StatedTagColumns<'a> {
+    title: Option<&'a str>,
+    track_artists: String,
+    album_title: Option<&'a str>,
+    album_artists: String,
+    compilation: bool,
+    years: String,
+    track_number: Option<i64>,
+    disc_number: Option<i64>,
+}
+
+impl<'a> StatedTagColumns<'a> {
+    fn of(tags: &'a FileTags) -> Result<Self, DbError> {
+        Ok(Self {
+            title: tags.title.as_deref(),
+            track_artists: tag_values_json(&tags.track_artists)?,
+            album_title: tags.album_title.as_deref(),
+            album_artists: tag_values_json(&tags.album_artists)?,
+            compilation: tags.compilation,
+            years: tag_values_json(&tags.years)?,
+            track_number: tags.numbers.track.map(i64::from),
+            disc_number: tags.numbers.disc.map(i64::from),
+        })
+    }
 }
 
 /// A multi-valued tag's values as their JSON array column holds them.
@@ -351,12 +383,13 @@ fn load_file_tag_facts(
     rows.into_iter().map(StoredFileTags::fact).collect()
 }
 
-/// Every tag reading stored for a scanned release under the root, by the
-/// version of the track it was read from.
+/// Every tag reading stored for a scanned release under the root — what a
+/// track's tags state, or why they do not parse — by the version of the track
+/// it was read from.
 pub(super) fn load_root_file_tags(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &Path,
-) -> Result<Vec<(FileVersion, FileTags)>, DbError> {
+) -> Result<Vec<(FileVersion, TagReading)>, DbError> {
     let rows = sql.query(
         &format!(
             "SELECT files.absolute_path, {FILE_TAG_COLUMNS} \
@@ -456,20 +489,21 @@ pub(super) fn stored_embedded_cover(
 
 /// The `scan_candidate_file_tag` columns a query selects, in this order.
 const FILE_TAG_COLUMNS: &str = "tags.relative_path, tags.file_size, tags.modified_at_ns, \
-     tags.title, tags.track_artists, tags.album_title, tags.album_artists, tags.compilation, \
-     tags.years, tags.track_number, tags.disc_number";
+     tags.unparseable_reason, tags.title, tags.track_artists, tags.album_title, \
+     tags.album_artists, tags.compilation, tags.years, tags.track_number, tags.disc_number";
 
 /// One `scan_candidate_file_tag` row as SQLite returns it.
 struct StoredFileTags {
     relative_path: String,
     size: i64,
     modified_at_ns: i64,
+    unparseable_reason: Option<String>,
     title: Option<String>,
-    track_artists: String,
+    track_artists: Option<String>,
     album_title: Option<String>,
-    album_artists: String,
-    compilation: bool,
-    years: String,
+    album_artists: Option<String>,
+    compilation: Option<bool>,
+    years: Option<String>,
     track_number: Option<i64>,
     disc_number: Option<i64>,
 }
@@ -481,42 +515,62 @@ impl StoredFileTags {
             relative_path: row.get(first)?,
             size: row.get(first + 1)?,
             modified_at_ns: row.get(first + 2)?,
-            title: row.get(first + 3)?,
-            track_artists: row.get(first + 4)?,
-            album_title: row.get(first + 5)?,
-            album_artists: row.get(first + 6)?,
-            compilation: row.get(first + 7)?,
-            years: row.get(first + 8)?,
-            track_number: row.get(first + 9)?,
-            disc_number: row.get(first + 10)?,
+            unparseable_reason: row.get(first + 3)?,
+            title: row.get(first + 4)?,
+            track_artists: row.get(first + 5)?,
+            album_title: row.get(first + 6)?,
+            album_artists: row.get(first + 7)?,
+            compilation: row.get(first + 8)?,
+            years: row.get(first + 9)?,
+            track_number: row.get(first + 10)?,
+            disc_number: row.get(first + 11)?,
         })
     }
 
     fn fact(self) -> Result<FileTagFact, DbError> {
+        let tags = match (
+            self.unparseable_reason,
+            self.track_artists,
+            self.album_artists,
+            self.compilation,
+            self.years,
+        ) {
+            (None, Some(track_artists), Some(album_artists), Some(compilation), Some(years)) => {
+                TagReading::Stated(FileTags {
+                    title: self.title,
+                    track_artists: tag_values(&track_artists, "track artists")?,
+                    album_title: self.album_title,
+                    album_artists: tag_values(&album_artists, "album artists")?,
+                    compilation,
+                    years: tag_values(&years, "years")?,
+                    numbers: crate::track_numbers::TrackNumbers {
+                        disc: self
+                            .disc_number
+                            .map(|value| to_u32(value, "a file-tag disc number"))
+                            .transpose()?,
+                        track: self
+                            .track_number
+                            .map(|value| to_u32(value, "a file-tag track number"))
+                            .transpose()?,
+                    },
+                })
+            }
+            (Some(reason), None, None, None, None) => TagReading::Unparseable(reason),
+            columns => {
+                return Err(DbError::Message(format!(
+                    "{}'s stored tags are neither what they state nor why they do not parse: \
+                     {columns:?}",
+                    self.relative_path
+                )))
+            }
+        };
         Ok(FileTagFact {
             observation: FileObservation {
                 relative_path: self.relative_path,
                 size: to_u64(self.size, "a file-tag observation's size")?,
                 modified_at_ns: self.modified_at_ns,
             },
-            tags: FileTags {
-                title: self.title,
-                track_artists: tag_values(&self.track_artists, "track artists")?,
-                album_title: self.album_title,
-                album_artists: tag_values(&self.album_artists, "album artists")?,
-                compilation: self.compilation,
-                years: tag_values(&self.years, "years")?,
-                numbers: crate::track_numbers::TrackNumbers {
-                    disc: self
-                        .disc_number
-                        .map(|value| to_u32(value, "a file-tag disc number"))
-                        .transpose()?,
-                    track: self
-                        .track_number
-                        .map(|value| to_u32(value, "a file-tag track number"))
-                        .transpose()?,
-                },
-            },
+            tags,
         })
     }
 }

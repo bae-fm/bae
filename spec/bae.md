@@ -682,7 +682,8 @@ as a bug and reads the whole folder.
 candidates, their files and the role each plays (audio, track sheet, artwork,
 damaged image, document, other), the parsed CUE sheets, what each audio
 file's tags say of its title, artists, album, album artists, compilation flag,
-years and disc and track numbers, and when each folder was first seen. A file
+years and disc and track numbers, or, for tags that don't parse, why, and when
+each folder was first seen. A file
 is stored by its name in the release and by its path, as the system's own
 bytes for it, which is what opens it again. A scan writes as it finds: what it found while its last write ran, up to
 eight entries, goes in one transaction, so an interrupted scan loses at most
@@ -712,9 +713,11 @@ file, so the pass keeps nothing about it and the next one reads it again.
 
 A rescan, such as the one every desktop launch makes of each watched folder,
 takes what the last scan of the folder stored for each file whose path, size
-and modification time are unchanged (§2.7): a track's stream and tags, whether
-an image is damaged, what a CUE sheet parses to, and what a broken folder's tags
-call it. It opens only the files that are new or changed, so a rescan of a
+and modification time are unchanged (§2.7): a track's stream and tags, or why
+its tags don't parse, whether an image is damaged, what a CUE sheet parses to,
+and what a broken folder's tags call it. Tags that don't parse, such as a
+comment block cut short, are a fact of the file as it is, so a track whose tags
+don't parse is not read again until it changes. It opens only the files that are new or changed, so a rescan of a
 folder nothing in has changed opens none. A release's draft takes each
 unchanged track's tags, and the picture they embed, from the reading stored
 for the release, and reads only its new or changed tracks. A store that says
@@ -958,7 +961,8 @@ of:
 - **ISRCs**, the recording codes in the audio's tags.
 - **The tags**: album title, artists and label become lines of the folder's
   text; each file's title, or its file name without the number, is the track's
-  title.
+  title. A file whose tags don't parse states none of these, and the other
+  files' tags still count.
 
 Identification reads the audio's tags from the files on every run, so the
 scan's stored reading keeps none of the ISRCs, labels, copyright lines or
@@ -1378,6 +1382,11 @@ no title stated anywhere the folder's name is the title.
   album first came out known (a record states it), that year is the album's
   and the latest later one the pressing's. The album's year and the
   pressing's are each the one the files agree on, else the first file's.
+- A file whose tags don't parse states nothing: the album fields are what the
+  folder's other files state, and its name places and titles its track, as
+  for a file with no tags. The scan's seeding, Reset to file metadata and a
+  file decision read it alike, and the stored reading keeps why its tags
+  don't parse.
 
 Applying a source — a catalog's release, the folder's tags, or nothing —
 writes everything it says into the draft once. The draft points back at
@@ -4411,7 +4420,7 @@ reads it again once.
 | `folder_discovery` | when each folder was first seen, and its date |
 | `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan and the directories it saw; the scans' progress reads the roots in their watched folders' order, by the index of their positions |
 | `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, with an index on the folder each candidate reads its files from; each file by its name in the release and its path, a BLOB of coven's bytes for it |
-| `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), and its embedded cover |
+| `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), or for a file whose tags don't parse, why, and its embedded cover |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |
 | `scan_cue_sheet`, `scan_cue_track`, `scan_cue_index`, `scan_sheet_audio_file` | parsed CUE sheets and the audio each `FILE` line resolved to |

@@ -54,7 +54,7 @@ use album::{same_names, TaggedAlbum, UnitAlbum};
 /// committing, so no fabricated default is ever written.
 ///
 /// Errors only when `audio_files` is empty (an album has at least one track) or
-/// a file fails to open or have its tags read.
+/// a file can't be read. A file whose tags do not parse states nothing.
 ///
 /// The reader's tests reach it through here, with real tagged files; an import
 /// reads a candidate's stored tag reading ([`file_metadata_values`]).
@@ -103,8 +103,10 @@ fn file_tag_facts_values(
             detail: "file-tag seeding requires at least one audio file".to_string(),
         });
     }
-    let album =
-        TaggedAlbum::of(extracted.iter().map(|fact| UnitAlbum::of_file(&fact.tags)), folder_name);
+    let album = TaggedAlbum::of(
+        extracted.iter().map(|fact| UnitAlbum::of_file(fact.tags.stated())),
+        folder_name,
+    );
     Ok(file_tag_release_values(album, tag_tracks(extracted)))
 }
 
@@ -125,10 +127,11 @@ fn tag_tracks(extracted: &[FileTagFact]) -> Vec<TagTrack> {
     extracted
         .iter()
         .map(|t| {
+            let tags = t.tags.stated();
             // The scanner only admits files with a recognised audio extension, so
             // every path here has a stem. A `None` would mean that invariant broke
             // upstream — panic rather than fabricate a "Track N" placeholder.
-            let title = t.tags.title.clone().unwrap_or_else(|| {
+            let title = tags.title.clone().unwrap_or_else(|| {
                 Path::new(&t.observation.relative_path)
                     .file_stem()
                     .map(|s| s.to_string_lossy().into_owned())
@@ -138,12 +141,12 @@ fn tag_tracks(extracted: &[FileTagFact]) -> Vec<TagTrack> {
             // The tags' numbers, else the ones the file's name starts with. A
             // file stating no disc claims no grouping; one stating no track is
             // numbered by its place on its disc.
-            let numbers = t.tags.numbers.or_file_name(&t.observation.relative_path);
+            let numbers = tags.numbers.or_file_name(&t.observation.relative_path);
             TagTrack {
                 title,
                 disc: numbers.disc,
                 number: numbers.track.and_then(std::num::NonZeroU32::new),
-                artists: t.tags.track_artists.clone(),
+                artists: tags.track_artists.clone(),
             }
         })
         .collect()

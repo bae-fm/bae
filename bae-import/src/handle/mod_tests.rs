@@ -594,7 +594,8 @@ pub(crate) async fn shut_down(handle: ImportServiceHandle) {
 
 pub(super) struct CountingFileTagReader {
     pub(super) reads: std::sync::atomic::AtomicUsize,
-    pub(super) fail_on_read: Option<usize>,
+    /// The read, counted from 0, that fails, and how.
+    pub(super) fail_on_read: Option<(usize, crate::file_tag_reader::TagReadFailure)>,
     /// Run as the first file is read, before its tags are.
     pub(super) first_read: Option<Box<dyn Fn() + Send + Sync>>,
     pub(super) embedded_cover: Option<Vec<u8>>,
@@ -610,10 +611,31 @@ impl CountingFileTagReader {
         }
     }
 
+    /// A reader whose read `fail_on_read` fails at the file itself.
     pub(super) fn failing(fail_on_read: usize) -> Self {
         Self {
             reads: std::sync::atomic::AtomicUsize::new(0),
-            fail_on_read: Some(fail_on_read),
+            fail_on_read: Some((
+                fail_on_read,
+                crate::file_tag_reader::TagReadFailure::Fault(format!(
+                    "fixture tag read {fail_on_read} failed"
+                )),
+            )),
+            first_read: None,
+            embedded_cover: None,
+        }
+    }
+
+    /// A reader whose read `unparseable` finds tags that do not parse.
+    pub(super) fn unparseable(unparseable: usize) -> Self {
+        Self {
+            reads: std::sync::atomic::AtomicUsize::new(0),
+            fail_on_read: Some((
+                unparseable,
+                crate::file_tag_reader::TagReadFailure::Unparseable(format!(
+                    "fixture tags {unparseable} do not parse"
+                )),
+            )),
             first_read: None,
             embedded_cover: None,
         }
@@ -657,10 +679,8 @@ impl crate::file_tag_reader::FileTagReader for CountingFileTagReader {
                 first_read();
             }
         }
-        if self.fail_on_read == Some(index) {
-            return Err(crate::file_tag_reader::TagReadFailure::Fault(format!(
-                "fixture tag read {index} failed"
-            )));
+        if let Some((_, failure)) = self.fail_on_read.as_ref().filter(|(at, _)| *at == index) {
+            return Err(failure.clone());
         }
         Ok(crate::file_tag_reader::FileTagRead {
             tags: crate::file_tag_snapshot::FileTags {
@@ -688,7 +708,7 @@ impl crate::file_tag_reader::FileTagReader for CountingFileTagReader {
 }
 
 pub(super) fn titles(snapshot: &crate::file_tag_snapshot::FileTagSnapshot) -> Vec<Option<&str>> {
-    snapshot.files.iter().map(|fact| fact.tags.title.as_deref()).collect()
+    snapshot.files.iter().map(|fact| fact.tags.stated().title.as_deref()).collect()
 }
 
 /// The rows of the table that become tracks, in order — what a person edits.

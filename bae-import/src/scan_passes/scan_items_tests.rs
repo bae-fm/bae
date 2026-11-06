@@ -272,6 +272,108 @@ async fn a_rescan_reads_again_only_the_file_that_changed() {
     }
 }
 
+/// Reads tags as [`CountingTagReader`] does, except that the tags of the
+/// file at `unparseable` do not parse.
+struct UnparseableTagReader {
+    counted: CountingTagReader,
+    unparseable: PathBuf,
+}
+
+impl crate::file_tag_reader::FileTagReader for UnparseableTagReader {
+    fn read(
+        &self,
+        path: &Path,
+    ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
+        let read = self.counted.read(path)?;
+        if path == self.unparseable {
+            return Err(crate::file_tag_reader::TagReadFailure::Unparseable(
+                "its Vorbis comment block is cut short".to_string(),
+            ));
+        }
+        Ok(read)
+    }
+}
+
+/// A track whose tags do not parse is not read again until it changes, and
+/// neither is the track beside it whose tags do.
+#[tokio::test]
+async fn a_rescan_reads_no_track_whose_tags_do_not_parse() {
+    let test = setup_import_service().await;
+    let watched = test.temp.path().join("watched");
+    let album = watched.join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    for name in ["01.flac", "02.flac"] {
+        std::fs::write(album.join(name), flac()).unwrap();
+    }
+    let root = crate::tables::watched_path::canonical_absolute_root(&watched).unwrap();
+    test.tables().add_watched_import_folder(&root).await.unwrap();
+    let tags = Arc::new(UnparseableTagReader {
+        counted: CountingTagReader::default(),
+        unparseable: root.join("Album/02.flac"),
+    });
+    let (scan, _) =
+        test.scan_with(tags.clone(), Arc::new(crate::folder_scanner::OsDirectoryReader));
+
+    scan.rescan(&root).await.unwrap();
+    scan.rescan(&root).await.unwrap();
+    scan.rescan(&root).await.unwrap();
+
+    let reads: Vec<u64> = ["01.flac", "02.flac"]
+        .iter()
+        .map(|name| tags.counted.reads_of(&root.join("Album").join(name)))
+        .collect();
+    assert_eq!(reads, vec![1, 1], "each track's tags are read once");
+}
+
+/// Tags that do not parse state nothing: the release's draft is seeded from
+/// its other tracks' tags, the track is titled by its name, and the stored
+/// reading keeps why its tags do not parse.
+#[tokio::test]
+async fn a_track_whose_tags_do_not_parse_leaves_the_others_to_seed_the_draft() {
+    let test = setup_import_service().await;
+    let tables = test.tables().clone();
+    let watched = test.temp.path().join("watched");
+    let album = watched.join("Candidate");
+    std::fs::create_dir_all(&album).unwrap();
+    for name in TAGGED_FLAC_FIXTURES {
+        std::fs::copy(bae_audio::test_fixtures::cue_flac_dir().join(name), album.join(name))
+            .unwrap();
+    }
+    let root = crate::tables::watched_path::canonical_absolute_root(&watched).unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
+    let tags = Arc::new(UnparseableTagReader {
+        counted: CountingTagReader::default(),
+        unparseable: root.join("Candidate").join(TAGGED_FLAC_FIXTURES[1]),
+    });
+    let (scan, _) =
+        test.scan_with(tags.clone(), Arc::new(crate::folder_scanner::OsDirectoryReader));
+
+    scan.rescan(&root).await.unwrap();
+
+    let key = crate::CandidateKey::folder(&root.join("Candidate"));
+    let detail =
+        tables.load_import_candidate(&key).await.unwrap().expect("the candidate is stored");
+    let draft = &detail.draft().unwrap().metadata_draft;
+    assert_eq!(draft.album_title, "Test Album");
+    assert_eq!(
+        draft.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(),
+        ["Track Two (White Noise)", "03 Test Artist - Track Three (Brown Noise)"]
+    );
+    let reading = tables
+        .load_candidate_file_tag_snapshot(&root, &key)
+        .await
+        .unwrap()
+        .unwrap()
+        .snapshot
+        .expect("the reading the draft was seeded from is stored");
+    assert_eq!(
+        reading.files.iter().map(|fact| fact.tags.clone()).collect::<Vec<_>>()[1],
+        crate::file_tag_snapshot::TagReading::Unparseable(
+            "its Vorbis comment block is cut short".to_string()
+        )
+    );
+}
+
 /// Reads tags as [`CountingTagReader`] does, except that reading the file at
 /// `faulting` fails at the file itself while `fault` is set.
 struct FaultingTagReader {

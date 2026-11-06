@@ -41,7 +41,10 @@ async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
     let before = tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
     stale.metadata_revision += 1;
     let mut replacement = reading.clone();
-    replacement.files[0].tags.title = Some("Stale title".into());
+    let crate::file_tag_snapshot::TagReading::Stated(tags) = &mut replacement.files[0].tags else {
+        panic!("the reading's first file states its tags");
+    };
+    tags.title = Some("Stale title".into());
     replacement.embedded_cover.as_mut().unwrap().data = vec![9, 8, 7];
     let result = tables
         .save_candidate_preparation(

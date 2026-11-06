@@ -13,7 +13,7 @@
 use super::*;
 use crate::file_tag_reader::{FileTagRead, FileTagReader, TagReadFailure};
 use crate::file_tag_snapshot::{
-    EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags,
+    EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags, TagReading,
 };
 use crate::track_numbers::TrackNumbers;
 use crate::ImportError;
@@ -114,15 +114,15 @@ impl FileReads {
     }
 
     /// What the scan entries stored for one root say their pass read, and
-    /// the tags read from their releases' tracks, each by the version of the
-    /// file it was read from; the tags of any other track are read through
-    /// `tags`.
+    /// the tags read from their releases' tracks — what they state, or why
+    /// they do not parse — each by the version of the file it was read from;
+    /// the tags of any other track are read through `tags`.
     ///
     /// Two rows that say different things about one version of a file are a
     /// store no scan wrote, so the pass fails rather than take either.
     pub(crate) fn stored(
         entries: &[FolderEntry],
-        stored_tags: &[(FileVersion, FileTags)],
+        stored_tags: &[(FileVersion, TagReading)],
         tags: Arc<dyn FileTagReader>,
     ) -> Result<Self, FolderScanError> {
         let mut known = Known::default();
@@ -168,16 +168,16 @@ impl FileReads {
                 },
             }
         }
-        for (version, file_tags) in stored_tags {
+        for (version, reading) in stored_tags {
+            let tags = match reading {
+                TagReading::Stated(tags) => {
+                    TagRead::Read { tags: tags.clone(), cover: EmbeddedCover::Unknown }
+                }
+                TagReading::Unparseable(reason) => TagRead::Unparseable(reason.clone()),
+            };
             known.learn(
                 version.clone(),
-                FileRead::Track(TrackRead {
-                    stream: None,
-                    tags: Some(TagRead::Read {
-                        tags: file_tags.clone(),
-                        cover: EmbeddedCover::Unknown,
-                    }),
-                }),
+                FileRead::Track(TrackRead { stream: None, tags: Some(tags) }),
             )?;
         }
         Ok(Self { known: Mutex::new(known), tags })
@@ -296,6 +296,8 @@ impl FileReads {
                 let version = file.version.clone();
                 let cover = match known.track_mut_if_known(&version) {
                     Some(TrackRead { tags: Some(TagRead::Read { cover, .. }), .. }) => cover,
+                    // Tags that do not parse embed no picture bae can take.
+                    Some(TrackRead { tags: Some(TagRead::Unparseable(_)), .. }) => continue,
                     // Until the first picture is found, a track whose picture
                     // is not known could be the one, so none after it can be
                     // told to be no release's.
@@ -321,7 +323,8 @@ impl FileReads {
     }
 
     /// The reading of `audio_files`' tags a release's draft is seeded from,
-    /// in their order, with each file's tags and the release's picture taken
+    /// in their order, with each file's tags — or why they do not parse, which
+    /// leaves the rest to seed it — and the release's picture taken
     /// from what is known rather than read again: what this pass read, and
     /// `stored` — a reading stored for the release, taken from files under
     /// the same folder — for each file it was read from at the version it has
@@ -341,10 +344,11 @@ impl FileReads {
                 size: file.version.size,
                 modified_at_ns: file.version.modified_at_ns,
             };
+            // Tags that do not parse embed no picture bae can take.
             let (mut tags, mut cover) = self.with_known(|known| {
                 match known.track(&file.version).and_then(|track| track.tags.as_ref()) {
-                    Some(TagRead::Read { tags, cover }) => Ok((
-                        Some(tags.clone()),
+                    Some(TagRead::Read { tags, cover }) => (
+                        Some(TagReading::Stated(tags.clone())),
                         match cover {
                             EmbeddedCover::Absent => CoverRead::Absent,
                             EmbeddedCover::Held { data, content_type, .. } => {
@@ -352,21 +356,23 @@ impl FileReads {
                             }
                             EmbeddedCover::Unknown | EmbeddedCover::Released => CoverRead::Unknown,
                         },
-                    )),
+                    ),
                     Some(TagRead::Unparseable(reason)) => {
-                        Err(TagReadFailure::Unparseable(reason.clone())
-                            .into_error(&file.version.path))
+                        (Some(TagReading::Unparseable(reason.clone())), CoverRead::Absent)
                     }
-                    None => Ok((None, CoverRead::Unknown)),
+                    None => (None, CoverRead::Unknown),
                 }
-            })?;
+            });
             if let Some(stored) = stored {
                 if let Some(index) =
                     stored.files.iter().position(|fact| fact.observation == observation)
                 {
-                    tags.get_or_insert_with(|| stored.files[index].tags.clone());
+                    let reading = tags.get_or_insert_with(|| stored.files[index].tags.clone());
                     if cover == CoverRead::Unknown {
-                        cover = stored_cover(stored, index)?;
+                        cover = match reading {
+                            TagReading::Stated(_) => stored_cover(stored, index)?,
+                            TagReading::Unparseable(_) => CoverRead::Absent,
+                        };
                     }
                 }
             }
@@ -383,14 +389,19 @@ impl FileReads {
                         size: observation.size,
                         modified_at_ns: observation.modified_at_ns,
                     };
-                    let cover = match &read.embedded_cover {
-                        Some((data, content_type)) => {
-                            CoverRead::Picture(data.clone(), content_type.clone())
-                        }
-                        None => CoverRead::Absent,
+                    let (tags, cover) = match &read {
+                        Ok(read) => (
+                            TagReading::Stated(read.tags.clone()),
+                            match &read.embedded_cover {
+                                Some((data, content_type)) => {
+                                    CoverRead::Picture(data.clone(), content_type.clone())
+                                }
+                                None => CoverRead::Absent,
+                            },
+                        ),
+                        Err(reason) => (TagReading::Unparseable(reason.clone()), CoverRead::Absent),
                     };
-                    let tags = read.tags.clone();
-                    self.with_known(|known| known.remember_tags(&version, Ok(read)));
+                    self.with_known(|known| known.remember_tags(&version, read));
                     (observation, tags, cover)
                 }
             };

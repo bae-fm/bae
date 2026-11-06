@@ -144,15 +144,20 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
                     size: file.version.size,
                     modified_at_ns: file.version.modified_at_ns,
                 },
-                tags: crate::file_tag_snapshot::FileTags {
-                    title: Some(format!("Tagged Track {index}")),
-                    track_artists: vec!["Artist".into()],
-                    album_title: Some("Album".into()),
-                    album_artists: vec!["Artist".into()],
-                    compilation: false,
-                    years: Vec::new(),
-                    numbers: crate::track_numbers::TrackNumbers { disc: Some(7), track: Some(1) },
-                },
+                tags: crate::file_tag_snapshot::TagReading::Stated(
+                    crate::file_tag_snapshot::FileTags {
+                        title: Some(format!("Tagged Track {index}")),
+                        track_artists: vec!["Artist".into()],
+                        album_title: Some("Album".into()),
+                        album_artists: vec!["Artist".into()],
+                        compilation: false,
+                        years: Vec::new(),
+                        numbers: crate::track_numbers::TrackNumbers {
+                            disc: Some(7),
+                            track: Some(1),
+                        },
+                    },
+                ),
             })
             .collect(),
     };

@@ -32,20 +32,51 @@ async fn stored_tags(
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn one_unreadable_file_stores_no_partial_tag_snapshot() {
+async fn a_file_that_cannot_be_read_stores_no_partial_tag_snapshot() {
     let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
         unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::failing(1));
 
     let error = pick_file_tags(&mut handle, &key, reader.clone())
         .await
-        .expect_err("the second unreadable audio file rejects the complete reading");
+        .expect_err("the second audio file, which could not be read, rejects the reading");
     let stored = stored_tags(&handle, &candidate, &key).await;
     shut_down(handle).await;
 
     assert!(error.to_string().contains("fixture tag read 1 failed"));
     assert_eq!(reader.read_count(), 2);
     assert!(stored.is_none(), "facts from the first file cannot land without the complete reading");
+}
+
+/// Tags that do not parse state nothing: the folder's other files' tags make
+/// the draft, the file's name titles its track, and the reading keeps why its
+/// tags do not parse.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_file_whose_tags_do_not_parse_leaves_the_others_to_make_the_draft() {
+    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
+        unread_stored_candidate().await;
+    let reader = std::sync::Arc::new(CountingFileTagReader::unparseable(1));
+
+    pick_file_tags(&mut handle, &key, reader.clone())
+        .await
+        .expect("the folder's tags are applied though one file's do not parse");
+    let draft = stored_draft(&handle, &candidate.files.content_hash()).await;
+    let stored = stored_tags(&handle, &candidate, &key).await;
+    shut_down(handle).await;
+
+    assert_eq!(draft.album_title, "Album Title");
+    assert_eq!(
+        draft.tracks.iter().map(|track| track.edit.title.as_str()).collect::<Vec<_>>(),
+        ["Track Title 1", "02 Track"]
+    );
+    let stored = stored.expect("the reading is stored");
+    assert_eq!(titles(&stored), [Some("Track Title 1"), None]);
+    assert_eq!(
+        stored.files[1].tags,
+        crate::file_tag_snapshot::TagReading::Unparseable(
+            "fixture tags 1 do not parse".to_string()
+        )
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

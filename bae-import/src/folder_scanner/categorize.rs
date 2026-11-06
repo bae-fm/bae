@@ -158,8 +158,8 @@ pub(super) fn skipped_files(proposed: &[(ScannedFile, ProposedRole)]) -> Vec<Ski
 
 /// What the tags of `proposed`'s playable audio call the release: the album
 /// title the first of them in name order to state one gives, and that file's
-/// album artists' line, else its track artists'. A file whose tags can't be read is
-/// passed over, said in the log.
+/// album artists' line, else its track artists'. A file whose tags do not parse
+/// is passed over, said in the log.
 fn skipped_tags(
     proposed: &[(ScannedFile, ProposedRole)],
     reads: &FileReads,
@@ -179,7 +179,7 @@ fn skipped_tags(
                 Ok(tags) => tags,
                 Err(error) => {
                     tracing::warn!(
-                        "{}: its tags could not be read, so they name nothing: {error}",
+                        "{}: its tags do not parse, so they name nothing: {error}",
                         file.relative_path
                     );
                     continue;

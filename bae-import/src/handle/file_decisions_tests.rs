@@ -208,6 +208,33 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
     shut_down(handle).await;
 }
 
+/// A file decision reads the files' tags as applying them does: a track the
+/// folder gains whose tags do not parse states nothing, so its name titles
+/// it, and the decision stands.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_gained_track_whose_tags_do_not_parse_is_titled_by_its_name() {
+    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
+        stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
+    let hash = candidate.files.content_hash();
+    handle.file_tags = std::sync::Arc::new(CountingFileTagReader::unparseable(1));
+
+    handle
+        .set_sheet_disc(key, "Disc.cue".to_string(), crate::folder_scanner::SheetDisc::Ignored)
+        .await
+        .expect("the decision stands though the gained track's tags do not parse");
+    let draft = stored_draft(&handle, &hash).await;
+    shut_down(handle).await;
+
+    assert_eq!(
+        draft
+            .tracks
+            .iter()
+            .map(|track| (track.edit.file.clone(), track.edit.title.as_str()))
+            .collect::<Vec<_>>()[1],
+        (crate::AudioFile::Standalone { file_id: "02 Track.flac".to_string() }, "02 Track")
+    );
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
     let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } =

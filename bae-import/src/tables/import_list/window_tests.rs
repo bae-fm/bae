@@ -392,7 +392,9 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
                 size: 1_000,
                 modified_at_ns: 5,
             },
-            tags: crate::file_tag_snapshot::FileTags::untagged(),
+            tags: crate::file_tag_snapshot::TagReading::Stated(
+                crate::file_tag_snapshot::FileTags::untagged(),
+            ),
         }],
         embedded_cover: Some(crate::file_tag_snapshot::EmbeddedCoverFact {
             source_relative_path: "01.flac".to_string(),

@@ -65,15 +65,20 @@ pub(crate) fn tag_snapshot(generation: u64, revision: u64) -> FileTagSnapshot {
                     size: 1_000,
                     modified_at_ns: 100,
                 },
-                tags: crate::file_tag_snapshot::FileTags {
-                    title: Some("Track Title A".to_string()),
-                    track_artists: vec!["Artist Name".to_string()],
-                    album_title: Some("Album Title".to_string()),
-                    album_artists: vec!["Album Artist".to_string()],
-                    compilation: false,
-                    years: vec![2020],
-                    numbers: crate::track_numbers::TrackNumbers { disc: Some(1), track: Some(1) },
-                },
+                tags: crate::file_tag_snapshot::TagReading::Stated(
+                    crate::file_tag_snapshot::FileTags {
+                        title: Some("Track Title A".to_string()),
+                        track_artists: vec!["Artist Name".to_string()],
+                        album_title: Some("Album Title".to_string()),
+                        album_artists: vec!["Album Artist".to_string()],
+                        compilation: false,
+                        years: vec![2020],
+                        numbers: crate::track_numbers::TrackNumbers {
+                            disc: Some(1),
+                            track: Some(1),
+                        },
+                    },
+                ),
             },
             FileTagFact {
                 observation: FileObservation {
@@ -81,15 +86,17 @@ pub(crate) fn tag_snapshot(generation: u64, revision: u64) -> FileTagSnapshot {
                     size: 2_000,
                     modified_at_ns: 200,
                 },
-                tags: crate::file_tag_snapshot::FileTags {
-                    title: Some("Track Title B".to_string()),
-                    track_artists: Vec::new(),
-                    album_title: None,
-                    album_artists: Vec::new(),
-                    compilation: false,
-                    years: Vec::new(),
-                    numbers: crate::track_numbers::TrackNumbers { disc: None, track: Some(2) },
-                },
+                tags: crate::file_tag_snapshot::TagReading::Stated(
+                    crate::file_tag_snapshot::FileTags {
+                        title: Some("Track Title B".to_string()),
+                        track_artists: Vec::new(),
+                        album_title: None,
+                        album_artists: Vec::new(),
+                        compilation: false,
+                        years: Vec::new(),
+                        numbers: crate::track_numbers::TrackNumbers { disc: None, track: Some(2) },
+                    },
+                ),
             },
         ],
         embedded_cover: Some(EmbeddedCoverFact {
@@ -170,15 +177,17 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
                     size: 1_000,
                     modified_at_ns: 300,
                 },
-                tags: crate::file_tag_snapshot::FileTags {
-                    title: None,
-                    track_artists: Vec::new(),
-                    album_title: None,
-                    album_artists: Vec::new(),
-                    compilation: false,
-                    years: Vec::new(),
-                    numbers: crate::track_numbers::TrackNumbers { disc: None, track: None },
-                },
+                tags: crate::file_tag_snapshot::TagReading::Stated(
+                    crate::file_tag_snapshot::FileTags {
+                        title: None,
+                        track_artists: Vec::new(),
+                        album_title: None,
+                        album_artists: Vec::new(),
+                        compilation: false,
+                        years: Vec::new(),
+                        numbers: crate::track_numbers::TrackNumbers { disc: None, track: None },
+                    },
+                ),
             },
             FileTagFact {
                 observation: FileObservation {
@@ -186,15 +195,17 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
                     size: 2_000,
                     modified_at_ns: 400,
                 },
-                tags: crate::file_tag_snapshot::FileTags {
-                    title: None,
-                    track_artists: Vec::new(),
-                    album_title: None,
-                    album_artists: Vec::new(),
-                    compilation: false,
-                    years: Vec::new(),
-                    numbers: crate::track_numbers::TrackNumbers { disc: None, track: None },
-                },
+                tags: crate::file_tag_snapshot::TagReading::Stated(
+                    crate::file_tag_snapshot::FileTags {
+                        title: None,
+                        track_artists: Vec::new(),
+                        album_title: None,
+                        album_artists: Vec::new(),
+                        compilation: false,
+                        years: Vec::new(),
+                        numbers: crate::track_numbers::TrackNumbers { disc: None, track: None },
+                    },
+                ),
             },
         ],
         embedded_cover: None,

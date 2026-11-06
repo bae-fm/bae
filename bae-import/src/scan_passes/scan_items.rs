@@ -233,9 +233,10 @@ pub(super) async fn store_scan_items(
 /// reading of its tracks' tags its scan row keeps, and the draft and cover
 /// they seed a candidate that has none with. It is taken from what `reads` —
 /// the pass that found it — and the reading stored for it hold, and read where
-/// neither knows. A folder whose tags cannot be read keeps no reading and,
-/// when it has no draft, starts on a blank one; it is logged rather than kept
-/// out of the queue. Reading audio files can be slow on a network share, so it
+/// neither knows. A track whose tags do not parse states nothing, and the
+/// others seed the draft. A folder one of whose files can't be read at all
+/// keeps no reading and, when it has no draft, starts on a blank one; it is
+/// logged rather than kept out of the queue. Reading audio files can be slow on a network share, so it
 /// runs on a blocking thread, and its caller takes it outside the folder-state
 /// commit lock every pane control waits on.
 ///
@@ -283,7 +284,7 @@ pub(crate) async fn scan_item_seed(
         Err(error) => {
             tracing::warn!(
                 "{folder} keeps no reading of its file tags, and starts on a blank draft if it \
-                 has none: they could not be read: {error}"
+                 has none: a file could not be read: {error}"
             );
             Ok(ScanItemSeed::Tags(None))
         }
