@@ -269,56 +269,6 @@ fn composer_list_counts_a_merged_composer_under_its_survivor() {
     });
 }
 
-/// Each composer listing row: its artist and its work, linked release and
-/// unlinked credit counts.
-fn composer_listing_rows(conn: &rusqlite::Connection) -> Vec<(String, i64, i64, i64)> {
-    conn.prepare(
-        "SELECT artist_id, work_count, linked_release_count, unlinked_credit_count
-         FROM composer_listing ORDER BY artist_id",
-    )
-    .unwrap()
-    .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)))
-    .unwrap()
-    .collect::<Result<_, _>>()
-    .unwrap()
-}
-
-#[test]
-fn a_composer_merged_before_it_arrived_is_listed_with_what_was_counted_under_it() {
-    // Within one apply of another device's rows, coven defers the foreign
-    // keys to the commit and may put a row before the rows it names when a
-    // unique claim orders it so: here a merge and a work credit before either
-    // artist. The keys hold once the write commits.
-    let mut conn = crate::tests::bare_library();
-    conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
-    let apply = conn.transaction().unwrap();
-    apply.execute_batch(
-        "PRAGMA defer_foreign_keys = ON;
-         INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES
-            ('cc0b10bd-7e72-4e7a-85f6-6c6d5d5dc691', '87afe278-5071-4811-a8fb-06ad2ed2d01c', '2026-01-01T00:00:00Z');
-         INSERT INTO works (id, title, work_type, musicbrainz_work_id, created_at) VALUES
-            ('6cfd8091-60c1-4879-ac82-2ab93fd09ca0', 'Work Title Two', 'work', 'mb-work-two', '2026-01-01T00:00:00Z');
-         INSERT INTO work_artists (id, work_id, artist_id, position, source, created_at) VALUES
-            ('722dc641-3532-46a1-81f8-f415c27e5ef1', '6cfd8091-60c1-4879-ac82-2ab93fd09ca0', 'cc0b10bd-7e72-4e7a-85f6-6c6d5d5dc691', 0, 'musicbrainz', '2026-01-01T00:00:00Z');
-         INSERT INTO artists (id, name, name_key, created_at) VALUES
-            ('cc0b10bd-7e72-4e7a-85f6-6c6d5d5dc691', 'Composer Name Absorbed', 'composer name absorbed', '2026-01-01T00:00:00Z');",
-    )
-    .unwrap();
-    assert_eq!(
-        composer_listing_rows(&apply),
-        vec![],
-        "the absorbed artist's work counts under its survivor, which has not arrived"
-    );
-
-    apply.execute_batch(
-        "INSERT INTO artists (id, name, name_key, created_at) VALUES
-            ('87afe278-5071-4811-a8fb-06ad2ed2d01c', 'Composer Name Survivor', 'composer name survivor', '2026-01-01T00:00:00Z');",
-    )
-    .unwrap();
-    assert_eq!(composer_listing_rows(&apply), vec![(LISTED_SURVIVOR.to_string(), 1, 0, 0)]);
-    apply.commit().unwrap();
-}
-
 #[tokio::test]
 async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;

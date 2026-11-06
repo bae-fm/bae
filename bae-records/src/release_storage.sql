@@ -8,8 +8,7 @@
 -- lists and the place of the first (NULL with none). One row per release,
 -- written by the triggers below in the write that changes its files, their
 -- coven records, pins or queue: this device's own, another device's applied,
--- or coven's. A file whose release has not arrived moves nothing; the
--- release's own trigger counts it when it does.
+-- or coven's.
 CREATE TABLE IF NOT EXISTS release_storage (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     file_count INTEGER NOT NULL,
@@ -65,12 +64,14 @@ BEGIN
         first_queued_position = excluded.first_queued_position;
 END;
 
--- A release arriving counts the files, coven records, pins and queued files
--- already there for it, which a write applied from another device can hold
--- before the release.
+-- A release arrives with no files: its files name it, so none is written or
+-- applied before it.
 CREATE TRIGGER IF NOT EXISTS release_storage_release_added AFTER INSERT ON releases
 BEGIN
-    INSERT INTO release_storage_refresh (release_id) VALUES (NEW.id);
+    INSERT INTO release_storage (
+        release_id, file_count, total_size, stored, pinned_count, queued_count,
+        first_queued_position)
+    VALUES (NEW.id, 0, 0, 0, 0, 0, NULL);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_storage_file_added AFTER INSERT ON release_files
@@ -114,9 +115,8 @@ END;
 -- A release file's pin moves its release's pinned count, in the transaction
 -- that changes the pin: this device's own write, another device's applied,
 -- or coven's own as a file is pinned, kept here or unpinned. A pin is listed
--- only once the whole file is on this device. A file no release file names,
--- or whose release has not arrived, moves nothing: the refresh above counts
--- its release's pins from `coven_pins` as it writes the release's row.
+-- only once the whole file is on this device. A file no release file names
+-- moves nothing.
 CREATE TRIGGER IF NOT EXISTS release_storage_file_pinned AFTER INSERT ON coven_pins
 BEGIN
     UPDATE release_storage SET pinned_count = pinned_count + 1
@@ -133,9 +133,7 @@ END;
 -- release's queued count and first place, in the transaction that changes
 -- the queue: staging the file for the cloud, its move switching it to the
 -- cloud, its upload retiring, or the row no longer naming it. A file no
--- release file names, or whose release has not arrived, moves nothing: the
--- refresh above counts its release's queued files from `coven_upload_queue`
--- as it writes the release's row.
+-- release file names moves nothing.
 CREATE TRIGGER IF NOT EXISTS release_storage_file_queued AFTER INSERT ON coven_upload_queue
 BEGIN
     UPDATE release_storage SET queued_count = queued_count + 1,

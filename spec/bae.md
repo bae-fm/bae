@@ -465,10 +465,7 @@ album by title, compared the same way, then by id, among the albums with a
 release that performs it: that album's primary release's cover when the release performs
 the work, otherwise that of the album's first release, in its order, that
 does. The page is read a window at a time, as
-the lists are (§9.2), and opens the first work it lists. Rows from another
-device can arrive before what they name: a part whose parent work hasn't
-arrived heads its own group until it does, and a credit whose release or album
-hasn't arrived waits for it.
+the lists are (§9.2), and opens the first work it lists.
 
 **A work's page** lists its parts, in the work's order, then the releases
 that perform it, then their tracks that do. Releases go in the order the

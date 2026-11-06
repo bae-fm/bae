@@ -101,12 +101,12 @@ CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count ON composer_listin
 CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count_desc ON composer_listing (linked_release_count DESC, name, artist_id);
 
 -- Each row added to or removed from the three tables counts in or out of its
--- artist's listing row. An artist whose own row has not arrived yet gets its
--- listing row when it does (`composer_artist_shown_added`).
+-- artist's listing row. The artist a row counts under is held: it is shown
+-- for an artist the row's credit names, and a credit arrives after its artist.
 CREATE TRIGGER IF NOT EXISTS composer_work_added AFTER INSERT ON composer_work
 BEGIN
     INSERT INTO composer_listing (artist_id, name, work_count, linked_release_count, unlinked_credit_count)
-    SELECT id, name, 1, 0, 0 FROM artists WHERE id = NEW.artist_id
+    VALUES (NEW.artist_id, (SELECT name FROM artists WHERE id = NEW.artist_id), 1, 0, 0)
     ON CONFLICT (artist_id) DO UPDATE SET work_count = work_count + 1;
 END;
 
@@ -120,7 +120,7 @@ END;
 CREATE TRIGGER IF NOT EXISTS composer_release_added AFTER INSERT ON composer_release
 BEGIN
     INSERT INTO composer_listing (artist_id, name, work_count, linked_release_count, unlinked_credit_count)
-    SELECT id, name, 0, 1, 0 FROM artists WHERE id = NEW.artist_id
+    VALUES (NEW.artist_id, (SELECT name FROM artists WHERE id = NEW.artist_id), 0, 1, 0)
     ON CONFLICT (artist_id) DO UPDATE SET linked_release_count = linked_release_count + 1;
 END;
 
@@ -134,7 +134,7 @@ END;
 CREATE TRIGGER IF NOT EXISTS composer_unlinked_credit_added AFTER INSERT ON composer_unlinked_credit
 BEGIN
     INSERT INTO composer_listing (artist_id, name, work_count, linked_release_count, unlinked_credit_count)
-    SELECT id, name, 0, 0, 1 FROM artists WHERE id = NEW.artist_id
+    VALUES (NEW.artist_id, (SELECT name FROM artists WHERE id = NEW.artist_id), 0, 0, 1)
     ON CONFLICT (artist_id) DO UPDATE SET unlinked_credit_count = unlinked_credit_count + 1;
 END;
 
@@ -190,29 +190,6 @@ UNION
 SELECT artist_id, release_id FROM release_artist_roles
 UNION
 SELECT tar.artist_id, t.release_id FROM track_artist_roles tar JOIN tracks t ON t.id = tar.track_id;
-
--- An artist's shown row arriving gives it a listing row for what was
--- already counted under it, then counts its own credits. It fires on the
--- shown row rather than the artist, because the counts read
--- `work_composers`, which joins `artist_shown_as`: the row's insert orders
--- them after it.
-CREATE TRIGGER IF NOT EXISTS composer_artist_shown_added AFTER INSERT ON artist_shown_as
-BEGIN
-    INSERT INTO composer_listing (artist_id, name, work_count, linked_release_count, unlinked_credit_count)
-    SELECT artist.id, artist.name,
-           (SELECT COUNT(*) FROM composer_work WHERE artist_id = artist.id),
-           (SELECT COUNT(*) FROM composer_release WHERE artist_id = artist.id),
-           (SELECT COUNT(*) FROM composer_unlinked_credit WHERE artist_id = artist.id)
-    FROM artists artist
-    WHERE artist.id = NEW.artist_id
-      AND (EXISTS (SELECT 1 FROM composer_work WHERE artist_id = artist.id)
-        OR EXISTS (SELECT 1 FROM composer_release WHERE artist_id = artist.id)
-        OR EXISTS (SELECT 1 FROM composer_unlinked_credit WHERE artist_id = artist.id));
-    INSERT INTO composer_work_refresh (work_id)
-    SELECT DISTINCT work_id FROM work_artists WHERE artist_id = NEW.artist_id;
-    INSERT INTO composer_release_refresh (release_id)
-    SELECT DISTINCT release_id FROM artist_credited_releases WHERE artist_id = NEW.artist_id;
-END;
 
 -- An artist's shown artist moving rewrites the composer rows of every work
 -- and release it is credited on, as `album_credit_shown_changed` rewrites

@@ -5,10 +5,10 @@
 -- with what it sorts by, kept by the triggers below.
 
 -- Each row of each composer's page, in the page's order. In the works, each
--- credited work is listed under every work the library holds that it is part
--- of, each of those heading its group whether the composer is credited on it
--- or not, and a credited work part of none heads a group of its own; a group
--- sorts by its heading work's title, its works heading first, then by title.
+-- credited work is listed under every work it is part of, each of those
+-- heading its group whether the composer is credited on it or not, and a
+-- credited work part of none heads a group of its own; a group sorts by its
+-- heading work's title, its works heading first, then by title.
 -- Each unlinked credit is listed under its release, the releases by album
 -- title, then by album, so two albums sharing a title don't interleave, then
 -- by the release's place among its album's; the credits by track and then by
@@ -55,11 +55,10 @@ CREATE INDEX IF NOT EXISTS idx_composer_detail_row_item ON composer_detail_row (
 
 -- The works rows of every composer's page: each credited work under each
 -- work it is part of, each such work heading its group, and each credited
--- work part of none the library holds heading its own. A refresh reads it
--- for one artist and one work, which SQLite pushes into each arm; the
--- heading arm is read from the heading work through its parts (CROSS JOIN
--- keeps that order), so it costs the work's parts rather than every work
--- the artist is credited on.
+-- work part of none heading its own. A refresh reads it for one artist and
+-- one work, which SQLite pushes into each arm; the heading arm is read from
+-- the heading work through its parts (CROSS JOIN keeps that order), so it
+-- costs the work's parts rather than every work the artist is credited on.
 CREATE VIEW IF NOT EXISTS composer_detail_works AS
 SELECT credited.artist_id, part.parent_work_id AS group_id, parent.title AS group_title,
        1 AS place, work.title, credited.work_id AS item_id
@@ -76,12 +75,10 @@ UNION
 SELECT credited.artist_id, work.id, work.title, 0, work.title, work.id
 FROM composer_work credited
 JOIN works work ON work.id = credited.work_id
-WHERE NOT EXISTS (
-    SELECT 1 FROM work_parts part JOIN works parent ON parent.id = part.parent_work_id
-    WHERE part.child_work_id = credited.work_id);
+WHERE NOT EXISTS (SELECT 1 FROM work_parts part WHERE part.child_work_id = credited.work_id);
 
 -- The credit rows of every composer's page: each unlinked credit under its
--- release, once its release and album are held.
+-- release.
 CREATE VIEW IF NOT EXISTS composer_detail_credits AS
 SELECT unlinked.artist_id, 1 AS section, unlinked.release_id AS group_id,
        album.title AS group_title, album.id AS group_album, r.album_order AS group_order,
@@ -179,34 +176,22 @@ BEGIN
     SELECT artist_id, NEW.parent_work_id FROM composer_work WHERE work_id = NEW.child_work_id;
 END;
 
--- A work arriving or retitled changes every row that shows its title:
--- its own on the pages it is credited on or heads a group on, and its parts'
--- on theirs, which it heads, or which headed their own while it was missing.
-CREATE VIEW IF NOT EXISTS composer_detail_title_refresh AS SELECT NULL AS work_id WHERE 0;
-
-CREATE TRIGGER IF NOT EXISTS composer_detail_title_refresh INSTEAD OF INSERT ON composer_detail_title_refresh
-BEGIN
-    INSERT INTO composer_detail_work_refresh (artist_id, work_id)
-    SELECT artist_id, NEW.work_id FROM composer_work WHERE work_id = NEW.work_id
-    UNION
-    SELECT credited.artist_id, NEW.work_id FROM work_parts part
-    JOIN composer_work credited ON credited.work_id = part.child_work_id
-    WHERE part.parent_work_id = NEW.work_id
-    UNION
-    SELECT credited.artist_id, credited.work_id FROM work_parts part
-    JOIN composer_work credited ON credited.work_id = part.child_work_id
-    WHERE part.parent_work_id = NEW.work_id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS composer_detail_work_added AFTER INSERT ON works
-BEGIN
-    INSERT INTO composer_detail_title_refresh (work_id) VALUES (NEW.id);
-END;
-
+-- A work retitled changes every row that shows its title: its own on the
+-- pages it is credited on or heads a group on, and its parts' on theirs,
+-- which it heads.
 CREATE TRIGGER IF NOT EXISTS composer_detail_work_retitled AFTER UPDATE OF title ON works
 WHEN OLD.title IS NOT NEW.title
 BEGIN
-    INSERT INTO composer_detail_title_refresh (work_id) VALUES (NEW.id);
+    INSERT INTO composer_detail_work_refresh (artist_id, work_id)
+    SELECT artist_id, NEW.id FROM composer_work WHERE work_id = NEW.id
+    UNION
+    SELECT credited.artist_id, NEW.id FROM work_parts part
+    JOIN composer_work credited ON credited.work_id = part.child_work_id
+    WHERE part.parent_work_id = NEW.id
+    UNION
+    SELECT credited.artist_id, credited.work_id FROM work_parts part
+    JOIN composer_work credited ON credited.work_id = part.child_work_id
+    WHERE part.parent_work_id = NEW.id;
 END;
 
 -- An unlinked credit counted in or out lists or unlists it.
@@ -220,18 +205,9 @@ BEGIN
     INSERT INTO composer_detail_credit_refresh (credit_id) VALUES (OLD.credit_id);
 END;
 
--- What a credit sorts by changing moves it: its album arriving or retitled,
--- or its release arriving, moving to another album or to another place
--- among its album's. A track's place and a credit's own position are written
--- once, with the row.
-CREATE TRIGGER IF NOT EXISTS composer_detail_album_added AFTER INSERT ON albums
-BEGIN
-    INSERT INTO composer_detail_credit_refresh (credit_id)
-    SELECT unlinked.credit_id FROM releases r
-    JOIN composer_unlinked_credit unlinked ON unlinked.release_id = r.id
-    WHERE r.album_id = NEW.id;
-END;
-
+-- What a credit sorts by changing moves it: its album retitled, or its
+-- release moving to another album or to another place among its album's. A
+-- track's place and a credit's own position are written once, with the row.
 CREATE TRIGGER IF NOT EXISTS composer_detail_album_retitled AFTER UPDATE OF title ON albums
 WHEN OLD.title IS NOT NEW.title
 BEGIN
@@ -239,12 +215,6 @@ BEGIN
     SELECT unlinked.credit_id FROM releases r
     JOIN composer_unlinked_credit unlinked ON unlinked.release_id = r.id
     WHERE r.album_id = NEW.id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS composer_detail_release_added AFTER INSERT ON releases
-BEGIN
-    INSERT INTO composer_detail_credit_refresh (credit_id)
-    SELECT credit_id FROM composer_unlinked_credit WHERE release_id = NEW.id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS composer_detail_release_moved AFTER UPDATE OF album_id, album_order ON releases

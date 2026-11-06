@@ -303,6 +303,72 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
     assert!(most_pinned > 0, "no release was ever wholly pinned");
 }
 
+/// `release`'s storage row on `store`: its file count, total size, whether
+/// it is stored, its pinned and queued counts, and its first queued place
+/// against the first place coven's queue holds for its files.
+async fn storage_row(store: &bae_store::Store, release: &str) -> Vec<String> {
+    store
+        .query_texts_for_test(&format!(
+            "SELECT s.file_count || ' files, ' || s.total_size || ' bytes, stored ' || s.stored \
+                 || ', ' || s.pinned_count || ' pinned, ' || s.queued_count || ' queued, ' \
+                 || CASE WHEN s.first_queued_position IS (\
+                        SELECT MIN(queued.position) FROM release_files f \
+                        JOIN coven_upload_queue queued ON queued.file = f.file \
+                        WHERE f.release_id = s.release_id) \
+                    THEN 'first place as queued' ELSE 'first place not as queued' END \
+             FROM release_storage s WHERE s.release_id = '{release}'"
+        ))
+        .await
+        .unwrap()
+}
+
+/// A release another device imported and moved to the cloud arrives with its
+/// storage row; pinning its file here counts the pin in that row, and this
+/// device's own move of a release to the cloud counts the files it queues.
+#[test]
+fn a_release_s_storage_counts_its_pins_and_queued_files_on_each_device() {
+    crate::test_libraries::run_two_device_test(async |devices| {
+        let originals = tempfile::TempDir::new().unwrap();
+        let theirs = insert_local_release_with_files(
+            devices.b().manager(),
+            &originals.path().join("theirs"),
+            "Album Title B",
+            &[("track.flac", b"track-bytes")],
+        )
+        .await;
+        devices.b().manager().upload_release(&theirs.id, false).await.unwrap();
+        let in_the_cloud =
+            vec!["1 files, 11 bytes, stored 1, 0 pinned, 0 queued, first place as queued"
+                .to_string()];
+        devices
+            .settle("the other device's release in the cloud", async |_, database| {
+                storage_row(database, &theirs.id).await == in_the_cloud
+            })
+            .await;
+
+        let manager = devices.a().manager();
+        manager.pin_release_files_with_progress(&theirs.id, |_| {}).await.unwrap();
+        assert_eq!(
+            storage_row(&manager.store, &theirs.id).await,
+            vec!["1 files, 11 bytes, stored 1, 1 pinned, 0 queued, first place as queued"]
+        );
+
+        manager.store.set_uploads_paused(true).await.unwrap();
+        let ours = insert_local_release_with_files(
+            manager,
+            &originals.path().join("ours"),
+            "Album Title A",
+            &[("one.flac", b"first audio"), ("two.flac", b"second audio")],
+        )
+        .await;
+        manager.upload_release(&ours.id, false).await.unwrap();
+        assert_eq!(
+            storage_row(&manager.store, &ours.id).await,
+            vec!["2 files, 23 bytes, stored 0, 0 pinned, 2 queued, first place as queued"]
+        );
+    });
+}
+
 // Which of a pinning release's files coven is downloading now, and how far
 // each has got, as the release's read and the pin file watch tell them.
 

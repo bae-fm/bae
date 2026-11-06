@@ -96,12 +96,11 @@ reach(artist_id, member_id) AS (
 )
 SELECT artist_id, member_id FROM reach;
 
--- An artist arriving takes its shown artist: the survivor of its merges,
--- else itself.
+-- An artist arrives showing as itself: a merge names both its artists, so
+-- none naming it is written or applied before it.
 CREATE TRIGGER IF NOT EXISTS artist_added AFTER INSERT ON artists
 BEGIN
-    INSERT INTO artist_shown_as (artist_id, shown_artist_id)
-    VALUES (NEW.id, COALESCE((SELECT survivor_id FROM merged_artist_survivors WHERE artist_id = NEW.id), NEW.id));
+    INSERT INTO artist_shown_as (artist_id, shown_artist_id) VALUES (NEW.id, NEW.id);
 END;
 
 -- Inserting a merge's two artists into `artist_merge_refresh` sets the shown
