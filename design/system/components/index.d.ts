@@ -239,7 +239,8 @@ export declare function AndroidMenuItem(props: AndroidMenuItemProps): React.Reac
 export interface MacSearchCardProps { top?: number; right?: number; empty?: string; children?: React.ReactNode }
 export declare function MacSearchCard(props: MacSearchCardProps): React.ReactElement;
 export declare function MacSearchSection(props: { title: string }): React.ReactElement;
-export interface SearchRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; hover?: boolean }
+/** part (Android) indents a work under its group's heading work; inset (Android) is the composer and work pages' rows today, whose text carries a second 16dp padding inside the row's own. */
+export interface SearchRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; hover?: boolean; part?: boolean; inset?: boolean }
 export declare function MacSearchRow(props: SearchRowProps): React.ReactElement;
 export declare function AndroidSearchSection(props: { title: string }): React.ReactElement;
 export declare function AndroidSearchRow(props: SearchRowProps): React.ReactElement;
@@ -264,3 +265,11 @@ export interface AndroidCastRowProps { name?: string; kind?: 'cast' | 'airplay' 
 export declare function AndroidCastRow(props: AndroidCastRowProps): React.ReactElement;
 export interface AndroidCheckboxProps { label: string; on?: boolean }
 export declare function AndroidCheckbox(props: AndroidCheckboxProps): React.ReactElement;
+/** A row of a composer's page or a work's: cover, title, second line. credit is the text-only row; part indents a work; top is the gap above it. */
+export interface MacDetailRowProps { title: string; subtitle?: string; art?: string; noArt?: boolean; credit?: boolean; part?: boolean; top?: number; hover?: boolean }
+export declare function MacDetailRow(props: MacDetailRowProps): React.ReactElement;
+export interface MacSectionHeaderProps { title: string; top?: number; bottom?: number }
+export declare function MacSectionHeader(props: MacSectionHeaderProps): React.ReactElement;
+export declare function MacWorkDetail(props: { title: string; children?: React.ReactNode }): React.ReactElement;
+export declare function MacHairline(props: {}): React.ReactElement;
+export declare function MacContentUnavailable(props: { title: string; description?: string }): React.ReactElement;

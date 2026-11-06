@@ -1,4 +1,4 @@
-<!-- @dsCard group="Android library" height=220 -->
+<!-- @dsCard group="Android library" height=320 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>AndroidSearchRow</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Album', h(B.AndroidSearchRow, { title: 'Low Tide Hours', subtitle: 'Mara Quill · 1992' })), W('Track', h(B.AndroidSearchRow, { title: 'Harbor Lights', subtitle: 'Mara Quill, Low Tide Hours', trailing: '4:32', noArt: true }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Album', h(B.AndroidSearchRow, { title: 'Low Tide Hours', subtitle: 'Mara Quill · 1992' })), W('Track', h(B.AndroidSearchRow, { title: 'Harbor Lights', subtitle: 'Mara Quill, Low Tide Hours', trailing: '4:32', noArt: true })), W('Work, today', h(B.AndroidSearchRow, { title: 'Low Tide Suite', subtitle: 'Ada Lindqvist', art: 'Blue Room Sessions', inset: true })), W('Part, today', h(B.AndroidSearchRow, { title: 'II. Slack Water', subtitle: 'Ada Lindqvist', art: 'Blue Room Sessions', inset: true, part: true }))));
 </script>
 </body>
 </html>

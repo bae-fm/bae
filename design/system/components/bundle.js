@@ -799,7 +799,7 @@
   }
   function AndroidSearchSection(props) { return h('div', { className: 'bae-a-searchsection' }, props.title); }
   function AndroidSearchRow(props) {
-    return h('div', { className: 'bae-a-searchrow' },
+    return h('div', { className: cx('bae-a-searchrow', props.part && 'bae-a-searchrow-part', props.inset && 'bae-a-searchrow-inset') },
       props.noArt ? null : h(Artwork, { title: props.art || props.title, size: 48, radius: 6 }),
       h('div', { className: 'bae-a-searchrow-text' }, h('div', { className: 'bae-a-searchrow-title' }, props.title), props.subtitle ? h('div', { className: 'bae-a-searchrow-sub' }, props.subtitle) : null),
       props.trailing ? h('span', { className: 'bae-a-searchrow-trail' }, props.trailing) : null);
@@ -886,6 +886,30 @@
     return h('div', { className: 'bae-a-checkrow' }, h('span', { className: cx('bae-a-checkbox', props.on && 'bae-a-checkbox-on') }, props.on ? h(Glyph, { name: 'check', size: 16 }) : null), h('span', null, props.label));
   }
 
+
+  // ---- Composer and work pages (macOS) ----
+  // A row of the composer's page or a work's: cover, title, second line. `credit` is the text-only row
+  // (a credit or a recording: nothing to open). `part` indents a work under its group's heading work.
+  // `top` is the gap above the row, which the page sets per row.
+  function MacDetailRow(props) {
+    var style = { marginTop: Number(props.top || 0), marginLeft: props.part ? 16 : 0 };
+    var text = h('div', { className: 'bae-m-drow-text' }, h('div', { className: 'bae-m-drow-title' }, props.title), h('div', { className: 'bae-m-drow-sub' }, props.subtitle || ' '));
+    if (props.credit) return h('div', { className: 'bae-m-drow bae-m-drow-credit', style: style }, text);
+    return h('div', { className: cx('bae-m-drow', props.hover && 'bae-m-drow-hover'), style: style },
+      h(Artwork, { title: props.art || props.title, size: 44, radius: 6, missing: props.noArt }), text);
+  }
+  function MacSectionHeader(props) {
+    return h('div', { className: 'bae-m-sechead', style: { marginTop: Number(props.top || 0), marginBottom: Number(props.bottom || 0) } }, props.title);
+  }
+  // A work's detail: its title, then its sections (MacSectionHeader and MacDetailRow) 12pt apart.
+  function MacWorkDetail(props) {
+    return h('div', { className: 'bae-m-work' }, h('div', { className: 'bae-m-work-title' }, props.title), props.children);
+  }
+  function MacHairline() { return h('div', { className: 'bae-m-hairline' }); }
+  function MacContentUnavailable(props) {
+    return h('div', { className: 'bae-m-cu' }, h('div', { className: 'bae-m-cu-title' }, props.title), props.description ? h('div', { className: 'bae-m-cu-desc' }, props.description) : null);
+  }
+
   window.Bae = Object.assign(window.Bae || {}, {
     MacSearchCard: MacSearchCard, MacSearchSection: MacSearchSection, MacSearchRow: MacSearchRow, AndroidSearchSection: AndroidSearchSection, AndroidSearchRow: AndroidSearchRow, MacQueuePanel: MacQueuePanel, MacQueueSection: MacQueueSection, MacQueuePlaceholderRow: MacQueuePlaceholderRow, MacQueueInsertLine: MacQueueInsertLine, MacSidePause: MacSidePause, MacCastPopover: MacCastPopover, AndroidSheet: AndroidSheet, AndroidQueueLabel: AndroidQueueLabel, AndroidQueueRow: AndroidQueueRow, AndroidFullPlayer: AndroidFullPlayer, AndroidCastRow: AndroidCastRow, AndroidCheckbox: AndroidCheckbox,
     Artwork: Artwork, MacMainWindow: MacMainWindow, MacNowPlayingBar: MacNowPlayingBar, MacSeekBar: MacSeekBar, MacPlayPause: MacPlayPause, MacIconButton: MacIconButton, MacLibraryHeading: MacLibraryHeading, MacAlbumGrid: MacAlbumGrid, MacAlbumTile: MacAlbumTile, MacTrackRow: MacTrackRow, MacEyebrow: MacEyebrow, MacBrowseRow: MacBrowseRow, MacDetailHeader: MacDetailHeader, MacQueueRow: MacQueueRow, MacAlbumPanel: MacAlbumPanel, MacTrackColumns: MacTrackColumns, MacBrowseSplit: MacBrowseSplit, MacArtistAlbumTile: MacArtistAlbumTile, MacSortCriteria: MacSortCriteria, MacCheckbox: MacCheckbox, MacArtistGroupHeading: MacArtistGroupHeading, AndroidMenu: AndroidMenu, AndroidMenuItem: AndroidMenuItem,
@@ -898,6 +922,7 @@
     AndroidRow: AndroidRow, AndroidButton: AndroidButton, AndroidIconButton: AndroidIconButton, AndroidSwitch: AndroidSwitch,
     AndroidTextField: AndroidTextField, AndroidRadio: AndroidRadio, AndroidDialog: AndroidDialog,
     AndroidDialogActions: AndroidDialogActions, AndroidNote: AndroidNote, AndroidProgress: AndroidProgress, AndroidSpinner: AndroidSpinner,
-    StatusChip: StatusChip, Notice: Notice, MacScanCode: MacScanCode, AndroidScanCode: AndroidScanCode
+    StatusChip: StatusChip, Notice: Notice, MacScanCode: MacScanCode, AndroidScanCode: AndroidScanCode,
+    MacDetailRow: MacDetailRow, MacSectionHeader: MacSectionHeader, MacWorkDetail: MacWorkDetail, MacHairline: MacHairline, MacContentUnavailable: MacContentUnavailable
   });
 })();

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: Composers, a composer open, its first work under the page</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--background)}
+
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacMainWindow" height="1360" track-title="Low Tide Hours" track-artist="Mara Quill" track-album="Low Tide Hours" playing="{{yes}}" position="0.35" held="0.6" elapsed="1:42" duration="5:03"><div style="display:flex;flex-direction:column;height:100%"><x-import component-from-global-scope="Bae.MacLibraryHeading" view="Composers" collapsed="{{yes}}"><x-import component-from-global-scope="Bae.MacSortCriteria" criteria="Name:up"></x-import></x-import><div style="flex:1;min-height:0"><x-import component-from-global-scope="Bae.MacBrowseSplit"><div><x-import component-from-global-scope="Bae.MacBrowseRow" name="Ada Lindqvist" count="6 works" selected="{{yes}}"></x-import><x-import component-from-global-scope="Bae.MacBrowseRow" name="Ines Varga" count="1 work"></x-import><x-import component-from-global-scope="Bae.MacBrowseRow" name="Mara Quill" count="4 works"></x-import><x-import component-from-global-scope="Bae.MacBrowseRow" name="Odile Fen" count="3 works"></x-import><x-import component-from-global-scope="Bae.MacBrowseRow" name="Pell Marsh" count="1 work"></x-import><x-import component-from-global-scope="Bae.MacBrowseRow" name="Tomas Brell" count="2 works"></x-import></div><x-import component-from-global-scope="Bae.MacDetailHeader" name="Ada Lindqvist" count="6 works"></x-import><div><x-import component-from-global-scope="Bae.MacSectionHeader" title="Works" bottom="24"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="Low Tide Suite" subtitle="Ada Lindqvist" art="Blue Room Sessions" top="1"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="I. Ebb" subtitle="Ada Lindqvist" art="Blue Room Sessions" part="{{yes}}" top="1"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="II. Slack Water" subtitle="Ada Lindqvist" art="Blue Room Sessions" part="{{yes}}" top="1"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="III. Flood" subtitle="Ada Lindqvist" art="Blue Room Sessions" part="{{yes}}" top="1"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="Harbor Waltz" subtitle="Ada Lindqvist" art="Glass Harbor" top="16"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="Nocturne for Two Pianos" subtitle="Ada Lindqvist" art="Small Hours" top="16"></x-import><x-import component-from-global-scope="Bae.MacSectionHeader" title="Credits" top="24" bottom="24"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="Paper Lanterns" subtitle="Arranger" credit="{{yes}}" top="0"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="Late Arrivals" subtitle="Orchestrator" credit="{{yes}}" top="24"></x-import><x-import component-from-global-scope="Bae.MacSectionHeader" title="Recordings" top="24" bottom="24"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="Harbor Lights" subtitle="Low Tide Hours" credit="{{yes}}" top="0"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="Night Ferry" subtitle="Copper Sky" credit="{{yes}}" top="24"></x-import></div><x-import component-from-global-scope="Bae.MacHairline"></x-import><x-import component-from-global-scope="Bae.MacWorkDetail" title="Low Tide Suite"><x-import component-from-global-scope="Bae.MacSectionHeader" title="Works"></x-import><div><x-import component-from-global-scope="Bae.MacDetailRow" title="I. Ebb" subtitle="Ada Lindqvist" art="Blue Room Sessions" top="0"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="II. Slack Water" subtitle="Ada Lindqvist" art="Blue Room Sessions" top="1"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="III. Flood" subtitle="Ada Lindqvist" art="Blue Room Sessions" top="1"></x-import></div><x-import component-from-global-scope="Bae.MacSectionHeader" title="Releases"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="Blue Room Sessions" subtitle="CD"></x-import><x-import component-from-global-scope="Bae.MacSectionHeader" title="Recordings"></x-import><div><x-import component-from-global-scope="Bae.MacDetailRow" title="Low Tide Suite: I. Ebb" subtitle="Blue Room Sessions" credit="{{yes}}" top="0"></x-import><x-import component-from-global-scope="Bae.MacDetailRow" title="Low Tide Suite: II. Slack Water" subtitle="Blue Room Sessions" credit="{{yes}}" top="1"></x-import></div></x-import></x-import></div></div></x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":1360}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

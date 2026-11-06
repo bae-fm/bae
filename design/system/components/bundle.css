@@ -509,3 +509,18 @@
 .bae-a-checkrow { display: flex; align-items: center; gap: 8px; font: 400 14px var(--font-android); }
 .bae-a-checkbox { width: 18px; height: 18px; margin: 11px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 2px; box-shadow: inset 0 0 0 2px var(--text-secondary); color: var(--background); fill: currentColor; }
 .bae-a-checkbox-on { background: var(--accent); box-shadow: none; }
+
+/* Composer and work pages */
+.bae-m-drow { display: flex; align-items: center; gap: 12px; padding: 6px 8px; margin-right: -8px; margin-left: -8px; border-radius: var(--radius-control); }
+.bae-m-drow-hover { background: var(--hover); }
+.bae-m-drow-credit { padding: 4px 0; margin: 0; }
+.bae-m-drow-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bae-m-drow-title { font: 500 13px/17px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-drow-sub { font: 400 11.5px/14px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-sechead { padding-top: 4px; font: 600 15px var(--font-sans); }
+.bae-m-work { display: flex; flex-direction: column; gap: 12px; }
+.bae-m-work-title { font: 700 22px var(--font-sans); letter-spacing: -0.3px; }
+.bae-m-hairline { height: 1px; background: var(--hairline); flex: none; }
+.bae-m-cu { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; min-height: 240px; }
+.bae-a-searchrow-part { padding-left: 32px; }
+.bae-a-searchrow-inset .bae-a-searchrow-text { padding: 8px 16px; }

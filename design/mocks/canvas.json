@@ -1,3119 +1,3230 @@
 {
-  "v": 3,
-  "attachments": {},
-  "boards": {
-    "About.dc.html": {
-      "h": 916,
-      "page": "settings",
-      "title": "About",
-      "w": 412,
-      "x": 0,
-      "y": 6740
-    },
-    "AddDevice.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Add device: the code",
-      "w": 412,
-      "x": 0,
-      "y": 20744
-    },
-    "AddDeviceAdded.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Add device: added",
-      "w": 412,
-      "x": 984,
-      "y": 20744
-    },
-    "Appearance.dc.html": {
-      "h": 916,
-      "page": "settings",
-      "title": "Appearance",
-      "w": 412,
-      "x": 0,
-      "y": 1556
-    },
-    "Casting.dc.html": {
-      "h": 916,
-      "page": "settings",
-      "title": "Casting: off",
-      "w": 412,
-      "x": 0,
-      "y": 5444
-    },
-    "CloudHome.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Sync: S3",
-      "w": 412,
-      "x": 0,
-      "y": 7652
-    },
-    "FolderPicker.dc.html": {
-      "h": 300,
-      "page": "shared",
-      "title": "Folder picker",
-      "w": 460,
-      "x": 0,
-      "y": 240
-    },
-    "HistoryChanged.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Listening history: changed",
-      "w": 412,
-      "x": 492,
-      "y": 14264
-    },
-    "HistoryChoice.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Listening history: choosing",
-      "w": 412,
-      "x": 0,
-      "y": 14264
-    },
-    "HomeMenu.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Home: \u22ee menu with Libraries",
-      "w": 412,
-      "x": 0,
-      "y": 11180
-    },
-    "InviteForm.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Invite: Dropbox",
-      "w": 412,
-      "x": 0,
-      "y": 15560
-    },
-    "InviteShown.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Invite: 2. the code",
-      "w": 412,
-      "x": 492,
-      "y": 16856
-    },
-    "Libraries.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Libraries (from \u22ee)",
-      "w": 412,
-      "x": 492,
-      "y": 11180
-    },
-    "Library.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Library (admin)",
-      "w": 412,
-      "x": 0,
-      "y": 260
-    },
-    "LibraryMember.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Library (member)",
-      "w": 412,
-      "x": 492,
-      "y": 260
-    },
-    "LibraryProblem.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Library: sync problem (admin)",
-      "w": 412,
-      "x": 984,
-      "y": 260
-    },
-    "MacAbout.dc.html": {
-      "h": 600,
-      "page": "settings",
-      "title": "macOS: About",
-      "w": 690,
-      "x": 652,
-      "y": 6740
-    },
-    "MacAddDevice.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Add device: the code",
-      "w": 690,
-      "x": 1476,
-      "y": 20744
-    },
-    "MacAddDeviceAdded.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Add device: added",
-      "w": 690,
-      "x": 3016,
-      "y": 20744
-    },
-    "MacAppearance.dc.html": {
-      "h": 600,
-      "page": "settings",
-      "title": "macOS: Appearance",
-      "w": 690,
-      "x": 652,
-      "y": 1556
-    },
-    "MacCasting.dc.html": {
-      "h": 600,
-      "page": "settings",
-      "title": "macOS: Casting: off",
-      "w": 690,
-      "x": 1476,
-      "y": 5444
-    },
-    "MacCloudHome.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Sync: S3",
-      "w": 690,
-      "x": 2620,
-      "y": 7652
-    },
-    "MacHistoryChanged.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Listening history: changed",
-      "w": 690,
-      "x": 1914,
-      "y": 14264
-    },
-    "MacHistoryChoice.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Listening history: choosing",
-      "w": 690,
-      "x": 1144,
-      "y": 14264
-    },
-    "MacInviteCode.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Invite: 2. the code",
-      "w": 690,
-      "x": 3390,
-      "y": 16856
-    },
-    "MacInviteForm.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Invite: Dropbox",
-      "w": 690,
-      "x": 2128,
-      "y": 15560
-    },
-    "MacLibrary.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Library (admin)",
-      "w": 690,
-      "x": 2246,
-      "y": 260
-    },
-    "MacLibraryMember.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Library (member)",
-      "w": 690,
-      "x": 3016,
-      "y": 260
-    },
-    "MacLibraryNotSynced.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Library: not synced",
-      "w": 690,
-      "x": 1476,
-      "y": 260
-    },
-    "MacLibraryProblem.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Library: sync problem (admin)",
-      "w": 690,
-      "x": 3786,
-      "y": 260
-    },
-    "MacMakeAdminDone.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Make admin: done",
-      "w": 690,
-      "x": 1914,
-      "y": 22040
-    },
-    "MacMakeAdminWaiting.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Make admin: waiting to sync",
-      "w": 690,
-      "x": 1144,
-      "y": 22040
-    },
-    "MacPeople.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: People and devices (admin)",
-      "w": 690,
-      "x": 3112,
-      "y": 11672
-    },
-    "MacPeopleInvited.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Invite: 3. in the list",
-      "w": 690,
-      "x": 4160,
-      "y": 16856
-    },
-    "MacPeopleMember.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: People and devices (member)",
-      "w": 690,
-      "x": 3882,
-      "y": 11672
-    },
-    "MacPlayback.dc.html": {
-      "h": 600,
-      "page": "settings",
-      "title": "macOS: Playback",
-      "w": 690,
-      "x": 652,
-      "y": 2852
-    },
-    "MacProfileRename.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Your name: editing",
-      "w": 690,
-      "x": 2128,
-      "y": 12968
-    },
-    "MacProfileRenameBlank.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Your name: blank, Save off",
-      "w": 690,
-      "x": 2898,
-      "y": 12968
-    },
-    "MacProfileRenameFailed.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Your name: save failed",
-      "w": 690,
-      "x": 3668,
-      "y": 12968
-    },
-    "MacProfileRenamed.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Your name: after Save",
-      "w": 690,
-      "x": 4438,
-      "y": 12968
-    },
-    "MacRecovery.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Restore code: shown",
-      "w": 690,
-      "x": 1754,
-      "y": 23336
-    },
-    "MacRecoveryHidden.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Restore code: hidden",
-      "w": 690,
-      "x": 984,
-      "y": 23336
-    },
-    "MacRenameLibrary.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Rename library (admin)",
-      "w": 690,
-      "x": 1144,
-      "y": 1556
-    },
-    "MacRenamed.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: After Rename (admin)",
-      "w": 690,
-      "x": 1914,
-      "y": 1556
-    },
-    "MacSettingsOffline.dc.html": {
-      "h": 600,
-      "page": "settings",
-      "title": "macOS: Settings: library offline",
-      "w": 690,
-      "x": 1636,
-      "y": 260
-    },
-    "MacSettingsProblem.dc.html": {
-      "h": 600,
-      "page": "settings",
-      "title": "macOS: Settings: library sync problem",
-      "w": 690,
-      "x": 2406,
-      "y": 260
-    },
-    "MacSetupChoose.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: choose storage",
-      "w": 690,
-      "x": 0,
-      "y": 2852
-    },
-    "MacSetupDropboxChecking.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, checking the folder",
-      "w": 690,
-      "x": 3080,
-      "y": 4772
-    },
-    "MacSetupDropboxChoose.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, choose storage",
-      "w": 690,
-      "x": 0,
-      "y": 4772
-    },
-    "MacSetupDropboxCode.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, restore code",
-      "w": 690,
-      "x": 9240,
-      "y": 4772
-    },
-    "MacSetupDropboxDone.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, done",
-      "w": 690,
-      "x": 10010,
-      "y": 4772
-    },
-    "MacSetupDropboxFolder.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, choose a shared folder",
-      "w": 690,
-      "x": 2310,
-      "y": 4772
-    },
-    "MacSetupDropboxFolderMade.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, new folder made",
-      "w": 690,
-      "x": 6160,
-      "y": 4772
-    },
-    "MacSetupDropboxListing.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, reading folders",
-      "w": 690,
-      "x": 1540,
-      "y": 4772
-    },
-    "MacSetupDropboxMakingFolder.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, making the folder",
-      "w": 690,
-      "x": 5390,
-      "y": 4772
-    },
-    "MacSetupDropboxNewFolder.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, naming a new folder",
-      "w": 690,
-      "x": 4620,
-      "y": 4772
-    },
-    "MacSetupDropboxNone.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, no shared folders",
-      "w": 690,
-      "x": 10780,
-      "y": 4772
-    },
-    "MacSetupDropboxNotEmpty.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, folder not empty",
-      "w": 690,
-      "x": 3850,
-      "y": 4772
-    },
-    "MacSetupDropboxSignIn.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, signing in",
-      "w": 690,
-      "x": 770,
-      "y": 4772
-    },
-    "MacSetupDropboxStepConnecting.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, step 2 of 3",
-      "w": 690,
-      "x": 7700,
-      "y": 4772
-    },
-    "MacSetupDropboxStepCreating.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, step 3 of 3",
-      "w": 690,
-      "x": 8470,
-      "y": 4772
-    },
-    "MacSetupDropboxStepReadingAccount.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: Dropbox, step 1 of 3",
-      "w": 690,
-      "x": 6930,
-      "y": 4772
-    },
-    "MacSetupICloud.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: iCloud",
-      "w": 690,
-      "x": 770,
-      "y": 3812
-    },
-    "MacSetupICloudChoose.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: iCloud, choose storage",
-      "w": 690,
-      "x": 0,
-      "y": 3812
-    },
-    "MacSetupICloudCode.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: iCloud, restore code",
-      "w": 690,
-      "x": 3850,
-      "y": 3812
-    },
-    "MacSetupICloudDone.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: iCloud, done",
-      "w": 690,
-      "x": 4620,
-      "y": 3812
-    },
-    "MacSetupICloudStepConnecting.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: iCloud, step 2 of 3",
-      "w": 690,
-      "x": 2310,
-      "y": 3812
-    },
-    "MacSetupICloudStepCreating.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: iCloud, step 3 of 3",
-      "w": 690,
-      "x": 3080,
-      "y": 3812
-    },
-    "MacSetupICloudStepPreparing.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: iCloud, step 1 of 3",
-      "w": 690,
-      "x": 1540,
-      "y": 3812
-    },
-    "MacSetupOneDrive.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, choose a folder",
-      "w": 690,
-      "x": 2310,
-      "y": 5732
-    },
-    "MacSetupOneDriveChecking.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, checking the folder",
-      "w": 690,
-      "x": 3080,
-      "y": 5732
-    },
-    "MacSetupOneDriveChoose.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, choose storage",
-      "w": 690,
-      "x": 0,
-      "y": 5732
-    },
-    "MacSetupOneDriveCode.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, restore code",
-      "w": 690,
-      "x": 9240,
-      "y": 5732
-    },
-    "MacSetupOneDriveDone.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, done",
-      "w": 690,
-      "x": 10010,
-      "y": 5732
-    },
-    "MacSetupOneDriveFolderMade.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, new folder made",
-      "w": 690,
-      "x": 6160,
-      "y": 5732
-    },
-    "MacSetupOneDriveListing.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, reading folders",
-      "w": 690,
-      "x": 1540,
-      "y": 5732
-    },
-    "MacSetupOneDriveMakingFolder.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, making the folder",
-      "w": 690,
-      "x": 5390,
-      "y": 5732
-    },
-    "MacSetupOneDriveNewFolder.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, naming a new folder",
-      "w": 690,
-      "x": 4620,
-      "y": 5732
-    },
-    "MacSetupOneDriveNone.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, no folders",
-      "w": 690,
-      "x": 10780,
-      "y": 5732
-    },
-    "MacSetupOneDriveNotEmpty.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, folder not empty",
-      "w": 690,
-      "x": 3850,
-      "y": 5732
-    },
-    "MacSetupOneDriveSignIn.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, signing in",
-      "w": 690,
-      "x": 770,
-      "y": 5732
-    },
-    "MacSetupOneDriveStepConnecting.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, step 2 of 3",
-      "w": 690,
-      "x": 7700,
-      "y": 5732
-    },
-    "MacSetupOneDriveStepCreating.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, step 3 of 3",
-      "w": 690,
-      "x": 8470,
-      "y": 5732
-    },
-    "MacSetupOneDriveStepReadingAccount.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: OneDrive, step 1 of 3",
-      "w": 690,
-      "x": 6930,
-      "y": 5732
-    },
-    "MacSetupS3.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible",
-      "w": 690,
-      "x": 770,
-      "y": 6692
-    },
-    "MacSetupS3Choose.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, choose storage",
-      "w": 690,
-      "x": 0,
-      "y": 6692
-    },
-    "MacSetupS3Code.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, restore code",
-      "w": 690,
-      "x": 4620,
-      "y": 6692
-    },
-    "MacSetupS3Done.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, done",
-      "w": 690,
-      "x": 5390,
-      "y": 6692
-    },
-    "MacSetupS3StepCheckingLocation.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, step 1 of 4",
-      "w": 690,
-      "x": 1540,
-      "y": 6692
-    },
-    "MacSetupS3StepConnecting.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, step 3 of 4",
-      "w": 690,
-      "x": 3080,
-      "y": 6692
-    },
-    "MacSetupS3StepCreating.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, step 4 of 4",
-      "w": 690,
-      "x": 3850,
-      "y": 6692
-    },
-    "MacSetupS3StepDetecting.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, step 2 of 4",
-      "w": 690,
-      "x": 2310,
-      "y": 6692
-    },
-    "MacSyncDropbox.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Sync: Dropbox",
-      "w": 690,
-      "x": 3390,
-      "y": 7652
-    },
-    "MacSyncICloud.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Sync: iCloud",
-      "w": 690,
-      "x": 4930,
-      "y": 7652
-    },
-    "MacSyncOneDrive.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Sync: OneDrive",
-      "w": 690,
-      "x": 4160,
-      "y": 7652
-    },
-    "MacSyncSignedOut.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Sync: signed out (Dropbox)",
-      "w": 690,
-      "x": 5700,
-      "y": 7652
-    },
-    "MacSyncSignedOutICloud.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Sync: signed out (iCloud)",
-      "w": 690,
-      "x": 6470,
-      "y": 7652
-    },
-    "MacSyncSignedOutS3.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Sync: signed out (S3)",
-      "w": 690,
-      "x": 7240,
-      "y": 7652
-    },
-    "MacSyncStates.dc.html": {
-      "h": 1450,
-      "page": "library",
-      "title": "macOS: Sync status: every state",
-      "w": 1452,
-      "x": 1316,
-      "y": 9392
-    },
-    "MacTransfers.dc.html": {
-      "h": 600,
-      "page": "settings",
-      "title": "macOS: Transfers",
-      "w": 690,
-      "x": 652,
-      "y": 4148
-    },
-    "MacTransfersPaused.dc.html": {
-      "h": 600,
-      "page": "settings",
-      "title": "macOS: Transfers, uploads paused",
-      "w": 690,
-      "x": 1422,
-      "y": 4148
-    },
-    "MacWelcome.dc.html": {
-      "h": 600,
-      "page": "welcome",
-      "title": "macOS: Welcome: your libraries",
-      "w": 690,
-      "x": 2620,
-      "y": 260
-    },
-    "MacWelcomeDelete.dc.html": {
-      "h": 600,
-      "page": "welcome",
-      "title": "macOS: Delete: never synced",
-      "w": 690,
-      "x": 4930,
-      "y": 260
-    },
-    "MacWelcomeRemove.dc.html": {
-      "h": 600,
-      "page": "welcome",
-      "title": "macOS: Remove: confirm",
-      "w": 690,
-      "x": 3390,
-      "y": 260
-    },
-    "MacWelcomeRemoveFailed.dc.html": {
-      "h": 600,
-      "page": "welcome",
-      "title": "macOS: Remove: failed",
-      "w": 690,
-      "x": 6470,
-      "y": 260
-    },
-    "MacWelcomeRemoveUnsent.dc.html": {
-      "h": 600,
-      "page": "welcome",
-      "title": "macOS: Remove: confirm, unsent changes",
-      "w": 690,
-      "x": 4160,
-      "y": 260
-    },
-    "MacWelcomeRemoving.dc.html": {
-      "h": 600,
-      "page": "welcome",
-      "title": "macOS: Remove: removing",
-      "w": 690,
-      "x": 5700,
-      "y": 260
-    },
-    "Main.dc.html": {
-      "h": 916,
-      "page": "settings",
-      "title": "Settings",
-      "w": 412,
-      "x": 0,
-      "y": 260
-    },
-    "MakeAdminDone.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Make admin: done",
-      "w": 412,
-      "x": 492,
-      "y": 22040
-    },
-    "MakeAdminWaiting.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Make admin: waiting to sync",
-      "w": 412,
-      "x": 0,
-      "y": 22040
-    },
-    "People.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "People and devices (admin)",
-      "w": 412,
-      "x": 0,
-      "y": 11672
-    },
-    "PeopleInvited.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Invite: 3. in the list",
-      "w": 412,
-      "x": 984,
-      "y": 16856
-    },
-    "PeopleMember.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "People and devices (member)",
-      "w": 412,
-      "x": 492,
-      "y": 11672
-    },
-    "Person.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "A person (admin)",
-      "w": 412,
-      "x": 1476,
-      "y": 11672
-    },
-    "Playback.dc.html": {
-      "h": 916,
-      "page": "settings",
-      "title": "Playback",
-      "w": 412,
-      "x": 0,
-      "y": 2852
-    },
-    "ProfileRename.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Your name: editing",
-      "w": 412,
-      "x": 0,
-      "y": 12968
-    },
-    "ProfileRenameBlank.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Your name: blank, Save off",
-      "w": 412,
-      "x": 492,
-      "y": 12968
-    },
-    "ProfileRenameFailed.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Your name: save failed",
-      "w": 412,
-      "x": 984,
-      "y": 12968
-    },
-    "ProfileRenamed.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Your name: after Save",
-      "w": 412,
-      "x": 1476,
-      "y": 12968
-    },
-    "Recovery.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Restore code: shown",
-      "w": 412,
-      "x": 492,
-      "y": 23336
-    },
-    "RecoveryHidden.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Restore code: hidden",
-      "w": 412,
-      "x": 0,
-      "y": 23336
-    },
-    "RenameLibrary.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Rename library (admin)",
-      "w": 412,
-      "x": 0,
-      "y": 1556
-    },
-    "Renamed.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "After Rename (admin)",
-      "w": 412,
-      "x": 492,
-      "y": 1556
-    },
-    "RestoreCode.dc.html": {
-      "h": 150,
-      "is_interactive": true,
-      "page": "shared",
-      "title": "Restore code",
-      "w": 460,
-      "x": 0,
-      "y": 1780
-    },
-    "S3Form.dc.html": {
-      "h": 420,
-      "page": "shared",
-      "title": "S3-compatible form",
-      "w": 460,
-      "x": 0,
-      "y": 900
-    },
-    "SettingsOffline.dc.html": {
-      "h": 916,
-      "page": "settings",
-      "title": "Settings: library offline",
-      "w": 412,
-      "x": 492,
-      "y": 260
-    },
-    "SettingsProblem.dc.html": {
-      "h": 916,
-      "page": "settings",
-      "title": "Settings: library sync problem",
-      "w": 412,
-      "x": 984,
-      "y": 260
-    },
-    "SyncDropbox.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Sync: Dropbox",
-      "w": 412,
-      "x": 492,
-      "y": 7652
-    },
-    "SyncOneDrive.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Sync: OneDrive",
-      "w": 412,
-      "x": 984,
-      "y": 7652
-    },
-    "SyncSignedOut.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Sync: signed out (Dropbox)",
-      "w": 412,
-      "x": 1476,
-      "y": 7652
-    },
-    "SyncSignedOutS3.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Sync: signed out (S3)",
-      "w": 412,
-      "x": 1968,
-      "y": 7652
-    },
-    "SyncStates.dc.html": {
-      "h": 1800,
-      "page": "library",
-      "title": "Sync status: every state",
-      "w": 1236,
-      "x": 0,
-      "y": 9392
-    },
-    "Transfers.dc.html": {
-      "h": 916,
-      "page": "settings",
-      "title": "Transfers",
-      "w": 412,
-      "x": 0,
-      "y": 4148
-    },
-    "Welcome.dc.html": {
-      "h": 916,
-      "page": "welcome",
-      "title": "Welcome: your libraries",
-      "w": 412,
-      "x": 0,
-      "y": 260
-    },
-    "WelcomeRemove.dc.html": {
-      "h": 916,
-      "page": "welcome",
-      "title": "Remove: confirm",
-      "w": 412,
-      "x": 492,
-      "y": 260
-    },
-    "WelcomeRemoveFailed.dc.html": {
-      "h": 916,
-      "page": "welcome",
-      "title": "Remove: failed",
-      "w": 412,
-      "x": 1968,
-      "y": 260
-    },
-    "WelcomeRemoveUnsent.dc.html": {
-      "h": 916,
-      "page": "welcome",
-      "title": "Remove: confirm, unsent changes",
-      "w": 412,
-      "x": 984,
-      "y": 260
-    },
-    "WelcomeRemoving.dc.html": {
-      "h": 916,
-      "page": "welcome",
-      "title": "Remove: removing",
-      "w": 412,
-      "x": 1476,
-      "y": 260
-    },
-    "storage/Main.dc.html": {
-      "h": 900,
-      "page": "storage",
-      "radius": 10,
-      "title": "Today",
-      "w": 440,
-      "x": 0,
-      "y": 0
-    },
-    "storage/PanelFile.dc.html": {
-      "h": 614,
-      "page": "storage",
-      "radius": 10,
-      "title": "Proposed, file selected",
-      "w": 440,
-      "x": 1040,
-      "y": 0
-    },
-    "storage/PanelPin.dc.html": {
-      "h": 614,
-      "page": "storage",
-      "radius": 10,
-      "title": "Proposed, pinning",
-      "w": 440,
-      "x": 1560,
-      "y": 0
-    },
-    "storage/Proposed.dc.html": {
-      "h": 900,
-      "page": "storage",
-      "radius": 10,
-      "title": "Proposed",
-      "w": 440,
-      "x": 520,
-      "y": 0
-    },
-    "storage/Window.dc.html": {
-      "h": 654,
-      "page": "storage",
-      "radius": 10,
-      "title": "Window today",
-      "w": 1040,
-      "x": 0,
-      "y": 1340
-    },
-    "storage/WindowBoth.dc.html": {
-      "h": 654,
-      "page": "storage",
-      "radius": 10,
-      "title": "Uploads and downloads",
-      "w": 1040,
-      "x": 1120,
-      "y": 2114
-    },
-    "storage/WindowFilter.dc.html": {
-      "h": 654,
-      "page": "storage",
-      "radius": 10,
-      "title": "All / Local / Cloud, sorted by Storage",
-      "w": 1040,
-      "x": 0,
-      "y": 2114
-    },
-    "storage/WindowProposed.dc.html": {
-      "h": 654,
-      "page": "storage",
-      "radius": 10,
-      "title": "Window proposed",
-      "w": 1040,
-      "x": 1120,
-      "y": 1340
-    },
-    "MacSetupS3KeyNotAccepted.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, key not accepted",
-      "w": 690,
-      "x": 6160,
-      "y": 6692
-    },
-    "MacSetupS3AccessDenied.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, key can\u2019t use the bucket",
-      "w": 690,
-      "x": 6930,
-      "y": 6692
-    },
-    "MacSetupS3RegionMismatch.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, region doesn\u2019t match",
-      "w": 690,
-      "x": 7700,
-      "y": 6692
-    },
-    "MacSetupS3BucketNotFound.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, bucket not found",
-      "w": 690,
-      "x": 8470,
-      "y": 6692
-    },
-    "MacSetupS3BucketNotEmpty.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Set up sync: S3-compatible, bucket not empty",
-      "w": 690,
-      "x": 9240,
-      "y": 6692
-    },
-    "SyncStatus.dc.html": {
-      "h": 220,
-      "page": "shared",
-      "title": "Sync status",
-      "w": 412,
-      "x": 0,
-      "y": 2270
-    },
-    "MacSyncStatus.dc.html": {
-      "h": 150,
-      "page": "shared",
-      "title": "macOS: Sync status",
-      "w": 460,
-      "x": 492,
-      "y": 2270
-    },
-    "Devices.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Your devices",
-      "w": 412,
-      "x": 984,
-      "y": 11672
-    },
-    "PersonAdmin.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "An admin (admin)",
-      "w": 412,
-      "x": 1968,
-      "y": 11672
-    },
-    "MacDevices.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Your devices",
-      "w": 690,
-      "x": 4652,
-      "y": 11672
-    },
-    "MacPerson.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: A person (admin)",
-      "w": 690,
-      "x": 5422,
-      "y": 11672
-    },
-    "MacPersonAdmin.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: An admin (admin)",
-      "w": 690,
-      "x": 6192,
-      "y": 11672
-    },
-    "InviteFormOneDrive.dc.html": {
-      "h": 916,
-      "page": "library",
-      "w": 412,
-      "x": 492,
-      "y": 15560,
-      "title": "Invite: OneDrive"
-    },
-    "InviteFormS3.dc.html": {
-      "h": 916,
-      "page": "library",
-      "w": 412,
-      "x": 984,
-      "y": 15560,
-      "title": "Invite: S3"
-    },
-    "MacInviteFormOneDrive.dc.html": {
-      "h": 600,
-      "page": "library",
-      "w": 690,
-      "x": 2898,
-      "y": 15560,
-      "title": "macOS: Invite: OneDrive"
-    },
-    "MacInviteFormICloud.dc.html": {
-      "h": 600,
-      "page": "library",
-      "w": 690,
-      "x": 3668,
-      "y": 15560,
-      "title": "macOS: Invite: iCloud"
-    },
-    "MacInviteFormS3.dc.html": {
-      "h": 600,
-      "page": "library",
-      "w": 690,
-      "x": 4438,
-      "y": 15560,
-      "title": "macOS: Invite: S3"
-    },
-    "InviteFields.dc.html": {
-      "h": 230,
-      "page": "shared",
-      "title": "Invite fields",
-      "w": 292,
-      "x": 0,
-      "y": 3000
-    },
-    "MacInviteFields.dc.html": {
-      "h": 130,
-      "page": "shared",
-      "title": "macOS: Invite fields",
-      "w": 400,
-      "x": 372,
-      "y": 3000
-    },
-    "InviteRequest.dc.html": {
-      "h": 916,
-      "page": "library",
-      "w": 412,
-      "x": 1476,
-      "y": 16856,
-      "title": "Invite: 4. their request"
-    },
-    "MacInviteRequest.dc.html": {
-      "h": 600,
-      "page": "library",
-      "w": 690,
-      "x": 4930,
-      "y": 16856,
-      "title": "macOS: Invite: 4. their request"
-    },
-    "JoinName.dc.html": {
-      "h": 916,
-      "page": "welcome",
-      "title": "Join: your name",
-      "w": 412,
-      "x": 0,
-      "y": 1656
-    },
-    "JoinWaiting.dc.html": {
-      "h": 916,
-      "page": "welcome",
-      "title": "Join: waiting",
-      "w": 412,
-      "x": 492,
-      "y": 1656
-    },
-    "MacJoinName.dc.html": {
-      "h": 600,
-      "page": "welcome",
-      "title": "macOS: Join: your name",
-      "w": 690,
-      "x": 1636,
-      "y": 1656
-    },
-    "MacJoinWaiting.dc.html": {
-      "h": 600,
-      "page": "welcome",
-      "title": "macOS: Join: waiting",
-      "w": 690,
-      "x": 2406,
-      "y": 1656
-    },
-    "InviteOffline.dc.html": {
-      "h": 916,
-      "page": "library",
-      "w": 412,
-      "x": 0,
-      "y": 18152,
-      "title": "Invite: 1. no code yet"
-    },
-    "PeopleInvitedOffline.dc.html": {
-      "h": 916,
-      "page": "library",
-      "w": 412,
-      "x": 492,
-      "y": 18152,
-      "title": "Invite: 2. in the list, waiting"
-    },
-    "MacInviteOffline.dc.html": {
-      "h": 600,
-      "page": "library",
-      "w": 690,
-      "x": 1144,
-      "y": 18152,
-      "title": "macOS: Invite: 1. no code yet"
-    },
-    "MacPeopleInvitedOffline.dc.html": {
-      "h": 600,
-      "page": "library",
-      "w": 690,
-      "x": 1914,
-      "y": 18152,
-      "title": "macOS: Invite: 2. in the list, waiting"
-    },
-    "PeopleInvitedFailed.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Invite: sharing failed for good",
-      "w": 412,
-      "x": 0,
-      "y": 19448
-    },
-    "MacPeopleInvitedFailed.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Invite: sharing failed for good",
-      "w": 690,
-      "x": 1144,
-      "y": 19448
-    },
-    "InviteSharing.dc.html": {
-      "h": 916,
-      "page": "library",
-      "w": 412,
-      "x": 0,
-      "y": 16856,
-      "title": "Invite: 1. sharing"
-    },
-    "MacInviteSharing.dc.html": {
-      "h": 600,
-      "page": "library",
-      "w": 690,
-      "x": 2620,
-      "y": 16856,
-      "title": "macOS: Invite: 1. sharing"
-    },
-    "InviteFlow.dc.html": {
-      "h": 630,
-      "page": "library",
-      "title": "Invite: how the states connect",
-      "w": 1180,
-      "x": 6138,
-      "y": 15560
-    },
-    "InviteJoining.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Invite: 5. joining",
-      "w": 412,
-      "x": 1968,
-      "y": 16856
-    },
-    "MacInviteJoining.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Invite: 5. joining",
-      "w": 690,
-      "x": 5700,
-      "y": 16856
-    },
-    "InviteCancel.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Invite: Cancel invite",
-      "w": 412,
-      "x": 492,
-      "y": 19448
-    },
-    "MacInviteCancel.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Invite: Cancel invite",
-      "w": 690,
-      "x": 1914,
-      "y": 19448
-    },
-    "InviteFormS3Mine.dc.html": {
-      "h": 916,
-      "page": "library",
-      "w": 412,
-      "x": 1476,
-      "y": 15560,
-      "title": "Invite: S3, your key"
-    },
-    "MacInviteFormS3Mine.dc.html": {
-      "h": 600,
-      "page": "library",
-      "w": 690,
-      "x": 5208,
-      "y": 15560,
-      "title": "macOS: Invite: S3, your key"
-    },
-    "JoinEnded.dc.html": {
-      "h": 916,
-      "page": "welcome",
-      "title": "Join: invite ended",
-      "w": 412,
-      "x": 984,
-      "y": 1656
-    },
-    "MacJoinEnded.dc.html": {
-      "h": 600,
-      "page": "welcome",
-      "title": "macOS: Join: invite ended",
-      "w": 690,
-      "x": 3176,
-      "y": 1656
-    },
-    "AddDeviceRequest.dc.html": {
-      "h": 916,
-      "page": "library",
-      "title": "Add device: the request",
-      "w": 412,
-      "x": 492,
-      "y": 20744
-    },
-    "MacAddDeviceRequest.dc.html": {
-      "h": 600,
-      "page": "library",
-      "title": "macOS: Add device: the request",
-      "w": 690,
-      "x": 2246,
-      "y": 20744
-    },
-    "AddWaiting.dc.html": {
-      "h": 916,
-      "page": "welcome",
-      "title": "Add this device: waiting",
-      "w": 412,
-      "x": 0,
-      "y": 3052
-    },
-    "AddEnded.dc.html": {
-      "h": 916,
-      "page": "welcome",
-      "title": "Add this device: code ended",
-      "w": 412,
-      "x": 492,
-      "y": 3052
-    },
-    "MacAddWaiting.dc.html": {
-      "h": 600,
-      "page": "welcome",
-      "title": "macOS: Add this device: waiting",
-      "w": 690,
-      "x": 1144,
-      "y": 3052
-    },
-    "MacAddEnded.dc.html": {
-      "h": 600,
-      "page": "welcome",
-      "title": "macOS: Add this device: code ended",
-      "w": 690,
-      "x": 1914,
-      "y": 3052
-    },
-    "RestoreCodePrint.dc.html": {
-      "h": 792,
-      "page": "library",
-      "title": "Restore code: printed",
-      "w": 612,
-      "x": 2524,
-      "y": 23336
-    },
-    "CastingOn.dc.html": {
-      "h": 916,
-      "page": "settings",
-      "title": "Casting: on, found",
-      "w": 412,
-      "x": 984,
-      "y": 5444
-    },
-    "MacCastingOn.dc.html": {
-      "h": 600,
-      "page": "settings",
-      "title": "macOS: Casting: on, found",
-      "w": 690,
-      "x": 3016,
-      "y": 5444
-    },
-    "CastingLooking.dc.html": {
-      "h": 916,
-      "page": "settings",
-      "title": "Casting: on, looking",
-      "w": 412,
-      "x": 492,
-      "y": 5444
-    },
-    "MacCastingLooking.dc.html": {
-      "h": 600,
-      "page": "settings",
-      "title": "macOS: Casting: on, looking",
-      "w": 690,
-      "x": 2246,
-      "y": 5444
-    },
-    "LibAndroidAlbums.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Albums",
-      "w": 412,
-      "x": 0,
-      "y": 240
-    },
-    "LibAndroidAlbum.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Album",
-      "w": 412,
-      "x": 492,
-      "y": 240
-    },
-    "LibAndroidArtist.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Artist",
-      "w": 412,
-      "x": 984,
-      "y": 240
-    },
-    "LibMacAlbums.dc.html": {
-      "h": 760,
-      "page": "home",
-      "title": "macOS: Albums",
-      "w": 1200,
-      "x": 0,
-      "y": 1636
-    },
-    "LibMacAlbumOpen.dc.html": {
-      "h": 1000,
-      "page": "home",
-      "title": "macOS: Album, opened in the grid",
-      "w": 1200,
-      "x": 1280,
-      "y": 1636
-    },
-    "LibMacArtist.dc.html": {
-      "h": 760,
-      "page": "home",
-      "title": "macOS: Artists",
-      "w": 1200,
-      "x": 2560,
-      "y": 1636
-    },
-    "LibAndroidScrolled.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Albums, scrolled",
-      "w": 412,
-      "x": 0,
-      "y": 3032
-    },
-    "LibAndroidViewMenu.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "The view menu",
-      "w": 412,
-      "x": 492,
-      "y": 3032
-    },
-    "LibAndroidMoreMenu.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "The \u22ee menu",
-      "w": 412,
-      "x": 984,
-      "y": 3032
-    },
-    "LibAndroidGrouped.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Grouped by artist",
-      "w": 412,
-      "x": 1476,
-      "y": 3032
-    },
-    "LibAndroidGroupedPinned.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Grouped, scrolled: the artist stays pinned",
-      "w": 412,
-      "x": 1968,
-      "y": 3032
-    },
-    "LibAndroidSearch.dc.html": {
-      "h": 916,
-      "page": "search",
-      "title": "Search open, before typing",
-      "w": 412,
-      "x": 0,
-      "y": 240
-    },
-    "LibMacScrolled.dc.html": {
-      "h": 760,
-      "page": "home",
-      "title": "macOS: Albums, scrolled",
-      "w": 1200,
-      "x": 0,
-      "y": 4428
-    },
-    "LibMacViewMenu.dc.html": {
-      "h": 760,
-      "page": "home",
-      "title": "macOS: the view menu",
-      "w": 1200,
-      "x": 1280,
-      "y": 4428
-    },
-    "LibMacGrouped.dc.html": {
-      "h": 760,
-      "page": "home",
-      "title": "macOS: grouped by artist",
-      "w": 1200,
-      "x": 2560,
-      "y": 4428
-    },
-    "LibMacSortTwo.dc.html": {
-      "h": 760,
-      "page": "home",
-      "title": "macOS: sorted by two fields",
-      "w": 1200,
-      "x": 3840,
-      "y": 4428
-    },
-    "LibAndroidEmpty.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Empty library",
-      "w": 412,
-      "x": 0,
-      "y": 5668
-    },
-    "LibAndroidFailed.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "The library failed to load",
-      "w": 412,
-      "x": 492,
-      "y": 5668
-    },
-    "LibAndroidNoCovers.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Albums without covers",
-      "w": 412,
-      "x": 984,
-      "y": 5668
-    },
-    "LibMacEmpty.dc.html": {
-      "h": 760,
-      "page": "home",
-      "title": "macOS: empty library",
-      "w": 1200,
-      "x": 0,
-      "y": 7064
-    },
-    "LibMacNoCredits.dc.html": {
-      "h": 760,
-      "page": "home",
-      "title": "macOS: Artists, nobody credited",
-      "w": 1200,
-      "x": 1280,
-      "y": 7064
-    },
-    "LibMacFailed.dc.html": {
-      "h": 760,
-      "page": "home",
-      "title": "macOS: the library failed to load",
-      "w": 1200,
-      "x": 2560,
-      "y": 7064
-    },
-    "LibMacNoCovers.dc.html": {
-      "h": 760,
-      "page": "home",
-      "title": "macOS: albums without covers",
-      "w": 1200,
-      "x": 3840,
-      "y": 7064
-    },
-    "LibAndroidAlbumReleases.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Album: two releases, downloading",
-      "w": 412,
-      "x": 0,
-      "y": 8304
-    },
-    "LibAndroidAlbumQueued.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Album: waiting to download",
-      "w": 412,
-      "x": 492,
-      "y": 8304
-    },
-    "LibAndroidAlbumFailed.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Album: download failed",
-      "w": 412,
-      "x": 984,
-      "y": 8304
-    },
-    "LibAndroidAlbumElsewhere.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Album: on another device",
-      "w": 412,
-      "x": 1476,
-      "y": 8304
-    },
-    "LibMacAlbumReleases.dc.html": {
-      "h": 1000,
-      "page": "home",
-      "title": "macOS: album with two releases, on another Mac",
-      "w": 1200,
-      "x": 0,
-      "y": 9700
-    },
-    "LibMacAlbumMenu.dc.html": {
-      "h": 1000,
-      "page": "home",
-      "title": "macOS: the album menu",
-      "w": 1200,
-      "x": 1280,
-      "y": 9700
-    },
-    "SearchAndroidTyping.dc.html": {
-      "h": 916,
-      "page": "search",
-      "title": "Typing: blank until results land",
-      "w": 412,
-      "x": 492,
-      "y": 240
-    },
-    "SearchAndroidResults.dc.html": {
-      "h": 916,
-      "page": "search",
-      "title": "Results",
-      "w": 412,
-      "x": 984,
-      "y": 240
-    },
-    "SearchAndroidNone.dc.html": {
-      "h": 916,
-      "page": "search",
-      "title": "No results",
-      "w": 412,
-      "x": 1476,
-      "y": 240
-    },
-    "SearchAndroidFailed.dc.html": {
-      "h": 916,
-      "page": "search",
-      "title": "Search failed",
-      "w": 412,
-      "x": 1968,
-      "y": 240
-    },
-    "SearchMacResults.dc.html": {
-      "h": 760,
-      "page": "search",
-      "title": "macOS: results",
-      "w": 1200,
-      "x": 0,
-      "y": 1636
-    },
-    "SearchMacNone.dc.html": {
-      "h": 760,
-      "page": "search",
-      "title": "macOS: no matches",
-      "w": 1200,
-      "x": 1280,
-      "y": 1636
-    },
-    "PlayAndroidWaiting.dc.html": {
-      "h": 916,
-      "page": "loading",
-      "title": "Waiting on storage",
-      "w": 412,
-      "x": 0,
-      "y": 240
-    },
-    "PlayAndroidCasting.dc.html": {
-      "h": 916,
-      "page": "loading",
-      "title": "Casting",
-      "w": 412,
-      "x": 492,
-      "y": 240
-    },
-    "PlayAndroidNothing.dc.html": {
-      "h": 916,
-      "page": "loading",
-      "title": "Nothing played yet: no bar",
-      "w": 412,
-      "x": 984,
-      "y": 240
-    },
-    "PlayMacWaiting.dc.html": {
-      "h": 760,
-      "page": "loading",
-      "title": "macOS: waiting on storage",
-      "w": 1200,
-      "x": 0,
-      "y": 1636
-    },
-    "PlayMacCasting.dc.html": {
-      "h": 760,
-      "page": "loading",
-      "title": "macOS: casting",
-      "w": 1200,
-      "x": 1280,
-      "y": 1636
-    },
-    "PlayMacNothing.dc.html": {
-      "h": 760,
-      "page": "loading",
-      "title": "macOS: nothing played yet",
-      "w": 1200,
-      "x": 2560,
-      "y": 1636
-    },
-    "PlayAndroidQueue.dc.html": {
-      "h": 916,
-      "page": "loading",
-      "title": "The queue",
-      "w": 412,
-      "x": 0,
-      "y": 2876
-    },
-    "PlayAndroidFullPlayer.dc.html": {
-      "h": 916,
-      "page": "loading",
-      "title": "The full player",
-      "w": 412,
-      "x": 492,
-      "y": 2876
-    },
-    "PlayAndroidCastPicker.dc.html": {
-      "h": 916,
-      "page": "loading",
-      "title": "The cast picker",
-      "w": 412,
-      "x": 984,
-      "y": 2876
-    },
-    "PlayAndroidSidePause.dc.html": {
-      "h": 916,
-      "page": "loading",
-      "title": "Side ended, with a countdown",
-      "w": 412,
-      "x": 1476,
-      "y": 2876
-    },
-    "PlayMacQueue.dc.html": {
-      "h": 760,
-      "page": "loading",
-      "title": "macOS: the queue",
-      "w": 1200,
-      "x": 0,
-      "y": 4272
-    },
-    "PlayMacQueueEmpty.dc.html": {
-      "h": 760,
-      "page": "loading",
-      "title": "macOS: the queue, nothing up next",
-      "w": 1200,
-      "x": 1280,
-      "y": 4272
-    },
-    "PlayMacQueueDrop.dc.html": {
-      "h": 760,
-      "page": "loading",
-      "title": "macOS: dropping into Up Next, shuffled, rows loading",
-      "w": 1200,
-      "x": 2560,
-      "y": 4272
-    },
-    "PlayMacCastPicker.dc.html": {
-      "h": 760,
-      "page": "loading",
-      "title": "macOS: the cast popover",
-      "w": 1200,
-      "x": 3840,
-      "y": 4272
-    },
-    "PlayMacSidePause.dc.html": {
-      "h": 760,
-      "page": "loading",
-      "title": "macOS: side ended, with a countdown",
-      "w": 1200,
-      "x": 5120,
-      "y": 4272
-    },
-    "PlayMacSidePauseOff.dc.html": {
-      "h": 760,
-      "page": "loading",
-      "title": "macOS: side ended, pausing turned off",
-      "w": 1200,
-      "x": 6400,
-      "y": 4272
-    }
+ "v": 3,
+ "attachments": {},
+ "boards": {
+  "About.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "About",
+   "w": 412,
+   "x": 0,
+   "y": 6740
   },
-  "createdOnFiles": {
-    "v": 1,
-    "at": "2026-11-05T23:35:00Z"
+  "AddDevice.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Add device: the code",
+   "w": 412,
+   "x": 0,
+   "y": 20744
   },
-  "designSystems": [
-    {
-      "title": "bae",
-      "namespace": "bae",
-      "artifact": "https://claude.ai/artifact/VQavFBTofLVMKF7kng8iLL",
-      "version": "1793930549-d60e",
-      "copiedAt": "2026-11-05T23:35:00Z"
-    }
-  ],
-  "launch": {
-    "page": "library",
-    "view": "canvas"
+  "AddDeviceAdded.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Add device: added",
+   "w": 412,
+   "x": 984,
+   "y": 20744
   },
-  "noteOrder": [
-    "work-folder-name",
-    "work-history-off",
-    "work-wifi-only",
-    "row-settings-0",
-    "row-settings-1",
-    "row-settings-2",
-    "row-settings-3",
-    "row-settings-4",
-    "row-settings-5",
-    "row-library-0",
-    "row-library-1",
-    "row-library-setup",
-    "row-library-setup-icloud",
-    "row-library-setup-dropbox",
-    "row-library-setup-onedrive",
-    "row-library-setup-s3",
-    "row-library-2",
-    "row-library-sync-states",
-    "row-library-3",
-    "row-library-4",
-    "row-library-5",
-    "row-library-6",
-    "row-library-7",
-    "row-library-8",
-    "row-library-9",
-    "row-welcome-0",
-    "row-home-switch",
-    "sync-rules",
-    "transfers-rules",
-    "welcome-rules",
-    "switch-rules",
-    "storage-today",
-    "storage-proposed",
-    "setup-rules",
-    "setup-code-gaps",
-    "code-settings",
-    "code-appearance",
-    "code-transfers",
-    "code-library",
-    "code-sync",
-    "code-people",
-    "code-name",
-    "code-welcome",
-    "canvas-key-settings",
-    "canvas-key-library",
-    "canvas-key-welcome",
-    "canvas-key-shared",
-    "row-shared-folderpicker",
-    "shared-folderpicker-aligned",
-    "row-shared-s3form",
-    "row-shared-restorecode",
-    "row-shared-syncstatus",
-    "row-shared-invitefields",
-    "row-welcome-join",
-    "row-library-invite-online",
-    "row-library-invite-offline",
-    "row-library-invite-failed",
-    "code-invite",
-    "row-welcome-add",
-    "code-casting",
-    "code-playback",
-    "code-history",
-    "code-make-admin",
-    "code-rename",
-    "code-switch",
-    "row-lib-flow-android",
-    "row-lib-flow-mac",
-    "lib-today",
-    "row-lib-head-android",
-    "row-lib-head-mac",
-    "row-lib-states-android",
-    "row-lib-states-mac",
-    "row-album-states-android",
-    "row-album-states-mac",
-    "row-search-android",
-    "row-search-mac",
-    "search-today",
-    "row-play-np-android",
-    "row-play-np-mac",
-    "row-play-android",
-    "row-play-mac"
-  ],
-  "notes": {
-    "canvas-key-library": {
-      "bold": true,
-      "fill": "purple",
-      "page": "library",
-      "size": 40,
-      "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs, queued in todo.md \u00a72 \"Settings from the canvas\" (#232-#248), with invites #214/#215 and Add device #227/#228.",
-      "w": 720,
-      "x": 0,
-      "y": -320
-    },
-    "canvas-key-settings": {
-      "bold": true,
-      "fill": "purple",
-      "page": "settings",
-      "size": 40,
-      "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs, queued in todo.md \u00a72 \"Settings from the canvas\" (#232-#248), with invites #214/#215 and Add device #227/#228.",
-      "w": 720,
-      "x": 0,
-      "y": -320
-    },
-    "canvas-key-welcome": {
-      "bold": true,
-      "fill": "purple",
-      "page": "welcome",
-      "size": 40,
-      "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs, queued in todo.md \u00a72 \"Settings from the canvas\" (#232-#248), with invites #214/#215 and Add device #227/#228.",
-      "w": 720,
-      "x": 0,
-      "y": -320
-    },
-    "code-appearance": {
-      "page": "settings",
-      "size": 24,
-      "text": "What the code needs for these boards:\n- Order Theme (System, Light, Dark), then Tone, then Accent. Today both apps show Mode (System, Light, Dark), Accent color, Background tone (AppearanceSection.kt:82-91, AppearanceControls.swift:15-59). bae change.\n- \u201cTone\u201d and \u201cAccent\u201d in every locale. Today \u201cAccent color\u201d and \u201cBackground tone\u201d (strings.xml:235-236, AppearanceControls.swift:21, :59). bae change.",
-      "w": 420,
-      "x": 1422,
-      "y": 1556
-    },
-    "code-library": {
-      "page": "library",
-      "size": 24,
-      "text": "What the code needs for these boards:\n- Library is five rows, with Sync and People and devices on their own pages. Today both apps show everything inline (LibrarySettingsTab.swift:43-105, SettingsScreen.kt:109-198). bae change.\n- macOS: Library folder with Show in Finder replaces the Path row (LibrarySettingsTab.swift:45). bae change.\n- Removing the library leaves this page for the welcome list. Today it's here (LibrarySettingsTab.swift:105, SettingsScreen.kt:198). bae change.\n- The Sync row shows only the state; its cause, its fix and Last synced are on the Sync page. Today both apps show them under the Sync row. bae change.",
-      "w": 420,
-      "x": 4556,
-      "y": 260
-    },
-    "code-name": {
-      "page": "library",
-      "size": 24,
-      "text": "What the code needs for these boards:\n- The Name row renames your profile. The bridge has rename_profile, but no app calls it. bae change.",
-      "w": 420,
-      "x": 5208,
-      "y": 12968
-    },
-    "code-people": {
-      "page": "library",
-      "size": 24,
-      "text": "What the code needs for these boards (refs are main as of Nov 6):\nPeople and devices\n- Two sections, You and People. Under You: a read-only Role row and a Devices row that opens Your devices. Today one People section with a You marker (MembersSection.swift:61, :292). bae change.\n- Add device pairs like an invite instead of showing the restore code (plans/add-device-pairing.md; coven todo.md \u00a72 #227, bae #228). The code screen is a MacScanCode or AndroidScanCode: \u201cScan or enter the code on the new device.\u201d, the QR code alone, Copy code and Share, and \u201cWorks while this stays open. Once the new device enters it, its request shows up here within seconds.\u201d The request replaces it in place: \u201cTablet wants to join. Add it if its screen shows this number.\u201d, the number, Decline and Add. Closing the screen ends the pairing. On S3 only the QR code carries the access key; a device that enters the copied code asks for it. Today the screen shows the restore code as a QR code and text, with the S3 key line (AddDeviceSheet.swift, AddDeviceDialog.kt). coven change, then bae.\n- Your devices: each device, this one reading This device with no Remove (it leaves by removing the library from it, ActiveDevice::removable, bae-people/src/membership.rs:91); then the add row last: \u201cAdd\u2026\u201d on macOS, \u201cAdd device\u201d with a + on Android. bae change.\n- Each other person is one row (role, device count) that opens their page: Role with Make admin or Make member, Remove from library in red, their devices. Today macOS lists people with their devices and buttons in one box (MembersSection.swift:63, :326), Android in one list (MembersScreen.kt:437). bae change.\n- \u201cRemove from library\u201d. Today Android reads \u201cRemove person\u201d (strings.xml:335) and macOS a trash glyph, \u201cRemove from the library\u201d (MembersSection.swift:313). bae change.\n- A member's person rows open nothing. coven lets a member read every person's devices; bae leaves that page out on purpose: a member has nothing to do there.\n- Android: Listening history is a choice of AndroidRadio rows in an AndroidDialog; the code has no radio row yet. bae change.\n- Android says \u201cthis device\u201d, never \u201cthis phone\u201d: today \u201cChanges from this phone\u201d, \u201cSaved on this phone\u201d and the recovery-code lines (strings.xml:384-397, :419). bae change, every locale.",
-      "w": 420,
-      "x": 7732,
-      "y": 11672
-    },
-    "code-settings": {
-      "page": "settings",
-      "size": 24,
-      "text": "What the code needs for these boards:\n- Android: Settings is one long page today (SettingsScreen.kt:109). Here it's a list of rows that open pages, on cards, in macOS's order. bae change.\n- macOS: Transfers sits after Playback in the sidebar. Today it's after Formats (SettingsView.swift:9). bae change.\n- macOS: an amber Paused beside Transfers while uploads are paused. Not built. bae change.\n- Android: rows on cards (AndroidCard, AndroidRow) have no shared component in the code yet. bae change.",
-      "w": 420,
-      "x": 3176,
-      "y": 260
-    },
-    "code-sync": {
-      "page": "library",
-      "size": 24,
-      "text": "What the code needs for these boards:\n- Synced is green with a dot (MacRow and AndroidRow with tone success). Today the status line has no color (SyncStatusLine.swift:44). bae change.\n- S3 rows read Provider, Endpoint, Region, Bucket. Today both show Bucket, Region, Endpoint (CloudProviderConnectedSection.swift:15-19, SettingsSyncSection.kt:174-176). bae change.\n- No raw ids. Today macOS shows a Dropbox shared folder's or OneDrive folder's id under Folder, and iCloud's container (CloudProviderConnectedSection.swift:24, :26). bae change; the folder's name needs coven too (the Folder note).\n- Signed out names the storage: \u201cSign in to Dropbox\u2026\u201d. Today the button reads \u201cSign in\u201d (StorageSignIn.swift:32). bae change.\n- The top of every Sync page is one block: Status with the state, then its cause, its fix and Last synced, in that order, each only when it has one (Shared: Sync status). Today the status line shows the last failure under it with its details to copy (SyncStatusLine.swift:110, SyncStatusLine.kt:94). bae change.",
-      "w": 420,
-      "x": 9010,
-      "y": 7652
-    },
-    "code-transfers": {
-      "page": "settings",
-      "size": 24,
-      "text": "What the code needs for these boards:\n- macOS: Pause uploads moves here from the Library pane (LibrarySettingsTab.swift:79). bae change.\n- Android: no Transfers page today. It gets one, with Simultaneous downloads. bae change.\n- Android: Pause uploads goes (SyncUploadPauseControl.kt, shown from SettingsSyncSection.kt). bae change.\n- \u201cUploads paused\u201d shows here, not on the Sync row. bae change.\n- macOS: Pause downloads beside Pause uploads, lasting across restarts as the upload pause does; either one paused shows the amber Paused beside Transfers, with an arrow for which: \u2191 uploads, \u2193 downloads, \u21c5 both (VoiceOver reads \u201cUploads paused\u201d, \u201cDownloads paused\u201d, \u201cUploads and downloads paused\u201d). Today the pin queue pauses only from the footer under the library list, and the spec doesn't say the pause survives a restart (spec/bae.md \u00a74.3). The caption says what the pause holds: \u201cPaused files keep their place and continue when you resume. Changes to the library still sync.\u201d (the upload pause holds release files, not writes: \u00a74.1). Today \u201cWhile paused, changes wait on this Mac\u2026\u201d. bae change.\n- Order: the pause switches first (macOS Pause uploads and Pause downloads, Android Download over Wi-Fi only), then the counts. bae change.",
-      "w": 420,
-      "x": 3112,
-      "y": 4148
-    },
-    "code-welcome": {
-      "page": "welcome",
-      "size": 24,
-      "text": "What the code needs for these boards:\n- Android: the welcome screen has no library list (ui/onboarding). It gets one, with Remove. bae change.\n- macOS: \u201cRemove library from this Mac?\u201d / \u201cThe library will remain in storage and on your other devices.\u201d Today \u201cRemove this library from this Mac?\u201d (LibrarySettingsTab.swift:133) and \u201cThis Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage. \u2026\u201d (LibraryRemovalConfirmation.swift:22). bae change.\n- Joining from an invite: after the code reads, the person types their name, then waits on the number. Today the name comes from the invite and the person types none; a name is asked only when joining failed to write the profile (profile_required_title, LibraryLifecycleScreens.kt:157). The waiting screen is built: the number, until when it waits, the next check and Check now (OnboardingScreen.kt:321, BootstrapCodeView.swift). coven change, then bae (the People note).\n- Invite ended: one screen, \u201cThis invite has ended. Ask the person who invited you for a new one.\u201d, for a decline, a cancel, an expiry, or the inviting device gone. It shows when the waiting device finds the ended marker where its request was, or loses access to the storage: the decline takes the sharing back in the same pass, so access can go before the marker is read. Today a permission error reaches the app as it is (coven spec \u00a713.2: \u201cProvider permission errors reach the app, even when they come from access being taken back\u201d), and the ended text lists every cause (strings.xml onboarding_invite_ended). coven change (a join whose storage access is gone ends as an ended invite does), then bae.\n- Queued: plans/invites.md; coven in todo.md \u00a72 #214 (the name in the request) and #177 (a join whose access was revoked ends, the same as a marker), bae in #215.\n- Adding this device (Welcome's Add device, then a pairing code): \u201cCheck that your other device shows this number, then add this device there.\u201d, the number, \u201cWaiting for your other device.\u201d, no Check now: it checks every 5 seconds while open. Declined, closed on the other device or lost access: \u201cThis code has ended. Open Add device on your other device for a new one.\u201d Today Welcome's Add device takes a restore code. coven #227, bae #228.",
-      "w": 420,
-      "x": 7700,
-      "y": 260
-    },
-    "row-library-0": {
-      "kind": "title1",
-      "maxW": 4476,
-      "page": "library",
-      "text": "Library: admin and member",
-      "w": 240,
-      "x": 0,
-      "y": 20
-    },
-    "row-library-1": {
-      "kind": "title1",
-      "maxW": 2604,
-      "page": "library",
-      "text": "Rename the library",
-      "w": 240,
-      "x": 0,
-      "y": 1316
-    },
-    "row-library-2": {
-      "kind": "title1",
-      "maxW": 7930,
-      "page": "library",
-      "text": "Sync",
-      "w": 240,
-      "x": 0,
-      "y": 7412
-    },
-    "row-library-3": {
-      "kind": "title1",
-      "maxW": 7652,
-      "page": "library",
-      "text": "People and devices: admin and member",
-      "w": 240,
-      "x": 0,
-      "y": 11432
-    },
-    "row-library-4": {
-      "kind": "title1",
-      "maxW": 5128,
-      "page": "library",
-      "text": "Change your name",
-      "w": 240,
-      "x": 0,
-      "y": 12728
-    },
-    "row-library-5": {
-      "kind": "title1",
-      "maxW": 2604,
-      "page": "library",
-      "text": "Listening history",
-      "w": 240,
-      "x": 0,
-      "y": 14024
-    },
-    "row-library-6": {
-      "kind": "title1",
-      "maxW": 3866,
-      "page": "library",
-      "text": "Invite (admin): the form",
-      "w": 240,
-      "x": 0,
-      "y": 15320
-    },
-    "row-library-7": {
-      "kind": "title1",
-      "maxW": 3706,
-      "page": "library",
-      "text": "Add a device",
-      "w": 240,
-      "x": 0,
-      "y": 20504
-    },
-    "row-library-8": {
-      "kind": "title1",
-      "maxW": 2604,
-      "page": "library",
-      "text": "Make admin (admin)",
-      "w": 240,
-      "x": 0,
-      "y": 21800
-    },
-    "row-library-9": {
-      "kind": "title1",
-      "maxW": 3136,
-      "page": "library",
-      "text": "Restore code",
-      "w": 240,
-      "x": 0,
-      "y": 23096
-    },
-    "row-library-setup": {
-      "kind": "title1",
-      "maxW": 1570,
-      "page": "library",
-      "text": "Set up sync (macOS)",
-      "w": 240,
-      "x": 0,
-      "y": 2612
-    },
-    "row-library-setup-dropbox": {
-      "kind": "title1",
-      "maxW": 8000,
-      "page": "library",
-      "text": "Set up sync: Dropbox (macOS)",
-      "w": 240,
-      "x": 0,
-      "y": 4532
-    },
-    "row-library-setup-icloud": {
-      "kind": "title1",
-      "maxW": 5310,
-      "page": "library",
-      "text": "Set up sync: iCloud (macOS)",
-      "w": 240,
-      "x": 0,
-      "y": 3572
-    },
-    "row-library-setup-onedrive": {
-      "kind": "title1",
-      "maxW": 8000,
-      "page": "library",
-      "text": "Set up sync: OneDrive (macOS)",
-      "w": 240,
-      "x": 0,
-      "y": 5492
-    },
-    "row-library-setup-s3": {
-      "kind": "title1",
-      "maxW": 8000,
-      "page": "library",
-      "text": "Set up sync: S3 (macOS)",
-      "w": 240,
-      "x": 0,
-      "y": 6452
-    },
-    "row-settings-0": {
-      "kind": "title1",
-      "maxW": 3096,
-      "page": "settings",
-      "text": "Settings",
-      "w": 240,
-      "x": 0,
-      "y": 20
-    },
-    "row-settings-1": {
-      "kind": "title1",
-      "maxW": 1342,
-      "page": "settings",
-      "text": "Appearance",
-      "w": 240,
-      "x": 0,
-      "y": 1316
-    },
-    "row-settings-2": {
-      "kind": "title1",
-      "maxW": 1342,
-      "page": "settings",
-      "text": "Playback",
-      "w": 240,
-      "x": 0,
-      "y": 2612
-    },
-    "row-settings-3": {
-      "kind": "title1",
-      "maxW": 3032,
-      "page": "settings",
-      "text": "Transfers",
-      "w": 240,
-      "x": 0,
-      "y": 3908
-    },
-    "row-settings-4": {
-      "kind": "title1",
-      "maxW": 4206,
-      "page": "settings",
-      "text": "Casting",
-      "w": 240,
-      "x": 0,
-      "y": 5204
-    },
-    "row-settings-5": {
-      "kind": "title1",
-      "maxW": 1342,
-      "page": "settings",
-      "text": "About",
-      "w": 240,
-      "x": 0,
-      "y": 6500
-    },
-    "row-welcome-0": {
-      "kind": "title1",
-      "maxW": 7620,
-      "page": "welcome",
-      "text": "Your libraries and removing one",
-      "w": 240,
-      "x": 0,
-      "y": 20
-    },
-    "setup-code-gaps": {
-      "page": "library",
-      "size": 24,
-      "text": "What the code needs for these boards:\n- Restore code at the end of setup: the bridge already returns it (BridgeStorageSetup.restore_code), but the macOS sheet drops it (SyncSetupWizard.swift connected). bae change.\n- Done lands on the Sync page with Restore code on it: bae change. The code can be fetched again any time (generate_restore_code).\n- Cancel while setup runs: coven can't stop a setup once it starts. Journaling setup (coven list) makes this Cancel real, and lets a crash resume or undo. coven change, then bae.\n- Not synced page, Sync page and their states: bae change, over coven's sync state, as the Sync row's boards and their note show.\n- Choose then Continue, and the browser opening on Continue: today each provider is a row that opens its form, and Dropbox and OneDrive wait for Sign in\u2026. bae change.\n- S3 row reads \u201cA bucket you manage.\u201d Today the app\u2019s line lists storage services by name (BridgeCloudProvider+Setup.swift:13), Backblaze among them, which setup refuses (coven notes/providers.md). bae change.\n- Choose an empty folder: after Set up, setup checks the folder first (Checking the folder\u2026) and, if it holds anything, stops and returns to the list saying so. coven now refuses a Dropbox or OneDrive folder or an S3 bucket that holds anything else (StorageFailure::OwnLocationRequired, coven spec \u00a720.3). bae change: the check before Set up and the words.\n- New folder\u2026 on Dropbox (makes the folder and shares it): coven can't make and share a Dropbox folder; it calls sharing/share_folder only in its live tests (dropbox_live.rs:122). coven change, then bae.\n- One folder picker for Dropbox and OneDrive, the same view on each platform: the list, the empty-folder line, New folder\u2026 and its naming row, checking, not empty. Only the provider's facts differ: OneDrive folders open into others (where you are, \u203a), Dropbox's shared folders are one flat list and a new one is shared. Today macOS keeps one state for both (StorageFolderBrowser.swift) but draws two different lists (OAuthFolderSetup.swift:78-119), and Android has OneDriveBrowser.kt beside ProviderFolderChoice.kt. bae change.\n- S3 form: Endpoint, Region, Bucket, the key, in the Sync page's order; no Advanced. Today the form is Bucket, Region, Endpoint, keys (S3SetupForm.swift:43-52), with Profile and Detect settings in Advanced (:55-73); Key prefix is already gone. bae change.\n- S3 setup failing: the form comes back as typed. A region that doesn\u2019t match (RegionMismatch) shows under Region, a missing bucket (ContainerNotFound) and a bucket holding other files (OwnLocationRequired) under Bucket; any other failure at the top of the form. Today every failure shows below the fields, above Set up (SyncSetupWizard.swift:286), in the catalog\u2019s more general words (catalog.toml core.error.cloud_setup.*, core.error.category.credentials). bae change.\n- An S3 library takes a whole bucket that holds nothing else, as a Dropbox or OneDrive folder must. Built in coven (OwnLocationRequired); key prefixes are gone.\n- Everything else, the steps and their words, is what the code does today.\n- macOS: every sheet ends in a MacSheetFooter, the one primary button on the right. The code has no shared sheet footer yet. bae change.\n- Restore code view (setup's last step, the Sync page, the Restore code page): masked with Copy, plus Show and Hide; shown, the code reads in groups of four (\u201cCVR1 ABCD EFGH \u2026\u201d) for writing on paper, and typed entry drops the spaces before decoding (coven has one spelling, format.md \u201cAs text\u201d). Caption: \u201cPrint this code or save it in a password manager. It gets you back into your library if you lose all your devices.\u201d then \u201cIt\u2019s also in your iCloud Keychain.\u201d on Apple, \u201cA phone you set up from this one gets it too.\u201d on Android (Block Store, coven \u00a713.1); on S3 Android\u2019s \u201cYou\u2019ll also need your S3 access key and secret.\u201d stays. Today Android calls it \u201crecovery code\u201d (recovery_code_title, RecoveryCodeSection.kt) and shows it ungrouped; macOS has no Show (RecoveryCodeRevealTests.swift). Print\u2026 (Print on Android) prints one page: the QR code, the grouped code, the provider and account as decode_code_info gives them (never the library's name, which can change: coven \u00a713.1), the date, and how to use and keep it; the real code is about 250 characters. On S3 the printed code holds no access key. bae change, every locale.",
-      "w": 380,
-      "x": 1190,
-      "y": 2852
-    },
-    "setup-rules": {
-      "fill": "blue",
-      "page": "library",
-      "size": 24,
-      "text": "Set up sync:\nmacOS only, from Set up sync\u2026 on a library that isn't synced. The baeium edition offers S3 only, so it opens on the S3 form. Each step that waits says so: signing in in the browser, listing folders, then setup's own steps over a bar. When setup fails, its screen comes back with what was entered: the reason sits under the field it\u2019s about, or at the top when it\u2019s about no one field. Every screen has Cancel and no Back: Cancel takes you back one screen, and on Choose it closes the sheet. The sheet ends on the restore code, for every provider: bae can\u2019t tell whether iCloud Keychain carries it off this Mac. Done lands on the Sync page, which reads Syncing\u2026 while the library uploads, then Synced, and holds the Restore code section.\n\nEach provider's row below shows every step coven reports, in order, with the words bae shows. No step has a count, so the bar moves without filling.",
-      "w": 380,
-      "x": 770,
-      "y": 2852
-    },
-    "storage-proposed": {
-      "fill": "teal",
-      "page": "storage",
-      "text": "Proposed: the panel is this release only: its upload summary with Cancel, then one line per file. A dashed circle marks a queued file, a filling ring an uploading one; stored files show nothing. Pause for the whole sync queue moves to the window's footer.",
-      "w": 440,
-      "x": 520,
-      "y": 960
-    },
-    "storage-today": {
-      "fill": "orange",
-      "page": "storage",
-      "text": "Today: Pause floats mid-header (a hidden Cancel All still holds its space). Bytes read Zero kB of Zero kB while 3 upload. A file with no audio format keeps an empty second line. A status chip adds a third line plus an invisible bar's height, so rows jump between three heights.",
-      "w": 440,
-      "x": 0,
-      "y": 960
-    },
-    "switch-rules": {
-      "fill": "blue",
-      "page": "home",
-      "size": 24,
-      "text": "macOS keeps switching libraries from the main window's menu.",
-      "w": 380,
-      "x": 984,
-      "y": 11180
-    },
-    "sync-rules": {
-      "fill": "blue",
-      "page": "library",
-      "size": 24,
-      "text": "How the sync states behave:\n- coven gives the state; bae picks the words and the fix.\n- When several hold, the first shows: Not synced, Removed from the library, Device needs reset, Update needed, Signed out, No access, Folder missing, Clock is wrong, Storage full, Offline \u00b7 unsent changes, Offline, Sync failed, Syncing\u2026, Waiting to sync, Synced.\n- Not synced is macOS only: a phone joins a library and never makes one.\n- Syncing\u2026 only while something is sent or received, not on quiet passes.\n- Waiting to sync: online, with changes held back. Gray when uploads are paused or an upload waits to retry; amber when the provider asked bae to wait, saying when it resumes. Android never uploads files, so its only reason is the provider's wait.\n- Synced means data and files both: a file still uploading is Syncing\u2026.\n- Offline with changes waiting is Offline \u00b7 unsent changes, with no count.\n- Signed out names the provider and its sign-in: Dropbox and OneDrive sign in from bae; iCloud from System Settings. S3 has no sign-in: it reads Access key not accepted and asks for a new key for the same bucket. An expired sign-in reads the same as none saved.\n- Sync failed: any failure with no state of its own, its cause in plain words, always with Retry now; it also retries by itself. A file that can't be uploaded (missing, or changed since import) names the file until it's back as it was; nothing skips it. Phones never upload, so their causes are local ones, a provider error or a damaged change.\n- The Library page's Sync row shows the state only. The top of the Sync page shows the state, its cause and its fix, then Last synced under a problem state (never under Synced), then the storage details.\n- Settings' Library row (Android) and the settings sidebar's Library item (macOS) show the state only when it's amber or red.\n- No Sync stopped, no Checking sync\u2026 and no Disconnect anywhere.\n- No raw ids on the Sync page: a row shows a name or isn't there.",
-      "w": 460,
-      "x": 8470,
-      "y": 7652
-    },
-    "transfers-rules": {
-      "fill": "blue",
-      "page": "settings",
-      "size": 24,
-      "text": "Transfers:\nno upload or download speed limits on any platform (CloudKit can't be paced). Android has no Pause uploads: a phone never uploads files. On macOS, while uploads or downloads are paused the sidebar shows an amber Paused beside Transfers, with \u2191, \u2193 or \u21c5 for which.",
-      "w": 380,
-      "x": 2652,
-      "y": 4148
-    },
-    "welcome-rules": {
-      "fill": "blue",
-      "page": "welcome",
-      "size": 24,
-      "text": "Removing and deleting:\nneither asks for device authentication. A library that was never synced offers Delete instead of Remove, on Android and macOS.",
-      "w": 380,
-      "x": 7240,
-      "y": 260
-    },
-    "work-folder-name": {
-      "fill": "blue",
-      "page": "library",
-      "size": 24,
-      "text": "Folder (OneDrive, Dropbox):\ncoven records the picked folder's name and web address at setup, as labels only, never to reach storage. The Sync page shows Folder and Open in browser for those two; S3 and iCloud get neither.",
-      "w": 380,
-      "x": 8010,
-      "y": 7652
-    },
-    "work-history-off": {
-      "fill": "blue",
-      "page": "library",
-      "size": 24,
-      "text": "Listening history:\nOff records no new plays; plays recorded before stay as they were. Everyone shares your plays with the library's people.",
-      "w": 380,
-      "x": 2684,
-      "y": 14264
-    },
-    "work-wifi-only": {
-      "fill": "blue",
-      "page": "settings",
-      "size": 24,
-      "text": "Download over Wi-Fi only (Android), off by default:\nwhile on, coven holds downloads and uploads on a metered network. coven watches the network itself. Playing a track that isn't pinned still streams.",
-      "w": 380,
-      "x": 2192,
-      "y": 4148
-    },
-    "canvas-key-shared": {
-      "bold": true,
-      "fill": "purple",
-      "page": "shared",
-      "size": 40,
-      "text": "Shared\nParts the screens are built from. Each screen that shows one imports it, so a change here shows everywhere.",
-      "w": 720,
-      "x": 0,
-      "y": -320
-    },
-    "row-shared-folderpicker": {
-      "kind": "title1",
-      "maxW": 460,
-      "page": "shared",
-      "text": "Folder picker",
-      "w": 240,
-      "x": 0,
-      "y": 0
-    },
-    "row-shared-s3form": {
-      "kind": "title1",
-      "maxW": 460,
-      "page": "shared",
-      "text": "S3-compatible form",
-      "w": 240,
-      "x": 0,
-      "y": 660
-    },
-    "row-shared-restorecode": {
-      "kind": "title1",
-      "maxW": 460,
-      "page": "shared",
-      "text": "Restore code",
-      "w": 240,
-      "x": 0,
-      "y": 1540
-    },
-    "shared-folderpicker-aligned": {
-      "bold": true,
-      "page": "shared",
-      "size": 24,
-      "text": "The new folder's name starts where the folder names above it start: the field's box sits 10px further left, so the text inside it lines up. Today the field and Create are an HStack in the Folders section (OAuthFolderSetup.swift:114-118). bae change.",
-      "w": 380,
-      "x": 520,
-      "y": 240
-    },
-    "row-shared-syncstatus": {
-      "kind": "title1",
-      "maxW": 952,
-      "page": "shared",
-      "text": "Sync status",
-      "w": 240,
-      "x": 0,
-      "y": 2030
-    },
-    "row-library-sync-states": {
-      "kind": "title1",
-      "maxW": 2768,
-      "page": "library",
-      "text": "Sync status: every state",
-      "w": 240,
-      "x": 0,
-      "y": 9152
-    },
-    "row-shared-invitefields": {
-      "kind": "title1",
-      "maxW": 952,
-      "page": "shared",
-      "text": "Invite fields",
-      "w": 240,
-      "x": 0,
-      "y": 2760
-    },
-    "row-welcome-join": {
-      "kind": "title1",
-      "maxW": 7620,
-      "page": "welcome",
-      "text": "Joining from an invite",
-      "w": 240,
-      "x": 0,
-      "y": 1416
-    },
-    "row-library-invite-online": {
-      "kind": "title1",
-      "maxW": 3866,
-      "page": "library",
-      "text": "Invite (admin): online",
-      "w": 240,
-      "x": 0,
-      "y": 16616
-    },
-    "row-library-invite-offline": {
-      "kind": "title1",
-      "maxW": 3866,
-      "page": "library",
-      "text": "Invite (admin): offline",
-      "w": 240,
-      "x": 0,
-      "y": 17912
-    },
-    "row-library-invite-failed": {
-      "kind": "title1",
-      "maxW": 3866,
-      "page": "library",
-      "text": "Invite (admin): sharing failed, or cancelled",
-      "w": 240,
-      "x": 0,
-      "y": 19208
-    },
-    "code-invite": {
-      "page": "library",
-      "size": 24,
-      "text": "What the code needs for the invite boards (refs are main as of Nov 6):\n- The People list ends with the invite row: \u201cInvite\u2026\u201d on macOS (today \u201cInvite a person\u2026\u201d, MembersSection.swift:100), \u201cInvite\u201d with a + on Android (today a filled \u201cInvite a person\u201d button after the list, MembersScreen.kt:356, strings.xml:347). bae change.\n- The form asks only what the storage shares with: their Dropbox, Microsoft or Apple Account email, or on S3 an access key, with a line saying why; on S3, Use my key instead (under the fields on Android, left of the footer on macOS) hands them your own key, saying that removing them later means a new key on each of your devices; then Create invite. No name, no role (everyone joins as Member), no in person or sent, a week to expire. Today: name, role, \u201cTheir account email\u201d or keys, In person or Send, an expiry, \u201cCreate invitation\u201d (InvitePersonSheet.swift, InviteDialog.kt). coven change (\u00a713.2: the join request carries the name, not the invite; one kind of invite, always approved by comparing the number; confirm \u00a714.3 lets two members share one S3 key), then bae; the spec's walk-through (spec/bae.md:2369) changes with it.\n- The invite screen, titled Invite: while sharing, a bar and \u201cSharing the library with <email>\u2026\u201d; offline, that the code shows once this device is online; then one MacScanCode or AndroidScanCode: what to do, the QR code alone (no code text beside it), Copy code and Share, how long until it expires (\u201cExpires in 7 days\u201d, relative, as InviteCodeSheet.swift does today) and that the request shows up within seconds. The code has no such shared view yet: InviteCodeSheet.swift and InviteShownDialog.kt each lay out the QR code themselves. Today one spinner and \u201cSharing the library. The code shows once this library syncs.\u201d online or not (InviteCodeSheet.swift:89, strings.xml:401); an in-person invite shows only the QR code, a sent one only the code; the title is the invitee's name. bae change.\n- While the invite screen is open, the app asks sync to check every 5 seconds, as Add device does (bae-library/src/manager/people.rs, sync_often). Today nothing does for invites. bae change.\n- An open invite's row: its email (its key on S3), Invited, and a chevron that opens its screen; Shares access once online while offline; Joining once approved. No refresh button: today \u201cCheck for requests\u201d (MembersSection.swift:448, MembersScreen.kt InviteRow). bae change.\n- Their request: \u201cApprove request?\u201d, then \u201c<name> used your invite to <email>\u201d, the number, Decline and Approve. Today the request sheet shows the invitee's name, \u201cConfirmation number\u201d and the number, Close, Decline, Approve (MembersSection.swift JoinRequestSheet). bae change.\n- Cancel invite asks first: \u201cCancel this invite?\u201d with Keep. Today the same confirmation with core's words (core.invite.cancel_confirm.*). Matches; words only.\n- S3: the code screen also shows the key's ID and says to delete the key if nobody uses the invite (spec/bae.md:2412). Built (InviteCodeSheet.swift keyLine); not drawn yet.\n- A sharing failure a retry can't fix (no such account, say) ends the invite by itself, as a failed request check does (coven spec \u00a713.2). Its row becomes a notice, \u201cCouldn\u2019t invite: Dropbox has no account for it\u201d, with Dismiss; there is no failed screen to cancel from. A failure a retry can fix keeps retrying, the invite still Sharing. Today the invite stays open with coven's held reason, in its row and screen, until it is cancelled (InviteCodeSheet.swift:80, MembersSection.swift InviteRow). coven change (end the invite on a permanent sharing failure, keeping why for the app), then bae.\n- Queued: plans/invites.md; coven in todo.md \u00a72 #214 (one kind of invite, the name in the request, a permanent sharing failure ends the invite, two members on one S3 key), bae in #215 after the coven pin bump.",
-      "w": 420,
-      "x": 7558,
-      "y": 15560
-    },
-    "row-welcome-add": {
-      "kind": "title1",
-      "maxW": 7620,
-      "page": "welcome",
-      "text": "Adding this device from another of yours",
-      "w": 240,
-      "x": 0,
-      "y": 2812
-    },
-    "row-home-switch": {
-      "kind": "title1",
-      "maxW": 1364,
-      "page": "home",
-      "text": "Switch library (Android, proposed)",
-      "w": 240,
-      "x": 0,
-      "y": 10940
-    },
-    "code-casting": {
-      "page": "settings",
-      "size": 24,
-      "w": 420,
-      "x": 3786,
-      "y": 5444,
-      "text": "What the code needs for these boards:\n- While casting is on, the Casting page lists the receivers bae finds (name, and Chromecast, AirPlay or UPnP), from the same device-local table the picker reads, and browses only while the page is open, as the picker does. spec/bae.md \u00a77 \u201cFinding receivers\u201d says devices are searched for only while the picker is open; it changes to the picker or this page. Today the page has no list (CastingSettingsTab.swift, SettingsCastSection.kt). bae change.\n- Until the first receiver answers, the list shows a spinner and \u201cLooking for receivers\u2026\u201d (MacSpinner, AndroidSpinner); it fills in as receivers answer, with no end state, since browsing runs while the page is open. Under it: \u201cReceivers show up here while this page is open.\u201d\n- Convert to shows while casting is on, as today (CastTranscodeFormatPicker).\n- Turning casting off while a cast plays asks \u201cTurn off casting?\u201d / \u201cThis will stop casting to <device>.\u201d as today; not drawn.\n- Android: the switch's explanation is a caption under the card, not the row's second line, which cut it off."
-    },
-    "code-playback": {
-      "page": "settings",
-      "size": 24,
-      "w": 420,
-      "x": 1422,
-      "y": 2852,
-      "text": "What the code needs for these boards:\n- Countdown belongs to Pause between sides and discs: it sits right under it in the same group, with no divider between them (MacRow and AndroidRow `nested`). Today Android puts it in its own row after the switch (SettingsPlaybackSection.kt:54). bae change, macOS and Android."
-    },
-    "code-history": {
-      "page": "library",
-      "size": 24,
-      "w": 420,
-      "x": 3144,
-      "y": 14264,
-      "text": "What the code needs for these boards:\n- Listening history offers Off, Only me and Everyone. Today two: Only me and Household (BridgeSharing Private, Household: bae-bridge/src/types/personal.rs:4, mirroring bae-db's people::Sharing; strings.xml:370-371, HistorySharingSection.kt). Off is a third value: bae records no new plays for the person while it is set, and plays recorded before stay as they were (work-history-off). Household reads Everyone in every locale. bae change (bae-db, the bridge, both apps), with spec/bae.md's history section."
-    },
-    "code-make-admin": {
-      "page": "library",
-      "size": 24,
-      "w": 420,
-      "x": 2684,
-      "y": 22040,
-      "text": "What the code needs for these boards:\n- The change box (Changes from this device: Waiting to sync, then Done with Dismiss) shows on the page of the person it changes, above Role. It exists today, with waiting, done, refused, stopped and Dismiss, but on the Library page (AdminChangesSection.swift, shown from LibrarySettingsTab.swift:86) and on Android's people screen (MembersScreen.kt:183, SettingsLibraryModel.kt:121). A rename's change shows on the Library page, under Name. bae change: where it shows, not what it does."
-    },
-    "code-rename": {
-      "page": "library",
-      "size": 24,
-      "w": 420,
-      "x": 2684,
-      "y": 1556,
-      "text": "What the code needs for these boards:\n- The library is renamed from Library settings' Name row: Rename\u2026 on macOS, tapping the row on Android, then a field and Rename. rename_library exists (bae-bridge/src/handle/configuration.rs:16). Today macOS renames from the main menu (MainMenu.swift), Android from a Rename button under the name (SettingsLibrarySection.kt:179). bae change: where it starts."
-    },
-    "code-switch": {
-      "page": "home",
-      "size": 24,
-      "w": 420,
-      "x": 1424,
-      "y": 11180,
-      "text": "What the code needs for these boards:\n- Android switches libraries from the home screen's \u22ee menu: Libraries opens the list of this device's libraries, each with Remove. Today it is \u201cSwitch to another library on this device\u201d in Library settings (SettingsLibrarySection.kt:111), and the \u22ee menu holds Sort by, Shuffle library and Settings (decisions.md 2026-11-01). The list is the one the welcome screen shows (code-welcome). bae change, Android."
-    },
-    "row-lib-flow-android": {
-      "kind": "title1",
-      "maxW": 1396,
-      "page": "home",
-      "text": "Albums \u2192 album \u2192 artist: Android (today)",
-      "w": 240,
-      "x": 0,
-      "y": 0
-    },
-    "row-lib-flow-mac": {
-      "kind": "title1",
-      "maxW": 3760,
-      "page": "home",
-      "text": "Albums \u2192 album \u2192 artist: macOS (today)",
-      "w": 240,
-      "x": 0,
-      "y": 1396
-    },
-    "lib-today": {
-      "page": "home",
-      "size": 24,
-      "w": 460,
-      "x": 3840,
-      "y": 1636,
-      "fill": "blue",
-      "text": "The rows marked today draw the apps as the code has them, from the design system's library parts (each part's page names its file). The examples are made up. Next: Search and Playback pages, then iterate on the design."
-    },
-    "row-lib-head-android": {
-      "kind": "title1",
-      "maxW": 2872,
-      "page": "home",
-      "text": "Heading, menus, grouping, search: Android (today)",
-      "w": 240,
-      "x": 0,
-      "y": 2792
-    },
-    "row-lib-head-mac": {
-      "kind": "title1",
-      "maxW": 4920,
-      "page": "home",
-      "text": "Heading, sort, grouping: macOS (today)",
-      "w": 240,
-      "x": 0,
-      "y": 4188
-    },
-    "row-lib-states-android": {
-      "kind": "title1",
-      "maxW": 1396,
-      "page": "home",
-      "text": "Library states: Android (today)",
-      "w": 240,
-      "x": 0,
-      "y": 5428
-    },
-    "row-lib-states-mac": {
-      "kind": "title1",
-      "maxW": 4960,
-      "page": "home",
-      "text": "Library states: macOS (today)",
-      "w": 240,
-      "x": 0,
-      "y": 6824
-    },
-    "row-album-states-android": {
-      "kind": "title1",
-      "maxW": 1888,
-      "page": "home",
-      "text": "Album states: Android (today)",
-      "w": 240,
-      "x": 0,
-      "y": 8064
-    },
-    "row-album-states-mac": {
-      "kind": "title1",
-      "maxW": 2480,
-      "page": "home",
-      "text": "Album states: macOS (today)",
-      "w": 240,
-      "x": 0,
-      "y": 9460
-    },
-    "row-search-android": {
-      "kind": "title1",
-      "maxW": 1888,
-      "page": "search",
-      "text": "Search: Android (today)",
-      "w": 240,
-      "x": 0,
-      "y": 0
-    },
-    "row-search-mac": {
-      "kind": "title1",
-      "maxW": 2480,
-      "page": "search",
-      "text": "Search: macOS (today)",
-      "w": 240,
-      "x": 0,
-      "y": 1396
-    },
-    "search-today": {
-      "page": "search",
-      "size": 24,
-      "w": 460,
-      "x": 2560,
-      "y": 1636,
-      "fill": "blue",
-      "text": "Today's differences between the apps: macOS shows results in a card under the field and keeps the last results while typing; Android takes over the screen and goes blank until results land. macOS reports a failure in a window alert, Android inline. A track opens its album on Android; on macOS it also shows the track."
-    },
-    "row-play-np-android": {
-      "kind": "title1",
-      "maxW": 1396,
-      "page": "loading",
-      "text": "Now playing: Android (today)",
-      "w": 240,
-      "x": 0,
-      "y": 0
-    },
-    "row-play-np-mac": {
-      "kind": "title1",
-      "maxW": 3760,
-      "page": "loading",
-      "text": "Now playing: macOS (today)",
-      "w": 240,
-      "x": 0,
-      "y": 1396
-    },
-    "row-play-android": {
-      "kind": "title1",
-      "maxW": 1888,
-      "page": "loading",
-      "text": "Queue, full player, cast picker, pause between sides: Android (today)",
-      "w": 240,
-      "x": 0,
-      "y": 2636
-    },
-    "row-play-mac": {
-      "kind": "title1",
-      "maxW": 7600,
-      "page": "loading",
-      "text": "Queue, cast, pause between sides: macOS (today)",
-      "w": 240,
-      "x": 0,
-      "y": 4032
-    }
+  "Appearance.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Appearance",
+   "w": 412,
+   "x": 0,
+   "y": 1556
   },
-  "order": [
-    "Main.dc.html",
-    "SettingsOffline.dc.html",
-    "SettingsProblem.dc.html",
-    "MacSettingsOffline.dc.html",
-    "MacSettingsProblem.dc.html",
-    "Appearance.dc.html",
-    "Playback.dc.html",
-    "Casting.dc.html",
-    "About.dc.html",
-    "MacAppearance.dc.html",
-    "MacPlayback.dc.html",
-    "MacCasting.dc.html",
-    "MacAbout.dc.html",
-    "MacTransfers.dc.html",
-    "Transfers.dc.html",
-    "MacTransfersPaused.dc.html",
-    "Welcome.dc.html",
-    "WelcomeRemove.dc.html",
-    "WelcomeRemoveUnsent.dc.html",
-    "WelcomeRemoving.dc.html",
-    "WelcomeRemoveFailed.dc.html",
-    "MacWelcome.dc.html",
-    "MacWelcomeRemove.dc.html",
-    "MacWelcomeRemoveUnsent.dc.html",
-    "MacWelcomeDelete.dc.html",
-    "MacWelcomeRemoving.dc.html",
-    "MacWelcomeRemoveFailed.dc.html",
-    "storage/Main.dc.html",
-    "storage/Proposed.dc.html",
-    "storage/PanelFile.dc.html",
-    "storage/PanelPin.dc.html",
-    "storage/Window.dc.html",
-    "storage/WindowProposed.dc.html",
-    "storage/WindowFilter.dc.html",
-    "storage/WindowBoth.dc.html",
-    "Library.dc.html",
-    "MacLibraryNotSynced.dc.html",
-    "MacLibrary.dc.html",
-    "CloudHome.dc.html",
-    "People.dc.html",
-    "PeopleMember.dc.html",
-    "Devices.dc.html",
-    "Person.dc.html",
-    "PersonAdmin.dc.html",
-    "MacCloudHome.dc.html",
-    "MacPeople.dc.html",
-    "RecoveryHidden.dc.html",
-    "Recovery.dc.html",
-    "MacRecoveryHidden.dc.html",
-    "MacRecovery.dc.html",
-    "RenameLibrary.dc.html",
-    "LibraryMember.dc.html",
-    "LibraryProblem.dc.html",
-    "MacRenameLibrary.dc.html",
-    "MacLibraryMember.dc.html",
-    "MacLibraryProblem.dc.html",
-    "Renamed.dc.html",
-    "MacRenamed.dc.html",
-    "MacSetupChoose.dc.html",
-    "FolderPicker.dc.html",
-    "S3Form.dc.html",
-    "MacSetupDropboxChoose.dc.html",
-    "MacSetupDropboxSignIn.dc.html",
-    "MacSetupDropboxListing.dc.html",
-    "MacSetupDropboxFolder.dc.html",
-    "MacSetupDropboxChecking.dc.html",
-    "MacSetupDropboxNotEmpty.dc.html",
-    "MacSetupDropboxNewFolder.dc.html",
-    "MacSetupDropboxMakingFolder.dc.html",
-    "MacSetupDropboxFolderMade.dc.html",
-    "MacSetupDropboxStepReadingAccount.dc.html",
-    "MacSetupDropboxStepConnecting.dc.html",
-    "MacSetupDropboxStepCreating.dc.html",
-    "MacSetupDropboxCode.dc.html",
-    "MacSetupDropboxDone.dc.html",
-    "MacSetupDropboxNone.dc.html",
-    "MacSetupOneDriveChoose.dc.html",
-    "MacSetupOneDriveSignIn.dc.html",
-    "MacSetupOneDriveListing.dc.html",
-    "MacSetupOneDrive.dc.html",
-    "MacSetupOneDriveChecking.dc.html",
-    "MacSetupOneDriveNotEmpty.dc.html",
-    "MacSetupOneDriveNewFolder.dc.html",
-    "MacSetupOneDriveMakingFolder.dc.html",
-    "MacSetupOneDriveFolderMade.dc.html",
-    "MacSetupOneDriveStepReadingAccount.dc.html",
-    "MacSetupOneDriveStepConnecting.dc.html",
-    "MacSetupOneDriveStepCreating.dc.html",
-    "MacSetupOneDriveCode.dc.html",
-    "MacSetupOneDriveDone.dc.html",
-    "MacSetupOneDriveNone.dc.html",
-    "MacSetupICloudChoose.dc.html",
-    "MacSetupICloud.dc.html",
-    "MacSetupICloudStepPreparing.dc.html",
-    "MacSetupICloudStepConnecting.dc.html",
-    "MacSetupICloudStepCreating.dc.html",
-    "RestoreCode.dc.html",
-    "MacSetupICloudCode.dc.html",
-    "MacSetupICloudDone.dc.html",
-    "MacSetupS3Choose.dc.html",
-    "MacSetupS3.dc.html",
-    "MacSetupS3StepCheckingLocation.dc.html",
-    "MacSetupS3StepDetecting.dc.html",
-    "MacSetupS3StepConnecting.dc.html",
-    "MacSetupS3StepCreating.dc.html",
-    "MacSetupS3Code.dc.html",
-    "MacSetupS3Done.dc.html",
-    "MacSetupS3KeyNotAccepted.dc.html",
-    "MacSetupS3AccessDenied.dc.html",
-    "MacSetupS3RegionMismatch.dc.html",
-    "MacSetupS3BucketNotFound.dc.html",
-    "MacSetupS3BucketNotEmpty.dc.html",
-    "SyncStates.dc.html",
-    "MacSyncStates.dc.html",
-    "InviteForm.dc.html",
-    "InviteShown.dc.html",
-    "PeopleInvited.dc.html",
-    "MacInviteForm.dc.html",
-    "MacInviteCode.dc.html",
-    "MacPeopleInvited.dc.html",
-    "AddDevice.dc.html",
-    "AddDeviceAdded.dc.html",
-    "MacAddDevice.dc.html",
-    "MacAddDeviceAdded.dc.html",
-    "MakeAdminWaiting.dc.html",
-    "MakeAdminDone.dc.html",
-    "MacMakeAdminWaiting.dc.html",
-    "MacMakeAdminDone.dc.html",
-    "ProfileRename.dc.html",
-    "ProfileRenamed.dc.html",
-    "MacProfileRename.dc.html",
-    "MacProfileRenamed.dc.html",
-    "ProfileRenameBlank.dc.html",
-    "ProfileRenameFailed.dc.html",
-    "MacProfileRenameBlank.dc.html",
-    "MacProfileRenameFailed.dc.html",
-    "MacPeopleMember.dc.html",
-    "MacDevices.dc.html",
-    "MacPerson.dc.html",
-    "MacPersonAdmin.dc.html",
-    "HistoryChoice.dc.html",
-    "HistoryChanged.dc.html",
-    "MacHistoryChoice.dc.html",
-    "MacHistoryChanged.dc.html",
-    "SyncDropbox.dc.html",
-    "MacSyncDropbox.dc.html",
-    "SyncOneDrive.dc.html",
-    "MacSyncOneDrive.dc.html",
-    "MacSyncICloud.dc.html",
-    "SyncSignedOut.dc.html",
-    "SyncSignedOutS3.dc.html",
-    "MacSyncSignedOut.dc.html",
-    "MacSyncSignedOutICloud.dc.html",
-    "MacSyncSignedOutS3.dc.html",
-    "HomeMenu.dc.html",
-    "Libraries.dc.html",
-    "SyncStatus.dc.html",
-    "MacSyncStatus.dc.html",
-    "InviteFormOneDrive.dc.html",
-    "InviteFormS3.dc.html",
-    "MacInviteFormOneDrive.dc.html",
-    "MacInviteFormICloud.dc.html",
-    "MacInviteFormS3.dc.html",
-    "InviteFields.dc.html",
-    "MacInviteFields.dc.html",
-    "InviteRequest.dc.html",
-    "MacInviteRequest.dc.html",
-    "JoinName.dc.html",
-    "JoinWaiting.dc.html",
-    "MacJoinName.dc.html",
-    "MacJoinWaiting.dc.html",
-    "InviteOffline.dc.html",
-    "PeopleInvitedOffline.dc.html",
-    "MacInviteOffline.dc.html",
-    "MacPeopleInvitedOffline.dc.html",
-    "PeopleInvitedFailed.dc.html",
-    "MacPeopleInvitedFailed.dc.html",
-    "InviteSharing.dc.html",
-    "MacInviteSharing.dc.html",
-    "InviteFlow.dc.html",
-    "InviteJoining.dc.html",
-    "MacInviteJoining.dc.html",
-    "InviteCancel.dc.html",
-    "MacInviteCancel.dc.html",
-    "InviteFormS3Mine.dc.html",
-    "MacInviteFormS3Mine.dc.html",
-    "JoinEnded.dc.html",
-    "MacJoinEnded.dc.html",
-    "AddDeviceRequest.dc.html",
-    "MacAddDeviceRequest.dc.html",
-    "AddWaiting.dc.html",
-    "AddEnded.dc.html",
-    "MacAddWaiting.dc.html",
-    "MacAddEnded.dc.html",
-    "RestoreCodePrint.dc.html",
-    "CastingOn.dc.html",
-    "MacCastingOn.dc.html",
-    "CastingLooking.dc.html",
-    "MacCastingLooking.dc.html",
-    "LibAndroidAlbums.dc.html",
-    "LibAndroidAlbum.dc.html",
-    "LibAndroidArtist.dc.html",
-    "LibMacAlbums.dc.html",
-    "LibMacAlbumOpen.dc.html",
-    "LibMacArtist.dc.html",
-    "LibAndroidScrolled.dc.html",
-    "LibAndroidViewMenu.dc.html",
-    "LibAndroidMoreMenu.dc.html",
-    "LibAndroidGrouped.dc.html",
-    "LibAndroidGroupedPinned.dc.html",
-    "LibAndroidSearch.dc.html",
-    "LibMacScrolled.dc.html",
-    "LibMacViewMenu.dc.html",
-    "LibMacGrouped.dc.html",
-    "LibMacSortTwo.dc.html",
-    "LibAndroidEmpty.dc.html",
-    "LibAndroidFailed.dc.html",
-    "LibAndroidNoCovers.dc.html",
-    "LibMacEmpty.dc.html",
-    "LibMacNoCredits.dc.html",
-    "LibMacFailed.dc.html",
-    "LibMacNoCovers.dc.html",
-    "LibAndroidAlbumReleases.dc.html",
-    "LibAndroidAlbumQueued.dc.html",
-    "LibAndroidAlbumFailed.dc.html",
-    "LibAndroidAlbumElsewhere.dc.html",
-    "LibMacAlbumReleases.dc.html",
-    "LibMacAlbumMenu.dc.html",
-    "SearchAndroidTyping.dc.html",
-    "SearchAndroidResults.dc.html",
-    "SearchAndroidNone.dc.html",
-    "SearchAndroidFailed.dc.html",
-    "SearchMacResults.dc.html",
-    "SearchMacNone.dc.html",
-    "PlayAndroidWaiting.dc.html",
-    "PlayAndroidCasting.dc.html",
-    "PlayAndroidNothing.dc.html",
-    "PlayMacWaiting.dc.html",
-    "PlayMacCasting.dc.html",
-    "PlayMacNothing.dc.html",
-    "PlayAndroidQueue.dc.html",
-    "PlayAndroidFullPlayer.dc.html",
-    "PlayAndroidCastPicker.dc.html",
-    "PlayAndroidSidePause.dc.html",
-    "PlayMacQueue.dc.html",
-    "PlayMacQueueEmpty.dc.html",
-    "PlayMacQueueDrop.dc.html",
-    "PlayMacCastPicker.dc.html",
-    "PlayMacSidePause.dc.html",
-    "PlayMacSidePauseOff.dc.html"
-  ],
-  "pages": [
-    {
-      "id": "settings",
-      "name": "Settings"
-    },
-    {
-      "id": "library",
-      "name": "Settings/Library"
-    },
-    {
-      "id": "shared",
-      "name": "Shared"
-    },
-    {
-      "id": "welcome",
-      "name": "Welcome"
-    },
-    {
-      "id": "home",
-      "name": "Library"
-    },
-    {
-      "id": "search",
-      "name": "Search"
-    },
-    {
-      "id": "loading",
-      "name": "Playback"
-    },
-    {
-      "id": "storage",
-      "name": "Storage inspector"
-    }
-  ],
-  "title": "bae mocks"
+  "Casting.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Casting: off",
+   "w": 412,
+   "x": 0,
+   "y": 5444
+  },
+  "CloudHome.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: S3",
+   "w": 412,
+   "x": 0,
+   "y": 7652
+  },
+  "FolderPicker.dc.html": {
+   "h": 300,
+   "page": "shared",
+   "title": "Folder picker",
+   "w": 460,
+   "x": 0,
+   "y": 240
+  },
+  "HistoryChanged.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Listening history: changed",
+   "w": 412,
+   "x": 492,
+   "y": 14264
+  },
+  "HistoryChoice.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Listening history: choosing",
+   "w": 412,
+   "x": 0,
+   "y": 14264
+  },
+  "HomeMenu.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Home: ⋮ menu with Libraries",
+   "w": 412,
+   "x": 0,
+   "y": 14416
+  },
+  "InviteForm.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Invite: Dropbox",
+   "w": 412,
+   "x": 0,
+   "y": 15560
+  },
+  "InviteShown.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Invite: 2. the code",
+   "w": 412,
+   "x": 492,
+   "y": 16856
+  },
+  "Libraries.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Libraries (from ⋮)",
+   "w": 412,
+   "x": 492,
+   "y": 14416
+  },
+  "Library.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Library (admin)",
+   "w": 412,
+   "x": 0,
+   "y": 260
+  },
+  "LibraryMember.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Library (member)",
+   "w": 412,
+   "x": 492,
+   "y": 260
+  },
+  "LibraryProblem.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Library: sync problem (admin)",
+   "w": 412,
+   "x": 984,
+   "y": 260
+  },
+  "MacAbout.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: About",
+   "w": 690,
+   "x": 652,
+   "y": 6740
+  },
+  "MacAddDevice.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Add device: the code",
+   "w": 690,
+   "x": 1476,
+   "y": 20744
+  },
+  "MacAddDeviceAdded.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Add device: added",
+   "w": 690,
+   "x": 3016,
+   "y": 20744
+  },
+  "MacAppearance.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Appearance",
+   "w": 690,
+   "x": 652,
+   "y": 1556
+  },
+  "MacCasting.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Casting: off",
+   "w": 690,
+   "x": 1476,
+   "y": 5444
+  },
+  "MacCloudHome.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: S3",
+   "w": 690,
+   "x": 2620,
+   "y": 7652
+  },
+  "MacHistoryChanged.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Listening history: changed",
+   "w": 690,
+   "x": 1914,
+   "y": 14264
+  },
+  "MacHistoryChoice.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Listening history: choosing",
+   "w": 690,
+   "x": 1144,
+   "y": 14264
+  },
+  "MacInviteCode.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Invite: 2. the code",
+   "w": 690,
+   "x": 3390,
+   "y": 16856
+  },
+  "MacInviteForm.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Invite: Dropbox",
+   "w": 690,
+   "x": 2128,
+   "y": 15560
+  },
+  "MacLibrary.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Library (admin)",
+   "w": 690,
+   "x": 2246,
+   "y": 260
+  },
+  "MacLibraryMember.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Library (member)",
+   "w": 690,
+   "x": 3016,
+   "y": 260
+  },
+  "MacLibraryNotSynced.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Library: not synced",
+   "w": 690,
+   "x": 1476,
+   "y": 260
+  },
+  "MacLibraryProblem.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Library: sync problem (admin)",
+   "w": 690,
+   "x": 3786,
+   "y": 260
+  },
+  "MacMakeAdminDone.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Make admin: done",
+   "w": 690,
+   "x": 1914,
+   "y": 22040
+  },
+  "MacMakeAdminWaiting.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Make admin: waiting to sync",
+   "w": 690,
+   "x": 1144,
+   "y": 22040
+  },
+  "MacPeople.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: People and devices (admin)",
+   "w": 690,
+   "x": 3112,
+   "y": 11672
+  },
+  "MacPeopleInvited.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Invite: 3. in the list",
+   "w": 690,
+   "x": 4160,
+   "y": 16856
+  },
+  "MacPeopleMember.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: People and devices (member)",
+   "w": 690,
+   "x": 3882,
+   "y": 11672
+  },
+  "MacPlayback.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Playback",
+   "w": 690,
+   "x": 652,
+   "y": 2852
+  },
+  "MacProfileRename.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Your name: editing",
+   "w": 690,
+   "x": 2128,
+   "y": 12968
+  },
+  "MacProfileRenameBlank.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Your name: blank, Save off",
+   "w": 690,
+   "x": 2898,
+   "y": 12968
+  },
+  "MacProfileRenameFailed.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Your name: save failed",
+   "w": 690,
+   "x": 3668,
+   "y": 12968
+  },
+  "MacProfileRenamed.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Your name: after Save",
+   "w": 690,
+   "x": 4438,
+   "y": 12968
+  },
+  "MacRecovery.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Restore code: shown",
+   "w": 690,
+   "x": 1754,
+   "y": 23336
+  },
+  "MacRecoveryHidden.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Restore code: hidden",
+   "w": 690,
+   "x": 984,
+   "y": 23336
+  },
+  "MacRenameLibrary.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Rename library (admin)",
+   "w": 690,
+   "x": 1144,
+   "y": 1556
+  },
+  "MacRenamed.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: After Rename (admin)",
+   "w": 690,
+   "x": 1914,
+   "y": 1556
+  },
+  "MacSettingsOffline.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Settings: library offline",
+   "w": 690,
+   "x": 1636,
+   "y": 260
+  },
+  "MacSettingsProblem.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Settings: library sync problem",
+   "w": 690,
+   "x": 2406,
+   "y": 260
+  },
+  "MacSetupChoose.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: choose storage",
+   "w": 690,
+   "x": 0,
+   "y": 2852
+  },
+  "MacSetupDropboxChecking.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, checking the folder",
+   "w": 690,
+   "x": 3080,
+   "y": 4772
+  },
+  "MacSetupDropboxChoose.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, choose storage",
+   "w": 690,
+   "x": 0,
+   "y": 4772
+  },
+  "MacSetupDropboxCode.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, restore code",
+   "w": 690,
+   "x": 9240,
+   "y": 4772
+  },
+  "MacSetupDropboxDone.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, done",
+   "w": 690,
+   "x": 10010,
+   "y": 4772
+  },
+  "MacSetupDropboxFolder.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, choose a shared folder",
+   "w": 690,
+   "x": 2310,
+   "y": 4772
+  },
+  "MacSetupDropboxFolderMade.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, new folder made",
+   "w": 690,
+   "x": 6160,
+   "y": 4772
+  },
+  "MacSetupDropboxListing.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, reading folders",
+   "w": 690,
+   "x": 1540,
+   "y": 4772
+  },
+  "MacSetupDropboxMakingFolder.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, making the folder",
+   "w": 690,
+   "x": 5390,
+   "y": 4772
+  },
+  "MacSetupDropboxNewFolder.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, naming a new folder",
+   "w": 690,
+   "x": 4620,
+   "y": 4772
+  },
+  "MacSetupDropboxNone.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, no shared folders",
+   "w": 690,
+   "x": 10780,
+   "y": 4772
+  },
+  "MacSetupDropboxNotEmpty.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, folder not empty",
+   "w": 690,
+   "x": 3850,
+   "y": 4772
+  },
+  "MacSetupDropboxSignIn.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, signing in",
+   "w": 690,
+   "x": 770,
+   "y": 4772
+  },
+  "MacSetupDropboxStepConnecting.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, step 2 of 3",
+   "w": 690,
+   "x": 7700,
+   "y": 4772
+  },
+  "MacSetupDropboxStepCreating.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, step 3 of 3",
+   "w": 690,
+   "x": 8470,
+   "y": 4772
+  },
+  "MacSetupDropboxStepReadingAccount.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: Dropbox, step 1 of 3",
+   "w": 690,
+   "x": 6930,
+   "y": 4772
+  },
+  "MacSetupICloud.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: iCloud",
+   "w": 690,
+   "x": 770,
+   "y": 3812
+  },
+  "MacSetupICloudChoose.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: iCloud, choose storage",
+   "w": 690,
+   "x": 0,
+   "y": 3812
+  },
+  "MacSetupICloudCode.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: iCloud, restore code",
+   "w": 690,
+   "x": 3850,
+   "y": 3812
+  },
+  "MacSetupICloudDone.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: iCloud, done",
+   "w": 690,
+   "x": 4620,
+   "y": 3812
+  },
+  "MacSetupICloudStepConnecting.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: iCloud, step 2 of 3",
+   "w": 690,
+   "x": 2310,
+   "y": 3812
+  },
+  "MacSetupICloudStepCreating.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: iCloud, step 3 of 3",
+   "w": 690,
+   "x": 3080,
+   "y": 3812
+  },
+  "MacSetupICloudStepPreparing.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: iCloud, step 1 of 3",
+   "w": 690,
+   "x": 1540,
+   "y": 3812
+  },
+  "MacSetupOneDrive.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, choose a folder",
+   "w": 690,
+   "x": 2310,
+   "y": 5732
+  },
+  "MacSetupOneDriveChecking.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, checking the folder",
+   "w": 690,
+   "x": 3080,
+   "y": 5732
+  },
+  "MacSetupOneDriveChoose.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, choose storage",
+   "w": 690,
+   "x": 0,
+   "y": 5732
+  },
+  "MacSetupOneDriveCode.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, restore code",
+   "w": 690,
+   "x": 9240,
+   "y": 5732
+  },
+  "MacSetupOneDriveDone.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, done",
+   "w": 690,
+   "x": 10010,
+   "y": 5732
+  },
+  "MacSetupOneDriveFolderMade.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, new folder made",
+   "w": 690,
+   "x": 6160,
+   "y": 5732
+  },
+  "MacSetupOneDriveListing.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, reading folders",
+   "w": 690,
+   "x": 1540,
+   "y": 5732
+  },
+  "MacSetupOneDriveMakingFolder.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, making the folder",
+   "w": 690,
+   "x": 5390,
+   "y": 5732
+  },
+  "MacSetupOneDriveNewFolder.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, naming a new folder",
+   "w": 690,
+   "x": 4620,
+   "y": 5732
+  },
+  "MacSetupOneDriveNone.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, no folders",
+   "w": 690,
+   "x": 10780,
+   "y": 5732
+  },
+  "MacSetupOneDriveNotEmpty.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, folder not empty",
+   "w": 690,
+   "x": 3850,
+   "y": 5732
+  },
+  "MacSetupOneDriveSignIn.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, signing in",
+   "w": 690,
+   "x": 770,
+   "y": 5732
+  },
+  "MacSetupOneDriveStepConnecting.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, step 2 of 3",
+   "w": 690,
+   "x": 7700,
+   "y": 5732
+  },
+  "MacSetupOneDriveStepCreating.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, step 3 of 3",
+   "w": 690,
+   "x": 8470,
+   "y": 5732
+  },
+  "MacSetupOneDriveStepReadingAccount.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: OneDrive, step 1 of 3",
+   "w": 690,
+   "x": 6930,
+   "y": 5732
+  },
+  "MacSetupS3.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible",
+   "w": 690,
+   "x": 770,
+   "y": 6692
+  },
+  "MacSetupS3Choose.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, choose storage",
+   "w": 690,
+   "x": 0,
+   "y": 6692
+  },
+  "MacSetupS3Code.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, restore code",
+   "w": 690,
+   "x": 4620,
+   "y": 6692
+  },
+  "MacSetupS3Done.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, done",
+   "w": 690,
+   "x": 5390,
+   "y": 6692
+  },
+  "MacSetupS3StepCheckingLocation.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, step 1 of 4",
+   "w": 690,
+   "x": 1540,
+   "y": 6692
+  },
+  "MacSetupS3StepConnecting.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, step 3 of 4",
+   "w": 690,
+   "x": 3080,
+   "y": 6692
+  },
+  "MacSetupS3StepCreating.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, step 4 of 4",
+   "w": 690,
+   "x": 3850,
+   "y": 6692
+  },
+  "MacSetupS3StepDetecting.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, step 2 of 4",
+   "w": 690,
+   "x": 2310,
+   "y": 6692
+  },
+  "MacSyncDropbox.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: Dropbox",
+   "w": 690,
+   "x": 3390,
+   "y": 7652
+  },
+  "MacSyncICloud.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: iCloud",
+   "w": 690,
+   "x": 4930,
+   "y": 7652
+  },
+  "MacSyncOneDrive.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: OneDrive",
+   "w": 690,
+   "x": 4160,
+   "y": 7652
+  },
+  "MacSyncSignedOut.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: signed out (Dropbox)",
+   "w": 690,
+   "x": 5700,
+   "y": 7652
+  },
+  "MacSyncSignedOutICloud.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: signed out (iCloud)",
+   "w": 690,
+   "x": 6470,
+   "y": 7652
+  },
+  "MacSyncSignedOutS3.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: signed out (S3)",
+   "w": 690,
+   "x": 7240,
+   "y": 7652
+  },
+  "MacSyncStates.dc.html": {
+   "h": 1450,
+   "page": "library",
+   "title": "macOS: Sync status: every state",
+   "w": 1452,
+   "x": 1316,
+   "y": 9392
+  },
+  "MacTransfers.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Transfers",
+   "w": 690,
+   "x": 652,
+   "y": 4148
+  },
+  "MacTransfersPaused.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Transfers, uploads paused",
+   "w": 690,
+   "x": 1422,
+   "y": 4148
+  },
+  "MacWelcome.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Welcome: your libraries",
+   "w": 690,
+   "x": 2620,
+   "y": 260
+  },
+  "MacWelcomeDelete.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Delete: never synced",
+   "w": 690,
+   "x": 4930,
+   "y": 260
+  },
+  "MacWelcomeRemove.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Remove: confirm",
+   "w": 690,
+   "x": 3390,
+   "y": 260
+  },
+  "MacWelcomeRemoveFailed.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Remove: failed",
+   "w": 690,
+   "x": 6470,
+   "y": 260
+  },
+  "MacWelcomeRemoveUnsent.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Remove: confirm, unsent changes",
+   "w": 690,
+   "x": 4160,
+   "y": 260
+  },
+  "MacWelcomeRemoving.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Remove: removing",
+   "w": 690,
+   "x": 5700,
+   "y": 260
+  },
+  "Main.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Settings",
+   "w": 412,
+   "x": 0,
+   "y": 260
+  },
+  "MakeAdminDone.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Make admin: done",
+   "w": 412,
+   "x": 492,
+   "y": 22040
+  },
+  "MakeAdminWaiting.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Make admin: waiting to sync",
+   "w": 412,
+   "x": 0,
+   "y": 22040
+  },
+  "People.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "People and devices (admin)",
+   "w": 412,
+   "x": 0,
+   "y": 11672
+  },
+  "PeopleInvited.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Invite: 3. in the list",
+   "w": 412,
+   "x": 984,
+   "y": 16856
+  },
+  "PeopleMember.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "People and devices (member)",
+   "w": 412,
+   "x": 492,
+   "y": 11672
+  },
+  "Person.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "A person (admin)",
+   "w": 412,
+   "x": 1476,
+   "y": 11672
+  },
+  "Playback.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Playback",
+   "w": 412,
+   "x": 0,
+   "y": 2852
+  },
+  "ProfileRename.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Your name: editing",
+   "w": 412,
+   "x": 0,
+   "y": 12968
+  },
+  "ProfileRenameBlank.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Your name: blank, Save off",
+   "w": 412,
+   "x": 492,
+   "y": 12968
+  },
+  "ProfileRenameFailed.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Your name: save failed",
+   "w": 412,
+   "x": 984,
+   "y": 12968
+  },
+  "ProfileRenamed.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Your name: after Save",
+   "w": 412,
+   "x": 1476,
+   "y": 12968
+  },
+  "Recovery.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Restore code: shown",
+   "w": 412,
+   "x": 492,
+   "y": 23336
+  },
+  "RecoveryHidden.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Restore code: hidden",
+   "w": 412,
+   "x": 0,
+   "y": 23336
+  },
+  "RenameLibrary.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Rename library (admin)",
+   "w": 412,
+   "x": 0,
+   "y": 1556
+  },
+  "Renamed.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "After Rename (admin)",
+   "w": 412,
+   "x": 492,
+   "y": 1556
+  },
+  "RestoreCode.dc.html": {
+   "h": 150,
+   "is_interactive": true,
+   "page": "shared",
+   "title": "Restore code",
+   "w": 460,
+   "x": 0,
+   "y": 1780
+  },
+  "S3Form.dc.html": {
+   "h": 420,
+   "page": "shared",
+   "title": "S3-compatible form",
+   "w": 460,
+   "x": 0,
+   "y": 900
+  },
+  "SettingsOffline.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Settings: library offline",
+   "w": 412,
+   "x": 492,
+   "y": 260
+  },
+  "SettingsProblem.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Settings: library sync problem",
+   "w": 412,
+   "x": 984,
+   "y": 260
+  },
+  "SyncDropbox.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: Dropbox",
+   "w": 412,
+   "x": 492,
+   "y": 7652
+  },
+  "SyncOneDrive.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: OneDrive",
+   "w": 412,
+   "x": 984,
+   "y": 7652
+  },
+  "SyncSignedOut.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: signed out (Dropbox)",
+   "w": 412,
+   "x": 1476,
+   "y": 7652
+  },
+  "SyncSignedOutS3.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: signed out (S3)",
+   "w": 412,
+   "x": 1968,
+   "y": 7652
+  },
+  "SyncStates.dc.html": {
+   "h": 1800,
+   "page": "library",
+   "title": "Sync status: every state",
+   "w": 1236,
+   "x": 0,
+   "y": 9392
+  },
+  "Transfers.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Transfers",
+   "w": 412,
+   "x": 0,
+   "y": 4148
+  },
+  "Welcome.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Welcome: your libraries",
+   "w": 412,
+   "x": 0,
+   "y": 260
+  },
+  "WelcomeRemove.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Remove: confirm",
+   "w": 412,
+   "x": 492,
+   "y": 260
+  },
+  "WelcomeRemoveFailed.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Remove: failed",
+   "w": 412,
+   "x": 1968,
+   "y": 260
+  },
+  "WelcomeRemoveUnsent.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Remove: confirm, unsent changes",
+   "w": 412,
+   "x": 984,
+   "y": 260
+  },
+  "WelcomeRemoving.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Remove: removing",
+   "w": 412,
+   "x": 1476,
+   "y": 260
+  },
+  "storage/Main.dc.html": {
+   "h": 900,
+   "page": "storage",
+   "radius": 10,
+   "title": "Today",
+   "w": 440,
+   "x": 0,
+   "y": 0
+  },
+  "storage/PanelFile.dc.html": {
+   "h": 614,
+   "page": "storage",
+   "radius": 10,
+   "title": "Proposed, file selected",
+   "w": 440,
+   "x": 1040,
+   "y": 0
+  },
+  "storage/PanelPin.dc.html": {
+   "h": 614,
+   "page": "storage",
+   "radius": 10,
+   "title": "Proposed, pinning",
+   "w": 440,
+   "x": 1560,
+   "y": 0
+  },
+  "storage/Proposed.dc.html": {
+   "h": 900,
+   "page": "storage",
+   "radius": 10,
+   "title": "Proposed",
+   "w": 440,
+   "x": 520,
+   "y": 0
+  },
+  "storage/Window.dc.html": {
+   "h": 654,
+   "page": "storage",
+   "radius": 10,
+   "title": "Window today",
+   "w": 1040,
+   "x": 0,
+   "y": 1340
+  },
+  "storage/WindowBoth.dc.html": {
+   "h": 654,
+   "page": "storage",
+   "radius": 10,
+   "title": "Uploads and downloads",
+   "w": 1040,
+   "x": 1120,
+   "y": 2114
+  },
+  "storage/WindowFilter.dc.html": {
+   "h": 654,
+   "page": "storage",
+   "radius": 10,
+   "title": "All / Local / Cloud, sorted by Storage",
+   "w": 1040,
+   "x": 0,
+   "y": 2114
+  },
+  "storage/WindowProposed.dc.html": {
+   "h": 654,
+   "page": "storage",
+   "radius": 10,
+   "title": "Window proposed",
+   "w": 1040,
+   "x": 1120,
+   "y": 1340
+  },
+  "MacSetupS3KeyNotAccepted.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, key not accepted",
+   "w": 690,
+   "x": 6160,
+   "y": 6692
+  },
+  "MacSetupS3AccessDenied.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, key can’t use the bucket",
+   "w": 690,
+   "x": 6930,
+   "y": 6692
+  },
+  "MacSetupS3RegionMismatch.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, region doesn’t match",
+   "w": 690,
+   "x": 7700,
+   "y": 6692
+  },
+  "MacSetupS3BucketNotFound.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, bucket not found",
+   "w": 690,
+   "x": 8470,
+   "y": 6692
+  },
+  "MacSetupS3BucketNotEmpty.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Set up sync: S3-compatible, bucket not empty",
+   "w": 690,
+   "x": 9240,
+   "y": 6692
+  },
+  "SyncStatus.dc.html": {
+   "h": 220,
+   "page": "shared",
+   "title": "Sync status",
+   "w": 412,
+   "x": 0,
+   "y": 2270
+  },
+  "MacSyncStatus.dc.html": {
+   "h": 150,
+   "page": "shared",
+   "title": "macOS: Sync status",
+   "w": 460,
+   "x": 492,
+   "y": 2270
+  },
+  "Devices.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Your devices",
+   "w": 412,
+   "x": 984,
+   "y": 11672
+  },
+  "PersonAdmin.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "An admin (admin)",
+   "w": 412,
+   "x": 1968,
+   "y": 11672
+  },
+  "MacDevices.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Your devices",
+   "w": 690,
+   "x": 4652,
+   "y": 11672
+  },
+  "MacPerson.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: A person (admin)",
+   "w": 690,
+   "x": 5422,
+   "y": 11672
+  },
+  "MacPersonAdmin.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: An admin (admin)",
+   "w": 690,
+   "x": 6192,
+   "y": 11672
+  },
+  "InviteFormOneDrive.dc.html": {
+   "h": 916,
+   "page": "library",
+   "w": 412,
+   "x": 492,
+   "y": 15560,
+   "title": "Invite: OneDrive"
+  },
+  "InviteFormS3.dc.html": {
+   "h": 916,
+   "page": "library",
+   "w": 412,
+   "x": 984,
+   "y": 15560,
+   "title": "Invite: S3"
+  },
+  "MacInviteFormOneDrive.dc.html": {
+   "h": 600,
+   "page": "library",
+   "w": 690,
+   "x": 2898,
+   "y": 15560,
+   "title": "macOS: Invite: OneDrive"
+  },
+  "MacInviteFormICloud.dc.html": {
+   "h": 600,
+   "page": "library",
+   "w": 690,
+   "x": 3668,
+   "y": 15560,
+   "title": "macOS: Invite: iCloud"
+  },
+  "MacInviteFormS3.dc.html": {
+   "h": 600,
+   "page": "library",
+   "w": 690,
+   "x": 4438,
+   "y": 15560,
+   "title": "macOS: Invite: S3"
+  },
+  "InviteFields.dc.html": {
+   "h": 230,
+   "page": "shared",
+   "title": "Invite fields",
+   "w": 292,
+   "x": 0,
+   "y": 3000
+  },
+  "MacInviteFields.dc.html": {
+   "h": 130,
+   "page": "shared",
+   "title": "macOS: Invite fields",
+   "w": 400,
+   "x": 372,
+   "y": 3000
+  },
+  "InviteRequest.dc.html": {
+   "h": 916,
+   "page": "library",
+   "w": 412,
+   "x": 1476,
+   "y": 16856,
+   "title": "Invite: 4. their request"
+  },
+  "MacInviteRequest.dc.html": {
+   "h": 600,
+   "page": "library",
+   "w": 690,
+   "x": 4930,
+   "y": 16856,
+   "title": "macOS: Invite: 4. their request"
+  },
+  "JoinName.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Join: your name",
+   "w": 412,
+   "x": 0,
+   "y": 1656
+  },
+  "JoinWaiting.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Join: waiting",
+   "w": 412,
+   "x": 492,
+   "y": 1656
+  },
+  "MacJoinName.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Join: your name",
+   "w": 690,
+   "x": 1636,
+   "y": 1656
+  },
+  "MacJoinWaiting.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Join: waiting",
+   "w": 690,
+   "x": 2406,
+   "y": 1656
+  },
+  "InviteOffline.dc.html": {
+   "h": 916,
+   "page": "library",
+   "w": 412,
+   "x": 0,
+   "y": 18152,
+   "title": "Invite: 1. no code yet"
+  },
+  "PeopleInvitedOffline.dc.html": {
+   "h": 916,
+   "page": "library",
+   "w": 412,
+   "x": 492,
+   "y": 18152,
+   "title": "Invite: 2. in the list, waiting"
+  },
+  "MacInviteOffline.dc.html": {
+   "h": 600,
+   "page": "library",
+   "w": 690,
+   "x": 1144,
+   "y": 18152,
+   "title": "macOS: Invite: 1. no code yet"
+  },
+  "MacPeopleInvitedOffline.dc.html": {
+   "h": 600,
+   "page": "library",
+   "w": 690,
+   "x": 1914,
+   "y": 18152,
+   "title": "macOS: Invite: 2. in the list, waiting"
+  },
+  "PeopleInvitedFailed.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Invite: sharing failed for good",
+   "w": 412,
+   "x": 0,
+   "y": 19448
+  },
+  "MacPeopleInvitedFailed.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Invite: sharing failed for good",
+   "w": 690,
+   "x": 1144,
+   "y": 19448
+  },
+  "InviteSharing.dc.html": {
+   "h": 916,
+   "page": "library",
+   "w": 412,
+   "x": 0,
+   "y": 16856,
+   "title": "Invite: 1. sharing"
+  },
+  "MacInviteSharing.dc.html": {
+   "h": 600,
+   "page": "library",
+   "w": 690,
+   "x": 2620,
+   "y": 16856,
+   "title": "macOS: Invite: 1. sharing"
+  },
+  "InviteFlow.dc.html": {
+   "h": 630,
+   "page": "library",
+   "title": "Invite: how the states connect",
+   "w": 1180,
+   "x": 6138,
+   "y": 15560
+  },
+  "InviteJoining.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Invite: 5. joining",
+   "w": 412,
+   "x": 1968,
+   "y": 16856
+  },
+  "MacInviteJoining.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Invite: 5. joining",
+   "w": 690,
+   "x": 5700,
+   "y": 16856
+  },
+  "InviteCancel.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Invite: Cancel invite",
+   "w": 412,
+   "x": 492,
+   "y": 19448
+  },
+  "MacInviteCancel.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Invite: Cancel invite",
+   "w": 690,
+   "x": 1914,
+   "y": 19448
+  },
+  "InviteFormS3Mine.dc.html": {
+   "h": 916,
+   "page": "library",
+   "w": 412,
+   "x": 1476,
+   "y": 15560,
+   "title": "Invite: S3, your key"
+  },
+  "MacInviteFormS3Mine.dc.html": {
+   "h": 600,
+   "page": "library",
+   "w": 690,
+   "x": 5208,
+   "y": 15560,
+   "title": "macOS: Invite: S3, your key"
+  },
+  "JoinEnded.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Join: invite ended",
+   "w": 412,
+   "x": 984,
+   "y": 1656
+  },
+  "MacJoinEnded.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Join: invite ended",
+   "w": 690,
+   "x": 3176,
+   "y": 1656
+  },
+  "AddDeviceRequest.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Add device: the request",
+   "w": 412,
+   "x": 492,
+   "y": 20744
+  },
+  "MacAddDeviceRequest.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Add device: the request",
+   "w": 690,
+   "x": 2246,
+   "y": 20744
+  },
+  "AddWaiting.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Add this device: waiting",
+   "w": 412,
+   "x": 0,
+   "y": 3052
+  },
+  "AddEnded.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Add this device: code ended",
+   "w": 412,
+   "x": 492,
+   "y": 3052
+  },
+  "MacAddWaiting.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Add this device: waiting",
+   "w": 690,
+   "x": 1144,
+   "y": 3052
+  },
+  "MacAddEnded.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Add this device: code ended",
+   "w": 690,
+   "x": 1914,
+   "y": 3052
+  },
+  "RestoreCodePrint.dc.html": {
+   "h": 792,
+   "page": "library",
+   "title": "Restore code: printed",
+   "w": 612,
+   "x": 2524,
+   "y": 23336
+  },
+  "CastingOn.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Casting: on, found",
+   "w": 412,
+   "x": 984,
+   "y": 5444
+  },
+  "MacCastingOn.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Casting: on, found",
+   "w": 690,
+   "x": 3016,
+   "y": 5444
+  },
+  "CastingLooking.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Casting: on, looking",
+   "w": 412,
+   "x": 492,
+   "y": 5444
+  },
+  "MacCastingLooking.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Casting: on, looking",
+   "w": 690,
+   "x": 2246,
+   "y": 5444
+  },
+  "LibAndroidAlbums.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Albums",
+   "w": 412,
+   "x": 0,
+   "y": 240
+  },
+  "LibAndroidAlbum.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Album",
+   "w": 412,
+   "x": 492,
+   "y": 240
+  },
+  "LibAndroidArtist.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Artist",
+   "w": 412,
+   "x": 984,
+   "y": 240
+  },
+  "LibMacAlbums.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: Albums",
+   "w": 1200,
+   "x": 0,
+   "y": 1636
+  },
+  "LibMacAlbumOpen.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Album, opened in the grid",
+   "w": 1200,
+   "x": 1280,
+   "y": 1636
+  },
+  "LibMacArtist.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: Artists",
+   "w": 1200,
+   "x": 2560,
+   "y": 1636
+  },
+  "LibAndroidScrolled.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Albums, scrolled",
+   "w": 412,
+   "x": 0,
+   "y": 3032
+  },
+  "LibAndroidViewMenu.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "The view menu",
+   "w": 412,
+   "x": 492,
+   "y": 3032
+  },
+  "LibAndroidMoreMenu.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "The ⋮ menu",
+   "w": 412,
+   "x": 984,
+   "y": 3032
+  },
+  "LibAndroidGrouped.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Grouped by artist",
+   "w": 412,
+   "x": 1476,
+   "y": 3032
+  },
+  "LibAndroidGroupedPinned.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Grouped, scrolled: the artist stays pinned",
+   "w": 412,
+   "x": 1968,
+   "y": 3032
+  },
+  "LibAndroidSearch.dc.html": {
+   "h": 916,
+   "page": "search",
+   "title": "Search open, before typing",
+   "w": 412,
+   "x": 0,
+   "y": 240
+  },
+  "LibMacScrolled.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: Albums, scrolled",
+   "w": 1200,
+   "x": 0,
+   "y": 4428
+  },
+  "LibMacViewMenu.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: the view menu",
+   "w": 1200,
+   "x": 1280,
+   "y": 4428
+  },
+  "LibMacGrouped.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: grouped by artist",
+   "w": 1200,
+   "x": 2560,
+   "y": 4428
+  },
+  "LibMacSortTwo.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: sorted by two fields",
+   "w": 1200,
+   "x": 3840,
+   "y": 4428
+  },
+  "LibAndroidEmpty.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Empty library",
+   "w": 412,
+   "x": 0,
+   "y": 5668
+  },
+  "LibAndroidFailed.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "The library failed to load",
+   "w": 412,
+   "x": 492,
+   "y": 5668
+  },
+  "LibAndroidNoCovers.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Albums without covers",
+   "w": 412,
+   "x": 984,
+   "y": 5668
+  },
+  "LibMacEmpty.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: empty library",
+   "w": 1200,
+   "x": 0,
+   "y": 7064
+  },
+  "LibMacNoCredits.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: Artists, nobody credited",
+   "w": 1200,
+   "x": 1280,
+   "y": 7064
+  },
+  "LibMacFailed.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: the library failed to load",
+   "w": 1200,
+   "x": 2560,
+   "y": 7064
+  },
+  "LibMacNoCovers.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: albums without covers",
+   "w": 1200,
+   "x": 3840,
+   "y": 7064
+  },
+  "LibAndroidAlbumReleases.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Album: two releases, downloading",
+   "w": 412,
+   "x": 0,
+   "y": 8304
+  },
+  "LibAndroidAlbumQueued.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Album: waiting to download",
+   "w": 412,
+   "x": 492,
+   "y": 8304
+  },
+  "LibAndroidAlbumFailed.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Album: download failed",
+   "w": 412,
+   "x": 984,
+   "y": 8304
+  },
+  "LibAndroidAlbumElsewhere.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Album: on another device",
+   "w": 412,
+   "x": 1476,
+   "y": 8304
+  },
+  "LibMacAlbumReleases.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: album with two releases, on another Mac",
+   "w": 1200,
+   "x": 0,
+   "y": 9700
+  },
+  "LibMacAlbumMenu.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: the album menu",
+   "w": 1200,
+   "x": 1280,
+   "y": 9700
+  },
+  "SearchAndroidTyping.dc.html": {
+   "h": 916,
+   "page": "search",
+   "title": "Typing: blank until results land",
+   "w": 412,
+   "x": 492,
+   "y": 240
+  },
+  "SearchAndroidResults.dc.html": {
+   "h": 916,
+   "page": "search",
+   "title": "Results",
+   "w": 412,
+   "x": 984,
+   "y": 240
+  },
+  "SearchAndroidNone.dc.html": {
+   "h": 916,
+   "page": "search",
+   "title": "No results",
+   "w": 412,
+   "x": 1476,
+   "y": 240
+  },
+  "SearchAndroidFailed.dc.html": {
+   "h": 916,
+   "page": "search",
+   "title": "Search failed",
+   "w": 412,
+   "x": 1968,
+   "y": 240
+  },
+  "SearchMacResults.dc.html": {
+   "h": 760,
+   "page": "search",
+   "title": "macOS: results",
+   "w": 1200,
+   "x": 0,
+   "y": 1636
+  },
+  "SearchMacNone.dc.html": {
+   "h": 760,
+   "page": "search",
+   "title": "macOS: no matches",
+   "w": 1200,
+   "x": 1280,
+   "y": 1636
+  },
+  "PlayAndroidWaiting.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "Waiting on storage",
+   "w": 412,
+   "x": 0,
+   "y": 240
+  },
+  "PlayAndroidCasting.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "Casting",
+   "w": 412,
+   "x": 492,
+   "y": 240
+  },
+  "PlayAndroidNothing.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "Nothing played yet: no bar",
+   "w": 412,
+   "x": 984,
+   "y": 240
+  },
+  "PlayMacWaiting.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: waiting on storage",
+   "w": 1200,
+   "x": 0,
+   "y": 1636
+  },
+  "PlayMacCasting.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: casting",
+   "w": 1200,
+   "x": 1280,
+   "y": 1636
+  },
+  "PlayMacNothing.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: nothing played yet",
+   "w": 1200,
+   "x": 2560,
+   "y": 1636
+  },
+  "PlayAndroidQueue.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "The queue",
+   "w": 412,
+   "x": 0,
+   "y": 2876
+  },
+  "PlayAndroidFullPlayer.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "The full player",
+   "w": 412,
+   "x": 492,
+   "y": 2876
+  },
+  "PlayAndroidCastPicker.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "The cast picker",
+   "w": 412,
+   "x": 984,
+   "y": 2876
+  },
+  "PlayAndroidSidePause.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "Side ended, with a countdown",
+   "w": 412,
+   "x": 1476,
+   "y": 2876
+  },
+  "PlayMacQueue.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: the queue",
+   "w": 1200,
+   "x": 0,
+   "y": 4272
+  },
+  "PlayMacQueueEmpty.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: the queue, nothing up next",
+   "w": 1200,
+   "x": 1280,
+   "y": 4272
+  },
+  "PlayMacQueueDrop.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: dropping into Up Next, shuffled, rows loading",
+   "w": 1200,
+   "x": 2560,
+   "y": 4272
+  },
+  "PlayMacCastPicker.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: the cast popover",
+   "w": 1200,
+   "x": 3840,
+   "y": 4272
+  },
+  "PlayMacSidePause.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: side ended, with a countdown",
+   "w": 1200,
+   "x": 5120,
+   "y": 4272
+  },
+  "PlayMacSidePauseOff.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: side ended, pausing turned off",
+   "w": 1200,
+   "x": 6400,
+   "y": 4272
+  },
+  "LibAndroidComposers.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Composers",
+   "w": 412,
+   "x": 0,
+   "y": 11180
+  },
+  "LibAndroidComposer.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Composer",
+   "w": 412,
+   "x": 492,
+   "y": 11180
+  },
+  "LibAndroidWork.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Work (back still says Library)",
+   "w": 412,
+   "x": 984,
+   "y": 11180
+  },
+  "LibAndroidComposersEmpty.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Composers: none",
+   "w": 412,
+   "x": 1476,
+   "y": 11180
+  },
+  "LibAndroidComposerFailed.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Composer: failed to load",
+   "w": 412,
+   "x": 1968,
+   "y": 11180
+  },
+  "LibMacComposerNone.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: Composers, nothing selected",
+   "w": 1200,
+   "x": 0,
+   "y": 12576
+  },
+  "LibMacComposer.dc.html": {
+   "h": 1360,
+   "page": "home",
+   "title": "macOS: Composers, a composer open, its first work under the page",
+   "w": 1200,
+   "x": 1280,
+   "y": 12576
+  },
+  "LibMacWork.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: a work opened from search",
+   "w": 1200,
+   "x": 2560,
+   "y": 12576
+  },
+  "LibMacComposersEmpty.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: Composers, nobody credited",
+   "w": 1200,
+   "x": 3840,
+   "y": 12576
+  }
+ },
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-05T23:35:00Z"
+ },
+ "designSystems": [
+  {
+   "title": "bae",
+   "namespace": "bae",
+   "artifact": "https://claude.ai/artifact/VQavFBTofLVMKF7kng8iLL",
+   "version": "1793930549-d60e",
+   "copiedAt": "2026-11-05T23:35:00Z"
+  }
+ ],
+ "launch": {
+  "page": "library",
+  "view": "canvas"
+ },
+ "noteOrder": [
+  "work-folder-name",
+  "work-history-off",
+  "work-wifi-only",
+  "row-settings-0",
+  "row-settings-1",
+  "row-settings-2",
+  "row-settings-3",
+  "row-settings-4",
+  "row-settings-5",
+  "row-library-0",
+  "row-library-1",
+  "row-library-setup",
+  "row-library-setup-icloud",
+  "row-library-setup-dropbox",
+  "row-library-setup-onedrive",
+  "row-library-setup-s3",
+  "row-library-2",
+  "row-library-sync-states",
+  "row-library-3",
+  "row-library-4",
+  "row-library-5",
+  "row-library-6",
+  "row-library-7",
+  "row-library-8",
+  "row-library-9",
+  "row-welcome-0",
+  "row-home-switch",
+  "sync-rules",
+  "transfers-rules",
+  "welcome-rules",
+  "switch-rules",
+  "storage-today",
+  "storage-proposed",
+  "setup-rules",
+  "setup-code-gaps",
+  "code-settings",
+  "code-appearance",
+  "code-transfers",
+  "code-library",
+  "code-sync",
+  "code-people",
+  "code-name",
+  "code-welcome",
+  "canvas-key-settings",
+  "canvas-key-library",
+  "canvas-key-welcome",
+  "canvas-key-shared",
+  "row-shared-folderpicker",
+  "shared-folderpicker-aligned",
+  "row-shared-s3form",
+  "row-shared-restorecode",
+  "row-shared-syncstatus",
+  "row-shared-invitefields",
+  "row-welcome-join",
+  "row-library-invite-online",
+  "row-library-invite-offline",
+  "row-library-invite-failed",
+  "code-invite",
+  "row-welcome-add",
+  "code-casting",
+  "code-playback",
+  "code-history",
+  "code-make-admin",
+  "code-rename",
+  "code-switch",
+  "row-lib-flow-android",
+  "row-lib-flow-mac",
+  "lib-today",
+  "row-lib-head-android",
+  "row-lib-head-mac",
+  "row-lib-states-android",
+  "row-lib-states-mac",
+  "row-album-states-android",
+  "row-album-states-mac",
+  "row-search-android",
+  "row-search-mac",
+  "search-today",
+  "row-play-np-android",
+  "row-play-np-mac",
+  "row-play-android",
+  "row-play-mac",
+  "row-composers-android",
+  "row-composers-mac",
+  "composers-today"
+ ],
+ "notes": {
+  "canvas-key-library": {
+   "bold": true,
+   "fill": "purple",
+   "page": "library",
+   "size": 40,
+   "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs, queued in todo.md §2 \"Settings from the canvas\" (#232-#248), with invites #214/#215 and Add device #227/#228.",
+   "w": 720,
+   "x": 0,
+   "y": -320
+  },
+  "canvas-key-settings": {
+   "bold": true,
+   "fill": "purple",
+   "page": "settings",
+   "size": 40,
+   "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs, queued in todo.md §2 \"Settings from the canvas\" (#232-#248), with invites #214/#215 and Add device #227/#228.",
+   "w": 720,
+   "x": 0,
+   "y": -320
+  },
+  "canvas-key-welcome": {
+   "bold": true,
+   "fill": "purple",
+   "page": "welcome",
+   "size": 40,
+   "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs, queued in todo.md §2 \"Settings from the canvas\" (#232-#248), with invites #214/#215 and Add device #227/#228.",
+   "w": 720,
+   "x": 0,
+   "y": -320
+  },
+  "code-appearance": {
+   "page": "settings",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- Order Theme (System, Light, Dark), then Tone, then Accent. Today both apps show Mode (System, Light, Dark), Accent color, Background tone (AppearanceSection.kt:82-91, AppearanceControls.swift:15-59). bae change.\n- “Tone” and “Accent” in every locale. Today “Accent color” and “Background tone” (strings.xml:235-236, AppearanceControls.swift:21, :59). bae change.",
+   "w": 420,
+   "x": 1422,
+   "y": 1556
+  },
+  "code-library": {
+   "page": "library",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- Library is five rows, with Sync and People and devices on their own pages. Today both apps show everything inline (LibrarySettingsTab.swift:43-105, SettingsScreen.kt:109-198). bae change.\n- macOS: Library folder with Show in Finder replaces the Path row (LibrarySettingsTab.swift:45). bae change.\n- Removing the library leaves this page for the welcome list. Today it's here (LibrarySettingsTab.swift:105, SettingsScreen.kt:198). bae change.\n- The Sync row shows only the state; its cause, its fix and Last synced are on the Sync page. Today both apps show them under the Sync row. bae change.",
+   "w": 420,
+   "x": 4556,
+   "y": 260
+  },
+  "code-name": {
+   "page": "library",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- The Name row renames your profile. The bridge has rename_profile, but no app calls it. bae change.",
+   "w": 420,
+   "x": 5208,
+   "y": 12968
+  },
+  "code-people": {
+   "page": "library",
+   "size": 24,
+   "text": "What the code needs for these boards (refs are main as of Nov 6):\nPeople and devices\n- Two sections, You and People. Under You: a read-only Role row and a Devices row that opens Your devices. Today one People section with a You marker (MembersSection.swift:61, :292). bae change.\n- Add device pairs like an invite instead of showing the restore code (plans/add-device-pairing.md; coven todo.md §2 #227, bae #228). The code screen is a MacScanCode or AndroidScanCode: “Scan or enter the code on the new device.”, the QR code alone, Copy code and Share, and “Works while this stays open. Once the new device enters it, its request shows up here within seconds.” The request replaces it in place: “Tablet wants to join. Add it if its screen shows this number.”, the number, Decline and Add. Closing the screen ends the pairing. On S3 only the QR code carries the access key; a device that enters the copied code asks for it. Today the screen shows the restore code as a QR code and text, with the S3 key line (AddDeviceSheet.swift, AddDeviceDialog.kt). coven change, then bae.\n- Your devices: each device, this one reading This device with no Remove (it leaves by removing the library from it, ActiveDevice::removable, bae-people/src/membership.rs:91); then the add row last: “Add…” on macOS, “Add device” with a + on Android. bae change.\n- Each other person is one row (role, device count) that opens their page: Role with Make admin or Make member, Remove from library in red, their devices. Today macOS lists people with their devices and buttons in one box (MembersSection.swift:63, :326), Android in one list (MembersScreen.kt:437). bae change.\n- “Remove from library”. Today Android reads “Remove person” (strings.xml:335) and macOS a trash glyph, “Remove from the library” (MembersSection.swift:313). bae change.\n- A member's person rows open nothing. coven lets a member read every person's devices; bae leaves that page out on purpose: a member has nothing to do there.\n- Android: Listening history is a choice of AndroidRadio rows in an AndroidDialog; the code has no radio row yet. bae change.\n- Android says “this device”, never “this phone”: today “Changes from this phone”, “Saved on this phone” and the recovery-code lines (strings.xml:384-397, :419). bae change, every locale.",
+   "w": 420,
+   "x": 7732,
+   "y": 11672
+  },
+  "code-settings": {
+   "page": "settings",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- Android: Settings is one long page today (SettingsScreen.kt:109). Here it's a list of rows that open pages, on cards, in macOS's order. bae change.\n- macOS: Transfers sits after Playback in the sidebar. Today it's after Formats (SettingsView.swift:9). bae change.\n- macOS: an amber Paused beside Transfers while uploads are paused. Not built. bae change.\n- Android: rows on cards (AndroidCard, AndroidRow) have no shared component in the code yet. bae change.",
+   "w": 420,
+   "x": 3176,
+   "y": 260
+  },
+  "code-sync": {
+   "page": "library",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- Synced is green with a dot (MacRow and AndroidRow with tone success). Today the status line has no color (SyncStatusLine.swift:44). bae change.\n- S3 rows read Provider, Endpoint, Region, Bucket. Today both show Bucket, Region, Endpoint (CloudProviderConnectedSection.swift:15-19, SettingsSyncSection.kt:174-176). bae change.\n- No raw ids. Today macOS shows a Dropbox shared folder's or OneDrive folder's id under Folder, and iCloud's container (CloudProviderConnectedSection.swift:24, :26). bae change; the folder's name needs coven too (the Folder note).\n- Signed out names the storage: “Sign in to Dropbox…”. Today the button reads “Sign in” (StorageSignIn.swift:32). bae change.\n- The top of every Sync page is one block: Status with the state, then its cause, its fix and Last synced, in that order, each only when it has one (Shared: Sync status). Today the status line shows the last failure under it with its details to copy (SyncStatusLine.swift:110, SyncStatusLine.kt:94). bae change.",
+   "w": 420,
+   "x": 9010,
+   "y": 7652
+  },
+  "code-transfers": {
+   "page": "settings",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- macOS: Pause uploads moves here from the Library pane (LibrarySettingsTab.swift:79). bae change.\n- Android: no Transfers page today. It gets one, with Simultaneous downloads. bae change.\n- Android: Pause uploads goes (SyncUploadPauseControl.kt, shown from SettingsSyncSection.kt). bae change.\n- “Uploads paused” shows here, not on the Sync row. bae change.\n- macOS: Pause downloads beside Pause uploads, lasting across restarts as the upload pause does; either one paused shows the amber Paused beside Transfers, with an arrow for which: ↑ uploads, ↓ downloads, ⇅ both (VoiceOver reads “Uploads paused”, “Downloads paused”, “Uploads and downloads paused”). Today the pin queue pauses only from the footer under the library list, and the spec doesn't say the pause survives a restart (spec/bae.md §4.3). The caption says what the pause holds: “Paused files keep their place and continue when you resume. Changes to the library still sync.” (the upload pause holds release files, not writes: §4.1). Today “While paused, changes wait on this Mac…”. bae change.\n- Order: the pause switches first (macOS Pause uploads and Pause downloads, Android Download over Wi-Fi only), then the counts. bae change.",
+   "w": 420,
+   "x": 3112,
+   "y": 4148
+  },
+  "code-welcome": {
+   "page": "welcome",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- Android: the welcome screen has no library list (ui/onboarding). It gets one, with Remove. bae change.\n- macOS: “Remove library from this Mac?” / “The library will remain in storage and on your other devices.” Today “Remove this library from this Mac?” (LibrarySettingsTab.swift:133) and “This Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage. …” (LibraryRemovalConfirmation.swift:22). bae change.\n- Joining from an invite: after the code reads, the person types their name, then waits on the number. Today the name comes from the invite and the person types none; a name is asked only when joining failed to write the profile (profile_required_title, LibraryLifecycleScreens.kt:157). The waiting screen is built: the number, until when it waits, the next check and Check now (OnboardingScreen.kt:321, BootstrapCodeView.swift). coven change, then bae (the People note).\n- Invite ended: one screen, “This invite has ended. Ask the person who invited you for a new one.”, for a decline, a cancel, an expiry, or the inviting device gone. It shows when the waiting device finds the ended marker where its request was, or loses access to the storage: the decline takes the sharing back in the same pass, so access can go before the marker is read. Today a permission error reaches the app as it is (coven spec §13.2: “Provider permission errors reach the app, even when they come from access being taken back”), and the ended text lists every cause (strings.xml onboarding_invite_ended). coven change (a join whose storage access is gone ends as an ended invite does), then bae.\n- Queued: plans/invites.md; coven in todo.md §2 #214 (the name in the request) and #177 (a join whose access was revoked ends, the same as a marker), bae in #215.\n- Adding this device (Welcome's Add device, then a pairing code): “Check that your other device shows this number, then add this device there.”, the number, “Waiting for your other device.”, no Check now: it checks every 5 seconds while open. Declined, closed on the other device or lost access: “This code has ended. Open Add device on your other device for a new one.” Today Welcome's Add device takes a restore code. coven #227, bae #228.",
+   "w": 420,
+   "x": 7700,
+   "y": 260
+  },
+  "row-library-0": {
+   "kind": "title1",
+   "maxW": 4476,
+   "page": "library",
+   "text": "Library: admin and member",
+   "w": 240,
+   "x": 0,
+   "y": 20
+  },
+  "row-library-1": {
+   "kind": "title1",
+   "maxW": 2604,
+   "page": "library",
+   "text": "Rename the library",
+   "w": 240,
+   "x": 0,
+   "y": 1316
+  },
+  "row-library-2": {
+   "kind": "title1",
+   "maxW": 7930,
+   "page": "library",
+   "text": "Sync",
+   "w": 240,
+   "x": 0,
+   "y": 7412
+  },
+  "row-library-3": {
+   "kind": "title1",
+   "maxW": 7652,
+   "page": "library",
+   "text": "People and devices: admin and member",
+   "w": 240,
+   "x": 0,
+   "y": 11432
+  },
+  "row-library-4": {
+   "kind": "title1",
+   "maxW": 5128,
+   "page": "library",
+   "text": "Change your name",
+   "w": 240,
+   "x": 0,
+   "y": 12728
+  },
+  "row-library-5": {
+   "kind": "title1",
+   "maxW": 2604,
+   "page": "library",
+   "text": "Listening history",
+   "w": 240,
+   "x": 0,
+   "y": 14024
+  },
+  "row-library-6": {
+   "kind": "title1",
+   "maxW": 3866,
+   "page": "library",
+   "text": "Invite (admin): the form",
+   "w": 240,
+   "x": 0,
+   "y": 15320
+  },
+  "row-library-7": {
+   "kind": "title1",
+   "maxW": 3706,
+   "page": "library",
+   "text": "Add a device",
+   "w": 240,
+   "x": 0,
+   "y": 20504
+  },
+  "row-library-8": {
+   "kind": "title1",
+   "maxW": 2604,
+   "page": "library",
+   "text": "Make admin (admin)",
+   "w": 240,
+   "x": 0,
+   "y": 21800
+  },
+  "row-library-9": {
+   "kind": "title1",
+   "maxW": 3136,
+   "page": "library",
+   "text": "Restore code",
+   "w": 240,
+   "x": 0,
+   "y": 23096
+  },
+  "row-library-setup": {
+   "kind": "title1",
+   "maxW": 1570,
+   "page": "library",
+   "text": "Set up sync (macOS)",
+   "w": 240,
+   "x": 0,
+   "y": 2612
+  },
+  "row-library-setup-dropbox": {
+   "kind": "title1",
+   "maxW": 8000,
+   "page": "library",
+   "text": "Set up sync: Dropbox (macOS)",
+   "w": 240,
+   "x": 0,
+   "y": 4532
+  },
+  "row-library-setup-icloud": {
+   "kind": "title1",
+   "maxW": 5310,
+   "page": "library",
+   "text": "Set up sync: iCloud (macOS)",
+   "w": 240,
+   "x": 0,
+   "y": 3572
+  },
+  "row-library-setup-onedrive": {
+   "kind": "title1",
+   "maxW": 8000,
+   "page": "library",
+   "text": "Set up sync: OneDrive (macOS)",
+   "w": 240,
+   "x": 0,
+   "y": 5492
+  },
+  "row-library-setup-s3": {
+   "kind": "title1",
+   "maxW": 8000,
+   "page": "library",
+   "text": "Set up sync: S3 (macOS)",
+   "w": 240,
+   "x": 0,
+   "y": 6452
+  },
+  "row-settings-0": {
+   "kind": "title1",
+   "maxW": 3096,
+   "page": "settings",
+   "text": "Settings",
+   "w": 240,
+   "x": 0,
+   "y": 20
+  },
+  "row-settings-1": {
+   "kind": "title1",
+   "maxW": 1342,
+   "page": "settings",
+   "text": "Appearance",
+   "w": 240,
+   "x": 0,
+   "y": 1316
+  },
+  "row-settings-2": {
+   "kind": "title1",
+   "maxW": 1342,
+   "page": "settings",
+   "text": "Playback",
+   "w": 240,
+   "x": 0,
+   "y": 2612
+  },
+  "row-settings-3": {
+   "kind": "title1",
+   "maxW": 3032,
+   "page": "settings",
+   "text": "Transfers",
+   "w": 240,
+   "x": 0,
+   "y": 3908
+  },
+  "row-settings-4": {
+   "kind": "title1",
+   "maxW": 4206,
+   "page": "settings",
+   "text": "Casting",
+   "w": 240,
+   "x": 0,
+   "y": 5204
+  },
+  "row-settings-5": {
+   "kind": "title1",
+   "maxW": 1342,
+   "page": "settings",
+   "text": "About",
+   "w": 240,
+   "x": 0,
+   "y": 6500
+  },
+  "row-welcome-0": {
+   "kind": "title1",
+   "maxW": 7620,
+   "page": "welcome",
+   "text": "Your libraries and removing one",
+   "w": 240,
+   "x": 0,
+   "y": 20
+  },
+  "setup-code-gaps": {
+   "page": "library",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- Restore code at the end of setup: the bridge already returns it (BridgeStorageSetup.restore_code), but the macOS sheet drops it (SyncSetupWizard.swift connected). bae change.\n- Done lands on the Sync page with Restore code on it: bae change. The code can be fetched again any time (generate_restore_code).\n- Cancel while setup runs: coven can't stop a setup once it starts. Journaling setup (coven list) makes this Cancel real, and lets a crash resume or undo. coven change, then bae.\n- Not synced page, Sync page and their states: bae change, over coven's sync state, as the Sync row's boards and their note show.\n- Choose then Continue, and the browser opening on Continue: today each provider is a row that opens its form, and Dropbox and OneDrive wait for Sign in…. bae change.\n- S3 row reads “A bucket you manage.” Today the app’s line lists storage services by name (BridgeCloudProvider+Setup.swift:13), Backblaze among them, which setup refuses (coven notes/providers.md). bae change.\n- Choose an empty folder: after Set up, setup checks the folder first (Checking the folder…) and, if it holds anything, stops and returns to the list saying so. coven now refuses a Dropbox or OneDrive folder or an S3 bucket that holds anything else (StorageFailure::OwnLocationRequired, coven spec §20.3). bae change: the check before Set up and the words.\n- New folder… on Dropbox (makes the folder and shares it): coven can't make and share a Dropbox folder; it calls sharing/share_folder only in its live tests (dropbox_live.rs:122). coven change, then bae.\n- One folder picker for Dropbox and OneDrive, the same view on each platform: the list, the empty-folder line, New folder… and its naming row, checking, not empty. Only the provider's facts differ: OneDrive folders open into others (where you are, ›), Dropbox's shared folders are one flat list and a new one is shared. Today macOS keeps one state for both (StorageFolderBrowser.swift) but draws two different lists (OAuthFolderSetup.swift:78-119), and Android has OneDriveBrowser.kt beside ProviderFolderChoice.kt. bae change.\n- S3 form: Endpoint, Region, Bucket, the key, in the Sync page's order; no Advanced. Today the form is Bucket, Region, Endpoint, keys (S3SetupForm.swift:43-52), with Profile and Detect settings in Advanced (:55-73); Key prefix is already gone. bae change.\n- S3 setup failing: the form comes back as typed. A region that doesn’t match (RegionMismatch) shows under Region, a missing bucket (ContainerNotFound) and a bucket holding other files (OwnLocationRequired) under Bucket; any other failure at the top of the form. Today every failure shows below the fields, above Set up (SyncSetupWizard.swift:286), in the catalog’s more general words (catalog.toml core.error.cloud_setup.*, core.error.category.credentials). bae change.\n- An S3 library takes a whole bucket that holds nothing else, as a Dropbox or OneDrive folder must. Built in coven (OwnLocationRequired); key prefixes are gone.\n- Everything else, the steps and their words, is what the code does today.\n- macOS: every sheet ends in a MacSheetFooter, the one primary button on the right. The code has no shared sheet footer yet. bae change.\n- Restore code view (setup's last step, the Sync page, the Restore code page): masked with Copy, plus Show and Hide; shown, the code reads in groups of four (“CVR1 ABCD EFGH …”) for writing on paper, and typed entry drops the spaces before decoding (coven has one spelling, format.md “As text”). Caption: “Print this code or save it in a password manager. It gets you back into your library if you lose all your devices.” then “It’s also in your iCloud Keychain.” on Apple, “A phone you set up from this one gets it too.” on Android (Block Store, coven §13.1); on S3 Android’s “You’ll also need your S3 access key and secret.” stays. Today Android calls it “recovery code” (recovery_code_title, RecoveryCodeSection.kt) and shows it ungrouped; macOS has no Show (RecoveryCodeRevealTests.swift). Print… (Print on Android) prints one page: the QR code, the grouped code, the provider and account as decode_code_info gives them (never the library's name, which can change: coven §13.1), the date, and how to use and keep it; the real code is about 250 characters. On S3 the printed code holds no access key. bae change, every locale.",
+   "w": 380,
+   "x": 1190,
+   "y": 2852
+  },
+  "setup-rules": {
+   "fill": "blue",
+   "page": "library",
+   "size": 24,
+   "text": "Set up sync:\nmacOS only, from Set up sync… on a library that isn't synced. The baeium edition offers S3 only, so it opens on the S3 form. Each step that waits says so: signing in in the browser, listing folders, then setup's own steps over a bar. When setup fails, its screen comes back with what was entered: the reason sits under the field it’s about, or at the top when it’s about no one field. Every screen has Cancel and no Back: Cancel takes you back one screen, and on Choose it closes the sheet. The sheet ends on the restore code, for every provider: bae can’t tell whether iCloud Keychain carries it off this Mac. Done lands on the Sync page, which reads Syncing… while the library uploads, then Synced, and holds the Restore code section.\n\nEach provider's row below shows every step coven reports, in order, with the words bae shows. No step has a count, so the bar moves without filling.",
+   "w": 380,
+   "x": 770,
+   "y": 2852
+  },
+  "storage-proposed": {
+   "fill": "teal",
+   "page": "storage",
+   "text": "Proposed: the panel is this release only: its upload summary with Cancel, then one line per file. A dashed circle marks a queued file, a filling ring an uploading one; stored files show nothing. Pause for the whole sync queue moves to the window's footer.",
+   "w": 440,
+   "x": 520,
+   "y": 960
+  },
+  "storage-today": {
+   "fill": "orange",
+   "page": "storage",
+   "text": "Today: Pause floats mid-header (a hidden Cancel All still holds its space). Bytes read Zero kB of Zero kB while 3 upload. A file with no audio format keeps an empty second line. A status chip adds a third line plus an invisible bar's height, so rows jump between three heights.",
+   "w": 440,
+   "x": 0,
+   "y": 960
+  },
+  "switch-rules": {
+   "fill": "blue",
+   "page": "home",
+   "size": 24,
+   "text": "macOS keeps switching libraries from the main window's menu.",
+   "w": 380,
+   "x": 984,
+   "y": 14416
+  },
+  "sync-rules": {
+   "fill": "blue",
+   "page": "library",
+   "size": 24,
+   "text": "How the sync states behave:\n- coven gives the state; bae picks the words and the fix.\n- When several hold, the first shows: Not synced, Removed from the library, Device needs reset, Update needed, Signed out, No access, Folder missing, Clock is wrong, Storage full, Offline · unsent changes, Offline, Sync failed, Syncing…, Waiting to sync, Synced.\n- Not synced is macOS only: a phone joins a library and never makes one.\n- Syncing… only while something is sent or received, not on quiet passes.\n- Waiting to sync: online, with changes held back. Gray when uploads are paused or an upload waits to retry; amber when the provider asked bae to wait, saying when it resumes. Android never uploads files, so its only reason is the provider's wait.\n- Synced means data and files both: a file still uploading is Syncing….\n- Offline with changes waiting is Offline · unsent changes, with no count.\n- Signed out names the provider and its sign-in: Dropbox and OneDrive sign in from bae; iCloud from System Settings. S3 has no sign-in: it reads Access key not accepted and asks for a new key for the same bucket. An expired sign-in reads the same as none saved.\n- Sync failed: any failure with no state of its own, its cause in plain words, always with Retry now; it also retries by itself. A file that can't be uploaded (missing, or changed since import) names the file until it's back as it was; nothing skips it. Phones never upload, so their causes are local ones, a provider error or a damaged change.\n- The Library page's Sync row shows the state only. The top of the Sync page shows the state, its cause and its fix, then Last synced under a problem state (never under Synced), then the storage details.\n- Settings' Library row (Android) and the settings sidebar's Library item (macOS) show the state only when it's amber or red.\n- No Sync stopped, no Checking sync… and no Disconnect anywhere.\n- No raw ids on the Sync page: a row shows a name or isn't there.",
+   "w": 460,
+   "x": 8470,
+   "y": 7652
+  },
+  "transfers-rules": {
+   "fill": "blue",
+   "page": "settings",
+   "size": 24,
+   "text": "Transfers:\nno upload or download speed limits on any platform (CloudKit can't be paced). Android has no Pause uploads: a phone never uploads files. On macOS, while uploads or downloads are paused the sidebar shows an amber Paused beside Transfers, with ↑, ↓ or ⇅ for which.",
+   "w": 380,
+   "x": 2652,
+   "y": 4148
+  },
+  "welcome-rules": {
+   "fill": "blue",
+   "page": "welcome",
+   "size": 24,
+   "text": "Removing and deleting:\nneither asks for device authentication. A library that was never synced offers Delete instead of Remove, on Android and macOS.",
+   "w": 380,
+   "x": 7240,
+   "y": 260
+  },
+  "work-folder-name": {
+   "fill": "blue",
+   "page": "library",
+   "size": 24,
+   "text": "Folder (OneDrive, Dropbox):\ncoven records the picked folder's name and web address at setup, as labels only, never to reach storage. The Sync page shows Folder and Open in browser for those two; S3 and iCloud get neither.",
+   "w": 380,
+   "x": 8010,
+   "y": 7652
+  },
+  "work-history-off": {
+   "fill": "blue",
+   "page": "library",
+   "size": 24,
+   "text": "Listening history:\nOff records no new plays; plays recorded before stay as they were. Everyone shares your plays with the library's people.",
+   "w": 380,
+   "x": 2684,
+   "y": 14264
+  },
+  "work-wifi-only": {
+   "fill": "blue",
+   "page": "settings",
+   "size": 24,
+   "text": "Download over Wi-Fi only (Android), off by default:\nwhile on, coven holds downloads and uploads on a metered network. coven watches the network itself. Playing a track that isn't pinned still streams.",
+   "w": 380,
+   "x": 2192,
+   "y": 4148
+  },
+  "canvas-key-shared": {
+   "bold": true,
+   "fill": "purple",
+   "page": "shared",
+   "size": 40,
+   "text": "Shared\nParts the screens are built from. Each screen that shows one imports it, so a change here shows everywhere.",
+   "w": 720,
+   "x": 0,
+   "y": -320
+  },
+  "row-shared-folderpicker": {
+   "kind": "title1",
+   "maxW": 460,
+   "page": "shared",
+   "text": "Folder picker",
+   "w": 240,
+   "x": 0,
+   "y": 0
+  },
+  "row-shared-s3form": {
+   "kind": "title1",
+   "maxW": 460,
+   "page": "shared",
+   "text": "S3-compatible form",
+   "w": 240,
+   "x": 0,
+   "y": 660
+  },
+  "row-shared-restorecode": {
+   "kind": "title1",
+   "maxW": 460,
+   "page": "shared",
+   "text": "Restore code",
+   "w": 240,
+   "x": 0,
+   "y": 1540
+  },
+  "shared-folderpicker-aligned": {
+   "bold": true,
+   "page": "shared",
+   "size": 24,
+   "text": "The new folder's name starts where the folder names above it start: the field's box sits 10px further left, so the text inside it lines up. Today the field and Create are an HStack in the Folders section (OAuthFolderSetup.swift:114-118). bae change.",
+   "w": 380,
+   "x": 520,
+   "y": 240
+  },
+  "row-shared-syncstatus": {
+   "kind": "title1",
+   "maxW": 952,
+   "page": "shared",
+   "text": "Sync status",
+   "w": 240,
+   "x": 0,
+   "y": 2030
+  },
+  "row-library-sync-states": {
+   "kind": "title1",
+   "maxW": 2768,
+   "page": "library",
+   "text": "Sync status: every state",
+   "w": 240,
+   "x": 0,
+   "y": 9152
+  },
+  "row-shared-invitefields": {
+   "kind": "title1",
+   "maxW": 952,
+   "page": "shared",
+   "text": "Invite fields",
+   "w": 240,
+   "x": 0,
+   "y": 2760
+  },
+  "row-welcome-join": {
+   "kind": "title1",
+   "maxW": 7620,
+   "page": "welcome",
+   "text": "Joining from an invite",
+   "w": 240,
+   "x": 0,
+   "y": 1416
+  },
+  "row-library-invite-online": {
+   "kind": "title1",
+   "maxW": 3866,
+   "page": "library",
+   "text": "Invite (admin): online",
+   "w": 240,
+   "x": 0,
+   "y": 16616
+  },
+  "row-library-invite-offline": {
+   "kind": "title1",
+   "maxW": 3866,
+   "page": "library",
+   "text": "Invite (admin): offline",
+   "w": 240,
+   "x": 0,
+   "y": 17912
+  },
+  "row-library-invite-failed": {
+   "kind": "title1",
+   "maxW": 3866,
+   "page": "library",
+   "text": "Invite (admin): sharing failed, or cancelled",
+   "w": 240,
+   "x": 0,
+   "y": 19208
+  },
+  "code-invite": {
+   "page": "library",
+   "size": 24,
+   "text": "What the code needs for the invite boards (refs are main as of Nov 6):\n- The People list ends with the invite row: “Invite…” on macOS (today “Invite a person…”, MembersSection.swift:100), “Invite” with a + on Android (today a filled “Invite a person” button after the list, MembersScreen.kt:356, strings.xml:347). bae change.\n- The form asks only what the storage shares with: their Dropbox, Microsoft or Apple Account email, or on S3 an access key, with a line saying why; on S3, Use my key instead (under the fields on Android, left of the footer on macOS) hands them your own key, saying that removing them later means a new key on each of your devices; then Create invite. No name, no role (everyone joins as Member), no in person or sent, a week to expire. Today: name, role, “Their account email” or keys, In person or Send, an expiry, “Create invitation” (InvitePersonSheet.swift, InviteDialog.kt). coven change (§13.2: the join request carries the name, not the invite; one kind of invite, always approved by comparing the number; confirm §14.3 lets two members share one S3 key), then bae; the spec's walk-through (spec/bae.md:2369) changes with it.\n- The invite screen, titled Invite: while sharing, a bar and “Sharing the library with <email>…”; offline, that the code shows once this device is online; then one MacScanCode or AndroidScanCode: what to do, the QR code alone (no code text beside it), Copy code and Share, how long until it expires (“Expires in 7 days”, relative, as InviteCodeSheet.swift does today) and that the request shows up within seconds. The code has no such shared view yet: InviteCodeSheet.swift and InviteShownDialog.kt each lay out the QR code themselves. Today one spinner and “Sharing the library. The code shows once this library syncs.” online or not (InviteCodeSheet.swift:89, strings.xml:401); an in-person invite shows only the QR code, a sent one only the code; the title is the invitee's name. bae change.\n- While the invite screen is open, the app asks sync to check every 5 seconds, as Add device does (bae-library/src/manager/people.rs, sync_often). Today nothing does for invites. bae change.\n- An open invite's row: its email (its key on S3), Invited, and a chevron that opens its screen; Shares access once online while offline; Joining once approved. No refresh button: today “Check for requests” (MembersSection.swift:448, MembersScreen.kt InviteRow). bae change.\n- Their request: “Approve request?”, then “<name> used your invite to <email>”, the number, Decline and Approve. Today the request sheet shows the invitee's name, “Confirmation number” and the number, Close, Decline, Approve (MembersSection.swift JoinRequestSheet). bae change.\n- Cancel invite asks first: “Cancel this invite?” with Keep. Today the same confirmation with core's words (core.invite.cancel_confirm.*). Matches; words only.\n- S3: the code screen also shows the key's ID and says to delete the key if nobody uses the invite (spec/bae.md:2412). Built (InviteCodeSheet.swift keyLine); not drawn yet.\n- A sharing failure a retry can't fix (no such account, say) ends the invite by itself, as a failed request check does (coven spec §13.2). Its row becomes a notice, “Couldn’t invite: Dropbox has no account for it”, with Dismiss; there is no failed screen to cancel from. A failure a retry can fix keeps retrying, the invite still Sharing. Today the invite stays open with coven's held reason, in its row and screen, until it is cancelled (InviteCodeSheet.swift:80, MembersSection.swift InviteRow). coven change (end the invite on a permanent sharing failure, keeping why for the app), then bae.\n- Queued: plans/invites.md; coven in todo.md §2 #214 (one kind of invite, the name in the request, a permanent sharing failure ends the invite, two members on one S3 key), bae in #215 after the coven pin bump.",
+   "w": 420,
+   "x": 7558,
+   "y": 15560
+  },
+  "row-welcome-add": {
+   "kind": "title1",
+   "maxW": 7620,
+   "page": "welcome",
+   "text": "Adding this device from another of yours",
+   "w": 240,
+   "x": 0,
+   "y": 2812
+  },
+  "row-home-switch": {
+   "kind": "title1",
+   "maxW": 1364,
+   "page": "home",
+   "text": "Switch library (Android, proposed)",
+   "w": 240,
+   "x": 0,
+   "y": 14176
+  },
+  "code-casting": {
+   "page": "settings",
+   "size": 24,
+   "w": 420,
+   "x": 3786,
+   "y": 5444,
+   "text": "What the code needs for these boards:\n- While casting is on, the Casting page lists the receivers bae finds (name, and Chromecast, AirPlay or UPnP), from the same device-local table the picker reads, and browses only while the page is open, as the picker does. spec/bae.md §7 “Finding receivers” says devices are searched for only while the picker is open; it changes to the picker or this page. Today the page has no list (CastingSettingsTab.swift, SettingsCastSection.kt). bae change.\n- Until the first receiver answers, the list shows a spinner and “Looking for receivers…” (MacSpinner, AndroidSpinner); it fills in as receivers answer, with no end state, since browsing runs while the page is open. Under it: “Receivers show up here while this page is open.”\n- Convert to shows while casting is on, as today (CastTranscodeFormatPicker).\n- Turning casting off while a cast plays asks “Turn off casting?” / “This will stop casting to <device>.” as today; not drawn.\n- Android: the switch's explanation is a caption under the card, not the row's second line, which cut it off."
+  },
+  "code-playback": {
+   "page": "settings",
+   "size": 24,
+   "w": 420,
+   "x": 1422,
+   "y": 2852,
+   "text": "What the code needs for these boards:\n- Countdown belongs to Pause between sides and discs: it sits right under it in the same group, with no divider between them (MacRow and AndroidRow `nested`). Today Android puts it in its own row after the switch (SettingsPlaybackSection.kt:54). bae change, macOS and Android."
+  },
+  "code-history": {
+   "page": "library",
+   "size": 24,
+   "w": 420,
+   "x": 3144,
+   "y": 14264,
+   "text": "What the code needs for these boards:\n- Listening history offers Off, Only me and Everyone. Today two: Only me and Household (BridgeSharing Private, Household: bae-bridge/src/types/personal.rs:4, mirroring bae-db's people::Sharing; strings.xml:370-371, HistorySharingSection.kt). Off is a third value: bae records no new plays for the person while it is set, and plays recorded before stay as they were (work-history-off). Household reads Everyone in every locale. bae change (bae-db, the bridge, both apps), with spec/bae.md's history section."
+  },
+  "code-make-admin": {
+   "page": "library",
+   "size": 24,
+   "w": 420,
+   "x": 2684,
+   "y": 22040,
+   "text": "What the code needs for these boards:\n- The change box (Changes from this device: Waiting to sync, then Done with Dismiss) shows on the page of the person it changes, above Role. It exists today, with waiting, done, refused, stopped and Dismiss, but on the Library page (AdminChangesSection.swift, shown from LibrarySettingsTab.swift:86) and on Android's people screen (MembersScreen.kt:183, SettingsLibraryModel.kt:121). A rename's change shows on the Library page, under Name. bae change: where it shows, not what it does."
+  },
+  "code-rename": {
+   "page": "library",
+   "size": 24,
+   "w": 420,
+   "x": 2684,
+   "y": 1556,
+   "text": "What the code needs for these boards:\n- The library is renamed from Library settings' Name row: Rename… on macOS, tapping the row on Android, then a field and Rename. rename_library exists (bae-bridge/src/handle/configuration.rs:16). Today macOS renames from the main menu (MainMenu.swift), Android from a Rename button under the name (SettingsLibrarySection.kt:179). bae change: where it starts."
+  },
+  "code-switch": {
+   "page": "home",
+   "size": 24,
+   "w": 420,
+   "x": 1424,
+   "y": 14416,
+   "text": "What the code needs for these boards:\n- Android switches libraries from the home screen's ⋮ menu: Libraries opens the list of this device's libraries, each with Remove. Today it is “Switch to another library on this device” in Library settings (SettingsLibrarySection.kt:111), and the ⋮ menu holds Sort by, Shuffle library and Settings (decisions.md 2026-11-01). The list is the one the welcome screen shows (code-welcome). bae change, Android."
+  },
+  "row-lib-flow-android": {
+   "kind": "title1",
+   "maxW": 1396,
+   "page": "home",
+   "text": "Albums → album → artist: Android (today)",
+   "w": 240,
+   "x": 0,
+   "y": 0
+  },
+  "row-lib-flow-mac": {
+   "kind": "title1",
+   "maxW": 3760,
+   "page": "home",
+   "text": "Albums → album → artist: macOS (today)",
+   "w": 240,
+   "x": 0,
+   "y": 1396
+  },
+  "lib-today": {
+   "page": "home",
+   "size": 24,
+   "w": 460,
+   "x": 3840,
+   "y": 1636,
+   "fill": "blue",
+   "text": "The rows marked today draw the apps as the code has them, from the design system's library parts (each part's page names its file). The examples are made up. Search and Playback have their own pages. Next: Storage, sync activity, album actions and Import; then iterate on the design."
+  },
+  "row-lib-head-android": {
+   "kind": "title1",
+   "maxW": 2872,
+   "page": "home",
+   "text": "Heading, menus, grouping, search: Android (today)",
+   "w": 240,
+   "x": 0,
+   "y": 2792
+  },
+  "row-lib-head-mac": {
+   "kind": "title1",
+   "maxW": 4920,
+   "page": "home",
+   "text": "Heading, sort, grouping: macOS (today)",
+   "w": 240,
+   "x": 0,
+   "y": 4188
+  },
+  "row-lib-states-android": {
+   "kind": "title1",
+   "maxW": 1396,
+   "page": "home",
+   "text": "Library states: Android (today)",
+   "w": 240,
+   "x": 0,
+   "y": 5428
+  },
+  "row-lib-states-mac": {
+   "kind": "title1",
+   "maxW": 4960,
+   "page": "home",
+   "text": "Library states: macOS (today)",
+   "w": 240,
+   "x": 0,
+   "y": 6824
+  },
+  "row-album-states-android": {
+   "kind": "title1",
+   "maxW": 1888,
+   "page": "home",
+   "text": "Album states: Android (today)",
+   "w": 240,
+   "x": 0,
+   "y": 8064
+  },
+  "row-album-states-mac": {
+   "kind": "title1",
+   "maxW": 2480,
+   "page": "home",
+   "text": "Album states: macOS (today)",
+   "w": 240,
+   "x": 0,
+   "y": 9460
+  },
+  "row-search-android": {
+   "kind": "title1",
+   "maxW": 1888,
+   "page": "search",
+   "text": "Search: Android (today)",
+   "w": 240,
+   "x": 0,
+   "y": 0
+  },
+  "row-search-mac": {
+   "kind": "title1",
+   "maxW": 2480,
+   "page": "search",
+   "text": "Search: macOS (today)",
+   "w": 240,
+   "x": 0,
+   "y": 1396
+  },
+  "search-today": {
+   "page": "search",
+   "size": 24,
+   "w": 460,
+   "x": 2560,
+   "y": 1636,
+   "fill": "blue",
+   "text": "Today's differences between the apps: macOS shows results in a card under the field and keeps the last results while typing; Android takes over the screen and goes blank until results land. macOS reports a failure in a window alert, Android inline. A track opens its album on Android; on macOS it also shows the track."
+  },
+  "row-play-np-android": {
+   "kind": "title1",
+   "maxW": 1396,
+   "page": "loading",
+   "text": "Now playing: Android (today)",
+   "w": 240,
+   "x": 0,
+   "y": 0
+  },
+  "row-play-np-mac": {
+   "kind": "title1",
+   "maxW": 3760,
+   "page": "loading",
+   "text": "Now playing: macOS (today)",
+   "w": 240,
+   "x": 0,
+   "y": 1396
+  },
+  "row-play-android": {
+   "kind": "title1",
+   "maxW": 1888,
+   "page": "loading",
+   "text": "Queue, full player, cast picker, pause between sides: Android (today)",
+   "w": 240,
+   "x": 0,
+   "y": 2636
+  },
+  "row-play-mac": {
+   "kind": "title1",
+   "maxW": 7600,
+   "page": "loading",
+   "text": "Queue, cast, pause between sides: macOS (today)",
+   "w": 240,
+   "x": 0,
+   "y": 4032
+  },
+  "row-composers-android": {
+   "kind": "title1",
+   "maxW": "2380",
+   "page": "home",
+   "text": "Composers → composer → work: Android (today)",
+   "w": "240",
+   "x": "0",
+   "y": "10940"
+  },
+  "row-composers-mac": {
+   "kind": "title1",
+   "maxW": "4960",
+   "page": "home",
+   "text": "Composers → composer → work: macOS (today)",
+   "w": "240",
+   "x": "0",
+   "y": "12336"
+  },
+  "composers-today": {
+   "page": "home",
+   "size": 24,
+   "w": 460,
+   "x": 5120,
+   "y": 12576,
+   "fill": "blue",
+   "text": "What today's composer pages do that looks unintended:\n- macOS draws the open work after the composer's whole page, so with many works it lands far below the row clicked, and that row isn't highlighted.\n- macOS puts 24pt above every credit but the first under a heading.\n- macOS release credits open nothing; Android's open the album but drop the credit (Arranger).\n- Android's work and release rows pad their text twice: 16dp further in and taller than search's rows.\n- Android's back always says Library, also on a work reached from a composer.\n- macOS shows a work's title only; Android adds its cover and composers."
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "SettingsOffline.dc.html",
+  "SettingsProblem.dc.html",
+  "MacSettingsOffline.dc.html",
+  "MacSettingsProblem.dc.html",
+  "Appearance.dc.html",
+  "Playback.dc.html",
+  "Casting.dc.html",
+  "About.dc.html",
+  "MacAppearance.dc.html",
+  "MacPlayback.dc.html",
+  "MacCasting.dc.html",
+  "MacAbout.dc.html",
+  "MacTransfers.dc.html",
+  "Transfers.dc.html",
+  "MacTransfersPaused.dc.html",
+  "Welcome.dc.html",
+  "WelcomeRemove.dc.html",
+  "WelcomeRemoveUnsent.dc.html",
+  "WelcomeRemoving.dc.html",
+  "WelcomeRemoveFailed.dc.html",
+  "MacWelcome.dc.html",
+  "MacWelcomeRemove.dc.html",
+  "MacWelcomeRemoveUnsent.dc.html",
+  "MacWelcomeDelete.dc.html",
+  "MacWelcomeRemoving.dc.html",
+  "MacWelcomeRemoveFailed.dc.html",
+  "storage/Main.dc.html",
+  "storage/Proposed.dc.html",
+  "storage/PanelFile.dc.html",
+  "storage/PanelPin.dc.html",
+  "storage/Window.dc.html",
+  "storage/WindowProposed.dc.html",
+  "storage/WindowFilter.dc.html",
+  "storage/WindowBoth.dc.html",
+  "Library.dc.html",
+  "MacLibraryNotSynced.dc.html",
+  "MacLibrary.dc.html",
+  "CloudHome.dc.html",
+  "People.dc.html",
+  "PeopleMember.dc.html",
+  "Devices.dc.html",
+  "Person.dc.html",
+  "PersonAdmin.dc.html",
+  "MacCloudHome.dc.html",
+  "MacPeople.dc.html",
+  "RecoveryHidden.dc.html",
+  "Recovery.dc.html",
+  "MacRecoveryHidden.dc.html",
+  "MacRecovery.dc.html",
+  "RenameLibrary.dc.html",
+  "LibraryMember.dc.html",
+  "LibraryProblem.dc.html",
+  "MacRenameLibrary.dc.html",
+  "MacLibraryMember.dc.html",
+  "MacLibraryProblem.dc.html",
+  "Renamed.dc.html",
+  "MacRenamed.dc.html",
+  "MacSetupChoose.dc.html",
+  "FolderPicker.dc.html",
+  "S3Form.dc.html",
+  "MacSetupDropboxChoose.dc.html",
+  "MacSetupDropboxSignIn.dc.html",
+  "MacSetupDropboxListing.dc.html",
+  "MacSetupDropboxFolder.dc.html",
+  "MacSetupDropboxChecking.dc.html",
+  "MacSetupDropboxNotEmpty.dc.html",
+  "MacSetupDropboxNewFolder.dc.html",
+  "MacSetupDropboxMakingFolder.dc.html",
+  "MacSetupDropboxFolderMade.dc.html",
+  "MacSetupDropboxStepReadingAccount.dc.html",
+  "MacSetupDropboxStepConnecting.dc.html",
+  "MacSetupDropboxStepCreating.dc.html",
+  "MacSetupDropboxCode.dc.html",
+  "MacSetupDropboxDone.dc.html",
+  "MacSetupDropboxNone.dc.html",
+  "MacSetupOneDriveChoose.dc.html",
+  "MacSetupOneDriveSignIn.dc.html",
+  "MacSetupOneDriveListing.dc.html",
+  "MacSetupOneDrive.dc.html",
+  "MacSetupOneDriveChecking.dc.html",
+  "MacSetupOneDriveNotEmpty.dc.html",
+  "MacSetupOneDriveNewFolder.dc.html",
+  "MacSetupOneDriveMakingFolder.dc.html",
+  "MacSetupOneDriveFolderMade.dc.html",
+  "MacSetupOneDriveStepReadingAccount.dc.html",
+  "MacSetupOneDriveStepConnecting.dc.html",
+  "MacSetupOneDriveStepCreating.dc.html",
+  "MacSetupOneDriveCode.dc.html",
+  "MacSetupOneDriveDone.dc.html",
+  "MacSetupOneDriveNone.dc.html",
+  "MacSetupICloudChoose.dc.html",
+  "MacSetupICloud.dc.html",
+  "MacSetupICloudStepPreparing.dc.html",
+  "MacSetupICloudStepConnecting.dc.html",
+  "MacSetupICloudStepCreating.dc.html",
+  "RestoreCode.dc.html",
+  "MacSetupICloudCode.dc.html",
+  "MacSetupICloudDone.dc.html",
+  "MacSetupS3Choose.dc.html",
+  "MacSetupS3.dc.html",
+  "MacSetupS3StepCheckingLocation.dc.html",
+  "MacSetupS3StepDetecting.dc.html",
+  "MacSetupS3StepConnecting.dc.html",
+  "MacSetupS3StepCreating.dc.html",
+  "MacSetupS3Code.dc.html",
+  "MacSetupS3Done.dc.html",
+  "MacSetupS3KeyNotAccepted.dc.html",
+  "MacSetupS3AccessDenied.dc.html",
+  "MacSetupS3RegionMismatch.dc.html",
+  "MacSetupS3BucketNotFound.dc.html",
+  "MacSetupS3BucketNotEmpty.dc.html",
+  "SyncStates.dc.html",
+  "MacSyncStates.dc.html",
+  "InviteForm.dc.html",
+  "InviteShown.dc.html",
+  "PeopleInvited.dc.html",
+  "MacInviteForm.dc.html",
+  "MacInviteCode.dc.html",
+  "MacPeopleInvited.dc.html",
+  "AddDevice.dc.html",
+  "AddDeviceAdded.dc.html",
+  "MacAddDevice.dc.html",
+  "MacAddDeviceAdded.dc.html",
+  "MakeAdminWaiting.dc.html",
+  "MakeAdminDone.dc.html",
+  "MacMakeAdminWaiting.dc.html",
+  "MacMakeAdminDone.dc.html",
+  "ProfileRename.dc.html",
+  "ProfileRenamed.dc.html",
+  "MacProfileRename.dc.html",
+  "MacProfileRenamed.dc.html",
+  "ProfileRenameBlank.dc.html",
+  "ProfileRenameFailed.dc.html",
+  "MacProfileRenameBlank.dc.html",
+  "MacProfileRenameFailed.dc.html",
+  "MacPeopleMember.dc.html",
+  "MacDevices.dc.html",
+  "MacPerson.dc.html",
+  "MacPersonAdmin.dc.html",
+  "HistoryChoice.dc.html",
+  "HistoryChanged.dc.html",
+  "MacHistoryChoice.dc.html",
+  "MacHistoryChanged.dc.html",
+  "SyncDropbox.dc.html",
+  "MacSyncDropbox.dc.html",
+  "SyncOneDrive.dc.html",
+  "MacSyncOneDrive.dc.html",
+  "MacSyncICloud.dc.html",
+  "SyncSignedOut.dc.html",
+  "SyncSignedOutS3.dc.html",
+  "MacSyncSignedOut.dc.html",
+  "MacSyncSignedOutICloud.dc.html",
+  "MacSyncSignedOutS3.dc.html",
+  "HomeMenu.dc.html",
+  "Libraries.dc.html",
+  "SyncStatus.dc.html",
+  "MacSyncStatus.dc.html",
+  "InviteFormOneDrive.dc.html",
+  "InviteFormS3.dc.html",
+  "MacInviteFormOneDrive.dc.html",
+  "MacInviteFormICloud.dc.html",
+  "MacInviteFormS3.dc.html",
+  "InviteFields.dc.html",
+  "MacInviteFields.dc.html",
+  "InviteRequest.dc.html",
+  "MacInviteRequest.dc.html",
+  "JoinName.dc.html",
+  "JoinWaiting.dc.html",
+  "MacJoinName.dc.html",
+  "MacJoinWaiting.dc.html",
+  "InviteOffline.dc.html",
+  "PeopleInvitedOffline.dc.html",
+  "MacInviteOffline.dc.html",
+  "MacPeopleInvitedOffline.dc.html",
+  "PeopleInvitedFailed.dc.html",
+  "MacPeopleInvitedFailed.dc.html",
+  "InviteSharing.dc.html",
+  "MacInviteSharing.dc.html",
+  "InviteFlow.dc.html",
+  "InviteJoining.dc.html",
+  "MacInviteJoining.dc.html",
+  "InviteCancel.dc.html",
+  "MacInviteCancel.dc.html",
+  "InviteFormS3Mine.dc.html",
+  "MacInviteFormS3Mine.dc.html",
+  "JoinEnded.dc.html",
+  "MacJoinEnded.dc.html",
+  "AddDeviceRequest.dc.html",
+  "MacAddDeviceRequest.dc.html",
+  "AddWaiting.dc.html",
+  "AddEnded.dc.html",
+  "MacAddWaiting.dc.html",
+  "MacAddEnded.dc.html",
+  "RestoreCodePrint.dc.html",
+  "CastingOn.dc.html",
+  "MacCastingOn.dc.html",
+  "CastingLooking.dc.html",
+  "MacCastingLooking.dc.html",
+  "LibAndroidAlbums.dc.html",
+  "LibAndroidAlbum.dc.html",
+  "LibAndroidArtist.dc.html",
+  "LibMacAlbums.dc.html",
+  "LibMacAlbumOpen.dc.html",
+  "LibMacArtist.dc.html",
+  "LibAndroidScrolled.dc.html",
+  "LibAndroidViewMenu.dc.html",
+  "LibAndroidMoreMenu.dc.html",
+  "LibAndroidGrouped.dc.html",
+  "LibAndroidGroupedPinned.dc.html",
+  "LibAndroidSearch.dc.html",
+  "LibMacScrolled.dc.html",
+  "LibMacViewMenu.dc.html",
+  "LibMacGrouped.dc.html",
+  "LibMacSortTwo.dc.html",
+  "LibAndroidEmpty.dc.html",
+  "LibAndroidFailed.dc.html",
+  "LibAndroidNoCovers.dc.html",
+  "LibMacEmpty.dc.html",
+  "LibMacNoCredits.dc.html",
+  "LibMacFailed.dc.html",
+  "LibMacNoCovers.dc.html",
+  "LibAndroidAlbumReleases.dc.html",
+  "LibAndroidAlbumQueued.dc.html",
+  "LibAndroidAlbumFailed.dc.html",
+  "LibAndroidAlbumElsewhere.dc.html",
+  "LibMacAlbumReleases.dc.html",
+  "LibMacAlbumMenu.dc.html",
+  "SearchAndroidTyping.dc.html",
+  "SearchAndroidResults.dc.html",
+  "SearchAndroidNone.dc.html",
+  "SearchAndroidFailed.dc.html",
+  "SearchMacResults.dc.html",
+  "SearchMacNone.dc.html",
+  "PlayAndroidWaiting.dc.html",
+  "PlayAndroidCasting.dc.html",
+  "PlayAndroidNothing.dc.html",
+  "PlayMacWaiting.dc.html",
+  "PlayMacCasting.dc.html",
+  "PlayMacNothing.dc.html",
+  "PlayAndroidQueue.dc.html",
+  "PlayAndroidFullPlayer.dc.html",
+  "PlayAndroidCastPicker.dc.html",
+  "PlayAndroidSidePause.dc.html",
+  "PlayMacQueue.dc.html",
+  "PlayMacQueueEmpty.dc.html",
+  "PlayMacQueueDrop.dc.html",
+  "PlayMacCastPicker.dc.html",
+  "PlayMacSidePause.dc.html",
+  "PlayMacSidePauseOff.dc.html",
+  "LibAndroidComposers.dc.html",
+  "LibAndroidComposer.dc.html",
+  "LibAndroidWork.dc.html",
+  "LibAndroidComposersEmpty.dc.html",
+  "LibAndroidComposerFailed.dc.html",
+  "LibMacComposerNone.dc.html",
+  "LibMacComposer.dc.html",
+  "LibMacWork.dc.html",
+  "LibMacComposersEmpty.dc.html"
+ ],
+ "pages": [
+  {
+   "id": "settings",
+   "name": "Settings"
+  },
+  {
+   "id": "library",
+   "name": "Settings/Library"
+  },
+  {
+   "id": "shared",
+   "name": "Shared"
+  },
+  {
+   "id": "welcome",
+   "name": "Welcome"
+  },
+  {
+   "id": "home",
+   "name": "Library"
+  },
+  {
+   "id": "search",
+   "name": "Search"
+  },
+  {
+   "id": "loading",
+   "name": "Playback"
+  },
+  {
+   "id": "storage",
+   "name": "Storage inspector"
+  }
+ ],
+ "title": "bae mocks"
 }
