@@ -36,6 +36,9 @@ struct WelcomeView: View {
         /// A join this device had under way when bae stopped, continued on
         /// its waiting screen.
         case resume(BridgeUnfinishedJoin)
+        /// A restore onto this device that stopped after it recorded itself,
+        /// finished on the code screen.
+        case resumeRestore(BridgeUnfinishedRestore)
     }
 
     @Environment(LibrarySetup.self)
@@ -43,9 +46,15 @@ struct WelcomeView: View {
 
     @State
     private var mode: Mode
-    /// Listing the joins under way failed; shown above the chooser.
+    /// Listing the joins or restores under way failed; shown above the
+    /// chooser.
     @State
     private var resumeError: DisplayError?
+    /// Whether the chooser already went on with what was under way. It does
+    /// so once, as it first shows: Back from a join or restore that failed
+    /// again shows the chooser, and the next start goes on with it.
+    @State
+    private var resumed = false
 
     init(
         onLibraryReady:
@@ -86,7 +95,7 @@ struct WelcomeView: View {
                     onAddDevice: { mode = .restore(nil) }
                 )
             }
-            .task { await resumeUnfinishedJoin() }
+            .task { await resumeUnfinished() }
         case .restore(let saved):
             BootstrapCodeView(
                 form: codeForm(.restore(saved)),
@@ -102,21 +111,32 @@ struct WelcomeView: View {
                 form: codeForm(.resume(join)),
                 onBack: { mode = .choose }
             )
+        case .resumeRestore(let restore):
+            BootstrapCodeView(
+                form: codeForm(.resumeRestore(restore)),
+                onBack: { mode = .choose }
+            )
         }
     }
 
-    /// Open the waiting screen of a join this device has under way, so bae
-    /// goes on checking for its approval.
-    private func resumeUnfinishedJoin() async {
+    /// Go on with what this device has under way, one at a time: a join's
+    /// waiting screen, so bae goes on checking for its approval, or else a
+    /// restore that stopped after it recorded itself, finished at once.
+    private func resumeUnfinished() async {
+        guard !resumed else { return }
+        resumed = true
         do {
             if let join = try await setup.unfinishedJoins().first {
                 mode = .resume(join)
+            }
+            else if let restore = try await setup.unfinishedRestores().first {
+                mode = .resumeRestore(restore)
             }
         }
         catch is CancellationError {}
         catch {
             logger.error(
-                "listing the joins under way failed: \(String(reflecting: error))"
+                "listing what is under way failed: \(String(reflecting: error))"
             )
             resumeError = DisplayError(error)
         }

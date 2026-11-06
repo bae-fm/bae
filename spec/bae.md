@@ -2433,6 +2433,24 @@ for it. A typed recovery code shows where its library is stored and waits for
 **Add**. A code that doesn't read says so on the code screen, and a restore
 that fails shows its error beside **Add**, to try again.
 
+**A restore that stops partway.** Just before coven adds the new device to the
+library, the restore records itself on the device: the code, the device's name,
+and on Dropbox and OneDrive the person's sign-in. From then on it only goes
+forward
+([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
+When bae quits or the restore fails after that, the first screen opens on the
+running restore the next time it shows, as at a start with no library to open,
+and finishes it from what coven kept, with no code. Only when coven has no
+sign-in it can use, because the provider refused the kept one or it is gone,
+does bae show the sign-in again. A join under way goes on first, and the restore
+the next time the first screen shows after it. A finishing that fails shows its
+error on the code screen, where the person's recovery code finishes the restore
+too. A restore whose person's keys another of their devices replaced since ends,
+and says that the current recovery code restores the library. Cancel stops it as
+it stops any restore: until the device was added, coven takes the restore back
+and nothing of it stays; after, it can't be taken back, and bae says that only
+finishing the restore goes on from there.
+
 Dan joins. In People, Ana taps **Invite** and enters "Dan", his Dropbox email
 and a role, then picks **In person** or **Send**. Her laptop records the
 invite in one write, offline too, and shows it at once, marked as sharing
@@ -2955,7 +2973,8 @@ offers nothing.
   slate, starts at a new library's settings instead, since a bad setting may
   be part of what it clears. A restore that fails, such as with a code the replaced keys made or with
   storage out of reach, leaves the library on this device: the code screen
-  shows why and the person can restore again, and going back opens the
+  shows why, a code the replaced keys made saying the current recovery code
+  restores the library, and the person can restore again, and going back opens the
   library as it was.
 
 "Synced" means coven finished a pass and nothing is pending. Until the status
@@ -3698,6 +3717,7 @@ library is registered there by id.
 | `resume_replacement` | finishes this device's reset or restore of a library that stopped after its record, from what coven kept: no code, and no sign-in unless the provider refuses the kept one; told which call the listing names, so a restore's finishing can be cancelled and a reset's can't (§6.4) |
 | `join_with_invite` | joins a library from an invite and writes the person's profile with the name the invite carries (§5.6) |
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
+| `unfinished_restores`, `resume_restore` | list the restores onto this device that stopped after they recorded themselves, and finish one after bae restarts, without the code, signing in only when coven has no sign-in it can use; a cancel before the device registered takes the restore back (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after its record (§6.4) |
 | `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings that can't be read, a reset or restore of this device's copy that didn't finish, with the call that finishes it, or a removal from this device that didn't finish |
 | `bae_app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it, and one whose removal didn't finish fails saying so |
@@ -4881,6 +4901,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Renderer` | reads what the device playback was sent to said when it refused a command |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 | `RestoreRegistered` | finishes the restore: it was cancelled after this device was added to the library, so it can't be taken back (§6.4) |
+| `MemberKeysReplaced` | restores the library with their current recovery code: another of their devices replaced their keys, which the code used, or this device's copy, doesn't hold (§6.4) |
 | `DeletionUnfinished` | finishes removing the library from this device, which stopped partway (§6.4) |
 | `DeletionSignInRequired` | signs in to the library's storage again, then removes the library (§6.4) |
 
@@ -4890,9 +4911,9 @@ These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 `ReleaseChangedSinceOpened`, `StorageLocationChangeUnsupported`,
 `KeychainEntitlementMissing`, `SavedRestoreCodesFull`,
 `SavedRestoreCodeTooLarge`, `StoreOwnerAccount`, `QueueChanged`,
-`ReplacementUnfinished`, `RestoreRegistered`, `DeletionUnfinished` and
-`DeletionSignInRequired`. Every other category shows its detail under its
-line.
+`ReplacementUnfinished`, `RestoreRegistered`, `MemberKeysReplaced`,
+`DeletionUnfinished` and `DeletionSignInRequired`. Every other category shows
+its detail under its line.
 
 ### G.2 Why a found release isn't picked
 

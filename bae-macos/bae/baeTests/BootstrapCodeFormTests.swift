@@ -1,13 +1,14 @@
 import BaeKit
 import Testing
 
-/// A host whose restore from a code reports the code it was given, and whose
-/// finishing of a replacement reports the library and call it was given,
-/// each then ending as cancelled; no other call is made by these tests. Each
-/// test's is the one core host of the test process, which the attempt's setup
-/// is made on: an attempt's reads end after the test does, as a screen's end
-/// after it goes, so the host they end on lives for the process, as the app's
-/// does.
+/// A host whose restore from a code reports the code it was given, whose
+/// finishing of a replacement reports the library and call it was given, and
+/// whose finishing of a restore onto this device reports the restore it was
+/// given, each then ending as cancelled; no other call is made by these
+/// tests. Each test's is the one core host of the test process, which the
+/// attempt's setup is made on: an attempt's reads end after the test does, as
+/// a screen's end after it goes, so the host they end on lives for the
+/// process, as the app's does.
 private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
     private static let core = TestHost.make()
 
@@ -15,11 +16,16 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
     private let record: AsyncStream<String>.Continuation
     let finished: AsyncStream<FinishedReplacement>
     private let recordFinish: AsyncStream<FinishedReplacement>.Continuation
+    let resumedRestores: AsyncStream<ObjectIdentifier>
+    private let recordResume: AsyncStream<ObjectIdentifier>.Continuation
 
     init() {
         (restoredCodes, record) = AsyncStream.makeStream(of: String.self)
         (finished, recordFinish) = AsyncStream.makeStream(
             of: FinishedReplacement.self
+        )
+        (resumedRestores, recordResume) = AsyncStream.makeStream(
+            of: ObjectIdentifier.self
         )
         super.init(unsafeFromHandle: Self.core.uniffiCloneHandle())
     }
@@ -46,6 +52,15 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
         cancellation _: BootstrapCancellation
     ) async throws -> BridgeBootstrapResult {
         recordFinish.yield(FinishedReplacement(libraryId: libraryId, by: by))
+        throw CancellationError()
+    }
+
+    override func resumeRestore(
+        restore: BridgeUnfinishedRestore,
+        setup _: BridgeLibrarySetup,
+        cancellation _: BootstrapCancellation
+    ) async throws -> BridgeBootstrapResult {
+        recordResume.yield(ObjectIdentifier(restore))
         throw CancellationError()
     }
 }
@@ -151,5 +166,25 @@ struct BootstrapCodeFormTests {
             await finished.next()
                 == FinishedReplacement(libraryId: "library-1", by: .restore)
         )
+    }
+
+    /// A restore onto this device that stopped after it recorded itself
+    /// finishes from what core kept as soon as its screen appears, with no
+    /// code.
+    @Test("a stopped restore onto this device begins finishing at once")
+    func resumingARestoreBeginsAtOnce() async {
+        let restore = BridgeUnfinishedRestore(
+            noHandle: BridgeUnfinishedRestore.NoHandle()
+        )
+        let form = form(
+            reading: Self.restoreCode(carriesS3Key: true),
+            entry: .resumeRestore(restore)
+        )
+
+        form.begin()
+
+        #expect(form.isRunning)
+        var resumed = host.resumedRestores.makeAsyncIterator()
+        #expect(await resumed.next() == ObjectIdentifier(restore))
     }
 }

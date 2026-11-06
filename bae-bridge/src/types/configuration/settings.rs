@@ -216,6 +216,11 @@ pub enum BridgeErrorCategory {
     /// library, so it can't be taken back: the restore stays unfinished on
     /// this device, and only finishing it goes on.
     RestoreRegistered,
+    /// The person's keys were replaced on another of their devices, so a
+    /// restore with an older recovery code, or a reset of a copy that holds
+    /// the replaced keys, can't add this device: only the current recovery
+    /// code restores the library.
+    MemberKeysReplaced,
     /// The library didn't open because this device is removing it; only
     /// finishing the removal ends it.
     DeletionUnfinished,
@@ -385,6 +390,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             BridgeReplacedBy::Restore => "core.error.replacement_unfinished.restore",
         },
         BridgeErrorCategory::RestoreRegistered => "core.error.restore_registered",
+        BridgeErrorCategory::MemberKeysReplaced => "core.error.member_keys_replaced",
         BridgeErrorCategory::DeletionUnfinished => "core.error.deletion_unfinished",
         BridgeErrorCategory::DeletionSignInRequired => "core.error.deletion_sign_in_required",
     }
@@ -506,6 +512,7 @@ impl BridgeErrorCategory {
             Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
             Self::ReplacementUnfinished { .. } => K::ReplacementUnfinished,
             Self::RestoreRegistered => K::RestoreRegistered,
+            Self::MemberKeysReplaced => K::MemberKeysReplaced,
             Self::DeletionUnfinished => K::DeletionUnfinished,
             Self::DeletionSignInRequired => K::DeletionSignInRequired,
         };
@@ -613,6 +620,7 @@ mirror_enum! {
         AirPlayUnreadableSettings,
         ReplacementUnfinished(by: (BridgeReplacedBy)),
         RestoreRegistered,
+        MemberKeysReplaced,
         DeletionUnfinished,
         DeletionSignInRequired,
     },

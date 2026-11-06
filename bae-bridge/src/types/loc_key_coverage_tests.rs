@@ -281,6 +281,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::ReplacementUnfinished { by: BridgeReplacedBy::Reset },
         BridgeErrorCategory::ReplacementUnfinished { by: BridgeReplacedBy::Restore },
         BridgeErrorCategory::RestoreRegistered,
+        BridgeErrorCategory::MemberKeysReplaced,
         BridgeErrorCategory::DeletionUnfinished,
         BridgeErrorCategory::DeletionSignInRequired,
     ] {

@@ -16,15 +16,18 @@ import uniffi.bae_bridge.BridgeSavedRestoreCode
 import uniffi.bae_bridge.BridgeSavedRestoreEntry
 import uniffi.bae_bridge.BridgeUnfinishedJoin
 import uniffi.bae_bridge.BridgeUnfinishedRemoval
+import uniffi.bae_bridge.BridgeUnfinishedRestore
 import uniffi.bae_bridge.BridgeUnsentWork
 import uniffi.bae_bridge.OpenedLibrary
 
 /**
- * A device with no join under way and no restore codes saved on it; opening
- * the code field and going back call no other core.
+ * A device with no join or restore under way and no restore codes saved on
+ * it; opening the code field and going back call no other core.
  */
 internal open class NoJoinsHost : EditionFakeBridgeHost() {
     override suspend fun unfinishedJoins(): List<BridgeUnfinishedJoin> = emptyList()
+
+    override suspend fun unfinishedRestores(): List<BridgeUnfinishedRestore> = emptyList()
 
     override suspend fun savedRestoreCodes(): List<BridgeSavedRestoreEntry> = emptyList()
 
@@ -108,6 +111,12 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         setup: BridgeLibrarySetup,
         cancellation: BootstrapCancellation,
     ): BridgeBootstrapResult = unfaked("resumeReplacement")
+
+    override suspend fun resumeRestore(
+        restore: BridgeUnfinishedRestore,
+        setup: BridgeLibrarySetup,
+        cancellation: BootstrapCancellation,
+    ): BridgeBootstrapResult = unfaked("resumeRestore")
 
     override suspend fun resumeJoin(
         join: BridgeUnfinishedJoin,

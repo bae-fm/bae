@@ -253,6 +253,44 @@ pub async fn resume_join(
     })
 }
 
+/// The restores of a library onto this device that stopped after they
+/// recorded themselves, each as its recorded restore code reads.
+pub async fn unfinished_restores(
+    builder: &coven::CovenBuilder,
+) -> Result<Vec<coven::CodeMetadata>, RestoreFromCodeError> {
+    builder.unfinished_restores().await.map_err(restore_error)
+}
+
+/// Finish a restore from `unfinished_restores` after bae restarted, from what
+/// coven recorded: the code, the device's name, and on Dropbox and OneDrive
+/// the provider sign-in. This signs in only when coven asks for one, when the
+/// kept sign-in is gone or the provider refuses it, with the access the
+/// listed restore names, and then resumes once more. A cancel ends the
+/// restore as `restore_from_code`'s does: before this device registered,
+/// coven removes what the restore kept; after, it fails as
+/// `RestoreRegistered`, the restore still unfinished. Each call consumes its
+/// builder, so `builder` makes one for each.
+pub async fn resume_restore(
+    builder: impl Fn() -> coven::CovenBuilder,
+    restore: &coven::CodeMetadata,
+    on_status: impl Fn(coven::BootstrapStatus),
+    cancel: &watch::Receiver<bool>,
+) -> Result<coven::CovenHandle, RestoreFromCodeError> {
+    let (store, on_status) = (restore.store_id, &on_status);
+    let resume = move |builder: coven::CovenBuilder| {
+        Box::pin(loading_builder(builder).resume_restore(store, on_status, cancel))
+    };
+    match resume(builder()).await {
+        Err(coven::BootstrapError::OAuth(coven::OAuthError::Reauthorize(_))) => {
+            let mut signed_in = builder();
+            auth::authenticate(&mut signed_in, restore.oauth_access, cancel).await?;
+            resume(signed_in).await
+        }
+        resumed => resumed,
+    }
+    .map_err(restore_error)
+}
+
 /// The invite a code holds; a restore code is refused before any sign-in.
 fn invite_info(code: &str) -> Result<coven::InviteInfo, RestoreFromCodeError> {
     match coven::decode_code_info(code) {

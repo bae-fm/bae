@@ -316,6 +316,9 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
         // Restoring as the member whose account holds the store, signed in
         // with another account.
         E::Sync(coven::SyncError::StoreOwner) => C::StoreOwnerAccount,
+        // Another of the person's devices replaced their keys, which the
+        // code or the copy this call started from doesn't hold.
+        E::Sync(coven::SyncError::MemberKeysReplaced { .. }) => C::MemberKeysReplaced,
         E::Sync(error) => sync_category(error),
         E::OAuth(_) => C::Credentials,
         E::Cleanup { operation, .. } => bootstrap_category(operation),

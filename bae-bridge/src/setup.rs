@@ -69,7 +69,7 @@ pub struct BridgeCodeMetadata {
     pub carries_s3_key: bool,
 }
 impl BridgeCodeMetadata {
-    fn from_core(value: coven::CodeMetadata) -> Self {
+    pub(crate) fn from_core(value: coven::CodeMetadata) -> Self {
         Self {
             library_id: value.store_id.to_string(),
             member_id: value.member.to_string(),

@@ -271,6 +271,10 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
         matches!(*stale, coven::BootstrapError::Sync(coven::SyncError::MemberKeysReplaced { .. })),
         "{stale:?}"
     );
+    assert_eq!(
+        bae_diagnostics::bootstrap_category(&stale),
+        bae_diagnostics::UiErrorCategory::MemberKeysReplaced
+    );
     opens_as(builder(), replaced.store, replaced.device).await;
 
     laptop.set_online(false);
@@ -331,22 +335,34 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
     opens_as(builder(), replaced.store, device).await;
 }
 
-/// Poll `replacing` one step at a time and drop it at the first step after
-/// which coven lists its replacement as unfinished: its record, as when the
-/// app quits there.
+/// Poll `work` one step at a time and drop it at the first step after which
+/// `stopped` holds, as when the app quits there.
+async fn stop_once<T, Stopped: std::future::Future<Output = bool>>(
+    work: impl std::future::Future<Output = T>,
+    stopped: impl Fn() -> Stopped,
+) {
+    let mut work = std::pin::pin!(work);
+    loop {
+        let step = std::future::poll_fn(|cx| {
+            std::task::Poll::Ready(std::future::Future::poll(work.as_mut(), cx))
+        })
+        .await;
+        assert!(step.is_pending(), "the work finished before it was seen to stop");
+        if stopped().await {
+            return;
+        }
+        tokio::task::yield_now().await;
+    }
+}
+
+/// Drop `replacing` at the first step after which coven lists its
+/// replacement as unfinished: its record.
 async fn stop_once_recorded<T>(
     installation: &coven::Coven,
     replacing: impl std::future::Future<Output = T>,
 ) {
-    let mut replacing = std::pin::pin!(replacing);
-    loop {
-        let step = std::future::poll_fn(|cx| {
-            std::task::Poll::Ready(std::future::Future::poll(replacing.as_mut(), cx))
-        })
-        .await;
-        assert!(step.is_pending(), "the replacement finished before its record was seen");
-        let listed = installation.stores().await.unwrap();
-        if listed.iter().any(|listed| {
+    stop_once(replacing, || async {
+        installation.stores().await.unwrap().iter().any(|listed| {
             matches!(
                 listed,
                 coven::ListedStore::Readable(coven::StoreInfo {
@@ -354,11 +370,9 @@ async fn stop_once_recorded<T>(
                     ..
                 })
             )
-        }) {
-            return;
-        }
-        tokio::task::yield_now().await;
-    }
+        })
+    })
+    .await;
 }
 
 /// A restore that stops right after it recorded itself, as when the app
@@ -597,6 +611,38 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
     .await
     .unwrap()
     .is_none());
+}
+
+/// A restore onto a new device that stopped after it recorded itself, as
+/// when the app quits there, is listed as under way with its library's id,
+/// and finishes from what coven kept, without the code. Nothing is listed
+/// after.
+#[tokio::test]
+async fn a_restore_onto_a_new_device_stopped_after_its_record_finishes_without_the_code() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path()).unwrap();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let (store, _, code) = connected_library(&installation, &storage, "Household").await;
+    let phone_dir = tempfile::TempDir::new().unwrap();
+    let phone = installation.another_device(AppDir::at(phone_dir.path()).unwrap().coven_app_dir());
+    let builder = || phone.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
+    let (_sender, cancel) = watch::channel(false);
+    stop_once(
+        restore_from_code(builder(), &code, Some(owner_key()), "Phone", |_| {}, &cancel),
+        || async { !unfinished_restores(&builder()).await.unwrap().is_empty() },
+    )
+    .await;
+
+    let [restore] = &unfinished_restores(&builder()).await.unwrap()[..] else {
+        panic!("one restore under way");
+    };
+    assert_eq!(restore.store_id, store);
+    let restored = resume_restore(builder, restore, |_| {}, &cancel).await.unwrap();
+    assert_eq!(restored.store_id(), store);
+    assert_eq!(restored.store_name().await.unwrap(), "Household");
+    restored.close().await.unwrap();
+    assert!(unfinished_restores(&builder()).await.unwrap().is_empty());
 }
 
 /// A library restored onto a new device reads its history from storage under

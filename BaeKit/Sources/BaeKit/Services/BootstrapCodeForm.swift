@@ -67,6 +67,10 @@ public final class BootstrapCodeForm {
         /// person's current restore code finishes it too, signing in again
         /// when the kept sign-in is refused. Core refuses any other code.
         case finishRestore(libraryId: String)
+        /// A restore onto this device that stopped after it recorded itself,
+        /// finished at once from what core kept, with no code. The person's
+        /// recovery code finishes it too.
+        case resumeRestore(BridgeUnfinishedRestore)
     }
 
     public let entry: Entry
@@ -204,6 +208,10 @@ public final class BootstrapCodeForm {
         case .finishRestore(let libraryId):
             launch { bootstrap in
                 try await bootstrap.finishRestore(libraryId: libraryId)
+            }
+        case .resumeRestore(let restore):
+            launch { bootstrap in
+                try await bootstrap.resumeRestore(restore)
             }
         case .restore, .join, .restoreOver:
             break

@@ -31,6 +31,8 @@ import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeStorageLocation
+import uniffi.bae_bridge.BridgeUnfinishedRestore
+import uniffi.bae_bridge.NoHandle
 
 /** A scanned code goes straight into adding this device; a typed one shows what it read first. */
 @RunWith(BaeRobolectricTestRunner::class)
@@ -38,14 +40,28 @@ import uniffi.bae_bridge.BridgeStorageLocation
 class OnboardingFlowTest {
     /**
      * A host whose restore from a code records the code and runs until the
-     * test ends, and whose finishing of a replacement records the library
-     * and call, then fails with [finishFailure], or runs until the test ends
-     * without one.
+     * test ends, whose finishing of a replacement records the library and
+     * call, then fails with [finishFailure], or runs until the test ends
+     * without one, and which lists [unfinished] as the restores under way,
+     * recording each it finishes and running until the test ends.
      */
     private class RestoreRecordingHost : NoJoinsHost() {
         val restoredCodes = mutableListOf<String>()
         val finished = mutableListOf<Pair<String, BridgeReplacedBy>>()
         var finishFailure: BridgeException? = null
+        var unfinished = emptyList<BridgeUnfinishedRestore>()
+        val resumed = mutableListOf<BridgeUnfinishedRestore>()
+
+        override suspend fun unfinishedRestores(): List<BridgeUnfinishedRestore> = unfinished
+
+        override suspend fun resumeRestore(
+            restore: BridgeUnfinishedRestore,
+            setup: BridgeLibrarySetup,
+            cancellation: BootstrapCancellation,
+        ): BridgeBootstrapResult {
+            resumed += restore
+            awaitCancellation()
+        }
 
         override suspend fun resumeReplacement(
             libraryId: String,
@@ -200,6 +216,18 @@ class OnboardingFlowTest {
 
         assertEquals(listOf("library-1" to BridgeReplacedBy.RESTORE), host.finished)
         assertEquals(OnboardingStep.EnterCode(finishing), flow.step)
+    }
+
+    /** A restore onto this phone that stopped after it recorded itself goes on finishing as the welcome opens. */
+    @Test
+    fun aStoppedRestoreGoesOnFinishingAtOnce() {
+        val restore = BridgeUnfinishedRestore(NoHandle)
+        host.unfinished = listOf(restore)
+        val flow = newFlow()
+
+        val running = flow.step as OnboardingStep.Running
+        assertEquals(OnboardingStep.ResumeRestore(restore), running.from)
+        assertEquals(listOf(restore), host.resumed)
     }
 
     private companion object {

@@ -13,6 +13,7 @@
 mod own_process;
 
 mod alac_fixtures;
+mod dropbox_sign_in;
 mod test_admin_changes;
 mod test_album_sort;
 mod test_candidate_text_fixtures;
@@ -34,6 +35,7 @@ mod test_playback_behavior;
 mod test_profile_request;
 mod test_release_edit_validation;
 mod test_restore_cost;
+mod test_restore_resume;
 mod test_save_s3_config;
 mod test_scrub_points;
 mod test_sql_read_tripwire;

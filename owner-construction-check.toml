@@ -370,6 +370,7 @@ ImageHold = "RemoteImageHost"
     "BridgeHost::join_with_invite",
     "BridgeHost::resume_join",
     "BridgeHost::resume_replacement",
+    "BridgeHost::resume_restore",
     "BridgeHost::prepare_device_reset",
     "BridgeDeviceReset::confirm",
 ]

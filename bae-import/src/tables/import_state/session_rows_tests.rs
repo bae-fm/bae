@@ -60,6 +60,7 @@ fn every_failure_class_reads_back_as_itself() {
         C::ReplacementUnfinished(coven::ReplacedBy::Reset),
         C::ReplacementUnfinished(coven::ReplacedBy::Restore),
         C::RestoreRegistered,
+        C::MemberKeysReplaced,
         C::DeletionUnfinished,
         C::DeletionSignInRequired,
     ];

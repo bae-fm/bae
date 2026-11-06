@@ -114,6 +114,11 @@ pub enum UiErrorCategory {
     /// library, so it can't be taken back: the restore stays unfinished on
     /// this device, and only finishing it goes on.
     RestoreRegistered,
+    /// The person's keys were replaced on another of their devices, so a
+    /// restore with an older recovery code, or a reset of a copy that holds
+    /// the replaced keys, can't add this device: only the current recovery
+    /// code restores the library.
+    MemberKeysReplaced,
     /// The library didn't open because this device is removing it: its
     /// removal stopped partway, and only finishing the removal ends it.
     DeletionUnfinished,

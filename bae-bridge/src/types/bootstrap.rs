@@ -505,3 +505,16 @@ impl BridgeUnfinishedJoin {
         crate::BridgeInviteInfo::from_core(self.join.clone())
     }
 }
+
+/// A restore of a library onto this device that stopped after it recorded
+/// itself, from its recorded restore code: continued with `resume_restore`.
+#[derive(uniffi::Object)]
+pub struct BridgeUnfinishedRestore {
+    pub(crate) restore: coven::CodeMetadata,
+}
+#[uniffi::export]
+impl BridgeUnfinishedRestore {
+    pub fn info(&self) -> crate::BridgeCodeMetadata {
+        crate::BridgeCodeMetadata::from_core(self.restore.clone())
+    }
+}

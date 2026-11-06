@@ -111,7 +111,7 @@ struct BootstrapCodeView: View {
     private var title: LocalizedStringKey {
         switch form.entry {
         case .restore(.some): "Restore from iCloud Keychain"
-        case .restore(nil): "Add device"
+        case .restore(nil), .resumeRestore: "Add device"
         case .join, .resume: "Join library"
         case .restoreOver: "Restore this library"
         case .finishRestore: "Finish restoring this library"
@@ -122,7 +122,7 @@ struct BootstrapCodeView: View {
         switch form.entry {
         case .restore(.some):
             Text("Restore with the code saved in iCloud Keychain.")
-        case .restore(nil):
+        case .restore(nil), .resumeRestore:
             Text(
                 "Scan or paste the code shown by Add device… on one of your devices. If you've lost every device, use your recovery code."
             )
@@ -146,7 +146,7 @@ struct BootstrapCodeView: View {
     private var primaryTitle: LocalizedStringKey {
         switch (form.attempt, form.entry) {
         case (.some(.join), _), (.some(.resume), _), (_, .resume): "Join"
-        case (_, .restore(nil)), (_, .join): "Add"
+        case (_, .restore(nil)), (_, .join), (_, .resumeRestore): "Add"
         case (_, .restore(.some)), (_, .restoreOver): "Restore"
         case (_, .finishRestore): "Finish restoring"
         }

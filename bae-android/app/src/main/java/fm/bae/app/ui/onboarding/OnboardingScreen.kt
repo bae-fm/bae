@@ -248,6 +248,7 @@ internal fun OnboardingProgress(
             is OnboardingStep.Restore -> stringResource(RestoreText.of(from.entry).running)
             is OnboardingStep.RestoreSaved -> stringResource(RestoreText.RESTORE.running)
             is OnboardingStep.FinishRestore -> stringResource(RestoreText.RESTORE.running)
+            is OnboardingStep.ResumeRestore -> stringResource(RestoreText.ADD.running)
         }
     OnboardingContainer {
         val status = step.state?.status

@@ -331,6 +331,59 @@ impl BridgeHost {
             .await
     }
 
+    /// The restores of a library onto this device that stopped after they
+    /// recorded themselves, to finish after bae restarts.
+    pub async fn unfinished_restores(
+        self: Arc<Self>,
+    ) -> Result<Vec<Arc<BridgeUnfinishedRestore>>, BridgeError> {
+        self.operations
+            .clone()
+            .run("BridgeHost.unfinished_restores", move || async move {
+                bae_library::unfinished_restores(&self.builder())
+                    .await
+                    .map(|restores| {
+                        restores
+                            .into_iter()
+                            .map(|restore| Arc::new(BridgeUnfinishedRestore { restore }))
+                            .collect()
+                    })
+                    .map_err(|error| BridgeError::categorized(error.category(), error))
+            })
+            .await
+    }
+
+    /// Finish a restore from `unfinished_restores` with what core kept: no
+    /// restore code, and a provider sign-in only when the kept one is gone or
+    /// refused. `cancellation` ends it as it ends `restore_from_code`; once
+    /// this device registered, the call fails as `RestoreRegistered` and the
+    /// restore stays unfinished.
+    pub async fn resume_restore(
+        self: Arc<Self>,
+        restore: Arc<BridgeUnfinishedRestore>,
+        setup: Arc<crate::BridgeLibrarySetup>,
+        cancellation: Arc<BootstrapCancellation>,
+    ) -> Result<BridgeBootstrapResult, BridgeError> {
+        let cancel = cancellation.cancel.subscribe();
+        let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
+        let steps = setup.writer();
+        self.operations
+            .clone()
+            .run_to_completion(self.clone(), "finish restoring library", move || async move {
+                match bae_library::resume_restore(
+                    || self.builder(),
+                    &restore.restore,
+                    |status| steps.bootstrap(status, true),
+                    &cancel,
+                )
+                .await
+                {
+                    Ok(handle) => Ok(BridgeBootstrapResult::opened(handle, self)),
+                    Err(error) => BridgeBootstrapResult::failure(error, self),
+                }
+            })
+            .await
+    }
+
     /// The caller closes the active library and shows the reset warning before
     /// confirming. Confirming again finishes a reset that stopped partway,
     /// whose warning the person already saw.

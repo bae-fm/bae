@@ -34,6 +34,7 @@ import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeUnfinishedJoin
+import uniffi.bae_bridge.BridgeUnfinishedRestore
 import uniffi.bae_bridge.decodeCodeInfo
 
 private const val TAG = "bae.OnboardingFlow"
@@ -63,8 +64,8 @@ internal sealed interface OnboardingStep {
 
     /**
      * What a restore or join for [entry] runs from: a code the person scanned
-     * or typed, one saved on this phone, or what core kept for a restore over
-     * this device's copy that stopped partway.
+     * or typed, one saved on this phone, or what core kept for a restore that
+     * stopped partway.
      */
     sealed interface Attempt {
         val entry: CodeEntry
@@ -114,6 +115,19 @@ internal sealed interface OnboardingStep {
     data class FinishRestore(
         override val entry: RestoreOver,
     ) : Attempt
+
+    /**
+     * A restore onto this device that stopped after it recorded itself,
+     * finished from what core kept: no code, and a sign-in only when the kept
+     * one is gone or refused.
+     */
+    data class ResumeRestore(
+        val restore: BridgeUnfinishedRestore,
+    ) : Attempt {
+        /** Only a new device's welcome goes on with one. */
+        override val entry: CodeEntry
+            get() = CodeEntry.NewDevice
+    }
 
     /**
      * An invite, read or saved from a join under way: joining starts at once,
@@ -238,7 +252,8 @@ internal class OnboardingFlow(
     init {
         when (restoreOver?.start) {
             // A join this device had under way when bae stopped opens on its
-            // waiting screen and goes on checking.
+            // waiting screen and goes on checking; with none, a restore that
+            // stopped partway goes on finishing.
             null -> {
                 resumeUnfinished()
             }
@@ -261,21 +276,34 @@ internal class OnboardingFlow(
         }
     }
 
-    /** Resume the join this device has under way, if any. */
+    /**
+     * Go on with what this device has under way, one at a time: the join, if
+     * any, or else the first restore that stopped after it recorded itself.
+     */
     private fun resumeUnfinished() {
         scope.launch {
-            val joins =
-                try {
-                    core.host.unfinishedJoins()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: BridgeException) {
-                    logger.error("listing the joins under way failed", e)
-                    error = context.displayError(e)
+            try {
+                val join = core.host.unfinishedJoins().firstOrNull()
+                if (join != null) {
+                    join(OnboardingStep.Invite(JoinStart.Unfinished(join), join.info(), CodeEntry.NewDevice))
                     return@launch
                 }
-            val join = joins.firstOrNull() ?: return@launch
-            join(OnboardingStep.Invite(JoinStart.Unfinished(join), join.info(), CodeEntry.NewDevice))
+                val restore = core.host.unfinishedRestores().firstOrNull() ?: return@launch
+                resumeRestore(restore)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: BridgeException) {
+                logger.error("listing what is under way failed", e)
+                error = context.displayError(e)
+            }
+        }
+    }
+
+    /** Finish [restore] from what core kept. */
+    private fun resumeRestore(restore: BridgeUnfinishedRestore) {
+        val running = core.newCancellation()
+        run(OnboardingStep.ResumeRestore(restore), running::cancel) { setup ->
+            core.host.resumeRestore(restore, setup, running)
         }
     }
 
@@ -495,7 +523,8 @@ internal class OnboardingFlow(
 
 /**
  * Where an ended restore or join returns: a restore's form, or the code
- * screen for an invite or a finished restore's finishing, which have none.
+ * screen for an invite or the finishing of a restore that stopped partway,
+ * which have none.
  */
 private fun OnboardingStep.Attempt.formStep(): OnboardingStep =
     when (this) {
@@ -503,4 +532,5 @@ private fun OnboardingStep.Attempt.formStep(): OnboardingStep =
         is OnboardingStep.RestoreSaved -> this
         is OnboardingStep.Invite -> OnboardingStep.EnterCode(entry)
         is OnboardingStep.FinishRestore -> OnboardingStep.EnterCode(entry)
+        is OnboardingStep.ResumeRestore -> OnboardingStep.EnterCode(entry)
     }

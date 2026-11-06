@@ -45,13 +45,14 @@ pub enum UiErrorClass {
     AirPlayUnreadableSettings,
     ReplacementUnfinished,
     RestoreRegistered,
+    MemberKeysReplaced,
     DeletionUnfinished,
     DeletionSignInRequired,
 }
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 40] = [
+    const ALL: [Self; 41] = [
         Self::Database,
         Self::Config,
         Self::Internal,
@@ -90,6 +91,7 @@ impl UiErrorClass {
         Self::AirPlayUnreadableSettings,
         Self::ReplacementUnfinished,
         Self::RestoreRegistered,
+        Self::MemberKeysReplaced,
         Self::DeletionUnfinished,
         Self::DeletionSignInRequired,
     ];
@@ -135,6 +137,7 @@ impl UiErrorClass {
             Self::AirPlayUnreadableSettings => "airplay_unreadable_settings",
             Self::ReplacementUnfinished => "replacement_unfinished",
             Self::RestoreRegistered => "restore_registered",
+            Self::MemberKeysReplaced => "member_keys_replaced",
             Self::DeletionUnfinished => "deletion_unfinished",
             Self::DeletionSignInRequired => "deletion_sign_in_required",
         }
@@ -208,6 +211,7 @@ impl UiErrorClass {
             | Self::QueueChanged
             | Self::ReplacementUnfinished
             | Self::RestoreRegistered
+            | Self::MemberKeysReplaced
             | Self::DeletionUnfinished
             | Self::DeletionSignInRequired => false,
         }
@@ -257,6 +261,7 @@ impl UiErrorCategory {
             Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
             Self::ReplacementUnfinished(_) => K::ReplacementUnfinished,
             Self::RestoreRegistered => K::RestoreRegistered,
+            Self::MemberKeysReplaced => K::MemberKeysReplaced,
             Self::DeletionUnfinished => K::DeletionUnfinished,
             Self::DeletionSignInRequired => K::DeletionSignInRequired,
         }
@@ -297,6 +302,7 @@ impl UiErrorCategory {
             K::AirPlayUnsupported => Self::AirPlayUnsupported,
             K::AirPlayUnreadableSettings => Self::AirPlayUnreadableSettings,
             K::RestoreRegistered => Self::RestoreRegistered,
+            K::MemberKeysReplaced => Self::MemberKeysReplaced,
             K::DeletionUnfinished => Self::DeletionUnfinished,
             K::DeletionSignInRequired => Self::DeletionSignInRequired,
             K::MetadataTrackCount
