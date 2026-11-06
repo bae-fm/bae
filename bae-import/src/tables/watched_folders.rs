@@ -214,6 +214,29 @@ impl ImportTables {
     }
 }
 
+impl ImportTables {
+    /// Plant damage for a test: `inner`, a folder inside a watched one,
+    /// stored as watched too. The add refuses a folder that overlaps another,
+    /// so no write stores one; a damaged store holds one, and every read of
+    /// the watched folders checks for it.
+    #[cfg(test)]
+    pub(crate) async fn plant_overlapping_watched_folder_for_test(
+        &self,
+        inner: &Path,
+    ) -> Result<(), DbError> {
+        let inner = coven::path_bytes(inner);
+        self.store
+            .call(move |sql| {
+                sql.execute(
+                    "INSERT INTO watched_import_folders (path, position) VALUES (?, 99)",
+                    [inner],
+                )?;
+                Ok(())
+            })
+            .await
+    }
+}
+
 #[cfg(test)]
 #[path = "watched_folders_tests.rs"]
 mod tests;

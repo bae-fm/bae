@@ -226,16 +226,13 @@ impl RootRemovalBackend for FakeRemovalBackend {
     }
 }
 
-/// Store a watched folder inside another, which every read of the watched
+/// Plant a watched folder inside another, which every read of the watched
 /// folders refuses.
 async fn make_watched_folders_unreadable(db: &Store) {
-    let inner = coven::path_bytes(&root_path("/music/inner"));
-    db.call(move |sql| {
-        sql.execute("INSERT INTO watched_import_folders (path, position) VALUES (?, 99)", [inner])?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    crate::tables::ImportTables::new(db.clone())
+        .plant_overlapping_watched_folder_for_test(&root_path("/music/inner"))
+        .await
+        .unwrap();
 }
 
 pub(crate) struct CoordinatorHarness {
@@ -328,18 +325,11 @@ impl CoordinatorHarness {
         }
     }
 
-    /// Store a watched folder inside `/music`, which the store's own add
+    /// Plant a watched folder inside `/music`, which the store's own add
     /// refuses, so that reading the watched folders fails from here on.
     pub(crate) async fn corrupt_watched_folders(&self) {
-        let inner = root_path("/music").join("artist");
-        self.db
-            .call(move |conn| {
-                conn.execute(
-                    "INSERT INTO watched_import_folders (path, position) VALUES (?, 99)",
-                    rusqlite::params![coven::path_bytes(&inner)],
-                )?;
-                Ok(())
-            })
+        crate::tables::ImportTables::new(self.db.clone())
+            .plant_overlapping_watched_folder_for_test(&root_path("/music").join("artist"))
             .await
             .unwrap();
     }
