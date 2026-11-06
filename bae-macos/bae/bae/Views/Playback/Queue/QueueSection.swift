@@ -459,14 +459,11 @@ extension QueueSection {
                     },
                     onSkipTo: onSkipTo,
                     onRemove: { id in
-                        // Collapse first and send the remove after the spring
-                        // settles, so core's echo can't cut the animation
-                        // short.
+                        // Collapse first and send the remove once the collapse
+                        // has finished, so core's echo can't cut it short.
                         withAnimation(.spring(duration: 0.2)) {
                             _ = removingEntryIds.insert(id)
-                        }
-                        Task { @MainActor in
-                            try? await Task.sleep(for: .milliseconds(350))
+                        } completion: {
                             onRemove(id)
                         }
                     }
