@@ -537,8 +537,8 @@ async fn a_stored_catalog_cover_reads_back_as_its_choice() {
 
 /// No write stores a cover naming a file the scan did not store, and the
 /// cover is stored under the candidate's content hash, which fixes its files,
-/// so such a cover is a damaged row: the pane and the row both fail reading
-/// it, and neither draws nothing in its place.
+/// so such a cover is a damaged row, planted here as damage: the pane and the
+/// row both fail reading it, and neither draws nothing in its place.
 #[tokio::test]
 async fn a_stored_cover_naming_a_file_the_scan_did_not_store_fails_both_reads() {
     let (db, _tmp, root) = watched_root().await;
@@ -550,13 +550,7 @@ async fn a_stored_cover_naming_a_file_the_scan_did_not_store_fails_both_reads() 
         .type_field(&hash, crate::CandidateEditField::AlbumTitle, "Album")
         .await
         .unwrap();
-    bae_store::test_fixtures::exec(
-        &db,
-        "INSERT INTO import_candidate_cover (content_hash, kind, file_id) \
-         VALUES (?, 'local', 'gone.jpg')",
-        &[&hash],
-    )
-    .await;
+    tables.damage_cover_file_for_test(&hash, "gone.jpg").await.unwrap();
 
     let pane = tables.load_import_candidate(&candidate.key()).await.map(|_| ());
     let row = tables.load_import_list_read(request(TriageTab::Pending).await).await.map(|_| ());

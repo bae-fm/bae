@@ -221,6 +221,30 @@ pub(super) fn load_prepared_cover_on(
     })
 }
 
+impl ImportTables {
+    /// Plant damage for a test: a local cover for `content_hash` naming
+    /// `file_id`, a file the scan did not store. No write stores such a row;
+    /// a damaged store holds one, and the cover reads check for it.
+    #[cfg(test)]
+    pub(crate) async fn damage_cover_file_for_test(
+        &self,
+        content_hash: &str,
+        file_id: &str,
+    ) -> Result<(), DbError> {
+        let (content_hash, file_id) = (content_hash.to_string(), file_id.to_string());
+        self.store
+            .call(move |sql| {
+                sql.execute(
+                    "INSERT INTO import_candidate_cover (content_hash, kind, file_id) \
+                     VALUES (?, 'local', ?)",
+                    params![content_hash, file_id],
+                )?;
+                Ok(())
+            })
+            .await
+    }
+}
+
 #[cfg(test)]
 #[path = "cover_rows_tests.rs"]
 mod tests;
