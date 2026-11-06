@@ -107,7 +107,7 @@ private final class UpcomingFeed: @unchecked Sendable {
                             offset: offset,
                             limit: 1
                         ),
-                        entries: [queueEntry(entryId)]
+                        rows: [queueEntry(entryId)]
                     )
                 ]
             } ?? []
