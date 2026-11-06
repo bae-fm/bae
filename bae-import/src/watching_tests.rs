@@ -344,6 +344,16 @@ impl CoordinatorHarness {
             .unwrap();
     }
 
+    /// Drop `table`, so every read of it fails from here on.
+    pub(crate) async fn drop_table(&self, table: &'static str) {
+        crate::candidate_runtime::tests::add_to_library_schema(
+            self._temp.path(),
+            table,
+            format!("DROP TABLE {table};"),
+        )
+        .await;
+    }
+
     /// Hand the coordinator `report` as its watch would, and wait until it
     /// has asked for the reads the report calls for.
     pub(crate) async fn watch_report(&self, report: WatchReport) {

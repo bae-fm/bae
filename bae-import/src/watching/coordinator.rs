@@ -11,7 +11,7 @@ pub(crate) enum WatcherCommand {
     /// Read every watched folder the store lists. `completion` hears once
     /// each read is asked for, or why the folders could not be listed.
     RescanAll {
-        completion: tokio::sync::oneshot::Sender<Result<(), String>>,
+        completion: tokio::sync::oneshot::Sender<Result<(), bae_store::DbError>>,
     },
     Rescan(std::path::PathBuf),
     Refresh {
@@ -173,7 +173,8 @@ pub(super) enum NetworkCheck {
     /// What moved, in the form a filesystem event gives it, or `None` when
     /// the whole folder has to be read.
     Moved(Option<Vec<PathBuf>>),
-    /// The check ended unfinished: its runtime is shutting down under it.
+    /// The check ended unfinished: its runtime is shutting down under it, or
+    /// it could not read what the last scan saw.
     Unfinished,
 }
 
@@ -263,7 +264,7 @@ impl Coordinator {
                 let roots = match watched_roots(tables).await {
                     Ok(roots) => roots,
                     Err(error) => {
-                        if completion.send(Err(error.to_string())).is_err() {
+                        if completion.send(Err(error)).is_err() {
                             debug!("rescan caller dropped before the watched folders failed");
                         }
                         return;
@@ -285,10 +286,9 @@ impl Coordinator {
                     Ok(true) => {}
                     Ok(false) => return,
                     Err(error) => {
-                        error!(
-                            "could not read whether {} is watched, so it is not read again: \
-                             {error}",
-                            path.display()
+                        self.diagnostics.report_bug(
+                            &format!("check whether {} is watched before a rescan", path.display()),
+                            &error,
                         );
                         return;
                     }
@@ -445,8 +445,9 @@ async fn check_network_folder(
     let recorded = match tables.load_folder_scan_directories(root).await {
         Ok(recorded) => recorded,
         Err(error) => {
-            warn!("could not read what the last scan of {} saw: {error}", root.display());
-            Vec::new()
+            diagnostics
+                .report_bug(&format!("read what the last scan of {} saw", root.display()), &error);
+            return NetworkCheck::Unfinished;
         }
     };
     let checked_root = root.to_path_buf();

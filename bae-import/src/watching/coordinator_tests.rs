@@ -307,8 +307,39 @@ async fn a_rescan_of_unreadable_watched_folders_fails_to_its_caller() {
         .expect("the coordinator answers")
         .expect("the coordinator is running")
         .expect_err("the unreadable list fails the rescan");
-    assert!(error.contains("cannot overlap"), "{error}");
+    assert!(error.to_string().contains("cannot overlap"), "{error}");
     harness.commands_handled().await;
     assert!(harness.scans.scans.lock().unwrap().is_empty());
+    harness.shutdown().await;
+}
+
+/// A failed read of whether a folder is watched is not "it is not watched":
+/// the rescan asked for is not dropped quietly, the failure is reported.
+#[tokio::test]
+async fn a_rescan_that_cannot_tell_if_its_folder_is_watched_reports_the_failure() {
+    let harness = CoordinatorHarness::new().await;
+    harness.db.close().await.unwrap();
+    harness.commands.send(WatcherCommand::Rescan(root_path("/music"))).unwrap();
+    harness.commands_handled().await;
+
+    let reports = harness.bugs.reports();
+    assert!(reports.iter().any(|(operation, _)| operation.contains("rescan")), "{reports:?}");
+    harness.shutdown().await;
+}
+
+/// A network folder's check that cannot read what the last scan saw ends
+/// unfinished and reports it, rather than comparing against nothing.
+#[tokio::test]
+async fn a_network_check_that_cannot_read_the_last_scan_reports_the_failure() {
+    let harness = CoordinatorHarness::new().await;
+    harness.drop_table("folder_scan_directory").await;
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let tables = crate::tables::ImportTables::new(harness.db.clone());
+
+    let found = check_network_folder(&tables, &root_path("/music"), &diagnostics).await;
+
+    assert_eq!(found, NetworkCheck::Unfinished);
+    assert_eq!(bugs.reports().len(), 1, "{:?}", bugs.reports());
     harness.shutdown().await;
 }

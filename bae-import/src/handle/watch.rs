@@ -123,7 +123,7 @@ impl ImportServiceHandle {
             .map_err(|error| crate::ImportError::Internal {
                 detail: format!("the watched folders' rescan ended without a result: {error}"),
             })?
-            .map_err(|detail| crate::ImportError::Watch { detail })
+            .map_err(crate::ImportError::from)
     }
 
     /// Read every watched folder and return, once each read has ended, where
