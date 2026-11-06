@@ -152,7 +152,6 @@ BEGIN
         credit_artist_ids = excluded.credit_artist_ids,
         media_empty = excluded.media_empty,
         media_key = excluded.media_key,
-        created_at = excluded.created_at,
         file_count = excluded.file_count,
         total_size = excluded.total_size,
         stored = excluded.stored,
@@ -209,12 +208,12 @@ BEGIN
     WHERE release_id = NEW.release_id;
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_media_changed AFTER UPDATE OF release_id, position, medium, count ON release_media
+CREATE TRIGGER IF NOT EXISTS release_listing_media_changed AFTER UPDATE OF medium, count ON release_media
 BEGIN
     UPDATE release_listing SET (media_empty, media_key) =
         (SELECT media_empty, media_key FROM release_media_sort media
          WHERE media.release_id = release_listing.release_id)
-    WHERE release_id IN (OLD.release_id, NEW.release_id);
+    WHERE release_id = NEW.release_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_media_removed AFTER DELETE ON release_media
@@ -276,9 +275,8 @@ BEGIN
     WHERE release_id = NEW.release_id;
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_pin_changed AFTER UPDATE OF release_id, state ON download_queue
+CREATE TRIGGER IF NOT EXISTS release_listing_pin_changed AFTER UPDATE OF state ON download_queue
 BEGIN
-    UPDATE release_listing SET download_queued = 0 WHERE release_id = OLD.release_id;
     UPDATE release_listing SET download_queued = NEW.state IN ('queued', 'active')
     WHERE release_id = NEW.release_id;
 END;

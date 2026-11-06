@@ -133,10 +133,9 @@ BEGIN
     VALUES ((SELECT entry FROM artist_credit_search_entry WHERE artist_id = NEW.artist_id AND name_key = NEW.name_key), bae_fold_case(NEW.name), NEW.artist_id, NEW.name_key);
 END;
 
-CREATE TRIGGER IF NOT EXISTS artist_credit_search_changed AFTER UPDATE OF artist_id, name_key, name ON artist_credits
+CREATE TRIGGER IF NOT EXISTS artist_credit_search_changed AFTER UPDATE OF name ON artist_credits
 BEGIN
-    UPDATE artist_credit_search_entry SET artist_id = NEW.artist_id, name_key = NEW.name_key WHERE artist_id = OLD.artist_id AND name_key = OLD.name_key;
-    UPDATE artist_credit_search SET name = bae_fold_case(NEW.name), artist_id = NEW.artist_id, name_key = NEW.name_key WHERE rowid = (SELECT entry FROM artist_credit_search_entry WHERE artist_id = NEW.artist_id AND name_key = NEW.name_key);
+    UPDATE artist_credit_search SET name = bae_fold_case(NEW.name) WHERE rowid = (SELECT entry FROM artist_credit_search_entry WHERE artist_id = NEW.artist_id AND name_key = NEW.name_key);
 END;
 
 CREATE TRIGGER IF NOT EXISTS artist_credit_search_removed AFTER DELETE ON artist_credits

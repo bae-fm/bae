@@ -78,9 +78,8 @@ BEGIN
     INSERT INTO release_storage_refresh (release_id) VALUES (NEW.release_id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_storage_file_changed AFTER UPDATE OF release_id, file ON release_files
+CREATE TRIGGER IF NOT EXISTS release_storage_file_changed AFTER UPDATE OF file ON release_files
 BEGIN
-    INSERT INTO release_storage_refresh (release_id) VALUES (OLD.release_id);
     INSERT INTO release_storage_refresh (release_id) VALUES (NEW.release_id);
 END;
 

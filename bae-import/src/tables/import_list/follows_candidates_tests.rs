@@ -4,7 +4,7 @@
 
 use crate::tables::import_list::placement::tests::*;
 use crate::tables::import_list::tests::*;
-use bae_records::test_fixtures::{ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A};
+use bae_records::test_fixtures::{ARTIST_A, ARTIST_B};
 
 /// The draft counts only while its state describes the folder's current
 /// files: it shows once it is not blank, and an older revision's shows nothing.
@@ -306,8 +306,6 @@ async fn a_release_whose_draft_is_gone_shows_its_folder() {
 /// both releases.
 #[tokio::test]
 async fn a_row_moved_to_other_files_moves_both_releases() {
-    let imported =
-        |placed: Placed| placed.on("done").dated(1_767_225_600_000).shown("Album Title", Some(""));
     for (table, row, placed) in [
         (
             "import_candidate_failure",
@@ -340,12 +338,6 @@ async fn a_row_moved_to_other_files_moves_both_releases() {
              VALUES ('{hash}', 'not_found', 0);",
             |placed: Placed| placed.needs_you("not_found"),
         ),
-        (
-            "local_release_origin",
-            "INSERT INTO local_release_origin (release_id, content_hash)
-             VALUES ('{RELEASE_A}', '{hash}');",
-            imported,
-        ),
     ] {
         let lib = Library::new().await;
         let mut setup = String::new();
@@ -358,13 +350,7 @@ async fn a_row_moved_to_other_files_moves_both_releases() {
                 hash(name)
             ));
         }
-        setup.push_str(&format!(
-            "INSERT INTO albums (id, title, is_compilation, created_at)
-             VALUES ('{ALBUM_A}', 'Album Title', 0, '2026-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, created_at, album_order)
-             VALUES ('{RELEASE_A}', '{ALBUM_A}', '2026-01-01T00:00:00Z', 0);"
-        ));
-        setup.push_str(&row.replace("{hash}", &hash("First")).replace("{RELEASE_A}", RELEASE_A));
+        setup.push_str(&row.replace("{hash}", &hash("First")));
         lib.run(&setup).await;
         assert_eq!(
             lib.moved(&format!(

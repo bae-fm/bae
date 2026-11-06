@@ -44,13 +44,11 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'composer_detail_row';
 END;
 
-CREATE TRIGGER IF NOT EXISTS composer_detail_row_order_moved AFTER UPDATE OF group_title, group_album, group_order, place, title, position ON composer_detail_row
+CREATE TRIGGER IF NOT EXISTS composer_detail_row_order_moved AFTER UPDATE OF group_title, group_album, group_order, title ON composer_detail_row
 WHEN OLD.group_title IS NOT NEW.group_title
   OR OLD.group_album IS NOT NEW.group_album
   OR OLD.group_order IS NOT NEW.group_order
-  OR OLD.place IS NOT NEW.place
   OR OLD.title IS NOT NEW.title
-  OR OLD.position IS NOT NEW.position
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'composer_detail_row';
 END;
@@ -85,13 +83,6 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'album_artist_link';
 END;
 
-CREATE TRIGGER IF NOT EXISTS album_artist_link_order_moved AFTER UPDATE OF artist_id, album_id ON album_artist_link
-WHEN OLD.artist_id IS NOT NEW.artist_id
-  OR OLD.album_id IS NOT NEW.album_id
-BEGIN
-    UPDATE library_list_versions SET version = version + 1 WHERE source = 'album_artist_link';
-END;
-
 CREATE TRIGGER IF NOT EXISTS artist_listing_order_added AFTER INSERT ON artist_listing
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'artist_listing';
@@ -120,13 +111,12 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'release_listing';
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_order_moved AFTER UPDATE OF album_title, credit_sort_names, credit_artist_ids, media_empty, media_key, created_at, file_count, total_size, stored, queued_count, download_queued, pinned_count ON release_listing
+CREATE TRIGGER IF NOT EXISTS release_listing_order_moved AFTER UPDATE OF album_title, credit_sort_names, credit_artist_ids, media_empty, media_key, file_count, total_size, stored, queued_count, download_queued, pinned_count ON release_listing
 WHEN OLD.album_title IS NOT NEW.album_title
   OR OLD.credit_sort_names IS NOT NEW.credit_sort_names
   OR OLD.credit_artist_ids IS NOT NEW.credit_artist_ids
   OR OLD.media_empty IS NOT NEW.media_empty
   OR OLD.media_key IS NOT NEW.media_key
-  OR OLD.created_at IS NOT NEW.created_at
   OR OLD.file_count IS NOT NEW.file_count
   OR OLD.total_size IS NOT NEW.total_size
   OR OLD.stored IS NOT NEW.stored
@@ -165,7 +155,7 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;
 
-CREATE TRIGGER IF NOT EXISTS library_search_artist_credit_changed AFTER UPDATE OF artist_id, name_key, name ON artist_credits
+CREATE TRIGGER IF NOT EXISTS library_search_artist_credit_changed AFTER UPDATE OF name ON artist_credits
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;
@@ -180,7 +170,7 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;
 
-CREATE TRIGGER IF NOT EXISTS library_search_album_credit_changed AFTER UPDATE OF album_id, artist_id, credit_key ON album_artists
+CREATE TRIGGER IF NOT EXISTS library_search_album_credit_changed AFTER UPDATE OF artist_id, credit_key ON album_artists
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;
@@ -195,7 +185,7 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;
 
-CREATE TRIGGER IF NOT EXISTS library_search_artist_shown_changed AFTER UPDATE OF artist_id, shown_artist_id ON artist_shown_as
+CREATE TRIGGER IF NOT EXISTS library_search_artist_shown_changed AFTER UPDATE OF shown_artist_id ON artist_shown_as
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;

@@ -47,12 +47,6 @@ BEGIN
     UPDATE release_queue_versions SET version = version + 1 WHERE source = 'download_queue';
 END;
 
-CREATE TRIGGER IF NOT EXISTS download_queue_order_moved AFTER UPDATE OF position ON download_queue
-WHEN OLD.position IS NOT NEW.position
-BEGIN
-    UPDATE release_queue_versions SET version = version + 1 WHERE source = 'download_queue';
-END;
-
 -- A release queued to export or save into a folder, as `download_queue` holds
 -- a download. How far it has got is not here either.
 CREATE TABLE IF NOT EXISTS output_queue (
@@ -79,12 +73,6 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS output_queue_order_removed AFTER DELETE ON output_queue
-BEGIN
-    UPDATE release_queue_versions SET version = version + 1 WHERE source = 'output_queue';
-END;
-
-CREATE TRIGGER IF NOT EXISTS output_queue_order_moved AFTER UPDATE OF position ON output_queue
-WHEN OLD.position IS NOT NEW.position
 BEGIN
     UPDATE release_queue_versions SET version = version + 1 WHERE source = 'output_queue';
 END;

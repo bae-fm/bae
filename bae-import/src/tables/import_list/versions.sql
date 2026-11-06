@@ -55,13 +55,6 @@ BEGIN
     UPDATE import_list_versions SET version = version + 1 WHERE source = 'local_release_origin';
 END;
 
-CREATE TRIGGER IF NOT EXISTS local_release_origin_order_moved AFTER UPDATE OF release_id, content_hash ON local_release_origin
-WHEN OLD.release_id IS NOT NEW.release_id
-  OR OLD.content_hash IS NOT NEW.content_hash
-BEGIN
-    UPDATE import_list_versions SET version = version + 1 WHERE source = 'local_release_origin';
-END;
-
 CREATE TRIGGER IF NOT EXISTS release_storage_order_added AFTER INSERT ON release_storage
 BEGIN
     UPDATE import_list_versions SET version = version + 1 WHERE source = 'release_storage';

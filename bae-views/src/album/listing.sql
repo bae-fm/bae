@@ -114,9 +114,8 @@ BEGIN
     INSERT INTO album_listing_refresh (album_id) VALUES (NEW.album_id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS album_credit_changed AFTER UPDATE OF album_id, artist_id, position ON album_artists
+CREATE TRIGGER IF NOT EXISTS album_credit_changed AFTER UPDATE OF artist_id ON album_artists
 BEGIN
-    INSERT INTO album_listing_refresh (album_id) VALUES (OLD.album_id);
     INSERT INTO album_listing_refresh (album_id) VALUES (NEW.album_id);
 END;
 

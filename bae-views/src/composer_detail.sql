@@ -120,10 +120,8 @@ BEGIN
     WHERE artist_id = NEW.artist_id AND item_id = NEW.work_id
     ON CONFLICT (artist_id, section, group_id, item_id) DO UPDATE SET
         group_title = excluded.group_title,
-        place = excluded.place,
         title = excluded.title
     WHERE composer_detail_row.group_title IS NOT excluded.group_title
-       OR composer_detail_row.place IS NOT excluded.place
        OR composer_detail_row.title IS NOT excluded.title;
 END;
 
@@ -145,14 +143,10 @@ BEGIN
     ON CONFLICT (artist_id, section, group_id, item_id) DO UPDATE SET
         group_title = excluded.group_title,
         group_album = excluded.group_album,
-        group_order = excluded.group_order,
-        place = excluded.place,
-        position = excluded.position
+        group_order = excluded.group_order
     WHERE composer_detail_row.group_title IS NOT excluded.group_title
        OR composer_detail_row.group_album IS NOT excluded.group_album
-       OR composer_detail_row.group_order IS NOT excluded.group_order
-       OR composer_detail_row.place IS NOT excluded.place
-       OR composer_detail_row.position IS NOT excluded.position;
+       OR composer_detail_row.group_order IS NOT excluded.group_order;
 END;
 
 -- A work credited on an artist or no longer lists that work on the artist's
