@@ -774,6 +774,27 @@ pub(super) fn repeat_from_row<I: rusqlite::RowIndex + Copy>(
     }
 }
 
+/// The context lane holding the tracks `start..end`, track `i` at place `i`
+/// and named by `track_id_sql`, an SQL expression over `i`, and the queue
+/// playing the library from before the lane's first track. The lane goes in
+/// by one set-based statement, at the sizes the lists' window costs are
+/// measured at.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn fill_context_lane_on(
+    sql: &CovenWrite<'_>,
+    start: u64,
+    end: u64,
+    track_id_sql: &str,
+) -> Result<(), DbError> {
+    let rows = bae_store::test_fixtures::window_cost::numbered(start, end);
+    sql.execute_batch(&format!(
+        "{rows} INSERT INTO playback_context (entry, position, track_id, unshuffled) \
+             SELECT i, i, {track_id_sql}, i FROM k;
+         UPDATE playback_queue SET source_kind = 'library', shuffled = 0, cursor = -1;"
+    ))?;
+    Ok(())
+}
+
 #[cfg(test)]
 #[path = "queue_tests.rs"]
 mod tests;
