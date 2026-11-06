@@ -36,6 +36,17 @@ pub enum ImportCommitError {
     /// here.
     #[error("this device already imported these files, as release {release_id}")]
     FilesAlreadyImported { release_id: String },
+    /// The commit was refused, and rolling it back failed too.
+    #[error("{operation}; rollback failed: {rollback}")]
+    Rollback {
+        operation: Box<ImportCommitError>,
+        #[source]
+        rollback: rusqlite::Error,
+    },
+    /// The commit was refused, and removing the bytes it staged failed too,
+    /// each failure kept.
+    #[error("file cleanup failed: {failures:?}; write: {write}")]
+    FileCleanup { write: Box<ImportCommitError>, failures: Vec<coven::DbError> },
 }
 
 impl From<rusqlite::Error> for ImportCommitError {
@@ -60,30 +71,30 @@ impl coven::task::CarriesBug for ImportCommitError {
     fn bug(&self) -> Option<&coven::task::Bug> {
         match self {
             Self::Write(error) => error.bug(),
+            Self::Rollback { operation, .. } => operation.bug(),
+            Self::FileCleanup { write, failures } => {
+                write.bug().or_else(|| failures.iter().find_map(coven::task::CarriesBug::bug))
+            }
             Self::LibraryChanged | Self::FilesAlreadyImported { .. } => None,
         }
     }
 }
 
-/// A failed rollback or byte removal is a database failure first: it joins a
-/// database error beside the refusal it followed, as that error's text.
+/// A failed rollback or byte removal is kept beside the failure it followed:
+/// the write's own error keeps it as that error does, a refusal stays the
+/// refusal it is.
 impl coven::WriteFailure for ImportCommitError {
     fn with_rollback(self, rollback: rusqlite::Error) -> Self {
         match self {
             Self::Write(error) => Self::Write(error.with_rollback(rollback)),
-            refusal => Self::Write(IdentityWriteError::Db(
-                DbError::Message(refusal.to_string()).with_rollback(rollback),
-            )),
+            operation => Self::Rollback { operation: Box::new(operation), rollback },
         }
     }
 
     fn with_cleanup(write: Self, failures: Vec<coven::DbError>) -> Self {
         match write {
             Self::Write(error) => Self::Write(IdentityWriteError::with_cleanup(error, failures)),
-            refusal => Self::Write(IdentityWriteError::Db(DbError::with_cleanup(
-                DbError::Message(refusal.to_string()),
-                failures,
-            ))),
+            write => Self::FileCleanup { write: Box::new(write), failures },
         }
     }
 }

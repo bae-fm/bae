@@ -743,3 +743,27 @@ async fn check_two_devices_give_one_artist_id(devices: &bae_store::test_devices:
         assert_eq!(artist.artist_id, "artist-a");
     }
 }
+
+/// A refusal whose write then fails to roll back, or to remove the bytes it
+/// staged, stays the refusal it is, with that failure beside it.
+#[test]
+fn a_refusal_keeps_its_type_when_its_rollback_or_cleanup_fails() {
+    use coven::WriteFailure;
+    let refused = || IdentityWriteError::Unresolvable("the picked artist is gone".to_string());
+
+    let rolled_back = refused().with_rollback(rusqlite::Error::InvalidQuery);
+    let IdentityWriteError::Rollback { operation, .. } = &rolled_back else {
+        panic!("a failed rollback keeps the refusal under it, got {rolled_back:?}");
+    };
+    assert!(matches!(**operation, IdentityWriteError::Unresolvable(_)), "{operation:?}");
+
+    let cleaned = IdentityWriteError::with_cleanup(
+        refused(),
+        vec![coven::DbError::Sqlite(rusqlite::Error::InvalidQuery)],
+    );
+    let IdentityWriteError::FileCleanup { write, failures } = &cleaned else {
+        panic!("a failed byte removal keeps the refusal under it, got {cleaned:?}");
+    };
+    assert!(matches!(**write, IdentityWriteError::Unresolvable(_)), "{write:?}");
+    assert_eq!(failures.len(), 1);
+}

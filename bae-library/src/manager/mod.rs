@@ -254,12 +254,25 @@ impl From<coven::CovenError> for LibraryError {
     }
 }
 
+/// A refused write whose rollback or byte removal failed too is the refusal
+/// with each failed cleanup after it.
 impl From<bae_records::IdentityWriteError> for LibraryError {
     fn from(error: bae_records::IdentityWriteError) -> Self {
+        use bae_records::IdentityWriteError as E;
         match error {
-            bae_records::IdentityWriteError::Db(error) => Self::Database(error),
-            bae_records::IdentityWriteError::Unresolvable(detail) => Self::Refused(detail),
-            bae_records::IdentityWriteError::StoredName(error) => error.into(),
+            E::Db(error) => Self::Database(error),
+            E::Unresolvable(detail) => Self::Refused(detail),
+            E::StoredName(error) => error.into(),
+            E::Rollback { operation, rollback } => Self::Cleanup {
+                operation: Box::new((*operation).into()),
+                cleanup: Box::new(Self::Database(rollback.into())),
+            },
+            E::FileCleanup { write, failures } => {
+                failures.into_iter().fold((*write).into(), |operation, failure| Self::Cleanup {
+                    operation: Box::new(operation),
+                    cleanup: Box::new(Self::Database(failure.into())),
+                })
+            }
         }
     }
 }

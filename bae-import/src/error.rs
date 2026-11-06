@@ -188,6 +188,21 @@ pub enum ImportError {
     #[error(transparent)]
     Database(#[from] bae_store::DbError),
 
+    /// An import's write failed, and rolling it back failed too.
+    #[cfg(desktop)]
+    #[error("{operation}; rollback failed: {rollback}")]
+    Rollback {
+        operation: Box<ImportError>,
+        #[source]
+        rollback: rusqlite::Error,
+    },
+
+    /// An import's write failed, and removing the bytes it staged failed
+    /// too, each failure kept.
+    #[cfg(desktop)]
+    #[error("file cleanup failed: {failures:?}; write: {write}")]
+    FileCleanup { write: Box<ImportError>, failures: Vec<coven::DbError> },
+
     /// Where the library syncs to could not be read, which decides where an
     /// import's files go.
     #[cfg(desktop)]
@@ -292,6 +307,12 @@ impl From<bae_records::IdentityWriteError> for ImportError {
             E::Unresolvable(detail) => Self::Unresolvable { detail },
             E::StoredName(error) => Self::StoredName(error),
             E::Db(error) => Self::Database(error),
+            E::Rollback { operation, rollback } => {
+                Self::Rollback { operation: Box::new((*operation).into()), rollback }
+            }
+            E::FileCleanup { write, failures } => {
+                Self::FileCleanup { write: Box::new((*write).into()), failures }
+            }
         }
     }
 }
@@ -306,6 +327,12 @@ impl From<crate::tables::ImportCommitError> for ImportError {
             E::Write(error) => error.into(),
             E::LibraryChanged => Self::LibraryChanged,
             E::FilesAlreadyImported { release_id } => Self::FilesAlreadyImported { release_id },
+            E::Rollback { operation, rollback } => {
+                Self::Rollback { operation: Box::new((*operation).into()), rollback }
+            }
+            E::FileCleanup { write, failures } => {
+                Self::FileCleanup { write: Box::new((*write).into()), failures }
+            }
         }
     }
 }
@@ -322,6 +349,12 @@ impl bae_util::task_failure::ReportedBug for ImportError {
             }
             #[cfg(desktop)]
             Self::Sync(error) => error.reported_bug(),
+            #[cfg(desktop)]
+            Self::Rollback { operation, .. } => operation.reported_bug(),
+            #[cfg(desktop)]
+            Self::FileCleanup { write, failures } => write.reported_bug().or_else(|| {
+                failures.iter().find_map(bae_util::task_failure::ReportedBug::reported_bug)
+            }),
             _ => None,
         }
     }
@@ -360,6 +393,12 @@ impl ImportError {
             }
             #[cfg(desktop)]
             Self::Sync(error) => bae_diagnostics::sync_category(error),
+            // What failed first is what the person can act on; the failed
+            // rollback or byte removal rides in the detail.
+            #[cfg(desktop)]
+            Self::Rollback { operation: failed, .. } | Self::FileCleanup { write: failed, .. } => {
+                failed.category()
+            }
             #[cfg(desktop)]
             Self::ImportWriting => C::Import,
             #[cfg(desktop)]
