@@ -156,7 +156,7 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
         .unwrap()
         .draft
         .release_edit();
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_metadata(
             &candidate.files.content_hash(),
             &crate::CandidateKey::folder(&candidate.path),

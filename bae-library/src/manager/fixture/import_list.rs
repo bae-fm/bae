@@ -177,8 +177,7 @@ impl LibraryManager {
                     .draft
                     .release_edit();
                 draft.album_title = candidate.name.clone();
-                let preparations = bae_import::CandidatePreparations::new(self.store.clone());
-                preparations
+                tables
                     .replace_metadata(
                         &content_hash,
                         &candidate.key(),
@@ -190,7 +189,7 @@ impl LibraryManager {
                         std::slice::from_ref(&release),
                     )
                     .await?;
-                preparations
+                tables
                     .replace_link(
                         &content_hash,
                         Some(&bae_import::ReleaseLink::Pressing(bae_identify::PressingLink {
@@ -228,7 +227,7 @@ impl LibraryManager {
         candidate: &FolderCandidate,
         verdict: TerminalVerdict,
     ) -> Result<(), LibraryFixtureError> {
-        let stored = bae_import::CandidatePreparations::new(self.store.clone())
+        let stored = bae_import::tables::ImportTables::new(self.store.clone())
             .store_verdict(&bae_import::tables::NewImportCandidateVerdict {
                 content_hash: candidate.files.content_hash(),
                 file_edit_revision: candidate.file_edit_revision,

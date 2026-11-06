@@ -13,7 +13,7 @@ impl ImportService {
         catalogs: crate::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         diagnostics: bae_diagnostics::Diagnostics,
-        preparations: crate::CandidatePreparations,
+        tables: crate::tables::ImportTables,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
         closing: tokio_util::sync::CancellationToken,
@@ -25,7 +25,7 @@ impl ImportService {
             catalogs,
             remote_images,
             diagnostics,
-            preparations,
+            tables,
             clock,
             ids,
             closing,
@@ -44,7 +44,7 @@ impl ImportService {
         catalogs: crate::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         diagnostics: bae_diagnostics::Diagnostics,
-        preparations: crate::CandidatePreparations,
+        tables: crate::tables::ImportTables,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
         closing: tokio_util::sync::CancellationToken,
@@ -53,10 +53,9 @@ impl ImportService {
         // No run, import or open list outlives the process that held it, so
         // the library opens with no candidate standing and no list, before
         // anything reads the list.
-        let tables = crate::tables::ImportTables::new(store.clone());
         tables.clear_candidate_standings().await?;
         tables.close_import_lists().await?;
-        let runtime = CandidateRuntime::new(tables, diagnostics.clone());
+        let runtime = CandidateRuntime::new(tables.clone(), diagnostics.clone());
         let event_tx = crate::ImportEventBus::new(runtime.clone());
         let services = crate::ImportServices::new(
             event_tx,
@@ -64,7 +63,7 @@ impl ImportService {
             records,
             catalogs,
             remote_images,
-            preparations,
+            tables.clone(),
             clock,
             ids,
             file_tags,
@@ -136,9 +135,10 @@ impl ImportService {
         });
 
         let release_reads =
-            crate::ReleaseReads::new(services.store.clone(), services.catalogs.clone());
+            crate::ReleaseReads::new(services.tables.clone(), services.catalogs.clone());
         let identify = crate::IdentifyService::new(
             services.store.clone(),
+            services.tables.clone(),
             services.catalogs.clone(),
             release_reads.clone(),
             runtime_handle.clone(),

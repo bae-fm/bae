@@ -13,7 +13,7 @@ async fn a_release_read_fails_when_the_preferences_cannot_be_read() {
     })
     .await
     .unwrap();
-    let reads = ReleaseReads::new(database, sessions);
+    let reads = ReleaseReads::new(crate::tables::ImportTables::new(database), sessions);
 
     let error = reads
         .release(

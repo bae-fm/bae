@@ -207,7 +207,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
 
     let error = handle
         .services
-        .preparations
+        .tables
         .apply_file_metadata(
             &root,
             &key,

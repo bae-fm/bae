@@ -99,8 +99,8 @@ impl Library {
         ImportTables::new(self.db.clone())
     }
 
-    fn preparations(&self) -> crate::CandidatePreparations {
-        crate::CandidatePreparations::new(self.db.clone())
+    fn preparations(&self) -> crate::tables::ImportTables {
+        crate::tables::ImportTables::new(self.db.clone())
     }
 
     /// The folder at `display_path` below the watched folder.
@@ -526,7 +526,7 @@ pub(crate) async fn store_verdict(
     candidate: &FolderCandidate,
     verdict: TerminalVerdict,
 ) {
-    assert!(crate::CandidatePreparations::new(db.clone())
+    assert!(crate::tables::ImportTables::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: candidate.files.content_hash(),
             file_edit_revision: 0,

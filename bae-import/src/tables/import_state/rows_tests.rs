@@ -15,7 +15,7 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
     let original_hash = original.content_hash();
     let row = new_candidate_row(&original_hash, &host_root("/music/Some Album"), &sample_verdict());
     store_candidate_state(&db, &original, &row.candidate_key.test_folder()).await;
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let resized = track_files_candidate(&[("01 Track.flac", 999_999), ("02 Track.flac", 234_567)]);
     let resized_hash = resized.content_hash();
@@ -40,7 +40,7 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
     let row =
         new_candidate_row(&hash, &host_root("/music/Old Location/Some Album"), &sample_verdict());
     store_candidate_state(&db, &at_old_location, &row.candidate_key.test_folder()).await;
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let mut at_new_location = at_old_location.clone();
     for entry in &mut at_new_location.files {

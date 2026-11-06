@@ -813,7 +813,7 @@ async fn a_verdict_stores_only_the_releases_its_rows_name() {
     let hash = candidate.content_hash();
     let mut row = new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict());
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    let preparations = crate::CandidatePreparations::new(db.clone());
+    let preparations = crate::tables::ImportTables::new(db.clone());
 
     row.releases = vec![release("rel-1"), release("rel-unnamed")];
     assert!(preparations.store_verdict(&row).await.unwrap());

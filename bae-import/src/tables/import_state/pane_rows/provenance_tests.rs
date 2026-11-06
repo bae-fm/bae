@@ -43,8 +43,8 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
         store_candidate_state(&db, &candidate, folder_path).await;
         let row = new_candidate_row(content_hash, folder_path, &sample_verdict());
         let key = crate::CandidateKey::folder(folder_path);
-        crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
-        crate::CandidatePreparations::new(db.clone())
+        crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
+        crate::tables::ImportTables::new(db.clone())
             .replace_metadata(
                 content_hash,
                 &key,

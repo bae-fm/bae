@@ -521,10 +521,10 @@ pub struct LibraryManager {
     /// preparation and library images own their bytes independently.
     #[cfg(desktop)]
     remote_images: bae_catalogs::remote_image::RemoteImageCache,
-    /// The catalogs as this library may ask them, which import's services
-    /// hold too.
+    /// Where import reads a catalog release, which import's services hold
+    /// too.
     #[cfg(desktop)]
-    catalogs: bae_import::CatalogSessions,
+    release_reads: bae_import::ReleaseReads,
     /// Held by every edit session's save and every field edit of a release,
     /// so a save compares the release with what its session opened on and
     /// writes with no other of them on this device between the two.

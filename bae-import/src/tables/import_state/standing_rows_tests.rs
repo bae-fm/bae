@@ -434,7 +434,7 @@ async fn a_file_decision_ends_its_candidate_s_identification() {
     .await;
     let (metadata_revision, draft) = current_draft(&db, &hash).await;
 
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
             &key,

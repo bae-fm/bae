@@ -80,7 +80,7 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_metadata(
             &hash,
             &pane_candidate_key(),
@@ -114,7 +114,7 @@ async fn a_stated_length_past_sqlites_range_fails_the_save() {
     let mut draft = candidate_draft("Release Title", "Artist Name");
     draft.tracks[0].stated_length_ms = Some(u64::MAX);
 
-    let saved = crate::CandidatePreparations::new(db.clone())
+    let saved = crate::tables::ImportTables::new(db.clone())
         .apply_source(
             &host_root("/music"),
             &as_read(&hash, 0),

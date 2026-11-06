@@ -1,5 +1,5 @@
-//! A candidate's stored state, as one value ([`CandidatePreparation`]), and
-//! its one writer.
+//! A candidate's stored state, as one value ([`CandidatePreparation`]), and the
+//! [`ImportTables`] methods that change it.
 //!
 //! Every change to what a candidate is — identification's conclusion, a
 //! source a person applied, a field they typed, a file decision — comes
@@ -21,23 +21,10 @@ use crate::tables::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
     ScannedCandidateKey,
 };
-use crate::tables::{DbCandidateIdentifyResult, NewImportCandidateVerdict};
+use crate::tables::{DbCandidateIdentifyResult, ImportTables, NewImportCandidateVerdict};
 use crate::ImportError;
-use bae_store::Store;
 
-/// The writer, over the store it writes through. The import service
-/// holds one; the import handle resolves keys, holds the commit lock, and
-/// fetches the cover bytes a change needs, then hands the change here.
-#[derive(Clone)]
-pub struct CandidatePreparations {
-    tables: crate::tables::ImportTables,
-}
-
-impl CandidatePreparations {
-    pub fn new(store: Store) -> Self {
-        Self { tables: crate::tables::ImportTables::new(store) }
-    }
-
+impl ImportTables {
     /// One candidate's whole stored state, or `None` for a hash no scan has
     /// stored a candidate under. A candidate whose files this device imported
     /// holds no draft, so loading it fails as an import of those files does.
@@ -45,7 +32,7 @@ impl CandidatePreparations {
         &self,
         content_hash: &str,
     ) -> Result<Option<CandidatePreparation>, ImportError> {
-        stored_preparation(&self.tables, content_hash).await
+        stored_preparation(self, content_hash).await
     }
 
     /// Record one candidate's terminal verdict under its content hash, stamped
@@ -72,11 +59,7 @@ impl CandidatePreparations {
             return Ok(None);
         };
         Ok(
-            match self
-                .tables
-                .save_run_verdict(prep, expected, extras, candidate_key.clone(), run)
-                .await?
-            {
+            match self.save_run_verdict(prep, expected, extras, candidate_key.clone(), run).await? {
                 crate::tables::RunVerdictSaved::Landed(ended) => Some(ended),
                 crate::tables::RunVerdictSaved::Superseded => None,
             },
@@ -94,7 +77,7 @@ impl CandidatePreparations {
             return Ok(false);
         };
         Ok(matches!(
-            self.tables.save_candidate_preparation(prep, expected, extras).await?,
+            self.save_candidate_preparation(prep, expected, extras).await?,
             CandidateSaved::Landed(_)
         ))
     }
@@ -205,7 +188,7 @@ impl CandidatePreparations {
             reshaped_files: Some(settled_candidates.to_vec()),
             ..CandidateSaveExtras::default()
         };
-        match self.tables.save_candidate_preparation(prep, expected, extras).await? {
+        match self.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(candidates) => Ok((next_revision, candidates)),
             CandidateSaved::Superseded => Err(CandidateAsRead::files_moved(
                 read.file_edit_revision,
@@ -259,7 +242,7 @@ impl CandidatePreparations {
         };
         let extras =
             CandidateSaveExtras { releases: releases.to_vec(), ..CandidateSaveExtras::default() };
-        match self.tables.save_candidate_preparation(prep, expected, extras).await? {
+        match self.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(()),
             CandidateSaved::Superseded => Err(ImportError::Refused(format!(
                 "{content_hash} changed while its link was replaced"
@@ -376,7 +359,7 @@ impl CandidatePreparations {
             releases,
             ..CandidateSaveExtras::default()
         };
-        match self.tables.save_candidate_preparation(prep, expected, extras).await? {
+        match self.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(revision),
             CandidateSaved::Superseded => Err(ImportError::Refused(format!(
                 "{} changed while its album was being linked",
@@ -424,7 +407,6 @@ impl CandidatePreparations {
         };
         let revision = prep.metadata_revision;
         match self
-            .tables
             .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
             .await?
         {
@@ -516,7 +498,7 @@ impl CandidatePreparations {
             ends_identification: true,
             releases,
         };
-        match self.tables.save_candidate_preparation(prep, expected, extras).await? {
+        match self.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(revision),
             CandidateSaved::Superseded => {
                 Err(ImportError::Refused("candidate changed before its metadata was stored".into()))

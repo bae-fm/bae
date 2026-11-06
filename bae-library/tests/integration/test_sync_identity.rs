@@ -449,7 +449,7 @@ async fn draft_crediting(device: &TestDevice, artist_id: &str) -> tempfile::Temp
         .unwrap()
         .map_or(0, |state| state.metadata_revision);
     let artist = device.records().find_artist_by_id(artist_id).await.unwrap().unwrap();
-    bae_import::CandidatePreparations::new(store.clone())
+    bae_import::tables::ImportTables::new(store.clone())
         .set_album_artists_prepared(
             &watched,
             &candidate.key(),

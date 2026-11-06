@@ -22,7 +22,7 @@ async fn a_match_reads_its_album_first_year_from_its_stored_catalog_release() {
     let verdict = TerminalVerdict::Found { findings, track_count: 11, ledger: None };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
     let first_year = || async {
         let loaded = tables.load_import_candidate_states().await.unwrap();
         let TerminalVerdict::Found { findings, .. } =
@@ -153,7 +153,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = tables.load_import_candidate_states().await.unwrap();
     let stored = &loaded[&hash].identify.as_ref().expect("a stored verdict reads back").verdict;

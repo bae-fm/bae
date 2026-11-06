@@ -213,7 +213,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
         .expect("the fixture candidate is prepared");
     let stored = handle
         .services
-        .preparations
+        .tables
         .store_verdict(&crate::tables::NewImportCandidateVerdict {
             content_hash: hash.to_string(),
             file_edit_revision: prep.file_edits.revision,

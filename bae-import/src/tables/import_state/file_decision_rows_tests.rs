@@ -62,7 +62,7 @@ async fn a_cleared_binding_survives_a_relaunch() {
     let hash = scanned.content_hash();
     let (metadata_revision, mut draft) = current_draft(&db, &hash).await;
     draft.tracks = crate::pane::blank_candidate_draft(&settled).tracks;
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
             &crate::CandidateKey::folder(folder.path()),
@@ -168,7 +168,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
     let hash = scanned.content_hash();
     let (metadata_revision, mut draft) = current_draft(&db, &hash).await;
     draft.tracks = crate::pane::blank_candidate_draft(&settled).tracks;
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
             &crate::CandidateKey::folder(folder.path()),

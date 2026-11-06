@@ -69,7 +69,7 @@ async fn pure_reads_use_the_read_connection() {
         .await
         .unwrap()
         .is_none());
-    assert!(!bae_import::CandidatePreparations::new(db.clone())
+    assert!(!bae_import::tables::ImportTables::new(db.clone())
         .store_verdict(&bae_import::tables::NewImportCandidateVerdict {
             content_hash: "hash-with-no-row".to_string(),
             file_edit_revision: 7,

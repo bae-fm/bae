@@ -60,7 +60,7 @@ impl ImportServiceHandle {
             )
             .await?;
         self.services
-            .preparations
+            .tables
             .apply_source(
                 &candidate.watched_folder_path,
                 &crate::CandidateAsRead {
@@ -102,7 +102,7 @@ impl ImportServiceHandle {
             )
             .await?;
         self.services
-            .preparations
+            .tables
             .keep_own_draft(&crate::CandidateAsRead {
                 content_hash: content_hash.clone(),
                 file_edit_revision: candidate.file_edit_revision,
@@ -140,7 +140,7 @@ impl ImportServiceHandle {
             )
             .await?;
         self.services
-            .preparations
+            .tables
             .unlink(&crate::CandidateAsRead {
                 content_hash,
                 file_edit_revision: candidate.file_edit_revision,

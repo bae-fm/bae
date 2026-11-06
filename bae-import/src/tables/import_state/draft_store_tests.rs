@@ -29,7 +29,7 @@ async fn every_draft_write_keeps_the_lists_draft_columns_current() {
             .unwrap()
         }
     };
-    let preparations = crate::CandidatePreparations::new(db.clone());
+    let preparations = crate::tables::ImportTables::new(db.clone());
     preparations
         .replace_metadata(
             &hash,

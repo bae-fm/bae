@@ -300,9 +300,9 @@ impl LibraryManager {
     ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
         let release_id = session.release_id();
         // Nothing names these releases, so they are read and never stored.
-        let reads = bae_import::ReleaseReads::new(self.store.clone(), self.catalogs.clone());
-        let release = reads.applied_release(&link.record, steps).await?.release;
-        let partners: Vec<_> = reads
+        let release = self.release_reads.applied_release(&link.record, steps).await?.release;
+        let partners: Vec<_> = self
+            .release_reads
             .partners(
                 &link.record,
                 &link.partners,

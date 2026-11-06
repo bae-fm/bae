@@ -2,14 +2,14 @@
 //! Each loads the candidate, changes the one thing the control changed, and
 //! saves it whole under the next metadata revision.
 
-use super::CandidatePreparations;
 use crate::preparations::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::tables::{
-    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
+    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ImportTables,
+    ScannedCandidateKey,
 };
 use crate::{CandidateDraft, TrackArtistAssignments};
 
-impl CandidatePreparations {
+impl ImportTables {
     /// Record the cover the person chose for this candidate, with the bytes
     /// fetched for a remote one.
     pub async fn set_prepared_cover(
@@ -175,7 +175,6 @@ impl CandidatePreparations {
         prep.metadata_revision += 1;
         let revision = prep.metadata_revision;
         match self
-            .tables
             .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
             .await?
         {

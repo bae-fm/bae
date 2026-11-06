@@ -104,6 +104,7 @@ impl IdentifyService {
     /// removed or rebound candidate's run in the send that says so.
     pub fn new(
         store: bae_store::Store,
+        tables: crate::tables::ImportTables,
         catalogs: crate::CatalogSessions,
         release_reads: crate::ReleaseReads,
         runtime_handle: tokio::runtime::Handle,
@@ -112,7 +113,7 @@ impl IdentifyService {
         diagnostics: bae_diagnostics::Diagnostics,
     ) -> IdentifyService {
         let inner = Arc::new(IdentifyServiceInner {
-            tables: crate::tables::ImportTables::new(store.clone()),
+            tables,
             store,
             catalogs,
             release_reads,

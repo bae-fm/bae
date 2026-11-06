@@ -318,7 +318,7 @@ impl ImportServiceHandle {
             // was read.
             let (_next_revision, candidates) = self
                 .services
-                .preparations
+                .tables
                 .store_file_decisions(
                     &crate::CandidateAsRead {
                         content_hash: content_hash.clone(),

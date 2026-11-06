@@ -95,7 +95,7 @@ impl ImportServiceHandle {
         {
             return Ok(None);
         }
-        match self.services.preparations.store_run_verdict(row, candidate_key, run).await? {
+        match self.services.tables.store_run_verdict(row, candidate_key, run).await? {
             // The verdict's write ended the answer, and what its run
             // published, inside it.
             Some(ended) => {

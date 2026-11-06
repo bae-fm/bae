@@ -45,7 +45,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
+        #[cfg(desktop)] release_reads: bae_import::ReleaseReads,
         downloads: bae_transfers::Downloads,
         #[cfg(desktop)] outputs: bae_transfers::Outputs,
         make_local_transfers: bae_transfers::ReleaseTransfers<crate::MakeLocalTransferProgress>,
@@ -64,7 +64,7 @@ impl LibraryManager {
         sync_status.record_sync_start_failure(None).await?;
         let manager = LibraryManager {
             #[cfg(desktop)]
-            catalogs,
+            release_reads,
             store,
             preferences,
             records,

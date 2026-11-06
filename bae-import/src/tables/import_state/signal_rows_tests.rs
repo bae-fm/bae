@@ -171,7 +171,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
         let candidate = pane_candidate();
         let hash = store_candidate_state(&db, &candidate, &pane_candidate_path()).await;
 
-        let error = crate::CandidatePreparations::new(db.clone())
+        let error = crate::tables::ImportTables::new(db.clone())
             .store_verdict(&NewImportCandidateVerdict {
                 content_hash: hash.to_string(),
                 file_edit_revision: 0,
@@ -219,7 +219,7 @@ async fn the_candidate_s_text_round_trips_line_by_line() {
     row.signals.text_pool = pool.clone();
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = tables.load_import_candidate_states().await.unwrap();
     let stored = loaded

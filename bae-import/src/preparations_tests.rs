@@ -89,7 +89,7 @@ async fn a_verdict_that_picks_names_identification_as_the_author() {
     );
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = tables.load_import_candidate_states().await.unwrap();
     assert_eq!(
@@ -111,7 +111,7 @@ async fn a_verdict_that_picks_nothing_leaves_the_draft_unclaimed() {
     assert!(row.pick.is_none(), "it settled on no release to write");
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = tables.load_import_candidate_states().await.unwrap();
     assert_eq!(
@@ -130,7 +130,7 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
     fetched(&db, "rel-chosen").await;
     fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_metadata(
             &hash,
             &pane_candidate_key(),
@@ -145,7 +145,7 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
         .await
         .unwrap();
 
-    assert!(crate::CandidatePreparations::new(db.clone())
+    assert!(crate::tables::ImportTables::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.to_string(),
             file_edit_revision: 0,
@@ -183,7 +183,7 @@ async fn a_verdict_after_a_metadata_edit_replaces_it() {
     fetched(&db, "rel-second").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let first_pick = release_pick("rel-first");
-    assert!(crate::CandidatePreparations::new(db.clone())
+    assert!(crate::tables::ImportTables::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.to_string(),
             file_edit_revision: 0,
@@ -207,7 +207,7 @@ async fn a_verdict_after_a_metadata_edit_replaces_it() {
         .await
         .unwrap();
 
-    assert!(crate::CandidatePreparations::new(db.clone())
+    assert!(crate::tables::ImportTables::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.to_string(),
             file_edit_revision: 0,
@@ -253,11 +253,11 @@ async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
         new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-1",
     );
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&settled).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&settled).await.unwrap();
 
     let re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
     assert!(re_run.pick.is_none(), "nothing was found to pick");
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&re_run).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&re_run).await.unwrap();
 
     let loaded = tables.load_import_candidate_states().await.unwrap();
     assert_eq!(
@@ -277,8 +277,8 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
     let initial = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&initial).await.unwrap();
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&initial).await.unwrap();
+    crate::tables::ImportTables::new(db.clone())
         .replace_metadata(
             &hash,
             &crate::CandidateKey::folder(&host_root("/music/Album")),
@@ -290,7 +290,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
         .unwrap();
 
     let re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&re_run).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&re_run).await.unwrap();
 
     let loaded = tables.load_import_candidate_states().await.unwrap();
     assert_eq!(
@@ -315,13 +315,13 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
         new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-first",
     );
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&first).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&first).await.unwrap();
 
     let second = concluding(
         new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-second",
     );
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&second).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&second).await.unwrap();
 
     let loaded = tables.load_import_candidate_states().await.unwrap();
     assert_eq!(
@@ -342,7 +342,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
         .unwrap()
         .and_then(crate::tables::CandidatePreparationRead::stored)
         .expect("the scanned candidate is prepared");
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .store_file_decisions(
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
@@ -357,7 +357,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
         .await
         .unwrap();
 
-    let error = crate::CandidatePreparations::new(db.clone())
+    let error = crate::tables::ImportTables::new(db.clone())
         .apply_source(
             &host_root("/music"),
             &crate::CandidateAsRead {
@@ -402,7 +402,7 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
         .expect("the current scan accepts the replacement");
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
 
-    let error = crate::CandidatePreparations::new(db.clone())
+    let error = crate::tables::ImportTables::new(db.clone())
         .apply_source(
             &root,
             &crate::CandidateAsRead {
@@ -432,7 +432,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     fetched(&db, "rel-2").await;
     let (files, hash) = stored_pane_candidate(&db).await;
     let old_draft = metadata_draft("Old album", "Replacement Artist");
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_metadata(
             &hash,
             &pane_candidate_key(),
@@ -447,7 +447,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     let mut settled = files;
     settled.apply_candidate_file_edits(&file_edits).unwrap();
     let (metadata_revision, draft) = current_draft(&db, &hash).await;
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
             &pane_candidate_key(),
@@ -474,7 +474,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     PaneControls::of_pane_candidate(&db).edit_track(&hash, &mapping).await.unwrap();
 
     let new_draft = metadata_draft("New album", "New Artist");
-    let applied_revision = crate::CandidatePreparations::new(db.clone())
+    let applied_revision = crate::tables::ImportTables::new(db.clone())
         .replace_metadata(
             &hash,
             &pane_candidate_key(),
@@ -513,7 +513,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     PaneControls::of_pane_candidate(&db).choose_cover(&hash, &chosen).await.unwrap();
     let mut blank = crate::pane::blank_candidate_draft(&pane_candidate()).release_edit();
     blank.tracks.truncate(1);
-    let cleared_revision = crate::CandidatePreparations::new(db.clone())
+    let cleared_revision = crate::tables::ImportTables::new(db.clone())
         .replace_metadata(&hash, &pane_candidate_key(), &blank, None, &[])
         .await
         .unwrap();
@@ -560,7 +560,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
     edits.sheet_discs.set("CDImage.cue".to_string(), SheetDisc::Ignored);
     let mut settled = files;
     settled.apply_candidate_file_edits(&edits).unwrap();
-    let error = crate::CandidatePreparations::new(db.clone())
+    let error = crate::tables::ImportTables::new(db.clone())
         .store_file_decisions(
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
@@ -597,7 +597,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     fetched(&db, "rel-1").await;
     let (files, hash) = stored_pane_candidate(&db).await;
     assert!(store_verdict_with_signals(&db, &hash, settled_signals()).await);
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_metadata(
             &hash,
             &pane_candidate_key(),
@@ -621,7 +621,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .unwrap()
         .and_then(crate::tables::CandidatePreparationRead::stored)
         .expect("the candidate has a stored preparation");
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .set_track_edit_prepared(
             &host_root("/music"),
             &pane_candidate_key(),
@@ -643,7 +643,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     let mut settled = files;
     settled.apply_candidate_file_edits(&edits).unwrap();
     let (metadata_revision, draft) = current_draft(&db, &hash).await;
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
             &pane_candidate_key(),
@@ -684,9 +684,9 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
         new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-derived",
     );
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&settled).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&settled).await.unwrap();
     let (metadata_revision, draft) = current_draft(&db, &hash).await;
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
             &crate::CandidateKey::folder(&host_root("/music/Album")),
@@ -705,7 +705,7 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
         "the applied metadata keeps its source"
     );
 
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_metadata(
             &hash,
             &crate::CandidateKey::folder(&host_root("/music/Album")),
@@ -716,7 +716,7 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
         .await
         .unwrap();
     let (metadata_revision, draft) = current_draft(&db, &hash).await;
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .store_file_decisions(
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
@@ -766,7 +766,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     let hash = proposed.content_hash();
     store_candidate_state(&db, &proposed, folder.path()).await;
 
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .store_verdict(&new_candidate_row(&hash, folder.path(), &sample_verdict()))
         .await
         .unwrap();
@@ -794,7 +794,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     let folder_path = crate::CandidateKey::folder(folder.path());
     let (metadata_revision, mut draft) = current_draft(&db, &hash).await;
     draft.tracks = crate::pane::blank_candidate_draft(&settled).tracks;
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
             &folder_path,

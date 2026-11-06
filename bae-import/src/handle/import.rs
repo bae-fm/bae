@@ -380,7 +380,7 @@ impl ImportServiceHandle {
                 &preparation.metadata.draft,
             )?;
             self.services
-                .preparations
+                .tables
                 .apply_source(
                     &candidate.watched_folder_path,
                     &crate::CandidateAsRead {

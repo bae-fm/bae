@@ -493,6 +493,10 @@ where
         diagnostics.clone(),
         runtime.handle().clone(),
     );
+    #[cfg(desktop)]
+    let import_tables = bae_import::tables::ImportTables::new(store.clone());
+    #[cfg(desktop)]
+    let release_reads = bae_import::ReleaseReads::new(import_tables.clone(), catalogs.clone());
     // Closing the library ends what runs while it is open: the manager's
     // tasks and the import service's.
     let closing = bae_library::CancellationToken::new();
@@ -506,7 +510,7 @@ where
                 membership,
                 sync_status.clone(),
                 #[cfg(desktop)]
-                catalogs.clone(),
+                release_reads,
                 closing.clone(),
                 app_dir.clone(),
                 Arc::clone(&clock),
@@ -585,6 +589,8 @@ where
                     people,
                     #[cfg(desktop)]
                     catalogs,
+                    #[cfg(desktop)]
+                    import_tables,
                     #[cfg(desktop)]
                     closing,
                     #[cfg(desktop)]

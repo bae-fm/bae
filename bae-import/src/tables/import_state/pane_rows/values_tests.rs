@@ -55,7 +55,7 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
         }],
     };
 
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .apply_source(
             &host_root("/music"),
             &as_read(&hash, 0),

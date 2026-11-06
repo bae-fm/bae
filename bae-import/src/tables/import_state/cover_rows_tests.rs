@@ -99,7 +99,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
 
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .set_prepared_cover(
             &host_root("/music"),
             &pane_candidate_key(),

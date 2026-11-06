@@ -220,7 +220,7 @@ impl ImportServiceHandle {
             }
             return self
                 .services
-                .preparations
+                .tables
                 .apply_file_metadata(
                     &read.candidate.watched_folder_path,
                     &candidate_key,
@@ -323,7 +323,7 @@ impl ImportServiceHandle {
             )
             .await?;
         self.services
-            .preparations
+            .tables
             .apply_pick(
                 &candidate.watched_folder_path,
                 &crate::CandidateAsRead {

@@ -40,11 +40,13 @@ pub(super) async fn setup_inner_reporting_to(
         bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
-    let release_reads = crate::ReleaseReads::new(db.clone(), catalogs.clone());
+    let release_reads =
+        crate::ReleaseReads::new(crate::tables::ImportTables::new(db.clone()), catalogs.clone());
     let candidates = CandidateRuntime::for_test().await;
     let event_tx = ImportEventBus::new(candidates.clone());
     let handle = IdentifyService::new(
-        db,
+        db.clone(),
+        crate::tables::ImportTables::new(db),
         catalogs,
         release_reads,
         tokio::runtime::Handle::current(),

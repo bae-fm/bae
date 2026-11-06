@@ -65,7 +65,7 @@ impl ImportServiceHandle {
             )
             .await?;
         self.services
-            .preparations
+            .tables
             .set_prepared_cover(
                 &candidate.watched_folder_path,
                 &candidate.key(),
@@ -135,7 +135,7 @@ impl ImportServiceHandle {
             )
             .await?;
         self.services
-            .preparations
+            .tables
             .set_field_prepared(
                 &candidate.watched_folder_path,
                 &candidate.key(),
@@ -179,7 +179,7 @@ impl ImportServiceHandle {
             )
             .await?;
         self.services
-            .preparations
+            .tables
             .set_album_artists_prepared(
                 &base.watched_folder_path,
                 &base.candidate_path,
@@ -220,7 +220,7 @@ impl ImportServiceHandle {
             )
             .await?;
         self.services
-            .preparations
+            .tables
             .set_track_edit_prepared(
                 &base.watched_folder_path,
                 &base.candidate_path,
@@ -263,7 +263,7 @@ impl ImportServiceHandle {
             )
             .await?;
         self.services
-            .preparations
+            .tables
             .set_track_artists_prepared(
                 &base.watched_folder_path,
                 &base.candidate_path,

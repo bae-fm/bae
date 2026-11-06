@@ -250,5 +250,5 @@ async fn a_ledger_with_a_lookup_under_way_is_not_stored() {
     let verdict = TerminalVerdict::NotFoundAnywhere { ledger: Some(ledger) };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    assert!(crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.is_err());
+    assert!(crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.is_err());
 }

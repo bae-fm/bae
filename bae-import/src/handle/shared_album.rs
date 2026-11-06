@@ -88,7 +88,7 @@ impl ImportServiceHandle {
             )
             .await?;
         self.services
-            .preparations
+            .tables
             .apply_shared_album(
                 &candidate.watched_folder_path,
                 &crate::CandidateAsRead {

@@ -137,7 +137,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
         .unwrap()
         .draft
         .release_edit();
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_metadata(
             &candidate.files.content_hash(),
             &crate::CandidateKey::folder(&candidate.path),
@@ -152,7 +152,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
         )
         .await
         .unwrap();
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),
             Some(&crate::ReleaseLink::Pressing(bae_identify::PressingLink {
@@ -263,7 +263,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         "a rescan must retain the explicit cover"
     );
 
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_metadata(
             &content_hash,
             &crate::CandidateKey::folder(&candidate.path),
@@ -402,7 +402,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
             data: bytes.clone(),
         }),
     };
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .apply_file_metadata(
             &root,
             &candidate.key(),
@@ -626,7 +626,7 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
         )
         .await
         .unwrap();
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),
             Some(&crate::ReleaseLink::Pressing(bae_identify::PressingLink {

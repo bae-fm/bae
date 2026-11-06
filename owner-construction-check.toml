@@ -419,6 +419,7 @@ ImageHold = "RemoteImageHost"
     "TestLibrary::membership",
     "TestLibrary::sync_status",
     "TestLibrary::catalogs",
+    "TestLibrary::import_tables",
     "TestLibrary::closing",
     "TestLibrary::clock",
     "TestLibrary::ids",

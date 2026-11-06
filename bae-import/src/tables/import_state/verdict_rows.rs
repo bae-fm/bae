@@ -580,7 +580,7 @@ impl ImportTables {
 }
 
 /// What a caller supplies to record one candidate's identify verdict via
-/// [`crate::CandidatePreparations::store_verdict`]. Every outcome,
+/// [`crate::tables::ImportTables::store_verdict`]. Every outcome,
 /// failed included, becomes one `import_candidate_verdict` row. Their timestamp
 /// is stamped by the write path from the injected clock, the same convention as
 /// `created_at` in bae-records' row writers: a timestamp that

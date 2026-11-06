@@ -244,7 +244,7 @@ pub(crate) fn settled_signals() -> Signals {
 
 /// Store a verdict for `hash` carrying `signals`, and say whether it landed.
 pub(crate) async fn store_verdict_with_signals(db: &Store, hash: &str, signals: Signals) -> bool {
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.to_string(),
             file_edit_revision: 0,
@@ -423,7 +423,7 @@ pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdi
     let hash = candidate.content_hash();
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
     let loaded = tables.load_import_candidate_states().await.unwrap();
     let read =
         loaded[&hash].identify.as_ref().expect("a stored verdict reads back").verdict.clone();
@@ -458,7 +458,7 @@ pub(crate) async fn disown_the_draft(db: &Store, content_hash: &str) {
 /// calls them, for the candidate the scan lists at `key` under `root`, each
 /// composed against the candidate as it stands when the control is used.
 pub(crate) struct PaneControls {
-    preparations: crate::CandidatePreparations,
+    preparations: crate::tables::ImportTables,
     tables: crate::tables::ImportTables,
     root: PathBuf,
     key: crate::CandidateKey,
@@ -467,7 +467,7 @@ pub(crate) struct PaneControls {
 impl PaneControls {
     pub(crate) fn new(db: &Store, root: &Path, key: &crate::CandidateKey) -> Self {
         Self {
-            preparations: crate::CandidatePreparations::new(db.clone()),
+            preparations: crate::tables::ImportTables::new(db.clone()),
             tables: crate::tables::ImportTables::new(db.clone()),
             root: root.to_path_buf(),
             key: key.clone(),

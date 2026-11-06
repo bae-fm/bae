@@ -118,9 +118,9 @@ pub use volume::check_period_minutes;
 pub use volume::VolumeKind;
 
 /// The import service's shared dependencies: the store it reads and writes,
-/// the one writer of candidates' stored state, coven's clock and id sources,
-/// the lock that serializes folder-state commits, and the channel every import
-/// event goes out on.
+/// import's tables over it, coven's clock and id sources, the lock that
+/// serializes folder-state commits, and the channel every import event goes
+/// out on.
 ///
 /// [`service::ImportService::start`] builds one and hands it to the service
 /// handle and to every folder scan, which is why it is declared here rather
@@ -134,14 +134,14 @@ pub(crate) struct ImportServices {
     /// The library's records, which import reads where it links a candidate to
     /// the library.
     records: bae_records::Records,
-    /// Import's own tables in that store.
+    /// Import's own tables in that store, and the one writer of candidates'
+    /// stored state.
     tables: tables::ImportTables,
     /// The catalogs as this library may ask them.
     catalogs: CatalogSessions,
     /// The provider images candidates' covers and new artists' pictures are
     /// fetched through.
     remote_images: bae_catalogs::remote_image::RemoteImageCache,
-    preparations: preparations::CandidatePreparations,
     clock: coven::ClockRef,
     ids: coven::IdSourceRef,
     /// What reads a folder's audio files for their embedded tags. Held here
@@ -172,7 +172,7 @@ impl ImportServices {
         records: bae_records::Records,
         catalogs: CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        preparations: preparations::CandidatePreparations,
+        tables: tables::ImportTables,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
         file_tags: std::sync::Arc<dyn file_tag_reader::FileTagReader>,
@@ -181,12 +181,11 @@ impl ImportServices {
     ) -> Self {
         Self {
             event_tx,
-            tables: tables::ImportTables::new(store.clone()),
+            tables,
             store,
             records,
             catalogs,
             remote_images,
-            preparations,
             clock,
             ids,
             file_tags,
@@ -279,8 +278,6 @@ pub use mapping::{
     MappingFile, MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable,
     MappingTrackRun, MappingTrackSide, SheetBound, SheetGroup, TrackMapping,
 };
-#[cfg(desktop)]
-pub use preparations::CandidatePreparations;
 #[cfg(desktop)]
 pub use preparations::{
     CandidateAsRead, CandidatePreparation, MetadataAuthor, ProvenanceContradiction,

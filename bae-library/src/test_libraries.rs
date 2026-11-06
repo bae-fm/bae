@@ -42,6 +42,7 @@ pub struct TestLibrary {
     membership: bae_people::Membership,
     sync_status: SyncStatus,
     catalogs: CatalogSessions,
+    import_tables: bae_import::tables::ImportTables,
     closing: CancellationToken,
     clock: ClockRef,
     ids: IdSourceRef,
@@ -97,6 +98,8 @@ impl TestLibrary {
             diagnostics.clone(),
             tokio::runtime::Handle::current(),
         );
+        let import_tables = bae_import::tables::ImportTables::new(store.clone());
+        let release_reads = bae_import::ReleaseReads::new(import_tables.clone(), catalogs.clone());
         let closing = CancellationToken::new();
         let manager = crate::open_library_manager(
             store.clone(),
@@ -105,7 +108,7 @@ impl TestLibrary {
             people.clone(),
             membership.clone(),
             sync_status.clone(),
-            catalogs.clone(),
+            release_reads,
             closing.clone(),
             app_dir,
             clock.clone(),
@@ -124,6 +127,7 @@ impl TestLibrary {
             membership,
             sync_status,
             catalogs,
+            import_tables,
             closing,
             clock,
             ids,
@@ -167,6 +171,12 @@ impl TestLibrary {
         &self.catalogs
     }
 
+    /// Import's tables over the library's store, which the import service
+    /// started on it holds.
+    pub fn import_tables(&self) -> &bae_import::tables::ImportTables {
+        &self.import_tables
+    }
+
     /// The cast picker's list over its store.
     pub fn cast_picker(&self) -> bae_playback::renderer::CastPicker {
         bae_playback::renderer::CastPicker::new(self.store.clone())
@@ -207,7 +217,7 @@ impl TestLibrary {
             self.catalogs.clone(),
             self.remote_images.clone(),
             self.diagnostics.clone(),
-            bae_import::CandidatePreparations::new(self.store.clone()),
+            self.import_tables.clone(),
             self.clock.clone(),
             self.ids.clone(),
             self.closing.child_token(),

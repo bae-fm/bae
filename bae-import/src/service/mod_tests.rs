@@ -13,7 +13,7 @@ use tempfile::TempDir;
 /// records.
 pub(crate) struct TestService {
     pub(crate) service: ImportService,
-    pub(crate) preparations: crate::CandidatePreparations,
+    pub(crate) preparations: crate::tables::ImportTables,
     /// The library the service imports into, for a test that reads or seeds
     /// rows no call reads or writes on its own.
     pub(crate) db: Store,
@@ -61,7 +61,6 @@ impl TestService {
             tables: service.tables.clone(),
             catalogs: service.catalogs.clone(),
             remote_images: service.remote_images.clone(),
-            preparations: self.preparations.clone(),
             clock: service.clock.clone(),
             ids: service.ids.clone(),
             file_tags,
@@ -117,7 +116,7 @@ pub(crate) async fn setup_import_service() -> TestService {
     .await
     .unwrap();
 
-    let preparations = crate::CandidatePreparations::new(db.clone());
+    let preparations = crate::tables::ImportTables::new(db.clone());
     // The runtime writes its standings into the library the import commits
     // into.
     let tables = crate::tables::ImportTables::new(db.clone());
@@ -170,7 +169,7 @@ impl ImportService {
 
 pub(crate) async fn prepare_named_candidate(
     service: &ImportService,
-    preparations: &crate::CandidatePreparations,
+    preparations: &crate::tables::ImportTables,
     content_hash: &str,
     watched_folder_path: &std::path::Path,
     candidate_path: &crate::CandidateKey,

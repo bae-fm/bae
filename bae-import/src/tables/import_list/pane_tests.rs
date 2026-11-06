@@ -72,7 +72,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
         .unwrap()
         .draft
         .release_edit();
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_metadata(
             &candidate.files.content_hash(),
             &crate::CandidateKey::folder(&candidate.path),
@@ -87,7 +87,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
         )
         .await
         .unwrap();
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),
             Some(&crate::ReleaseLink::Pressing(bae_identify::PressingLink {
@@ -159,7 +159,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
     };
     findings.medium_conflict = Some(conflict);
     let stored = TerminalVerdict::Found { findings, track_count, ledger };
-    assert!(crate::CandidatePreparations::new(db.clone())
+    assert!(crate::tables::ImportTables::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: candidate.files.content_hash(),
             file_edit_revision: 0,

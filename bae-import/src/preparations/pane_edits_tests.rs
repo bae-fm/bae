@@ -16,7 +16,7 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
     let hash = pane_candidate().content_hash();
 
     for error in [
-        crate::CandidatePreparations::new(db.clone())
+        crate::tables::ImportTables::new(db.clone())
             .set_prepared_cover(
                 &host_root("/music"),
                 &pane_candidate_key(),
@@ -25,7 +25,7 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
             )
             .await
             .expect_err("a cover with nothing picked"),
-        crate::CandidatePreparations::new(db.clone())
+        crate::tables::ImportTables::new(db.clone())
             .set_field_prepared(
                 &host_root("/music"),
                 &pane_candidate_key(),
@@ -38,7 +38,7 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
             )
             .await
             .expect_err("a field with nothing picked"),
-        crate::CandidatePreparations::new(db.clone())
+        crate::tables::ImportTables::new(db.clone())
             .set_track_edit_prepared(
                 &host_root("/music"),
                 &pane_candidate_key(),
@@ -74,7 +74,7 @@ async fn cover_write_refuses_a_candidate_key_that_now_names_other_files() {
         .expect("the current scan accepts the replacement");
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
 
-    let error = crate::CandidatePreparations::new(db.clone())
+    let error = crate::tables::ImportTables::new(db.clone())
         .set_prepared_cover(
             &root,
             &pane_candidate_key(),
@@ -101,7 +101,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
             content_type: bae_util::content_type::ContentType::Jpeg,
         },
     };
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .set_prepared_cover(
             &host_root("/music"),
             &pane_candidate_key(),
@@ -121,7 +121,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
             content_type: bae_util::content_type::ContentType::Png,
         },
     };
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .set_prepared_cover(
             &host_root("/music"),
             &pane_candidate_key(),
@@ -146,7 +146,7 @@ async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
     fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let seed = metadata_draft("Seeded Title", "Artist Name");
-    crate::CandidatePreparations::new(db.clone())
+    crate::tables::ImportTables::new(db.clone())
         .replace_metadata(&hash, &pane_candidate_key(), &seed, Some(&release_pick("rel-1")), &[])
         .await
         .unwrap();
@@ -181,7 +181,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
     let (_, hash) = stored_pane_candidate(&db).await;
 
     assert_eq!(
-        crate::CandidatePreparations::new(db.clone())
+        crate::tables::ImportTables::new(db.clone())
             .replace_metadata(
                 &hash,
                 &pane_candidate_key(),
@@ -245,7 +245,7 @@ async fn an_edit_to_identification_s_draft_makes_the_person_its_author() {
         "rel-1",
     );
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
 
     PaneControls::new(&db, &host_root("/music"), &row.candidate_key)
         .type_field(&hash, crate::CandidateEditField::AlbumTitle, "Album")
