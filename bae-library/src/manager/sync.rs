@@ -271,8 +271,8 @@ impl LibraryManager {
     ///
     /// Two failures land here and each needs a different move. A start that
     /// failed left no loop running, and only starting it again builds one; a
-    /// running loop whose pass failed is backing off, and a wake runs its next
-    /// pass now instead of when its backoff ends. `is_sync_ready` is what
+    /// running loop whose pass failed is backing off, and a retry ends its
+    /// backoff and runs its next pass now instead of when the backoff ends. `is_sync_ready` is what
     /// separates them: it is true only while a loop is running.
     ///
     /// A start that fails becomes this retry's recorded sync-status error, so
@@ -291,7 +291,7 @@ impl LibraryManager {
             }
         }
         self.sync_status.record_sync_start_failure(None).await?;
-        self.trigger_sync();
+        drop(self.retry_now().await?);
         Ok(())
     }
 

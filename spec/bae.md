@@ -2908,7 +2908,8 @@ its control says so in core's words for that transfer.
   with no storage set up on this device there is nothing to start, so signing
   in again to the recorded storage is the way back instead. A pending record
   waiting for storage offers *Reconnect* as well, which connects again, or
-  runs the next cycle now when already connected. A start that breaks on a
+  ends the running loop's backoffs and runs the next cycle now when already
+  connected. A start that breaks on a
   bug is reported as one and shows on the line the same way. Why the start
   failed is a row of this device's (`sync_start_failure`), kept until a
   start gets under way, whether a reconnect's or that of a storage setup such

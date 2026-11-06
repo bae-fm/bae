@@ -257,6 +257,40 @@ async fn startup_and_retry_publish_the_native_connection_status() {
     manager.close().await.unwrap();
 }
 
+/// A running loop backing off after a failed connection runs its next pass at
+/// once on Reconnect. The clock is fixed, so the backoff ends only if
+/// Reconnect ends it.
+#[tokio::test]
+async fn reconnect_sync_runs_the_pass_a_backing_off_loop_was_waiting_for() {
+    let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
+    let (manager, _temp) = setup_test_manager_with_clock(clock).await;
+    connect_test_cloud(&manager).await;
+    manager.storage.set_online(false);
+    manager.start().unwrap();
+    let mut values = manager.subscribe_sync_status();
+    manager.attach_and_start_sync_at_startup().await;
+    crate::followed::value_matching(&mut values, |value| {
+        matches!(
+            value.shown_pass(),
+            Some(coven::LastPass::Failed { .. } | coven::LastPass::Offline { .. })
+        )
+    })
+    .await;
+    assert!(manager.is_sync_ready().await.unwrap());
+    manager.storage.set_online(true);
+    manager.reconnect_sync().await.unwrap();
+    // A guard so a pass stuck behind the backoff fails instead of hanging.
+    tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        crate::followed::value_matching(&mut values, |value| {
+            value.coven.state == coven::SyncState::Synced
+        }),
+    )
+    .await
+    .expect("reconnect ran the pass without waiting out the backoff");
+    manager.close().await.unwrap();
+}
+
 /// A launch whose start failed records why in the failure's own category —
 /// a keychain locked for this session reads as locked, not as an internal
 /// failure, on a device whose storage credentials are gone, whose start reads
