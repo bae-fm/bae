@@ -270,10 +270,13 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
         playback.play_and_wait(&track).await;
         playback.playback_handle.set_volume(0.3);
         playback.playback_handle.set_muted(true);
-        let mut progress_rx = playback.playback_handle.subscribe_progress();
-        bae_util::test_channels::next_matching(&mut progress_rx, HANG_GUARD, |event| match event {
-            PlaybackProgress::MuteChanged { is_muted: true } => Some(()),
-            _ => None,
+        // Read on the feed subscribed before the mute was sent: one subscribed
+        // after it misses the event whenever the service serves it first.
+        bae_util::test_channels::next_matching(&mut playback.progress_rx, HANG_GUARD, |event| {
+            match event {
+                PlaybackProgress::MuteChanged { is_muted: true } => Some(()),
+                _ => None,
+            }
         })
         .await
         .expect("the mute lands");
