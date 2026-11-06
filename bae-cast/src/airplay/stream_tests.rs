@@ -105,7 +105,17 @@ fn audio_thread(
     stop: Arc<AtomicBool>,
     wake: PcmWake,
 ) -> (ReportedThread, RaopStreamControl) {
-    let control = RaopStreamControl::new(88_200);
+    audio_thread_reporting(diagnostics, source, stop, wake, AirPlayFailed::ignored())
+}
+
+fn audio_thread_reporting(
+    diagnostics: &Diagnostics,
+    source: Box<dyn PcmSource>,
+    stop: Arc<AtomicBool>,
+    wake: PcmWake,
+    failed: AirPlayFailed,
+) -> (ReportedThread, RaopStreamControl) {
+    let control = RaopStreamControl::new(88_200, failed);
     let handle = spawn_audio_thread(
         diagnostics,
         AudioThread {
@@ -135,20 +145,25 @@ impl PcmSource for PanickingSource {
 
 /// An audio sender that panics fails the stream, which ends the session
 /// rather than leaving the receiver silent while the session says it
-/// streams, and the panic is reported. Sabotage: drop the `on_panic` in
-/// `spawn_audio_thread`, and the stream reads as healthy.
+/// streams: playback is told, and the panic is reported. Sabotage: drop the
+/// `on_panic` in `spawn_audio_thread`, and the stream reads as healthy; drop
+/// the report in `mark_panicked`, and playback is never told.
 #[test]
 fn a_sender_that_panics_fails_the_stream_and_is_reported() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = Diagnostics::noop().reporting_bugs_to(bugs.clone());
-    let (handle, control) = audio_thread(
+    let (reported_tx, reported) = std::sync::mpsc::channel();
+    let failed = AirPlayFailed::reporting_to(move || reported_tx.send(()).unwrap());
+    let (handle, control) = audio_thread_reporting(
         &diagnostics,
         Box::new(PanickingSource),
         Arc::new(AtomicBool::new(false)),
         PcmWake::unattached(),
+        failed,
     );
 
     handle.join();
+    reported.try_recv().expect("the failure is reported to playback");
 
     assert_eq!(
         control.failure().as_deref(),
@@ -245,7 +260,7 @@ fn dropping_the_stream_stops_every_thread() {
         StreamSockets::bind().unwrap(),
         Arc::new(FarAheadClock),
         true,
-        RaopStreamControl::new(88_200),
+        RaopStreamControl::new(88_200, AirPlayFailed::ignored()),
     )
     .expect("the stream starts");
 

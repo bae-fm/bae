@@ -630,8 +630,12 @@ impl PlaybackService {
         self.teardown_local_playback();
 
         let control = Arc::new(crate::airplay_output::AirPlayControl::new());
+        let command_tx = self.command_tx.clone();
+        let failed = crate::airplay_output::AirPlayFailed::new(move || {
+            dispatch_command(&command_tx, PlaybackCommand::AirPlayStreamFailed)
+        });
         let airplay_output = crate::audio_output::PlayerOutput::new(
-            Box::new(crate::airplay_output::AirPlayOutput::new(sink, control.clone())),
+            Box::new(crate::airplay_output::AirPlayOutput::new(sink, control.clone(), failed)),
             crate::audio_output::AudioOutputControls::new(volume),
         );
         let saved_output = std::mem::replace(&mut self.audio_output, airplay_output);

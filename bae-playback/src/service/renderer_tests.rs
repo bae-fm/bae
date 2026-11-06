@@ -719,6 +719,7 @@ impl crate::airplay_output::AirPlaySink for NoopAirPlaySink {
         &self,
         _source: Box<dyn crate::airplay_output::PcmSource>,
         _wake: crate::airplay_output::PcmWake,
+        _failed: crate::airplay_output::AirPlayFailed,
     ) -> Result<Arc<dyn crate::airplay_output::AirPlayStreamControl>, AudioError> {
         Ok(Arc::new(FakeAirPlayControl {
             state: Arc::new(FakeAirPlayControlState::default()),
@@ -754,7 +755,7 @@ async fn play_on_airplay_swaps_the_sink_and_keeps_decode_local() {
 }
 
 /// A dead AirPlay receiver (the session reports transport failure) ends AirPlay
-/// and returns to local — surfaced on the service's audio tick rather than
+/// and returns to local — surfaced by the session's report rather than
 /// erroring silently forever, even with no position ticks coming, as when a
 /// sender thread panicked — and announces the receiver lost with why.
 #[tokio::test]
@@ -773,8 +774,8 @@ async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
         .set("20 audio sends in a row failed: No route to host (os error 65)".to_string())
         .expect("the failure is set once");
 
-    // The service's audio tick catches it and ends AirPlay.
-    service.drain_current_audio_events().await;
+    // The session reports it, and the service ends AirPlay.
+    service.airplay_stream_failed().await;
 
     assert!(
         !service.renderer.is_airplay(),

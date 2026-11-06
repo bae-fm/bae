@@ -20,7 +20,7 @@ use std::sync::{mpsc, Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use bae_diagnostics::{Diagnostics, ReportedThread};
-use bae_playback::airplay_output::{PcmSource, PcmWake, PCM_SAMPLE_RATE};
+use bae_playback::airplay_output::{AirPlayFailed, PcmSource, PcmWake, PCM_SAMPLE_RATE};
 use bae_util::task_failure::Bug;
 use tracing::{debug, warn};
 
@@ -280,17 +280,20 @@ pub(super) struct RaopStreamControl {
     frames_sent: Arc<AtomicU64>,
     reanchor: Arc<AtomicU64>,
     failure: Arc<OnceLock<String>>,
+    /// Told once, when `failure` is first set.
+    failed: AirPlayFailed,
     latency_frames: u32,
 }
 
 impl RaopStreamControl {
     /// `latency_frames` is the receiver's audio latency (its reported value, else
-    /// the dialect's ~2 s default).
-    pub(super) fn new(latency_frames: u32) -> Self {
+    /// the dialect's ~2 s default); `failed` is told when the stream fails.
+    pub(super) fn new(latency_frames: u32, failed: AirPlayFailed) -> Self {
         Self {
             frames_sent: Arc::new(AtomicU64::new(0)),
             reanchor: Arc::new(AtomicU64::new(0)),
             failure: Arc::new(OnceLock::new()),
+            failed,
             latency_frames,
         }
     }
@@ -339,13 +342,16 @@ impl RaopStreamControl {
         let failure = format!("{sends} audio sends in a row failed: {cause}");
         if self.failure.set(failure.clone()).is_ok() {
             warn!("airplay receiver unreachable: {failure}");
+            self.failed.report();
         }
     }
 
     /// One of the stream's threads panicked, so the receiver gets no more
     /// audio, sync or timing answers from it: the stream has failed.
     fn mark_panicked(&self, failed: Bug) {
-        if self.failure.set(failed.to_string()).is_err() {
+        if self.failure.set(failed.to_string()).is_ok() {
+            self.failed.report();
+        } else {
             debug!("airplay stream already failed before {failed}");
         }
     }

@@ -10,7 +10,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use bae_diagnostics::Diagnostics;
-use bae_playback::airplay_output::{AirPlaySink, AirPlayStreamControl, PcmSource, PcmWake};
+use bae_playback::airplay_output::{
+    AirPlayFailed, AirPlaySink, AirPlayStreamControl, PcmSource, PcmWake,
+};
 use bae_playback::AudioError;
 use tracing::warn;
 
@@ -50,6 +52,7 @@ impl AirPlaySink for RaopSink {
         &self,
         source: Box<dyn PcmSource>,
         wake: PcmWake,
+        failed: AirPlayFailed,
     ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
         let cipher = match self.encryption {
             RaopEncryption::None => RaopCipher::none(),
@@ -61,6 +64,7 @@ impl AirPlaySink for RaopSink {
             self.receiver,
             self.rtsp_port,
             PcmFeed::new(source, wake),
+            failed,
             cipher,
             self.initial_volume,
             Arc::new(SystemClock::new()),
@@ -119,12 +123,14 @@ impl AirPlaySink for Ap2Sink {
         &self,
         source: Box<dyn PcmSource>,
         wake: PcmWake,
+        failed: AirPlayFailed,
     ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
         let session = Ap2Session::start(
             &self.diagnostics,
             self.receiver,
             self.airplay_port,
             PcmFeed::new(source, wake),
+            failed,
             self.timing,
             Arc::new(SystemClock::new()),
         )

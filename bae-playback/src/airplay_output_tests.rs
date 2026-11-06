@@ -24,6 +24,7 @@ struct FakeState {
     flushed: AtomicBool,
     reanchored: AtomicBool,
     torn_down: AtomicBool,
+    failed: Mutex<Option<AirPlayFailed>>,
 }
 
 struct FakeSession(Arc<FakeState>);
@@ -53,7 +54,9 @@ impl AirPlaySink for FakeSink {
         &self,
         mut source: Box<dyn PcmSource>,
         _wake: PcmWake,
+        failed: AirPlayFailed,
     ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
+        *self.state.failed.lock().unwrap() = Some(failed);
         // Pull one packet synchronously to record the frame conversion.
         let mut buf = vec![0i16; 8]; // 4 stereo frames
         let frames = source.next_frames(&mut buf);
@@ -72,12 +75,21 @@ fn create_stream_drives_the_sink_and_publishes_control() {
     let sink = FakeSink::default();
     let state = sink.state.clone();
     let control = Arc::new(AirPlayControl::new());
-    let mut output = AirPlayOutput::new(Box::new(sink), control.clone());
+    let reports = Arc::new(AtomicU64::new(0));
+    let reported = reports.clone();
+    let failed = AirPlayFailed::new(move || {
+        reported.fetch_add(1, Ordering::Relaxed);
+    });
+    let mut output = AirPlayOutput::new(Box::new(sink), control.clone(), failed);
     let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
 
     let (tx, _rx) = audio_event_channel();
     let stream = output.create_stream(controls, source, 44_100, 2, tx, 100).expect("stream builds");
+
+    // The session was handed the output's failure report.
+    state.failed.lock().unwrap().as_ref().expect("the sink got the failure report").report();
+    assert_eq!(reports.load(Ordering::Relaxed), 1);
 
     // The fake pulled 4 stereo frames.
     assert_eq!(state.frames.load(Ordering::Relaxed), 4);

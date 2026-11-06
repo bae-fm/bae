@@ -443,6 +443,7 @@ fn run_full_ap2_session(
             Box::new(FixedSource { packets_left: 5 }),
             bae_playback::airplay_output::PcmWake::unattached(),
         ),
+        bae_playback::airplay_output::AirPlayFailed::ignored(),
         timing,
         Arc::new(crate::airplay::stream::SystemClock::new()),
     )

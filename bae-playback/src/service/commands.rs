@@ -320,6 +320,9 @@ impl PlaybackService {
             PlaybackCommand::StopRemote => {
                 self.handle_stop_remote().await;
             }
+            PlaybackCommand::AirPlayStreamFailed => {
+                self.airplay_stream_failed().await;
+            }
             PlaybackCommand::RemoteEvent(event) => {
                 self.handle_remote_event(event).await;
             }

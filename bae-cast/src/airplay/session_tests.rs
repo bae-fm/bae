@@ -175,6 +175,7 @@ fn playback_is_told_the_latency_the_receiver_reports() {
             Box::new(SilentSource),
             bae_playback::airplay_output::PcmWake::unattached(),
         ),
+        bae_playback::airplay_output::AirPlayFailed::ignored(),
         RaopCipher::none(),
         bae_playback::Volume::FULL,
         Arc::new(crate::airplay::stream::SystemClock::new()),

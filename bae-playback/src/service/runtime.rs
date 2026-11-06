@@ -552,16 +552,19 @@ impl PlaybackService {
         }
     }
 
-    pub(super) async fn drain_current_audio_events(&mut self) {
-        // A failed AirPlay stream surfaces here, on every tick: a receiver
-        // that stopped answering, or a sender thread that panicked and sends
-        // no more, which also ends the position ticks the drain would carry.
-        // End AirPlay and resume local paused (the shape a Cast/DLNA end has).
+    /// A stream to the AirPlay receiver reported it failed for good: a
+    /// receiver that stopped answering, or a sender thread that panicked and
+    /// sends no more. End AirPlay and resume local paused (the shape a
+    /// Cast/DLNA end has). The live session's failure is the one that counts:
+    /// a report from a session since replaced finds none.
+    pub(super) async fn airplay_stream_failed(&mut self) {
         if let Some(cause) = self.renderer.airplay_failure() {
             warn!("airplay stream failed ({cause}); ending AirPlay and resuming local");
             self.end_airplay_and_resume_local(RemoteEnd::Lost(cause)).await;
-            return;
         }
+    }
+
+    pub(super) async fn drain_current_audio_events(&mut self) {
         while let Some(event) = self.output.as_mut().and_then(|o| o.audio_events.pop()) {
             self.handle_audio_event(event).await;
         }

@@ -14,7 +14,7 @@ use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use bae_playback::airplay_output::{PCM_CHANNELS, PCM_SAMPLE_RATE};
+use bae_playback::airplay_output::{AirPlayFailed, PCM_CHANNELS, PCM_SAMPLE_RATE};
 use tracing::warn;
 
 use super::crypto::RaopCipher;
@@ -229,6 +229,7 @@ impl RaopSession {
         receiver: IpAddr,
         rtsp_port: u16,
         feed: PcmFeed,
+        failed: AirPlayFailed,
         cipher: RaopCipher,
         volume: bae_playback::Volume,
         clock: Arc<dyn MonotonicClock>,
@@ -267,7 +268,7 @@ impl RaopSession {
             audio_port: negotiated.server_port,
             control_port: negotiated.control_port,
         };
-        let stream_control = RaopStreamControl::new(latency);
+        let stream_control = RaopStreamControl::new(latency, failed);
         let stream = RaopStream::spawn(
             diagnostics,
             feed,

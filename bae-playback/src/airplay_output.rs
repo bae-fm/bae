@@ -85,6 +85,38 @@ impl PcmWake {
     }
 }
 
+/// Tells playback that a stream to a receiver failed for good, so it reads
+/// the live session's [`AirPlayStreamControl::failure`] and ends AirPlay. A
+/// session calls it once, when its failure is first set.
+#[derive(Clone)]
+pub struct AirPlayFailed {
+    report: Arc<dyn Fn() + Send + Sync>,
+}
+
+impl AirPlayFailed {
+    pub(crate) fn new(report: impl Fn() + Send + Sync + 'static) -> Self {
+        Self { report: Arc::new(report) }
+    }
+
+    pub fn report(&self) {
+        (self.report)();
+    }
+
+    /// Test-only: a report that goes nowhere, for a session test with no
+    /// playback behind it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn ignored() -> Self {
+        Self::new(|| {})
+    }
+
+    /// Test-only: a report that runs `report`, for a session test that checks
+    /// it was told.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn reporting_to(report: impl Fn() + Send + Sync + 'static) -> Self {
+        Self::new(report)
+    }
+}
+
 /// The transport controls the playback service drives a live AirPlay stream
 /// through: pause (FLUSH), resume/seek (re-anchor), whether the audio flow
 /// failed, and the receiver latency the stream runs at. Implemented by the RAOP
@@ -107,13 +139,14 @@ pub trait AirPlayStreamControl: Send + Sync {
 /// Starts pushing decoded PCM to an AirPlay receiver. bae-cast implements it
 /// over a RAOP or AirPlay 2 session; tests supply a fake.
 pub trait AirPlaySink: Send {
-    /// Begin streaming `source`, waiting on `wake` while it has no frames. The
-    /// returned session owns the receiver connection and is retained by the
-    /// output stream.
+    /// Begin streaming `source`, waiting on `wake` while it has no frames, and
+    /// telling `failed` once the stream fails for good. The returned session
+    /// owns the receiver connection and is retained by the output stream.
     fn start(
         &self,
         source: Box<dyn PcmSource>,
         wake: PcmWake,
+        failed: AirPlayFailed,
     ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError>;
 }
 
@@ -167,11 +200,16 @@ impl AirPlayControl {
 pub struct AirPlayOutput {
     sink: Box<dyn AirPlaySink>,
     control: Arc<AirPlayControl>,
+    failed: AirPlayFailed,
 }
 
 impl AirPlayOutput {
-    pub(crate) fn new(sink: Box<dyn AirPlaySink>, control: Arc<AirPlayControl>) -> Self {
-        AirPlayOutput { sink, control }
+    pub(crate) fn new(
+        sink: Box<dyn AirPlaySink>,
+        control: Arc<AirPlayControl>,
+        failed: AirPlayFailed,
+    ) -> Self {
+        AirPlayOutput { sink, control, failed }
     }
 }
 
@@ -195,7 +233,7 @@ impl AudioOutput for AirPlayOutput {
         let wake = PcmWake { controls: controls.clone() };
         let pcm_source =
             Box::new(DrainSource::new(drain, controls, source_sample_rate, source_channels)?);
-        let session = self.sink.start(pcm_source, wake)?;
+        let session = self.sink.start(pcm_source, wake, self.failed.clone())?;
         self.control.bind(&session);
         Ok(Box::new(AirPlayAudioStream { _session: session }))
     }

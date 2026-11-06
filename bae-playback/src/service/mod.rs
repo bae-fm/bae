@@ -650,6 +650,7 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::PlayOn(_)
         | PlaybackCommand::PlayOnAirPlay(_)
         | PlaybackCommand::StopRemote
+        | PlaybackCommand::AirPlayStreamFailed
         | PlaybackCommand::RemoteEvent(_) => None,
         #[cfg(any(test, feature = "test-utils"))]
         PlaybackCommand::GetQueue(_) | PlaybackCommand::TakeFills(_) => None,
@@ -705,6 +706,7 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::PreviewCompleted
         | PlaybackCommand::Shutdown(_)
         | PlaybackCommand::SaveState(_)
+        | PlaybackCommand::AirPlayStreamFailed
         | PlaybackCommand::RemoteEvent(_) => false,
         #[cfg(any(test, feature = "test-utils"))]
         PlaybackCommand::GetQueue(_) | PlaybackCommand::TakeFills(_) => false,

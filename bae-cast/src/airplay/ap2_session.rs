@@ -17,7 +17,7 @@ use std::net::{IpAddr, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use bae_playback::airplay_output::{PCM_CHANNELS, PCM_SAMPLE_RATE};
+use bae_playback::airplay_output::{AirPlayFailed, PCM_CHANNELS, PCM_SAMPLE_RATE};
 use tracing::warn;
 
 use super::airplay2::{Ap2AudioCipher, PairVerify};
@@ -436,6 +436,7 @@ impl Ap2Session {
         receiver: IpAddr,
         airplay_port: u16,
         feed: PcmFeed,
+        failed: AirPlayFailed,
         timing: super::airplay2::TimingProtocol,
         clock: Arc<dyn MonotonicClock>,
     ) -> Result<Self, Ap2Error> {
@@ -491,7 +492,7 @@ impl Ap2Session {
             control_port: ports.control_port,
         };
         let cipher = Ap2AudioCipher::from_shared_secret(&shared);
-        let stream_control = RaopStreamControl::new(latency);
+        let stream_control = RaopStreamControl::new(latency, failed);
         let stream = RaopStream::spawn(
             diagnostics,
             feed,
