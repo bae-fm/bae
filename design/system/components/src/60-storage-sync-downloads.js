@@ -1,0 +1,201 @@
+  // ==== part: storage ====
+
+  // ---- Stroke symbols for the parts below (SF Symbols and Material icons, drawn as lines) ----
+  var SYM = {
+    folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    pin: 'M9 3h6l-1 6 3 3H7l3-3zM12 12v9',
+    unpin: 'M9 3h6l-1 6 3 3H7l3-3zM12 12v9M4 4l16 16',
+    cloud: 'M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1 0 9z',
+    up: 'M12 20V5M6 11l6-6 6 6',
+    down: 'M12 4v15M6 13l6 6 6-6',
+    pause: 'M8 5v14M16 5v14',
+    play: 'M7 4l13 8-13 8z',
+    sidebar: 'M3 5h18v14H3zM15 5v14',
+    clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
+    xcircle: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9 9l6 6M15 9l-6 6',
+    copy: 'M8 8h12v12H8zM4 16V4h12',
+    left: 'M15 5l-7 7 7 7',
+    right: 'M9 5l7 7-7 7',
+    refresh: 'M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5',
+    photo: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15 9h.01',
+    globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
+    sync: 'M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4',
+    octagon: 'M8 3h8l5 5v8l-5 5H8l-5-5V8zM12 8v5M12 16h.01',
+    warning: 'M12 3l10 18H2zM12 10v5M12 18h.01',
+    moveToCloud: 'M12 4v12M7 11l5 5 5-5M5 20h14',
+    makeLocal: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
+    export: 'M12 15V3M7 8l5-5 5 5M5 12v8h14v-8',
+    saveAs: 'M12 3v12M7 10l5 5 5-5M5 12v8h14v-8',
+    grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+    expand: 'M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7',
+    close: 'M6 6l12 12M18 6L6 18',
+    back: 'M20 12H5M11 6l-6 6 6 6',
+    more: 'M12 5h.01M12 12h.01M12 19h.01',
+    check: 'M5 12l5 5 9-10',
+    trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+    edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4'
+  };
+  function Sym(props) {
+    var s = Number(props.size || 14);
+    return h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true, className: cx('bae-sym', props.className), fill: 'none', stroke: 'currentColor', strokeWidth: props.weight || 2, strokeLinecap: 'round', strokeLinejoin: 'round', style: props.style }, h('path', { d: SYM[props.name] || '' }));
+  }
+  function list(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
+
+  // ---- Storage Manager (macOS) ----
+  // The window: title, Filter field, All / Local / Cloud, the Inspector toggle, then the release list and the inspector.
+  function MacStorageWindow(props) {
+    var k = kids(props.children);
+    return h('div', { className: 'bae-m-window bae-m-storewin', style: { width: Number(props.width || 1100), height: Number(props.height || 660) } },
+      h('div', { className: 'bae-m-lights', 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)),
+      h('header', { className: 'bae-m-storewin-bar' },
+        h('span', { className: 'bae-m-storewin-title' }, 'Storage Manager'),
+        h('span', { style: { flex: 1 } }),
+        h(MacSegmentedControl, { options: 'All, Local, Cloud', selected: props.filter || 'All' }),
+        h('span', { style: { flex: 1 } }),
+        h('span', { className: 'bae-m-storewin-filter' }, h(Glyph, { set: 'mac', name: 'search', size: 12 }), h('span', { className: props.search ? null : 'bae-m-search-prompt' }, props.search || 'Filter')),
+        h('span', { className: cx('bae-m-iconbtn', props.inspector && 'bae-m-iconbtn-on'), title: 'Inspector' }, h(Sym, { name: 'sidebar', size: 15 }))),
+      h('div', { className: 'bae-m-storewin-body' },
+        h('div', { className: 'bae-m-storewin-list' }, k[0]),
+        props.inspector ? h('div', { className: 'bae-m-storewin-inspector' }, k.slice(1)) : null));
+  }
+  // An AppKit table: columns "Title:width[:right][:up|:down]", rows as MacTableRow.
+  function cols(s) { return list(s).map(function (c) { var p = c.split(':'); return { title: p[0], w: Number(p[1] || 100), right: p.indexOf('right') > 1, sort: p.indexOf('up') > 1 ? 'up' : p.indexOf('down') > 1 ? 'down' : null }; }); }
+  function MacTable(props) {
+    var cs = cols(props.columns);
+    var tmpl = cs.map(function (c, i) { return i === 0 ? 'minmax(' + c.w + 'px, 1fr)' : c.w + 'px'; }).join(' ');
+    return h('div', { className: 'bae-m-table', style: { '--bae-cols': tmpl } },
+      h('div', { className: 'bae-m-table-head' }, cs.map(function (c, i) { return h('span', { key: i, className: cx('bae-m-table-th', c.right && 'bae-m-table-right') }, c.title, c.sort ? h(Glyph, { set: 'mac', name: 'down', size: 8, className: 'bae-muted' }) : null); })),
+      h('div', { className: 'bae-m-table-body' }, kids(props.children).map(function (r, i) { return h('div', { key: i, className: cx('bae-m-table-tr', i % 2 && 'bae-m-table-alt') }, r); })),
+      props.empty ? h('div', { className: 'bae-m-table-empty' }, h('div', { className: 'bae-m-cu-title' }, props.empty)) : null);
+  }
+  function MacTableRow(props) {
+    if (props.placeholder) return h('div', { className: 'bae-m-table-row' }, h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-ph', style: { width: 180, height: 14, borderRadius: 3 } })));
+    return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
+  }
+  function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
+  // The Storage column: Local, Pinned, Cloud; or a transfer: Uploading and Pinning fill as they go.
+  function MacStorageChip(props) {
+    var s = props.state || 'cloud';
+    if (s === 'uploading' || s === 'pinning' || s === 'detaching') {
+      var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : 'Detaching Audio…';
+      return h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
+    }
+    if (s === 'transfer') return h(StatusChip, { tone: 'activity' }, props.label || 'Pinning for offline');
+    var icon = { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s];
+    return h(StatusChip, { tone: 'neutral' }, h(Sym, { name: icon, size: 10 }), { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]);
+  }
+  // Under the list: how many releases, the total, then one rate and Pause per queue with work.
+  function MacStorageFooter(props) {
+    var q = function (kind, rate, label) { return h('span', { className: 'bae-m-storefoot-q' }, h(Sym, { name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'up' : 'down', size: 11, className: kind === 'uploads' ? 'bae-activity' : kind === 'pins' ? 'bae-pinning' : null }), rate ? h('span', { className: 'bae-num' }, rate) : null, h('span', { title: label }, h(Sym, { name: 'pause', size: 10 }))); };
+    return h('div', { className: 'bae-m-storefoot' },
+      h('span', null, props.releases || '8 releases', props.total ? ' · Total: ' + props.total : ''),
+      h('span', { style: { flex: 1 } }),
+      props.uploads ? q('uploads', props.uploads, 'Pause uploads') : null,
+      props.pins ? q('pins', props.pins, 'Pause pinning') : null,
+      props.exports ? q('exports', props.exports, 'Pause exports') : null);
+  }
+  // A release's upload or pin in the inspector: the counts line with Cancel, then bytes, rate and a bar.
+  function MacTransferSummary(props) {
+    var kind = props.kind || 'upload';
+    var parts = list(props.counts);
+    return h('div', { className: 'bae-m-tsum' },
+      h('div', { className: 'bae-m-tsum-line' },
+        h('span', { className: 'bae-m-tsum-counts' }, parts.map(function (p, i) { return h(React.Fragment, { key: i }, i ? h('span', { className: 'bae-muted' }, ' · ') : null, h('span', { className: i === 0 ? cx('bae-strong', kind === 'upload' ? 'bae-activity' : 'bae-pinning') : i === parts.length - 1 ? 'bae-muted' : null }, p)); })),
+        h('span', { style: { flex: 1 } }), props.cancel === false ? null : h(MacButton, { size: 'small' }, 'Cancel')),
+      props.bytes ? h(MacTransferReadout, { kind: kind, bytes: props.bytes, rate: props.rate, progress: props.progress }) : null);
+  }
+  function MacTransferReadout(props) {
+    return h('div', { className: 'bae-m-readout' },
+      h('div', { className: 'bae-m-readout-line bae-num' }, h('span', null, props.bytes), h('span', null, props.rate)),
+      h('div', { className: 'bae-m-track' }, h('div', { className: props.kind === 'pin' ? 'bae-pinning-bg' : 'bae-activity-bg', style: { width: (Number(props.progress || 0.3) * 100) + '%' } })));
+  }
+  // One file in the inspector: a mark for queued (dashed), sending or pinning (a ring filling), its name and size.
+  function MacFileRow(props) {
+    var s = props.state || 'rest';
+    var p = Number(props.progress || 0.4), C = 2 * Math.PI * 6;
+    var mark = s === 'rest' ? h('span', { style: { width: 16 } }) :
+      s === 'queued' ? h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', className: 'bae-muted' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeDasharray: '2 2' })) :
+      h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', className: s === 'pinning' ? 'bae-pinning' : 'bae-activity' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'var(--hairline)', strokeWidth: 2 }), h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeDasharray: (C * p) + ' ' + C, transform: 'rotate(-90 8 8)' }));
+    return h('div', { className: cx('bae-m-filerow', props.selected && 'bae-m-filerow-selected') }, mark,
+      h('span', { className: cx('bae-ellipsis', s === 'queued' && 'bae-muted', s === 'sending' && 'bae-activity', s === 'pinning' && 'bae-pinning'), style: { flex: 1 } }, props.name),
+      h('span', { className: 'bae-muted bae-num' }, props.size));
+  }
+  function MacFileDetails(props) {
+    var row = function (l, v) { return v ? [h('span', { key: l + 'l', className: 'bae-muted' }, l), h('span', { key: l + 'v', className: l === 'Size' ? 'bae-num' : null }, v)] : null; };
+    return h('div', { className: 'bae-m-filedet' },
+      h('div', { className: 'bae-m-filedet-head' }, h('span', { className: 'bae-ellipsis' }, props.name), h('span', { className: 'bae-muted', title: 'Close file details' }, h(Sym, { name: 'xcircle', size: 15 }))),
+      h('div', { className: 'bae-m-filedet-grid' }, row('Folder', props.folder), row('Kind', props.kind), row('Format', props.format), row('Size', props.size)));
+  }
+  // BaeKit's ErrorDetailDisclosure: the message in its tone, the fault with Copy details, then Details.
+  function MacErrorDisclosure(props) {
+    var tone = props.tone || 'danger';
+    return h('div', { className: 'bae-m-errdis' },
+      h('div', { className: cx('bae-m-errdis-msg', 'bae-tone-' + tone) }, props.icon === false ? null : h(Sym, { name: tone === 'warning' ? 'warning' : 'octagon', size: 13 }), h('span', null, props.message)),
+      props.fault ? h('div', { className: 'bae-m-errdis-fault' }, h('span', { className: 'bae-mono bae-muted' }, props.fault), h('span', { className: 'bae-m-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 }))) : null,
+      props.fault ? h('div', { className: 'bae-m-errdis-more' }, h(Sym, { name: props.open ? 'down' : 'right', size: 9 }), 'Details') : null,
+      props.open && props.excerpt ? h('div', { className: 'bae-mono bae-muted', style: { whiteSpace: 'pre-wrap' } }, props.excerpt) : null);
+  }
+  // A popover hanging from a title-bar button, its arrow pointing up at it.
+  function MacPopover(props) {
+    return h('div', { className: 'bae-m-popover', style: { width: Number(props.width || 360), top: props.top != null ? Number(props.top) : null, right: props.right != null ? Number(props.right) : null } }, h('span', { className: 'bae-m-popover-arrow' }), props.children);
+  }
+  // BaeKit's SyncActivityList: Needs Attention, Transfers, or up to date; then the store's error and Retry Now.
+  function MacSyncActivity(props) {
+    var sec = function (title, body) { return h(MacSection, { title: title }, h(MacBox, null, body)); };
+    var label = function (icon, text, sub) { return h('div', { className: 'bae-m-actrow' }, h(Sym, { name: icon, size: 15, className: 'bae-accent' }), h('div', null, h('div', null, text), sub ? h('div', { className: 'bae-m-actrow-sub bae-num' }, sub) : null)); };
+    var out = [];
+    if (props.attention) out.push(h(React.Fragment, { key: 'a' }, sec('Needs Attention', [
+      h('div', { key: 'f', className: 'bae-m-actpad' }, h(MacErrorDisclosure, { tone: 'warning', message: props.attention, fault: props.fault })),
+      props.record ? h('div', { key: 'r', className: 'bae-m-actpad' }, h('div', { className: 'bae-strong' }, props.record), h(MacErrorDisclosure, { tone: 'neutral', icon: false, message: props.reason })) : null,
+      h('div', { key: 'b', className: 'bae-m-actpad' }, h(MacButton, null, 'Open Sync Settings'))].filter(Boolean))));
+    if (props.syncing || props.uploads || props.downloads) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
+      props.syncing ? h('div', { key: 's', className: 'bae-m-actpad' }, label('sync', 'Syncing library changes…')) : null,
+      props.uploads ? h('div', { key: 'u', className: 'bae-m-actpad' }, label('up', props.uploads, props.uploadBytes)) : null,
+      props.downloads ? h('div', { key: 'd', className: 'bae-m-actpad' }, label('down', props.downloads)) : null].filter(Boolean))));
+    if (!out.length) out.push(h(React.Fragment, { key: 'i' }, sec(null, h('div', { className: 'bae-m-actpad bae-muted' }, 'Everything is up to date.'))));
+    if (props.error) out.push(h(React.Fragment, { key: 'e' }, sec(null, [h('div', { key: 'e', className: 'bae-m-actpad' }, h(MacErrorDisclosure, { message: props.error, fault: props.errorFault })), props.retry ? h('div', { key: 'r', className: 'bae-m-actpad' }, h(MacButton, null, 'Retry Now')) : null].filter(Boolean))));
+    return h('div', { className: 'bae-m-actlist' }, out);
+  }
+
+  // ---- Android: sync activity and Downloads ----
+  function AndroidErrorDisclosure(props) {
+    var tone = props.tone || 'danger';
+    return h('div', { className: 'bae-a-errdis' },
+      h('div', { className: cx('bae-a-errdis-msg', 'bae-tone-' + tone) }, props.message),
+      props.fault ? h('div', { className: 'bae-a-errdis-fault' }, h('span', { className: 'bae-mono bae-muted' }, props.fault), h(AndroidIconButton, { icon: 'copy', label: 'Copy details' })) : null);
+  }
+  // SyncActivity.kt's sheet: the title, Needs Attention, the transfers (the downloads line opens Downloads), or up to date.
+  function AndroidSyncActivity(props) {
+    var t = function (s, c) { return h('div', { className: c || 'bae-a-act-line' }, s); };
+    return h('div', { className: 'bae-a-act' },
+      h('div', { className: 'bae-a-act-title' }, 'Sync Activity'),
+      props.attention ? h('div', { className: 'bae-a-act-block' }, h('div', { className: 'bae-strong', style: { paddingTop: 4 } }, 'Needs Attention'), h(AndroidErrorDisclosure, { tone: 'warning', message: props.attention, fault: props.fault }),
+        props.record ? h('div', null, h('div', { className: 'bae-strong' }, props.record), h('div', { className: 'bae-muted' }, props.reason)) : null,
+        h(AndroidButton, { kind: 'text', alignTo: 'text' }, 'Open Sync Settings'), h('div', { className: 'bae-divider' })) : null,
+      props.syncing ? t('Syncing library changes…') : null,
+      props.uploads ? h('div', null, t(props.uploads), props.uploadBytes ? t(props.uploadBytes, 'bae-a-act-sub') : null) : null,
+      props.downloads ? h('div', { className: 'bae-a-act-tap' }, t(props.downloads)) : null,
+      !(props.attention || props.syncing || props.uploads || props.downloads) ? t('Everything is up to date.', 'bae-a-act-sub') : null,
+      props.error ? h(AndroidErrorDisclosure, { message: props.error, fault: props.errorFault }) : null,
+      props.retry ? h(AndroidButton, { kind: 'outlined' }, 'Retry Now') : null);
+  }
+  function AndroidSegmentedButtons(props) {
+    var o = list(props.options);
+    return h('div', { className: 'bae-a-seg', role: 'radiogroup' }, o.map(function (x) { var on = x === String(props.selected); return h('span', { key: x, role: 'radio', 'aria-checked': on, className: cx('bae-a-seg-btn', on && 'bae-a-seg-on') }, on ? h(Glyph, { name: 'check', size: 18 }) : null, x); }));
+  }
+  // The Downloads screen's bar: Back, the title, Retry and Pause or Resume.
+  function AndroidDownloadsBar(props) {
+    return h('header', { className: 'bae-a-dlbar' }, h(AndroidIconButton, { icon: 'back', label: 'Back' }), h('span', { className: 'bae-a-dlbar-title' }, 'Downloads'),
+      h(AndroidButton, { kind: 'text', off: !props.failed }, 'Retry'), h(AndroidButton, { kind: 'text', off: !!props.idle }, props.paused ? 'Resume' : 'Pause'));
+  }
+  function AndroidDownloadRow(props) {
+    var s = props.state || 'queued';
+    return h('div', { className: 'bae-a-dlrow2' },
+      h('div', { className: 'bae-a-dlrow2-text' },
+        h('div', { className: 'bae-a-browse-name' }, props.title || 'Release no longer in library'),
+        h('div', { className: 'bae-a-browse-count' }, props.detail),
+        s === 'queued' ? h('div', { className: 'bae-a-browse-count' }, 'Waiting to download') :
+        s === 'active' ? h('div', null, h('div', { className: 'bae-a-dlbar-track' }, h('div', { style: { width: (Number(props.progress || 0.4) * 100) + '%' } })), h('div', { className: 'bae-a-fine bae-muted' }, props.bytes || '120 MB of 300 MB')) :
+        h('div', { className: 'bae-a-error' }, props.error || 'Couldn’t reach your storage.')),
+      h(AndroidIcon, { icon: 'close', label: 'Cancel', className: 'bae-a-icon-muted' }));
+  }

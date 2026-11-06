@@ -1,0 +1,221 @@
+  // ---- macOS ----
+
+  var PANES = ['Appearance', 'Library', 'Playback', 'Transfers', 'Import', 'Formats', 'Casting', 'Subsonic', 'Automation', 'About'];
+
+  function MacWindow(props) {
+    return h('div', { className: 'bae-m-window bae-m-window-plain', style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
+      h('div', { className: 'bae-m-lights', 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)),
+      props.children);
+  }
+
+  // A macOS alert: centred title and message, its buttons stacked full width, the default one first.
+  function MacAlert(props) {
+    return h('div', { className: 'bae-m-scrim' },
+      h('div', { role: 'alertdialog', 'aria-label': props.title, className: 'bae-m-alert' },
+        h('div', { className: 'bae-m-alert-title' }, props.title),
+        props.message ? h('div', { className: 'bae-m-alert-message' }, props.message) : null,
+        h('div', { className: 'bae-m-alert-buttons' }, props.children)));
+  }
+
+  function MacSettingsWindow(props) {
+    return h('div', { className: 'bae-m-window', style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
+      h('nav', { className: 'bae-m-sidebar', 'aria-label': 'Settings panes' },
+        h('div', { className: 'bae-m-lights', 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)),
+        PANES.map(function (p) {
+          var flagged = props.status && p === props.statusPane;
+          return h('button', { key: p, type: 'button', className: cx('bae-m-pane', p === props.pane && 'bae-m-pane-on') },
+            h('span', null, p),
+            flagged ? h(StatusChip, { tone: props.statusTone || 'warning' }, props.status) : null);
+        })),
+      h('main', { className: 'bae-m-main' },
+        props.title ? h('div', { className: 'bae-m-heading' },
+          props.back ? h('button', { type: 'button', className: 'bae-m-back', 'aria-label': 'Back to ' + props.back },
+            h('svg', { width: 10, height: 10, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z' }))) : null,
+          h('h1', null, props.title)) : null,
+        props.children));
+  }
+
+  function MacSection(props) {
+    return h('section', { className: 'bae-m-section' },
+      props.title ? h('div', { className: 'bae-m-section-title' }, props.title) : null,
+      props.children);
+  }
+
+  function MacBox(props) {
+    var list = kids(props.children);
+    var out = divided(list);
+    if (props.empty && list.length === 0) out.push(h('div', { key: 'e', className: 'bae-m-box-empty' }, props.empty));
+    return h('div', { className: cx('bae-m-box', props.elevated && 'bae-m-box-elevated') }, out);
+  }
+
+  function MacRow(props) {
+    var trail = kids(props.children);
+    return h('div', { className: cx('bae-m-row', props.nested && 'bae-m-row-nested', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action', props.destructive && 'bae-m-row-destructive'), onClick: props.onClick },
+      props.label == null ? null : h('span', { className: 'bae-m-row-label' },
+        h('span', { className: 'bae-m-row-title' }, h('span', { className: props.strong ? 'bae-m-row-strong' : null }, props.label), props.tag ? h(StatusChip, null, props.tag) : null),
+        props.note ? h('span', { className: cx('bae-m-row-note', props.noteTone && 'bae-tone-' + props.noteTone) }, props.note) : null,
+        props.waiting ? h('div', { className: 'bae-m-row-waiting bae-progress-track' }, h('div', { className: 'bae-progress-fill bae-progress-moving' })) : null),
+      props.value != null && props.value !== '' ? h('span', { className: cx('bae-m-row-value', props.tone && 'bae-tone-' + props.tone) }, props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.value) : null,
+      trail.length ? h('span', { className: 'bae-m-row-trail' }, trail) : null,
+      props.chevron ? h(Chevron, { className: 'bae-m-row-chevron' }) : null);
+  }
+
+  // A row of a MacBox whose label takes a column labelWidth wide and whose field fills the rest.
+  function MacFieldRow(props) {
+    return h('div', { className: cx('bae-m-row', 'bae-m-fieldrow', props.alignText && 'bae-m-fieldrow-aligned') },
+      props.label == null ? null : h('span', { className: 'bae-m-fieldrow-label', style: { width: Number(props.labelWidth || 90) } }, props.label),
+      h('div', { className: 'bae-m-fieldrow-content' }, kids(props.children)));
+  }
+
+  function MacButton(props) {
+    var kind = props.kind || 'secondary';
+    var rest = {
+      type: 'button',
+      disabled: !!props.off,
+      onClick: props.onClick,
+      className: cx('bae-m-btn', 'bae-m-btn-' + kind, props.size && props.size !== 'regular' && 'bae-m-btn-' + props.size, props.destructive && 'bae-m-btn-destructive')
+    };
+    if (kind === 'icon') {
+      var icon = props.icon || 'copy';
+      rest['aria-label'] = props.label || icon;
+      return h('button', rest, icon === 'check' ? h(CheckGlyph) : h(CopyGlyph));
+    }
+    return h('button', rest, props.children != null ? props.children : props.label);
+  }
+
+  function MacTextField(props) {
+    var state = props.state || 'normal';
+    var hidden = !!props.labelHidden;
+    var bare = hidden || props.label == null;
+    var lw = props.labelWidth != null ? Number(props.labelWidth) : 90;
+    var isError = state === 'error';
+    var line = isError ? props.error : props.note;
+    var input = h('input', {
+      className: cx('bae-m-input', state === 'focused' && 'bae-m-input-focused', isError && 'bae-m-input-error'),
+      type: props.secret ? 'password' : 'text',
+      defaultValue: props.value || '',
+      placeholder: hidden ? props.label : props.placeholder,
+      'aria-label': props.label,
+      disabled: state === 'off',
+      spellCheck: false
+    });
+    return h('div', { className: cx('bae-m-field', state === 'off' && 'bae-off') },
+      h('div', { className: 'bae-m-field-line' },
+        bare ? null : h('span', { className: 'bae-m-field-label', style: { width: lw } }, props.label),
+        input,
+        props.children),
+      line ? h('div', { className: cx('bae-m-field-note', isError && 'bae-m-field-note-error'), style: { paddingLeft: bare ? 0 : lw + 12 } }, line) : null);
+  }
+
+  function MacRadio(props) {
+    return h('div', { className: 'bae-m-row bae-m-radio', role: 'radio', 'aria-checked': !!props.checked, onClick: props.onClick },
+      h('span', { className: cx('bae-m-radio-dot', props.checked && 'bae-m-radio-dot-on'), 'aria-hidden': true }),
+      h('span', { className: 'bae-m-row-label' },
+        props.label,
+        props.note ? h('span', { className: 'bae-m-row-note' }, props.note) : null));
+  }
+
+  function MacPopUpButton(props) {
+    return h('button', { type: 'button', className: 'bae-m-popupbutton', disabled: !!props.off, style: props.width ? { width: Number(props.width) } : null },
+      h('span', null, props.children != null ? props.children : props.value),
+      h('svg', { className: 'bae-m-popupbutton-mark', width: 8, height: 12, viewBox: '0 0 8 12', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M1.5 4.5 4 2l2.5 2.5M1.5 7.5 4 10l2.5-2.5' })));
+  }
+
+  function MacSegmentedControl(props) {
+    var options = String(props.options || '').split(',').map(function (o) { return o.trim(); }).filter(Boolean);
+    return h('span', { className: 'bae-m-segmented', role: 'radiogroup' },
+      options.map(function (o) {
+        return h('span', { key: o, role: 'radio', 'aria-checked': o === props.selected, className: cx('bae-m-segment', o === props.selected && 'bae-m-segment-on') }, o);
+      }));
+  }
+
+  function MacDisclosure(props) {
+    var s = React.useState(!!props.open);
+    var open = s[0];
+    return h('div', { className: 'bae-m-disclosure' },
+      h('button', { type: 'button', className: 'bae-m-disclosure-toggle', 'aria-expanded': open, onClick: function () { s[1](!open); } },
+        h(Chevron, { className: cx('bae-m-disclosure-mark', open && 'bae-m-disclosure-mark-open') }),
+        props.label || 'Advanced'),
+      open ? props.children : null);
+  }
+
+  function MacSheet(props) {
+    var panel = h('div', { role: 'dialog', 'aria-label': props.title, className: 'bae-m-sheet', style: { width: Number(props.width || 460) } },
+      props.title ? h('div', { className: 'bae-m-sheet-title' }, props.title) : null,
+      props.title ? h('div', { className: 'bae-divider', 'aria-hidden': true }) : null,
+      h('div', { className: 'bae-m-sheet-body' }, props.children));
+    if (!props.overlay) return panel;
+    return h('div', { className: 'bae-m-scrim' }, panel);
+  }
+
+  // split sets the first child apart on the left, in its own box so a wrapper around it can't swallow the spacing.
+  function MacSheetFooter(props) {
+    var list = kids(props.children);
+    if (!props.split || list.length < 2) return h('div', { className: 'bae-m-sheet-footer' }, list);
+    return h('div', { className: 'bae-m-sheet-footer' },
+      h('div', { className: 'bae-m-sheet-footer-lead' }, list[0]), list.slice(1));
+  }
+
+  function Progress(prefix) {
+    return function (props) {
+      var known = typeof props.value === 'number';
+      return h('div', { className: prefix + '-progress' },
+        props.label ? h('div', null, props.label) : null,
+        h('div', { className: 'bae-progress-track', role: 'progressbar', 'aria-valuenow': known ? Math.round(props.value * 100) : undefined },
+          h('div', { className: cx('bae-progress-fill', !known && 'bae-progress-moving'), style: known ? { width: (props.value * 100) + '%' } : null })));
+    };
+  }
+  function Spinner(prefix, size) {
+    return function (props) {
+      var s = Number(props.size || size);
+      var spin = h('svg', { className: 'bae-spinner', width: s, height: s, viewBox: '0 0 24 24', role: 'progressbar', 'aria-label': props.label || 'Loading', fill: 'none' },
+        h('circle', { cx: 12, cy: 12, r: 9, stroke: 'currentColor', strokeOpacity: 0.2, strokeWidth: 2.5 }),
+        h('path', { d: 'M12 3a9 9 0 0 1 9 9', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' }));
+      return props.label ? h('span', { className: prefix + '-spinner' }, spin, h('span', null, props.label)) : h('span', { className: prefix + '-spinner' }, spin);
+    };
+  }
+  var MacSpinner = Spinner('bae-m', 16);
+  var AndroidSpinner = Spinner('bae-a', 24);
+  var MacProgress = Progress('bae-m');
+  var AndroidProgress = Progress('bae-a');
+
+  function MacErrorText(props) {
+    return h('div', { className: 'bae-m-error' }, props.children);
+  }
+
+  function MacNote(props) {
+    return h('div', { className: 'bae-m-note' }, props.children);
+  }
+
+  function MacSwitch(props) {
+    var s = React.useState(!!props.on);
+    var on = s[0];
+    return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': props.label, className: cx('bae-m-switch', on && 'bae-m-switch-on', props.off && 'bae-m-switch-off'), disabled: !!props.off, onClick: function () { s[1](!on); } },
+      h('span', { className: 'bae-m-switch-knob' }));
+  }
+
+  // The accents in the order the appearance settings offer them.
+  var ACCENTS = ['blue', 'indigo', 'purple', 'pink', 'red', 'amber', 'green', 'teal'];
+
+  function accentPicker(className) {
+    return function (props) {
+      var s = React.useState(props.selected || 'pink');
+      var chosen = s[0];
+      return h('div', { className: className, role: 'radiogroup', 'aria-label': props.label || 'Accent' }, ACCENTS.map(function (a) {
+        return h('button', { key: a, type: 'button', role: 'radio', 'aria-checked': a === chosen, 'aria-label': a.charAt(0).toUpperCase() + a.slice(1),
+          className: cx('bae-swatch', a === chosen && 'bae-swatch-on'), style: { background: 'var(--accent-' + a + '-fill)' }, onClick: function () { s[1](a); } });
+      }));
+    };
+  }
+  var MacAccentPicker = accentPicker('bae-m-accents');
+  var AndroidAccentPicker = accentPicker('bae-a-accents');
+
+  function MacMenu(props) {
+    return h('div', { className: 'bae-m-menu', role: 'menu' }, props.children);
+  }
+
+  function MacMenuItem(props) {
+    return h('div', { className: cx('bae-m-menu-item', props.highlighted && 'bae-m-menu-item-on'), role: 'menuitemradio', 'aria-checked': !!props.checked },
+      h('span', { className: 'bae-m-menu-check', 'aria-hidden': true }, props.checked ? h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.6, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M5 12.5l4.5 4.5L19 7.5' })) : null),
+      props.children);
+  }
