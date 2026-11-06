@@ -13,7 +13,7 @@ use reqwest::header::HeaderMap;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use thiserror::Error;
 use tracing::{debug, warn};
 
@@ -210,12 +210,13 @@ fn repeat_discogs(error: &DiscogsError) -> Repeat {
     }
 }
 
-/// What a Discogs response says of its rate: a 429 turns the request away,
-/// for as long as its `Retry-After` says when it says; any other response
-/// counts the window in `X-Discogs-Ratelimit-Remaining`.
-fn discogs_rate_answer(status: StatusCode, headers: &HeaderMap) -> RateAnswer {
+/// What a Discogs response that came back at `now` says of its rate: a 429
+/// turns the request away, for as long as its `Retry-After` says when it
+/// says; any other response counts the window in
+/// `X-Discogs-Ratelimit-Remaining`.
+fn discogs_rate_answer(status: StatusCode, headers: &HeaderMap, now: SystemTime) -> RateAnswer {
     if status == StatusCode::TOO_MANY_REQUESTS {
-        return RateAnswer::Refused { wait: bae_util::http::told_wait(headers) };
+        return RateAnswer::Refused { wait: bae_util::http::told_wait(headers, now) };
     }
     headers
         .get("x-discogs-ratelimit-remaining")
@@ -412,7 +413,8 @@ impl DiscogsClient {
             let attempt = request.try_clone().expect("a Discogs request has no streamed body");
             let admitted = self.discogs.limiter.wait(class).await;
             let response = self.discogs.http.execute(attempt).await?;
-            let rate = discogs_rate_answer(response.status(), response.headers());
+            let answered_at = self.discogs.http.clock().now();
+            let rate = discogs_rate_answer(response.status(), response.headers(), answered_at);
             admitted.answered(rate);
             if let RateAnswer::Refused { wait } = rate {
                 warn!(
@@ -423,7 +425,7 @@ impl DiscogsClient {
                 continue;
             }
             let status = response.status().as_u16();
-            let told_wait = bae_util::http::told_wait(response.headers());
+            let told_wait = bae_util::http::told_wait(response.headers(), answered_at);
             let body = response.text().await?;
             return Ok((CachedResponse { status, body }, told_wait));
         }

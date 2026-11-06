@@ -71,7 +71,8 @@ pub(super) async fn send_artwork_request(
         if status == reqwest::StatusCode::NOT_FOUND {
             return ClassifiedAttempt::Done(None);
         }
-        let repeat = Repeat::for_status(status, bae_util::http::told_wait(response.headers()));
+        let told_wait = bae_util::http::told_wait(response.headers(), http.clock().now());
+        let repeat = Repeat::for_status(status, told_wait);
         ClassifiedAttempt::Failed(
             RemoteImageError::Status {
                 status: status.as_u16(),

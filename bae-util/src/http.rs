@@ -1,7 +1,7 @@
 //! Shared outbound HTTP client configuration.
 
 use reqwest::redirect::Policy;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 /// User-agent sent on every bae-originated HTTP request (MusicBrainz, Discogs,
 /// the Cover Art Archive, artist images). Some APIs reject requests without a
@@ -27,31 +27,35 @@ pub const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
 /// How long a response asks its client to wait before asking again, read off
 /// its `Retry-After`: a number of seconds, or an HTTP-date. A date is measured
 /// from the response's own `Date` — the server's clock, so this machine's
-/// being off does not stretch or cut the wait — and from this machine's clock
-/// only when the response states no date. `None` when the response has no
-/// `Retry-After` or one that says nothing readable; a date already past asks
-/// for no wait.
+/// being off does not stretch or cut the wait — and from `now`, the
+/// transport's clock as the response came back, only when the response states
+/// no date. `None` when the response has no `Retry-After` or one that says
+/// nothing readable; a date already past asks for no wait.
 ///
 /// The one reader of the header: every provider client hands the retry loop
 /// what this returns.
-pub fn told_wait(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
+pub fn told_wait(headers: &reqwest::header::HeaderMap, now: SystemTime) -> Option<Duration> {
     let retry_after = headers.get(reqwest::header::RETRY_AFTER)?.to_str().ok()?;
     let date = headers.get(reqwest::header::DATE).and_then(|value| value.to_str().ok());
-    told_wait_at(retry_after, date, chrono::Utc::now())
+    told_wait_at(retry_after, date, now.into())
 }
 
 /// How long until the instant a response names in `header`, as whole seconds
 /// since the Unix epoch. Measured from the response's own `Date`, as
-/// [`told_wait`] measures a date — from this machine's clock only when the
-/// response states no date. `Date` is whole seconds too, so the wait can run
-/// up to a second past the instant, never short of it. `None` when the
-/// response has no such header or one that says nothing readable; an instant
-/// already past asks for no wait.
+/// [`told_wait`] measures a date — from `now` only when the response states
+/// no date. `Date` is whole seconds too, so the wait can run up to a second
+/// past the instant, never short of it. `None` when the response has no such
+/// header or one that says nothing readable; an instant already past asks for
+/// no wait.
 #[cfg(desktop)]
-pub fn wait_until_epoch(headers: &reqwest::header::HeaderMap, header: &str) -> Option<Duration> {
+pub fn wait_until_epoch(
+    headers: &reqwest::header::HeaderMap,
+    header: &str,
+    now: SystemTime,
+) -> Option<Duration> {
     let epoch = headers.get(header)?.to_str().ok()?.trim().parse::<i64>().ok()?;
     let date = headers.get(reqwest::header::DATE).and_then(|value| value.to_str().ok());
-    wait_until_epoch_at(epoch, date, chrono::Utc::now())
+    wait_until_epoch_at(epoch, date, now.into())
 }
 
 #[cfg(desktop)]

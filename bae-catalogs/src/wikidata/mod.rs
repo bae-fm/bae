@@ -194,7 +194,7 @@ impl Wikidata {
         let _admitted = self.limiter.wait(class).await;
         let response = self.http.execute(request).await.map_err(WikidataError::from_reqwest)?;
         let status = response.status().as_u16();
-        let told_wait = bae_util::http::told_wait(response.headers());
+        let told_wait = bae_util::http::told_wait(response.headers(), self.http.clock().now());
         let body = response.text().await.map_err(WikidataError::from_reqwest)?;
         let response = CachedResponse { status, body };
 

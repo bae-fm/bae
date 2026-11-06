@@ -6,7 +6,7 @@ use crate::rate_limiter::{RateAnswer, WindowCount};
 use bae_util::retry::{Repeat, RetryPolicy};
 use reqwest::header::HeaderMap;
 use reqwest::StatusCode;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 /// A request every 1.2 seconds: a sixth under the one a second MusicBrainz
 /// allows an address (<https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting>).
@@ -89,11 +89,15 @@ pub(super) const RATE_ZONE: &str = "x-ratelimit-zone";
 /// address's — answers a moment apart report it hundreds apart — so it says
 /// when the servers are about to turn every client away, and this address's
 /// own rate is the interval's to keep.
-pub(super) fn mb_rate_answer(status: StatusCode, headers: &HeaderMap) -> RateAnswer {
-    let resets_in = bae_util::http::wait_until_epoch(headers, "x-ratelimit-reset");
+pub(super) fn mb_rate_answer(
+    status: StatusCode,
+    headers: &HeaderMap,
+    now: SystemTime,
+) -> RateAnswer {
+    let resets_in = bae_util::http::wait_until_epoch(headers, "x-ratelimit-reset", now);
     if status == StatusCode::SERVICE_UNAVAILABLE && headers.contains_key(RATE_ZONE) {
         return RateAnswer::Refused {
-            wait: [bae_util::http::told_wait(headers), resets_in].into_iter().flatten().max(),
+            wait: [bae_util::http::told_wait(headers, now), resets_in].into_iter().flatten().max(),
         };
     }
     let remaining = headers

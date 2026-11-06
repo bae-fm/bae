@@ -120,17 +120,32 @@ fn a_wait_until_an_epoch_instant_is_measured_from_the_responses_clock() {
     );
 
     let mut headers = reqwest::header::HeaderMap::new();
-    assert_eq!(wait_until_epoch(&headers, "x-ratelimit-reset"), None);
+    assert_eq!(wait_until_epoch(&headers, "x-ratelimit-reset", now.into()), None);
     headers.insert("x-ratelimit-reset", reqwest::header::HeaderValue::from_static("soon"));
-    assert_eq!(wait_until_epoch(&headers, "x-ratelimit-reset"), None);
+    assert_eq!(wait_until_epoch(&headers, "x-ratelimit-reset", now.into()), None);
+    // With no `Date`, the instant is measured from the clock reading handed in.
+    let reset = epoch("Sat, 26 Sep 2026 06:52:05 GMT").to_string();
+    headers.insert("x-ratelimit-reset", reqwest::header::HeaderValue::from_str(&reset).unwrap());
+    assert_eq!(
+        wait_until_epoch(&headers, "x-ratelimit-reset", now.into()),
+        Some(Duration::from_secs(20))
+    );
 }
 
 #[test]
 fn a_told_wait_is_read_off_the_headers() {
+    let now: std::time::SystemTime =
+        chrono::DateTime::parse_from_rfc2822("Sat, 26 Sep 2026 06:51:45 GMT").unwrap().into();
     let mut headers = reqwest::header::HeaderMap::new();
-    assert_eq!(told_wait(&headers), None);
+    assert_eq!(told_wait(&headers, now), None);
     headers.insert(reqwest::header::RETRY_AFTER, reqwest::header::HeaderValue::from_static("7"));
-    assert_eq!(told_wait(&headers), Some(Duration::from_secs(7)));
+    assert_eq!(told_wait(&headers, now), Some(Duration::from_secs(7)));
+    // With no `Date`, a told date is measured from the clock reading handed in.
+    headers.insert(
+        reqwest::header::RETRY_AFTER,
+        reqwest::header::HeaderValue::from_static("Sat, 26 Sep 2026 06:52:00 GMT"),
+    );
+    assert_eq!(told_wait(&headers, now), Some(Duration::from_secs(15)));
 }
 
 #[tokio::test]

@@ -327,7 +327,7 @@ impl MusicBrainz {
 
         let response = self.send(request, class).await?;
         let status = response.status().as_u16();
-        let told_wait = bae_util::http::told_wait(response.headers());
+        let told_wait = bae_util::http::told_wait(response.headers(), self.http.clock().now());
         let body = response.text().await.map_err(MusicBrainzError::from_reqwest)?;
         let response = CachedResponse { status, body };
 
@@ -356,7 +356,8 @@ impl MusicBrainz {
             let admitted = self.limiter.wait(class).await;
             let response =
                 self.http.execute(attempt).await.map_err(MusicBrainzError::from_reqwest)?;
-            let rate = mb_rate_answer(response.status(), response.headers());
+            let rate =
+                mb_rate_answer(response.status(), response.headers(), self.http.clock().now());
             admitted.answered(rate);
             let RateAnswer::Refused { wait } = rate else {
                 return Ok(response);

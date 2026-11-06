@@ -6,7 +6,7 @@
 
 use std::ops::Range;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use rand::{Rng, SeedableRng};
 use reqwest::header::HeaderMap;
@@ -40,12 +40,12 @@ pub struct Outcome {
 }
 
 /// Every request of `load` made through `limiter` against `window`, each
-/// answer read by `read` and handed back to the limiter, a refused one asked
-/// again until it is answered.
+/// answer read by `read` at the limiter's clock's time and handed back to the
+/// limiter, a refused one asked again until it is answered.
 pub async fn sustain(
     limiter: Arc<RateLimiter>,
     window: impl Window,
-    read: fn(StatusCode, &HeaderMap) -> RateAnswer,
+    read: fn(StatusCode, &HeaderMap, SystemTime) -> RateAnswer,
     load: Load,
 ) -> Outcome {
     let start = Instant::now();
@@ -81,7 +81,7 @@ pub async fn sustain(
                 tokio::time::sleep(there).await;
                 let (status, headers) = window.lock().unwrap().arrive(Instant::now());
                 tokio::time::sleep(back).await;
-                let answer = read(status, &headers);
+                let answer = read(status, &headers, limiter.clock.now());
                 admitted.answered(answer);
                 if !matches!(answer, RateAnswer::Refused { .. }) {
                     return;
