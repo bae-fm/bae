@@ -5,6 +5,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.ui.BaeTheme
+import fm.bae.fastvalues.LatestStream
+import fm.bae.fastvalues.only
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -65,14 +67,17 @@ class OnboardingRestoreTextTest {
         // The spinner animates forever; a frozen clock lets the content settle.
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            OnboardingProgress(
-                OnboardingStep.Running(
-                    restore(CodeEntry.NewDevice),
-                    BridgeBootstrapState(BridgeBootstrapStatus.Connecting, cancellable = true),
-                ),
-                onCancel = {},
-                onCheckNow = {},
-            )
+            BaeTheme {
+                OnboardingProgress(
+                    OnboardingStep.Running(
+                        restore(CodeEntry.NewDevice),
+                        BridgeBootstrapState(BridgeBootstrapStatus.Connecting, cancellable = true),
+                        LatestStream.bootstrapSteps().only,
+                    ),
+                    onCancel = {},
+                    onCheckNow = {},
+                )
+            }
         }
 
         compose.onNodeWithText("Adding this device").assertIsDisplayed()
@@ -82,11 +87,17 @@ class OnboardingRestoreTextTest {
     fun restoringOverThisDevicesCopySaysRestoringWhileItRuns() {
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            OnboardingProgress(
-                OnboardingStep.Running(restore(restoreOver), BridgeBootstrapState(BridgeBootstrapStatus.Connecting, cancellable = true)),
-                onCancel = {},
-                onCheckNow = {},
-            )
+            BaeTheme {
+                OnboardingProgress(
+                    OnboardingStep.Running(
+                        restore(restoreOver),
+                        BridgeBootstrapState(BridgeBootstrapStatus.Connecting, cancellable = true),
+                        LatestStream.bootstrapSteps().only,
+                    ),
+                    onCancel = {},
+                    onCheckNow = {},
+                )
+            }
         }
 
         compose.onNodeWithText("Restoring your library").assertIsDisplayed()

@@ -247,6 +247,7 @@ task_types = [
     "ReleaseDetailSubscription",
     "ReleaseFilesSubscription",
     "RequestedProfileSubscription",
+    "SetupStatesSubscription",
     "StorageBrowseSubscription",
     "StorageInspectorSubscription",
     "SyncActivitySubscription",

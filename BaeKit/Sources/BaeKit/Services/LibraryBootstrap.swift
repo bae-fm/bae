@@ -6,16 +6,19 @@ import Observation
 @MainActor
 @Observable
 public final class LibraryBootstrap {
-    /// Where the running attempt stands, read off its stream: connecting
-    /// until the stream says otherwise; nil while no attempt runs.
+    /// Where the running attempt stands, as core says: connecting until it
+    /// says otherwise; nil while no attempt runs.
     public var status: BridgeBootstrapStatus? {
-        guard let followed else { return nil }
-        return followed.value?.status ?? .connecting
+        guard let following else { return nil }
+        return following.state?.status ?? .connecting
     }
     /// Whether Cancel can still stop the running attempt, as core says: false
-    /// while no attempt runs and until its stream has said so.
-    public var cancellable: Bool { followed?.value?.cancellable ?? false }
-    private var followed: FollowedValue<BridgeBootstrapState>?
+    /// while no attempt runs and until core has said so.
+    public var cancellable: Bool { following?.state?.cancellable ?? false }
+    /// The counted step the running attempt runs, opening or loading, for
+    /// the line that draws it; nil while no attempt runs.
+    public var steps: LatestSource<BridgeBootstrapStep>? { following?.steps }
+    private var following: BootstrapFollowing?
     /// The steps of the open a restore over this device's copy runs when
     /// this device already holds the code's keys; nil for any other attempt.
     public private(set) var openSteps: LatestSource<BridgeOpenProgress>?
@@ -147,8 +150,8 @@ public final class LibraryBootstrap {
         }
     }
 
-    /// Run one attempt, following where it stands off the stream of the
-    /// setup it is handed.
+    /// Run one attempt, following where it stands through the setup it is
+    /// handed.
     private func run(
         cancel: @escaping () -> Void,
         _ work: (BridgeLibrarySetup) async throws -> BridgeBootstrapResult
@@ -156,17 +159,16 @@ public final class LibraryBootstrap {
         precondition(!running, "one bootstrap attempt at a time")
         running = true
         cancelAttempt = cancel
-        let setup = BridgeLibrarySetup(host: host)
-        let stream = LatestStream<BridgeBootstrapState>.bootstrapState()
-        let feed = stream.feed(from: setup)
-        followed = FollowedValue(stream.only)
+        let following = BootstrapFollowing(
+            setup: BridgeLibrarySetup(host: host)
+        )
+        self.following = following
         defer {
-            followed?.stop()
-            followed = nil
+            following.stop()
+            self.following = nil
             cancelAttempt = nil
             running = false
-            feed.cancel()
         }
-        return try await work(setup)
+        return try await work(following.setup)
     }
 }

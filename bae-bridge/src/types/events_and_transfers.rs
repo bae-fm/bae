@@ -149,9 +149,9 @@ pub enum BridgeFastValue {
     /// How far a setup call has come; a stream's one key, `""`, while it
     /// runs a step.
     SetupProgress { progress: super::BridgeSetupProgress },
-    /// Where a restore, a join or a device reset stands, and whether it can
-    /// still be cancelled; a stream's one key, `""`, while it runs.
-    BootstrapState { state: super::BridgeBootstrapState },
+    /// The counted step a restore, a join or a device reset runs; a
+    /// stream's one key, `""`, while it runs one.
+    BootstrapStep { step: super::BridgeBootstrapStep },
     /// How far a storage setup has come; a stream's one key, `""`, while it
     /// runs a step.
     StorageSetupProgress { progress: super::BridgeStorageSetupProgress },

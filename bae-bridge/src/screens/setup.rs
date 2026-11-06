@@ -1,17 +1,22 @@
 //! A library's open and each setup call (a restore, a join, a creation, a
 //! first storage connect, a dev reset), as the app follows them: the stream
-//! the call reports its steps in, which the call writes. The app makes the
-//! object (its constructor is the host's, whose runtime the stream is pulled
-//! on), starts reading its steps, then hands it to the call.
+//! the call reports its steps in, which the call writes, and, for a restore,
+//! a join or a reset, where it stands, which the app pulls as it pulls every
+//! screen value. The app makes the object (its constructor is the host's,
+//! whose runtime the stream and the states are pulled on), starts reading
+//! its steps, then hands it to the call.
 
 use std::sync::Arc;
 #[cfg(test)]
 use std::sync::Mutex;
 
+use bae_library::CancellationToken;
+use tokio::sync::watch;
+
 use crate::keyed_values::{KeyedValueStream, ProgressStream, ProgressWriter};
 use crate::operation_runtime::OperationRuntime;
 use crate::types::{
-    BridgeBootstrapState, BridgeBootstrapStatus, BridgeFastValue, BridgeOpenProgress,
+    BridgeBootstrapState, BridgeBootstrapStatus, BridgeError, BridgeFastValue, BridgeOpenProgress,
     BridgeSetupProgress, BridgeSetupStep,
 };
 
@@ -60,6 +65,8 @@ pub struct BridgeLibrarySetup {
     /// Where the call reports its steps: the stream
     /// [`Self::feed_setup_steps`] last handed out.
     steps: ProgressStream,
+    /// Where a restore, a join or a reset says where it stands.
+    states: SetupStateWatch,
     /// Every value a call wrote, and `None` where its writing ended, so a
     /// test reads steps that come and go faster than it could look.
     #[cfg(test)]
@@ -69,7 +76,8 @@ pub struct BridgeLibrarySetup {
 /// A setup whose stream is pulled on `runtime`.
 pub(crate) fn library_setup(runtime: OperationRuntime) -> Arc<BridgeLibrarySetup> {
     Arc::new(BridgeLibrarySetup {
-        steps: ProgressStream::new(runtime),
+        steps: ProgressStream::new(runtime.clone()),
+        states: SetupStateWatch::new(runtime),
         #[cfg(test)]
         written: Arc::default(),
     })
@@ -83,6 +91,108 @@ impl BridgeLibrarySetup {
     pub fn feed_setup_steps(&self) -> Arc<KeyedValueStream> {
         self.steps.feed()
     }
+
+    /// Where a restore, a join or a reset stands, and whether its Cancel can
+    /// still stop it: the latest once the call has said, then each change.
+    /// A step's counts are in the steps' stream instead, so they change
+    /// nothing here.
+    pub fn subscribe_states(&self) -> Arc<SetupStatesSubscription> {
+        self.states.subscribe()
+    }
+}
+
+/// Where a restore, a join or a reset stands, as its call says it and its
+/// screens pull it: `None` until the call says.
+struct SetupStateWatch {
+    states: Arc<watch::Sender<Option<BridgeBootstrapState>>>,
+    /// Where the states are pulled.
+    runtime: OperationRuntime,
+}
+
+impl SetupStateWatch {
+    fn new(runtime: OperationRuntime) -> Self {
+        Self { states: Arc::new(watch::channel(None).0), runtime }
+    }
+
+    /// A subscription answering with the latest state once the call has
+    /// said one, then each change.
+    fn subscribe(&self) -> Arc<SetupStatesSubscription> {
+        let mut states = self.states.subscribe();
+        states.mark_changed();
+        setup_states(
+            SetupStates {
+                states: tokio::sync::Mutex::new(states),
+                cancelled: CancellationToken::new(),
+            },
+            self.runtime.clone(),
+        )
+    }
+
+    /// Where one call says where it stands.
+    fn writer(&self) -> SetupStateWriter {
+        SetupStateWriter { states: self.states.clone() }
+    }
+}
+
+/// One call's saying where it stands.
+struct SetupStateWriter {
+    states: Arc<watch::Sender<Option<BridgeBootstrapState>>>,
+}
+
+impl SetupStateWriter {
+    /// The call stands at `state`; a state that changed wakes the
+    /// subscriptions, one that didn't wakes nothing.
+    fn say(&self, state: BridgeBootstrapState) {
+        self.states.send_if_modified(|current| {
+            let changed = current.as_ref() != Some(&state);
+            if changed {
+                *current = Some(state);
+            }
+            changed
+        });
+    }
+}
+
+/// The states one subscription pulls: each that it has not answered with.
+pub(crate) struct SetupStates {
+    states: tokio::sync::Mutex<watch::Receiver<Option<BridgeBootstrapState>>>,
+    cancelled: CancellationToken,
+}
+
+impl crate::screens::PulledRead for SetupStates {
+    type Value = BridgeBootstrapState;
+
+    async fn next(&self) -> Result<BridgeBootstrapState, BridgeError> {
+        tokio::select! {
+            biased;
+            () = self.cancelled.cancelled() => Err(BridgeError::Cancelled),
+            state = async {
+                let mut states = self.states.lock().await;
+                loop {
+                    // The setup is gone once every sender is: nothing more
+                    // will be said.
+                    if states.changed().await.is_err() {
+                        return Err(BridgeError::Cancelled);
+                    }
+                    if let Some(state) = states.borrow_and_update().clone() {
+                        return Ok(state);
+                    }
+                }
+            } => state,
+        }
+    }
+
+    async fn cancel(&self) -> Result<(), BridgeError> {
+        self.cancelled.cancel();
+        Ok(())
+    }
+}
+
+pulled_read! {
+    /// Where a restore, a join or a reset stands, as its screen shows it.
+    SetupStatesSubscription: SetupStates => BridgeBootstrapState,
+    converted by |state: BridgeBootstrapState| state,
+    built by setup_states
 }
 
 impl BridgeLibrarySetup {
@@ -91,6 +201,7 @@ impl BridgeLibrarySetup {
     pub(crate) fn writer(&self) -> SetupSteps {
         SetupSteps {
             writer: self.steps.writer(),
+            states: Some(self.states.writer()),
             #[cfg(test)]
             written: self.written.clone(),
         }
@@ -106,6 +217,9 @@ impl BridgeLibrarySetup {
 /// A setup call's writing of its stream.
 pub(crate) struct SetupSteps {
     writer: ProgressWriter,
+    /// Where the call says where it stands; `None` when the app doesn't show
+    /// the call.
+    states: Option<SetupStateWriter>,
     #[cfg(test)]
     written: Arc<Mutex<Vec<Option<BridgeFastValue>>>>,
 }
@@ -118,6 +232,7 @@ impl SetupSteps {
             Some(setup) => setup.writer(),
             None => Self {
                 writer: ProgressWriter::unread(),
+                states: None,
                 #[cfg(test)]
                 written: Arc::default(),
             },
@@ -145,20 +260,29 @@ impl SetupSteps {
     }
 
     /// Where a restore, join or reset stands now, and whether its Cancel can
-    /// still stop it.
+    /// still stop it: a state that changed wakes its subscriptions, and the
+    /// counts of the step it runs go to the stream, which holds nothing
+    /// between counted steps.
     pub(crate) fn bootstrap(&self, status: coven::BootstrapStatus, cancellable: bool) {
-        self.set(BridgeFastValue::BootstrapState {
-            state: BridgeBootstrapState {
-                status: BridgeBootstrapStatus::from_core(status),
-                cancellable,
-            },
-        });
+        let (status, step) = BridgeBootstrapStatus::from_core(status);
+        if let Some(states) = &self.states {
+            states.say(BridgeBootstrapState { status, cancellable });
+        }
+        match step {
+            Some(step) => self.set(BridgeFastValue::BootstrapStep { step }),
+            None => self.clear(),
+        }
     }
 
     fn set(&self, value: BridgeFastValue) {
         #[cfg(test)]
         self.written.lock().unwrap().push(Some(value.clone()));
         self.writer.set(value);
+    }
+
+    /// The stream holds nothing until the next step that counts.
+    fn clear(&self) {
+        self.writer.clear();
     }
 }
 

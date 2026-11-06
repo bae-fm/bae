@@ -1,10 +1,15 @@
 package fm.bae.app.ui.onboarding
 
 import android.app.Application
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import org.junit.Assert.assertFalse
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.shownTexts
+import fm.bae.app.ui.tellStep
+import fm.bae.fastvalues.LatestStream
+import fm.bae.fastvalues.only
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -13,6 +18,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeBootstrapState
 import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeBootstrapStep
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeInviteDeliveryKind
@@ -27,7 +33,7 @@ import java.time.Instant
 @Config(sdk = [35], application = Application::class)
 class OnboardingProgressTest {
     @get:Rule
-    val compose = createComposeRule()
+    val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val invite =
         OnboardingStep.Invite(
@@ -69,6 +75,7 @@ class OnboardingProgressTest {
                     ),
                     cancellable = false,
                 ),
+                LatestStream.bootstrapSteps().only,
             )
         compose.mainClock.autoAdvance = false
         compose.setContent {
@@ -87,7 +94,6 @@ class OnboardingProgressTest {
     @Test
     fun registeringNamesItsStep() {
         val status = BridgeBootstrapStatus.Registering
-        assertFalse(status.hasStepBar())
         compose.setContent { StatusLines(status) }
         compose.onNodeWithText("Registering this device…").assertIsDisplayed()
     }
@@ -96,22 +102,38 @@ class OnboardingProgressTest {
     @Test
     fun committingNamesItsStep() {
         val status = BridgeBootstrapStatus.Committing
-        assertFalse(status.hasStepBar())
         compose.setContent { StatusLines(status) }
         compose.onNodeWithText("Finishing…").assertIsDisplayed()
     }
 
     /**
-     * Loading the library shows its step's line, not a bare spinner. The step's catalog key comes from the bridge, which a
-     * unit test can't load, so the test names it.
+     * Loading the library shows its step's line, drawn by a View from the call's steps, in place of the status lines. The
+     * step's catalog key comes from the bridge, which a unit test can't load, so the test names it.
      */
     @Test
     fun loadingTheLibraryNamesItsStep() {
-        val status = BridgeBootstrapStatus.Loading(BridgeLoadProgress(BridgeLoadStep.READING, done = 2uL, total = 8uL))
-        assertTrue(status.hasStepBar())
+        val loading = BridgeBootstrapStep.Loading(BridgeLoadProgress(BridgeLoadStep.READING, done = 2uL, total = 8uL))
+        val steps = LatestStream.written<BridgeBootstrapStep>()
         compose.setContent {
-            StatusLines(status, loadStepKey = { "core.library.load_step.reading" })
+            BaeTheme {
+                BootstrapStepLine(
+                    steps = steps.source(STEP_KEY),
+                    loadStepKey = { "core.library.load_step.reading" },
+                ) { StatusLines(BridgeBootstrapStatus.Loading) }
+            }
         }
-        compose.onNodeWithText("Downloading recent changes", substring = true).assertIsDisplayed()
+        // The rule hands out its activity only after running the main looper until idle, which never comes while a
+        // step is held, so the root is taken first.
+        val root = compose.activity.window.decorView
+
+        steps.tellStep(STEP_KEY, loading)
+
+        val shown = root.shownTexts()
+        steps.tellStep(STEP_KEY, null)
+        assertTrue(shown.toString(), shown.any { it.contains("Downloading recent changes") })
+    }
+
+    private companion object {
+        const val STEP_KEY = "restore"
     }
 }

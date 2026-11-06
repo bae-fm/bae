@@ -13,13 +13,14 @@ import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.deviceName
 import fm.bae.app.displayError
 import fm.bae.fastvalues.LatestSource
-import fm.bae.fastvalues.changes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapState
+import uniffi.bae_bridge.BridgeBootstrapStep
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
@@ -117,14 +118,16 @@ internal sealed interface OnboardingStep {
     /**
      * A restore with [from], or a join when [from] is an invite, running;
      * [state] is core's latest report of where it stands and whether it can
-     * still be cancelled, null until the first arrives. A
-     * restore over this device's copy just opens it when this device holds
-     * the code's keys, and [openSteps] are that open's steps; null for any
-     * other attempt.
+     * still be cancelled, null until the first arrives, and [steps] the
+     * counted step it runs, opening or loading, which its line draws each
+     * frame. A restore over this device's copy just opens it when this device
+     * holds the code's keys, and [openSteps] are that open's steps; null for
+     * any other attempt.
      */
     data class Running(
         val from: CodeRead,
         val state: BridgeBootstrapState?,
+        val steps: LatestSource<BridgeBootstrapStep>,
         val openSteps: LatestSource<BridgeOpenProgress>? = null,
     ) : OnboardingStep
 }
@@ -180,8 +183,8 @@ internal fun codeReadStep(
  * The core onboarding runs against: the [host] that restores and joins,
  * [newCancellation], which makes the stop each restore is handed,
  * [newOpenProgress], which makes the open a restore over this device's copy
- * reports its steps in, and [newSetupStatus], which makes the stream each
- * restore or join reports where it stands in.
+ * reports its steps in, and [newSetupStatus], which makes the setup each
+ * restore or join says where it stands through.
  */
 internal class OnboardingCore(
     val host: BridgeHostInterface,
@@ -400,15 +403,17 @@ internal class OnboardingFlow(
         start: suspend (BridgeLibrarySetup) -> BridgeBootstrapResult,
     ) {
         error = null
-        step = OnboardingStep.Running(from, state = null, openSteps = opening?.steps)
+        val setup = core.newSetupStatus()
+        step = OnboardingStep.Running(from, state = null, steps = setup.steps, openSteps = opening?.steps)
         cancellation = cancel
-        scope.launch {
-            val setup = core.newSetupStatus()
+        // Started even when the scope is already cancelled, so the setup made
+        // above is closed by the `finally` below.
+        scope.launch(start = CoroutineStart.ATOMIC) {
             val following =
                 launch {
-                    setup.states.changes().collect { state ->
+                    setup.followStates { state ->
                         val current = step
-                        if (state != null && current is OnboardingStep.Running) step = current.copy(state = state)
+                        if (current is OnboardingStep.Running) step = current.copy(state = state)
                     }
                 }
             try {

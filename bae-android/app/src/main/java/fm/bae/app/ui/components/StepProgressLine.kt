@@ -29,16 +29,16 @@ private const val BAR_MAX = 10_000
 
 /**
  * What shows while a long call runs: [idle] until the call runs a step, then
- * the step's [title] over a bar of its [fraction] done, in its place, which a
- * View reads from [steps]'s latest value each display frame. Only a step
- * starting or ending recomposes, and tells [onStepping]. With no call to
- * follow, [idle] alone.
+ * the step's [title] over a bar of its [fraction] done, or a moving bar for a
+ * step that counts nothing (null), in its place, which a View reads from
+ * [steps]'s latest value each display frame. Only a step starting or ending
+ * recomposes, and tells [onStepping]. With no call to follow, [idle] alone.
  */
 @Composable
 internal fun <Step : Any> StepProgressLine(
     steps: LatestSource<Step>?,
     title: (Step) -> String,
-    fraction: (Step) -> Double,
+    fraction: (Step) -> Double?,
     modifier: Modifier = Modifier,
     onStepping: (Boolean) -> Unit = {},
     idle: @Composable () -> Unit,
@@ -81,7 +81,7 @@ internal class StepProgressView<Step : Any>(
         }
     private val following = FrameFollowing<Step>(this, ::show)
     private lateinit var title: (Step) -> String
-    private lateinit var fraction: (Step) -> Double
+    private lateinit var fraction: (Step) -> Double?
 
     /** Whether a step runs, as last told to [onStepping]; null until the View shows what its stream holds. */
     private var told: Boolean? = null
@@ -107,10 +107,10 @@ internal class StepProgressView<Step : Any>(
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
     }
 
-    /** How a step reads: its name, and how much of it is done; told before [follow]. */
+    /** How a step reads: its name, and how much of it is done, null when it counts nothing; told before [follow]. */
     fun describe(
         title: (Step) -> String,
-        fraction: (Step) -> Double,
+        fraction: (Step) -> Double?,
     ) {
         this.title = title
         this.fraction = fraction
@@ -128,7 +128,10 @@ internal class StepProgressView<Step : Any>(
         if (step != null) {
             val shown = title(step)
             if (label.text.toString() != shown) label.text = shown
-            bar.progress = (fraction(step) * BAR_MAX).toInt()
+            val done = fraction(step)
+            val counted = done != null
+            if (bar.isIndeterminate == counted) bar.isIndeterminate = !counted
+            if (done != null) bar.progress = (done * BAR_MAX).toInt()
         }
         val started = step != null
         visibility = if (started) View.VISIBLE else View.GONE

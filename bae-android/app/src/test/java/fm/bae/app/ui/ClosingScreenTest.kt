@@ -1,11 +1,13 @@
 package fm.bae.app.ui
 
 import android.app.Application
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -14,14 +16,15 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeClosingStep
 
 /**
- * A close's screen names the step the close starts with before the close writes one, then each step it writes. A
- * step's catalog key comes from the bridge, which a unit test can't load, so the test names it from the step.
+ * A close's screen names the step the close starts with before the close writes one, then each step it writes, which
+ * a View draws from the close's steps. A step's catalog key comes from the bridge, which a unit test can't load, so the
+ * test names it from the step.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class ClosingScreenTest {
     @get:Rule
-    val compose = createComposeRule()
+    val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
     fun aCloseThatWroteNoStepNamesTheStepItStarts() {
@@ -50,6 +53,11 @@ class ClosingScreenTest {
             }
         }
 
-        compose.onNodeWithText("Stopping sync", substring = true).assertIsDisplayed()
+        compose.waitForIdle()
+
+        val shown =
+            compose.activity.window.decorView
+                .shownTexts()
+        assertTrue(shown.toString(), shown.any { it.contains("Stopping sync") })
     }
 }

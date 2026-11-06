@@ -16,6 +16,26 @@ extension BridgeOpenProgress: ProgressStep {
     }
 }
 
+extension BridgeBootstrapStep: ProgressStep {
+    var title: String {
+        switch self {
+        case .opening(let progress):
+            progress.title
+        case .loading(let progress):
+            localizedCoreString(bridgeLoadStepKey(step: progress.step))
+        }
+    }
+    var fraction: Double? {
+        switch self {
+        case .opening(let progress):
+            progress.fraction
+        case .loading(let progress):
+            Double(min(progress.done, progress.total))
+                / Double(max(progress.total, 1))
+        }
+    }
+}
+
 extension BridgeClosingStep: ProgressStep {
     var title: String { localizedCoreString(bridgeClosingStepKey(step: self)) }
     /// A close's steps count nothing.

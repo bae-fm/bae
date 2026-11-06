@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import Foundation
 import Observation
@@ -92,6 +93,13 @@ private final class FailedReads {
     var count = 0
 }
 
+/// What a native view following the stream's key last showed.
+@MainActor
+@Observable
+private final class Shown {
+    var value: BridgeUploadTransfer?
+}
+
 @MainActor
 @Suite("LatestFeed")
 struct LatestFeedTests {
@@ -103,19 +111,23 @@ struct LatestFeedTests {
         let failed = FailedReads()
         let stream = LatestStream<BridgeUploadTransfer>.uploadTotal()
         let feed = stream.feed(from: handle) { _ in failed.count += 1 }
-        let followed = FollowedValue(stream.only)
-        #expect(followed.value == nil)
+        let shown = Shown()
+        let following = FrameFollowing<BridgeUploadTransfer>(view: NSView()) {
+            shown.value = $0
+        }
+        following.follow(stream.only)
+        #expect(shown.value == nil)
 
         let sending = BridgeUploadTransfer(bar: nil, throughputBps: 5)
         handle.stream.start(Data(), holding: .uploadTotal(transfer: sending))
-        try await Wait.until { followed.value == sending }
+        try await Wait.until { shown.value == sending }
 
         handle.stream.fail(
             BridgeError.Diagnostic(category: .database, detail: "read failed")
         )
         try await Wait.until { failed.count == 1 }
 
-        followed.stop()
+        following.stop()
         feed.cancel()
     }
 }

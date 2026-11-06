@@ -84,8 +84,12 @@ struct MainWindowRoot: View {
         case .loading(let work):
             StepProgressLine(steps: appDelegate.closingSteps?.steps) {
                 StepProgressLine(steps: appDelegate.openProgress?.steps) {
-                    if let status = appDelegate.resetSteps?.status {
-                        BootstrapStatusView(status: status)
+                    if let reset = appDelegate.resetSteps,
+                        let status = reset.status
+                    {
+                        StepProgressLine(steps: reset.steps) {
+                            BootstrapStatusView(status: status)
+                        }
                     }
                     else {
                         ProgressView(String(localized: work.title))
@@ -188,8 +192,12 @@ struct MainWindowRoot: View {
             Spacer()
             StepProgressLine(steps: appDelegate.setupSteps?.steps) {
                 StepProgressLine(steps: appDelegate.openProgress?.steps) {
-                    if let status = appDelegate.resetSteps?.status {
-                        BootstrapStatusView(status: status)
+                    if let reset = appDelegate.resetSteps,
+                        let status = reset.status
+                    {
+                        StepProgressLine(steps: reset.steps) {
+                            BootstrapStatusView(status: status)
+                        }
                     }
                     else {
                         ProgressView(String(localized: work.title))

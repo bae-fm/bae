@@ -20,7 +20,6 @@ import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackSystem
 import fm.bae.fastvalues.LatestSource
-import fm.bae.fastvalues.changes
 import fm.bae.screensubscription.firstValue
 import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CancellationException
@@ -38,6 +37,7 @@ import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeBootstrapStep
 import uniffi.bae_bridge.BridgeClosingStep
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDeviceReset
@@ -137,11 +137,14 @@ sealed interface AppScreen {
     data object Onboarding : AppScreen
 
     /**
-     * A device reset loading its library from storage again; [status] is how
-     * far it has come, null before its first report.
+     * A device reset loading its library from storage again; [status] is
+     * where it stands, null before its first report, and [steps] the counted
+     * step it runs, which the screen draws each frame; null before the reset
+     * starts.
      */
     data class Resetting(
         val status: BridgeBootstrapStatus?,
+        val steps: LatestSource<BridgeBootstrapStep>?,
     ) : InProgress
 
     data class LibraryOpen(
@@ -553,15 +556,16 @@ object AppSessionHolder {
             current = null
             closeShowing(open, context, onScreen)
         }
-        onScreen(AppScreen.Resetting(status = null))
+        onScreen(AppScreen.Resetting(status = null, steps = null))
         val result =
             try {
                 LibrarySetupStatus.of(app.host, appScope, app.bugs).use { setup ->
+                    onScreen(AppScreen.Resetting(status = null, steps = setup.steps))
                     coroutineScope {
                         val following =
                             launch {
-                                setup.states.changes().collect { state ->
-                                    if (state != null) onScreen(AppScreen.Resetting(state.status))
+                                setup.followStates { state ->
+                                    onScreen(AppScreen.Resetting(state.status, setup.steps))
                                 }
                             }
                         try {

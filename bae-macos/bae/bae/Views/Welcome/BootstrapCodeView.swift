@@ -71,7 +71,9 @@ struct BootstrapCodeView: View {
             }
             if let status = form.status {
                 StepProgressLine(steps: form.openSteps) {
-                    BootstrapStatusView(status: status)
+                    StepProgressLine(steps: form.steps) {
+                        BootstrapStatusView(status: status)
+                    }
                 }
                 .padding(.horizontal)
                 .padding(.bottom, ThemeSpace.group)
@@ -249,7 +251,9 @@ private struct JoinWaitingView: View {
                 .foregroundStyle(.secondary)
             }
             if let status = form.status {
-                BootstrapStatusView(status: status)
+                StepProgressLine(steps: form.steps) {
+                    BootstrapStatusView(status: status)
+                }
             }
             if let error = form.error {
                 ErrorDetailDisclosure(error: error)

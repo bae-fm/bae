@@ -7,7 +7,7 @@ import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CoroutineScope
 import uniffi.bae_bridge.AppHandleInterface
-import uniffi.bae_bridge.BridgeBootstrapState
+import uniffi.bae_bridge.BridgeBootstrapStep
 import uniffi.bae_bridge.BridgeClosingStep
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeException
@@ -134,12 +134,12 @@ class LatestStream<V : Any> private constructor(
             }
 
         /**
-         * Where a restore, join or reset stands and whether it can still be cancelled, while it runs; a preview's
-         * holds [value], fed by nothing.
+         * The counted step a restore, join or reset runs, opening or loading, while it runs one; a preview's holds
+         * [value], fed by nothing.
          */
-        fun bootstrapState(value: BridgeBootstrapState? = null): LatestStream<BridgeBootstrapState> =
+        fun bootstrapSteps(value: BridgeBootstrapStep? = null): LatestStream<BridgeBootstrapStep> =
             LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
-                (it as? BridgeFastValue.BootstrapState)?.state
+                (it as? BridgeFastValue.BootstrapStep)?.step
             }
 
         /** How far a library's open has come, while it runs a step; a preview's holds [value], fed by nothing. */
@@ -225,9 +225,9 @@ fun LatestStream<BridgeStorageSetupProgress>.feed(
     reportBug: (BridgeException) -> Unit,
 ): LatestFeed = fed(scope, reportBug, setup::feedSetupSteps)
 
-/** Fill with where the restore, join or reset [setup] is handed to stands. */
-@JvmName("feedBootstrapState")
-fun LatestStream<BridgeBootstrapState>.feed(
+/** Fill with the counted steps of the restore, join or reset [setup] is handed to. */
+@JvmName("feedBootstrapSteps")
+fun LatestStream<BridgeBootstrapStep>.feed(
     setup: BridgeLibrarySetup,
     scope: CoroutineScope,
     reportBug: (BridgeException) -> Unit,

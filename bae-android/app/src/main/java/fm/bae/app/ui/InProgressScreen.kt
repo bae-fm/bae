@@ -6,9 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -21,14 +18,13 @@ import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.StepBar
+import fm.bae.app.ui.components.StepProgressLine
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.stepFraction
 import fm.bae.app.ui.onboarding.ResettingScreen
 import fm.bae.fastvalues.LatestSource
 import fm.bae.fastvalues.LatestStream
-import fm.bae.fastvalues.changes
 import fm.bae.fastvalues.only
-import kotlinx.coroutines.flow.filterNotNull
 import uniffi.bae_bridge.BridgeClosingStep
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeOpenStep
@@ -58,7 +54,7 @@ internal fun InProgressScreen(screen: AppScreen.InProgress) {
         }
 
         is AppScreen.Resetting -> {
-            ResettingScreen(status = screen.status)
+            ResettingScreen(status = screen.status, steps = screen.steps)
         }
     }
 }
@@ -91,11 +87,10 @@ private fun LoadingScreen(
 private val OPEN_PROGRESS_MAX_WIDTH = 360.dp
 
 /**
- * The open library closing: the step the close runs, read from [steps] as it
- * changes, a handful of times in all, over a bar without a count. Until the
- * close writes its first step, the screen names [starting], the step the
- * close starts with; once the close ends and its stream holds nothing, the
- * last step it ran. [stepKey] gives a step's catalog key.
+ * The open library closing: the step the close runs over a bar without a
+ * count, drawn from [steps] each display frame. While the close runs no step,
+ * before its first and once it ends, the screen names [starting], the step
+ * the close starts with. [stepKey] gives a step's catalog key.
  */
 @Composable
 internal fun ClosingScreen(
@@ -104,18 +99,24 @@ internal fun ClosingScreen(
     stepKey: (BridgeClosingStep) -> String = ::bridgeClosingStepKey,
 ) {
     val context = LocalContext.current
-    val step by remember(steps) { steps.changes().filterNotNull() }.collectAsState(initial = starting)
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-        StepBar(title = context.coreString(stepKey(step)), fraction = null)
+        StepProgressLine(
+            steps = steps,
+            title = { context.coreString(stepKey(it)) },
+            fraction = { null },
+            modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
+        ) {
+            StepBar(title = context.coreString(stepKey(starting)), fraction = null)
+        }
     }
 }
 
 /**
- * A setup call running: the step it runs, read from [steps] as it changes,
- * over a bar of how much of it is done, counted where the step counts. Until
- * the call writes its first step, the screen names [starting], the step the
- * call starts with, over a bar without a count. [stepKey] gives a step's
- * catalog key.
+ * A setup call running: the step it runs over a bar of how much of it is
+ * done, counted where the step counts, drawn from [steps] each display frame.
+ * While the call runs no step, the screen names [starting], the step the call
+ * starts with, over a bar without a count. [stepKey] gives a step's catalog
+ * key.
  */
 @Composable
 internal fun SetupStepScreen(
@@ -124,13 +125,15 @@ internal fun SetupStepScreen(
     stepKey: (BridgeSetupStep) -> String = ::bridgeSetupStepKey,
 ) {
     val context = LocalContext.current
-    val progress by remember(steps) { steps.changes() }.collectAsState(initial = null)
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-        val shown = progress
-        StepBar(
-            title = context.coreString(stepKey(shown?.step ?: starting)),
-            fraction = shown?.let { stepFraction(it.done, it.total) },
-        )
+        StepProgressLine(
+            steps = steps,
+            title = { context.coreString(stepKey(it.step)) },
+            fraction = { stepFraction(it.done, it.total)?.toDouble() },
+            modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
+        ) {
+            StepBar(title = context.coreString(stepKey(starting)), fraction = null)
+        }
     }
 }
 

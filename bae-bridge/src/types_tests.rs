@@ -705,30 +705,34 @@ fn a_folder_whose_name_is_not_utf8_shows_as_its_escape() {
     assert_eq!(bridge_candidate_key_text(Vec::<u8>::from(grouping)), "grouping:g1");
 }
 
-/// A new installation's open crosses with its step, and loading the store
-/// with each step, a snapshot's step naming whom it holds data for.
+/// A new installation's open crosses as the opening state with its counted
+/// step, and loading the store as the loading state with each step, a
+/// snapshot's step naming whom it holds data for.
 #[test]
 fn a_bootstrap_open_and_each_load_step_cross_with_their_progress() {
-    use crate::types::{BridgeBootstrapStatus, BridgeLoadStep, BridgeOpenStep};
-    let opening =
+    use crate::types::{
+        BridgeBootstrapStatus, BridgeBootstrapStep, BridgeLoadStep, BridgeOpenStep,
+    };
+    let (opening, step) =
         BridgeBootstrapStatus::from_core(coven::BootstrapStatus::Opening(coven::Progress {
             step: coven::OpenStep::Migrating,
             done: 1,
             total: 4,
         }));
+    assert_eq!(opening, BridgeBootstrapStatus::Opening);
     assert!(matches!(
-        opening,
-        BridgeBootstrapStatus::Opening { progress }
+        step,
+        Some(BridgeBootstrapStep::Opening { progress })
             if progress.step == BridgeOpenStep::Migrating && progress.done == 1 && progress.total == 4
     ));
     let load = |step| match BridgeBootstrapStatus::from_core(coven::BootstrapStatus::Loading(
         coven::Progress { step, done: 3, total: 9 },
     )) {
-        BridgeBootstrapStatus::Loading { progress } => {
+        (BridgeBootstrapStatus::Loading, Some(BridgeBootstrapStep::Loading { progress })) => {
             assert_eq!((progress.done, progress.total), (3, 9));
             progress.step
         }
-        _ => panic!("loading crosses as loading"),
+        _ => panic!("loading crosses as loading, with its step"),
     };
     assert_eq!(load(coven::LoadStep::FindingKeys), BridgeLoadStep::FindingKeys);
     assert_eq!(

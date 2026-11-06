@@ -11,6 +11,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -25,8 +26,6 @@ import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeLibrarySetup
-import uniffi.bae_bridge.BridgeLoadProgress
-import uniffi.bae_bridge.BridgeLoadStep
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeStorageLocation
 
@@ -78,8 +77,8 @@ class OnboardingFlowTest {
             ),
         )
 
-    /** Where the running restore stands, which a test writes in place of core. */
-    private val states = LatestStream.written<BridgeBootstrapState>()
+    /** Where the running restore stands, which a test says in place of core. */
+    private val states = SaidStates()
 
     private fun newFlow(): OnboardingFlow {
         val flow =
@@ -87,7 +86,7 @@ class OnboardingFlowTest {
                 scope,
                 RuntimeEnvironment.getApplication(),
                 OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress) {
-                    LibrarySetupStatus.written(FakeLibrarySetup(), states)
+                    LibrarySetupStatus.written(FakeLibrarySetup(), states, LatestStream.written(), scope)
                 },
                 null,
                 null,
@@ -106,36 +105,27 @@ class OnboardingFlowTest {
         flow.advance(enterCode, CODE, info, CodeSource.SCANNED)
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(
-            OnboardingStep.Running(OnboardingStep.Restore(CODE, info.metadata, CodeEntry.NewDevice), state = null),
-            flow.step,
-        )
+        val running = flow.step as OnboardingStep.Running
+        assertEquals(OnboardingStep.Restore(CODE, info.metadata, CodeEntry.NewDevice), running.from)
+        assertNull(running.state)
         assertEquals(listOf(CODE), host.restoredCodes)
     }
 
-    /** Where a running restore stands is what its stream says, as core writes it. */
+    /** Where a running restore stands is each state core says, as it says it. */
     @Test
-    fun aRunningRestoreShowsWhereItsStreamSaysItStands() {
+    fun aRunningRestoreShowsWhereCoreSaysItStands() {
         val info = restoreCode(carriesS3Key = true)
         val flow = newFlow()
         flow.advance(enterCode, CODE, info, CodeSource.SCANNED)
         shadowOf(Looper.getMainLooper()).idle()
 
-        val loading =
-            BridgeBootstrapState(
-                BridgeBootstrapStatus.Loading(BridgeLoadProgress(BridgeLoadStep.READING, done = 2uL, total = 8uL)),
-                cancellable = true,
-            )
-        states.write("", loading)
+        val loading = BridgeBootstrapState(BridgeBootstrapStatus.Loading, cancellable = true)
+        states.say(loading)
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(
-            OnboardingStep.Running(
-                OnboardingStep.Restore(CODE, info.metadata, CodeEntry.NewDevice),
-                state = loading,
-            ),
-            flow.step,
-        )
+        val running = flow.step as OnboardingStep.Running
+        assertEquals(OnboardingStep.Restore(CODE, info.metadata, CodeEntry.NewDevice), running.from)
+        assertEquals(loading, running.state)
     }
 
     @Test

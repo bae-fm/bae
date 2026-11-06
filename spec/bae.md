@@ -3703,12 +3703,16 @@ like an open's, never from a callback, and show the step's name over a bar:
 counted where the step is counted, moving without a count where it is not,
 never a bare spinner.
 
-A restore, a join and a device reset load the library from storage, and
-their streams say so step by step: a new installation's database opening,
-with the open's steps as above, then connecting, waiting for approval,
-loading, registering this device, and finishing: keeping this device's keys
-and publishing the library, the last work before it opens
+A restore, a join and a device reset load the library from storage, and say
+where they stand state by state: a new installation's database opening, then
+connecting, waiting for approval, loading, registering this device, and
+finishing: keeping this device's keys and publishing the library, the last
+work before it opens
 ([coven E10](https://github.com/bae-fm/coven/blob/main/spec/api.md#e10-joining-and-restore)).
+The app pulls these states as it pulls every screen value, each time the
+state changes; the counts of the step that counts, the open's steps as above
+or loading's, go in the call's stream instead, which holds the step while it
+runs and nothing otherwise, so a count moving changes no state.
 Loading reports its steps with how much of each is done: reading the
 library's history for the person's keys, counted in slots, when the saved copy
 holds none for them; downloading each saved copy, the one every member reads
@@ -3719,10 +3723,10 @@ runs only when it has work. The apps show each step's name over its bar on
 the restore and join screens, and on the screen a reset loads on.
 Registering and finishing have no count, since how much the registration
 reads isn't known until it has read it: the apps name each as they name
-connecting, and a join in either can no longer be cancelled. Each value of the
-stream says whether the call can still be cancelled: a restore until it ends, a
-join while it opens or connects, a reset never; the apps show Cancel only while
-it says so.
+connecting, and a join in either can no longer be cancelled. Each state says
+whether the call can still be cancelled: a restore until it ends, a join while
+it opens or connects, a reset never; the apps show Cancel only while it says
+so.
 
 `bootstrap` returns `AppServices`, the running library. Every later call goes
 through it. A store is opened once per process; closing waits for every worker
@@ -4093,9 +4097,7 @@ release's or track's id as UTF-8, or a candidate's key.
   pulls of an open's or a setup call's stream run on the host's runtime,
   which is why the app makes those objects from the host. The native
   view drawing a key reads the key's latest value once per display frame
-  while it holds one; nothing the UI framework observes holds a fast value,
-  apart from where a restore or join stands, which changes now and then and
-  which the screen reads ten times a second while the call runs.
+  while it holds one; nothing the UI framework observes holds a fast value.
 - **Pulled subscriptions** — the browse and download lists, the searches,
   the import list and its counts, the detail views, the Storage manager's
   list, a release's files, the queue's upcoming tail, and the reads of which

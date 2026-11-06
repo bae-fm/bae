@@ -2,8 +2,10 @@
 
 use super::*;
 use crate::types::{
-    BridgeBootstrapState, BridgeBootstrapStatus, BridgeSetupProgress, BridgeSetupStep,
+    BridgeBootstrapState, BridgeBootstrapStatus, BridgeBootstrapStep, BridgeLoadProgress,
+    BridgeLoadStep, BridgeSetupProgress, BridgeSetupStep,
 };
+use bae_util::test_channels::HANG_GUARD;
 
 /// The stream's one key holds where the call is while it runs, and nothing
 /// once the call's writing ends.
@@ -29,16 +31,6 @@ fn the_stream_holds_the_running_step_until_the_call_ends() {
         })
     );
     assert_eq!(runtime.block_on(stream.clone().next()), Ok(vec![Vec::new()]), "the key started");
-    steps.bootstrap(coven::BootstrapStatus::Connecting, false);
-    assert_eq!(
-        stream.latest(Vec::new()),
-        Some(BridgeFastValue::BootstrapState {
-            state: BridgeBootstrapState {
-                status: BridgeBootstrapStatus::Connecting,
-                cancellable: false,
-            },
-        })
-    );
 
     drop(steps);
     assert_eq!(stream.latest(Vec::new()), None);
@@ -69,5 +61,68 @@ fn creating_a_library_reports_its_step() {
             }),
             None,
         ]
+    );
+}
+
+/// Where a restore stands reaches its subscription as each state changes,
+/// the latest first; the counts of a step go to the stream alone, so a
+/// count moving wakes no pull, and a step without counts empties the stream.
+#[test]
+fn a_restore_s_states_are_pulled_and_its_counts_are_streamed() {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let setup = library_setup(OperationRuntime::new(
+        runtime.handle().clone(),
+        bae_diagnostics::Diagnostics::noop(),
+    ));
+    let stream = setup.feed_setup_steps();
+    let states = setup.subscribe_states();
+    let steps = setup.writer();
+    let next_state = || {
+        runtime.block_on(async {
+            tokio::time::timeout(HANG_GUARD, states.clone().next())
+                .await
+                .expect("a changed state is pulled")
+        })
+    };
+    let loading = |done| {
+        coven::BootstrapStatus::Loading(coven::Progress {
+            step: coven::LoadStep::Reading,
+            done,
+            total: 8,
+        })
+    };
+
+    steps.bootstrap(coven::BootstrapStatus::Connecting, true);
+    assert_eq!(
+        next_state(),
+        Ok(BridgeBootstrapState { status: BridgeBootstrapStatus::Connecting, cancellable: true })
+    );
+    assert_eq!(stream.latest(Vec::new()), None, "connecting counts nothing");
+
+    steps.bootstrap(loading(2), true);
+    steps.bootstrap(loading(3), true);
+    assert_eq!(
+        stream.latest(Vec::new()),
+        Some(BridgeFastValue::BootstrapStep {
+            step: BridgeBootstrapStep::Loading {
+                progress: BridgeLoadProgress { step: BridgeLoadStep::Reading, done: 3, total: 8 },
+            },
+        })
+    );
+    assert_eq!(
+        next_state(),
+        Ok(BridgeBootstrapState { status: BridgeBootstrapStatus::Loading, cancellable: true }),
+        "two counts are one loading state"
+    );
+
+    let watched = setup.states.states.subscribe();
+    steps.bootstrap(loading(4), true);
+    assert!(!watched.has_changed().unwrap(), "a count moving changes no state");
+    steps.bootstrap(coven::BootstrapStatus::Registering, true);
+    assert_eq!(stream.latest(Vec::new()), None, "registering counts nothing");
+    assert_eq!(
+        next_state(),
+        Ok(BridgeBootstrapState { status: BridgeBootstrapStatus::Registering, cancellable: true }),
+        "the count that moved woke no pull: the next is the next state"
     );
 }

@@ -127,6 +127,9 @@ public final class BootstrapCodeForm {
         bootstrap?.openSteps
     }
 
+    /// The counted step the running attempt runs, opening or loading.
+    public var steps: LatestSource<BridgeBootstrapStep>? { bootstrap?.steps }
+
     public var attempt: BootstrapAttempt? {
         if let saved { return .restoreSaved(saved) }
         if case .resume(let join) = entry {
@@ -147,7 +150,7 @@ public final class BootstrapCodeForm {
     }
 
     /// Whether Cancel can stop the running attempt: core decides, and says so
-    /// with each value of the attempt's stream.
+    /// with each state of the attempt.
     public var cancellable: Bool {
         guard isRunning, let bootstrap else { return false }
         return bootstrap.cancellable

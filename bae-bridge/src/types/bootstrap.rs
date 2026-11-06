@@ -35,13 +35,15 @@ impl BridgeRestoreCodeShare {
     }
 }
 
+/// Where a restore, a join or a device reset stands: what the screen shows,
+/// and what it observes. The counts of a step that counts, opening or
+/// loading, are the setup's stream's [`BridgeBootstrapStep`], drawn each
+/// display frame.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeBootstrapStatus {
     /// A new installation's database opening, which runs every migration,
     /// before it connects.
-    Opening {
-        progress: BridgeOpenProgress,
-    },
+    Opening,
     Connecting,
     /// The request is sent. `confirmation` is set for a sent invite, as coven
     /// writes it (`041 778`).
@@ -49,10 +51,8 @@ pub enum BridgeBootstrapStatus {
         confirmation: Option<String>,
         next_check: BridgeNextCheck,
     },
-    /// Loading the library from storage, at this step.
-    Loading {
-        progress: BridgeLoadProgress,
-    },
+    /// Loading the library from storage.
+    Loading,
     /// Registering this device with the library once it is loaded. No count:
     /// how much the registration reads isn't known until it has read it.
     Registering,
@@ -91,21 +91,33 @@ impl BridgeNextCheck {
         }
     }
 }
+/// The counted step a restore, a join or a device reset runs while it opens
+/// the new installation's database or loads the library: its setup's
+/// stream's one key, `""`, holds it while the step runs.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeBootstrapStep {
+    Opening { progress: BridgeOpenProgress },
+    Loading { progress: BridgeLoadProgress },
+}
+
 impl BridgeBootstrapStatus {
-    pub(crate) fn from_core(value: coven::BootstrapStatus) -> Self {
-        match value {
+    /// Where the call stands, and the counted step it runs, if one.
+    pub(crate) fn from_core(value: coven::BootstrapStatus) -> (Self, Option<BridgeBootstrapStep>) {
+        let status = match value {
+            coven::BootstrapStatus::Loading(progress) => {
+                let progress = BridgeLoadProgress::from_core(progress);
+                return (Self::Loading, Some(BridgeBootstrapStep::Loading { progress }));
+            }
+            coven::BootstrapStatus::Opening(progress) => {
+                let progress = BridgeOpenProgress::from_core(progress);
+                return (Self::Opening, Some(BridgeBootstrapStep::Opening { progress }));
+            }
             coven::BootstrapStatus::Connecting => Self::Connecting,
             coven::BootstrapStatus::WaitingForApproval { confirmation, next_check } => {
                 Self::WaitingForApproval {
                     confirmation: confirmation.map(|number| number.to_string()),
                     next_check: BridgeNextCheck::from_core(next_check),
                 }
-            }
-            coven::BootstrapStatus::Loading(progress) => {
-                Self::Loading { progress: BridgeLoadProgress::from_core(progress) }
-            }
-            coven::BootstrapStatus::Opening(progress) => {
-                Self::Opening { progress: BridgeOpenProgress::from_core(progress) }
             }
             coven::BootstrapStatus::Registering => Self::Registering,
             coven::BootstrapStatus::Committing => Self::Committing,
@@ -119,7 +131,8 @@ impl BridgeBootstrapStatus {
                     })
                     .collect(),
             },
-        }
+        };
+        (status, None)
     }
 }
 /// A step of opening a library, in the order they run. Mirrors

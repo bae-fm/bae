@@ -11,6 +11,7 @@ import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -62,7 +63,9 @@ class OnboardingSavedRestoreTest {
         flow.openSaved(code)
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(OnboardingStep.Running(OnboardingStep.RestoreSaved(code), state = null), flow.step)
+        val running = flow.step as OnboardingStep.Running
+        assertEquals(OnboardingStep.RestoreSaved(code), running.from)
+        assertNull(running.state)
         assertEquals(listOf("saved-dropbox" to null), host.restored)
     }
 

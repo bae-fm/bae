@@ -44,6 +44,8 @@ import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.settings.inviteExpiry
+import fm.bae.fastvalues.LatestStream
+import fm.bae.fastvalues.only
 import kotlinx.coroutines.delay
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
@@ -242,14 +244,15 @@ internal fun OnboardingProgress(
         // While the restore's open runs a step, its line stands in for the
         // spinner and the status, which it has moved past.
         var stepping by remember(step.openSteps) { mutableStateOf(false) }
+        // A counted step's own bar stands in for the spinner.
+        var counting by remember(step.steps) { mutableStateOf(false) }
         if (status !is BridgeBootstrapStatus.WaitingForApproval) {
             OpenProgressLine(
                 steps = step.openSteps,
-                modifier = Modifier.widthIn(max = 360.dp),
+                modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
                 onStepping = { stepping = it },
             ) {
-                // A step's own bar stands in for the spinner.
-                if (!status.hasStepBar()) CircularProgressIndicator()
+                if (!counting) CircularProgressIndicator()
             }
             Spacer(modifier = Modifier.height(ThemeSpace.section))
         }
@@ -267,7 +270,15 @@ internal fun OnboardingProgress(
 
             else -> {
                 // The open's line has moved past the status.
-                if (!stepping) StatusLines(status)
+                if (!stepping) {
+                    BootstrapStepLine(
+                        steps = step.steps,
+                        modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
+                        onStepping = { counting = it },
+                    ) {
+                        StatusLines(status)
+                    }
+                }
             }
         }
         onCancel?.let {
@@ -391,6 +402,7 @@ private fun OnboardingProgressWaitingPreview() {
                                 ),
                             cancellable = false,
                         ),
+                    steps = LatestStream.bootstrapSteps().only,
                 ),
             onCancel = null,
             onCheckNow = {},

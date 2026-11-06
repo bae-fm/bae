@@ -30,31 +30,25 @@ extension BridgeHost {
 }
 
 /// One device reset as the app follows it: the setup the reset is handed,
-/// and where it stands, read off that setup's stream. Make one for each
-/// reset and stop it once the reset ends. Its stream is pulled on `host`'s
-/// runtime.
+/// where it stands, and the counted step it runs. Make one for each reset
+/// and stop it once the reset ends. Its states and steps are pulled on
+/// `host`'s runtime.
 @MainActor
 @Observable
 public final class DeviceResetSteps {
-    /// Where the reset stands; nil until it reports a step.
-    public var status: BridgeBootstrapStatus? { followed.value?.status }
-    @ObservationIgnored
-    public let setup: BridgeLibrarySetup
-    @ObservationIgnored
-    private let followed: FollowedValue<BridgeBootstrapState>
-    @ObservationIgnored
-    private let feed: LatestFeed
+    /// Where the reset stands; nil until it says.
+    public var status: BridgeBootstrapStatus? { following.state?.status }
+    /// The counted step the reset runs, for the line that draws it.
+    public var steps: LatestSource<BridgeBootstrapStep> { following.steps }
+    public var setup: BridgeLibrarySetup { following.setup }
+    private let following: BootstrapFollowing
 
     public init(host: BridgeHost) {
-        setup = BridgeLibrarySetup(host: host)
-        let stream = LatestStream<BridgeBootstrapState>.bootstrapState()
-        feed = stream.feed(from: setup)
-        followed = FollowedValue(stream.only)
+        following = BootstrapFollowing(setup: BridgeLibrarySetup(host: host))
     }
 
-    /// Stop reading the stream; the status stays as it last was.
+    /// Stop following; the status stays as it last was.
     public func stop() {
-        followed.stop()
-        feed.cancel()
+        following.stop()
     }
 }

@@ -1,6 +1,8 @@
 import SwiftUI
 
 /// What a running restore or join is doing, and anything coven is waiting on.
+/// A step that counts, opening or loading, is drawn by the native line that
+/// follows the call's steps, which stands in for this view while it runs.
 public struct BootstrapStatusView: View {
     private let status: BridgeBootstrapStatus
 
@@ -10,14 +12,10 @@ public struct BootstrapStatusView: View {
 
     public var body: some View {
         switch status {
-        case .opening(let progress):
-            BootstrapStepLine(
-                title: localizedCoreString(
-                    bridgeOpenStepKey(step: progress.step)
-                ),
-                done: progress.done,
-                total: progress.total
-            )
+        case .opening, .loading:
+            // The step's own line takes over as soon as it draws.
+            ProgressView()
+                .controlSize(.small)
         case .connecting:
             progress("Connecting…")
         case .waitingForApproval(let confirmation, let nextCheck):
@@ -32,14 +30,6 @@ public struct BootstrapStatusView: View {
                 }
                 NextCheckLine(nextCheck: nextCheck)
             }
-        case .loading(let progress):
-            BootstrapStepLine(
-                title: localizedCoreString(
-                    bridgeLoadStepKey(step: progress.step)
-                ),
-                done: progress.done,
-                total: progress.total
-            )
         case .registering:
             progress("Registering this device…")
         case .committing:
@@ -59,26 +49,6 @@ public struct BootstrapStatusView: View {
             Text(title)
                 .themeText(.body)
                 .foregroundStyle(.secondary)
-        }
-    }
-}
-
-/// The step a restore, join or reset is on, over a bar of how much of it is
-/// done.
-private struct BootstrapStepLine: View {
-    let title: String
-    let done: UInt64
-    let total: UInt64
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-            Text(verbatim: title)
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-            ProgressView(
-                value: Double(min(done, total)),
-                total: Double(max(total, 1))
-            )
         }
     }
 }

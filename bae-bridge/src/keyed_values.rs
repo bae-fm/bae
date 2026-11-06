@@ -313,7 +313,6 @@ impl ProgressWriter {
     }
 
     /// The stream holds nothing.
-    #[cfg(desktop)]
     pub(crate) fn clear(&self) {
         if let Some(writer) = &self.writer {
             writer.remove_only();
