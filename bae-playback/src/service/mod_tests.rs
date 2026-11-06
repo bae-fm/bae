@@ -489,16 +489,13 @@ pub(super) fn countdown_deadline() -> chrono::DateTime<chrono::Utc> {
     test_clock_start() + chrono::Duration::seconds(5)
 }
 
-/// Poll `predicate` until it holds or a 2s deadline passes.
-pub(super) fn wait_until(predicate: impl Fn() -> bool) -> bool {
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-    while std::time::Instant::now() < deadline {
-        if predicate() {
-            return true;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(5));
-    }
-    predicate()
+/// Wait until `predicate` holds of the fake channel's state, woken by each
+/// command the session applies.
+pub(super) fn wait_until(
+    state: &Mutex<FakeChannelState>,
+    predicate: impl Fn(&FakeChannelState) -> bool,
+) -> bool {
+    crate::renderer::channel::wait_for_state(state, predicate)
 }
 
 /// Seed the audio format, segment, and backing file that make `track_id`
@@ -651,7 +648,7 @@ pub(super) async fn remote_over_fake() -> (
     let (home, service, state, rx) =
         playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START)
             .await;
-    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    assert!(wait_until(&state, |s| !s.loads.is_empty()));
     (home, service, state, rx)
 }
 

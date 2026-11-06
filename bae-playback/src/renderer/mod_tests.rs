@@ -2,7 +2,7 @@
 //! session drives any [`RendererChannel`], so this exercises it without a real
 //! Cast or UPnP device.
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
 use super::channel::{fake_status as status, FakeChannel, RendererError, RendererPlayerState};
@@ -13,33 +13,38 @@ use super::RendererMedia;
 /// matches a predicate.
 #[derive(Clone)]
 struct StatusSink {
-    reported: Arc<Mutex<Vec<RendererSessionEvent>>>,
+    reported: Arc<(Mutex<Vec<RendererSessionEvent>>, Condvar)>,
 }
 
 impl StatusSink {
     fn new() -> Self {
-        Self { reported: Arc::new(Mutex::new(Vec::new())) }
+        Self { reported: Arc::new((Mutex::new(Vec::new()), Condvar::new())) }
     }
 
     fn callback(&self) -> EventCallback {
         let reported = self.reported.clone();
-        Arc::new(move |s| reported.lock().unwrap().push(s))
+        Arc::new(move |s| {
+            reported.0.lock().unwrap().push(s);
+            reported.1.notify_all();
+        })
     }
 
     fn wait_for(&self, predicate: impl Fn(&RendererSessionEvent) -> bool) -> bool {
         self.wait_until(|events| events.iter().any(&predicate))
     }
 
-    /// Wait until the events reported so far satisfy `condition`.
+    /// Wait until the events reported so far satisfy `condition`; `false`
+    /// when the hang guard passes first.
     fn wait_until(&self, condition: impl Fn(&[RendererSessionEvent]) -> bool) -> bool {
-        let deadline = std::time::Instant::now() + Duration::from_secs(2);
-        while std::time::Instant::now() < deadline {
-            if condition(&self.reported.lock().unwrap()) {
-                return true;
-            }
-            std::thread::sleep(Duration::from_millis(10));
-        }
-        false
+        let (events, reported) = &*self.reported;
+        let (_events, result) = reported
+            .wait_timeout_while(
+                events.lock().unwrap(),
+                bae_util::test_channels::HANG_GUARD,
+                |events| !condition(events),
+            )
+            .unwrap();
+        !result.timed_out()
     }
 }
 
@@ -72,24 +77,13 @@ fn session_routes_commands_to_the_channel() {
     session.seek(Duration::from_secs(42));
     session.set_volume(crate::Volume::new(0.3).unwrap());
 
-    // Wait until every command has been applied by the session thread.
-    let applied = {
-        let deadline = std::time::Instant::now() + Duration::from_secs(2);
-        loop {
-            {
-                let s = state.lock().unwrap();
-                if s.loads.len() == 1 && s.pauses == 1 && s.seeks.len() == 1 && s.volumes.len() == 1
-                {
-                    break true;
-                }
-            }
-            if std::time::Instant::now() >= deadline {
-                break false;
-            }
-            std::thread::sleep(Duration::from_millis(10));
-        }
-    };
+    // Dropping the session joins its thread after the commands queued ahead
+    // of the drop, so each has been applied once it returns.
     drop(session);
+    let applied = {
+        let s = state.lock().unwrap();
+        s.loads.len() == 1 && s.pauses == 1 && s.seeks.len() == 1 && s.volumes.len() == 1
+    };
 
     assert!(applied, "the session must route every command to the channel");
     let s = state.lock().unwrap();
@@ -183,6 +177,7 @@ fn session_reports_a_refused_command_and_continues() {
     );
     assert!(!sink
         .reported
+        .0
         .lock()
         .unwrap()
         .iter()

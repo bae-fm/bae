@@ -128,6 +128,25 @@ pub(crate) struct FakeChannelState {
     pub(crate) load_events: Option<tokio::sync::mpsc::UnboundedSender<RendererMedia>>,
     /// What the next load is refused with, once.
     pub(crate) refuse_next_load: Option<RendererError>,
+    /// Woken by every command and poll the channel takes, for
+    /// [`wait_for_state`].
+    pub(crate) changed: std::sync::Arc<std::sync::Condvar>,
+}
+
+/// Block until `predicate` holds of the channel's state, which every command
+/// the session applies wakes a check of. `false` when the hang guard passes
+/// first.
+#[cfg(test)]
+pub(crate) fn wait_for_state(
+    state: &std::sync::Mutex<FakeChannelState>,
+    predicate: impl Fn(&FakeChannelState) -> bool,
+) -> bool {
+    let guard = state.lock().unwrap();
+    let changed = guard.changed.clone();
+    let (_guard, result) = changed
+        .wait_timeout_while(guard, bae_util::test_channels::HANG_GUARD, |state| !predicate(state))
+        .unwrap();
+    !result.timed_out()
 }
 
 #[cfg(test)]
@@ -157,6 +176,7 @@ impl RendererChannel for FakeChannel {
             return Err(refusal);
         }
         state.loads.push(media.clone());
+        state.changed.notify_all();
         if let Some(load_events) = &state.load_events {
             #[expect(
                 clippy::let_underscore_must_use,
@@ -167,23 +187,43 @@ impl RendererChannel for FakeChannel {
         Ok(())
     }
     fn play(&mut self) -> Result<(), RendererError> {
-        self.state.lock().unwrap().plays += 1;
+        {
+            let mut state = self.state.lock().unwrap();
+            state.plays += 1;
+            state.changed.notify_all();
+        }
         Ok(())
     }
     fn pause(&mut self) -> Result<(), RendererError> {
-        self.state.lock().unwrap().pauses += 1;
+        {
+            let mut state = self.state.lock().unwrap();
+            state.pauses += 1;
+            state.changed.notify_all();
+        }
         Ok(())
     }
     fn seek(&mut self, position: Duration) -> Result<(), RendererError> {
-        self.state.lock().unwrap().seeks.push(position);
+        {
+            let mut state = self.state.lock().unwrap();
+            state.seeks.push(position);
+            state.changed.notify_all();
+        }
         Ok(())
     }
     fn set_volume(&mut self, level: crate::Volume) -> Result<(), RendererError> {
-        self.state.lock().unwrap().volumes.push(level.get());
+        {
+            let mut state = self.state.lock().unwrap();
+            state.volumes.push(level.get());
+            state.changed.notify_all();
+        }
         Ok(())
     }
     fn stop(&mut self) -> Result<(), RendererError> {
-        self.state.lock().unwrap().stops += 1;
+        {
+            let mut state = self.state.lock().unwrap();
+            state.stops += 1;
+            state.changed.notify_all();
+        }
         Ok(())
     }
     fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {

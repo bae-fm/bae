@@ -105,6 +105,10 @@ pub(crate) struct PreviewPlayer {
     /// Where the preview's probe, fill, decoder and event listener report a
     /// panic.
     diagnostics: Diagnostics,
+    /// Every preview's fill, which holds its file open until it ends, for a
+    /// test to wait on.
+    #[cfg(test)]
+    fills: Vec<bae_track_audio::data_source::FillTask>,
 }
 
 /// What is being previewed: the source window, how long it plays for, the PCM
@@ -154,6 +158,8 @@ impl PreviewPlayer {
             active: None,
             paused_main_player: false,
             diagnostics,
+            #[cfg(test)]
+            fills: Vec::new(),
         }
     }
 
@@ -213,7 +219,12 @@ impl PreviewPlayer {
         let buffer = create_sparse_buffer(source_size);
         let reader: Box<dyn AudioDataReader> =
             Box::new(LocalReader::new(target.path(), self.diagnostics.clone()));
-        reader.start_reading(buffer.clone(), preview_fill_error_handler(self.progress_tx.clone()));
+        let fill = reader
+            .start_reading(buffer.clone(), preview_fill_error_handler(self.progress_tx.clone()));
+        #[cfg(test)]
+        self.fills.push(fill);
+        #[cfg(not(test))]
+        drop(fill);
 
         let started = self
             .start_streaming(

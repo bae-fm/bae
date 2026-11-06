@@ -25,8 +25,7 @@ async fn play_on_reissues_current_track_at_position() {
         "the current track is unchanged"
     );
     assert!(
-        wait_until(|| {
-            let s = state.lock().unwrap();
+        wait_until(&state, |s| {
             s.loads.len() == 1 && s.seeks.contains(&std::time::Duration::from_secs(30))
         }),
         "the current track is loaded onto the device and seeked to its position"
@@ -46,7 +45,7 @@ async fn remote_finished_advances_queue_and_loads_next() {
         StreamPosition::START,
     )
     .await;
-    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    assert!(wait_until(&state, |s| !s.loads.is_empty()));
 
     service
         .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
@@ -63,7 +62,7 @@ async fn remote_finished_advances_queue_and_loads_next() {
         "the queue advanced to the next track"
     );
     assert!(
-        wait_until(|| state.lock().unwrap().loads.iter().any(
+        wait_until(&state, |s| s.loads.iter().any(
             |m| m.url == "http://renderer.local/stream?id=08c7fe07-b56a-4c63-8df6-ad2967fa0653"
         )),
         "the next track is loaded onto the device"
@@ -187,13 +186,13 @@ async fn stop_remote_stops_device_and_returns_to_local() {
     let (_home, mut service, state, mut rx) =
         playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START)
             .await;
-    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    assert!(wait_until(&state, |s| !s.loads.is_empty()));
     while rx.try_recv().is_ok() {}
 
     service.handle_stop_remote().await;
 
     assert!(!service.renderer.is_remote(), "the renderer returns to Local");
-    assert!(wait_until(|| state.lock().unwrap().stops == 1), "the device is told to stop");
+    assert!(wait_until(&state, |s| s.stops == 1), "the device is told to stop");
     let mut saw_not_remote = false;
     while let Ok(progress) = rx.try_recv() {
         if let PlaybackProgress::RemoteStatusChanged { remote: RemotePlayback::Local } = progress {
@@ -213,14 +212,14 @@ async fn stop_while_remote_stops_device_and_returns_to_local() {
     let (_home, mut service, state, mut rx) =
         playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START)
             .await;
-    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    assert!(wait_until(&state, |s| !s.loads.is_empty()));
     while rx.try_recv().is_ok() {}
 
     service.stop().await;
 
     assert!(!service.renderer.is_remote(), "stop must return the renderer to local");
     assert!(
-        wait_until(|| state.lock().unwrap().stops == 1),
+        wait_until(&state, |s| s.stops == 1),
         "stop must stop the device, not leave it playing"
     );
     assert!(matches!(service.slot, PlaybackSlot::Stopped), "the slot must be Stopped after stop");
@@ -242,7 +241,7 @@ async fn ending_remote_playback_after_an_advance_resumes_the_next_track_at_its_s
     const SECOND: &str = "08c7fe07-b56a-4c63-8df6-ad2967fa0653";
     let (_home, mut service, state, _rx) =
         playing_remote_fixture(&[FIRST, SECOND], StreamPosition::START).await;
-    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    assert!(wait_until(&state, |s| !s.loads.is_empty()));
     for (player_state, position) in [
         (RendererPlayerState::Playing, Some(std::time::Duration::from_secs(30))),
         (RendererPlayerState::Finished, None),
@@ -269,7 +268,7 @@ async fn ending_remote_playback_after_a_seek_resumes_at_the_seek_target() {
     const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
     let (_home, mut service, state, _rx) =
         playing_remote_fixture(&[TRACK], StreamPosition::from_millis(30_000)).await;
-    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    assert!(wait_until(&state, |s| !s.loads.is_empty()));
     service.seek(StreamPosition::from_millis(45_000)).await;
 
     service.handle_stop_remote().await;
@@ -307,7 +306,7 @@ async fn handing_over_a_paused_track_shows_its_position() {
         TrackPhase::Paused(PausePhase::Manual),
     )
     .await;
-    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    assert!(wait_until(&state, |s| !s.loads.is_empty()));
 
     assert!(matches!(
         &service.slot,
@@ -322,7 +321,7 @@ async fn ending_remote_playback_shows_the_resumed_position() {
     const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
     let (_home, mut service, state, mut rx) =
         playing_remote_fixture(&[TRACK], StreamPosition::from_millis(30_000)).await;
-    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    assert!(wait_until(&state, |s| !s.loads.is_empty()));
     while rx.try_recv().is_ok() {}
 
     service.handle_stop_remote().await;
@@ -335,10 +334,7 @@ async fn ending_remote_playback_shows_the_resumed_position() {
 async fn pause_while_remote_pauses_the_device() {
     let (_home, mut service, state, _rx) = remote_over_fake().await;
     service.pause();
-    assert!(
-        wait_until(|| state.lock().unwrap().pauses == 1),
-        "pause while remote must pause the device"
-    );
+    assert!(wait_until(&state, |s| s.pauses == 1), "pause while remote must pause the device");
 }
 
 /// Resume while remote routes to the device.
@@ -346,12 +342,9 @@ async fn pause_while_remote_pauses_the_device() {
 async fn resume_while_remote_plays_the_device() {
     let (_home, mut service, state, _rx) = remote_over_fake().await;
     service.pause();
-    assert!(wait_until(|| state.lock().unwrap().pauses == 1));
+    assert!(wait_until(&state, |s| s.pauses == 1));
     service.resume().await;
-    assert!(
-        wait_until(|| state.lock().unwrap().plays == 1),
-        "resume while remote must play the device"
-    );
+    assert!(wait_until(&state, |s| s.plays == 1), "resume while remote must play the device");
 }
 
 /// Seek while remote routes to the device (and skips the local rebuild path).
@@ -360,7 +353,7 @@ async fn seek_while_remote_seeks_the_device() {
     let (_home, mut service, state, _rx) = remote_over_fake().await;
     service.seek(StreamPosition::from_duration(std::time::Duration::from_secs(45))).await;
     assert!(
-        wait_until(|| state.lock().unwrap().seeks.contains(&std::time::Duration::from_secs(45))),
+        wait_until(&state, |s| s.seeks.contains(&std::time::Duration::from_secs(45))),
         "seek while remote must seek the device"
     );
 }
@@ -371,7 +364,7 @@ async fn set_volume_while_remote_sets_the_device_volume() {
     let (_home, mut service, state, _rx) = remote_over_fake().await;
     service.set_volume(crate::Volume::new(0.3).unwrap());
     assert!(
-        wait_until(|| state.lock().unwrap().volumes.contains(&0.3)),
+        wait_until(&state, |s| s.volumes.contains(&0.3)),
         "setting the volume while remote must set the device's volume"
     );
 }
@@ -479,10 +472,7 @@ async fn served_whole_file_then_window(
         }))
         .await;
 
-    assert!(
-        wait_until(|| state.lock().unwrap().loads.len() == 2),
-        "both tracks are loaded onto the device"
-    );
+    assert!(wait_until(&state, |s| s.loads.len() == 2), "both tracks are loaded onto the device");
     let s = state.lock().unwrap();
     s.loads.iter().map(|m| (m.url.clone(), m.content_type.clone())).collect()
 }
@@ -568,7 +558,7 @@ async fn served_stream_length(track_length_ms: u64) -> Option<std::time::Duratio
 
     service.handle_play_on(remote_connect(channel)).await;
 
-    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    assert!(wait_until(&state, |s| !s.loads.is_empty()));
     let duration = state.lock().unwrap().loads[0].duration;
     duration
 }

@@ -445,30 +445,29 @@ async fn ending_a_preview_closes_its_file() {
         let path = path.canonicalize().unwrap();
         coven::open_files_under(dir.path()).into_iter().filter(|open| *open == path).count()
     };
-    // The preview's reader opens its file on its own task, and closes it there
-    // once the preview ends, so each count is awaited rather than sampled.
-    let wait_open = |path: std::path::PathBuf, count: usize| async move {
-        let deadline = std::time::Instant::now() + bae_util::test_channels::HANG_GUARD;
-        while open_now(&path) != count {
-            assert!(
-                std::time::Instant::now() < deadline,
-                "{} is open {} times, not {count}",
-                path.display(),
-                open_now(&path)
-            );
-            tokio::time::sleep(Duration::from_millis(5)).await;
-        }
+    // The preview's fill opens its file on its own task, holds it until the
+    // preview ends, and closes it when it ends.
+    let settled = |player: &PreviewPlayer| {
+        player.active.as_ref().expect("a preview is loaded").source.buffer.clone()
+    };
+    let ended = |player: &mut PreviewPlayer| {
+        let fill = player.fills.remove(0);
+        async move { fill.ended().await }
     };
 
     let whole = |path: &std::path::Path| PreviewTarget::whole_file(path.to_path_buf());
     assert!(player.play(whole(&first), &device).await.started());
-    wait_open(first.clone(), 1).await;
+    settled(&player).wait_until_fill_settled().await;
+    assert_eq!(open_now(&first), 1);
 
     assert!(player.play(whole(&second), &device).await.started());
-    wait_open(first.clone(), 0).await;
-    wait_open(second.clone(), 1).await;
+    ended(&mut player).await;
+    assert_eq!(open_now(&first), 0);
+    settled(&player).wait_until_fill_settled().await;
+    assert_eq!(open_now(&second), 1);
 
     assert_eq!(player.stop(), AfterPreview::LeaveMain);
-    wait_open(second, 0).await;
+    ended(&mut player).await;
+    assert_eq!(open_now(&second), 0);
     coven::assert_no_open_files_under(dir.path());
 }

@@ -1,6 +1,6 @@
 use super::*;
 use bae_util::test_channels::HANG_GUARD;
-use tokio::time::{timeout, Duration};
+use tokio::time::timeout;
 
 /// The fan-out over a fresh library's `playback_now` row, with the
 /// sender that feeds it. The `TempDir` holds the library.
@@ -48,16 +48,10 @@ async fn forwards_to_live_subscribers_and_prunes_dropped_ones() {
         other => panic!("expected volume event, got {other:?}"),
     }
 
-    timeout(Duration::from_secs(1), async {
-        loop {
-            if handle.subscriptions.lock().unwrap().len() == 1 {
-                break;
-            }
-            tokio::task::yield_now().await;
-        }
-    })
-    .await
-    .expect("dropped subscriber is pruned");
+    // The fan-out sends to every subscriber and prunes the closed ones under
+    // one lock, so taking the lock after the live subscriber heard the event
+    // waits for the prune.
+    assert_eq!(handle.subscriptions.lock().unwrap().len(), 1, "dropped subscriber is pruned");
 }
 
 /// The row holds an event's change by the time the event is forwarded.
