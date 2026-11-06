@@ -577,8 +577,10 @@ async fn the_storage_list_carries_the_queues_holding_work() {
     );
 
     assert!(activate_download(&manager, &pinning).await.unwrap());
+    // Paused, the export stays queued: running, the worker would take it.
+    manager.set_outputs_paused(true).await.unwrap();
     manager.enqueue_export(&uploading.id, std::path::PathBuf::from("/exports")).await.unwrap();
-    let outputs = Some(ReleaseQueueRun { paused: false, active: None });
+    let outputs = Some(ReleaseQueueRun { paused: true, active: None });
     assert_eq!(
         listed_queues(&manager).await,
         StorageQueues {
