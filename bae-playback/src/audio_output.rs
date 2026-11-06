@@ -219,13 +219,9 @@ impl AudioDrain {
         &mut self,
         buf: &mut [f32],
         apply_gain: bool,
-        zero_unfilled: bool,
         lock: SourceLock<'_>,
     ) -> DrainStatus {
         if self.failed || self.controls.get_state() != AudioState::Playing {
-            if zero_unfilled {
-                buf.fill(0.0);
-            }
             return DrainStatus::Idle;
         }
 
@@ -249,9 +245,6 @@ impl AudioDrain {
             },
         };
         let Ok(mut source_guard) = locked else {
-            if zero_unfilled {
-                buf.fill(0.0);
-            }
             return DrainStatus::Idle;
         };
 
@@ -267,9 +260,6 @@ impl AudioDrain {
                 self.failed = true;
                 self.audio_events
                     .push_required(AudioEvent::OutputFailed { detail: failed.to_string() });
-                if zero_unfilled {
-                    buf.fill(0.0);
-                }
                 return DrainStatus::Idle;
             }
         };
@@ -282,9 +272,6 @@ impl AudioDrain {
                 self.controls.stop_from_drain();
                 self.audio_events.push_required(AudioEvent::Completion(event));
             }
-            if zero_unfilled {
-                buf.fill(0.0);
-            }
             return DrainStatus::Idle;
         }
 
@@ -293,9 +280,6 @@ impl AudioDrain {
             for sample in &mut buf[..read] {
                 *sample *= combined;
             }
-        }
-        if zero_unfilled {
-            buf[read..].fill(0.0);
         }
 
         if self.last_position_update.elapsed() >= self.position_update_interval {
@@ -901,7 +885,7 @@ impl CaptureStream {
                 if running.load(Ordering::Acquire) {
                     break;
                 }
-                match drain.drain_iteration(&mut buf, apply_gain, false, SourceLock::Wait) {
+                match drain.drain_iteration(&mut buf, apply_gain, SourceLock::Wait) {
                     DrainStatus::Idle => drain.controls.wait_for_drain_work(seen),
                     DrainStatus::Samples { read } => on_samples(&buf[..read]),
                 }

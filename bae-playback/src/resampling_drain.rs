@@ -115,7 +115,7 @@ impl ResamplingDrain {
             Some(lock_miss) => SourceLock::Try(lock_miss),
             None => SourceLock::Wait,
         };
-        match self.drain.drain_iteration(&mut self.pulled, true, false, lock) {
+        match self.drain.drain_iteration(&mut self.pulled, true, lock) {
             DrainStatus::Samples { read } => {
                 self.flushed = false;
                 let input = &self.pulled[..read];
