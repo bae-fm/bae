@@ -246,7 +246,6 @@
     <string name="storage_setup_choose">Къде да се съхранява тази библиотека?</string>
     <string name="storage_s3_endpoint_hint">Оставете празно за Amazon S3.</string>
     <string name="storage_s3_advanced">Разширени</string>
-    <string name="storage_s3_key_prefix">Префикс на ключовете</string>
     <string name="storage_s3_profile">Профил на услугата</string>
     <string name="storage_s3_profile_detect">Разпознаване по крайната точка</string>
     <string name="storage_s3_check">Проверка на bucket</string>

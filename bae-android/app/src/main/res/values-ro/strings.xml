@@ -248,7 +248,6 @@
     <string name="storage_setup_choose">Unde să fie stocată această bibliotecă?</string>
     <string name="storage_s3_endpoint_hint">Lasă gol pentru Amazon S3.</string>
     <string name="storage_s3_advanced">Avansat</string>
-    <string name="storage_s3_key_prefix">Prefix chei</string>
     <string name="storage_s3_profile">Profilul serviciului</string>
     <string name="storage_s3_profile_detect">Detectează după endpoint</string>
     <string name="storage_s3_check">Verifică bucketul</string>

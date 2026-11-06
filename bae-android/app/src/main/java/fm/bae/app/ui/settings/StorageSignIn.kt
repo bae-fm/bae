@@ -152,7 +152,6 @@ private fun BridgeStorageLocation.S3.withKey(
         bucket = bucket,
         region = region,
         endpoint = endpoint,
-        keyPrefix = prefix,
         accessKey = accessKeyId,
         secretKey = secretAccessKey,
         profile = profile,

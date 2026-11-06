@@ -243,7 +243,6 @@
     <string name="storage_setup_choose">このライブラリをどこに保存しますか？</string>
     <string name="storage_s3_endpoint_hint">Amazon S3 の場合は空欄のままにします。</string>
     <string name="storage_s3_advanced">詳細</string>
-    <string name="storage_s3_key_prefix">キーのプレフィックス</string>
     <string name="storage_s3_profile">サービスプロファイル</string>
     <string name="storage_s3_profile_detect">エンドポイントから検出</string>
     <string name="storage_s3_check">バケットを確認</string>

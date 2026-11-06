@@ -70,7 +70,6 @@ class OnboardingFlowTest {
                         region = "us-east-1",
                         endpoint = null,
                         profile = null,
-                        prefix = "",
                     ),
                 oauthAccess = null,
                 carriesS3Key = carriesS3Key,

@@ -249,7 +249,6 @@
     <string name="storage_setup_choose">Gdje pohraniti ovu fonoteku?</string>
     <string name="storage_s3_endpoint_hint">Ostavite prazno za Amazon S3.</string>
     <string name="storage_s3_advanced">Napredno</string>
-    <string name="storage_s3_key_prefix">Prefiks ključeva</string>
     <string name="storage_s3_profile">Profil usluge</string>
     <string name="storage_s3_profile_detect">Prepoznaj prema krajnjoj točki</string>
     <string name="storage_s3_check">Provjeri bucket</string>

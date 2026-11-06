@@ -15,8 +15,8 @@ impl BridgeHost {
     /// given the Discogs key, then closed. Each step is written into
     /// `setup`'s stream, counted where it can be; the first failure stops the
     /// reset and is returned. `scripts/reset-bae.py` empties the profile's
-    /// storage prefix before it launches the app, so the new library starts
-    /// on an empty remote.
+    /// bucket before it launches the app, so the new library starts on an
+    /// empty bucket of its own.
     pub async fn dev_reset(
         self: Arc<Self>,
         profile: crate::BridgeDevResetProfile,

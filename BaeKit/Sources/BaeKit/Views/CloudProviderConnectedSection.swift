@@ -11,14 +11,11 @@ public struct CloudProviderConnectedSection: View {
     public var body: some View {
         LabeledContent("Provider", value: location.displayName)
         switch location {
-        case .s3(let bucket, let region, let endpoint, _, let prefix):
+        case .s3(let bucket, let region, let endpoint, _):
             LabeledContent("Bucket", value: bucket)
             LabeledContent("Region", value: region)
             if let endpoint {
                 LabeledContent("Endpoint", value: endpoint)
-            }
-            if !prefix.isEmpty {
-                LabeledContent("Key prefix", value: prefix)
             }
         case .dropbox, .oneDrive:
             if let account = location.accountLabel {

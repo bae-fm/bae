@@ -243,7 +243,6 @@
     <string name="storage_setup_choose">此库应存储在哪里？</string>
     <string name="storage_s3_endpoint_hint">使用 Amazon S3 时请留空。</string>
     <string name="storage_s3_advanced">高级</string>
-    <string name="storage_s3_key_prefix">键前缀</string>
     <string name="storage_s3_profile">服务配置</string>
     <string name="storage_s3_profile_detect">根据端点检测</string>
     <string name="storage_s3_check">检查存储桶</string>

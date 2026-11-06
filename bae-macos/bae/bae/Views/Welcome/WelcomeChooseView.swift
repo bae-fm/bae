@@ -407,9 +407,9 @@ private struct RemovalErrorCallout: View {
                     loadError: LoadError(
                         .devReset,
                         BridgeError.Diagnostic(
-                            category: .s3Prefix(problem: .emptySegment),
+                            category: .config,
                             detail:
-                                "dev profile profile.toml: s3.key_prefix: the S3 prefix has two slashes in a row"
+                                "dev profile profile.toml: line 11: unknown field `key_prefix`"
                         )
                     ),
                     canDeleteActiveLibrary: true,

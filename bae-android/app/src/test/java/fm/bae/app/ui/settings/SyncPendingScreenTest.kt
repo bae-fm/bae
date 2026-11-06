@@ -46,7 +46,6 @@ class SyncPendingScreenTest {
                         region = "us-east-1",
                         endpoint = null,
                         profile = null,
-                        prefix = "",
                     )
 
                 override fun closeLibrary(closing: BridgeLibraryClosing?) = Unit

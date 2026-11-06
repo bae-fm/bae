@@ -3,8 +3,8 @@ import SwiftUI
 
 /// S3 setup: the bucket, region, endpoint and access key, and nothing else.
 /// coven knows a service by its endpoint and fills in how to talk to it;
-/// Advanced holds the key prefix, the profile, and a detection of the
-/// settings for a service coven doesn't know.
+/// Advanced holds the profile and a detection of the settings for a service
+/// coven doesn't know. The library takes the whole bucket.
 struct S3SetupForm: View {
     let onConnected: (BridgeStorageSetup) -> Void
 
@@ -64,7 +64,6 @@ struct S3SetupForm: View {
     private var advanced: some View {
         @Bindable
         var fields = fields
-        TextField("Key prefix", text: $fields.keyPrefix)
         Picker("Profile", selection: $fields.profile) {
             Text("Automatic").tag(S3SetupFields.ProfileChoice.automatic)
             ForEach(S3SetupFields.profileNames, id: \.self) { name in

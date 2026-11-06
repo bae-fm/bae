@@ -2675,8 +2675,8 @@ bucket. The form asks for the bucket, region, endpoint and access key, and
 nothing else. coven knows R2 by its endpoint's host and fills in how to talk to
 it
 ([coven E.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#e3-s3-settings-and-profiles)).
-An Advanced section holds the optional key prefix and a choice of profile,
-automatic by default. For a service coven doesn't know, *Detect settings*
+An Advanced section holds a choice of profile, automatic by default; there
+is no key prefix, as the library takes the whole bucket. For a service coven doesn't know, *Detect settings*
 probes the bucket with the key and shows what it found, which the person can
 then use, naming the probe while it runs. When coven refuses a setup, bae says
 why in plain words.
@@ -2707,8 +2707,7 @@ another's objects. Setting a new library up refuses a location holding
 anything but that library's own folder and coven's marker naming it, with a
 line saying to use an empty bucket or folder only this library uses.
 Reconnecting, restoring and joining read only the marker, and refuse a
-location whose marker is missing or names another library. A key prefix the
-person types is refused the same way.
+location whose marker is missing or names another library.
 
 **Dropbox and OneDrive setup.** The person signs in through the browser, then
 picks the folder the library lives in. On Dropbox that is a shared folder, so

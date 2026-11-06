@@ -243,7 +243,6 @@
     <string name="storage_setup_choose">이 라이브러리를 어디에 저장할까요?</string>
     <string name="storage_s3_endpoint_hint">Amazon S3는 비워 두세요.</string>
     <string name="storage_s3_advanced">고급</string>
-    <string name="storage_s3_key_prefix">키 접두사</string>
     <string name="storage_s3_profile">서비스 프로필</string>
     <string name="storage_s3_profile_detect">엔드포인트로 감지</string>
     <string name="storage_s3_check">버킷 확인</string>

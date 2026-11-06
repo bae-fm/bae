@@ -258,7 +258,6 @@
     <string name="storage_setup_choose">أين تريد تخزين هذه المكتبة؟</string>
     <string name="storage_s3_endpoint_hint">اتركه فارغًا لـ Amazon S3.</string>
     <string name="storage_s3_advanced">خيارات متقدمة</string>
-    <string name="storage_s3_key_prefix">بادئة المفاتيح</string>
     <string name="storage_s3_profile">ملف تعريف الخدمة</string>
     <string name="storage_s3_profile_detect">اكتشاف من نقطة النهاية</string>
     <string name="storage_s3_check">فحص الحاوية</string>

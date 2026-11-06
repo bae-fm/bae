@@ -245,7 +245,6 @@
     <string name="storage_setup_choose">Πού να αποθηκευτεί αυτή η βιβλιοθήκη;</string>
     <string name="storage_s3_endpoint_hint">Αφήστε το κενό για το Amazon S3.</string>
     <string name="storage_s3_advanced">Για προχωρημένους</string>
-    <string name="storage_s3_key_prefix">Πρόθεμα κλειδιών</string>
     <string name="storage_s3_profile">Προφίλ υπηρεσίας</string>
     <string name="storage_s3_profile_detect">Εντοπισμός από το τελικό σημείο</string>
     <string name="storage_s3_check">Έλεγχος bucket</string>

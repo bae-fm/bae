@@ -29,18 +29,13 @@ body{margin:0;background:var(--elevated)}
 <x-import component-from-global-scope="Bae.MacRow" label="Secret access key" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{secret}}" secret="{{yes}}"></x-import></x-import>
 </x-import>
 </x-import>
-<x-import component-from-global-scope="Bae.MacDisclosure" label="Advanced" open="{{open}}">
-<x-import component-from-global-scope="Bae.MacBox">
-<x-import component-from-global-scope="Bae.MacRow" label="Key prefix" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" placeholder="None"></x-import></x-import>
-</x-import>
-</x-import>
 <x-import component-from-global-scope="Bae.MacSheetFooter">
 <x-import component-from-global-scope="Bae.MacButton">Cancel</x-import>
 <x-import component-from-global-scope="Bae.MacButton" kind="primary" off="{{setUpOff}}">Set up</x-import>
 </x-import>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"endpoint":{"editor":"enum","options":["blank","r2","gcs","custom"],"default":"r2"},"advanced":{"editor":"boolean","default":false},"$preview":{"width":460,"height":400}}'>
+<script type="text/x-dc" data-dc-script data-props='{"endpoint":{"editor":"enum","options":["blank","r2","gcs","custom"],"default":"r2"},"$preview":{"width":460,"height":400}}'>
 class Component extends DCLogic {
   renderVals() {
     const kind = this.props.endpoint ?? 'r2';
@@ -59,7 +54,6 @@ class Component extends DCLogic {
       bucket: blank ? '' : 'my-bucket',
       keyId: blank ? '' : 'a1b2c3d4e5f6',
       secret: blank ? '' : 'abcdefghijkl',
-      open: !!this.props.advanced,
       setUpOff: blank
     };
   }

@@ -245,7 +245,6 @@
     <string name="storage_setup_choose">Hol tárolódjon ez a könyvtár?</string>
     <string name="storage_s3_endpoint_hint">Amazon S3 esetén hagyd üresen.</string>
     <string name="storage_s3_advanced">Speciális</string>
-    <string name="storage_s3_key_prefix">Kulcselőtag</string>
     <string name="storage_s3_profile">Szolgáltatásprofil</string>
     <string name="storage_s3_profile_detect">Felismerés a végpont alapján</string>
     <string name="storage_s3_check">Tároló ellenőrzése</string>

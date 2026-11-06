@@ -61,8 +61,7 @@ extension BridgeStorageLocation {
                 let bucket,
                 let region,
                 let endpoint,
-                let profile,
-                let prefix
+                let profile
             ) = self
         else {
             preconditionFailure("an S3 key is asked only for an S3 library")
@@ -71,7 +70,6 @@ extension BridgeStorageLocation {
             bucket: bucket,
             region: region,
             endpoint: endpoint,
-            keyPrefix: prefix,
             accessKey: accessKey,
             secretKey: secretKey,
             profile: profile

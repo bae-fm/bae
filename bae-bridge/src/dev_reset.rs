@@ -30,7 +30,6 @@ pub fn read_dev_reset_profile(path: String) -> Result<BridgeDevResetProfile, Bri
             bucket: s3.bucket,
             region: s3.region,
             endpoint: s3.endpoint,
-            key_prefix: String::new(),
             access_key: s3.access_key,
             secret_key: s3.secret_key,
             profile: s3.profile.map(BridgeS3Profile::from_core),

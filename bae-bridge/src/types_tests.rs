@@ -583,58 +583,6 @@ fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
     assert_eq!(waiting.action_key, None);
 }
 
-/// Every S3 library takes its bucket to itself: no prefix, or slashes
-/// alone, cross as the bucket; a typed prefix is refused as the location
-/// needing a bucket of its own.
-#[test]
-fn a_typed_key_prefix_is_refused_as_needing_a_bucket_of_its_own() {
-    let typed = |key_prefix: &str| BridgeSaveSyncConfig {
-        bucket: "bucket".into(),
-        region: "us-east-1".into(),
-        endpoint: None,
-        key_prefix: key_prefix.into(),
-        access_key: "access-key".into(),
-        secret_key: "secret-key".into(),
-        profile: None,
-    };
-    for key_prefix in ["", "/"] {
-        assert!(typed(key_prefix).into_core().is_ok(), "{key_prefix:?}");
-    }
-
-    let refused = typed("music/bae").into_core().err().unwrap();
-    let BridgeError::Diagnostic { category, .. } = &refused else {
-        panic!("expected a diagnostic, got {refused:?}");
-    };
-    assert_eq!(
-        *category,
-        BridgeErrorCategory::Storage { failure: BridgeStorageFailure::OwnLocationRequired }
-    );
-}
-
-/// A location the app hands back, such as the one detection probes, crosses
-/// as the whole bucket; one naming a key prefix is refused as needing a
-/// bucket of its own.
-#[test]
-fn an_s3_location_crosses_back_as_the_whole_bucket() {
-    let location = |prefix: &str| BridgeStorageLocation::S3 {
-        bucket: "bucket".into(),
-        region: "us-east-1".into(),
-        endpoint: None,
-        profile: None,
-        prefix: prefix.into(),
-    };
-    let crossed = location("").into_core().ok().unwrap();
-    assert_eq!(BridgeStorageLocation::from_core(crossed), location(""));
-    let refused = location("music/bae").into_core().err().unwrap();
-    let BridgeError::Diagnostic { category, .. } = &refused else {
-        panic!("expected a diagnostic, got {refused:?}");
-    };
-    assert_eq!(
-        *category,
-        BridgeErrorCategory::Storage { failure: BridgeStorageFailure::OwnLocationRequired }
-    );
-}
-
 /// A preview target crosses with its file's name, which the preview shows.
 #[test]
 fn a_preview_target_crosses_with_its_files_name() {

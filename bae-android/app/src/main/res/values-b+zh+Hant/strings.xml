@@ -243,7 +243,6 @@
     <string name="storage_setup_choose">此資料庫要儲存在哪裡？</string>
     <string name="storage_s3_endpoint_hint">使用 Amazon S3 時請留空。</string>
     <string name="storage_s3_advanced">進階</string>
-    <string name="storage_s3_key_prefix">鍵前綴</string>
     <string name="storage_s3_profile">服務設定檔</string>
     <string name="storage_s3_profile_detect">依端點偵測</string>
     <string name="storage_s3_check">檢查儲存貯體</string>

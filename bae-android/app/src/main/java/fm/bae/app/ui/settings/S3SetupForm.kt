@@ -67,7 +67,6 @@ private class S3FormInput {
     var endpoint by mutableStateOf("")
     var accessKeyId by mutableStateOf("")
     var secretAccessKey by mutableStateOf("")
-    var keyPrefix by mutableStateOf("")
     var profile by mutableStateOf<BridgeS3ProfileName?>(null)
 
     val complete: Boolean
@@ -83,7 +82,6 @@ private class S3FormInput {
             region = region,
             endpoint = endpoint.takeIf { it.isNotEmpty() },
             profile = profile?.let { BridgeS3Profile.Named(it) },
-            prefix = keyPrefix,
         )
 
     fun config(): BridgeSaveSyncConfig =
@@ -91,7 +89,6 @@ private class S3FormInput {
             bucket = bucket,
             region = region,
             endpoint = endpoint.takeIf { it.isNotEmpty() },
-            keyPrefix = keyPrefix,
             accessKey = accessKeyId,
             secretKey = secretAccessKey,
             profile = profile?.let { BridgeS3Profile.Named(it) },
@@ -101,8 +98,8 @@ private class S3FormInput {
 /**
  * The S3 form: the bucket, its region and endpoint, and the access key. coven
  * knows a service by its endpoint and fills in how to talk to it; Advanced
- * holds the key prefix, a profile for a service coven doesn't know, and a
- * check of what coven detects in the bucket.
+ * holds a profile for a service coven doesn't know and a check of what coven
+ * detects in the bucket. The library takes the whole bucket.
  */
 @Composable
 internal fun S3SetupForm(
@@ -149,7 +146,7 @@ internal fun S3SetupForm(
     }
 }
 
-/** The key prefix, the service profile, and a check of the bucket as coven finds it. */
+/** The service profile, and a check of the bucket as coven finds it. */
 @Composable
 private fun S3Advanced(
     session: OpenLibrary,
@@ -159,7 +156,6 @@ private fun S3Advanced(
     val scope = rememberScreenScope()
     var detection by remember { mutableStateOf<BridgeS3Detection?>(null) }
     var checking by remember { mutableStateOf(false) }
-    TextInput(input.keyPrefix, R.string.storage_s3_key_prefix) { input.keyPrefix = it }
     ProfileChoice(input.profile) { input.profile = it }
     OutlinedButton(
         enabled = input.complete && !checking,

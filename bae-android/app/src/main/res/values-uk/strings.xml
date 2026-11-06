@@ -252,7 +252,6 @@
     <string name="storage_setup_choose">Де зберігати цю бібліотеку?</string>
     <string name="storage_s3_endpoint_hint">Залиште порожнім для Amazon S3.</string>
     <string name="storage_s3_advanced">Додатково</string>
-    <string name="storage_s3_key_prefix">Префікс ключів</string>
     <string name="storage_s3_profile">Профіль служби</string>
     <string name="storage_s3_profile_detect">Визначити за кінцевою точкою</string>
     <string name="storage_s3_check">Перевірити бакет</string>

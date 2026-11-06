@@ -270,7 +270,6 @@ private val previewEntries =
                             region = "us-east-1",
                             endpoint = "storage.example.com",
                             profile = null,
-                            prefix = "",
                         ),
                     oauthAccess = null,
                     hasS3Credentials = true,

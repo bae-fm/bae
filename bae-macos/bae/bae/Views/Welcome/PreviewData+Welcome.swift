@@ -17,8 +17,7 @@
                         bucket: "music-library",
                         region: "us-east-1",
                         endpoint: nil,
-                        profile: nil,
-                        prefix: ""
+                        profile: nil
                     )
                 ),
                 isActive: false

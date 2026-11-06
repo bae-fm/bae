@@ -246,7 +246,6 @@
     <string name="storage_setup_choose">Waar moet deze bibliotheek worden opgeslagen?</string>
     <string name="storage_s3_endpoint_hint">Laat leeg voor Amazon S3.</string>
     <string name="storage_s3_advanced">Geavanceerd</string>
-    <string name="storage_s3_key_prefix">Sleutelvoorvoegsel</string>
     <string name="storage_s3_profile">Serviceprofiel</string>
     <string name="storage_s3_profile_detect">Herkennen aan het eindpunt</string>
     <string name="storage_s3_check">Bucket controleren</string>

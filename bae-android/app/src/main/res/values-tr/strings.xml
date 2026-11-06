@@ -246,7 +246,6 @@
     <string name="storage_setup_choose">Bu kitaplık nerede depolansın?</string>
     <string name="storage_s3_endpoint_hint">Amazon S3 için boş bırakın.</string>
     <string name="storage_s3_advanced">Gelişmiş</string>
-    <string name="storage_s3_key_prefix">Anahtar öneki</string>
     <string name="storage_s3_profile">Hizmet profili</string>
     <string name="storage_s3_profile_detect">Uç noktadan algıla</string>
     <string name="storage_s3_check">Kovayı denetle</string>

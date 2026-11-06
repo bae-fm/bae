@@ -245,7 +245,6 @@
     <string name="storage_setup_choose">Mihin tämä kirjasto tallennetaan?</string>
     <string name="storage_s3_endpoint_hint">Jätä tyhjäksi, jos käytät Amazon S3:a.</string>
     <string name="storage_s3_advanced">Lisäasetukset</string>
-    <string name="storage_s3_key_prefix">Avainten etuliite</string>
     <string name="storage_s3_profile">Palveluprofiili</string>
     <string name="storage_s3_profile_detect">Tunnista päätepisteestä</string>
     <string name="storage_s3_check">Tarkista säilö</string>

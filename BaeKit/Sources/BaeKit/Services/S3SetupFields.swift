@@ -5,8 +5,9 @@ import os.log
 private let logger = Logger.bae("S3SetupFields")
 
 /// The S3 setup form's state: the bucket, region, endpoint and access key,
-/// and under Advanced the key prefix, the profile, and a detection of the
-/// settings for a service coven doesn't know by its endpoint.
+/// and under Advanced the profile and a detection of the settings for a
+/// service coven doesn't know by its endpoint. The library takes the whole
+/// bucket.
 @MainActor
 @Observable
 public final class S3SetupFields {
@@ -29,7 +30,6 @@ public final class S3SetupFields {
     public var endpoint = "" { didSet { clearDetection() } }
     public var accessKey = ""
     public var secretKey = ""
-    public var keyPrefix = ""
     public var profile: ProfileChoice = .automatic
     public private(set) var detection: BridgeS3Detection?
     public private(set) var detectError: DisplayError?
@@ -68,7 +68,6 @@ public final class S3SetupFields {
             bucket: bucket,
             region: region,
             endpoint: endpoint.isEmpty ? nil : endpoint,
-            keyPrefix: keyPrefix,
             accessKey: accessKey,
             secretKey: secretKey,
             profile: chosen
@@ -81,8 +80,7 @@ public final class S3SetupFields {
             bucket: bucket,
             region: region,
             endpoint: endpoint.isEmpty ? nil : endpoint,
-            profile: nil,
-            prefix: keyPrefix
+            profile: nil
         )
         let credentials = BridgeS3Credentials(
             accessKeyId: accessKey,

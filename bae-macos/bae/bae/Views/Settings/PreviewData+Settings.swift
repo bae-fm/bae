@@ -44,8 +44,7 @@
             bucket: "preview-bucket",
             region: "us-east-1",
             endpoint: nil,
-            profile: nil,
-            prefix: ""
+            profile: nil
         )
 
         /// This device's person, an admin, whose earlier registration of this

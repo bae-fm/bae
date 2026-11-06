@@ -251,7 +251,6 @@
     <string name="storage_setup_choose">Kde má byť táto knižnica uložená?</string>
     <string name="storage_s3_endpoint_hint">Pre Amazon S3 nechaj prázdne.</string>
     <string name="storage_s3_advanced">Rozšírené</string>
-    <string name="storage_s3_key_prefix">Predpona kľúčov</string>
     <string name="storage_s3_profile">Profil služby</string>
     <string name="storage_s3_profile_detect">Rozpoznať podľa koncového bodu</string>
     <string name="storage_s3_check">Skontrolovať bucket</string>

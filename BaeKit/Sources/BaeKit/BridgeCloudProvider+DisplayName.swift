@@ -57,7 +57,7 @@ extension BridgeStorageLocation {
     /// provider, shown under the provider's name in compact rows.
     public var locationSummary: String {
         switch self {
-        case .s3(let bucket, _, _, _, _): bucket
+        case .s3(let bucket, _, _, _): bucket
         case .dropbox(.appFolder, _): String(localized: "App folder")
         case .dropbox(.sharedFolder(let namespaceId), _): namespaceId
         case .oneDrive(_, let folderId, _): folderId
@@ -78,7 +78,7 @@ extension BridgeStorageLocation {
                 comment:
                     "A storage provider and the account a library is in, such as Dropbox: ana@example.com"
             )
-        case .s3(let bucket, let region, let endpoint, _, _):
+        case .s3(let bucket, let region, let endpoint, _):
             String(
                 localized: "\(displayName): \(bucket) (\(endpoint ?? region))",
                 comment:

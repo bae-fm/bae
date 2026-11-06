@@ -246,7 +246,6 @@
     <string name="storage_setup_choose">Wo soll diese Bibliothek gespeichert werden?</string>
     <string name="storage_s3_endpoint_hint">Für Amazon S3 leer lassen.</string>
     <string name="storage_s3_advanced">Erweitert</string>
-    <string name="storage_s3_key_prefix">Schlüsselpräfix</string>
     <string name="storage_s3_profile">Dienstprofil</string>
     <string name="storage_s3_profile_detect">Am Endpunkt erkennen</string>
     <string name="storage_s3_check">Bucket prüfen</string>

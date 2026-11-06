@@ -298,7 +298,6 @@
     <string name="storage_setup_choose">Where should this library be stored?</string>
     <string name="storage_s3_endpoint_hint">Leave empty for Amazon S3.</string>
     <string name="storage_s3_advanced">Advanced</string>
-    <string name="storage_s3_key_prefix">Key prefix</string>
     <string name="storage_s3_profile">Service profile</string>
     <string name="storage_s3_profile_detect">Detect from the endpoint</string>
     <string name="storage_s3_check">Check bucket</string>

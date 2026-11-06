@@ -249,7 +249,6 @@
     <string name="storage_setup_choose">היכן לאחסן את הספרייה הזו?</string>
     <string name="storage_s3_endpoint_hint">השאר ריק עבור Amazon S3.</string>
     <string name="storage_s3_advanced">מתקדם</string>
-    <string name="storage_s3_key_prefix">קידומת מפתחות</string>
     <string name="storage_s3_profile">פרופיל שירות</string>
     <string name="storage_s3_profile_detect">זיהוי לפי נקודת הקצה</string>
     <string name="storage_s3_check">בדיקת הדלי</string>

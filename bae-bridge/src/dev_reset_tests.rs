@@ -26,15 +26,14 @@ token = "discogs-token"
     path.to_string_lossy().into_owned()
 }
 
-/// A dev library takes its bucket whole, so its storage crosses with no key
-/// prefix.
+/// A dev library takes its bucket whole: its storage crosses as the bucket
+/// the profile names.
 #[test]
-fn the_profile_crosses_with_the_whole_bucket() {
+fn the_profile_crosses_with_its_bucket() {
     let dir = tempfile::tempdir().unwrap();
     let read = read_dev_reset_profile(profile(&dir)).ok().unwrap();
 
     assert_eq!(read.sync_config.bucket, "bucket-name");
-    assert_eq!(read.sync_config.key_prefix, "");
 }
 
 /// A dev reset removes every library, empties bae's directory, creates the
@@ -75,7 +74,6 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
                     bucket: "bucket".into(),
                     region: "us-east-1".into(),
                     endpoint: Some("http://127.0.0.1:1".into()),
-                    key_prefix: String::new(),
                     access_key: "access-key".into(),
                     secret_key: "secret-key".into(),
                     profile: None,

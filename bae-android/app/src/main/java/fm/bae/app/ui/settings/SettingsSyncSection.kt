@@ -131,9 +131,6 @@ private fun CloudHomeRows(location: BridgeStorageLocation) {
             LabeledValueRow(stringResource(R.string.settings_bucket), location.bucket)
             LabeledValueRow(stringResource(R.string.settings_region), location.region)
             location.endpoint?.let { LabeledValueRow(stringResource(R.string.settings_endpoint), it) }
-            if (location.prefix.isNotEmpty()) {
-                LabeledValueRow(stringResource(R.string.storage_s3_key_prefix), location.prefix)
-            }
         }
 
         is BridgeStorageLocation.Dropbox -> {
@@ -161,7 +158,6 @@ private fun CloudHomeRowsPreview() {
                     region = "auto",
                     endpoint = "https://account-id.r2.cloudflarestorage.com",
                     profile = null,
-                    prefix = "",
                 ),
             )
         }

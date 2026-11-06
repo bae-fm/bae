@@ -62,7 +62,6 @@ class SettingsSyncSectionTest {
                                     region = "us-east-1",
                                     endpoint = null,
                                     profile = null,
-                                    prefix = "",
                                 ),
                             ),
                         oauthProviders = null,

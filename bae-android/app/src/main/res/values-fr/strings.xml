@@ -248,7 +248,6 @@
     <string name="storage_setup_choose">Où stocker cette bibliothèque ?</string>
     <string name="storage_s3_endpoint_hint">Laissez vide pour Amazon S3.</string>
     <string name="storage_s3_advanced">Avancé</string>
-    <string name="storage_s3_key_prefix">Préfixe des clés</string>
     <string name="storage_s3_profile">Profil du service</string>
     <string name="storage_s3_profile_detect">Détecter d’après le point de terminaison</string>
     <string name="storage_s3_check">Vérifier le bucket</string>

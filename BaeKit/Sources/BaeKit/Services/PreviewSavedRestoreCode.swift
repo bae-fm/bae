@@ -32,8 +32,7 @@
                     bucket: "music-library",
                     region: "us-east-1",
                     endpoint: "storage.example.com",
-                    profile: nil,
-                    prefix: ""
+                    profile: nil
                 ),
                 oauthAccess: nil,
                 hasS3Credentials: true

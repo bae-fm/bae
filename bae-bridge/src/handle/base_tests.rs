@@ -122,7 +122,6 @@ fn setting_up_s3_storage_writes_its_steps() {
                 bucket,
                 region,
                 endpoint: endpoint.map(|url| url.to_string()),
-                key_prefix: String::new(),
                 access_key: "test-access".into(),
                 secret_key: "test-secret".into(),
                 profile: profile.map(crate::types::BridgeS3Profile::from_core),

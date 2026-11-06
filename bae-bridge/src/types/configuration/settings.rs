@@ -164,13 +164,6 @@ pub enum BridgeErrorCategory {
         state: BridgeS3BucketVersioning,
     },
     StorageLocationChangeUnsupported,
-    /// The S3 key prefix the person typed is not a folder path coven can
-    /// use; the line names the folder at fault.
-    // Sentinel: nothing makes it now that coven has no key prefixes; the S3
-    // bucket-of-its-own commit removes it with the apps' lines for it.
-    S3Prefix {
-        problem: BridgeS3PrefixProblem,
-    },
     /// A cloud provider's sign-in (OAuth) failed: the person signs in again.
     Credentials,
     /// The cloud backend or the network to it was unreachable — retryable.
@@ -351,15 +344,6 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::StorageLocationChangeUnsupported => {
             "core.error.storage.location_change"
         }
-        BridgeErrorCategory::S3Prefix { problem } => match problem {
-            BridgeS3PrefixProblem::EmptySegment => "core.error.storage.prefix.empty_segment",
-            BridgeS3PrefixProblem::InvalidCharacter { .. } => {
-                "core.error.storage.prefix.invalid_character"
-            }
-            BridgeS3PrefixProblem::SegmentTooLong { .. } => {
-                "core.error.storage.prefix.segment_too_long"
-            }
-        },
         BridgeErrorCategory::Credentials => "core.error.category.credentials",
         BridgeErrorCategory::Network => "core.error.category.network",
         BridgeErrorCategory::Keyring => "core.error.category.keyring",
@@ -493,9 +477,6 @@ impl BridgeErrorCategory {
             Self::S3VersioningUnknown { .. } => K::S3VersioningUnknown,
             Self::S3VersioningUnsupported { .. } => K::S3VersioningUnsupported,
             Self::StorageLocationChangeUnsupported => K::StorageLocationChangeUnsupported,
-            // Sentinel: nothing makes it now that coven has no key prefixes;
-            // the S3 bucket-of-its-own commit removes it.
-            Self::S3Prefix { .. } => K::Storage,
             Self::Credentials => K::Credentials,
             Self::Network => K::Network,
             Self::Keyring => K::Keyring,

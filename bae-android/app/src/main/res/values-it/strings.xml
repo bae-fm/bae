@@ -248,7 +248,6 @@
     <string name="storage_setup_choose">Dove vuoi archiviare questa libreria?</string>
     <string name="storage_s3_endpoint_hint">Lascia vuoto per Amazon S3.</string>
     <string name="storage_s3_advanced">Avanzate</string>
-    <string name="storage_s3_key_prefix">Prefisso delle chiavi</string>
     <string name="storage_s3_profile">Profilo del servizio</string>
     <string name="storage_s3_profile_detect">Rileva dall’endpoint</string>
     <string name="storage_s3_check">Verifica bucket</string>

@@ -245,7 +245,6 @@
     <string name="storage_setup_choose">Hvor skal dette biblioteket lagres?</string>
     <string name="storage_s3_endpoint_hint">La stå tomt for Amazon S3.</string>
     <string name="storage_s3_advanced">Avansert</string>
-    <string name="storage_s3_key_prefix">Nøkkelprefiks</string>
     <string name="storage_s3_profile">Tjenesteprofil</string>
     <string name="storage_s3_profile_detect">Finn ut fra endepunktet</string>
     <string name="storage_s3_check">Kontroller bøtten</string>

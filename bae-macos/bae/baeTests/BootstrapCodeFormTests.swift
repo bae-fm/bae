@@ -52,8 +52,7 @@ struct BootstrapCodeFormTests {
                     bucket: "music-library",
                     region: "us-east-1",
                     endpoint: nil,
-                    profile: nil,
-                    prefix: ""
+                    profile: nil
                 ),
                 oauthAccess: nil,
                 carriesS3Key: carriesS3Key
