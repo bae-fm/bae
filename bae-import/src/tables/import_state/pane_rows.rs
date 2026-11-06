@@ -681,7 +681,13 @@ impl StoredAssignment {
                 },
                 credit_name: match (self.credit_key, self.credit_name) {
                     (Some(key), Some(name)) => Some(bae_records::credits::CreditName { key, name }),
-                    _ => None,
+                    (None, None) => None,
+                    (key, name) => {
+                        return Err(DbError::unreadable(
+                            "a stored artist assignment's credit name and key",
+                            (key, name),
+                        ))
+                    }
                 },
             },
             "credit" => ArtistAssignment::Credit {

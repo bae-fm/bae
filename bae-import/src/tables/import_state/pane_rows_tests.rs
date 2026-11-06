@@ -129,3 +129,31 @@ async fn a_stated_length_past_sqlites_range_fails_the_save() {
 
     assert!(saved.is_err(), "{saved:?}");
 }
+
+/// A picked assignment's credit key and name come from one joined row, so a
+/// stored value holding one without the other is damage, not "no credit name".
+#[test]
+fn a_picked_assignment_with_half_a_credit_name_is_unreadable() {
+    for (key, name) in [(Some("alias"), None), (None, Some("Alias"))] {
+        let stored: super::StoredAssignment = serde_json::from_value(serde_json::json!({
+            "kind": "picked",
+            "artist_id": "artist-1",
+            "name": "Artist",
+            "sort_name": null,
+            "musicbrainz_artist_id": null,
+            "discogs_artist_id": null,
+            "credit_key": key,
+            "credit_name": name,
+            "credited_as": null,
+            "join_phrase": null,
+        }))
+        .unwrap();
+
+        let error = stored.credited().expect_err("half a credit name is damage");
+
+        assert!(
+            matches!(error, bae_store::DbError::Unreadable { .. }),
+            "read as {error:?}, not refused as unreadable"
+        );
+    }
+}
