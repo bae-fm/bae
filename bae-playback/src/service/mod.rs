@@ -544,6 +544,10 @@ struct FirstAudioMeasurement {
 /// opened from it on the service thread, so thread-bound device handles live
 /// there.
 pub(crate) struct SystemAudioOutputDevice {
+    /// Told when a stream on an output this device opened reports it can't
+    /// go on.
+    #[cfg_attr(target_os = "android", expect(dead_code, reason = "AAudio reopens its own stream"))]
+    report: crate::audio_output::InvalidationReport,
     /// The formats the outputs' streams set Mac output devices to, shared by
     /// the main player's and the preview's, so a device goes back to the
     /// format it had before bae only once neither plays on it.
@@ -553,8 +557,9 @@ pub(crate) struct SystemAudioOutputDevice {
 }
 
 impl SystemAudioOutputDevice {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(report: crate::audio_output::InvalidationReport) -> Self {
         Self {
+            report,
             #[cfg(target_os = "macos")]
             device_formats: crate::device_formats::DeviceFormats::new(
                 crate::device_formats::CoreAudioDeviceFormats,
@@ -567,6 +572,7 @@ impl AudioOutputDevice for SystemAudioOutputDevice {
     #[cfg(not(target_os = "android"))]
     fn open_output(&self) -> Result<Box<dyn AudioOutput>, crate::audio_output::AudioError> {
         Ok(Box::new(crate::cpal_output::CpalAudioOutput::new(
+            self.report.clone(),
             #[cfg(target_os = "macos")]
             self.device_formats.clone(),
         )?))
@@ -579,14 +585,16 @@ impl AudioOutputDevice for SystemAudioOutputDevice {
 }
 
 /// Open the main player's output from the caller's device, or the system's,
-/// at full volume until playback restores the level the person set. `None`
-/// means there is no output, so the service thread returns.
+/// which tells `report` when a stream's device reports the stream can't go
+/// on, at full volume until playback restores the level the person set.
+/// `None` means there is no output, so the service thread returns.
 fn open_audio_device_and_output(
     custom_device: Option<Box<dyn AudioOutputDevice>>,
+    report: crate::audio_output::InvalidationReport,
 ) -> Option<(Box<dyn AudioOutputDevice>, PlayerOutput)> {
     let audio_device: Box<dyn AudioOutputDevice> = match custom_device {
         Some(device) => device,
-        None => Box::new(SystemAudioOutputDevice::new()),
+        None => Box::new(SystemAudioOutputDevice::new(report)),
     };
     match audio_device.open_output() {
         Ok(output) => Some((
@@ -651,6 +659,7 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::PlayOnAirPlay(_)
         | PlaybackCommand::StopRemote
         | PlaybackCommand::AirPlayStreamFailed
+        | PlaybackCommand::OutputInvalidated
         | PlaybackCommand::RemoteEvent(_) => None,
         #[cfg(any(test, feature = "test-utils"))]
         PlaybackCommand::GetQueue(_) | PlaybackCommand::TakeFills(_) => None,
@@ -707,6 +716,7 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::Shutdown(_)
         | PlaybackCommand::SaveState(_)
         | PlaybackCommand::AirPlayStreamFailed
+        | PlaybackCommand::OutputInvalidated
         | PlaybackCommand::RemoteEvent(_) => false,
         #[cfg(any(test, feature = "test-utils"))]
         PlaybackCommand::GetQueue(_) | PlaybackCommand::TakeFills(_) => false,

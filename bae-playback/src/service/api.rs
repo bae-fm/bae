@@ -203,6 +203,9 @@ pub(crate) enum PlaybackCommand {
     /// failure says why; a report from a session no longer live finds none and
     /// changes nothing.
     AirPlayStreamFailed,
+    /// A stream's device reported the stream can't go on. The streams' own
+    /// reports say which; a stream since replaced took its report with it.
+    OutputInvalidated,
     /// An event from the active remote session: a status drives progress and
     /// advances the queue when the device finishes a track, a refused command
     /// is reported, and the session's end returns playback here with why.

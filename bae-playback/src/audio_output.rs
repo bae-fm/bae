@@ -344,6 +344,26 @@ pub trait AudioStream: 'static {
     }
 }
 
+/// Tells playback that an output stream's device reported the stream can't go
+/// on, so it asks its streams for the report
+/// ([`AudioStream::take_invalidation`]) and replaces the one that made it.
+/// The system device hands it to every output it opens.
+#[derive(Clone)]
+pub(crate) struct InvalidationReport {
+    report: Arc<dyn Fn() + Send + Sync>,
+}
+
+impl InvalidationReport {
+    pub(crate) fn new(report: impl Fn() + Send + Sync + 'static) -> Self {
+        Self { report: Arc::new(report) }
+    }
+
+    #[cfg_attr(target_os = "android", expect(dead_code, reason = "AAudio reopens its own stream"))]
+    pub(crate) fn report(&self) {
+        (self.report)();
+    }
+}
+
 /// A position tick, tagged with the formatting context of the track the
 /// position belongs to. The audio callback supplies the fmt by cloning the
 /// source's `current_fmt` at emit time — across a track boundary the next

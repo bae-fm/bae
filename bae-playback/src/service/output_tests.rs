@@ -73,7 +73,7 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
 /// output's events, so playback follows without losing position or state.
 /// Builds go up by one, no source swap (the source is reused, not replaced),
 /// and the callback's play state is untouched. Sabotage: stop asking the stream
-/// for its device's report in `drain_current_audio_events`, and no rebuild
+/// for its device's report in `follow_output_devices`, and no rebuild
 /// happens.
 #[tokio::test]
 async fn an_invalidated_stream_is_rebuilt_over_the_same_source() {
@@ -104,7 +104,7 @@ async fn an_invalidated_stream_is_rebuilt_over_the_same_source() {
     // The device reports the stream can't go on.
     service.output.as_mut().unwrap().stream =
         Box::new(InvalidatedTestStream::new("the default device changed"));
-    service.drain_current_audio_events().await;
+    service.follow_output_devices().await;
 
     assert_eq!(builds.load(Ordering::Relaxed), 2, "an invalidated stream is rebuilt");
     assert_eq!(
@@ -123,8 +123,8 @@ async fn an_invalidated_stream_is_rebuilt_over_the_same_source() {
         "playback keeps playing across the device switch"
     );
 
-    // The rebuilt stream reported nothing, so the next drain leaves it alone.
-    service.drain_current_audio_events().await;
+    // The rebuilt stream reported nothing, so the next report leaves it alone.
+    service.follow_output_devices().await;
     assert_eq!(builds.load(Ordering::Relaxed), 2, "one report, one rebuild");
 }
 
@@ -163,7 +163,7 @@ async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
 
-    service.drain_current_audio_events().await;
+    service.follow_output_devices().await;
 
     assert!(service.output.is_none(), "no stream is left behind");
     assert!(!matches!(service.slot, PlaybackSlot::Active(_)), "playback stopped");

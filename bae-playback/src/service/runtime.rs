@@ -564,16 +564,20 @@ impl PlaybackService {
         }
     }
 
-    pub(super) async fn drain_current_audio_events(&mut self) {
-        while let Some(event) = self.output.as_mut().and_then(|o| o.audio_events.pop()) {
-            self.handle_audio_event(event).await;
-        }
-
-        // Asked of whichever stream the events above left in place: one they
-        // replaced took its device's reports with it.
+    /// A stream's device reported the stream can't go on: replace whichever
+    /// of the main player's and the preview's streams holds a report. A stream
+    /// replaced since took its report with it.
+    pub(super) async fn follow_output_devices(&mut self) {
         if let Some(detail) = self.output.as_ref().and_then(|out| out.stream.take_invalidation()) {
             let out = self.output.take().expect("the output whose stream reported it can't go on");
             self.follow_output_device(out, &detail).await;
+        }
+        self.follow_preview_output_device().await;
+    }
+
+    pub(super) async fn drain_current_audio_events(&mut self) {
+        while let Some(event) = self.output.as_mut().and_then(|o| o.audio_events.pop()) {
+            self.handle_audio_event(event).await;
         }
 
         let dropped_required = self
@@ -732,7 +736,15 @@ impl PlaybackService {
                         .expect("Failed to create runtime");
                     rt.block_on(async move {
                         let Some((audio_device, audio_output)) =
-                            open_audio_device_and_output(custom_device)
+                            open_audio_device_and_output(custom_device, {
+                                let command_tx = command_tx.clone();
+                                crate::audio_output::InvalidationReport::new(move || {
+                                    dispatch_command(
+                                        &command_tx,
+                                        PlaybackCommand::OutputInvalidated,
+                                    )
+                                })
+                            })
                         else {
                             return;
                         };
@@ -845,7 +857,6 @@ impl PlaybackService {
             Wake::StagedSides(sides) => self.handle_staged_crossing_sides(sides).await,
             Wake::AudioTick => {
                 self.drain_current_audio_events().await;
-                self.follow_preview_output_device().await;
                 self.checkpoint_listening().await;
                 self.publish_audible_completion();
             }

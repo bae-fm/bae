@@ -29,12 +29,13 @@
 //!
 //! On every platform a stream whose device went away reports
 //! `DeviceNotAvailable`. These reports reach the stream's owner as an
-//! invalidation ([`AudioStream::take_invalidation`]): a new stream plays on the
+//! invalidation ([`AudioStream::take_invalidation`]), and the output's
+//! `InvalidationReport` tells the owner to ask: a new stream plays on the
 //! current default, or fails to build when there is none.
 
 use super::audio_output::{
     AudioDrain, AudioError, AudioEventSender, AudioLockMissLog, AudioOutput, AudioOutputControls,
-    AudioStream,
+    AudioStream, InvalidationReport,
 };
 #[cfg(target_os = "macos")]
 use super::device_formats::{CoreAudioDeviceFormats, DeviceFormats, PlayerFormat, StreamFormat};
@@ -76,18 +77,20 @@ impl AudioStream for CpalStream {
 /// The error callback of a stream: what cpal reports about it, from its audio
 /// thread or from the threads that watch the device. A report that the stream
 /// can't go on as built — it must be rebuilt, or its device went away — goes to
-/// `invalidations`, for the stream's owner to act on.
+/// `invalidations`, for the stream's owner to act on, and `report` tells the
+/// owner to look.
 fn stream_error_handler(
     invalidations: mpsc::Sender<String>,
+    report: InvalidationReport,
 ) -> impl FnMut(cpal::Error) + Send + 'static {
     move |error| match error.kind() {
         ErrorKind::StreamInvalidated | ErrorKind::DeviceNotAvailable => {
-            report_invalidation(&invalidations, error)
+            report_invalidation(&invalidations, &report, error)
         }
         // The default output unit moved to the new device, which plays the
         // stream at its own rate: rebuild it there at the track's.
         #[cfg(target_os = "macos")]
-        ErrorKind::DeviceChanged => report_invalidation(&invalidations, error),
+        ErrorKind::DeviceChanged => report_invalidation(&invalidations, &report, error),
         #[cfg(not(target_os = "macos"))]
         ErrorKind::DeviceChanged => {
             info!("the output stream moved to the new default device: {error}");
@@ -97,12 +100,18 @@ fn stream_error_handler(
     }
 }
 
-fn report_invalidation(invalidations: &mpsc::Sender<String>, error: cpal::Error) {
+fn report_invalidation(
+    invalidations: &mpsc::Sender<String>,
+    report: &InvalidationReport,
+    error: cpal::Error,
+) {
     if invalidations.send(error.to_string()).is_err() {
         // The owner dropped this stream's receiver while tearing the stream
         // down, so the stream is going away anyway.
         debug!("the output stream was invalidated as it was torn down: {error}");
+        return;
     }
+    report.report();
 }
 
 /// The rate to build the stream at for a track at `track_rate`. On macOS cpal
@@ -160,6 +169,8 @@ fn resolve_default_device(
 
 /// Audio output using the system audio device via CPAL.
 pub struct CpalAudioOutput {
+    /// Told when a stream's device reports the stream can't go on.
+    report: InvalidationReport,
     /// The formats this output's streams, and every other output's on the
     /// same system device, set Mac output devices to.
     #[cfg(target_os = "macos")]
@@ -174,12 +185,14 @@ impl CpalAudioOutput {
     /// construction fails fast when there's no audio hardware. Which device the
     /// samples land on is resolved per stream build.
     pub(crate) fn new(
+        report: InvalidationReport,
         #[cfg(target_os = "macos")] device_formats: Arc<DeviceFormats<CoreAudioDeviceFormats>>,
     ) -> Result<Self, AudioError> {
         let host = cpal::default_host();
         host.default_output_device().ok_or(AudioError::DeviceUnavailable)?;
 
         Ok(Self {
+            report,
             #[cfg(target_os = "macos")]
             device_formats,
             #[cfg(target_os = "macos")]
@@ -267,7 +280,7 @@ impl AudioOutput for CpalAudioOutput {
                             });
                     data[written..].fill(0.0);
                 },
-                stream_error_handler(invalidated),
+                stream_error_handler(invalidated, self.report.clone()),
                 None,
             )
             .map_err(|error| match error.kind() {
