@@ -2401,7 +2401,11 @@ so an expired invite leaves People when its lifetime ends. Only the
 device that made it shows the row, since only that device can act on it. The
 row's refresh button runs Retry now for the library (§6.4), so the request
 shows the moment Dan says he has entered the code, without waiting for the next
-check. Opening the row shows the invite again, with **Cancel invite**. Closing
+check. Opening the row shows the invite again, with **Cancel invite**. A row
+shows coven's pending record for its invite only while the invite's access is
+being granted, a refused check or a failed grant that cancelling ends; once the
+invite shows its code, the record coven holds for the request it hasn't found
+yet is the invite waiting for Dan, and is not shown. Closing
 the request dialog keeps the request, and the row opens it again. Approving is
 one write on Ana's laptop that records the approval, offline too; sync then
 lets Dan in. From that write until the invite ends, Dan's row is marked

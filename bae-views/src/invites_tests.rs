@@ -38,3 +38,30 @@ fn an_invite_shows_the_record_its_operation_holds() {
     assert_eq!(held.reason, coven::PendingReason::NoStorage);
     assert_eq!(held.cause.as_deref(), Some("offline"));
 }
+
+/// Once Dan's invite shows its code, coven's pass looks for his request and
+/// holds a record naming the request it hasn't found: that is the invite
+/// waiting for him, not a hold to show, so the invite shows nothing.
+#[test]
+fn a_waiting_invite_shows_no_record_for_the_request_it_waits_on() {
+    let waiting = coven::Invite {
+        stage: coven::InviteStage::Waiting { code: "code".into(), request: None },
+        ..invite("00000000-0000-4000-8000-000000000001", 7)
+    };
+    let record = coven::PendingRecord {
+        subject: coven::PendingSubject::Operation {
+            id: waiting.operation,
+            kind: coven::OperationKind::Invite,
+        },
+        reason: coven::PendingReason::Missing {
+            path: coven::ObjectPath::join_request(
+                coven::StoreId("00000000-0000-4000-8000-0000000000a1".parse().unwrap()),
+                coven::DeviceId(1),
+                waiting.id,
+            ),
+        },
+        cause: None,
+    };
+    let open = OpenInvite::held_by(vec![waiting], std::slice::from_ref(&record));
+    assert_eq!(open[0].held, None);
+}
