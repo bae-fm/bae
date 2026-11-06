@@ -191,7 +191,9 @@ debug = "line-tables-only"
 # sccache never caches workspace crates' clippy runs anyway, and cargo applies
 # incremental only to workspace members, so dependencies still go through
 # sccache. Set it here, never via CARGO_INCREMENTAL, which makes sccache refuse
-# every compile.
+# every compile. The app checkout builds without it: agents move it between
+# branches, so `builds cargo` (scripts/cargo.sh) passes
+# --config build.incremental=false there and sccache caches its workspace crates.
 incremental = true
 
 # Keep dependency implementations optimized in Debug builds while bae's

@@ -7,6 +7,16 @@
 # scripts/cargo.sh, which records each build copy cargo uses, rebuilt or up to
 # date.
 #
+# The app checkout (side-1) builds without incremental compilation (the builds
+# tool passes --config build.incremental=false there), and an `app <cap>` field
+# is its cap. Measured there on 2026-11-06 under load: a full macOS bridge
+# build is 5.1G without incremental output against 8.0G with it (10.0G after
+# one switch to another branch), the Android bridge 5.2G against 6.9G (8.1G);
+# its host target held 7.5G with no incremental folders; its macOS .build holds
+# runApp 2.8G, unsigned 3.2G and SourcePackages 3.2G. Its cargo caps are about
+# twice those, its .build's about one and a half times, and an eviction there
+# refills from sccache.
+#
 # Caps are about twice a fresh build of each: host 9.8G, macOS bridge 7.4G,
 # Android 6.4G, iOS 12G; the macOS app's .build holds two Xcode build trees
 # (scripts/xcode-trees.sh: runApp and unsigned) of 2.2G each fresh and the Swift
@@ -22,13 +32,13 @@
 # and proc macros there with `cargo check --workspace`; main's target held
 # about 5G of check metadata and build-script output, older copies included.
 #
-# path                                cap
-target                                30G
+# path                                cap  [app cap]
+target                                30G  app 15G
 target-ra                             10G
-target-macos                          15G
+target-macos                          15G  app 10G
 target-ios                            24G
-target-android                        13G
-bae-macos/bae/.build                  20G
+target-android                        13G  app 10G
+bae-macos/bae/.build                  20G  app 14G
 # The app the person launches (main) and tests (the app checkout) is built here;
 # builds never ages it out in those two checkouts.
 keep bae-macos/bae/.build/runApp
