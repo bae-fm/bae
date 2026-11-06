@@ -289,6 +289,12 @@ impl PlaybackService {
                     debug!("fills asked for by a caller that stopped waiting");
                 }
             }
+            #[cfg(any(test, feature = "test-utils"))]
+            PlaybackCommand::Handled(reply) => {
+                if reply.send(()).is_err() {
+                    debug!("handled commands asked for by a caller that stopped waiting");
+                }
+            }
             PlaybackCommand::Shutdown(reply) => {
                 if matches!(&self.slot, PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Playing))
                 {

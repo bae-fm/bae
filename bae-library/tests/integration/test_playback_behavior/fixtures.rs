@@ -163,14 +163,15 @@ pub(super) fn create_cue_flac_test_album() -> DiscogsRelease {
 }
 
 /// Playback of a single-file CUE/FLAC album: the `cue_flac` fixture, or one a
-/// test writes through `import`. Tests that seek or pause need
-/// `TestAudioDevice::RealtimeCapture`.
+/// test writes through `import`, on a capture device whose audio plays only
+/// as the test lets it.
 pub(super) struct CueFlacTestFixture {
     pub(super) playback_handle: bae_playback::PlaybackHandle,
     pub(super) progress_rx: bae_playback::PlaybackProgressFeed,
     pub(super) track_ids: Vec<String>,
     pub(super) library: TestLibrary,
     pub(super) capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
+    pub(super) audio_clock: AudioClock,
     pub(super) _temp_dir: TempDir,
 }
 
@@ -182,16 +183,13 @@ impl PlaybackFixture for CueFlacTestFixture {
 }
 
 impl CueFlacTestFixture {
-    pub(super) async fn new(
-        device: bae_playback::test_capture::TestAudioDevice,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
-        Self::import(device, create_cue_flac_test_album(), generate_cue_flac_files).await
+    pub(super) async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        Self::import(create_cue_flac_test_album(), generate_cue_flac_files).await
     }
 
     /// Import a three-track CUE/FLAC album that `generate_files` writes, and
-    /// play it through `device`.
+    /// play it.
     pub(super) async fn import(
-        device: bae_playback::test_capture::TestAudioDevice,
         album: DiscogsRelease,
         generate_files: impl FnOnce(&std::path::Path),
     ) -> Result<Self, Box<dyn std::error::Error>> {
@@ -199,8 +197,8 @@ impl CueFlacTestFixture {
             imported_release_setup(album, "test", uuid::Uuid::new_v4().to_string(), generate_files)
                 .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
-        let (playback_handle, capture_stream_rx) =
-            bae_library::test_libraries::start_capture_playback(&library, device).await;
+        let (playback_handle, capture_stream_rx, audio_clock) =
+            bae_library::test_libraries::start_manual_playback(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
@@ -208,6 +206,7 @@ impl CueFlacTestFixture {
             track_ids: imported.track_ids,
             library,
             capture_stream_rx,
+            audio_clock,
             _temp_dir: imported.temp_dir,
         })
     }
@@ -230,6 +229,8 @@ pub(super) struct SidePauseTestFixture {
     /// The service's playback clock. Nothing moves it but the test, so a
     /// side-pause countdown runs out exactly when the test says.
     pub(super) clock: Arc<bae_playback::ManualPlaybackClock>,
+    /// The capture device's audio time, which only the test moves.
+    pub(super) audio_clock: AudioClock,
     pub(super) _temp_dir: TempDir,
 }
 
@@ -279,16 +280,10 @@ impl SidePauseTestFixture {
         library.set_side_pause_countdown(countdown).await?;
         assert_eq!(imported.track_ids.len(), 3, "side-pause fixture imports 3 tracks");
 
-        // Paced to wall-clock time so commands issued after play land before
-        // the track's boundary.
         let clock = Arc::new(bae_playback::ManualPlaybackClock::new(side_pause_clock_start()));
-        let (playback_handle, capture_stream_rx) =
-            bae_library::test_libraries::start_capture_playback_with_clock(
-                &library,
-                bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
-                clock.clone(),
-            )
-            .await;
+        let (playback_handle, capture_stream_rx, audio_clock) =
+            bae_library::test_libraries::start_manual_playback_with_clock(&library, clock.clone())
+                .await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
@@ -298,6 +293,7 @@ impl SidePauseTestFixture {
             release_id: imported.release_id,
             capture_stream_rx,
             clock,
+            audio_clock,
             _temp_dir: imported.temp_dir,
         })
     }
@@ -336,11 +332,13 @@ impl SidePauseTestFixture {
         assert_eq!(played, bae_playback::PlayOutcome::Playing);
     }
 
-    /// Seek to 200 ms before the end of the 5 s track. Commands run in order, so
-    /// anything that must apply at the boundary goes before this.
-    pub(super) fn seek_to_auto_advance(&self) {
+    /// Seek to 200 ms before the end of the 5 s track, and let the device play
+    /// it out. Commands run in order, so anything that must apply at the
+    /// boundary goes before this.
+    pub(super) async fn play_out_from_near_the_end(&self) {
         self.playback_handle
             .seek(TrackTime::from_duration(Duration::from_secs(4) + Duration::from_millis(800)));
+        play_to_track_end(&self.playback_handle, &self.audio_clock).await;
     }
 
     pub(super) async fn wait_for_playing_track(&mut self, track_id: &str, message: &str) {
@@ -382,7 +380,7 @@ impl SidePauseTestFixture {
         expected_boundary: PlaybackPauseBoundary,
     ) -> PlaybackState {
         self.play_track_and_wait(track_id).await;
-        self.seek_to_auto_advance();
+        self.play_out_from_near_the_end().await;
         self.wait_for_side_pause(expected_side_label, expected_boundary).await
     }
 }
@@ -465,15 +463,17 @@ pub(super) fn create_multi_window_cue_album() -> DiscogsRelease {
     }
 }
 
-/// An imported multi-window CUE album with a real-time-paced playback service
-/// over it, for tests that drive switches, advances, and boundaries against a
-/// sparsely buffered file.
+/// An imported multi-window CUE album with a playback service over it whose
+/// audio plays only as the test lets it, for tests that drive switches,
+/// advances, and boundaries against a sparsely buffered file.
 pub(super) struct MultiWindowPlayback {
     pub(super) playback_handle: bae_playback::PlaybackHandle,
     pub(super) progress_rx: bae_playback::PlaybackProgressFeed,
     pub(super) track_ids: Vec<String>,
     pub(super) library: TestLibrary,
     pub(super) _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
+    /// The capture device's audio time, which only the test moves.
+    pub(super) audio_clock: AudioClock,
     pub(super) _temp_dir: TempDir,
 }
 
@@ -490,7 +490,8 @@ impl MultiWindowPlayback {
         .expect("import the multi-window fixture");
         let temp_dir = imported.temp_dir;
         let track_ids = imported.track_ids;
-        let (playback_handle, capture_stream_rx) = start_capture_service(&library).await;
+        let (playback_handle, capture_stream_rx, audio_clock) =
+            start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
         Self {
             playback_handle,
@@ -498,6 +499,7 @@ impl MultiWindowPlayback {
             track_ids,
             library,
             _capture_stream_rx: capture_stream_rx,
+            audio_clock,
             _temp_dir: temp_dir,
         }
     }

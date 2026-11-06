@@ -66,12 +66,8 @@ fn write_first_test_track(album_dir: &std::path::Path, name: &[u8]) {
 /// Play `track_id` on a capture device and wait until it plays and its audio
 /// plays on.
 async fn assert_plays(library: &bae_library::test_libraries::TestLibrary, track_id: &str) {
-    let (playback_handle, _capture_stream_rx) =
-        bae_library::test_libraries::start_capture_playback(
-            library,
-            bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
-        )
-        .await;
+    let (playback_handle, _capture_stream_rx, audio_clock) =
+        bae_library::test_libraries::start_manual_playback(library).await;
     let mut progress_rx = playback_handle.subscribe_progress();
 
     playback_handle.play(track_id.to_string());
@@ -82,5 +78,8 @@ async fn assert_plays(library: &bae_library::test_libraries::TestLibrary, track_
     )
     .await
     .expect("the track plays");
-    assert!(wait_for_position_advance(&mut progress_rx).await.is_some(), "its audio plays on");
+    assert!(
+        wait_for_position_advance(&playback_handle, &audio_clock, &mut progress_rx).await.is_some(),
+        "its audio plays on"
+    );
 }

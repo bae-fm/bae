@@ -200,6 +200,9 @@ pub(crate) enum PlaybackCommand {
     /// command has finished.
     #[cfg(any(test, feature = "test-utils"))]
     TakeFills(oneshot::Sender<Vec<bae_track_audio::data_source::FillTask>>),
+    /// Test-only: replies once every earlier command has finished.
+    #[cfg(any(test, feature = "test-utils"))]
+    Handled(oneshot::Sender<()>),
     /// Save state, reply, then stop the loop.
     Shutdown(oneshot::Sender<()>),
     /// Save state without stopping playback, for a mobile app going to the
@@ -508,6 +511,15 @@ impl PlaybackHandle {
         for fill in fills {
             fill.ended().await;
         }
+    }
+
+    /// Wait until playback has handled every command sent before this call,
+    /// and every audio event its output reported before then.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn commands_handled(&self) {
+        let (tx, rx) = oneshot::channel();
+        self.dispatch(PlaybackCommand::Handled(tx));
+        rx.await.expect("the playback loop answers while it runs");
     }
 
     #[cfg(any(test, feature = "test-utils"))]

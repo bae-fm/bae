@@ -191,10 +191,9 @@ async fn test_cue_ape_track_playback_matches_reference() {
         (0usize, "01 Test Artist - Track One.flac", "track 1"),
         (1usize, "02 Test Artist - Track Two.flac", "track 2"),
     ] {
-        let mut fixture =
-            CueApeTestFixture::with_capture(bae_playback::test_capture::TestAudioDevice::Capture)
-                .await
-                .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
+        let mut fixture = CueApeTestFixture::new()
+            .await
+            .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
         let track_id = fixture.track_ids[track_index].clone();
         fixture.playback_handle.play(track_id.clone());
@@ -249,11 +248,9 @@ async fn test_cue_ape_track_playback_matches_reference() {
 async fn test_cue_ape_seek() {
     use bae_audio::decode_audio;
 
-    let mut fixture = CueApeTestFixture::with_capture(
-        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
-    )
-    .await
-    .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
+    let mut fixture = CueApeTestFixture::new()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track_id = fixture.track_ids[1].clone();
 
@@ -378,11 +375,9 @@ async fn test_cue_ape_seek() {
 async fn test_cue_ape_auto_advance_no_replay() {
     use bae_audio::decode_audio;
 
-    let mut fixture = CueApeTestFixture::with_capture(
-        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
-    )
-    .await
-    .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
+    let mut fixture = CueApeTestFixture::new()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track1_id = fixture.track_ids[0].clone();
     let track2_id = fixture.track_ids[1].clone();
@@ -404,7 +399,9 @@ async fn test_cue_ape_auto_advance_no_replay() {
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(28)));
     let mut captured = fixture.next_capture_stream().await;
 
-    // Wait for track 2 to start via auto-advance, then capture samples.
+    // Play track 1 out; track 2 starts via auto-advance, then capture samples.
+    bae_playback::test_capture::play_to_track_end(&fixture.playback_handle, &fixture.audio_clock)
+        .await;
     bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track2_id).await;
 
     // === GROUND TRUTH: XLD-split reference FLAC ===

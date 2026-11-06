@@ -7,8 +7,9 @@ pub(super) use bae_import::{ImportCommand, ImportDestination};
 pub(super) use bae_library::test_libraries::{
     imported_release_setup, open_test_library, TestLibrary,
 };
+pub(super) use bae_playback::test_capture::{play_report, play_to_track_end};
 pub(super) use bae_playback::{
-    LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress,
+    AudioClock, LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress,
     PlaybackSideCountdown, PlaybackState, RepeatMode,
 };
 pub(super) use bae_preferences::SidePauseCountdown;
@@ -58,38 +59,68 @@ where
     states
 }
 
-/// The next `PositionUpdate`'s track-relative `position_ms`, or `None` if none
-/// ever arrives.
+/// Let `audio_clock`'s device play report by report, once `handle` has
+/// handled every command sent before each, until a progress event `matches`
+/// takes; what it made of that event, or `None` if none ever does. The audio
+/// stops at the report the event came with or before: nothing plays on while
+/// the test goes on.
+pub(super) async fn play_until<T>(
+    handle: &bae_playback::PlaybackHandle,
+    audio_clock: &AudioClock,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
+    mut matches: impl FnMut(PlaybackProgress) -> Option<T>,
+) -> Option<T> {
+    tokio::time::timeout(HANG_GUARD, async {
+        loop {
+            for event in play_report(handle, audio_clock, progress_rx).await {
+                if let Some(found) = matches(event) {
+                    return found;
+                }
+            }
+        }
+    })
+    .await
+    .ok()
+}
+
+/// The next `PositionUpdate`'s track-relative `position_ms` as the device
+/// plays, or `None` if none ever arrives.
 pub(super) async fn next_position(
+    handle: &bae_playback::PlaybackHandle,
+    audio_clock: &AudioClock,
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
 ) -> Option<i64> {
-    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
+    play_until(handle, audio_clock, progress_rx, |event| match event {
         PlaybackProgress::PositionUpdate { position_ms, .. } => Some(position_ms),
         _ => None,
     })
     .await
 }
 
-/// The first `position_ms` reported for `track_id`. Where a track starts is
-/// what tells a skipped pregap (it starts at 0) from a played one (it starts
-/// counting up from a negative value).
+/// The first `position_ms` reported for `track_id` as the device plays.
+/// Where a track starts is what tells a skipped pregap (it starts at 0) from
+/// a played one (it starts counting up from a negative value).
 pub(super) async fn first_position_of(
+    handle: &bae_playback::PlaybackHandle,
+    audio_clock: &AudioClock,
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
     track_id: &str,
 ) -> i64 {
-    wait_for_track_position(progress_rx, track_id)
+    wait_for_track_position(handle, audio_clock, progress_rx, track_id)
         .await
         .unwrap_or_else(|| panic!("no position update for {track_id} ever arrived"))
 }
 
-/// The first `position_ms` reported for `track_id` that satisfies `reached`,
-/// or `None` if none ever does.
+/// The first `position_ms` reported for `track_id` that satisfies `reached`
+/// as the device plays, or `None` if none ever does.
 pub(super) async fn wait_for_track_position_where(
+    handle: &bae_playback::PlaybackHandle,
+    audio_clock: &AudioClock,
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
     track_id: &str,
     reached: impl Fn(i64) -> bool,
 ) -> Option<i64> {
-    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
+    play_until(handle, audio_clock, progress_rx, |event| match event {
         PlaybackProgress::PositionUpdate { position_ms, track_id: tid, .. }
             if tid == track_id && reached(position_ms) =>
         {
@@ -100,13 +131,16 @@ pub(super) async fn wait_for_track_position_where(
     .await
 }
 
-/// Return the first `position_ms` greater than the first position update seen,
-/// or `None` if the position does not advance.
+/// Return the first `position_ms` greater than the first position update seen
+/// as the device plays, or `None` if the position does not advance.
 pub(super) async fn wait_for_position_advance(
+    handle: &bae_playback::PlaybackHandle,
+    audio_clock: &AudioClock,
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
 ) -> Option<i64> {
-    let anchor = next_position(progress_rx).await.expect("a position update arrives");
-    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
+    let anchor =
+        next_position(handle, audio_clock, progress_rx).await.expect("a position update arrives");
+    play_until(handle, audio_clock, progress_rx, |event| match event {
         PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > anchor => {
             Some(position_ms)
         }
@@ -233,22 +267,28 @@ pub(super) async fn wait_for_playing_capturing_queue_on(
     (true, entries)
 }
 
-/// Assert that the playing position advances. This catches a stalled audio
-/// stream that a queue-only assertion would miss.
-pub(super) async fn assert_position_advances(progress_rx: &mut bae_playback::PlaybackProgressFeed) {
-    wait_for_position_advance(progress_rx)
+/// Assert that the playing position advances as the device plays. This
+/// catches a stalled audio stream that a queue-only assertion would miss.
+pub(super) async fn assert_position_advances(
+    handle: &bae_playback::PlaybackHandle,
+    audio_clock: &AudioClock,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
+) {
+    wait_for_position_advance(handle, audio_clock, progress_rx)
         .await
         .expect("position must keep advancing while playing (the audio stream stalled)");
 }
 
-/// Return the first `position_ms` reported for `track_id`, or `None` if none
-/// ever comes. Updates for other tracks are skipped, since one for the
-/// finishing track can still arrive right after a boundary.
+/// Return the first `position_ms` reported for `track_id` as the device
+/// plays, or `None` if none ever comes. Updates for other tracks are skipped,
+/// since one for the finishing track can still arrive right after a boundary.
 pub(super) async fn wait_for_track_position(
+    handle: &bae_playback::PlaybackHandle,
+    audio_clock: &AudioClock,
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
     track_id: &str,
 ) -> Option<i64> {
-    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
+    play_until(handle, audio_clock, progress_rx, |event| match event {
         PlaybackProgress::PositionUpdate { position_ms, track_id: tid, .. } if tid == track_id => {
             Some(position_ms)
         }
@@ -279,13 +319,17 @@ pub(super) struct BoundaryOutcome {
     pub(super) decode_errors: u32,
 }
 
-/// Record what the boundary from `finishing` to `incoming` produced, until
-/// `incoming` reaches `Playing`, or as far as playback ever gets.
+/// Let the device play `finishing` to its end, and record what the boundary
+/// to `incoming` produced, until `incoming` reaches `Playing`, or as far as
+/// playback ever gets.
 pub(super) async fn observe_boundary(
+    handle: &bae_playback::PlaybackHandle,
+    audio_clock: &AudioClock,
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
     finishing: &str,
     incoming: &str,
 ) -> BoundaryOutcome {
+    play_to_track_end(handle, audio_clock).await;
     let mut outcome = BoundaryOutcome {
         decode_stats_for_finishing: false,
         completed_for_finishing: false,
@@ -323,12 +367,12 @@ pub(super) async fn observe_boundary(
     outcome
 }
 
-/// Start a playback service on a capture sink paced to wall-clock time, so no
-/// audio device is needed. Hold the returned receiver for the service's
-/// lifetime.
+/// Start a playback service on a capture device whose audio plays only as the
+/// returned clock lets it, so no audio device is needed. Hold the returned
+/// receiver for the service's lifetime.
 pub(super) async fn start_capture_service(
     library: &TestLibrary,
-) -> (bae_playback::PlaybackHandle, bae_playback::test_capture::CaptureStreamRx) {
+) -> (bae_playback::PlaybackHandle, bae_playback::test_capture::CaptureStreamRx, AudioClock) {
     start_capture_service_with_restore(library, true).await
 }
 
@@ -337,17 +381,17 @@ pub(super) async fn start_capture_service(
 pub(super) async fn start_capture_service_with_restore(
     library: &TestLibrary,
     restore_playback: bool,
-) -> (bae_playback::PlaybackHandle, bae_playback::test_capture::CaptureStreamRx) {
-    let (captured, capture_stream_rx) = tokio::sync::mpsc::unbounded_channel();
-    let capture_device = bae_playback::RealtimeCaptureAudioDevice::new(captured);
+) -> (bae_playback::PlaybackHandle, bae_playback::test_capture::CaptureStreamRx, AudioClock) {
+    let (device, capture_stream_rx, audio_clock) =
+        bae_playback::test_capture::manual_capture_device();
     let handle = library
         .start_playback_on(
-            Box::new(capture_device),
+            device,
             bae_playback::test_capture::wall_playback_clock(),
             restore_playback,
         )
         .await;
-    (handle, capture_stream_rx)
+    (handle, capture_stream_rx, audio_clock)
 }
 
 /// A playback service over a library in a temporary directory.
@@ -380,6 +424,8 @@ pub(super) struct PlaybackTestFixture {
     pub(super) library: TestLibrary,
     /// Dropping this receiver would make stream creation fail.
     pub(super) _capture_stream_rx: bae_playback::CapturedStreams,
+    /// The capture device's audio time, which only the test moves.
+    pub(super) audio_clock: AudioClock,
     pub(super) _temp_dir: TempDir,
 }
 impl PlaybackFixture for PlaybackTestFixture {
@@ -404,7 +450,8 @@ impl PlaybackTestFixture {
         let temp_dir = imported.temp_dir;
         let album_dir = imported.album_dir;
         let track_ids = imported.track_ids;
-        let (playback_handle, capture_stream_rx) = start_capture_service(&library).await;
+        let (playback_handle, capture_stream_rx, audio_clock) =
+            start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
         Self {
             playback_handle,
@@ -413,6 +460,7 @@ impl PlaybackTestFixture {
             album_dir,
             library,
             _capture_stream_rx: capture_stream_rx,
+            audio_clock,
             _temp_dir: temp_dir,
         }
     }
@@ -429,26 +477,23 @@ impl PlaybackTestFixture {
     ) -> (bool, Vec<bae_playback::QueueEntry>) {
         wait_for_playing_capturing_queue_on(&self.playback_handle, &mut self.progress_rx).await
     }
-    /// The next position update's position in ms, or `None` if none ever
-    /// comes.
+    /// The next position update's position in ms as the device plays, or
+    /// `None` if none ever comes.
     pub(super) async fn wait_for_position_update(&mut self) -> Option<u64> {
-        bae_util::test_channels::next_matching(&mut self.progress_rx, HANG_GUARD, |event| {
-            match event {
-                PlaybackProgress::PositionUpdate { position_ms, .. } => Some(
-                    u64::try_from(position_ms)
-                        .expect("this helper expects playback at or after track start"),
-                ),
-                _ => None,
-            }
-        })
-        .await
+        next_position(&self.playback_handle, &self.audio_clock, &mut self.progress_rx).await.map(
+            |position_ms| {
+                u64::try_from(position_ms)
+                    .expect("this helper expects playback at or after track start")
+            },
+        )
     }
-    /// Wait for the first position update past `floor_ms`, or `None` if none
-    /// ever comes. The first update after a seek can still report the seek
-    /// target, so only a position past it proves playback moved.
+    /// The first position update past `floor_ms` as the device plays, or
+    /// `None` if none ever comes. The first update after a seek can still
+    /// report the seek target, so only a position past it proves playback
+    /// moved.
     pub(super) async fn wait_for_position_past(&mut self, floor_ms: u64) -> Option<u64> {
         let floor = i64::try_from(floor_ms).expect("position floor exceeds i64 range");
-        bae_util::test_channels::next_matching(&mut self.progress_rx, HANG_GUARD, |event| {
+        play_until(&self.playback_handle, &self.audio_clock, &mut self.progress_rx, |event| {
             match event {
                 PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > floor => {
                     Some(
@@ -460,6 +505,10 @@ impl PlaybackTestFixture {
             }
         })
         .await
+    }
+    /// Let the device play the track playing to its end.
+    pub(super) async fn play_to_track_end(&self) {
+        play_to_track_end(&self.playback_handle, &self.audio_clock).await;
     }
     /// See `wait_for_seeked_on`.
     pub(super) async fn wait_for_seeked(&mut self) -> Option<u64> {

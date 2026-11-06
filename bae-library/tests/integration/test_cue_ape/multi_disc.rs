@@ -8,11 +8,9 @@ use super::*;
 async fn test_cue_ape_next_track() {
     use bae_audio::decode_audio;
 
-    let mut fixture = CueApeTestFixture::with_capture(
-        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
-    )
-    .await
-    .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
+    let mut fixture = CueApeTestFixture::new()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track1_id = fixture.track_ids[0].clone();
     let track2_id = fixture.track_ids[1].clone();
@@ -28,8 +26,10 @@ async fn test_cue_ape_next_track() {
     fixture.playback_handle.next();
     let mut captured = fixture.next_capture_stream().await;
 
-    // Wait for track 2 to start
+    // Wait for track 2 to start, and play it out: its decode stats come at its end.
     bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track2_id).await;
+    bae_playback::test_capture::play_to_track_end(&fixture.playback_handle, &fixture.audio_clock)
+        .await;
 
     // Decode XLD reference
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();

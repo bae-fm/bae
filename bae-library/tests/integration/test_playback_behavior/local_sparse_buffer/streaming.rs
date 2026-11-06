@@ -76,9 +76,16 @@ async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
         playback.play_and_wait(&first).await;
 
         // Track 1's raw timeline is 58 s (it ends at track 2's INDEX 00); seek near
-        // the end so the boundary arrives in a few real-time seconds.
+        // the end, where the boundary is a few seconds of audio away.
         playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(54)));
-        let outcome = observe_boundary(&mut playback.progress_rx, &first, &second).await;
+        let outcome = observe_boundary(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+            &first,
+            &second,
+        )
+        .await;
         assert!(
             outcome.reached_incoming,
             "playback crosses into the second track (through its pregap)"
@@ -91,23 +98,42 @@ async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
         // The crossing events fire at the boundary whether or not audio flows, so
         // require the position to actually advance into track 2 before seeking --
         // a preload decoder starved at the pregap boundary pins it in place.
-        wait_for_position_advance(&mut playback.progress_rx).await.expect(
+        wait_for_position_advance(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+        )
+        .await
+        .expect(
             "track 2's position must advance after the crossing -- its decoder must keep \
              producing samples past the pregap boundary",
         );
 
         // Track 2's raw timeline is 62 s (2 s pregap + 60 s).
         playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(58)));
-        let outcome = observe_boundary(&mut playback.progress_rx, &second, &third).await;
+        let outcome = observe_boundary(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+            &second,
+            &third,
+        )
+        .await;
         assert!(outcome.reached_incoming, "playback crosses into the third track");
         assert!(
             outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
             "the second boundary is gapless: the crossing handler re-preloaded track 3"
         );
 
-        wait_for_track_position_where(&mut playback.progress_rx, &third, |ms| ms > 0).await.expect(
-            "the third track's position advances — samples are flowing after two crossings",
-        );
+        wait_for_track_position_where(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+            &third,
+            |ms| ms > 0,
+        )
+        .await
+        .expect("the third track's position advances — samples are flowing after two crossings");
     })
     .await;
 }
@@ -141,7 +167,7 @@ async fn manual_next_into_a_pregap_track_rebuilds_and_keeps_streaming() {
         "a pregap skip rebuilds through play_track, which surfaces a Loading arc"
     );
 
-    wait_for_track_position_where(&mut playback.progress_rx, &second, |ms| ms > 0)
+    wait_for_track_position_where(&playback.playback_handle, &playback.audio_clock, &mut playback.progress_rx, &second, |ms| ms > 0)
         .await
         .expect("the rebuilt track's position advances — its bytes are fetched on demand");
     })
@@ -174,7 +200,7 @@ async fn manual_next_into_a_clean_track_promotes_the_preload() {
         "a pregap-free Next promotes the preloaded stream — no Loading arc, got {states:?}"
     );
 
-    wait_for_track_position_where(&mut playback.progress_rx, &third, |ms| ms > 0)
+    wait_for_track_position_where(&playback.playback_handle, &playback.audio_clock, &mut playback.progress_rx, &third, |ms| ms > 0)
         .await
         .expect("the promoted track's position advances — its bytes are fetched on demand");
     })
@@ -208,9 +234,13 @@ async fn seek_within_the_last_track_lands_and_keeps_streaming_over_sparse_buffer
             Duration::from_millis(landed).abs_diff(backward_target) < Duration::from_secs(2),
             "backward seek should land near {backward_target:?}, got {landed}ms"
         );
-        wait_for_position_advance(&mut playback.progress_rx)
-            .await
-            .expect("audio must keep flowing after the backward seek");
+        wait_for_position_advance(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+        )
+        .await
+        .expect("audio must keep flowing after the backward seek");
 
         // Seek forward, well past the backward target and into territory the fill
         // has not fetched — the fill's demand-driven window fetch must catch up.
@@ -223,9 +253,13 @@ async fn seek_within_the_last_track_lands_and_keeps_streaming_over_sparse_buffer
             Duration::from_millis(landed).abs_diff(forward_target) < Duration::from_secs(2),
             "forward seek should land near {forward_target:?}, got {landed}ms"
         );
-        wait_for_position_advance(&mut playback.progress_rx)
-            .await
-            .expect("audio must keep flowing after the forward seek");
+        wait_for_position_advance(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+        )
+        .await
+        .expect("audio must keep flowing after the forward seek");
     })
     .await;
 }
@@ -257,9 +291,13 @@ async fn seek_immediately_after_playing_lands_and_plays_over_sparse_buffer() {
             Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
             "should land near {target:?}, got {landed}ms"
         );
-        wait_for_position_advance(&mut playback.progress_rx)
-            .await
-            .expect("audio must play after an immediate seek");
+        wait_for_position_advance(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+        )
+        .await
+        .expect("audio must play after an immediate seek");
     })
     .await;
 }
@@ -427,9 +465,13 @@ async fn pause_seek_resume_advances_position_over_sparse_buffer() {
         .await
         .expect("resume should start playing");
 
-        wait_for_position_advance(&mut playback.progress_rx)
-            .await
-            .expect("audio must advance after resuming a paused sparse-buffer seek");
+        wait_for_position_advance(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+        )
+        .await
+        .expect("audio must advance after resuming a paused sparse-buffer seek");
     })
     .await;
 }
@@ -445,15 +487,27 @@ async fn direct_play_skips_pregap_over_sparse_buffer() {
         let pregapped_track = playback.track_ids[1].clone();
         playback.play_and_wait(&pregapped_track).await;
 
-        let first_position = first_position_of(&mut playback.progress_rx, &pregapped_track).await;
+        let first_position = first_position_of(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+            &pregapped_track,
+        )
+        .await;
         assert!(
             first_position >= 0,
             "direct play should skip the 2s pregap and start the track at 0; \
          got {first_position}ms (a played pregap starts below zero)",
         );
-        wait_for_track_position_where(&mut playback.progress_rx, &pregapped_track, |ms| ms > 600)
-            .await
-            .expect("the position should climb into the track after the skipped pregap");
+        wait_for_track_position_where(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+            &pregapped_track,
+            |ms| ms > 600,
+        )
+        .await
+        .expect("the position should climb into the track after the skipped pregap");
     })
     .await;
 }
@@ -470,8 +524,9 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
         let second = playback.track_ids[1].clone();
         playback.play_and_wait(&first).await;
 
-        // Track 1 runs 0–58s; seek near the end so the crossing arrives soon.
+        // Track 1 runs 0–58s; seek near the end and play it out.
         playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(56)));
+        play_to_track_end(&playback.playback_handle, &playback.audio_clock).await;
         wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
@@ -480,7 +535,13 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
         .expect("playback should auto-advance into the pregapped track");
 
         // Track 2 starts in its 2s pregap: the position counts up from below zero.
-        let first_position = first_position_of(&mut playback.progress_rx, &second).await;
+        let first_position = first_position_of(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+            &second,
+        )
+        .await;
         assert!(
             first_position < 0,
             "auto-advance should play the pregap with a negative countdown; \
@@ -506,7 +567,7 @@ async fn stopping_playback_closes_the_files_it_streamed() {
     )
     .await
     .expect("import the release to play");
-    let (playback_handle, _capture) = start_capture_service(&library).await;
+    let (playback_handle, _capture, _audio_clock) = start_capture_service(&library).await;
     let mut progress_rx = playback_handle.subscribe_progress();
 
     playback_handle.play(imported.track_ids[0].clone());

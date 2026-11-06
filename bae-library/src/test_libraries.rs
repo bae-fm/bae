@@ -12,7 +12,9 @@ mod records;
 mod storage;
 
 pub use devices::{run_library_test, run_two_device_test, DeviceLibrary, TestDevice, TwoDevices};
-pub use playback::{start_capture_playback, start_capture_playback_with_clock};
+pub use playback::{
+    start_capture_playback, start_manual_playback, start_manual_playback_with_clock,
+};
 pub use profiles::{made_profile, made_profile_on, requested_profile, requested_profile_on};
 pub use records::{
     insert_local_release_with_files, insert_release, insert_release_with_queued_uploads,

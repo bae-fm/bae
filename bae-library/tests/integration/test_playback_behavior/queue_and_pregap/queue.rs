@@ -77,21 +77,18 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
             .wait_for_position_update()
             .await
             .expect("a position update should arrive while playing");
+        // The device plays nothing until the test lets it, so playback still
+        // stands at `current_pos_ms` and a seek 50 ms on is one it skips.
         let same_position = Duration::from_millis(current_pos_ms + 50);
         fixture.playback_handle.seek(TrackTime::from_duration(same_position));
-        let seeked_position = fixture.wait_for_seeked().await;
-        assert!(
-            seeked_position.is_some(),
-            "Should receive Seeked event when position difference < 100ms",
+        let seeked_position = fixture
+            .wait_for_seeked()
+            .await
+            .expect("Should receive Seeked event when position difference < 100ms");
+        assert_eq!(
+            seeked_position, current_pos_ms,
+            "a skipped seek shows where playback stands, not the {same_position:?} it asked for",
         );
-        if let Some(seeked_position) = seeked_position {
-            let diff = Duration::from_millis(seeked_position).abs_diff(same_position);
-            assert!(
-                diff < Duration::from_millis(100),
-                "Seeked display should stay near the requested position, got {:?}",
-                diff,
-            );
-        }
         let position_update = fixture.wait_for_position_update().await;
         assert!(position_update.is_some(), "Position updates should continue after skipped seek",);
     })
@@ -204,7 +201,12 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
     // The queue/context projection landing on `expected` isn't proof audio is
     // actually flowing on it — assert the position keeps climbing too.
     if matches!(state, PlaybackState::Playing { .. }) {
-        assert_position_advances(&mut fixture.progress_rx).await;
+        assert_position_advances(
+            &fixture.playback_handle,
+            &fixture.audio_clock,
+            &mut fixture.progress_rx,
+        )
+        .await;
     }
 }
 
@@ -374,7 +376,12 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
 
         // The lane projects correctly, but that alone doesn't prove the
         // currently-playing track's audio survived the churn.
-        assert_position_advances(&mut fixture.progress_rx).await;
+        assert_position_advances(
+            &fixture.playback_handle,
+            &fixture.audio_clock,
+            &mut fixture.progress_rx,
+        )
+        .await;
     })
     .await;
 }
@@ -561,7 +568,7 @@ async fn skipping_to_or_removing_an_entry_no_longer_queued_answers_that_the_queu
 #[tokio::test]
 async fn play_library_shuffled_is_a_no_op_on_an_empty_library() {
     let (library, _temp) = empty_test_library().await;
-    let (handle, _capture_rx) = start_capture_service(&library).await;
+    let (handle, _capture_rx, _audio_clock) = start_capture_service(&library).await;
     let mut progress = handle.subscribe_progress();
     let outcome = handle.play_library_shuffled().await.expect("the play is answered");
     assert_eq!(outcome, bae_playback::PlayOutcome::NothingToPlay);
@@ -650,7 +657,12 @@ async fn skip_to_entry_jumps_to_that_queue_entry() {
             .expect("SkipTo jumps to the targeted entry");
 
         // Landing on the right track's state isn't proof its audio is flowing.
-        assert_position_advances(&mut fixture.progress_rx).await;
+        assert_position_advances(
+            &fixture.playback_handle,
+            &fixture.audio_clock,
+            &mut fixture.progress_rx,
+        )
+        .await;
     })
     .await;
 }
@@ -708,7 +720,12 @@ async fn clear_playing_from_drops_the_context_while_the_track_keeps_playing() {
         );
 
         // The section is gone from the queue; the audio is not.
-        assert_position_advances(&mut fixture.progress_rx).await;
+        assert_position_advances(
+            &fixture.playback_handle,
+            &fixture.audio_clock,
+            &mut fixture.progress_rx,
+        )
+        .await;
     })
     .await;
 }
@@ -910,7 +927,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     let (b_release_id, b_tracks, _b_source) = import_second_release(&lib).await;
     let b_first = b_tracks[0].clone();
 
-    let (handle, _capture_rx) = start_capture_service(&lib.library).await;
+    let (handle, _capture_rx, audio_clock) = start_capture_service(&lib.library).await;
     let mut progress = handle.subscribe_progress();
 
     handle.play(first.clone());
@@ -938,7 +955,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
         !after.manual.iter().any(|e| e.track_id == b_first),
         "the deleted release's queued track is purged"
     );
-    let still_playing = wait_for_track_position(&mut progress, &first).await;
+    let still_playing = wait_for_track_position(&handle, &audio_clock, &mut progress, &first).await;
     assert!(
         still_playing.is_some(),
         "deleting only the preloaded-next release leaves the current track playing"

@@ -55,7 +55,7 @@ async fn same_side_auto_advance_does_not_side_pause() {
 
             fixture.play_track_and_wait(&first_side_track_id).await;
 
-            fixture.seek_to_auto_advance();
+            fixture.play_out_from_near_the_end().await;
 
             fixture
                 .wait_for_playing_track(&same_side_track_id, "same side should keep playing")
@@ -85,7 +85,7 @@ async fn setting_off_auto_advances_across_sided_boundary() {
 
             fixture.play_track_and_wait(&side_a_track_id).await;
 
-            fixture.seek_to_auto_advance();
+            fixture.play_out_from_near_the_end().await;
 
             fixture
                 .wait_for_playing_track(
@@ -115,7 +115,7 @@ async fn enabling_setting_mid_track_pauses_at_the_imminent_boundary() {
 
             fixture.set_pause_between_sides_mid_track(true).await;
 
-            fixture.seek_to_auto_advance();
+            fixture.play_out_from_near_the_end().await;
 
             fixture.wait_for_side_pause("A", PlaybackPauseBoundary::Side).await;
         },
@@ -141,7 +141,7 @@ async fn disabling_setting_mid_track_keeps_playing_across_the_boundary() {
 
             fixture.set_pause_between_sides_mid_track(false).await;
 
-            fixture.seek_to_auto_advance();
+            fixture.play_out_from_near_the_end().await;
 
             fixture
                 .wait_for_playing_track(
@@ -168,7 +168,7 @@ async fn repeat_track_does_not_side_pause_at_boundary() {
             fixture.play_track_and_wait(&repeated_track_id).await;
             fixture.playback_handle.set_repeat_mode(RepeatMode::Track);
 
-            fixture.seek_to_auto_advance();
+            fixture.play_out_from_near_the_end().await;
 
             fixture
                 .wait_for_playing_track(
@@ -223,7 +223,7 @@ async fn side_boundary_pause_prevents_gapless_stream_handoff() {
             fixture.play_track_and_wait(&side_a_track_id).await;
             let _side_a_stream = fixture.next_capture_stream().await;
 
-            fixture.seek_to_auto_advance();
+            fixture.play_out_from_near_the_end().await;
             fixture.wait_for_side_pause("A", PlaybackPauseBoundary::Side).await;
 
             fixture.playback_handle.resume();
@@ -492,7 +492,14 @@ async fn gapless_boundary_hands_off_without_rebuild() {
         fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(3)));
         fixture.wait_for_seeked().await.expect("the seek should land");
 
-        let outcome = observe_boundary(&mut fixture.progress_rx, &first, &second).await;
+        let outcome = observe_boundary(
+            &fixture.playback_handle,
+            &fixture.audio_clock,
+            &mut fixture.progress_rx,
+            &first,
+            &second,
+        )
+        .await;
         assert!(
             outcome.reached_incoming,
             "playback should cross into the second track at the first track's end"
@@ -517,9 +524,14 @@ async fn gapless_boundary_hands_off_without_rebuild() {
             outcome.decode_errors
         );
 
-        let position_ms = wait_for_track_position(&mut fixture.progress_rx, &second)
-            .await
-            .expect("a position update for the incoming track");
+        let position_ms = wait_for_track_position(
+            &fixture.playback_handle,
+            &fixture.audio_clock,
+            &mut fixture.progress_rx,
+            &second,
+        )
+        .await
+        .expect("a position update for the incoming track");
         assert!(
             position_ms < 1500,
             "the incoming track's position resets near 0 at the boundary, got {position_ms}ms"
@@ -547,12 +559,26 @@ async fn gapless_boundary_repreloads_following_track() {
 
         fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(3)));
         fixture.wait_for_seeked().await.expect("the first seek should land");
-        let first_cross = observe_boundary(&mut fixture.progress_rx, &first, &second).await;
+        let first_cross = observe_boundary(
+            &fixture.playback_handle,
+            &fixture.audio_clock,
+            &mut fixture.progress_rx,
+            &first,
+            &second,
+        )
+        .await;
         assert!(first_cross.reached_incoming, "playback should cross into the second track");
 
         fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(3)));
         fixture.wait_for_seeked().await.expect("the second seek should land");
-        let second_cross = observe_boundary(&mut fixture.progress_rx, &second, &third).await;
+        let second_cross = observe_boundary(
+            &fixture.playback_handle,
+            &fixture.audio_clock,
+            &mut fixture.progress_rx,
+            &second,
+            &third,
+        )
+        .await;
         assert!(
             second_cross.reached_incoming,
             "the following track was re-preloaded, so the second boundary also crosses into it"
@@ -589,6 +615,7 @@ async fn boundary_advances_to_next_track_after_late_seek() {
         // 200 ms before the end of the 5 s track.
         fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_millis(4800)));
         fixture.wait_for_seeked().await.expect("the seek should land");
+        fixture.play_to_track_end().await;
 
         fixture
             .wait_for_state(
@@ -596,9 +623,14 @@ async fn boundary_advances_to_next_track_after_late_seek() {
             )
             .await
             .expect("playback should advance to the second track at the end");
-        let position_ms = wait_for_track_position(&mut fixture.progress_rx, &second)
-            .await
-            .expect("a position update for the second track");
+        let position_ms = wait_for_track_position(
+            &fixture.playback_handle,
+            &fixture.audio_clock,
+            &mut fixture.progress_rx,
+            &second,
+        )
+        .await
+        .expect("a position update for the second track");
         assert!(position_ms < 1500, "the next track starts from ~0, got {position_ms}ms");
     })
     .await;
@@ -627,7 +659,14 @@ async fn seek_preserves_staged_next_for_a_gapless_advance() {
         fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(3)));
         fixture.wait_for_seeked().await.expect("the second seek should land");
 
-        let outcome = observe_boundary(&mut fixture.progress_rx, &first, &second).await;
+        let outcome = observe_boundary(
+            &fixture.playback_handle,
+            &fixture.audio_clock,
+            &mut fixture.progress_rx,
+            &first,
+            &second,
+        )
+        .await;
         assert!(
             outcome.reached_incoming,
             "the staged next should survive the seeks and play at the boundary"
@@ -652,16 +691,12 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     let first = lib.track_ids[0].clone();
 
     // Built here so the test owns the receiver it drops.
-    let (captured, capture_stream_rx) = tokio::sync::mpsc::unbounded_channel();
-    let capture_device = bae_playback::RealtimeCaptureAudioDevice::new(captured);
+    let (capture_device, capture_stream_rx, _audio_clock) =
+        bae_playback::test_capture::manual_capture_device();
     let mut capture_stream_rx = Some(capture_stream_rx);
     let handle = lib
         .library
-        .start_playback_on(
-            Box::new(capture_device),
-            bae_playback::test_capture::wall_playback_clock(),
-            true,
-        )
+        .start_playback_on(capture_device, bae_playback::test_capture::wall_playback_clock(), true)
         .await;
     let mut progress_rx = handle.subscribe_progress();
 

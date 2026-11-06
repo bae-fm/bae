@@ -157,7 +157,7 @@ where
 
         if self.unwritten.is_empty() {
             match self.drain.drain_iteration(&mut self.buf, true, SourceLock::Wait) {
-                DrainStatus::Samples { read } => self.unwritten = 0..read,
+                DrainStatus::Samples { read, .. } => self.unwritten = 0..read,
                 // Persistent output: a drained track idles the writer rather
                 // than ending it; the next track's source replace resumes it.
                 DrainStatus::Idle => return WriterStep::Starved,

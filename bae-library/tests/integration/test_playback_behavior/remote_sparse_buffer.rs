@@ -11,6 +11,8 @@ struct RemoteMultiWindowPlayback {
     flac_object: coven::ObjectPath,
     library: TestLibrary,
     _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
+    /// The capture device's audio time, which only the test moves.
+    audio_clock: AudioClock,
     _temp_dir: TempDir,
 }
 
@@ -73,7 +75,8 @@ impl RemoteMultiWindowPlayback {
             .into_iter()
             .map(|track| track.id)
             .collect();
-        let (playback_handle, capture_stream_rx) = start_capture_service(&library).await;
+        let (playback_handle, capture_stream_rx, audio_clock) =
+            start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
@@ -83,6 +86,7 @@ impl RemoteMultiWindowPlayback {
             flac_object,
             library,
             _capture_stream_rx: capture_stream_rx,
+            audio_clock,
             _temp_dir: temp_dir,
         })
     }
@@ -179,7 +183,14 @@ async fn auto_advance_crosses_gaplessly_over_remote_cloud() {
         playback.play_and_wait(&first).await;
 
         playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(54)));
-        let outcome = observe_boundary(&mut playback.progress_rx, &first, &second).await;
+        let outcome = observe_boundary(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+            &first,
+            &second,
+        )
+        .await;
         assert!(
             outcome.reached_incoming,
             "playback crosses into the second track over a real ranged cloud read"
@@ -189,9 +200,13 @@ async fn auto_advance_crosses_gaplessly_over_remote_cloud() {
             "the boundary is gapless: decode stats without TrackCompleted"
         );
 
-        wait_for_position_advance(&mut playback.progress_rx).await.expect(
-            "track 2's position must advance after the crossing over a real ranged cloud read",
-        );
+        wait_for_position_advance(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+        )
+        .await
+        .expect("track 2's position must advance after the crossing over a real ranged cloud read");
     })
     .await;
 }
@@ -213,7 +228,7 @@ async fn manual_next_into_a_pregap_track_over_remote_cloud() {
             "the second track reaches Playing after a manual Next over a real ranged cloud read",
         );
 
-        wait_for_track_position_where(&mut playback.progress_rx, &second, |ms| ms > 0).await.expect(
+        wait_for_track_position_where(&playback.playback_handle, &playback.audio_clock, &mut playback.progress_rx, &second, |ms| ms > 0).await.expect(
         "the rebuilt track's position advances — its bytes are fetched over the real cloud path",
     );
     })
@@ -237,7 +252,7 @@ async fn manual_next_into_a_clean_track_over_remote_cloud() {
             "the third track reaches Playing after a manual Next over a real ranged cloud read",
         );
 
-        wait_for_track_position_where(&mut playback.progress_rx, &third, |ms| ms > 0).await.expect(
+        wait_for_track_position_where(&playback.playback_handle, &playback.audio_clock, &mut playback.progress_rx, &third, |ms| ms > 0).await.expect(
         "the promoted track's position advances — its bytes are fetched over the real cloud path",
     );
     })
@@ -262,9 +277,13 @@ async fn seek_within_the_last_track_over_remote_cloud() {
             "should land near {target:?}, got {landed}ms"
         );
 
-        wait_for_position_advance(&mut playback.progress_rx)
-            .await
-            .expect("audio must keep flowing after the seek over a real ranged cloud read");
+        wait_for_position_advance(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+        )
+        .await
+        .expect("audio must keep flowing after the seek over a real ranged cloud read");
     })
     .await;
 }
@@ -324,9 +343,13 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_file() {
             Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
             "the seek should land near {target:?}, got {landed}ms"
         );
-        wait_for_position_advance(&mut playback.progress_rx)
-            .await
-            .expect("audio must flow from the completed chunked-range seek");
+        wait_for_position_advance(
+            &playback.playback_handle,
+            &playback.audio_clock,
+            &mut playback.progress_rx,
+        )
+        .await
+        .expect("audio must flow from the completed chunked-range seek");
 
         // Ranged reads are the measurement, not `exact_full_read_count`: that counter
         // is bucket-wide and the sync loop reads whole objects (commits, snapshots)
@@ -393,7 +416,7 @@ async fn a_resume_at_a_position_reads_from_there_not_the_track_start() {
         playback.library.evict_file_for_test(flac.id()).await.expect("evict the FLAC");
         let first_read = playback.cloud.reads().await.len();
 
-        let (handle, _capture_rx) = start_capture_service(&playback.library).await;
+        let (handle, _capture_rx, audio_clock) = start_capture_service(&playback.library).await;
         let mut progress_rx = handle.subscribe_progress();
         wait_for_state_on(
             &mut progress_rx,
@@ -402,7 +425,7 @@ async fn a_resume_at_a_position_reads_from_there_not_the_track_start() {
         .await
         .expect("the relaunch restores the last track paused");
         handle.resume();
-        wait_for_position_advance(&mut progress_rx)
+        wait_for_position_advance(&handle, &audio_clock, &mut progress_rx)
             .await
             .expect("the resumed track plays on from its position");
         handle.shutdown().await;

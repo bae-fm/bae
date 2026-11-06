@@ -14,7 +14,7 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
         .expect("the imported track")
         .release_id;
 
-    let (handle, _capture_rx) = start_capture_service(&lib.library).await;
+    let (handle, _capture_rx, _audio_clock) = start_capture_service(&lib.library).await;
     let mut progress_rx = handle.subscribe_progress();
     let played = handle.play_release(release_id, None, true).await.expect("the play is answered");
     assert_eq!(played, bae_playback::PlayOutcome::Playing);
@@ -29,7 +29,7 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
     assert!(before.context.as_ref().is_some_and(|context| context.shuffled));
     handle.shutdown().await;
 
-    let (handle, _capture_rx) = start_capture_service(&lib.library).await;
+    let (handle, _capture_rx, _audio_clock) = start_capture_service(&lib.library).await;
     let mut progress_rx = handle.subscribe_progress();
     let playing_id = playing.track_id().expect("a playing track").to_string();
     wait_for_state_on(
@@ -198,7 +198,8 @@ impl CloudOnlyPlaybackFixture {
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert!(!track_ids.is_empty(), "Should have imported tracks");
 
-        let (playback_handle, capture_stream_rx) = start_capture_service(&library).await;
+        let (playback_handle, capture_stream_rx, _audio_clock) =
+            start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,

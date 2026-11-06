@@ -7,6 +7,8 @@ pub mod aaudio_output;
 pub mod airplay_output;
 mod audio_focus;
 pub mod audio_output;
+#[cfg(any(test, feature = "test-utils"))]
+mod capture_output;
 mod clock;
 mod context;
 #[cfg(not(target_os = "android"))]
@@ -61,10 +63,10 @@ pub use audio_output::{
     PositionEvent,
 };
 #[cfg(any(test, feature = "test-utils"))]
-pub use audio_output::{
-    CaptureAudioDevice, CaptureAudioOutput, CapturedStream, CapturedStreamSender, CapturedStreams,
-    RealtimeCaptureAudioDevice, RealtimeCaptureAudioOutput, RealtimeProbeDevice,
-    RealtimeProbeOutput,
+pub use capture_output::{
+    AudioClock, CaptureAudioDevice, CaptureAudioOutput, CapturedStream, CapturedStreamSender,
+    CapturedStreams, ManualCaptureAudioOutput, ManualCaptureDevice, PlayedReport,
+    RealtimeProbeDevice, RealtimeProbeOutput,
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use clock::ManualPlaybackClock;

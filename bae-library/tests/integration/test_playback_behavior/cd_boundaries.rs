@@ -18,7 +18,7 @@ async fn cd_auto_advance_respects_disc_boundaries_and_setting() {
                 let first = fixture.track_ids[0].clone();
                 let second = fixture.track_ids[1].clone();
                 fixture.play_track_and_wait(&first).await;
-                fixture.seek_to_auto_advance();
+                fixture.play_out_from_near_the_end().await;
                 fixture
                     .wait_for_playing_track(
                         &second,
@@ -77,7 +77,7 @@ async fn cd_setting_changes_mid_track_apply_at_disc_boundary() {
                 let second = fixture.track_ids[1].clone();
                 fixture.play_track_and_wait(&first).await;
                 fixture.set_pause_between_sides_mid_track(enabled).await;
-                fixture.seek_to_auto_advance();
+                fixture.play_out_from_near_the_end().await;
                 if enabled {
                     fixture.wait_for_side_pause("1", PlaybackPauseBoundary::Disc).await;
                 } else {
@@ -110,7 +110,7 @@ async fn cd_manual_next_and_repeat_track_do_not_pause_at_disc_boundary() {
                 fixture.play_track_and_wait(&first).await;
                 let expected = if repeat_track {
                     fixture.playback_handle.set_repeat_mode(RepeatMode::Track);
-                    fixture.seek_to_auto_advance();
+                    fixture.play_out_from_near_the_end().await;
                     &first
                 } else {
                     fixture.playback_handle.next();

@@ -212,10 +212,9 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
 
         let mut seen = Vec::new();
         while seen.len() < 3 {
-            tokio::time::timeout(HANG_GUARD, positions.changed())
-                .await
-                .expect("the playing track's position moves")
-                .expect("the positions stay open");
+            // The positions take each report before the progress feed shows it.
+            play_report(&fixture.playback_handle, &fixture.audio_clock, &mut fixture.progress_rx)
+                .await;
             let position = positions.positions().library;
             if let Some(position) = position.filter(|position| position.track_id == track_id) {
                 seen.push(position.position_ms);

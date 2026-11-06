@@ -1,7 +1,6 @@
 use super::*;
-use crate::audio_output::{
-    AudioOutputControls, CaptureAudioOutput, FailingAudioOutput, PlayerOutput,
-};
+use crate::audio_output::{AudioOutputControls, FailingAudioOutput, PlayerOutput};
+use crate::capture_output::CaptureAudioOutput;
 use bae_audio::sparse_buffer::create_sparse_buffer;
 use bae_track_audio::SegmentDecodeParams;
 

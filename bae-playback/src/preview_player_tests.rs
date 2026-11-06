@@ -1,6 +1,9 @@
 use super::*;
 use crate::audio_output::{
-    audio_event_channel, AudioOutput, CaptureAudioDevice, FailingAudioDevice, FailingAudioOutput,
+    audio_event_channel, AudioOutput, FailingAudioDevice, FailingAudioOutput,
+};
+use crate::capture_output::{
+    AudioClock, CaptureAudioDevice, ManualCaptureAudioOutput, ManualCaptureDevice,
 };
 use bae_audio::test_samples::{filled_sparse_buffer, samples_as_f32};
 use std::sync::Arc;
@@ -136,7 +139,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
     let (captured, mut capture_rx) = tokio_mpsc::unbounded_channel();
-    let device = crate::audio_output::RealtimeCaptureAudioDevice::new(captured);
+    let device = ManualCaptureDevice::new(captured, AudioClock::new());
 
     assert!(player.play(target, &device).await.started());
     player.toggle_pause();
@@ -170,7 +173,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
 /// device stopped playing them — what a cpal stream reports when the default
 /// device changes on Windows or its device is unplugged.
 struct InvalidatingOutput {
-    capture: crate::audio_output::RealtimeCaptureAudioOutput,
+    capture: ManualCaptureAudioOutput,
     report: Arc<std::sync::Mutex<Option<String>>>,
 }
 
@@ -228,7 +231,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
     let (captured, mut capture_rx) = tokio_mpsc::unbounded_channel();
-    let capture = crate::audio_output::RealtimeCaptureAudioOutput::new(captured);
+    let capture = ManualCaptureAudioOutput::new(captured, AudioClock::new());
     let report = Arc::new(std::sync::Mutex::new(None));
     player.audio_output = Some(crate::audio_output::PlayerOutput::new(
         Box::new(InvalidatingOutput { capture, report: report.clone() }),

@@ -9,6 +9,7 @@ struct HighSampleRateTestFixture {
     track_id: String,
     library: TestLibrary,
     _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
+    audio_clock: AudioClock,
     _temp_dir: TempDir,
 }
 
@@ -68,7 +69,8 @@ impl HighSampleRateTestFixture {
             audio_format.sample_rate
         );
 
-        let (playback_handle, capture_stream_rx) = start_capture_service(&library).await;
+        let (playback_handle, capture_stream_rx, audio_clock) =
+            start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
 
         Ok(Self {
@@ -77,6 +79,7 @@ impl HighSampleRateTestFixture {
             track_id,
             library,
             _capture_stream_rx: capture_stream_rx,
+            audio_clock,
             _temp_dir: temp_dir,
         })
     }
@@ -97,8 +100,11 @@ async fn test_high_sample_rate_position_calculation() {
     let mut fixture =
         HighSampleRateTestFixture::new().await.expect("set up high sample rate fixture");
 
-    // Play the 96kHz track (3 seconds duration)
+    // Play the 96kHz track (3 seconds duration) to its end.
     fixture.playback_handle.play(fixture.track_id.clone());
+    bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &fixture.track_id)
+        .await;
+    play_to_track_end(&fixture.playback_handle, &fixture.audio_clock).await;
 
     // Wait for track to complete, keeping the last position seen before it.
     let mut final_position_ms: Option<i64> = None;
@@ -176,6 +182,7 @@ async fn test_seek_lands_near_target_position() {
         // Wait for seek to complete
         let seeked = fixture.wait_for_seeked().await;
         assert!(seeked.is_some(), "Should receive Seeked event");
+        fixture.play_to_track_end().await;
 
         // Wait for track to complete and get decode stats
         let decode_stats =
@@ -224,15 +231,10 @@ async fn test_seek_lands_near_target_position() {
 async fn test_cue_flac_seek_respects_track_end_boundary() {
     use bae_audio::decode_audio;
 
-    // Real-time capture: at full speed track 2's decoder finishes the whole
-    // track before the seek restarts it at 5s, so its sample count overshoots
-    // the boundary (flaky under load). Real-time keeps the decoder on the seek.
+    // The device plays only as the test lets it, so track 2's decoder is still
+    // on the track when the seek restarts it at 5s.
     with_fixture(
-        async {
-            CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
-                .await
-                .expect("set up CUE/FLAC realtime capture fixture")
-        },
+        async { CueFlacTestFixture::new().await.expect("set up the CUE/FLAC fixture") },
         async |fixture| {
             let track_id = fixture.track_ids[1].clone();
 
@@ -265,6 +267,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
             let mut captured = fixture.next_capture_stream().await;
 
             bae_playback::test_capture::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
+            play_to_track_end(&fixture.playback_handle, &fixture.audio_clock).await;
 
             // Wait for the track's decode stats. Under gapless playback the seeked track
             // advances into the next track within one persistent stream, so it reports
@@ -407,7 +410,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
 
     // Start the playback service — restore() runs on the audio thread before
     // run() and calls emit_position_display at its tail.
-    let (handle, _capture_rx) = start_capture_service(&library).await;
+    let (handle, _capture_rx, _audio_clock) = start_capture_service(&library).await;
     let mut progress_rx = handle.subscribe_progress();
 
     let landed = wait_for_seeked_on(&mut progress_rx).await;
@@ -442,7 +445,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         .clone();
     let first_track = library.get_tracks_for_release(&release_id).await.unwrap()[0].id.clone();
 
-    let (handle, _capture_rx) = start_capture_service(&library).await;
+    let (handle, _capture_rx, _audio_clock) = start_capture_service(&library).await;
 
     // Playing a release persists the row: current is the first track, and the
     // queue plays from the release.
@@ -494,13 +497,24 @@ async fn test_position_persists_periodically_while_playing() {
     .await;
 }
 
-/// The `playback_state` row's position once it passes `floor_ms`. Panics if
-/// it never does.
-async fn persisted_position_past(fixture: &PlaybackTestFixture, floor_ms: u64) -> u64 {
-    let mut state = bae_playback::tables::subscribe_playback_state(fixture.library.store());
-    let past = |row: &Option<bae_playback::tables::PlaybackResumeRow>| {
-        row.as_ref().and_then(|row| row.position_ms).filter(|ms| *ms > floor_ms)
-    };
-    let row = bae_library::followed::value_matching(&mut state, |row| past(row).is_some()).await;
-    past(&row).expect("the matched row's position is past the floor")
+/// The `playback_state` row's position once it passes `floor_ms`, letting the
+/// device play report by report until it does. Panics if it never does.
+async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: u64) -> u64 {
+    tokio::time::timeout(HANG_GUARD, async {
+        loop {
+            play_report(&fixture.playback_handle, &fixture.audio_clock, &mut fixture.progress_rx)
+                .await;
+            // The report is handled whole, with any write it made, before a
+            // command sent after it.
+            fixture.playback_handle.commands_handled().await;
+            let row = bae_playback::tables::load_playback_state(fixture.library.store())
+                .await
+                .expect("read the resume row");
+            if let Some(ms) = row.and_then(|row| row.position_ms).filter(|ms| *ms > floor_ms) {
+                return ms;
+            }
+        }
+    })
+    .await
+    .expect("the resume row's position passes the floor")
 }

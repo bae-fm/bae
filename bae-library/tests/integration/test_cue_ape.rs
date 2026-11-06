@@ -90,16 +90,15 @@ struct CueApeTestFixture {
     progress_rx: bae_playback::PlaybackProgressFeed,
     track_ids: Vec<String>,
     capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
+    /// The capture device's audio time, which only the test moves.
+    audio_clock: bae_playback::AudioClock,
     _temp_dir: TempDir,
 }
 
 impl CueApeTestFixture {
-    /// The 3-track CUE/APE album, imported and playing through `device`'s
-    /// capture sink: `RealtimeCapture` for a test that plays and then commands
-    /// the track under test, `Capture` for one that only reads what played.
-    async fn with_capture(
-        device: bae_playback::test_capture::TestAudioDevice,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    /// The 3-track CUE/APE album, imported and playing on a capture device
+    /// whose audio plays only as the test lets it.
+    async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let (library, imported) = bae_library::test_libraries::imported_release_setup(
             create_test_discogs_release(),
             "test",
@@ -108,14 +107,15 @@ impl CueApeTestFixture {
         )
         .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
-        let (playback_handle, capture_stream_rx) =
-            bae_library::test_libraries::start_capture_playback(&library, device).await;
+        let (playback_handle, capture_stream_rx, audio_clock) =
+            bae_library::test_libraries::start_manual_playback(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
             progress_rx,
             track_ids: imported.track_ids,
             capture_stream_rx,
+            audio_clock,
             _temp_dir: imported.temp_dir,
         })
     }

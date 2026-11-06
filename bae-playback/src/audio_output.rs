@@ -142,16 +142,69 @@ pub(crate) enum SourceLock<'a> {
     Try(&'a mut AudioLockMissLog),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// What one pull of a drain did.
+#[derive(Debug, Clone)]
 pub(crate) enum DrainStatus {
     Idle,
-    Samples { read: usize },
+    /// It pulled `read` samples, and reported the position they played to
+    /// when one was due: what a test device whose audio time the test
+    /// advances stops at.
+    Samples {
+        read: usize,
+        #[cfg(any(test, feature = "test-utils"))]
+        reported: Option<PositionEvent>,
+    },
 }
 
-#[cfg(any(test, feature = "test-utils"))]
-pub(crate) fn sleep_realtime_buffer(read: usize, channels: u32, sample_rate: u32) {
-    let frames = (read / channels as usize) as u64;
-    std::thread::sleep(bae_util::sample_time::frame_start(frames, sample_rate));
+/// When a drain reports where its source has played to.
+enum PositionReports {
+    /// Every `interval` of wall time, as a device that plays in real time
+    /// does: every `interval` of audio, at a pace a screen follows.
+    Wall { interval: std::time::Duration, last: std::time::Instant },
+    /// Every `interval` samples pulled, and no pull past the next report: a
+    /// test device whose audio time the test advances.
+    #[cfg(any(test, feature = "test-utils"))]
+    Played { interval: usize, since: usize },
+}
+
+impl PositionReports {
+    /// How many of `wanted` samples the next pull may take.
+    fn pull_len(&self, wanted: usize) -> usize {
+        match self {
+            PositionReports::Wall { .. } => wanted,
+            #[cfg(any(test, feature = "test-utils"))]
+            PositionReports::Played { interval, since } => wanted.min(interval - since),
+        }
+    }
+
+    /// Count a pull of `read` samples, and say whether a report is due.
+    fn pulled(
+        &mut self,
+        #[cfg_attr(
+            not(any(test, feature = "test-utils")),
+            expect(unused_variables, reason = "a wall-clock cadence counts no samples")
+        )]
+        read: usize,
+    ) -> bool {
+        match self {
+            PositionReports::Wall { interval, last } => {
+                let due = last.elapsed() >= *interval;
+                if due {
+                    *last = std::time::Instant::now();
+                }
+                due
+            }
+            #[cfg(any(test, feature = "test-utils"))]
+            PositionReports::Played { interval, since } => {
+                *since += read;
+                let due = *since >= *interval;
+                if due {
+                    *since = 0;
+                }
+                due
+            }
+        }
+    }
 }
 
 /// The audio callback missing the source's lock, as it reports it.
@@ -183,31 +236,50 @@ pub(crate) struct AudioDrain {
     controls: AudioOutputControls,
     source: Arc<Mutex<PlaybackSource>>,
     audio_events: AudioEventSender,
-    position_update_interval: std::time::Duration,
-    last_position_update: std::time::Instant,
+    reports: PositionReports,
     /// Set once a pull from the source panics; from then on the drain yields
     /// nothing and never touches the source again.
     failed: bool,
 }
 
 impl AudioDrain {
+    /// A drain for a device that plays in real time, reporting the position
+    /// every `position_update_interval_ms` of wall time.
     pub(crate) fn new(
         controls: AudioOutputControls,
         source: Arc<Mutex<PlaybackSource>>,
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Self {
+        let reports = PositionReports::Wall {
+            interval: std::time::Duration::from_millis(position_update_interval_ms as u64),
+            last: std::time::Instant::now(),
+        };
+        Self::reporting(controls, source, audio_events, reports)
+    }
+
+    /// A drain for a test device whose audio time the test advances,
+    /// reporting the position every `interval` samples pulled.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) fn reporting_every(
+        controls: AudioOutputControls,
+        source: Arc<Mutex<PlaybackSource>>,
+        audio_events: AudioEventSender,
+        interval: usize,
+    ) -> Self {
+        assert!(interval > 0, "a drain reports after some audio, never before any");
+        let reports = PositionReports::Played { interval, since: 0 };
+        Self::reporting(controls, source, audio_events, reports)
+    }
+
+    fn reporting(
+        controls: AudioOutputControls,
+        source: Arc<Mutex<PlaybackSource>>,
+        audio_events: AudioEventSender,
+        reports: PositionReports,
+    ) -> Self {
         controls.wake_drain_of(&mut source.lock().unwrap_or_else(PoisonError::into_inner));
-        Self {
-            controls,
-            source,
-            audio_events,
-            position_update_interval: std::time::Duration::from_millis(
-                position_update_interval_ms as u64,
-            ),
-            last_position_update: std::time::Instant::now(),
-            failed: false,
-        }
+        Self { controls, source, audio_events, reports, failed: false }
     }
 
     /// Tell playback the output stopped sending, for the reason `detail` states.
@@ -251,6 +323,8 @@ impl AudioDrain {
         // Caught while the guard is held, so a panicking pull leaves the
         // source's lock unpoisoned for the playback service, which stops on
         // the failure and discards the source.
+        let pull_len = self.reports.pull_len(buf.len());
+        let buf = &mut buf[..pull_len];
         let pulled = caught_sync("pull samples from the playing track", || {
             source_guard.pull_samples(buf, &mut self.audio_events)
         });
@@ -282,12 +356,21 @@ impl AudioDrain {
             }
         }
 
-        if self.last_position_update.elapsed() >= self.position_update_interval {
-            self.audio_events.push(AudioEvent::Position(source_guard.position_event()));
-            self.last_position_update = std::time::Instant::now();
-        }
+        #[cfg_attr(
+            not(any(test, feature = "test-utils")),
+            expect(unused_variables, reason = "only a test device stops at a report")
+        )]
+        let reported = self.reports.pulled(read).then(|| {
+            let position = source_guard.position_event();
+            self.audio_events.push(AudioEvent::Position(position.clone()));
+            position
+        });
 
-        DrainStatus::Samples { read }
+        DrainStatus::Samples {
+            read,
+            #[cfg(any(test, feature = "test-utils"))]
+            reported,
+        }
     }
 }
 
@@ -580,214 +663,7 @@ impl PlayerOutput {
 pub trait AudioOutputDevice: Send {
     fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError>;
 }
-
-// -- Capture audio output for tests --
-
-/// Captures raw f32 samples for ground-truth comparison in tests.
-///
-/// Each non-gapless transition — a `create_stream` (rebuild) or an
-/// `on_source_replaced` (same-format swap) — starts a new [`CapturedStream`],
-/// sent, one per transition in order, to where `new()` was told. Volume is
-/// NOT applied: samples land exactly as the decoder produced them.
-#[cfg(any(test, feature = "test-utils"))]
-pub struct CaptureAudioOutput {
-    core: CaptureOutputCore,
-}
-
-/// `CaptureAudioOutput`, but paces its pulls to real time.
-#[cfg(any(test, feature = "test-utils"))]
-pub struct RealtimeCaptureAudioOutput {
-    core: CaptureOutputCore,
-}
-
-/// Where a capture output sends the samples it pulls: the current
-/// transition's stream.
-#[cfg(any(test, feature = "test-utils"))]
-type CaptureSender = tokio::sync::mpsc::UnboundedSender<Vec<f32>>;
-
-/// The streams of a capture output's transitions, in order, as the test
-/// receives them.
-#[cfg(any(test, feature = "test-utils"))]
-pub type CapturedStreams = tokio::sync::mpsc::UnboundedReceiver<CapturedStream>;
-
-/// Where a capture output sends the stream of each transition it starts.
-#[cfg(any(test, feature = "test-utils"))]
-pub type CapturedStreamSender = tokio::sync::mpsc::UnboundedSender<CapturedStream>;
-
-/// One non-gapless transition's samples, as a test receives them: the capture
-/// thread sends each run it pulls, and the test keeps its own copy, so nothing
-/// the output holds is shared with the test.
-#[cfg(any(test, feature = "test-utils"))]
-pub struct CapturedStream {
-    runs: tokio::sync::mpsc::UnboundedReceiver<Vec<f32>>,
-    samples: Vec<f32>,
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl CapturedStream {
-    /// Every sample this transition has sent so far.
-    pub fn samples(&mut self) -> Vec<f32> {
-        while let Ok(run) = self.runs.try_recv() {
-            self.samples.extend(run);
-        }
-        self.samples.clone()
-    }
-
-    /// Every sample this transition has sent once at least `at_least` have
-    /// arrived, waiting on each run the capture thread sends. Returns what
-    /// arrived if the stream ends first or none ever completes the count
-    /// (`HANG_GUARD`), so the caller can assert against whatever was captured.
-    pub async fn wait_for_samples(&mut self, at_least: usize) -> Vec<f32> {
-        let deadline = tokio::time::Instant::now() + bae_util::test_channels::HANG_GUARD;
-        while self.samples.len() < at_least {
-            match tokio::time::timeout_at(deadline, self.runs.recv()).await {
-                Ok(Some(run)) => self.samples.extend(run),
-                // The stream ended, or no more came: the caller asserts on
-                // what arrived.
-                Ok(None) | Err(_) => break,
-            }
-        }
-        self.samples()
-    }
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-struct CaptureOutputCore {
-    notify_tx: CapturedStreamSender,
-    /// Where the capture thread sends what it pulls. A `create_stream` or an
-    /// `on_source_replaced` starts a new stream and points this at it, so each
-    /// non-gapless transition is captured on its own — the one-stream-per-
-    /// transition contract the fixtures await via `next_capture_stream`.
-    active: Arc<Mutex<CaptureSender>>,
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl CaptureOutputCore {
-    /// A core publishing its streams to `notify_tx`, so every output a
-    /// capture device opens reports into the one receiver the test holds.
-    fn publishing_to(notify_tx: CapturedStreamSender) -> Self {
-        // Nothing is captured before the first transition starts a stream.
-        let (before_first, _) = tokio::sync::mpsc::unbounded_channel();
-        Self { notify_tx, active: Arc::new(Mutex::new(before_first)) }
-    }
-
-    /// Start a new stream, point the capture thread at it, and publish it to
-    /// the test's receiver.
-    fn rotate_capture_buffer(&self) -> Result<(), AudioError> {
-        let (runs_tx, runs) = tokio::sync::mpsc::unbounded_channel();
-        *self.active.lock().unwrap() = runs_tx;
-        self.notify_tx
-            .send(CapturedStream { runs, samples: Vec::new() })
-            .map_err(|error| AudioError::Unexpected(format!("capture receiver dropped: {error}")))
-    }
-
-    /// The one capture thread keeps running across a same-format swap; start
-    /// a new stream so this transition's samples are captured separately, as
-    /// the fixtures' one-stream-per-transition await expects.
-    fn on_source_replaced(&self) {
-        if let Err(e) = self.rotate_capture_buffer() {
-            tracing::warn!("starting a capture stream failed on source replace: {e}");
-        }
-    }
-}
-
-/// Where a capture thread sends the samples it pulls: the stream of the
-/// transition `active` points at, and the run on to `after_samples`.
-#[cfg(any(test, feature = "test-utils"))]
-fn send_to_active(
-    active: Arc<Mutex<CaptureSender>>,
-    mut after_samples: impl FnMut(usize) + Send + 'static,
-) -> impl FnMut(&[f32]) + Send + 'static {
-    move |samples| {
-        // Re-read the active stream each run: a same-format source replace
-        // rotates it under us, so post-swap samples land in the new track's
-        // stream.
-        let sent = active.lock().unwrap().send(samples.to_vec());
-        if sent.is_err() {
-            // The test let go of this transition's stream, so no one reads
-            // these samples; playback drains on.
-        }
-        after_samples(samples.len());
-    }
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-macro_rules! impl_capture_output_constructor {
-    ($type:ty) => {
-        impl $type {
-            /// An output sending `captured` one stream per non-gapless
-            /// transition (a `create_stream` rebuild or an
-            /// `on_source_replaced` swap), in order. A capture device opens
-            /// each output it hands out over its own sender, so the main
-            /// player's and the preview player's land on one receiver.
-            pub fn new(captured: CapturedStreamSender) -> Self {
-                Self { core: CaptureOutputCore::publishing_to(captured) }
-            }
-        }
-    };
-}
-
-/// Define a capture *device*: what a test hands the playback service in place of
-/// the system's audio device. Every output it opens sends its streams to the
-/// one sender `new()` takes, one stream per non-gapless transition across all
-/// of them, in order.
-#[cfg(any(test, feature = "test-utils"))]
-macro_rules! impl_capture_audio_device {
-    ($device:ident, $output:ident) => {
-        pub struct $device {
-            notify_tx: CapturedStreamSender,
-        }
-
-        impl $device {
-            pub fn new(captured: CapturedStreamSender) -> Self {
-                Self { notify_tx: captured }
-            }
-        }
-
-        impl AudioOutputDevice for $device {
-            fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError> {
-                Ok(Box::new($output::new(self.notify_tx.clone())))
-            }
-        }
-    };
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl_capture_output_constructor!(CaptureAudioOutput);
-
-#[cfg(any(test, feature = "test-utils"))]
-impl_capture_output_constructor!(RealtimeCaptureAudioOutput);
-
-#[cfg(any(test, feature = "test-utils"))]
-impl_capture_audio_device!(CaptureAudioDevice, CaptureAudioOutput);
-
-#[cfg(any(test, feature = "test-utils"))]
-impl_capture_audio_device!(RealtimeCaptureAudioDevice, RealtimeCaptureAudioOutput);
-
-#[cfg(any(test, feature = "test-utils"))]
-impl AudioOutput for CaptureAudioOutput {
-    fn create_stream(
-        &mut self,
-        controls: AudioOutputControls,
-        source: Arc<Mutex<PlaybackSource>>,
-        _source_sample_rate: u32,
-        _source_channels: u32,
-        audio_events: AudioEventSender,
-        position_update_interval_ms: u32,
-    ) -> Result<Box<dyn AudioStream>, AudioError> {
-        self.core.rotate_capture_buffer()?;
-        Ok(Box::new(CaptureStream::spawn(
-            AudioDrain::new(controls, source, audio_events, position_update_interval_ms),
-            4096,
-            false,
-            send_to_active(self.core.active.clone(), |_| {}),
-        )))
-    }
-
-    fn on_source_replaced(&mut self) {
-        self.core.on_source_replaced();
-    }
-}
+// -- Outputs that fail, for tests --
 
 /// A test audio output with no backing device: `create_stream` always fails.
 /// Two uses — exercising the stream-build failure path shared by both players,
@@ -823,144 +699,5 @@ impl AudioOutput for FailingAudioOutput {
         _position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         Err(AudioError::Unexpected("stream build failure".to_string()))
-    }
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl AudioOutput for RealtimeCaptureAudioOutput {
-    fn create_stream(
-        &mut self,
-        controls: AudioOutputControls,
-        source: Arc<Mutex<PlaybackSource>>,
-        source_sample_rate: u32,
-        source_channels: u32,
-        audio_events: AudioEventSender,
-        position_update_interval_ms: u32,
-    ) -> Result<Box<dyn AudioStream>, AudioError> {
-        self.core.rotate_capture_buffer()?;
-        let channels = source_channels.max(1);
-        Ok(Box::new(CaptureStream::spawn(
-            AudioDrain::new(controls, source, audio_events, position_update_interval_ms),
-            4096,
-            false,
-            send_to_active(self.core.active.clone(), move |read| {
-                sleep_realtime_buffer(read, channels, source_sample_rate)
-            }),
-        )))
-    }
-
-    fn on_source_replaced(&mut self) {
-        self.core.on_source_replaced();
-    }
-}
-
-/// A test output's stream: a thread draining the source into `on_samples`
-/// until the stream is dropped. Persistent, like a device's: a paused, starved
-/// or drained source idles the thread, which waits on the player's controls
-/// until something could give it work.
-#[cfg(any(test, feature = "test-utils"))]
-struct CaptureStream {
-    stop: Arc<std::sync::atomic::AtomicBool>,
-    controls: AudioOutputControls,
-    thread: Option<std::thread::JoinHandle<()>>,
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl CaptureStream {
-    fn spawn(
-        mut drain: AudioDrain,
-        buf_len: usize,
-        apply_gain: bool,
-        mut on_samples: impl FnMut(&[f32]) + Send + 'static,
-    ) -> Self {
-        let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let controls = drain.controls.clone();
-        let running = stop.clone();
-        let thread = std::thread::spawn(move || {
-            let mut buf = vec![0.0f32; buf_len];
-            loop {
-                // Read before the stop flag and the drain, so a stop or new
-                // work that lands after this read ends the wait at once.
-                let seen = drain.controls.drain_changes();
-                if running.load(Ordering::Acquire) {
-                    break;
-                }
-                match drain.drain_iteration(&mut buf, apply_gain, SourceLock::Wait) {
-                    DrainStatus::Idle => drain.controls.wait_for_drain_work(seen),
-                    DrainStatus::Samples { read } => on_samples(&buf[..read]),
-                }
-            }
-        });
-        Self { stop, controls, thread: Some(thread) }
-    }
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl AudioStream for CaptureStream {
-    fn play(&self) -> Result<(), AudioError> {
-        Ok(()) // The capture thread is already running from create_stream.
-    }
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl Drop for CaptureStream {
-    fn drop(&mut self) {
-        self.stop.store(true, Ordering::Release);
-        self.controls.wake_drain();
-        if let Some(handle) = self.thread.take() {
-            if let Err(e) = handle.join() {
-                tracing::warn!("capture audio thread panicked during shutdown: {:?}", e);
-            }
-        }
-    }
-}
-
-// -- Real-time CPU probe output for tests --
-
-/// Drives playback at real time and discards the samples, for measuring
-/// steady-state playback CPU. Runs the same per-buffer work the cpal sink does —
-/// `pull_samples`, the replay-gain/volume multiply, position ticks, completion —
-/// but paces itself by sleeping one buffer's wall-clock duration after each pull
-/// instead of being clocked by an audio device.
-///
-/// That pacing is the point: it makes the decoder fill-then-park as it does in
-/// production, so the measured CPU reflects real playback (per-buffer drain,
-/// gain, ~20 Hz tick fan-out, decoder wakeups) rather than a full-speed decode,
-/// which is an order of magnitude cheaper. Needs no audio device, so the
-/// measurement runs headless on any platform.
-#[cfg(any(test, feature = "test-utils"))]
-pub struct RealtimeProbeOutput;
-
-/// The device the CPU probe measures through: every output it opens paces to
-/// real time and discards its samples.
-#[cfg(any(test, feature = "test-utils"))]
-pub struct RealtimeProbeDevice;
-
-#[cfg(any(test, feature = "test-utils"))]
-impl AudioOutputDevice for RealtimeProbeDevice {
-    fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError> {
-        Ok(Box::new(RealtimeProbeOutput))
-    }
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl AudioOutput for RealtimeProbeOutput {
-    fn create_stream(
-        &mut self,
-        controls: AudioOutputControls,
-        source: Arc<Mutex<PlaybackSource>>,
-        source_sample_rate: u32,
-        source_channels: u32,
-        audio_events: AudioEventSender,
-        position_update_interval_ms: u32,
-    ) -> Result<Box<dyn AudioStream>, AudioError> {
-        let channels = source_channels.max(1);
-        // 1024 frames/buffer — the pacing granularity, not the total work.
-        Ok(Box::new(CaptureStream::spawn(
-            AudioDrain::new(controls, source, audio_events, position_update_interval_ms),
-            1024 * channels as usize,
-            true,
-            move |samples| sleep_realtime_buffer(samples.len(), channels, source_sample_rate),
-        )))
     }
 }
