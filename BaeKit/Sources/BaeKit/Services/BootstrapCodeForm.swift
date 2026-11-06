@@ -96,6 +96,9 @@ public final class BootstrapCodeForm {
     private let unfinishedJoins:
         @Sendable () async throws -> [BridgeUnfinishedJoin]
     @ObservationIgnored
+    private let unfinishedRestores:
+        @Sendable () async throws -> [BridgeUnfinishedRestore]
+    @ObservationIgnored
     private let onLibraryReady: @MainActor (OpenedLibrary, BridgeError?) -> Void
 
     /// `decodeCode` reads what an entered code is. `onLibraryReady` receives
@@ -107,6 +110,8 @@ public final class BootstrapCodeForm {
         makeBootstrap: @escaping @MainActor () -> LibraryBootstrap,
         unfinishedJoins:
             @escaping @Sendable () async throws -> [BridgeUnfinishedJoin],
+        unfinishedRestores:
+            @escaping @Sendable () async throws -> [BridgeUnfinishedRestore],
         onLibraryReady:
             @escaping @MainActor (OpenedLibrary, BridgeError?) -> Void
     ) {
@@ -114,6 +119,7 @@ public final class BootstrapCodeForm {
         decoder = decodeCode
         self.makeBootstrap = makeBootstrap
         self.unfinishedJoins = unfinishedJoins
+        self.unfinishedRestores = unfinishedRestores
         self.onLibraryReady = onLibraryReady
         if case .restore(let code?) = entry {
             saved = SavedRestoreCode(code: code)
@@ -315,11 +321,17 @@ public final class BootstrapCodeForm {
     public func checkNow() {
         bootstrap?.checkNow()
     }
+}
 
-    /// Continue the join this device has under way, after a cancel came as
-    /// its request was sent.
+// MARK: - Results
+
+extension BootstrapCodeForm {
+    /// Continue the call this device has under way: a join after a cancel
+    /// came as its request was sent, or the join or restore that kept this
+    /// call from starting on the same library. A join goes first, as at
+    /// launch.
     private func resumeUnfinished() {
-        let list = unfinishedJoins
+        let (joins, restores) = (unfinishedJoins, unfinishedRestores)
         isRunning = true
         task = Task {
             defer {
@@ -327,10 +339,15 @@ public final class BootstrapCodeForm {
                 isRunning = false
             }
             do {
-                guard let join = try await list().first else { return }
                 let bootstrap = makeBootstrap()
-                self.bootstrap = bootstrap
-                deliver(try await bootstrap.resume(join))
+                if let join = try await joins().first {
+                    self.bootstrap = bootstrap
+                    deliver(try await bootstrap.resume(join))
+                }
+                else if let restore = try await restores().first {
+                    self.bootstrap = bootstrap
+                    deliver(try await bootstrap.resumeRestore(restore))
+                }
             }
             catch is CancellationError {
                 logger.debug("resumed join cancelled")
@@ -358,7 +375,7 @@ public final class BootstrapCodeForm {
                         "This invite has ended. It was declined or cancelled, it expired, or the device that made it is no longer in the library."
                 )
             )
-        case .joinRequestSent:
+        case .joinRequestSent, .callUnderWay:
             // After the running attempt's task has ended.
             Task { resumeUnfinished() }
         case .savedCodeRemoved:

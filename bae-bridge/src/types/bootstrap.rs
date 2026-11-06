@@ -369,6 +369,12 @@ pub enum BridgeBootstrapResult {
     /// A cancel came after the join's request may have been sent. The join
     /// stays under way; `unfinished_joins` lists it to resume.
     JoinRequestSent,
+    /// The library's first installation on this device belongs to another
+    /// call under way, which nothing changed: a join waiting for approval,
+    /// which a restore can't start on, or a restore past its record, which a
+    /// join can't. `unfinished_joins` or `unfinished_restores` lists it to
+    /// resume, and the app goes on with it.
+    CallUnderWay,
 }
 impl BridgeBootstrapResult {
     pub(crate) fn opened(handle: coven::CovenHandle, host: Arc<crate::BridgeHost>) -> Self {
@@ -400,6 +406,9 @@ impl BridgeBootstrapResult {
             bae_library::RestoreFromCodeError::Cancelled => Err(BridgeError::Cancelled),
             bae_library::RestoreFromCodeError::Restore(error) => match *error {
                 coven::BootstrapError::JoinRequestSent => Ok(Self::JoinRequestSent),
+                coven::BootstrapError::Directory(coven::BootstrapDirectoryError::Lock(
+                    coven::StoreLockError::BootstrapPending(_),
+                )) => Ok(Self::CallUnderWay),
                 coven::BootstrapError::Published { handle, source } => Ok(Self::Published {
                     library: Arc::new(crate::OpenedLibrary::new(handle, host)),
                     error: BridgeError::categorized(category, source),

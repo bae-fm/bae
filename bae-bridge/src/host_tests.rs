@@ -131,3 +131,26 @@ fn an_unfinished_deletion_crosses_as_its_own_category() {
         Some("core.error.deletion_unfinished")
     );
 }
+
+/// A join or restore refused because another call holds the library's first
+/// installation on this device crosses as that call to go on with, not as a
+/// failure: the app resumes it, as at launch.
+#[test]
+fn another_call_under_way_crosses_as_that_call() {
+    let home = tempfile::tempdir().unwrap();
+    let store = coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap());
+    let refused =
+        bae_library::RestoreFromCodeError::Restore(Box::new(coven::BootstrapError::Directory(
+            coven::BootstrapDirectoryError::Lock(coven::StoreLockError::BootstrapPending(store)),
+        )));
+
+    let host = crate::BridgeHost::with_test_keyring(
+        crate::BridgeDiagnostics::noop(),
+        crate::BridgeAppDir::new(home.path().to_str().unwrap().into()).unwrap(),
+    )
+    .unwrap();
+
+    let crossed = crate::types::BridgeBootstrapResult::failure(refused, host);
+
+    assert!(matches!(crossed, Ok(crate::types::BridgeBootstrapResult::CallUnderWay)));
+}

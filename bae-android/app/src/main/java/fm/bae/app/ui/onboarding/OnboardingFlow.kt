@@ -488,6 +488,11 @@ internal class OnboardingFlow(
                         resumeUnfinished()
                     }
 
+                    // Another join or restore of this library is under way on this device; it goes on instead.
+                    BridgeBootstrapResult.CallUnderWay -> {
+                        resumeUnfinished()
+                    }
+
                     // Deleted since the welcome listed it; the welcome reads
                     // the list again, without it.
                     BridgeBootstrapResult.SavedCodeRemoved -> {

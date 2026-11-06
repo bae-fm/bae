@@ -4,7 +4,8 @@ import Testing
 /// A host whose restore from a code reports the code it was given, whose
 /// finishing of a replacement reports the library and call it was given, and
 /// whose finishing of a restore onto this device reports the restore it was
-/// given, each then ending as cancelled; no other call is made by these
+/// given, each then ending as cancelled, or a restore from a code with
+/// `restoreAnswer` when a test sets one; no other call is made by these
 /// tests. Each test's is the one core host of the test process, which the
 /// attempt's setup is made on: an attempt's reads end after the test does, as
 /// a screen's end after it goes, so the host they end on lives for the
@@ -18,6 +19,8 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
     private let recordFinish: AsyncStream<FinishedReplacement>.Continuation
     let resumedRestores: AsyncStream<ObjectIdentifier>
     private let recordResume: AsyncStream<ObjectIdentifier>.Continuation
+    /// What a restore from a code answers, in place of ending as cancelled.
+    var restoreAnswer: BridgeBootstrapResult?
 
     init() {
         (restoredCodes, record) = AsyncStream.makeStream(of: String.self)
@@ -42,6 +45,7 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
         cancellation _: BootstrapCancellation
     ) async throws -> BridgeBootstrapResult {
         record.yield(code)
+        if let restoreAnswer { return restoreAnswer }
         throw CancellationError()
     }
 
@@ -100,7 +104,8 @@ struct BootstrapCodeFormTests {
 
     private func form(
         reading info: BridgeCodeInfo,
-        entry: BootstrapCodeForm.Entry = .restore(nil)
+        entry: BootstrapCodeForm.Entry = .restore(nil),
+        unfinishedRestores: [BridgeUnfinishedRestore] = []
     ) -> BootstrapCodeForm {
         let host = host
         return BootstrapCodeForm(
@@ -110,6 +115,7 @@ struct BootstrapCodeFormTests {
                 LibraryBootstrap(host: host, deviceName: "Test Mac")
             },
             unfinishedJoins: { [] },
+            unfinishedRestores: { unfinishedRestores },
             onLibraryReady: { _, _ in
                 Issue.record("the recording host opens no library")
             }
@@ -184,6 +190,25 @@ struct BootstrapCodeFormTests {
         form.begin()
 
         #expect(form.isRunning)
+        var resumed = host.resumedRestores.makeAsyncIterator()
+        #expect(await resumed.next() == ObjectIdentifier(restore))
+    }
+
+    @Test(
+        "a restore refused for another call under way goes on with that call"
+    )
+    func aRestoreRefusedForACallUnderWayGoesOnWithIt() async {
+        let restore = BridgeUnfinishedRestore(
+            noHandle: BridgeUnfinishedRestore.NoHandle()
+        )
+        host.restoreAnswer = .callUnderWay
+        let form = form(
+            reading: Self.restoreCode(carriesS3Key: true),
+            unfinishedRestores: [restore]
+        )
+
+        form.acceptScan(Self.code)
+
         var resumed = host.resumedRestores.makeAsyncIterator()
         #expect(await resumed.next() == ObjectIdentifier(restore))
     }

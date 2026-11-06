@@ -294,13 +294,18 @@ pub fn deletion_category(error: &coven::StoreDeletionError) -> C {
 pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
     use coven::BootstrapError as E;
     match error {
-        // A stale resume, or a cancel that came after the request may have
-        // been sent: the person's state, not a bug.
+        // A stale resume, a cancel that came after the request may have
+        // been sent, or another call's first installation under way, which
+        // the bridge hands the app as that call to go on with: the person's
+        // state, not a bug.
         E::Code(_)
         | E::NoUnfinishedJoin(_)
         | E::NoUnfinishedRestore(_)
         | E::NoUnfinishedReplacement(_)
-        | E::JoinRequestSent => C::Config,
+        | E::JoinRequestSent
+        | E::Directory(coven::BootstrapDirectoryError::Lock(
+            coven::StoreLockError::BootstrapPending(_),
+        )) => C::Config,
         // A cancel that came after the restoring device registered: coven
         // keeps the restore, which only finishing goes on with.
         E::RestoreRegistered => C::RestoreRegistered,

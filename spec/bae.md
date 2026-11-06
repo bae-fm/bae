@@ -2451,6 +2451,13 @@ it stops any restore: until the device was added, coven takes the restore back
 and nothing of it stays; after, it can't be taken back, and bae says that only
 finishing the restore goes on from there.
 
+A device holds one join or restore of a library at a time: a restore of a
+library whose join waits on the device, or a join of one whose restore
+recorded itself there, is refused before anything changes ([coven
+§13.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#134-edge-cases-installing-on-the-device)),
+and the code screen goes on with the call under way instead, a join first, as
+at launch.
+
 Dan joins. In People, Ana taps **Invite** and enters "Dan", his Dropbox email
 and a role, then picks **In person** or **Send**. Her laptop records the
 invite in one write, offline too, and shows it at once, marked as sharing

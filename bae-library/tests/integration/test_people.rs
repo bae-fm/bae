@@ -702,6 +702,76 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
     });
 }
 
+/// Rowan's join waits on the guest device when someone types the owner's
+/// recovery code there. A restore can't start on the join's installation:
+/// coven refuses it as another call's under way, and the join stays listed
+/// to go on with (§5.6).
+#[test]
+fn a_restore_onto_a_device_whose_join_waits_leaves_the_join() {
+    on_app_runtime(async {
+        let household = Household::new().await;
+        let invite = household.invite(new_member("Rowan"), "guest-key").await;
+        let guest_dir = tempfile::tempdir().unwrap();
+        let guest = installation_in(&guest_dir);
+        let control = bae_library::JoinControl::new();
+        let (waiting, mut waits) = tokio::sync::watch::channel(false);
+        let joining = bae_library::join_with_invite(
+            household.device(&guest),
+            &invite.code,
+            "Guest Device",
+            household.clock.clone(),
+            |status| {
+                if matches!(status, coven::BootstrapStatus::WaitingForApproval { .. }) {
+                    waiting.send_replace(true);
+                }
+            },
+            &control,
+        );
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+            tokio::select! {
+                result = joining => panic!("the join ended while waiting: {:?}", result.err()),
+                changed = waits.wait_for(|waiting| *waiting) => drop(changed.unwrap()),
+            }
+        })
+        .await
+        .unwrap();
+        let code = household.owner.restore_code().await.unwrap();
+        let (_sender, cancel) = tokio::sync::watch::channel(false);
+
+        let refused = bae_library::restore_from_code(
+            household.device(&guest),
+            &code,
+            Some(coven::S3Credentials {
+                access_key_id: "owner-key".into(),
+                secret_access_key: coven::SecretText::new("owner-secret".into()),
+            }),
+            "Guest Device",
+            |_| {},
+            &cancel,
+        )
+        .await
+        .unwrap_err();
+
+        let bae_library::RestoreFromCodeError::Restore(error) = &refused else {
+            panic!("coven refuses the restore: {refused:?}");
+        };
+        assert!(
+            matches!(
+                **error,
+                coven::BootstrapError::Directory(coven::BootstrapDirectoryError::Lock(
+                    coven::StoreLockError::BootstrapPending(_),
+                ))
+            ),
+            "{error:?}"
+        );
+        assert_eq!(
+            bae_library::unfinished_joins(&household.device(&guest)).await.unwrap().len(),
+            1
+        );
+        household.owner.close().await.unwrap();
+    });
+}
+
 /// A device of its own whose stores live in `dir`, with its own keychain.
 pub(super) fn installation_in(dir: &tempfile::TempDir) -> coven::Coven {
     coven::Coven::in_memory(bae_app_dir::AppDir::at(dir.path()).unwrap().coven_app_dir())

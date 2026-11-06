@@ -43,7 +43,8 @@ class OnboardingFlowTest {
      * test ends, whose finishing of a replacement records the library and
      * call, then fails with [finishFailure], or runs until the test ends
      * without one, and which lists [unfinished] as the restores under way,
-     * recording each it finishes and running until the test ends.
+     * recording each it finishes and running until the test ends. A restore
+     * from a code answers [restoreAnswer] when a test sets one.
      */
     private class RestoreRecordingHost : NoJoinsHost() {
         val restoredCodes = mutableListOf<String>()
@@ -51,6 +52,7 @@ class OnboardingFlowTest {
         var finishFailure: BridgeException? = null
         var unfinished = emptyList<BridgeUnfinishedRestore>()
         val resumed = mutableListOf<BridgeUnfinishedRestore>()
+        var restoreAnswer: BridgeBootstrapResult? = null
 
         override suspend fun unfinishedRestores(): List<BridgeUnfinishedRestore> = unfinished
 
@@ -82,6 +84,7 @@ class OnboardingFlowTest {
             cancellation: BootstrapCancellation,
         ): BridgeBootstrapResult {
             restoredCodes += code
+            restoreAnswer?.let { return it }
             awaitCancellation()
         }
     }
@@ -224,6 +227,22 @@ class OnboardingFlowTest {
         val restore = BridgeUnfinishedRestore(NoHandle)
         host.unfinished = listOf(restore)
         val flow = newFlow()
+
+        val running = flow.step as OnboardingStep.Running
+        assertEquals(OnboardingStep.ResumeRestore(restore), running.from)
+        assertEquals(listOf(restore), host.resumed)
+    }
+
+    /** A restore refused because another join or restore of the library is under way here goes on with that one. */
+    @Test
+    fun aRestoreRefusedForACallUnderWayGoesOnWithIt() {
+        val restore = BridgeUnfinishedRestore(NoHandle)
+        val flow = newFlow()
+        host.unfinished = listOf(restore)
+        host.restoreAnswer = BridgeBootstrapResult.CallUnderWay
+
+        flow.advance(enterCode, CODE, restoreCode(carriesS3Key = true), CodeSource.SCANNED)
+        shadowOf(Looper.getMainLooper()).idle()
 
         val running = flow.step as OnboardingStep.Running
         assertEquals(OnboardingStep.ResumeRestore(restore), running.from)

@@ -96,6 +96,7 @@ public final class LibrarySetup: Sendable, Observable {
             decodeCode: { try decodeCodeInfo(code: $0) },
             makeBootstrap: makeBootstrap,
             unfinishedJoins: unfinishedJoins,
+            unfinishedRestores: unfinishedRestores,
             onLibraryReady: onLibraryReady
         )
     }

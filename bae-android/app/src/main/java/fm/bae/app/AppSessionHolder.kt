@@ -502,6 +502,7 @@ object AppSessionHolder {
 
                 BridgeBootstrapResult.Declined,
                 BridgeBootstrapResult.JoinRequestSent,
+                BridgeBootstrapResult.CallUnderWay,
                 BridgeBootstrapResult.SavedCodeRemoved,
                 -> error("a bootstrap that opened no library has nothing to open: $result")
             }
