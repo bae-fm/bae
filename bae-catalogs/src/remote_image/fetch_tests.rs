@@ -83,12 +83,16 @@ async fn artwork_interrupted_body_is_a_transport_failure() {
     );
 }
 
+/// A body that stops coming is a timeout. The headers arrive and the body
+/// never does; once the headers are in, the clock is paused, so the body's
+/// read timeout passes as soon as nothing else is left to run, however long
+/// the headers took.
 #[tokio::test]
 async fn artwork_stalled_body_is_a_timeout() {
     let url = start_declared_length_response(256).await;
-    let client =
-        bae_util::http::client_builder().timeout(Duration::from_millis(30)).build().unwrap();
+    let client = bae_util::http::client_builder().read_timeout(HANG_GUARD).build().unwrap();
     let response = client.get(&url).send().await.unwrap();
+    tokio::time::pause();
     let error = match read_image_response(response).await {
         Err(error) => error,
         Ok(_) => panic!("stalled body should time out"),
