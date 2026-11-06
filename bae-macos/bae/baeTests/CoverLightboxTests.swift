@@ -187,7 +187,10 @@ struct CoverLightboxTests {
 
     private actor Reads {
         var reads: [Read] = []
-        func read(_ read: Read) { reads.append(read) }
+        func read(_ read: Read) {
+            reads.append(read)
+            Wait.happened()
+        }
     }
 
     private func releaseFile(_ file: BridgeFileVersion) -> CoverItem {

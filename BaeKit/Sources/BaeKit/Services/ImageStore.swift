@@ -132,6 +132,12 @@ public final class ImageStore: Sendable, Observable {
     private let buckets: Buckets
     private let inFlightLoads = InFlightImageLoads()
 
+    #if DEBUG
+        /// Posted after each image enters the decoded cache, for a test to
+        /// wait on.
+        public static let didStoreImage = DecodedImageCache.didStore
+    #endif
+
     public init(
         fetchLibraryImageBytes:
             @escaping @Sendable (BridgeImageRef) async throws -> Data? = {
@@ -546,7 +552,14 @@ final class DecodedImageCache: @unchecked Sendable {
             forKey: key as NSString,
             cost: Self.decodedByteCost(of: image)
         )
+        #if DEBUG
+            NotificationCenter.default.post(name: Self.didStore, object: nil)
+        #endif
     }
+
+    #if DEBUG
+        static let didStore = Notification.Name("ImageStore.didStoreImage")
+    #endif
 
     static func decodedByteCost(of image: PlatformImage) -> Int {
         #if canImport(AppKit)

@@ -16,7 +16,7 @@ final class CallLog<Value>: @unchecked Sendable {
     }
 
     func record(_ value: Value) {
-        lock.withLock { values.append(value) }
+        lock.recording { values.append(value) }
     }
 }
 
@@ -165,7 +165,10 @@ struct ImportSelectionTests {
         var shown: [BridgeSelectionActionProgress?] = []
         let following = FrameFollowing<BridgeSelectionActionProgress>(
             view: view
-        ) { shown.append($0) }
+        ) {
+            shown.append($0)
+            Wait.happened()
+        }
         following.follow(running.progress)
         try await Wait.until {
             shown.last == BridgeSelectionActionProgress(completed: 1, total: 3)

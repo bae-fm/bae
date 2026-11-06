@@ -9,6 +9,7 @@ import Testing
 
 /// How many pages the paged list has taken delivery of.
 @MainActor
+@Observable
 private final class DeliveredPages {
     var count = 0
 }
@@ -20,11 +21,12 @@ private final class ObservedChange: @unchecked Sendable {
     var isSet: Bool { lock.withLock { raised } }
 
     func set() {
-        lock.withLock { raised = true }
+        lock.recording { raised = true }
     }
 }
 
 @MainActor
+@Observable
 private final class ViewDeliveryOutcome {
     enum State: Equatable {
         case waiting
@@ -89,10 +91,11 @@ struct ImportListPageSourceTests {
             lock.lock()
             self.windows.append(windows)
             lock.unlock()
+            Wait.happened()
         }
 
         func setView(view: BridgeImportListView) async throws -> UInt64 {
-            let (revision, hook) = lock.withLock {
+            let (revision, hook) = lock.recording {
                 viewRevision += 1
                 views.append(view)
                 return (viewRevision, setViewHook)
@@ -112,7 +115,7 @@ struct ImportListPageSourceTests {
             group _: BridgeFolderReleaseDecisionKey,
             folded _: Bool
         ) async throws -> UInt64 {
-            lock.withLock {
+            lock.recording {
                 viewRevision += 1
                 return viewRevision
             }
@@ -176,6 +179,7 @@ struct ImportListPageSourceTests {
                     lock.unlock()
                     continuation.resume(with: snapshot)
                 }
+                Wait.happened()
             }
         }
     }
@@ -248,7 +252,10 @@ extension ImportListPageSourceTests {
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { _ in },
-            onPendingFilterEntries: { delivered.append($0) },
+            onPendingFilterEntries: {
+                delivered.append($0)
+                Wait.happened()
+            },
             onSelection: { _, _ in }
         )
         _ = source.subscribe(
@@ -511,6 +518,7 @@ extension ImportListPageSourceTests {
             onValue: { items, total in
                 first = items.map(\.id)
                 totals.append(total)
+                Wait.happened()
             },
             onError: { _ in }
         )
@@ -520,6 +528,7 @@ extension ImportListPageSourceTests {
             onValue: { items, total in
                 second = items.map(\.id)
                 totals.append(total)
+                Wait.happened()
             },
             onError: { _ in }
         )

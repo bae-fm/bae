@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Observation
 import SwiftUI
 import Testing
 
@@ -85,7 +86,9 @@ struct ImageViewRetryTests {
                 in: window
             )
             try await Wait.until { await attempts.count == 2 }
-            try await Wait.until {
+            try await Wait.until(
+                notices: [Wait.Notice(ImageStore.didStoreImage, of: nil)]
+            ) {
                 store.cachedImage(content, pointSize: side, displayScale: 2)
                     != nil
                     || store.cachedImage(
@@ -121,11 +124,13 @@ private actor AttemptCount {
 
     func next() -> Int {
         count += 1
+        Wait.happened()
         return count
     }
 }
 
 @MainActor
+@Observable
 private final class TapBox {
     var tapped = false
 }

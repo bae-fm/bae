@@ -16,7 +16,7 @@ private final class AlbumBrowseProbe: @unchecked Sendable {
     var query: LibraryBrowseQuery<BridgeAlbum> {
         LibraryBrowseQuery(
             setWindows: { [self] windows in
-                lock.withLock { self.windows = windows }
+                lock.recording { self.windows = windows }
             },
             values: PulledValues(read: { [self] in try await nextDelivery() })
         )
@@ -75,10 +75,10 @@ private final class SearchProbe: @unchecked Sendable {
         CheckedContinuation<BridgeLibrarySearchSnapshot, any Error>?
 
     func open() -> LibrarySearch {
-        lock.withLock { opened += 1 }
+        lock.recording { opened += 1 }
         return LibrarySearch(
             setQuery: { [self] query in
-                lock.withLock { queries.append(query) }
+                lock.recording { queries.append(query) }
             },
             values: PulledValues(read: { [self] in try await nextValue() })
         )
@@ -129,7 +129,7 @@ private final class SearchProbe: @unchecked Sendable {
 
     private func nextValue() async throws -> BridgeLibrarySearchSnapshot {
         try await withCheckedThrowingContinuation { continuation in
-            let ready = lock.withLock {
+            let ready = lock.recording {
                 askedCount += 1
                 if pending.isEmpty {
                     waiter = continuation
@@ -246,7 +246,7 @@ private final class ComposerRowReads: @unchecked Sendable {
     var artistIds: [String] { lock.withLock { recorded } }
 
     func opened(_ artistId: String) {
-        lock.withLock { recorded.append(artistId) }
+        lock.recording { recorded.append(artistId) }
     }
 }
 
@@ -389,10 +389,10 @@ private final class AlbumSelectionProbe: @unchecked Sendable {
     var cancelled: Bool { lock.withLock { wasCancelled } }
 
     func query() -> AlbumSelectionQuery {
-        lock.withLock { openedCount += 1 }
+        lock.recording { openedCount += 1 }
         return AlbumSelectionQuery(
             setAlbums: { [self] ids in
-                lock.withLock { requests.append(ids) }
+                lock.recording { requests.append(ids) }
             },
             values: PulledValues(
                 read: { [self] in
@@ -409,7 +409,7 @@ private final class AlbumSelectionProbe: @unchecked Sendable {
                     }
                 },
                 cancel: { [self] in
-                    lock.withLock { wasCancelled = true }
+                    lock.recording { wasCancelled = true }
                 }
             )
         )

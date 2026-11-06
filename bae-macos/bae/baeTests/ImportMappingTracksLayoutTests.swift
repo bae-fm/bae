@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Observation
 import SwiftUI
 import Testing
 
@@ -546,6 +547,7 @@ extension ImportMappingTracksLayoutTests {
 }
 
 @MainActor
+@Observable
 final class MappingTrackActionRecorder {
     var previewed: [BridgePreviewTarget] = []
     var stops = 0

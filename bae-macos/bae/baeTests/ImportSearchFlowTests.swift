@@ -1,6 +1,7 @@
 import AppKit
 import BaeKit
 import Foundation
+import Observation
 import SwiftUI
 import Testing
 import XCTest
@@ -469,6 +470,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
 }
 
 @MainActor
+@Observable
 private final class MetadataApplicationEditingModel {
     enum Event: Equatable {
         case commit(String)
@@ -514,6 +516,7 @@ private final class MetadataApplicationEditingModel {
 }
 
 @MainActor
+@Observable
 private final class PickRecorder {
     var links: [BridgePressingLink] = []
 
@@ -725,12 +728,12 @@ private final class LibraryStatusFeed: @unchecked Sendable {
     var asks: Int { lock.withLock { askedCount } }
 
     func query() -> LibraryStatusSubscription {
-        lock.withLock { openedCount += 1 }
+        lock.recording { openedCount += 1 }
         return FeedSubscription(feed: self)
     }
 
     fileprivate func setChecks(_ checks: [BridgeLibraryCheck]) -> UInt64 {
-        lock.withLock {
+        lock.recording {
             requests.append(checks)
             return UInt64(requests.count)
         }
@@ -738,7 +741,7 @@ private final class LibraryStatusFeed: @unchecked Sendable {
 
     fileprivate func next() async throws -> BridgeLibraryStatusSnapshot {
         try await withCheckedThrowingContinuation { continuation in
-            let ready: BridgeLibraryStatusSnapshot? = lock.withLock {
+            let ready: BridgeLibraryStatusSnapshot? = lock.recording {
                 askedCount += 1
                 if pending.isEmpty {
                     waiter = continuation
@@ -753,7 +756,7 @@ private final class LibraryStatusFeed: @unchecked Sendable {
     fileprivate func cancel() {
         let waiting:
             CheckedContinuation<BridgeLibraryStatusSnapshot, any Error>? =
-                lock.withLock {
+                lock.recording {
                     wasCancelled = true
                     let waiting = waiter
                     waiter = nil

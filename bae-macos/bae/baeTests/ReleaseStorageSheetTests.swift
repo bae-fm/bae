@@ -62,10 +62,7 @@ struct ReleaseStorageSheetTests {
             try await SnapshotTestSupport.settle(host)
             #expect(uploadBars(in: host) == 0)
             deliver.yield(uploading)
-            try await Wait.until {
-                try await SnapshotTestSupport.settle(host)
-                return uploadBars(in: host) == 1
-            }
+            try await Wait.untilLaidOut(host) { uploadBars(in: host) == 1 }
         }
     }
 

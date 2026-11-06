@@ -39,7 +39,7 @@ final class SessionWriteRecorder: @unchecked Sendable {
     private var writes: [CandidateSessionWrite] = []
 
     func record(_ write: CandidateSessionWrite) {
-        lock.withLock { writes.append(write) }
+        lock.recording { writes.append(write) }
     }
 
     /// The pane moves the store asked core for, for `key`, in order.

@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import Observation
 import Testing
 
 @testable import bae
@@ -388,15 +389,15 @@ final class KeyedDetailFeed<Value: Sendable, Id: Hashable & Sendable>:
 
     func query() -> KeyedDetailQuery<Value, Id> {
         let read = Read()
-        lock.withLock { reads.append(read) }
+        lock.recording { reads.append(read) }
         return KeyedDetailQuery(
-            setId: { [self] id in lock.withLock { ids.append(id) } },
+            setId: { [self] id in lock.recording { ids.append(id) } },
             values: PulledValues(
                 read: { [self] in
                     try await withCheckedThrowingContinuation { continuation in
                         let ready:
                             Result<KeyedDetailDelivery<Value, Id>, any Error>? =
-                                lock.withLock {
+                                lock.recording {
                                     read.asks += 1
                                     if read.pending.isEmpty {
                                         read.waiter = continuation
@@ -408,7 +409,7 @@ final class KeyedDetailFeed<Value: Sendable, Id: Hashable & Sendable>:
                     }
                 },
                 cancel: { [self] in
-                    let waiter = lock.withLock {
+                    let waiter = lock.recording {
                         read.cancelled = true
                         let waiter = read.waiter
                         read.waiter = nil
@@ -460,6 +461,7 @@ final class KeyedDetailFeed<Value: Sendable, Id: Hashable & Sendable>:
 
 /// What a detail reader handed on: each value, and each failure.
 @MainActor
+@Observable
 private final class DetailSink<Value: Sendable> {
     private(set) var values: [(id: String, value: Value?)] = []
     private(set) var errors: [String] = []

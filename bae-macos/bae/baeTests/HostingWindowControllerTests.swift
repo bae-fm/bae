@@ -23,6 +23,7 @@ struct HostingWindowControllerTests {
             )
             owner.controller = controller
             released = controller
+            Wait.announceRelease(of: controller)
         }
         #expect(released != nil)
 

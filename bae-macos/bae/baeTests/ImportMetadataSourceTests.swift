@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Observation
 import SwiftUI
 import Testing
 import XCTest
@@ -12,6 +13,7 @@ private struct ExternalMetadataApplication: Equatable {
 }
 
 @MainActor
+@Observable
 private final class MetadataSourceRecorder {
     var externalApplications: [ExternalMetadataApplication] = []
     var fileTagApplications: [Data] = []
@@ -758,6 +760,7 @@ extension ImportMetadataCardLayoutTests {
 }
 
 @MainActor
+@Observable
 private final class MetadataCardActionRecorder {
     var identifyCount = 0
     var searchCount = 0

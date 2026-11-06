@@ -1,6 +1,7 @@
 #if BAE_OAUTH_PROVIDERS
     import AppKit
     import BaeKit
+    import Observation
     import SwiftUI
     import Testing
 
@@ -9,6 +10,7 @@
     /// A provider call waiting on its continuation until the test lets it
     /// answer.
     @MainActor
+    @Observable
     private final class HeldCall<Value: Sendable> {
         private var waiting: CheckedContinuation<Value, Never>?
 

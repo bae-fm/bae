@@ -89,5 +89,8 @@ struct ImportFolderEntryTests {
 
 private actor Added {
     var paths: [Data] = []
-    func add(_ path: Data) { paths.append(path) }
+    func add(_ path: Data) {
+        paths.append(path)
+        Wait.happened()
+    }
 }

@@ -24,7 +24,7 @@ struct RecoveryCodeRevealTests {
 
         func pass() async {
             await withCheckedContinuation { continuation in
-                lock.withLock {
+                lock.recording {
                     _entered = true
                     if isOpen {
                         continuation.resume()

@@ -56,7 +56,10 @@ struct QueueAdditionTests {
         let appService = makeAppService(handle: handle)
         var addedCounts: [Int] = []
         let subscription = appService.queueItemsAddedPublisherForTesting
-            .sink { addedCounts.append($0) }
+            .sink {
+                addedCounts.append($0)
+                Wait.happened()
+            }
         defer { subscription.cancel() }
         appService.startCommonSubscriptions()
 
@@ -243,6 +246,11 @@ private let playingState = BridgePlaybackValueState.playing(
 @MainActor
 @Suite("AppService media control", .serialized)
 struct AppServiceMediaControlTests {
+    /// The system's Now Playing info was written.
+    private static let written = [
+        Wait.Notice(MediaControlService.didWriteNowPlaying, of: nil)
+    ]
+
     @Test("idle import preview does not clear library Now Playing")
     func idlePreviewKeepsLibraryNowPlaying() async throws {
         let infoCenter = MPNowPlayingInfoCenter.default()
@@ -256,7 +264,7 @@ struct AppServiceMediaControlTests {
         handle.deliverPlayback(playbackValues(state: state))
         handle.deliverTimeline(line(trackId: "track-1", positionMs: 30_000))
 
-        try await Wait.until {
+        try await Wait.until(notices: Self.written) {
             infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
                 == "Track Title"
         }
@@ -285,7 +293,7 @@ struct AppServiceMediaControlTests {
             playbackValues(state: playing(trackId: "track-2"))
         )
 
-        try await Wait.until {
+        try await Wait.until(notices: Self.written) {
             infoCenter.nowPlayingInfo?[
                 MPNowPlayingInfoPropertyElapsedPlaybackTime
             ] as? Double == 30.0
@@ -439,7 +447,7 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     var invitesCancels: Int { invites.cancels }
 
     private func record(_ name: String) {
-        subscribedLock.withLock { subscribedNames.append(name) }
+        subscribedLock.recording { subscribedNames.append(name) }
     }
 
     func deliverSyncActivity(_ activity: BridgeSyncActivity) {
@@ -707,7 +715,7 @@ private final class FakeInvites: InvitesSubscription, @unchecked Sendable {
     }
 
     override func cancel() async throws {
-        cancelLock.withLock { cancelCount += 1 }
+        cancelLock.recording { cancelCount += 1 }
         values.cancel()
     }
 }

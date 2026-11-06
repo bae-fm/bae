@@ -105,7 +105,9 @@ struct ImportListSelectionTests {
             let secondKey = PreviewData.triageRowUnidentified.candidateKey
 
             try ImportListHosting.press(row: 1, in: table)
-            try await Wait.until { table.selectedRowIndexes == [1] }
+            try await Wait.until(notices: [.selection(of: table)]) {
+                table.selectedRowIndexes == [1]
+            }
 
             // A list read from before the click's write: the first row still
             // selected, at the revision the click started from.
@@ -164,7 +166,9 @@ struct ImportListSelectionTests {
                     )
                 ]
             )
-            try await Wait.until { table.selectedRowIndexes == [0, 1] }
+            try await Wait.until(notices: [.selection(of: table)]) {
+                table.selectedRowIndexes == [0, 1]
+            }
         }
     }
 
@@ -223,7 +227,9 @@ struct ImportListSelectionTests {
                     ])
                 ]
             )
-            try await Wait.until { table.selectedRowIndexes == [2] }
+            try await Wait.until(notices: [.selection(of: table)]) {
+                table.selectedRowIndexes == [2]
+            }
         }
     }
 

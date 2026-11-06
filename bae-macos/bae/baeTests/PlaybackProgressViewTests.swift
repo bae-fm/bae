@@ -48,9 +48,7 @@ struct PlaybackProgressViewTests {
                 position(45_000, of: 180_000, progress: 0.25),
                 for: "track"
             )
-            try await Wait.until {
-                labels.map(\.stringValue) == ["0:45", "3:00"]
-            }
+            try await Wait.untilText(of: labels, is: ["0:45", "3:00"])
             #expect(slider.doubleValue == 0.25)
         }
     }
@@ -137,7 +135,7 @@ struct PlaybackProgressViewTests {
             )
 
             positions.remove("track")
-            try await Wait.until { labels.map(\.stringValue) == ["", ""] }
+            try await Wait.untilText(of: labels, is: ["", ""])
             host.rootView = content(showRemaining: false)
             try await SnapshotTestSupport.settle(host)
             #expect(labels.map(\.stringValue) == ["", ""])
@@ -146,9 +144,7 @@ struct PlaybackProgressViewTests {
                 position(120_000, of: 240_000, progress: 0.5),
                 for: "track"
             )
-            try await Wait.until {
-                labels.map(\.stringValue) == ["2:00", "4:00"]
-            }
+            try await Wait.untilText(of: labels, is: ["2:00", "4:00"])
         }
     }
 
@@ -269,9 +265,7 @@ struct PlaybackProgressViewTests {
                     progress: 0.25
                 )
             )
-            try await Wait.until {
-                labels.map(\.stringValue) == ["0:45", "3:00"]
-            }
+            try await Wait.untilText(of: labels, is: ["0:45", "3:00"])
             #expect(slider.doubleValue == 0.25)
 
             preview.set(
@@ -287,7 +281,7 @@ struct PlaybackProgressViewTests {
             #expect(slider.doubleValue == 0.5)
 
             preview.remove()
-            try await Wait.until { labels.map(\.stringValue) == ["", ""] }
+            try await Wait.untilText(of: labels, is: ["", ""])
             #expect(slider.doubleValue == 0)
         }
     }
@@ -337,7 +331,8 @@ struct SeekBarHeldPartsTests {
             #expect(slider.held == gapped)
 
             buffered.remove("track")
-            try await Wait.until { slider.held.isEmpty }
+            bar.buffered.frame()
+            #expect(slider.held.isEmpty)
         }
     }
 }

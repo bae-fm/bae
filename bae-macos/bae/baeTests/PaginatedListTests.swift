@@ -283,6 +283,7 @@ struct PaginatedListSegmentTests {
         var secondStarted = false
         let second = Task {
             secondStarted = true
+            Wait.happened()
             return await list.withPage(containing: 51) { list.idAt(51) }
         }
         // Started on the main actor, the second caller has run up to where
@@ -521,6 +522,7 @@ struct PaginatedListHoldTests {
         let hold = Task {
             await list.holdPage(containing: 50)
             letGo = true
+            Wait.happened()
         }
         // The page's subscription is held at the gate, unanswered.
         await source.waitForPageEntry()

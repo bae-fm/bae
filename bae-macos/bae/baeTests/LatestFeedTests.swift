@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import Observation
 import Testing
 
 /// A stream a test feeds in place of core: it holds what the test sets, and
@@ -20,7 +21,7 @@ private final class QueuedKeyStream: KeyedValueStream, @unchecked Sendable {
 
     /// Hold `value` under `key`, and queue that the key started.
     func start(_ key: Data, holding value: BridgeFastValue) {
-        lock.withLock { held[key] = value }
+        lock.recording { held[key] = value }
         answer(.success([key]))
     }
 
@@ -86,6 +87,7 @@ private final class UploadTotalHandle: AppHandle, @unchecked Sendable {
 
 /// What a fed stream's failed reads handed on.
 @MainActor
+@Observable
 private final class FailedReads {
     var count = 0
 }

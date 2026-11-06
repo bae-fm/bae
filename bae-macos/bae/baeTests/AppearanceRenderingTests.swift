@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Observation
 import SwiftUI
 import Testing
 
@@ -31,9 +32,8 @@ struct AppearanceRenderingTests {
                 for tone in SurfaceTone.allCases {
                     defaults.set(tone.rawValue, forKey: "appearance.tone")
                     // The stored tone reaches the view on a later pass.
-                    try await Wait.until {
-                        host.layoutSubtreeIfNeeded()
-                        return seen.tone == tone && seen.scheme == scheme
+                    try await Wait.untilLaidOut(host) {
+                        seen.tone == tone && seen.scheme == scheme
                     }
                 }
             }
@@ -105,6 +105,7 @@ struct AppearanceRenderingTests {
 
 /// The appearance an open view was last handed.
 @MainActor
+@Observable
 private final class SeenAppearance {
     var tone: SurfaceTone?
     var scheme: ColorScheme?

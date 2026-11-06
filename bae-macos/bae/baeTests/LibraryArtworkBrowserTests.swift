@@ -20,10 +20,14 @@ struct LibraryArtworkBrowserTests {
             layout: .lightbox,
             fetch: {
                 lookups += 1
+                Wait.happened()
                 return .linked(covers: [art])
             },
             onSelect: { saved = $0 },
-            onDone: { dismissed = true },
+            onDone: {
+                dismissed = true
+                Wait.happened()
+            },
             body: { window, host in
                 try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.return, in: host)
@@ -51,10 +55,14 @@ struct LibraryArtworkBrowserTests {
             layout: .grid,
             fetch: {
                 lookups += 1
+                Wait.happened()
                 return .linked(covers: [art])
             },
             onSelect: { saved = $0 },
-            onDone: { dismissed = true },
+            onDone: {
+                dismissed = true
+                Wait.happened()
+            },
             body: { window, host in
                 try await Wait.until { lookups > 0 }
                 try await SnapshotTestSupport.settle(host)
@@ -369,7 +377,10 @@ extension LibraryArtworkBrowserTests {
 
     private actor CoverReads {
         var versions: [String] = []
-        func record(_ version: String) { versions.append(version) }
+        func record(_ version: String) {
+            versions.append(version)
+            Wait.happened()
+        }
     }
 
     private func remote(_ name: String, source: BridgeCatalog)

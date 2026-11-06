@@ -56,14 +56,14 @@ private final class UpcomingFeed: @unchecked Sendable {
     var asks: Int { lock.withLock { askedCount } }
 
     func query() -> QueueUpcomingQuery {
-        lock.withLock { opened += 1 }
+        lock.recording { opened += 1 }
         return QueueUpcomingQuery(
             setWindows: { [self] windows in
-                lock.withLock { requests.append(windows) }
+                lock.recording { requests.append(windows) }
             },
             values: PulledValues(read: { [self] in
                 try await withCheckedThrowingContinuation { continuation in
-                    let ready: BridgeQueueUpcomingSnapshot? = lock.withLock {
+                    let ready: BridgeQueueUpcomingSnapshot? = lock.recording {
                         askedCount += 1
                         if pending.isEmpty {
                             waiter = continuation

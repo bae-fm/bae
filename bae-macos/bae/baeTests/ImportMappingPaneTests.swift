@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Observation
 import SwiftUI
 import Testing
 
@@ -11,6 +12,7 @@ import Testing
 /// has none to replace. What each recorder holds is the call core would have
 /// received, and the next value of the candidate is what would redraw it.
 @MainActor
+@Observable
 private final class Recorder {
     struct BindingCall {
         let sheetFileId: String

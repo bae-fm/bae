@@ -14,10 +14,14 @@ struct CoverPickerTests {
         func read(_ releaseId: String, _ source: BridgeGallerySource) {
             if case .releaseFile(let fileId) = source {
                 reads.append("\(releaseId)/\(fileId)")
+                Wait.happened()
             }
         }
 
-        func select(_ selection: BridgeCoverSelection) { selected = selection }
+        func select(_ selection: BridgeCoverSelection) {
+            selected = selection
+            Wait.happened()
+        }
     }
 
     @MainActor
@@ -44,10 +48,8 @@ struct CoverPickerTests {
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
-            try await Wait.until {
-                try await SnapshotTestSupport.settle(host)
-                return !(await recorder.reads).isEmpty
-            }
+            try await Wait.until { !(await recorder.reads).isEmpty }
+            try await SnapshotTestSupport.settle(host)
             #expect(
                 await recorder.reads.contains("release-test/library-image-id")
             )

@@ -302,6 +302,7 @@ public final class MediaControlService: @unchecked Sendable {
             info[MPNowPlayingInfoPropertyPlaybackRate] = anchor.rate
         }
         infoCenter.nowPlayingInfo = info
+        wroteNowPlaying()
     }
 
     /// Track the live duration so the scrubber is enabled only while a track
@@ -364,6 +365,7 @@ public final class MediaControlService: @unchecked Sendable {
         currentDurationMs = nil
         clearArtworkLoad()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        wroteNowPlaying()
         // Nothing is playing, so disable the transport — leaving next/previous
         // enabled invites taps core ignores — and drop the scrubber (one owner).
         updateCommandAvailability(hasNext: false, hasPrevious: false)
@@ -573,5 +575,24 @@ private final class SendablePlatformImage: @unchecked Sendable {
     let value: PlatformImage
     init(_ value: PlatformImage) {
         self.value = value
+    }
+}
+
+extension MediaControlService {
+    #if DEBUG
+        /// Posted after each write of the system's Now Playing info, for a
+        /// test to wait on.
+        public static let didWriteNowPlaying = Notification.Name(
+            "MediaControlService.didWriteNowPlaying"
+        )
+    #endif
+
+    func wroteNowPlaying() {
+        #if DEBUG
+            NotificationCenter.default.post(
+                name: Self.didWriteNowPlaying,
+                object: nil
+            )
+        #endif
     }
 }

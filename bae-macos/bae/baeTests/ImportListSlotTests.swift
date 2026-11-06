@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import Observation
 import Testing
 import XCTest
 
@@ -88,7 +89,7 @@ private final class AppliedViewResolver: @unchecked Sendable {
 
     func wait(for view: BridgeImportListView) async {
         await withCheckedContinuation { continuation in
-            lock.withLock {
+            lock.recording {
                 requested.append(view)
                 self.continuation = continuation
             }
@@ -495,6 +496,7 @@ final class CandidatePlacementNavigationTests: XCTestCase {
 }
 
 @MainActor
+@Observable
 private final class CandidateRevealOutcome {
     var position: Int?
 }

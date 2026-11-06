@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 import SwiftUI
 import XCTest
 
@@ -6,6 +7,7 @@ import XCTest
 
 /// The popovers the app shows, as each announces itself about to show.
 @MainActor
+@Observable
 private final class ShownPopovers {
     var popovers: [NSPopover] = []
 }

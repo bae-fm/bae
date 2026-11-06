@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 import SwiftUI
 import Testing
 
@@ -63,6 +64,7 @@ private final class ShownLine {
 /// Every size the hosted content was asked for, and how many times it placed
 /// what it shows.
 @MainActor
+@Observable
 private final class ContentSizings {
     var proposals: [ProposedViewSize] = []
     var placements = 0

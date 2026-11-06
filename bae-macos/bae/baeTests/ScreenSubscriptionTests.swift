@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import Observation
 import Testing
 
 @testable import bae
@@ -29,7 +30,7 @@ private final class QueuedReads: PulledSubscription, @unchecked Sendable {
 
     func next() async throws -> Int {
         try await withCheckedThrowingContinuation { continuation in
-            let ready: Result<Int, any Error>? = lock.withLock {
+            let ready: Result<Int, any Error>? = lock.recording {
                 pullCount += 1
                 if queued.isEmpty {
                     waiter = continuation
@@ -42,7 +43,7 @@ private final class QueuedReads: PulledSubscription, @unchecked Sendable {
     }
 
     func cancel() async throws {
-        let waiter = lock.withLock {
+        let waiter = lock.recording {
             cancelCount += 1
             let waiter = self.waiter
             self.waiter = nil
@@ -65,6 +66,7 @@ private final class QueuedReads: PulledSubscription, @unchecked Sendable {
 /// What a screen subscription handed on: each value, and how many failed
 /// reads.
 @MainActor
+@Observable
 private final class Handed {
     var values: [Int] = []
     var errors = 0

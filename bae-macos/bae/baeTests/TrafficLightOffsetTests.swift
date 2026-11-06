@@ -23,7 +23,7 @@ struct TrafficLightOffsetTests {
             offset.close()
         }
 
-        try await Wait.until {
+        try await Wait.untilLaidOut(try #require(offset.contentView)) {
             try Self.buttonOrigins(in: offset)
                 == Self.movedOrigins(Self.buttonOrigins(in: usual))
         }
@@ -41,7 +41,7 @@ struct TrafficLightOffsetTests {
             usual.close()
             offset.close()
         }
-        try await Wait.until {
+        try await Wait.untilLaidOut(try #require(offset.contentView)) {
             try Self.buttonOrigins(in: offset)
                 == Self.movedOrigins(Self.buttonOrigins(in: usual))
         }

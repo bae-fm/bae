@@ -45,9 +45,8 @@ struct AddDeviceSheetTests {
             // The presenter's off-main write lands: the binding resolves to a
             // code, which the sheet shows in place of the spinner.
             holder.result = .success(Self.adding)
-            try await Wait.until {
-                try await SnapshotTestSupport.settle(host)
-                return count(NSProgressIndicator.self, in: host) == 0
+            try await Wait.untilLaidOut(host) {
+                count(NSProgressIndicator.self, in: host) == 0
                     && count(NSScrollView.self, in: host) == 1
             }
         }
@@ -84,9 +83,8 @@ struct AddDeviceSheetTests {
             )
             try await Wait.until { store.addedDevice?.name == "New Phone" }
             // The joined device takes the code's place.
-            try await Wait.until {
-                try await SnapshotTestSupport.settle(host)
-                return count(NSScrollView.self, in: host) == 0
+            try await Wait.untilLaidOut(host) {
+                count(NSScrollView.self, in: host) == 0
             }
         }
         // Closing the sheet ends the watch.
@@ -142,6 +140,7 @@ private final class AddedDeviceHandle: AppHandle, @unchecked Sendable {
         self.watch = watch
         let devices = AddedDevices()
         self.devices = devices
+        Wait.happened()
         return devices
     }
 }
@@ -190,7 +189,7 @@ private final class AddedDevices: AddedDeviceSubscription, @unchecked Sendable {
     }
 
     override func cancel() async throws {
-        let puller = lock.withLock {
+        let puller = lock.recording {
             wasCancelled = true
             let puller = self.puller
             self.puller = nil

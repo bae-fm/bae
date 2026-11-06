@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Observation
 import SwiftUI
 import Testing
 
@@ -56,7 +57,8 @@ struct ComposerDetailPaneVirtualizationTests {
 
     /// Every library image the hosted pane's rows asked the store to load.
     @MainActor
-    private final class CoverRequestRecorder {
+    @Observable
+    final class CoverRequestRecorder {
         private(set) var requested: Set<String> = []
 
         func record(_ imageId: String) {

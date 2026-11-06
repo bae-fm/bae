@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import Observation
 import Testing
 
 @testable import bae
@@ -26,10 +27,10 @@ private final class ArtistSearchFeed: @unchecked Sendable {
     var revision: UInt64 { lock.withLock { UInt64(views.count) } }
 
     func query() -> ArtistSearchQuery {
-        lock.withLock { openedCount += 1 }
+        lock.recording { openedCount += 1 }
         return ArtistSearchQuery(
             setView: { [self] text, windows in
-                lock.withLock {
+                lock.recording {
                     views.append(View(text: text, windows: windows))
                     return UInt64(views.count)
                 }
@@ -160,6 +161,7 @@ struct ArtistSearchResultsTests {
 }
 
 @MainActor
+@Observable
 private final class DeliveredArtists {
     var ids: [[String]] = []
 }

@@ -37,7 +37,9 @@ struct ImportCandidateTablePlaceTests {
                 (100..<105).map(Self.candidateItem)
                     + (0..<80).map(Self.candidateItem)
             )
-            try await Wait.until { Self.topRow(of: table) == 35 }
+            try await Wait.until(notices: [.scroll(of: table)]) {
+                Self.topRow(of: table) == 35
+            }
             #expect(slot.list?.idAt(35) == Self.stableKey(30))
         }
     }
@@ -67,7 +69,9 @@ struct ImportCandidateTablePlaceTests {
             uiStore: uiStore,
             size: Self.size
         ) { table in
-            try await Wait.until { Self.topRow(of: table) == 30 }
+            try await Wait.until(notices: [.scroll(of: table)]) {
+                Self.topRow(of: table) == 30
+            }
             #expect(slot.list?.idAt(30) == Self.stableKey(30))
         }
     }
@@ -371,7 +375,7 @@ private final class MutableImportListPageSource: PageSource,
     ) -> any PageSubscription {
         let id = UUID()
         let sink = Sink(offset: offset, limit: limit, value: onValue)
-        let value = lock.withLock { () -> ([Row], Int) in
+        let value = lock.recording { () -> ([Row], Int) in
             sinks[id] = sink
             return page(for: sink)
         }
@@ -385,7 +389,7 @@ private final class MutableImportListPageSource: PageSource,
     }
 
     func replaceItems(_ items: [Row]) async {
-        let deliveries = lock.withLock { () -> [Delivery] in
+        let deliveries = lock.recording { () -> [Delivery] in
             self.items = items
             return sinks.values.map { sink in
                 let value = page(for: sink)

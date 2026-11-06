@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import Observation
 import Testing
 
 @testable import bae
@@ -18,10 +19,10 @@ private final class StorageFeed: @unchecked Sendable {
     var requested: [StorageBrowseView] { lock.withLock { views } }
 
     func query() -> StorageBrowseQuery {
-        lock.withLock { openedCount += 1 }
+        lock.recording { openedCount += 1 }
         return StorageBrowseQuery(
             setView: { [self] view in
-                lock.withLock { views.append(view) }
+                lock.recording { views.append(view) }
             },
             values: PulledValues(read: { [self] in
                 try await withCheckedThrowingContinuation { continuation in
@@ -262,16 +263,19 @@ struct StorageManagerStoreSelectionTests {
 }
 
 @MainActor
+@Observable
 private final class SelectedRowsBox {
     var values: [[String]] = []
 }
 
 @MainActor
+@Observable
 private final class DeliveredRows {
     var ids: [[String]] = []
 }
 
 @MainActor
+@Observable
 private final class TotalSizeBox {
     var value: UInt64?
 }
