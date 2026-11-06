@@ -2988,7 +2988,10 @@ its control says so in core's words for that transfer.
   last one's did. The row holds the failure's class, and
   for a storage failure coven's reason with what that reason names (the
   access a sign-in lacks, a size and its limit), each in a column of its own,
-  so the line words it as it words the same failure from a pass. A start
+  so the line words it as it words the same failure from a pass. A read
+  whose bytes changed on their way to this device, which coven tells by two
+  reads of one stored object disagreeing, is worded as data damaged on its
+  way here, not in storage. A start
   fails only in the classes coven's sync errors map to, or as a bug; a class
   outside them is refused as a bug rather than kept.
 - **The network coming back.** Each attempt that finds no network backs off

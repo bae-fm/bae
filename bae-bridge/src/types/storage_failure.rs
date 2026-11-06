@@ -102,9 +102,7 @@ pub(crate) fn storage_failure_key(failure: BridgeStorageFailure) -> &'static str
             "core.error.storage.dropbox_app_folder_not_shareable"
         }
         BridgeStorageFailure::Network => "core.error.category.network",
-        // Sentinel: the Corrupted string commit gives a read that changed
-        // on its way to this device a line of its own.
-        BridgeStorageFailure::Corrupted => "core.error.storage.invalid_response",
+        BridgeStorageFailure::Corrupted => "core.error.storage.corrupted",
         BridgeStorageFailure::Authentication => "core.error.category.credentials",
         BridgeStorageFailure::PermissionDenied => "core.error.cloud_setup.permission_denied",
         BridgeStorageFailure::NotFound => "core.error.storage.not_found",
