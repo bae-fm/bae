@@ -47,6 +47,8 @@ bae-records = { workspace = true, features = ["test-utils"] }
 # The playback queue's window cost, measured beside the views', and the
 # playback tables those tests read.
 bae-playback = { workspace = true, features = ["test-utils"] }
+# The download queue at the sizes the lists' window costs are measured at.
+bae-transfers = { workspace = true, features = ["test-utils"] }
 bae-util = { workspace = true, features = ["test-utils"] }
 bae-types = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }

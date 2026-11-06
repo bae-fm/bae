@@ -47,9 +47,10 @@ tokio = { workspace = true, features = ["full", "test-util"] }
 
 [features]
 default = []
-# The entry a test starts without a worker, and the reads a test waits on
-# the whole queue or a release's transition with.
-test-utils = []
+# The entry a test starts without a worker, the reads a test waits on the
+# whole queue or a release's transition with, and the queue at the sizes the
+# lists' window costs are measured at.
+test-utils = ["bae-store/test-utils"]
 
 [lints]
 workspace = true

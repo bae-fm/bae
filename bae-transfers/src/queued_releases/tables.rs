@@ -521,6 +521,30 @@ pub mod worker_moves {
     }
 }
 
+/// The download queue at the sizes the lists' window costs are measured at.
+#[cfg(any(test, feature = "test-utils"))]
+pub mod bulk {
+    use super::*;
+
+    /// Queue the releases `start..end` to download, release `i` at place `i`
+    /// and named by `release_id_sql`, an SQL expression over `i`. No one
+    /// queues a hundred thousand releases within a run, so they go in by one
+    /// set-based statement.
+    pub fn queue_downloads_on(
+        sql: &CovenWrite<'_>,
+        start: u64,
+        end: u64,
+        release_id_sql: &str,
+    ) -> Result<(), DbError> {
+        let rows = bae_store::test_fixtures::window_cost::numbered(start, end);
+        sql.execute_batch(&format!(
+            "{rows} INSERT INTO download_queue (position, release_id, created_at, state) \
+                 SELECT i, {release_id_sql}, i, 'queued' FROM k;"
+        ))?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 #[path = "tables_tests.rs"]
 mod tests;

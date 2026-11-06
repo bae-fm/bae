@@ -17,6 +17,14 @@ pub const LIMIT: u64 = 50;
 /// How many times each window is read; the median is reported.
 pub const RUNS: usize = 15;
 
+/// A recursive `k(i)` counting `start..end`, to put a statement before that
+/// inserts one row for each `i`.
+pub fn numbered(start: u64, end: u64) -> String {
+    format!(
+        "WITH RECURSIVE k(i) AS (SELECT {start} UNION ALL SELECT i + 1 FROM k WHERE i + 1 < {end})"
+    )
+}
+
 /// The median time `read` takes over [`RUNS`] reads, and how many rows its
 /// last read returned.
 pub async fn median<F>(db: &Store, read: F) -> (Duration, usize)

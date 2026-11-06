@@ -5,9 +5,11 @@
 //! serve every list's tests.
 
 use crate::*;
+use bae_records::test_fixtures::library::RecordsFixture;
+use bae_records::test_fixtures::test_records;
 use bae_store::list_windows::OrderKey;
 use bae_store::list_windows::{Keyed, ListOrder, Seek};
-use bae_store::test_fixtures::{exec_batch, temp_db};
+use bae_store::test_fixtures::temp_db;
 
 const ARTIST_A: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a01";
 const ARTIST_B: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a02";
@@ -25,41 +27,32 @@ const ALBUM_VARIOUS: &str = "5a7c2e10-91b3-4f6d-8e2a-1c0b9d8e7f04";
 /// track has none. Each album holds one release.
 async fn credited_library() -> (Store, tempfile::TempDir) {
     let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
-    exec_batch(
-        &db,
-        &format!(
-            "INSERT INTO artists (id, name, name_key, created_at) VALUES \
-                ('{ARTIST_A}', 'Artist A', 'artist a', '2026-01-01T00:00:00Z'), \
-                ('{ARTIST_B}', 'Artist B', 'artist b', '2026-01-01T00:00:00Z'), \
-                ('{ARTIST_C}', 'Artist C', 'artist c', '2026-01-01T00:00:00Z'), \
-                ('{ARTIST_VARIOUS}', 'Various Artists', 'various artists', '2026-01-01T00:00:00Z'); \
-             INSERT INTO albums (id, title, is_compilation, created_at) VALUES \
-                ('{ALBUM_A}', 'Third', 0, '2026-01-01T00:00:00Z'), \
-                ('{ALBUM_AB}', 'First', 0, '2026-01-01T00:00:00Z'), \
-                ('{ALBUM_AC}', 'Second', 0, '2026-01-01T00:00:00Z'), \
-                ('{ALBUM_VARIOUS}', 'Compilation', 1, '2026-01-01T00:00:00Z'); \
-             INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES \
-                ('7b1e0c3a-2d4f-4a6b-9c8d-0e1f2a3b4c01', '{ALBUM_A}', '{ARTIST_A}', 0, '2026-01-01T00:00:00Z'), \
-                ('7b1e0c3a-2d4f-4a6b-9c8d-0e1f2a3b4c02', '{ALBUM_AB}', '{ARTIST_B}', 1, '2026-01-01T00:00:00Z'), \
-                ('7b1e0c3a-2d4f-4a6b-9c8d-0e1f2a3b4c03', '{ALBUM_AB}', '{ARTIST_A}', 0, '2026-01-01T00:00:00Z'), \
-                ('7b1e0c3a-2d4f-4a6b-9c8d-0e1f2a3b4c04', '{ALBUM_AC}', '{ARTIST_A}', 0, '2026-01-01T00:00:00Z'), \
-                ('7b1e0c3a-2d4f-4a6b-9c8d-0e1f2a3b4c05', '{ALBUM_AC}', '{ARTIST_C}', 1, '2026-01-01T00:00:00Z'), \
-                ('7b1e0c3a-2d4f-4a6b-9c8d-0e1f2a3b4c06', '{ALBUM_VARIOUS}', '{ARTIST_VARIOUS}', 0, '2026-01-01T00:00:00Z'); \
-             INSERT INTO releases (id, album_id, created_at, album_order) VALUES \
-                ('9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e01', '{ALBUM_A}', '2026-01-01T00:00:00Z', 0), \
-                ('9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e02', '{ALBUM_AB}', '2026-01-01T00:00:00Z', 0), \
-                ('9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e03', '{ALBUM_AC}', '2026-01-01T00:00:00Z', 0), \
-                ('9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e04', '{ALBUM_VARIOUS}', '2026-01-01T00:00:00Z', 0); \
-             INSERT INTO release_mediums (id, release_id, position, side_count, created_at) VALUES \
-                ('c1a3e5f7-0b2d-4f6a-8c0e-2a4c6e8a0c01', '9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e04', 1, 1, '2026-01-01T00:00:00Z'); \
-             INSERT INTO tracks (id, release_id, position, title, medium_id, side, track_number, duration_ms, created_at) VALUES \
-                ('d4b6f8a0-1c3e-4a5c-9e1a-3c5e7a9c1e01', '9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e04', 0, 'Track Credited', 'c1a3e5f7-0b2d-4f6a-8c0e-2a4c6e8a0c01', 1, 1, 1000, '2026-01-01T00:00:00Z'), \
-                ('d4b6f8a0-1c3e-4a5c-9e1a-3c5e7a9c1e02', '9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e04', 1, 'Track Uncredited', 'c1a3e5f7-0b2d-4f6a-8c0e-2a4c6e8a0c01', 1, 2, 1000, '2026-01-01T00:00:00Z'); \
-             INSERT INTO track_artists (id, track_id, artist_id, position, created_at) VALUES \
-                ('e5c7a9b1-2d4f-4b6d-8f2b-4d6f8b0d2f01', 'd4b6f8a0-1c3e-4a5c-9e1a-3c5e7a9c1e01', '{ARTIST_C}', 0, '2026-01-01T00:00:00Z');"
-        ),
-    )
-    .await;
+    let compilation_release = "9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e04";
+    let track_credited = "d4b6f8a0-1c3e-4a5c-9e1a-3c5e7a9c1e01";
+    RecordsFixture::new()
+        .artist(ARTIST_A, "Artist A")
+        .artist(ARTIST_B, "Artist B")
+        .artist(ARTIST_C, "Artist C")
+        .artist(ARTIST_VARIOUS, "Various Artists")
+        .album(ALBUM_A, "Third", None, &[ARTIST_A])
+        .album(ALBUM_AB, "First", None, &[ARTIST_A, ARTIST_B])
+        .album(ALBUM_AC, "Second", None, &[ARTIST_A, ARTIST_C])
+        .album(ALBUM_VARIOUS, "Compilation", None, &[ARTIST_VARIOUS])
+        .compilation(ALBUM_VARIOUS)
+        .release(ALBUM_A, "9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e01")
+        .release(ALBUM_AB, "9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e02")
+        .release(ALBUM_AC, "9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e03")
+        .release(ALBUM_VARIOUS, compilation_release)
+        .tracks(
+            compilation_release,
+            &[
+                (track_credited, "Track Credited"),
+                ("d4b6f8a0-1c3e-4a5c-9e1a-3c5e7a9c1e02", "Track Uncredited"),
+            ],
+        )
+        .track_credits(track_credited, &[ARTIST_C])
+        .write(&test_records(&db))
+        .await;
     (db, dir)
 }
 
@@ -223,28 +216,20 @@ pub(super) async fn key_at<R: Send + 'static>(
 
 #[tokio::test]
 async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
-    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
-    db.call(|conn| {
-        conn.execute_batch(
-            "
-            INSERT INTO artists (id, name, name_key, created_at) VALUES ('7e7d8df5-8292-4287-80be-7abd24f5a992', 'Artist Name First', 'artist name first', '2026-01-01T00:00:00Z'),
-             ('863911c6-a6b6-40a7-8096-b85eb877f7c7', 'Artist Name Second', 'artist name second', '2026-01-01T00:00:00Z');
-
-            INSERT INTO albums (id, title, year, is_compilation, created_at) VALUES ('f6506bc5-0b41-44de-862f-1668e72c08c6', 'Album Title Empty', 2026, 0, '2026-01-01T00:00:00Z'),
-             ('049faa5b-52d9-4109-832b-f6853740c876', 'Album Title Extra', 2026, 0, '2026-01-01T00:00:00Z');
-
-            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('c9966a2c-61b1-40dd-87ef-118587e57fe7', '049faa5b-52d9-4109-832b-f6853740c876', '863911c6-a6b6-40a7-8096-b85eb877f7c7', 1, '2026-01-01T00:00:00Z'),
-             ('4953a209-c6c7-4b0c-82dd-cc13e47af890', '049faa5b-52d9-4109-832b-f6853740c876', '7e7d8df5-8292-4287-80be-7abd24f5a992', 0, '2026-01-01T00:00:00Z');
-
-            INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('7c3d0881-e6d0-4252-8075-709b2282bcc1', 'f6506bc5-0b41-44de-862f-1668e72c08c6', '2026-01-01T00:00:00Z', 0),
-             ('ba00ebe0-da50-428a-8ceb-2389d9a9f232', '049faa5b-52d9-4109-832b-f6853740c876', '2026-01-01T00:00:00Z', 1);
-            ",
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (first, second) =
+        ("7e7d8df5-8292-4287-80be-7abd24f5a992", "863911c6-a6b6-40a7-8096-b85eb877f7c7");
+    let (empty, extra) =
+        ("f6506bc5-0b41-44de-862f-1668e72c08c6", "049faa5b-52d9-4109-832b-f6853740c876");
+    RecordsFixture::new()
+        .artist(first, "Artist Name First")
+        .artist(second, "Artist Name Second")
+        .album(empty, "Album Title Empty", Some(2026), &[])
+        .album(extra, "Album Title Extra", Some(2026), &[first, second])
+        .release(empty, "7c3d0881-e6d0-4252-8075-709b2282bcc1")
+        .release(extra, "ba00ebe0-da50-428a-8ceb-2389d9a9f232")
+        .write(&test_records(&db))
+        .await;
 
     let album_sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
@@ -332,58 +317,11 @@ async fn every_artist_and_composer_sort_seeks_its_windows_through_an_index() {
 ///     window_cost --ignored --nocapture --test-threads 1
 /// ```
 mod window_cost {
+    use bae_records::test_fixtures::bulk_library;
     use bae_store::test_fixtures::window_cost::*;
 
     use crate::*;
     use std::time::{Duration, Instant};
-
-    /// A library row's id: a UUID naming its table by `kind` and its row by `i`,
-    /// as an SQL expression over `i`.
-    fn id(kind: u32) -> String {
-        format!("printf('%08x-{kind:04x}-4000-8000-%012x', i, i)")
-    }
-
-    /// Rows `start..end` of every table the lists read but the files: an artist,
-    /// an album crediting it with one release, one medium and one track, a work
-    /// the artist composed, a download queued for the release and the track in
-    /// the context lane. Titles and names run in an order of their own,
-    /// unrelated to the ids', and every sort has ties the ids break.
-    fn seed_sql(start: u64, end: u64) -> String {
-        let rows = format!(
-            "WITH RECURSIVE k(i) AS (SELECT {start} UNION ALL SELECT i + 1 FROM k WHERE i + 1 < {end})"
-        );
-        let (artist, album, release, credit, medium, track, work, work_artist) =
-            (id(1), id(2), id(3), id(4), id(5), id(6), id(8), id(9));
-        let created =
-            "strftime('%Y-%m-%dT%H:%M:%SZ', 1600000000 + (i * 7919) % 50000000, 'unixepoch')";
-        format!(
-            "{rows} INSERT INTO artists (id, name, name_key, created_at) \
-                 SELECT {artist}, printf('Artist %06d', (i * 48271) % 1000003), \
-                        printf('artist %06d', (i * 48271) % 1000003), {created} FROM k;
-             {rows} INSERT INTO albums (id, title, year, created_at) \
-                 SELECT {album}, printf('Album %05d', (i * 16807) % 99991), \
-                        CASE WHEN i % 17 = 0 THEN NULL ELSE 1950 + (i * 31) % 70 END, {created} FROM k;
-             {rows} INSERT INTO album_artists (id, album_id, artist_id, position, created_at) \
-                 SELECT {credit}, {album}, {artist}, 0, {created} FROM k;
-             {rows} INSERT INTO releases (id, album_id, album_order, created_at) \
-                 SELECT {release}, {album}, 0, {created} FROM k;
-             {rows} INSERT INTO release_mediums (id, release_id, position, side_count, created_at) \
-                 SELECT {medium}, {release}, 1, 1, {created} FROM k;
-             {rows} INSERT INTO tracks (id, release_id, title, medium_id, side, track_number, \
-                                        duration_ms, created_at) \
-                 SELECT {track}, {release}, printf('Track %06d', i), {medium}, 1, 1, 180000, \
-                        {created} FROM k;
-             {rows} INSERT INTO works (id, title, musicbrainz_work_id, created_at) \
-                 SELECT {work}, printf('Work %06d', i), {work}, {created} FROM k;
-             {rows} INSERT INTO work_artists (id, work_id, artist_id, position, source, created_at) \
-                 SELECT {work_artist}, {work}, {artist}, 0, 'musicbrainz', {created} FROM k;
-             {rows} INSERT INTO download_queue (position, release_id, created_at, state) \
-                 SELECT i, {release}, i, 'queued' FROM k;
-             {rows} INSERT INTO playback_context (entry, position, track_id, unshuffled) \
-                 SELECT i, i, {track}, i FROM k;
-             UPDATE playback_queue SET source_kind = 'library', shuffled = 0, cursor = -1;"
-        )
-    }
 
     async fn grow_to(db: &Store, originals: &std::path::Path, from: u64, to: u64) -> Duration {
         let started = Instant::now();
@@ -618,21 +556,34 @@ mod window_cost {
         }
     }
 
-    /// [`seed_sql`]'s rows `start..end`, then each release's zero to three
-    /// files, staged on this device only from originals under `originals`, one
-    /// original for each size, which every file of that size names.
+    /// Rows `start..end` of every table the lists read: the records'
+    /// [`bulk_library`] rows, a download queued for each release and each track
+    /// in the context lane, then each release's zero to three files, staged on
+    /// this device only from originals under `originals`, one original for
+    /// each size, which every file of that size names.
     pub(crate) async fn seed(db: &Store, originals: &std::path::Path, start: u64, end: u64) {
         let records = bae_records::test_fixtures::test_records(db);
-        let sql = seed_sql(start, end);
-        db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from)).await.unwrap();
+        db.call(move |sql| {
+            bulk_library::insert_on(sql, start, end)?;
+            bae_transfers::tables::bulk::queue_downloads_on(
+                sql,
+                start,
+                end,
+                &bulk_library::release_id_sql(),
+            )?;
+            bae_playback::tables::window_cost::fill_context_lane_on(
+                sql,
+                start,
+                end,
+                &bulk_library::track_id_sql(),
+            )
+        })
+        .await
+        .unwrap();
         std::fs::create_dir_all(originals).unwrap();
         let mut files = Vec::new();
         for i in start..end {
-            let created = chrono::DateTime::from_timestamp(
-                1_600_000_000 + i64::try_from((i * 7919) % 50_000_000).unwrap(),
-                0,
-            )
-            .unwrap();
+            let created = bulk_library::created_at(i);
             for j in 0..i % 4 {
                 let size = 1000 + (i * 7 + j) % 50_000;
                 let original = originals.join(format!("{size}.bin"));
@@ -641,8 +592,8 @@ mod window_cost {
                 }
                 files.push((
                     NewReleaseFile {
-                        id: format!("{i:08x}-0007-4000-8000-{j:012x}"),
-                        release_id: format!("{i:08x}-0003-4000-8000-{i:012x}"),
+                        id: bulk_library::file_id(i, j),
+                        release_id: bulk_library::release_id(i),
                         original_filename: format!("{j:02}.flac"),
                         content_type: bae_util::content_type::ContentType::Flac,
                         source_audio: None,
