@@ -5,6 +5,8 @@ import SwiftUI
 /// files. Scanned candidate paths never enter this picker.
 struct CoverSheetView: View {
     let releaseId: String
+    /// The lightbox's image as it loads, owned by whoever shows the sheet.
+    let lightboxLoad: LightboxImageLoad
     let initialLayout: ArtworkBrowserState.Layout
     let onFindRelease: (() -> Void)?
     let fetchRemoteCovers: () async throws -> BridgeRemoteCoverGallery
@@ -25,6 +27,7 @@ struct CoverSheetView: View {
 
     init(
         releaseId: String,
+        lightboxLoad: LightboxImageLoad,
         initialRelease: ReleaseDetail? = nil,
         initialLayout: ArtworkBrowserState.Layout = .grid,
         onFindRelease: (() -> Void)? = nil,
@@ -34,6 +37,7 @@ struct CoverSheetView: View {
         onDone: @escaping () -> Void
     ) {
         self.releaseId = releaseId
+        self.lightboxLoad = lightboxLoad
         self.initialLayout = initialLayout
         self.onFindRelease = onFindRelease
         self.fetchRemoteCovers = fetchRemoteCovers
@@ -50,6 +54,7 @@ struct CoverSheetView: View {
                     CoverItem(releaseId: releaseId, file: $0)
                 } ?? [],
             selectedCover: nil,
+            lightboxLoad: lightboxLoad,
             currentCover: release?.summary.cover
                 .map {
                     CoverItem(releaseId: releaseId, cover: $0)

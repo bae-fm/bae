@@ -32,12 +32,16 @@
             ),
         ]
 
+        @State
+        private var lightboxLoad = LightboxImageLoad()
+
         var body: some View {
             CoverPickerFrame {
                 CoverGalleryView(
                     remoteItems: .linked(Self.remoteItems),
                     releaseItems: Self.releaseItems,
                     selectedCover: Self.releaseItems[0].selection,
+                    lightboxLoad: lightboxLoad,
                     onRefresh: {},
                     onSelect: { _ in },
                     onDone: {}
@@ -58,6 +62,7 @@
                     remoteItems: remote,
                     releaseItems: releaseItems,
                     selectedCover: releaseItems[0].selection,
+                    lightboxLoad: LightboxImageLoad(),
                     isSaving: isSaving,
                     onRefresh: {},
                     onSelect: { _ in },
@@ -68,11 +73,13 @@
             .background(Theme.background)
         }
 
-        static func lightbox() -> some View {
+        /// The gallery open on its lightbox, its image loading in `load`.
+        static func lightbox(load: LightboxImageLoad) -> some View {
             CoverGalleryView(
                 remoteItems: .linked(remoteItems),
                 releaseItems: releaseItems,
                 selectedCover: remoteItems[1].selection,
+                lightboxLoad: load,
                 initialLayout: .lightbox,
                 onRefresh: {},
                 onSelect: { _ in },
@@ -87,6 +94,7 @@
                     remoteItems: .unlinked,
                     releaseItems: [releaseItems[0]],
                     selectedCover: releaseItems[0].selection,
+                    lightboxLoad: LightboxImageLoad(),
                     onFindRelease: {},
                     onSelect: { _ in },
                     onDone: {}
@@ -145,7 +153,8 @@
     }
 
     #Preview("Artwork lightbox") {
-        CoverPickerPreviewScene.lightbox().frame(width: 1_148, height: 868)
+        CoverPickerPreviewScene.lightbox(load: LightboxImageLoad())
+            .frame(width: 1_148, height: 868)
     }
 
     #Preview("Cover gallery — unlinked release") {

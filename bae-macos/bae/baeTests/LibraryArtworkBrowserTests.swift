@@ -28,10 +28,12 @@ struct LibraryArtworkBrowserTests {
                 dismissed = true
                 Wait.happened()
             },
-            body: { window, host in
-                try await SnapshotTestSupport.settleUnmoved(host)
+            body: { window, host, lightbox in
+                // The release's cover, which the lightbox opens on.
+                try await Wait.until { lightbox.ended() }
+                try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.return, in: host)
-                try await SnapshotTestSupport.settleUnmoved(host)
+                try await SnapshotTestSupport.settle(host)
                 #expect(saved == nil)
                 try HostedInput.keyDown(.escape, in: window)
                 try await Wait.until { dismissed }
@@ -63,11 +65,12 @@ struct LibraryArtworkBrowserTests {
                 dismissed = true
                 Wait.happened()
             },
-            body: { window, host in
+            body: { window, host, lightbox in
                 try await Wait.until { lookups > 0 }
                 try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.space, in: host)
-                try await SnapshotTestSupport.settleUnmoved(host)
+                try await Wait.until { lightbox.ended() }
+                try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyDown(.escape, in: window)
                 try await SnapshotTestSupport.settle(host)
                 #expect(!dismissed)
@@ -174,6 +177,7 @@ struct LibraryArtworkBrowserTests {
                 remoteItems: .unlinked,
                 releaseItems: [],
                 selectedCover: nil,
+                lightboxLoad: LightboxImageLoad(),
                 initialLayout: .lightbox,
                 onFindRelease: {},
                 onSelect: { _ in Issue.record("Empty artwork cannot be saved")
@@ -205,6 +209,7 @@ struct LibraryArtworkBrowserTests {
             return bytes
         })
         let size = NSSize(width: 800, height: 600)
+        let lightbox = LightboxImageLoad()
         func view(_ version: String) throws -> some View {
             let cover = CoverItem(
                 releaseId: "release",
@@ -217,6 +222,7 @@ struct LibraryArtworkBrowserTests {
             let cursor = try #require(Cursor(items: [cover]))
             return LightboxView(
                 cursor: cursor,
+                load: lightbox,
                 onUpdate: { _ in },
                 onDismiss: {}
             )
@@ -301,6 +307,7 @@ extension LibraryArtworkBrowserTests {
                 remoteItems: remoteItems,
                 releaseItems: [],
                 selectedCover: nil,
+                lightboxLoad: LightboxImageLoad(),
                 initialLayout: .lightbox,
                 onSelect: { _ in },
                 onDone: {}
@@ -323,7 +330,9 @@ extension LibraryArtworkBrowserTests {
         fetch: @escaping () async throws -> BridgeRemoteCoverGallery,
         onSelect: @escaping (BridgeCoverSelection) async throws -> Void,
         onDone: @escaping () -> Void,
-        body: (NSWindow, NSHostingView<AnyView>) async throws -> Value
+        body:
+            (NSWindow, NSHostingView<AnyView>, LightboxImageLoad) async throws
+            -> Value
     ) async throws -> Value {
         let size = NSSize(width: 960, height: 700)
         let album = try #require(PreviewData.albumDetails["a-01"])
@@ -345,6 +354,7 @@ extension LibraryArtworkBrowserTests {
             fetchReleaseImageBytes: { _, _ in bytes },
             fetchRemoteImage: { _, _ in bytes }
         )
+        let lightbox = LightboxImageLoad()
         // A read that never answers: the sheet shows the release it was
         // opened with.
         let library = Library(releaseDetail: {
@@ -357,6 +367,7 @@ extension LibraryArtworkBrowserTests {
             AnyView(
                 CoverSheetView(
                     releaseId: release.id,
+                    lightboxLoad: lightbox,
                     initialRelease: release,
                     initialLayout: layout,
                     fetchRemoteCovers: fetch,
@@ -368,7 +379,7 @@ extension LibraryArtworkBrowserTests {
             ),
             size: size
         ) {
-            try await body($0, $1)
+            try await body($0, $1, lightbox)
         }
     }
 

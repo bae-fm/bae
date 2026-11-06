@@ -12,6 +12,8 @@ struct CoverPickerView: View {
     let onDone: () -> Void
     @State
     private var state: CoverPickerState
+    @State
+    private var lightboxLoad = LightboxImageLoad()
 
     init(
         remoteCoverArts: [BridgeRemoteCover],
@@ -46,6 +48,7 @@ struct CoverPickerView: View {
                 return CoverItem(coverChoice: choice, label: file.file.name)
             },
             selectedCover: selectedCover?.selection,
+            lightboxLoad: lightboxLoad,
             isSaving: state.isSaving,
             error: state.error,
             onRefresh: { state.refresh(fetchRemoteCovers) },

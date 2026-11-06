@@ -1,10 +1,8 @@
 import AppKit
 import BaeKit
-import OSLog
 import SwiftUI
 import VisionKit
 
-private let logger = Logger.bae("LightboxView")
 private let navButtonDiameter: CGFloat = 48
 
 /// An image the lightbox shows; the strip and the stage each draw it at their
@@ -31,6 +29,9 @@ struct LightboxItem: LightboxImage {
 
 struct LightboxView<Item: LightboxImage>: View {
     let cursor: Cursor<Item>
+    /// The current item's image as it loads, owned by whoever shows the
+    /// lightbox.
+    let load: LightboxImageLoad
     let onUpdate: (Cursor<Item>) -> Void
     let onDismiss: () -> Void
     var onBrowseAll: (() -> Void)?
@@ -43,29 +44,12 @@ struct LightboxView<Item: LightboxImage>: View {
     private var magnification: CGFloat = 1.0
     @State
     private var magnifyAnchor: UnitPoint = .center
-    @State
-    private var loadedImage: NSImage?
-    @State
-    private var fullResImage: NSImage?
-    /// The current item's decode source, kept so the full-resolution decode on
-    /// zoom never crosses the bridge again.
-    @State
-    private var decodeSource: ImageLoader.Source?
-    @State
-    private var fullResImageUpgradeTask: Task<Void, Never>?
-    @State
-    private var imageAnalysis: ImageAnalysis?
-    @State
-    private var loadFailed = false
     /// How many times the person retried a failed load; part of the load's
     /// identity, so a retry restarts it.
     @State
     private var attempt = 0
     @FocusState
     private var focused: Bool
-
-    @State
-    private var analyzer = ImageAnalyzer()
 
     var body: some View {
         ZStack {
@@ -85,12 +69,17 @@ struct LightboxView<Item: LightboxImage>: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .task(
-                        id: LightboxLoad(
+                        id: LightboxLoadRequest(
                             image: cursor.current.image,
                             attempt: attempt
                         )
                     ) {
-                        await loadCurrentImage(containerSize: geo.size)
+                        await load.load(
+                            cursor.current.image,
+                            from: imageStore,
+                            fitting: max(geo.size.width, geo.size.height),
+                            displayScale: displayScale
+                        )
                     }
                 }
 
@@ -141,99 +130,18 @@ struct LightboxView<Item: LightboxImage>: View {
             return .handled
         }
         .onAppear { focused = true }
+        .onDisappear { load.close() }
         .onChange(of: cursor.current.image) { _, _ in
             magnification = 1.0
-            fullResImageUpgradeTask?.cancel()
-            fullResImageUpgradeTask = nil
         }
-    }
-
-    private func loadCurrentImage(containerSize: CGSize) async {
-        loadedImage = nil
-        fullResImage = nil
-        imageAnalysis = nil
-        loadFailed = false
-        decodeSource = nil
-
-        guard let source = await resolveDecodeSource() else {
-            return
-        }
-        decodeSource = source
-
-        let loaded: NSImage
-        do {
-            loaded = try await ImageLoader.load(
-                source: source,
-                size: .fitTo(
-                    points: max(containerSize.width, containerSize.height)
-                ),
-                displayScale: displayScale
-            )
-        }
-        catch is CancellationError {
-            return
-        }
-        catch {
-            logger.warning(
-                "Failed to decode lightbox image \(cursor.current.image.description): \(error)"
-            )
-            loadFailed = true
-            return
-        }
-
-        loadedImage = loaded
-
-        let configuration = ImageAnalyzer.Configuration([.text])
-        do {
-            let analysis = try await analyzer.analyze(
-                loaded,
-                orientation: .up,
-                configuration: configuration
-            )
-            if !Task.isCancelled {
-                imageAnalysis = analysis
-            }
-        }
-        catch is CancellationError {
-            return
-        }
-        catch {
-            logger.debug("Live Text analysis failed: \(error)")
-        }
-    }
-
-    private func loadFullResImage() async {
-        defer { fullResImageUpgradeTask = nil }
-        guard let source = decodeSource else {
-            return
-        }
-        let loaded: NSImage
-        do {
-            loaded = try await ImageLoader.load(
-                source: source,
-                size: .native,
-                displayScale: displayScale
-            )
-        }
-        catch is CancellationError {
-            return
-        }
-        catch {
-            logger.warning("Failed to load full-res image: \(error)")
-            return
-        }
-        guard !Task.isCancelled else {
-            return
-        }
-        fullResImage = loaded
     }
 
     @ViewBuilder
     private var imageContent: some View {
-        if let nsImage = fullResImage ?? loadedImage {
+        if let nsImage = load.fullResolution ?? load.phase.image {
             loadedImageView(nsImage)
         }
-        else if loadFailed {
+        else if case .failed = load.phase {
             loadFailedView
         }
         else {
@@ -255,7 +163,7 @@ struct LightboxView<Item: LightboxImage>: View {
             .resizable()
             .scaledToFit()
             .overlay {
-                if let analysis = imageAnalysis {
+                if let analysis = load.phase.analysis {
                     LiveTextOverlay(analysis: analysis)
                 }
             }
@@ -265,13 +173,8 @@ struct LightboxView<Item: LightboxImage>: View {
                     .onChanged { value in
                         magnifyAnchor = value.startAnchor
                         magnification = max(value.magnification, 1.0)
-                        if value.magnification > 1.01,
-                            fullResImage == nil,
-                            fullResImageUpgradeTask == nil
-                        {
-                            fullResImageUpgradeTask = Task {
-                                await loadFullResImage()
-                            }
+                        if value.magnification > 1.01 {
+                            load.loadFullResolution(displayScale: displayScale)
                         }
                     }
                     .onEnded { _ in
@@ -392,36 +295,6 @@ extension LightboxView {
 }
 
 extension LightboxView {
-    /// Where the current item's bytes come from, or nil after a failure (logged
-    /// and shown) or a cancellation (not shown).
-    private func resolveDecodeSource() async -> ImageLoader.Source? {
-        do {
-            guard
-                let source = try await imageStore.decodeSource(
-                    for: cursor.current.image,
-                    at: .nativeResolution
-                )
-            else {
-                logger.warning(
-                    "No bytes for lightbox image \(cursor.current.image.description)"
-                )
-                loadFailed = true
-                return nil
-            }
-            return source
-        }
-        catch is CancellationError {
-            return nil
-        }
-        catch {
-            logger.warning(
-                "Failed to fetch lightbox image \(cursor.current.image.description): \(error)"
-            )
-            loadFailed = true
-            return nil
-        }
-    }
-
     /// The failed-load state, with a retry.
     fileprivate var loadFailedView: some View {
         VStack(spacing: ThemeSpace.related) {
@@ -474,8 +347,13 @@ private struct LiveTextOverlay: NSViewRepresentable {
                 image: .localFile(PreviewData.previewArtFile("Back"))
             ),
         ]) {
-            LightboxView(cursor: cursor, onUpdate: { _ in }, onDismiss: {})
-                .environment(ImageStore.stub())
+            LightboxView(
+                cursor: cursor,
+                load: LightboxImageLoad(),
+                onUpdate: { _ in },
+                onDismiss: {}
+            )
+            .environment(ImageStore.stub())
         }
     }
 
@@ -503,6 +381,7 @@ private struct LiveTextOverlay: NSViewRepresentable {
                 .map { cursor in
                     LightboxView(
                         cursor: cursor,
+                        load: LightboxImageLoad(),
                         onUpdate: { _ in },
                         onDismiss: {}
                     )
@@ -514,7 +393,7 @@ private struct LiveTextOverlay: NSViewRepresentable {
 
 // periphery:ignore - a `.task(id:)` identity: compared, never read.
 /// One load of the lightbox's image: which image, and which time of asking.
-private struct LightboxLoad: Equatable {
+private struct LightboxLoadRequest: Equatable {
     let image: ImageContent
     let attempt: Int
 }

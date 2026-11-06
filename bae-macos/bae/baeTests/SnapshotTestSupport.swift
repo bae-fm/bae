@@ -13,10 +13,15 @@ enum SnapshotTestSupport {
     /// geometry reader publishes a width, the views under it re-measure, a
     /// text wraps — and work a view starts on a main-actor task lands a few
     /// turns later and moves a row by a line. Each turn ends when the run
-    /// loop goes idle, so a tree read the same across an idle is done. Work
-    /// off the main thread is waited for by its own event before this. A
-    /// tree that never converges fails the wait rather than being inspected
-    /// mid-layout.
+    /// loop goes idle, so a tree read the same across an idle is done, with
+    /// one limit: an idle can come while main-actor work is still queued, so
+    /// a chain of main-actor steps that moves no frame — a view's task that
+    /// opens a read, which asks a step later — can read the same across an
+    /// idle before it has done anything. A test whose tree waits on such a
+    /// chain, or on work off the main thread, first waits for what it knows
+    /// of it: a store's value, a fixture's unanswered reads, a load's phase.
+    /// A tree that never converges fails the wait rather than being
+    /// inspected mid-layout.
     @MainActor
     static func settle(
         _ host: NSView,
@@ -30,7 +35,9 @@ enum SnapshotTestSupport {
 
     /// [`settle`] for a tree reading fixed queries, which answer off the
     /// main thread: wait until `answers` has answered every read, then for
-    /// the tree to come to rest, and again if resting asked for more.
+    /// the tree to come to rest, and again if resting asked for more. None
+    /// unanswered also holds before anything is asked, so a tree whose
+    /// first read is asked from a view's task waits for its answer first.
     @MainActor
     static func settle(
         _ host: NSView,
@@ -44,21 +51,6 @@ enum SnapshotTestSupport {
             }
             try await settle(host, file: file, line: line)
             if answers.unanswered == 0 { return }
-        }
-    }
-
-    /// [`settle`] for a tree whose work runs off the main thread and tells
-    /// no one when it ends: a lightbox decoding its image and reading its
-    /// text.
-    /// Its tree is read until no frame has moved for `Wait.steadiness`.
-    @MainActor
-    static func settleUnmoved(
-        _ host: NSView,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) async throws {
-        try await Wait.untilUnmoved(file: file, line: line) {
-            frames(host)
         }
     }
 

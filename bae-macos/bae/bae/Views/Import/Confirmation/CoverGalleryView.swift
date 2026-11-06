@@ -6,6 +6,8 @@ struct CoverGalleryView: View {
     let remoteItems: RemoteCoverItems
     let releaseItems: [CoverItem]
     let selectedCover: BridgeCoverSelection?
+    /// The lightbox's image as it loads, owned by whoever shows the gallery.
+    let lightboxLoad: LightboxImageLoad
     var currentCover: CoverItem?
     var initialLayout: ArtworkBrowserState.Layout = .grid
     var isSaving = false
@@ -140,6 +142,7 @@ struct CoverGalleryView: View {
                     if let cursor = browser.cursor {
                         LightboxView(
                             cursor: cursor,
+                            load: lightboxLoad,
                             onUpdate: { browser.cursor = $0 },
                             onDismiss: {
                                 if initialLayout == .lightbox {

@@ -20,6 +20,9 @@ struct ReleaseEditorView: View {
     private var searchSection: BridgeFindOnlineSection?
     @State
     private var showingCoverPicker = false
+    /// The cover picker's lightbox image as it loads.
+    @State
+    private var coverLightboxLoad = LightboxImageLoad()
 
     @Environment(Importer.self)
     private var importer
@@ -148,6 +151,7 @@ struct ReleaseEditorView: View {
     private var coverPicker: some View {
         CoverSheetView(
             releaseId: session.releaseId,
+            lightboxLoad: coverLightboxLoad,
             onFindRelease: {
                 showingCoverPicker = false
                 openSearch(.search)

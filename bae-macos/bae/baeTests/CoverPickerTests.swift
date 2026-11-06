@@ -41,6 +41,7 @@ struct CoverPickerTests {
         try await SnapshotTestSupport.withHostedWindow(
             CoverSheetView(
                 releaseId: release.id,
+                lightboxLoad: LightboxImageLoad(),
                 fetchRemoteCovers: { .unlinked },
                 onSelect: { await recorder.select($0) },
                 onDone: {}

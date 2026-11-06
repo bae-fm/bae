@@ -32,7 +32,9 @@ struct ShotScene {
                 id: "artwork-lightbox",
                 size: CGSize(width: 1_148, height: 868)
             ) {
-                AnyView(CoverPickerPreviewScene.lightbox())
+                AnyView(
+                    CoverPickerPreviewScene.lightbox(load: LightboxImageLoad())
+                )
             },
             ShotScene(
                 id: "cover-picker-wide",

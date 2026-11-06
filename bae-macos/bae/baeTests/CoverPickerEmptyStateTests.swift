@@ -36,6 +36,7 @@ struct CoverPickerEmptyStateTests {
                 remoteItems: remoteItems,
                 releaseItems: [],
                 selectedCover: nil,
+                lightboxLoad: LightboxImageLoad(),
                 onRefresh: {},
                 onFindRelease: {},
                 onSelect: { _ in },

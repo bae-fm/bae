@@ -30,12 +30,18 @@ struct CoverLightboxTests {
         })
         var selected: CoverItem?
         var dismissed = false
+        let lightbox = LightboxImageLoad()
+        // The lightbox opens on the cover selected, or on the booklet's
+        // thumbnail clicked; the right arrow moves it to the image after.
+        let opened = opening == .thumbnail ? booklet : front
+        let moved = opening == .thumbnail ? file : booklet
         let size = NSSize(width: 960, height: 700)
         try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
                 remoteItems: .linked([front, booklet]),
                 releaseItems: [file],
                 selectedCover: front.selection,
+                lightboxLoad: lightbox,
                 onSelect: { selected = $0 },
                 onDone: { dismissed = true }
             )
@@ -50,20 +56,22 @@ struct CoverLightboxTests {
             }
             try await SnapshotTestSupport.settle(host)
             try open(opening, window: window, host: host)
-            // The keys below are for the lightbox, so they wait until it is
-            // laid out.
-            try await SnapshotTestSupport.settleUnmoved(host)
+            // The keys below are for the lightbox, so they wait until it has
+            // its image and is laid out.
+            try await Wait.until { lightbox.ended(loading: opened.image) }
+            try await SnapshotTestSupport.settle(host)
             // Return cannot save through the lightbox into the underlying picker.
             try HostedInput.keyEquivalent(.return, in: host)
             #expect(selected == nil)
             try HostedInput.keyDown(.rightArrow, in: window)
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await Wait.until { lightbox.ended(loading: moved.image) }
+            try await SnapshotTestSupport.settle(host)
             try HostedInput.keyDown(.escape, in: window)
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await SnapshotTestSupport.settle(host)
             #expect(!dismissed)
             #expect(selected == nil)
             try HostedInput.keyEquivalent(.return, in: host)
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await SnapshotTestSupport.settle(host)
             #expect(
                 selected?.id == (opening == .thumbnail ? file.id : booklet.id)
             )
@@ -91,6 +99,7 @@ struct CoverLightboxTests {
                 remoteItems: .linked([front, booklet]),
                 releaseItems: [],
                 selectedCover: front.selection,
+                lightboxLoad: LightboxImageLoad(),
                 onSelect: { selected = $0 },
                 onDone: {}
             )
@@ -159,9 +168,14 @@ struct CoverLightboxTests {
         let cursor = try #require(Cursor(items: [item, remote("Back")]))
         let size = NSSize(width: 800, height: 600)
         try await SnapshotTestSupport.withHostedWindow(
-            LightboxView(cursor: cursor, onUpdate: { _ in }, onDismiss: {})
-                .environment(images)
-                .frame(width: size.width, height: size.height),
+            LightboxView(
+                cursor: cursor,
+                load: LightboxImageLoad(),
+                onUpdate: { _ in },
+                onDismiss: {}
+            )
+            .environment(images)
+            .frame(width: size.width, height: size.height),
             size: size
         ) { _, _ in
             try await Wait.until { await recorder.reads.count >= 3 }

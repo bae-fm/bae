@@ -26,6 +26,9 @@ struct MainAppView: View {
     var session
     @State
     private var searchText: String = ""
+    /// The lightbox's image as it loads.
+    @State
+    private var lightboxLoad = LightboxImageLoad()
     /// The dropdown card's frame in the search overlay's space, fed to the
     /// dismiss monitor so interactions inside the card don't close it.
     @State
@@ -100,6 +103,7 @@ struct MainAppView: View {
             if let cursor = uiStore.lightbox {
                 LightboxView(
                     cursor: cursor,
+                    load: lightboxLoad,
                     onUpdate: { uiStore.lightbox = $0 },
                     onDismiss: { uiStore.lightbox = nil },
                 )

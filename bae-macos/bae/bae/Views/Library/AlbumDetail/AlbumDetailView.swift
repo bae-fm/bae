@@ -275,9 +275,13 @@ extension AlbumDetailView {
     private func presentImages(release: ReleaseDetail) {
         let selectedReleaseId = release.id
         let releaseEditor = releaseEditor
+        // One for as long as the sheet is up: the modal's view is built
+        // again with each update of the window.
+        let lightboxLoad = LightboxImageLoad()
         uiStore.presentModal {
             CoverSheetView(
                 releaseId: selectedReleaseId,
+                lightboxLoad: lightboxLoad,
                 initialRelease: release,
                 initialLayout: .lightbox,
                 onFindRelease: {

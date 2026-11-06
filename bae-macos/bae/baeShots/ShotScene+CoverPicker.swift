@@ -34,6 +34,7 @@ extension ShotScene {
                     remoteItems: remote,
                     releaseItems: [],
                     selectedCover: nil,
+                    lightboxLoad: LightboxImageLoad(),
                     initialLayout: .lightbox,
                     onRefresh: {},
                     onFindRelease: {},
