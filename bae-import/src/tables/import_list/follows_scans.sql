@@ -59,12 +59,6 @@ BEGIN
     SELECT path FROM scan_candidate WHERE folder = OLD.candidate_path;
 END;
 
-CREATE TRIGGER IF NOT EXISTS import_list_on_skip_changed AFTER UPDATE ON skipped_import_candidates
-BEGIN
-    INSERT INTO import_list_replace (key)
-    SELECT path FROM scan_candidate WHERE folder IN (OLD.candidate_path, NEW.candidate_path);
-END;
-
 CREATE TRIGGER IF NOT EXISTS import_list_on_skipped_tags_added AFTER INSERT ON scan_skipped_tags
 BEGIN
     INSERT INTO import_list_replace (key) VALUES (NEW.candidate_path);
@@ -73,10 +67,4 @@ END;
 CREATE TRIGGER IF NOT EXISTS import_list_on_skipped_tags_removed AFTER DELETE ON scan_skipped_tags
 BEGIN
     INSERT INTO import_list_replace (key) VALUES (OLD.candidate_path);
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_list_on_skipped_tags_changed AFTER UPDATE ON scan_skipped_tags
-BEGIN
-    INSERT INTO import_list_replace (key)
-    SELECT OLD.candidate_path UNION SELECT NEW.candidate_path;
 END;

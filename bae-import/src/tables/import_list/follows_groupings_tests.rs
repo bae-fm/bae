@@ -154,26 +154,3 @@ async fn a_grouping_stored_after_its_release_places_it() {
         moves([(lib.release("Discs"), Some(found("Discs").on("skipped")))])
     );
 }
-
-/// A grouping that takes in another folder is dated by that folder.
-#[tokio::test]
-async fn a_member_moved_to_another_folder_redates_its_grouping() {
-    let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}{}",
-        lib.discovered("Disc 1", 100),
-        lib.discovered("Disc 2", 200),
-        lib.grouping("Discs"),
-        lib.member("Discs", 0, "Disc 1"),
-        lib.grouping_release("Discs", "Disc 1")
-    ))
-    .await;
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE release_grouping_member SET member_folder = {} WHERE position = 0;",
-            lib.sql("Disc 2")
-        ))
-        .await,
-        moves([(lib.release("Discs"), Some(found("Discs").dated(200)))])
-    );
-}

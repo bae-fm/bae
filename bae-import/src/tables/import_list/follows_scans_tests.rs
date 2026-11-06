@@ -1,5 +1,5 @@
-//! What the scan stores places: its releases, their folders' dates, the
-//! watched folders' order and the folders the person skipped.
+//! What the scan stores places: its releases, their folders' dates and the
+//! folders the person skipped.
 
 use crate::tables::import_list::placement::tests::*;
 use crate::tables::import_list::tests::*;
@@ -100,13 +100,6 @@ async fn a_folder_that_failed_validation_shows_what_its_tags_call_it() {
         )])
     );
     assert_eq!(
-        lib.moved(&tags("UPDATE scan_skipped_tags SET artist = 'Tagged Artist'")).await,
-        moves([(
-            lib.invalid("Broken"),
-            Some(failed_validation("Broken").shown("Tagged Album", Some("Tagged Artist")))
-        )])
-    );
-    assert_eq!(
         lib.moved(&tags("DELETE FROM scan_skipped_tags")).await,
         moves([(lib.invalid("Broken"), Some(failed_validation("Broken")))])
     );
@@ -174,30 +167,6 @@ async fn unwatching_a_folder_takes_its_rows_out() {
             (lib.release("Artist/Album"), None),
             (lib.group("Artist"), None),
             (lib.release("Single"), None),
-        ])
-    );
-}
-
-/// A skip stored under another folder skips that folder's release instead.
-#[tokio::test]
-async fn a_skip_moved_to_another_folder_moves_both_releases() {
-    let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}INSERT INTO skipped_import_candidates (candidate_path) VALUES ({});",
-        lib.scan("First"),
-        lib.scan("Second"),
-        lib.sql("First")
-    ))
-    .await;
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE skipped_import_candidates SET candidate_path = {};",
-            lib.sql("Second")
-        ))
-        .await,
-        moves([
-            (lib.release("First"), Some(found("First"))),
-            (lib.release("Second"), Some(found("Second").on("skipped"))),
         ])
     );
 }
