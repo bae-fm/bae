@@ -95,6 +95,13 @@ impl PlaybackService {
             Ok(parts) => parts,
             Err(error) => {
                 if let Some((decoder, buffers)) = outgoing_decoder {
+                    // The outgoing track is still the source's current one, and
+                    // the callback is silenced, so its decoder may be parked on
+                    // a full ring that only the sink's cancel frees. The failed
+                    // load stops playback, so the staged next goes with it.
+                    if let Some(output) = &self.output {
+                        output.source.lock().unwrap().cancel();
+                    }
                     cancel_and_join_decoder(&decoder.cancel_token, &buffers, decoder.handle).await;
                 }
                 return Err(error);
