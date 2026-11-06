@@ -12,7 +12,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -68,8 +68,8 @@ class PlaybackTimelinePullsTest {
         handle.playbackTimeline.fail(BridgeException.Diagnostic(BridgeErrorCategory.Internal, "timeline read failed"))
         shadowOf(Looper.getMainLooper()).idle()
 
-        val shown = runBlocking { withTimeoutOrNull(1_000) { session.messages.messages.first() } }
-        assertEquals(DisplayError("failed", "timeline read failed"), shown?.error)
+        val shown = runBlocking { withTimeout(HANG_GUARD) { session.messages.messages.first() } }
+        assertEquals(DisplayError("failed", "timeline read failed"), shown.error)
 
         // Disposing waits on the main thread the player runs on, so it runs there and the looper is let go.
         scope.launch { session.dispose(null) }

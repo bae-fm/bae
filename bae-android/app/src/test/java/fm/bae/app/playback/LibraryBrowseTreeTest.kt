@@ -3,6 +3,8 @@ package fm.bae.app.playback
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import fm.bae.app.BridgeFixtures
+import fm.bae.app.HANG_GUARD
+import fm.bae.app.HANG_GUARD_MS
 import fm.bae.app.MissingMainRelease
 import fm.bae.app.data.Library
 import fm.bae.app.ui.PreviewData
@@ -10,7 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -270,7 +271,12 @@ class LibraryBrowseTreeTest {
             val handle = FakeAppHandle(deliverAlbumPagesImmediately = false)
             val tree = tree(handle)
             val request = async { tree.children(BrowseId.Albums.mediaId, 1, 20) }
-            yield()
+            withTimeout(HANG_GUARD) {
+                handle.firstAlbumBrowse
+                    .await()
+                    .windowsAsked
+                    .await()
+            }
             assertFalse(request.isCompleted)
 
             handle.albumBrowseSubscriptions.single().emitRows(listOf(BridgeFixtures.album(id = "album-fresh")))
@@ -300,12 +306,17 @@ class LibraryBrowseTreeTest {
             val handle = FakeAppHandle(deliverAlbumPagesImmediately = false)
             val tree = tree(handle)
             val request = async { runCatching { tree.children(BrowseId.Albums.mediaId, 0, 20) }.exceptionOrNull() }
-            yield()
+            withTimeout(HANG_GUARD) {
+                handle.firstAlbumBrowse
+                    .await()
+                    .windowsAsked
+                    .await()
+            }
 
             tree.close()
 
             assertTrue(handle.albumBrowseSubscriptions.single().cancelled)
-            assertTrue(withTimeout(1_000) { request.await() } is BrowseUnavailable.LibraryClosed)
+            assertTrue(withTimeout(HANG_GUARD) { request.await() } is BrowseUnavailable.LibraryClosed)
         }
 
     @Test
@@ -325,15 +336,16 @@ class LibraryBrowseTreeTest {
             tree.children(BrowseId.Albums.mediaId, 0, 20)
             val subscription = handle.albumBrowseSubscriptions.single()
             val delivery = async(Dispatchers.IO) { subscription.emitCount(1uL) }
-            assertTrue(entered.await(1, TimeUnit.SECONDS))
+            assertTrue(entered.await(HANG_GUARD_MS, TimeUnit.MILLISECONDS))
 
             val close = async(Dispatchers.IO) { tree.close() }
-            yield()
+            // Closing cancels the subscription, then waits for the notification in flight.
+            withTimeout(HANG_GUARD) { subscription.cancelledSignal.await() }
             assertFalse(close.isCompleted)
 
             release.countDown()
-            withTimeout(1_000) { delivery.await() }
-            withTimeout(1_000) { close.await() }
+            withTimeout(HANG_GUARD) { delivery.await() }
+            withTimeout(HANG_GUARD) { close.await() }
             subscription.emitCount(2uL)
             assertEquals(1, notifications)
         }

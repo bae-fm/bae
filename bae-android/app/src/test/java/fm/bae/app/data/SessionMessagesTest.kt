@@ -6,10 +6,9 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -106,5 +105,8 @@ class SessionMessagesTest {
         assertNull(next())
     }
 
-    private fun next(): SessionMessage? = runBlocking { withTimeoutOrNull(100) { messages.messages.first() } }
+    /** What the session has said so far: its scope runs what is asked at once, so nothing is on its way. */
+    private val inbox = messages.messages.produceIn(CoroutineScope(Dispatchers.Unconfined))
+
+    private fun next(): SessionMessage? = inbox.tryReceive().getOrNull()
 }

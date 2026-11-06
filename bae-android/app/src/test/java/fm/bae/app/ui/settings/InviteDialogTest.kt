@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import fm.bae.app.BugReports
+import fm.bae.app.HANG_GUARD_MS
 import fm.bae.app.LocalBugReports
 import fm.bae.app.openTestLibrary
 import fm.bae.app.playback.FakeAppHandle
@@ -68,7 +69,7 @@ class InviteDialogTest {
         compose.onNodeWithText("Name").performTextInput("Ben")
         compose.onNodeWithText("Email").performTextInput("ben@example.com")
         compose.onNodeWithText("Create invite").performClick()
-        compose.waitUntil { created.isNotEmpty() }
+        compose.waitUntil(HANG_GUARD_MS) { created.isNotEmpty() }
 
         assertEquals(listOf("invite-1"), created)
         assertEquals(listOf("Ben" to BridgeInviteAccess.ProviderAccount("ben@example.com")), handle.asked)

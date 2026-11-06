@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import fm.bae.app.BugReports
+import fm.bae.app.HANG_GUARD
 import fm.bae.app.LocalBugReports
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
@@ -39,7 +40,7 @@ class ScreenScopeTest {
 
         scope.launch { error("a call that can't fail failed") }
         compose.waitForIdle()
-        runBlocking { withTimeout(1_000) { bugs.reported.first() } }
+        runBlocking { withTimeout(HANG_GUARD) { bugs.reported.first() } }
 
         var ranAfter = false
         scope.launch { ranAfter = true }

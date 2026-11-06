@@ -1,5 +1,6 @@
 package fm.bae.app.playback
 
+import fm.bae.app.HANG_GUARD
 import fm.bae.app.data.LiveQueryEvent
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -37,12 +38,12 @@ class LiveProjectionCacheTest {
                     onEvent = { _, _, _ -> },
                 )
             val waiter = async(Dispatchers.IO) { runCatching { cache.value("projection") }.exceptionOrNull() }
-            withTimeout(1_000) { subscribed.await() }
+            withTimeout(HANG_GUARD) { subscribed.await() }
 
             val error = queryFailure()
             cache.cancelAll(error)
 
-            assertEquals(error, withTimeout(1_000) { waiter.await() })
+            assertEquals(error, withTimeout(HANG_GUARD) { waiter.await() })
         }
 
     @Test

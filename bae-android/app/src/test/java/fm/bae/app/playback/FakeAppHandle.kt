@@ -137,6 +137,9 @@ internal open class FakeAppHandle(
     val albumPageWindows = mutableListOf<Pair<ULong, ULong>>()
     val playReleaseCalls = mutableListOf<Triple<String, String?, Boolean>>()
     val albumBrowseSubscriptions = mutableListOf<FakeAlbumBrowseSubscription>()
+
+    /** The first album browse the handle opened, once it has. */
+    val firstAlbumBrowse = CompletableDeferred<FakeAlbumBrowseSubscription>()
     val composerBrowseSubscriptions = mutableListOf<FakeComposerBrowseSubscription>()
     val albumDetailSubscriptions = mutableListOf<FakeAlbumDetailSubscription>()
     val searchSubscriptions = mutableListOf<FakeLibrarySearchSubscription>()
@@ -225,7 +228,10 @@ internal open class FakeAppHandle(
             deliverAlbumPagesImmediately,
             deliverAlbumBaselineImmediately,
             initialAlbumPageError,
-        ).also(albumBrowseSubscriptions::add)
+        ).also {
+            albumBrowseSubscriptions += it
+            firstAlbumBrowse.complete(it)
+        }
 
     override fun subscribeComposerBrowse(sortCriteria: List<BridgeComposerSortCriterion>): ComposerBrowseSubscription =
         FakeComposerBrowseSubscription(composerPages).also(composerBrowseSubscriptions::add)

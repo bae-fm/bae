@@ -15,6 +15,7 @@ import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -253,6 +254,12 @@ internal class FakeAlbumBrowseSubscription(
     private var windows = emptyList<BridgeLibraryPageWindow>()
     private var revision = 0uL
     var cancelled = false
+
+    /** Completes when the subscription is asked for its first windows. */
+    val windowsAsked = CompletableDeferred<Unit>()
+
+    /** Completes when the subscription is cancelled. */
+    val cancelledSignal = CompletableDeferred<Unit>()
     val requestedWindows: List<BridgeLibraryPageWindow>
         get() = windows
 
@@ -265,6 +272,7 @@ internal class FakeAlbumBrowseSubscription(
         this.windows = windows
         revision++
         observedWindows += windows.map { it.offset to it.limit }
+        windowsAsked.complete(Unit)
         if (deliverWindowsImmediately) {
             if (initialError == null) {
                 emitSnapshot(cause = BridgeLiveQueryCause.REQUEST)
@@ -278,6 +286,7 @@ internal class FakeAlbumBrowseSubscription(
 
     override suspend fun cancel() {
         cancelled = true
+        cancelledSignal.complete(Unit)
     }
 
     fun emitRows(

@@ -15,6 +15,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import fm.bae.app.HANG_GUARD_MS
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -119,7 +120,7 @@ class SavedCodesSectionTest {
         compose.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertDoesNotExist()
 
         gate.complete(Unit)
-        compose.waitUntil { host.forgotten == listOf("saved-dropbox") }
+        compose.waitUntil(HANG_GUARD_MS) { host.forgotten == listOf("saved-dropbox") }
     }
 
     @Test

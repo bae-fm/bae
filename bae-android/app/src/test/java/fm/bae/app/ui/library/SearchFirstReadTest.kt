@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.BridgeFixtures
+import fm.bae.app.HANG_GUARD_MS
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.SEARCH_DEBOUNCE_MS
 import fm.bae.app.openTestLibrary
@@ -58,7 +59,7 @@ class SearchFirstReadTest {
         // The search moves to the typed text once typing pauses, and now answers it.
         handle.deliverSearchResultsImmediately = true
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(SEARCH_DEBOUNCE_MS))
-        compose.waitUntil { compose.onAllNodesWithText("Found Artist").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(HANG_GUARD_MS) { compose.onAllNodesWithText("Found Artist").fetchSemanticsNodes().isNotEmpty() }
         compose.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertDoesNotExist()
     }
 }

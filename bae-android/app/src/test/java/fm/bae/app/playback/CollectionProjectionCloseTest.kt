@@ -1,5 +1,6 @@
 package fm.bae.app.playback
 
+import fm.bae.app.HANG_GUARD
 import fm.bae.app.data.CollectionBrowseQuery
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +37,7 @@ class CollectionProjectionCloseTest {
                 runBlocking { projection.close() }
             }
 
-            withTimeout(1_000) { query.stopped.await() }
+            withTimeout(HANG_GUARD) { query.stopped.await() }
         }
 
     private data object Snapshot
