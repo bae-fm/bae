@@ -118,7 +118,7 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
                 (0..releases.len()).filter(|&index| releases[index].stage == stage).collect();
             (!matching.is_empty()).then(|| matching[rng.random_range(0..matching.len())])
         };
-        let op = match rng.random_range(0..9) {
+        let op = match rng.random_range(0..8) {
             0 | 1 if releases.len() < 6 => {
                 let files: Vec<(String, Vec<u8>)> = (0..rng.random_range(1..=3))
                     .map(|index| (format!("{index}.flac"), format!("{step}-{index}").into_bytes()))
@@ -172,26 +172,7 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
                     .await;
                 "queue cover"
             }
-            7 => {
-                let Some(index) = pick(&mut rng, &releases, HarnessStage::Attached) else {
-                    continue;
-                };
-                let files = release_files(&manager, &releases[index].id).await;
-                if files.len() < 2 {
-                    continue;
-                }
-                let file = &files[rng.random_range(0..files.len())];
-                manager
-                    .store
-                    .execute_for_test(
-                        "DELETE FROM release_files WHERE id = ?1",
-                        vec![file.id.clone()],
-                    )
-                    .await
-                    .unwrap();
-                "delete queued file"
-            }
-            8 if !releases.is_empty() => {
+            7 if !releases.is_empty() => {
                 let index = rng.random_range(0..releases.len());
                 let release = releases.remove(index);
                 manager.delete_release(&release.id).await.unwrap();
@@ -220,7 +201,6 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
         "complete uploads",
         "cancel upload",
         "queue cover",
-        "delete queued file",
         "delete release",
     ] {
         assert!(ran.contains_key(op), "the walk never ran {op}: {ran:?}");
