@@ -45,7 +45,7 @@ fn read_group_link(row: &Row<'_>) -> rusqlite::Result<(String, String, String)> 
 /// Every album kept for any of `albums`: one a MusicBrainz release group
 /// among them was found to be, or one of the other catalogs' albums among
 /// them some group was found to be.
-pub(super) fn group_albums_on<S: QueryRows>(
+pub(super) fn group_albums_on<S: coven::SqlRead>(
     sql: &S,
     albums: &[MetadataRef],
 ) -> Result<Vec<GroupAlbum>, DbError> {
@@ -84,7 +84,7 @@ pub(super) fn group_albums_on<S: QueryRows>(
 /// its group, and the albums its records name — on a catalog none of its
 /// records reaches. The release's own catalog is never one: its album is its
 /// group.
-pub(super) fn joined_albums_on<S: QueryRows>(
+pub(super) fn joined_albums_on<S: coven::SqlRead>(
     sql: &S,
     catalog: Catalog,
     source_group_id: Option<&str>,

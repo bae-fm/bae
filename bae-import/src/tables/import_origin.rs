@@ -50,7 +50,7 @@ pub(super) fn record_on(
 /// The release this device imported from the files hashed `content_hash`,
 /// if it imported one.
 pub(super) fn imported_release_on(
-    sql: &impl bae_store::query::QueryOne,
+    sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<Option<String>, DbError> {
     Ok(sql

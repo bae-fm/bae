@@ -8,7 +8,7 @@ use super::*;
 
 /// The album picked for the candidate `content_hash`, if one is.
 pub(crate) fn load_album_pick_on(
-    sql: &impl bae_store::query::QueryOne,
+    sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<Option<String>, DbError> {
     sql.query_row(

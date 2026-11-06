@@ -267,7 +267,7 @@ struct StoredEmbeddedCoverColumns {
 /// distinguish an absent reading from one invalidated by a newer scan or file
 /// decision.
 pub(crate) fn load_candidate_file_tag_snapshot(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
 ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
@@ -298,7 +298,7 @@ pub(crate) fn load_candidate_file_tag_snapshot(
 /// The file-tag reading stored for one scanned candidate, whatever the scan
 /// row around it says. The candidate's own shape is the caller's to check.
 pub(crate) fn load_file_tag_snapshot(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
 ) -> Result<Option<FileTagSnapshot>, DbError> {
@@ -361,7 +361,7 @@ pub(crate) fn load_file_tag_snapshot(
 }
 
 fn load_file_tag_facts(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
 ) -> Result<Vec<FileTagFact>, DbError> {
@@ -386,7 +386,7 @@ fn load_file_tag_facts(
 /// track's tags state, or why they do not parse — by the version of the track
 /// it was read from.
 pub(super) fn load_root_file_tags(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
 ) -> Result<Vec<(FileVersion, TagReading)>, DbError> {
     let rows = sql.query(

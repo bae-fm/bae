@@ -176,7 +176,7 @@ impl StoredCover {
 
 /// The cover the candidate `content_hash` chose, if it chose one.
 pub(super) fn load_cover_on(
-    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
+    sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<Option<CoverSelection>, DbError> {
     sql.query_row(
@@ -197,7 +197,7 @@ pub(super) fn load_cover_on(
 /// selection with the image its write fetched, which its row holds, a
 /// folder's image as it is.
 pub(super) fn load_prepared_cover_on(
-    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
+    sql: &impl coven::SqlRead,
     content_hash: &str,
     selection: Option<CoverSelection>,
 ) -> Result<Option<PreparedCover>, DbError> {

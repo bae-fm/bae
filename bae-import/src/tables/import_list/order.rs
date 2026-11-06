@@ -16,7 +16,6 @@
 
 use super::*;
 use crate::{FolderReleaseDecisionKey, ImportListOrder, TriageTab};
-use bae_store::query::{QueryOne, QueryRows};
 use bae_store::LibraryPageWindow;
 use rusqlite::ToSql;
 
@@ -518,7 +517,7 @@ impl<'a> Items<'a> {
     /// Run `statement` with each parameter it names.
     fn query<T>(
         &self,
-        sql: &(impl QueryOne + QueryRows),
+        sql: &impl coven::SqlRead,
         statement: &str,
         extra: &[(&str, &dyn ToSql)],
         read: impl FnMut(&Row<'_>) -> rusqlite::Result<T>,
@@ -526,7 +525,7 @@ impl<'a> Items<'a> {
         self.bound(statement, extra, |bound| Ok(sql.query(statement, bound, read)?))
     }
 
-    fn count(&self, sql: &(impl QueryOne + QueryRows), part: Part) -> Result<u64, DbError> {
+    fn count(&self, sql: &impl coven::SqlRead, part: Part) -> Result<u64, DbError> {
         let PartSql { with, from, .. } = self.part(part);
         let count = self
             .query(sql, &format!("{with} SELECT count(*) FROM {from}"), &[], |row| {
@@ -565,7 +564,7 @@ impl<'a> Items<'a> {
 
     fn window_of(
         &self,
-        sql: &(impl QueryOne + QueryRows),
+        sql: &impl coven::SqlRead,
         part: Part,
         order: &ListOrder,
         seek: &Seek,
@@ -584,7 +583,7 @@ impl<'a> Items<'a> {
     #[cfg(test)]
     pub(super) fn window_plans(
         &self,
-        sql: &(impl QueryOne + QueryRows),
+        sql: &impl coven::SqlRead,
     ) -> Result<Vec<Vec<Vec<String>>>, DbError> {
         let mut parts = Vec::new();
         for &part in self.parts() {
@@ -611,7 +610,7 @@ impl<'a> Items<'a> {
     /// that part at, clamped to what the list holds.
     fn window_parts(
         &self,
-        sql: &(impl QueryOne + QueryRows),
+        sql: &impl coven::SqlRead,
         window: &LibraryPageWindow,
     ) -> Result<Vec<PartWindow>, DbError> {
         let mut reached = Vec::new();
@@ -648,7 +647,7 @@ impl<'a> Items<'a> {
     /// window's first and last items in each part it reaches.
     pub(super) fn window(
         &self,
-        sql: &(impl QueryOne + QueryRows),
+        sql: &impl coven::SqlRead,
         window: &LibraryPageWindow,
         known: &Places,
     ) -> Result<(Vec<ItemKey>, Places), DbError> {
@@ -713,7 +712,7 @@ impl<'a> Items<'a> {
     /// up to it. Every header the window holds or finds goes into `headers`.
     pub(super) fn header_positions(
         &self,
-        sql: &(impl QueryOne + QueryRows),
+        sql: &impl coven::SqlRead,
         offset: u64,
         keys: &[ItemKey],
         headers: &mut HeaderPlaces,
@@ -765,7 +764,7 @@ impl<'a> Items<'a> {
     /// `None` when no item does.
     pub(super) fn position_where(
         &self,
-        sql: &(impl QueryOne + QueryRows),
+        sql: &impl coven::SqlRead,
         condition: &str,
         extra: &[(&'static str, &dyn ToSql)],
     ) -> Result<Option<u64>, DbError> {
@@ -823,7 +822,7 @@ impl<'a> Items<'a> {
     /// does not show it.
     pub(super) fn position_of(
         &self,
-        sql: &(impl QueryOne + QueryRows),
+        sql: &impl coven::SqlRead,
         key: &crate::CandidateKey,
     ) -> Result<Option<u64>, DbError> {
         self.position_where(sql, "s.item <> 'group' AND s.key = :key", &[(":key", key)])

@@ -216,7 +216,7 @@ pub fn write_release_labels_on(
 }
 
 /// The name and id of each label the release names now, as each shows.
-fn labels_named_on<Q: QueryRows>(
+fn labels_named_on<Q: coven::SqlRead>(
     sql: &Q,
     release_id: &str,
 ) -> Result<Vec<(String, String)>, DbError> {

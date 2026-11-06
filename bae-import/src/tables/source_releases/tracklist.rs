@@ -245,7 +245,7 @@ fn stored_list<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result
         .map_err(|error| DbError::unreadable(what, format!("{json:?}: {error}")))
 }
 
-pub(super) fn load_mediums<S: QueryOne + QueryRows>(
+pub(super) fn load_mediums<S: coven::SqlRead>(
     sql: &S,
     catalog: &str,
     key: &str,
@@ -438,7 +438,7 @@ enum StoredEvent {
 
 /// Every work the release's tracks perform, each with its sub-graph, paired
 /// with the entry that performs it.
-fn load_works<S: QueryOne + QueryRows>(
+fn load_works<S: coven::SqlRead>(
     sql: &S,
     catalog: &str,
     key: &str,

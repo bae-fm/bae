@@ -65,7 +65,7 @@ pub(super) fn require_watched(sql: &CovenWrite<'_>, folder: &Path) -> Result<Pat
 /// folders' key. Watched folders never overlap, so the ancestors of one
 /// folder name at most one.
 pub(super) fn watched_folder_among_on<'a>(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     folders: impl Iterator<Item = &'a Path>,
 ) -> Result<Option<PathBuf>, DbError> {
     Ok(sql
@@ -79,7 +79,7 @@ pub(super) fn watched_folder_among_on<'a>(
 }
 
 /// Every watched root, as stored, in the order they were added.
-pub(super) fn watched_roots_on(sql: &impl QueryRows) -> Result<Vec<PathBuf>, DbError> {
+pub(super) fn watched_roots_on(sql: &impl coven::SqlRead) -> Result<Vec<PathBuf>, DbError> {
     Ok(sql.query("SELECT path FROM watched_import_folders ORDER BY position", [], |row| {
         path_column::get(row, 0)
     })?)
@@ -88,7 +88,7 @@ pub(super) fn watched_roots_on(sql: &impl QueryRows) -> Result<Vec<PathBuf>, DbE
 /// Every watched folder, in the order they were added. A stored root that
 /// is not canonical, or overlaps another, fails the read.
 pub(super) fn watched_folders_on(
-    sql: &impl QueryRows,
+    sql: &impl coven::SqlRead,
 ) -> Result<Vec<crate::WatchedFolder>, DbError> {
     watched_folders_of(watched_roots_on(sql)?)
 }

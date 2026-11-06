@@ -338,7 +338,7 @@ const ALBUM_BESIDE_RELEASE: &str = "SELECT \
 /// `idx_release_records_catalog_album` — and the rows come back in check
 /// order, each check's albums holding its pressing first, then by age.
 pub fn check_releases_in_library_on(
-    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
+    sql: &impl coven::SqlRead,
     checks: &[LibraryCheck],
 ) -> Result<Vec<LibraryStatus>, DbError> {
     let mut statuses = checks

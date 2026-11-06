@@ -123,7 +123,7 @@ impl StoredSidecar {
 
 /// The sidecar stored for `folder`.
 pub(crate) fn load_sidecar(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     folder: &Path,
 ) -> Result<Option<FolderSidecar>, DbError> {
     sql.query_row(
@@ -138,7 +138,7 @@ pub(crate) fn load_sidecar(
 
 /// Every sidecar stored under `watched_folder_path`, in folder order.
 pub(super) fn load_sidecars(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
 ) -> Result<Vec<FolderSidecar>, DbError> {
     sql.query(

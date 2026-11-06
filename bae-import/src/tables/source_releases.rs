@@ -371,7 +371,7 @@ fn artist_at(row: &Row<'_>, first: usize) -> rusqlite::Result<bae_catalogs::cred
 /// The stored release `release` names as its rows hold it — what its own
 /// documents state, which is what a write that names it stores — or `None`
 /// when no row names it.
-fn load_source_release_rows_on<S: QueryOne + QueryRows>(
+fn load_source_release_rows_on<S: coven::SqlRead>(
     sql: &S,
     release: &bae_catalogs::records::LookupRef,
 ) -> Result<Option<SourceRelease>, DbError> {
@@ -661,7 +661,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
 
 /// What the other catalogs say the stored release `release`, or its album,
 /// is, as its rows hold it.
-fn own_records_on<S: QueryRows>(
+fn own_records_on<S: coven::SqlRead>(
     sql: &S,
     release: &bae_catalogs::records::LookupRef,
 ) -> Result<Vec<ReleaseRecord>, DbError> {
@@ -708,7 +708,7 @@ fn with_joined_records(mut own: Vec<ReleaseRecord>, joined: &[MetadataRef]) -> V
 /// later reading stops stating it. The album's own text — its title, credits
 /// and year — lives in documents a statement does not carry, so a joined
 /// album contributes none; the release's own album documents state those.
-fn with_joined_albums_on<S: QueryRows>(
+fn with_joined_albums_on<S: coven::SqlRead>(
     sql: &S,
     stored: &SourceRelease,
 ) -> Result<SourceRelease, DbError> {
@@ -736,7 +736,7 @@ fn with_joined_albums_on<S: QueryRows>(
 
 /// The stored release `release` names, as import surfaces read it, or
 /// `None` when no row names it.
-pub(crate) fn load_source_release_on<S: QueryOne + QueryRows>(
+pub(crate) fn load_source_release_on<S: coven::SqlRead>(
     sql: &S,
     release: &bae_catalogs::records::LookupRef,
 ) -> Result<Option<SourceRelease>, DbError> {
@@ -802,7 +802,7 @@ pub(crate) fn store_named_releases_on(
 /// [`SourceRelease::records`] answers of it — read without the rest of the
 /// release: its tracklist, covers and credits stay unread. `None` when
 /// nothing stored it.
-pub(crate) fn load_release_records_on<S: QueryOne + QueryRows>(
+pub(crate) fn load_release_records_on<S: coven::SqlRead>(
     sql: &S,
     release: &bae_catalogs::records::LookupRef,
 ) -> Result<Option<Vec<ReleaseRecord>>, DbError> {

@@ -139,7 +139,7 @@ impl CandidatePreparationRead {
 }
 
 pub(super) fn load_preparation_on(
-    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
+    sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<Option<CandidatePreparationRead>, DbError> {
     let Some(state) = load_states_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)

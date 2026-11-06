@@ -22,7 +22,7 @@ impl ReleaseDeletion {
         &self.album_id
     }
 
-    pub(super) fn plan_on<Q: QueryOne + QueryRows>(
+    pub(super) fn plan_on<Q: coven::SqlRead>(
         sql: &Q,
         release_id: &str,
     ) -> Result<Option<Self>, DbError> {

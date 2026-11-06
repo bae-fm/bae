@@ -217,7 +217,7 @@ pub struct ArtistCredits<'a> {
 }
 
 impl ArtistCredits<'_> {
-    pub fn resolve_on<Q: QueryOne + QueryRows>(
+    pub fn resolve_on<Q: coven::SqlRead>(
         &self,
         sql: &Q,
     ) -> Result<ResolvedArtists, IdentityWriteError> {
@@ -237,7 +237,7 @@ impl ArtistCredits<'_> {
 /// Within one write a credit first meets the new artists this write already
 /// decided on, then the library, so two credits that are each ambiguous
 /// against the library still become one new artist.
-pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
+pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
     sql: &Q,
     credits: &[DbArtist],
     picked: &HashSet<String>,
@@ -333,10 +333,11 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
 /// them all into an empty library, positionally: which credits of a release
 /// the commit makes one artist.
 #[cfg(any(test, feature = "test-utils"))]
-pub fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
-    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
-    crate::test_fixtures::bare_library::open_bare_library(&conn);
-    resolve_artists_on(&conn, credits, &HashSet::new())
+pub async fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let credits = credits.to_vec();
+    db.read_coven(move |sql| resolve_artists_on(&sql, &credits, &HashSet::new()))
+        .await
         .expect("credits resolve in an empty library")
         .ids
 }
@@ -345,7 +346,7 @@ pub fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
 /// write commits by, applied to the credit alone. What the import pane shows
 /// beside a credit, read inside its live query so an artist another import
 /// commits reads it again.
-pub fn resolve_credit_on<Q: QueryOne + QueryRows>(
+pub fn resolve_credit_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &bae_catalogs::credits::ArtistCredit,
 ) -> Result<crate::CreditResolution, DbError> {
@@ -376,7 +377,7 @@ pub fn resolve_credit_on<Q: QueryOne + QueryRows>(
 
 /// Every distinct credit of `assignments`, resolved as [`resolve_credit_on`]
 /// resolves it, in the order the credits first appear.
-pub(crate) fn resolve_credits_on<'a, Q: QueryOne + QueryRows>(
+pub(crate) fn resolve_credits_on<'a, Q: coven::SqlRead>(
     sql: &Q,
     credits: impl IntoIterator<Item = &'a bae_catalogs::credits::ArtistCredit>,
 ) -> Result<Vec<crate::ResolvedCredit>, DbError> {
@@ -402,7 +403,7 @@ pub fn resolve_credits_with<'a>(
 
 /// The name step for a credit no catalog id placed: the one new artist of
 /// this write it names, else the one library artist, else a new artist.
-fn resolve_by_name_on<Q: QueryOne + QueryRows>(
+fn resolve_by_name_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &DbArtist,
     inserts: &mut Vec<DbArtist>,
@@ -499,7 +500,7 @@ pub(super) struct HeldArtist {
 
 /// The catalog-id step: the library artist the credit's Discogs and
 /// MusicBrainz ids name, as `staged` (this write's own fills) leaves it.
-pub(super) fn catalog_match_on<Q: QueryRows>(
+pub(super) fn catalog_match_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &DbArtist,
     staged: &[(String, DbArtist)],
@@ -548,7 +549,7 @@ pub(super) fn catalog_match_on<Q: QueryRows>(
 /// ids name. Where its two ids disagree, the MusicBrainz id decides: the
 /// Discogs id is dropped from the credit, which then goes by its MusicBrainz
 /// id alone, and nothing is given the Discogs id.
-pub(super) fn settled_catalog_match_on<Q: QueryRows>(
+pub(super) fn settled_catalog_match_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &DbArtist,
     staged: &[(String, DbArtist)],
@@ -573,7 +574,7 @@ pub(super) fn settled_catalog_match_on<Q: QueryRows>(
 /// catalog ids — as this write's own fills leave them — agree with the
 /// credit's. Absorbed artists are left out: a merge shows them as their
 /// survivor, which is matched on its own name.
-pub(super) fn name_matches_on<Q: QueryRows>(
+pub(super) fn name_matches_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &DbArtist,
     staged: &[(String, DbArtist)],
@@ -619,7 +620,7 @@ enum CatalogColumn {
 /// id names (its column may have been filled in or edited since), followed
 /// through any merge to the artist it shows as. More than one is a library
 /// holding one catalog entry on several artists.
-fn artists_by_catalog_id_on<Q: QueryRows>(
+fn artists_by_catalog_id_on<Q: coven::SqlRead>(
     sql: &Q,
     column: CatalogColumn,
     catalog_id: &str,
@@ -646,7 +647,10 @@ fn artists_by_catalog_id_on<Q: QueryRows>(
     .map_err(DbError::from)
 }
 
-fn artist_by_id_on<Q: QueryOne>(sql: &Q, artist_id: &str) -> Result<Option<DbArtist>, DbError> {
+fn artist_by_id_on<Q: coven::SqlRead>(
+    sql: &Q,
+    artist_id: &str,
+) -> Result<Option<DbArtist>, DbError> {
     sql.query_row("SELECT * FROM artists WHERE id = ?", params![artist_id], row_to_artist)
         .optional()
         .map_err(DbError::from)

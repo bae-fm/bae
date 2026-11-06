@@ -13,7 +13,6 @@ use crate::selection::{
 use crate::tables::import_state::{RuntimeFactColumns, RUNTIME_FACT_COLUMNS};
 use crate::triage::{selection_offers, SelectionPart};
 use crate::CandidateKey;
-use bae_store::query::{QueryOne, QueryRows};
 
 /// What the list's selection holds and offers. The offers are worked out
 /// once for each set of selected rows alike in everything their commands are
@@ -68,7 +67,7 @@ pub(super) fn selection(
 
 /// The selected rows of the list, in its order.
 pub(super) fn selected(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     list: ImportListId,
 ) -> Result<SelectedRows, DbError> {
     let row = super::list_row(sql, list)?;

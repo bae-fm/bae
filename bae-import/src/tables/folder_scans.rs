@@ -33,7 +33,6 @@ use super::release_groupings::{store_folder_reading, validate_decision_key_owner
 use super::*;
 use crate::folder_scanner::ScanItem;
 use crate::CandidateKey;
-use bae_store::query::{QueryOne, QueryRows};
 use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
@@ -109,7 +108,7 @@ impl ScanItemWrite {
 /// The generation `watched_folder_path` was last scanned under, `None` for a
 /// root never scanned.
 pub(super) fn root_generation_on(
-    sql: &impl QueryOne,
+    sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
 ) -> Result<Option<i64>, DbError> {
     Ok(sql

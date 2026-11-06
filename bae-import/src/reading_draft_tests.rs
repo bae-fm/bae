@@ -61,20 +61,25 @@ fn reading(album: ArtistCredit, tracks: Vec<TrackValues>) -> ReleaseValues {
 }
 
 /// The library artist each of `rows`' artist rows commits as, by row id.
-fn library_artists(rows: &bae_records::ReleaseRows) -> std::collections::HashMap<String, String> {
-    committed_artists(rows)
+async fn library_artists(
+    rows: &bae_records::ReleaseRows,
+) -> std::collections::HashMap<String, String> {
+    committed_artists(rows).await
 }
 
 /// The library artist the album's first credit commits as.
-fn album_artist(rows: &bae_records::ReleaseRows) -> String {
-    library_artists(rows)[&rows.album_artists[0].artist_id].clone()
+fn album_artist(
+    rows: &bae_records::ReleaseRows,
+    committed: &std::collections::HashMap<String, String>,
+) -> String {
+    committed[&rows.album_artists[0].artist_id].clone()
 }
 
 /// A Discogs artist credited in a role on the release and in another on a
 /// track commits as one artist, apart from the album artist, and as no
 /// album or track artist.
-#[test]
-fn one_artist_credited_in_roles_on_the_release_and_a_track_commits_once() {
+#[tokio::test]
+async fn one_artist_credited_in_roles_on_the_release_and_a_track_commits_once() {
     let composer = artist("Composer Credit A", None, Some("discogs-composer-a"));
     let mut values = reading(
         artist("Artist Name A", None, Some("artist-1")),
@@ -89,14 +94,14 @@ fn one_artist_credited_in_roles_on_the_release_and_a_track_commits_once() {
 
     let rows = committed_rows(values);
 
-    let committed = library_artists(&rows);
+    let committed = library_artists(&rows).await;
     let release_role = &rows.release_artist_roles[0];
     let track_role = &rows.track_artist_roles[0];
     assert_eq!(release_role.source_credit.as_deref(), Some("Composed By"));
     assert_eq!(track_role.source_credit.as_deref(), Some("Written-By"));
     let composer = committed[&release_role.artist_id].clone();
     assert_eq!(committed[&track_role.artist_id], composer);
-    assert_ne!(album_artist(&rows), composer);
+    assert_ne!(album_artist(&rows, &committed), composer);
     assert!(!rows.album_artists.iter().any(|link| committed[&link.artist_id] == composer));
     assert!(!rows.track_artists.iter().any(|link| committed[&link.artist_id] == composer));
 }
@@ -105,8 +110,8 @@ fn one_artist_credited_in_roles_on_the_release_and_a_track_commits_once() {
 /// that artist rather than a duplicate, however it is cased, accented or
 /// spaced: a credit with no id is matched by its name, whether or not the
 /// artist it names bears a source id.
-#[test]
-fn an_id_less_role_credit_commits_as_the_album_artist_of_its_name() {
+#[tokio::test]
+async fn an_id_less_role_credit_commits_as_the_album_artist_of_its_name() {
     for printed in ["ARTIST NAME A", "Ärtist  Name A"] {
         let mut values = reading(
             artist("Artist Name A", None, Some("artist-1")),
@@ -117,17 +122,19 @@ fn an_id_less_role_credit_commits_as_the_album_artist_of_its_name() {
 
         let rows = committed_rows(values);
 
+        let committed = library_artists(&rows).await;
+
         assert_eq!(
-            library_artists(&rows)[&rows.release_artist_roles[0].artist_id],
-            album_artist(&rows),
+            committed[&rows.release_artist_roles[0].artist_id],
+            album_artist(&rows, &committed),
             "{printed:?} commits as the album artist, not a duplicate"
         );
     }
 }
 
 /// Two id-less role credits of one name commit as one artist of that name.
-#[test]
-fn id_less_role_credits_of_one_name_commit_as_one_artist() {
+#[tokio::test]
+async fn id_less_role_credits_of_one_name_commit_as_one_artist() {
     let shared = artist("Shared Credited Name", None, None);
     let mut values = reading(
         artist("Artist Name A", None, Some("artist-1")),
@@ -140,7 +147,7 @@ fn id_less_role_credits_of_one_name_commit_as_one_artist() {
 
     let rows = committed_rows(values);
 
-    let committed = library_artists(&rows);
+    let committed = library_artists(&rows).await;
     let roles: Vec<_> = rows
         .release_artist_roles
         .iter()
@@ -160,8 +167,8 @@ fn id_less_role_credits_of_one_name_commit_as_one_artist() {
 
 /// A track credit naming the album artist's MusicBrainz id commits as the
 /// album artist rather than a duplicate.
-#[test]
-fn a_track_credit_by_the_album_artist_s_id_commits_as_the_album_artist() {
+#[tokio::test]
+async fn a_track_credit_by_the_album_artist_s_id_commits_as_the_album_artist() {
     let values = reading(
         artist("Artist Name A", Some("artist-1"), None),
         vec![track(
@@ -178,10 +185,10 @@ fn a_track_credit_by_the_album_artist_s_id_commits_as_the_album_artist() {
 
     let rows = committed_rows(values);
 
-    let committed = library_artists(&rows);
+    let committed = library_artists(&rows).await;
     assert!(
         rows.track_artists.iter().any(|link| link.track_id == rows.tracks[0].id
-            && committed[&link.artist_id] == album_artist(&rows)),
+            && committed[&link.artist_id] == album_artist(&rows, &committed)),
         "the album artist is not duplicated by a track credit"
     );
 }
@@ -237,8 +244,8 @@ fn a_known_musicbrainz_id_keeps_a_same_name_artist_without_one_apart() {
 }
 
 /// Two MusicBrainz ids of one name commit as two artists.
-#[test]
-fn two_musicbrainz_ids_of_one_name_commit_as_two_artists() {
+#[tokio::test]
+async fn two_musicbrainz_ids_of_one_name_commit_as_two_artists() {
     let values = reading(
         artist("Artist Name B", Some("artist-b"), None),
         vec![track(
@@ -259,7 +266,7 @@ fn two_musicbrainz_ids_of_one_name_commit_as_two_artists() {
 
     let rows = committed_rows(values);
 
-    let committed = library_artists(&rows);
+    let committed = library_artists(&rows).await;
     let named: std::collections::HashSet<_> = rows
         .artists
         .iter()
@@ -307,8 +314,8 @@ fn a_track_s_own_credit_links_to_that_track_only() {
 /// A work and its part, each composed by one artist, commit as two work rows
 /// linked parent to part, the track that performs the work linked to it, and
 /// the composer one artist credited on each work — no album or track artist.
-#[test]
-fn one_composer_of_a_work_and_its_part_commits_as_one_artist() {
+#[tokio::test]
+async fn one_composer_of_a_work_and_its_part_commits_as_one_artist() {
     let composer = artist("Composer Name A", Some("composer-artist-a"), None);
     let work = |id: &str, title: &str| GraphWork {
         musicbrainz_work_id: id.to_string(),
@@ -357,7 +364,7 @@ fn one_composer_of_a_work_and_its_part_commits_as_one_artist() {
         .work_parts
         .iter()
         .any(|part| part.parent_work_id == parent && part.child_work_id == child));
-    let committed = library_artists(&rows);
+    let committed = library_artists(&rows).await;
     let composer = committed[&graph.work_artists[0].artist_id].clone();
     assert_eq!(
         graph.work_artists.iter().filter(|link| committed[&link.artist_id] == composer).count(),

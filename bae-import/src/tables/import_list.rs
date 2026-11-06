@@ -130,10 +130,7 @@ fn pending_filter_of(column: &str) -> Result<PendingFilter, DbError> {
 
 /// The list `id`'s row. A list is read only while it is open, so a missing
 /// row is a list closed under its own read.
-fn list_row(
-    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
-    id: ImportListId,
-) -> Result<ListRow, DbError> {
+fn list_row(sql: &impl coven::SqlRead, id: ImportListId) -> Result<ListRow, DbError> {
     let (
         (tab, pending_filter, filter_text, order),
         (view_revision, selection_revision, opened_at),

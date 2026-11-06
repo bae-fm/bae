@@ -243,7 +243,7 @@ pub(crate) fn load_standings_on(
 /// Where `candidate_key` stands, as its row says, inside a write or outside
 /// one; nothing running when it has no row.
 pub(crate) fn load_standing_on(
-    sql: &impl bae_store::query::QueryOne,
+    sql: &impl coven::SqlRead,
     candidate_key: &CandidateKey,
 ) -> Result<StoredStanding, DbError> {
     let columns = sql

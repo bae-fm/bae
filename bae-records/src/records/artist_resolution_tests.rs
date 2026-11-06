@@ -8,35 +8,39 @@ use super::*;
 use crate::{DbArtist, IdentityWriteError};
 use bae_store::test_fixtures::temp_db;
 use chrono::Utc;
-use rusqlite::Connection;
 use uuid::Uuid;
 
 const NOW: &str = "2026-01-01T00:00:00Z";
 
-fn library() -> Connection {
-    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
-    crate::test_fixtures::bare_library::open_bare_library(&conn);
-    conn
+async fn library() -> (bae_store::Store, tempfile::TempDir) {
+    temp_db(crate::test_fixtures::TEST_SCHEMA).await
 }
 
-fn add_artist(
-    conn: &Connection,
+async fn add_artist(
+    db: &bae_store::Store,
     id: &str,
     name: &str,
     discogs_artist_id: Option<&str>,
     musicbrainz_artist_id: Option<&str>,
 ) {
-    conn.execute(
-        "INSERT INTO artists (id, name, name_key, discogs_artist_id, musicbrainz_artist_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        params![
-            id,
-            name,
-            bae_types::text_match::artist_name_key(name),
-            discogs_artist_id,
-            musicbrainz_artist_id,
-            NOW
-        ],
-    )
+    let (id, name) = (id.to_string(), name.to_string());
+    let (discogs_artist_id, musicbrainz_artist_id) =
+        (discogs_artist_id.map(str::to_string), musicbrainz_artist_id.map(str::to_string));
+    db.call(move |sql| {
+        sql.execute(
+            "INSERT INTO artists (id, name, name_key, discogs_artist_id, musicbrainz_artist_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            params![
+                id,
+                name,
+                bae_types::text_match::artist_name_key(&name),
+                discogs_artist_id,
+                musicbrainz_artist_id,
+                NOW
+            ],
+        )?;
+        Ok(())
+    })
+    .await
     .unwrap();
 }
 
@@ -56,44 +60,46 @@ fn credit(
     }
 }
 
-fn resolve(conn: &Connection, credits: &[DbArtist]) -> ResolvedArtists {
-    resolve_artists_on(conn, credits, &HashSet::new()).unwrap()
+async fn resolve(db: &bae_store::Store, credits: &[DbArtist]) -> ResolvedArtists {
+    let credits = credits.to_vec();
+    db.read_coven(move |sql| resolve_artists_on(&sql, &credits, &HashSet::new())).await.unwrap()
 }
 
-#[test]
-fn a_name_only_credit_is_the_one_library_artist_of_that_name() {
-    let conn = library();
-    add_artist(&conn, "library-artist", "Artist Name", None, None);
+#[tokio::test]
+async fn a_name_only_credit_is_the_one_library_artist_of_that_name() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "library-artist", "Artist Name", None, None).await;
 
-    let resolved = resolve(&conn, &[credit("credit", "Artist Name", None, None)]);
+    let resolved = resolve(&db, &[credit("credit", "Artist Name", None, None)]).await;
 
     assert_eq!(resolved.ids, ["library-artist"]);
     assert!(resolved.inserts.is_empty());
 }
 
-#[test]
-fn a_name_matches_however_it_is_cased_or_accented() {
-    let conn = library();
-    add_artist(&conn, "library-artist", "Artist Name", None, None);
+#[tokio::test]
+async fn a_name_matches_however_it_is_cased_or_accented() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "library-artist", "Artist Name", None, None).await;
 
     let resolved = resolve(
-        &conn,
+        &db,
         &[
             credit("lowercase", "artist name", None, None),
             credit("accented", "Ärtist  Name", None, None),
         ],
-    );
+    )
+    .await;
 
     assert_eq!(resolved.ids, ["library-artist", "library-artist"]);
     assert!(resolved.inserts.is_empty());
 }
 
-#[test]
-fn a_catalog_credit_links_by_name_and_gives_the_artist_its_id() {
-    let conn = library();
-    add_artist(&conn, "library-artist", "Artist Name", None, None);
+#[tokio::test]
+async fn a_catalog_credit_links_by_name_and_gives_the_artist_its_id() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "library-artist", "Artist Name", None, None).await;
 
-    let resolved = resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), None)]);
+    let resolved = resolve(&db, &[credit("credit", "Artist Name", Some("discogs-1"), None)]).await;
 
     assert_eq!(resolved.ids, ["library-artist"], "the artist keeps its id");
     assert!(resolved.inserts.is_empty());
@@ -103,12 +109,12 @@ fn a_catalog_credit_links_by_name_and_gives_the_artist_its_id() {
     assert_eq!(filled.discogs_artist_id.as_deref(), Some("discogs-1"));
 }
 
-#[test]
-fn a_library_artist_holding_another_id_of_the_catalog_is_not_the_credit() {
-    let conn = library();
-    add_artist(&conn, "library-artist", "Artist Name", Some("discogs-x"), None);
+#[tokio::test]
+async fn a_library_artist_holding_another_id_of_the_catalog_is_not_the_credit() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "library-artist", "Artist Name", Some("discogs-x"), None).await;
 
-    let resolved = resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-y"), None)]);
+    let resolved = resolve(&db, &[credit("credit", "Artist Name", Some("discogs-y"), None)]).await;
 
     let identity = crate::identity::artist_id(None, Some("discogs-y")).unwrap();
     assert_eq!(resolved.ids, [identity.as_str()]);
@@ -116,74 +122,80 @@ fn a_library_artist_holding_another_id_of_the_catalog_is_not_the_credit() {
     assert_eq!(resolved.inserts[0].id, identity);
 }
 
-#[test]
-fn two_library_artists_of_one_name_leave_the_credit_new() {
-    let conn = library();
-    add_artist(&conn, "first", "Artist Name", None, None);
-    add_artist(&conn, "second", "Artist Name", Some("discogs-2"), None);
+#[tokio::test]
+async fn two_library_artists_of_one_name_leave_the_credit_new() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "first", "Artist Name", None, None).await;
+    add_artist(&db, "second", "Artist Name", Some("discogs-2"), None).await;
 
-    let resolved = resolve(&conn, &[credit("credit", "Artist Name", None, None)]);
+    let resolved = resolve(&db, &[credit("credit", "Artist Name", None, None)]).await;
 
     assert_eq!(resolved.ids, ["credit"]);
     assert_eq!(resolved.inserts.len(), 1);
 }
 
-#[test]
-fn one_write_makes_one_new_artist_of_two_ambiguous_credits() {
-    let conn = library();
-    add_artist(&conn, "first", "Artist Name", None, None);
-    add_artist(&conn, "second", "Artist Name", None, None);
+#[tokio::test]
+async fn one_write_makes_one_new_artist_of_two_ambiguous_credits() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "first", "Artist Name", None, None).await;
+    add_artist(&db, "second", "Artist Name", None, None).await;
 
     let resolved = resolve(
-        &conn,
+        &db,
         &[
             credit("album-credit", "Artist Name", None, None),
             credit("track-credit", "artist name", None, None),
         ],
-    );
+    )
+    .await;
 
     assert_eq!(resolved.ids, ["album-credit", "album-credit"]);
     assert_eq!(resolved.inserts.len(), 1);
 }
 
-#[test]
-fn a_catalog_id_wins_over_the_name() {
-    let conn = library();
-    add_artist(&conn, "named", "Artist Name", None, None);
-    add_artist(&conn, "catalogued", "Other Name", Some("discogs-1"), None);
+#[tokio::test]
+async fn a_catalog_id_wins_over_the_name() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "named", "Artist Name", None, None).await;
+    add_artist(&db, "catalogued", "Other Name", Some("discogs-1"), None).await;
 
-    let resolved = resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), None)]);
+    let resolved = resolve(&db, &[credit("credit", "Artist Name", Some("discogs-1"), None)]).await;
 
     assert_eq!(resolved.ids, ["catalogued"]);
 }
 
-#[test]
-fn an_absorbed_artist_is_not_matched_by_its_name() {
-    let conn = library();
-    add_artist(&conn, "absorbed", "Artist Name", None, None);
-    add_artist(&conn, "survivor", "Other Name", None, None);
-    conn.execute(
-        "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES ('absorbed', 'survivor', ?)",
-        params![NOW],
-    )
+#[tokio::test]
+async fn an_absorbed_artist_is_not_matched_by_its_name() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "absorbed", "Artist Name", None, None).await;
+    add_artist(&db, "survivor", "Other Name", None, None).await;
+    db.call(|sql| {
+        sql.execute(
+            "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES ('absorbed', 'survivor', ?)",
+            params![NOW],
+        )?;
+        Ok(())
+    })
+    .await
     .unwrap();
 
-    let resolved = resolve(&conn, &[credit("credit", "Artist Name", None, None)]);
+    let resolved = resolve(&db, &[credit("credit", "Artist Name", None, None)]).await;
 
     assert_eq!(resolved.ids, ["credit"]);
 }
 
-#[test]
-fn a_new_catalog_artist_takes_the_catalog_identity() {
-    let conn = library();
+#[tokio::test]
+async fn a_new_catalog_artist_takes_the_catalog_identity() {
+    let (db, _tmp) = library().await;
 
     let resolved = resolve(
-        &conn,
+        &db,
         &[
             credit("album-credit", "Artist Name", None, None),
             credit("track-credit", "Artist Name", Some("discogs-1"), None),
         ],
-    );
+    )
+    .await;
 
     let identity = crate::identity::artist_id(None, Some("discogs-1")).unwrap();
     assert_eq!(resolved.ids, [identity.clone(), identity.clone()]);
@@ -191,13 +203,14 @@ fn a_new_catalog_artist_takes_the_catalog_identity() {
     assert_eq!(resolved.inserts[0].discogs_artist_id.as_deref(), Some("discogs-1"));
 }
 
-#[test]
-fn a_picked_artist_that_is_gone_refuses_the_write() {
-    let conn = library();
+#[tokio::test]
+async fn a_picked_artist_that_is_gone_refuses_the_write() {
+    let (db, _tmp) = library().await;
     let picked = HashSet::from(["gone".to_string()]);
 
-    let error = resolve_artists_on(&conn, &[credit("gone", "Artist Name", None, None)], &picked)
-        .unwrap_err();
+    let credits = [credit("gone", "Artist Name", None, None)];
+    let error =
+        db.read_coven(move |sql| resolve_artists_on(&sql, &credits, &picked)).await.unwrap_err();
 
     assert!(matches!(error, IdentityWriteError::Unresolvable(_)), "{error}");
 }
@@ -205,14 +218,14 @@ fn a_picked_artist_that_is_gone_refuses_the_write() {
 /// A credit whose MusicBrainz id and Discogs id name two library artists is
 /// the MusicBrainz one, and the Discogs id that disagrees is dropped: no
 /// artist is given it.
-#[test]
-fn two_artists_holding_the_credits_two_ids_leave_the_musicbrainz_one() {
-    let conn = library();
-    add_artist(&conn, "by-discogs", "Artist Name", Some("discogs-1"), None);
-    add_artist(&conn, "by-musicbrainz", "Artist Name", None, Some("mb-1"));
+#[tokio::test]
+async fn two_artists_holding_the_credits_two_ids_leave_the_musicbrainz_one() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "by-discogs", "Artist Name", Some("discogs-1"), None).await;
+    add_artist(&db, "by-musicbrainz", "Artist Name", None, Some("mb-1")).await;
 
     let resolved =
-        resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), Some("mb-1"))]);
+        resolve(&db, &[credit("credit", "Artist Name", Some("discogs-1"), Some("mb-1"))]).await;
 
     assert_eq!(resolved.ids, ["by-musicbrainz"]);
     assert!(resolved.inserts.is_empty());
@@ -226,13 +239,13 @@ fn two_artists_holding_the_credits_two_ids_leave_the_musicbrainz_one() {
 
 /// A credit whose MusicBrainz id names an artist holding another Discogs id
 /// is that artist; the credit's Discogs id is dropped.
-#[test]
-fn a_musicbrainz_artist_holding_another_discogs_id_is_the_credit() {
-    let conn = library();
-    add_artist(&conn, "library-artist", "Artist Name", Some("discogs-x"), Some("mb-1"));
+#[tokio::test]
+async fn a_musicbrainz_artist_holding_another_discogs_id_is_the_credit() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "library-artist", "Artist Name", Some("discogs-x"), Some("mb-1")).await;
 
     let resolved =
-        resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), Some("mb-1"))]);
+        resolve(&db, &[credit("credit", "Artist Name", Some("discogs-1"), Some("mb-1"))]).await;
 
     assert_eq!(resolved.ids, ["library-artist"]);
     assert!(resolved.inserts.is_empty());
@@ -245,13 +258,13 @@ fn a_musicbrainz_artist_holding_another_discogs_id_is_the_credit() {
 /// A credit whose Discogs id names an artist holding another MusicBrainz id
 /// goes by its MusicBrainz id: no library artist holds it, so it is a new
 /// artist carrying that id alone.
-#[test]
-fn a_discogs_artist_holding_another_musicbrainz_id_leaves_the_credit_its_musicbrainz_id() {
-    let conn = library();
-    add_artist(&conn, "library-artist", "Artist Name", Some("discogs-1"), Some("mb-2"));
+#[tokio::test]
+async fn a_discogs_artist_holding_another_musicbrainz_id_leaves_the_credit_its_musicbrainz_id() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "library-artist", "Artist Name", Some("discogs-1"), Some("mb-2")).await;
 
     let resolved =
-        resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), Some("mb-1"))]);
+        resolve(&db, &[credit("credit", "Artist Name", Some("discogs-1"), Some("mb-1"))]).await;
 
     let identity = crate::identity::artist_id(Some("mb-1"), None).unwrap();
     assert_eq!(resolved.ids, [identity.as_str()]);
@@ -263,13 +276,13 @@ fn a_discogs_artist_holding_another_musicbrainz_id_leaves_the_credit_its_musicbr
 /// One catalog id is one artist: two library artists holding it are merged
 /// into the smaller id, which the credit names and which takes the other's
 /// ids where it has none.
-#[test]
-fn a_catalog_id_two_library_artists_hold_merges_them() {
-    let conn = library();
-    add_artist(&conn, "first", "Artist Name", Some("discogs-1"), None);
-    add_artist(&conn, "second", "Artist Name", Some("discogs-1"), Some("mb-2"));
+#[tokio::test]
+async fn a_catalog_id_two_library_artists_hold_merges_them() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "first", "Artist Name", Some("discogs-1"), None).await;
+    add_artist(&db, "second", "Artist Name", Some("discogs-1"), Some("mb-2")).await;
 
-    let resolved = resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), None)]);
+    let resolved = resolve(&db, &[credit("credit", "Artist Name", Some("discogs-1"), None)]).await;
 
     assert_eq!(resolved.ids, ["first"]);
     let merged: Vec<(&str, &str)> = resolved
@@ -284,14 +297,14 @@ fn a_catalog_id_two_library_artists_hold_merges_them() {
 
 /// An id on the row it derives and on another artist that was given it is
 /// one artist too: the smaller id survives.
-#[test]
-fn a_catalog_id_on_its_own_row_and_on_another_artist_merges_them() {
-    let conn = library();
+#[tokio::test]
+async fn a_catalog_id_on_its_own_row_and_on_another_artist_merges_them() {
+    let (db, _tmp) = library().await;
     let identity = crate::identity::artist_id(Some("mb-1"), None).unwrap();
-    add_artist(&conn, &identity, "Artist Name", None, None);
-    add_artist(&conn, "filled-in", "Artist Name", None, Some("mb-1"));
+    add_artist(&db, &identity, "Artist Name", None, None).await;
+    add_artist(&db, "filled-in", "Artist Name", None, Some("mb-1")).await;
 
-    let resolved = resolve(&conn, &[credit("credit", "Artist Name", None, Some("mb-1"))]);
+    let resolved = resolve(&db, &[credit("credit", "Artist Name", None, Some("mb-1"))]).await;
 
     let survivor = identity.as_str().min("filled-in");
     assert_eq!(resolved.ids, [survivor]);
@@ -299,82 +312,80 @@ fn a_catalog_id_on_its_own_row_and_on_another_artist_merges_them() {
     assert_eq!(resolved.merges[0].survivor, survivor);
 }
 
-fn read_credit(
-    conn: &Connection,
+async fn read_credit(
+    db: &bae_store::Store,
     name: &str,
     discogs_artist_id: Option<&str>,
 ) -> crate::CreditResolution {
-    resolve_credit_on(
-        conn,
-        &bae_catalogs::credits::ArtistCredit {
-            credited_as: None,
-            name: name.to_string(),
-            sort_name: None,
-            musicbrainz_artist_id: None,
-            discogs_artist_id: discogs_artist_id.map(str::to_string),
-        },
-    )
-    .unwrap()
+    let credit = bae_catalogs::credits::ArtistCredit {
+        credited_as: None,
+        name: name.to_string(),
+        sort_name: None,
+        musicbrainz_artist_id: None,
+        discogs_artist_id: discogs_artist_id.map(str::to_string),
+    };
+    db.read(move |sql| resolve_credit_on(&sql, &credit)).await.unwrap()
 }
 
 fn artist_ids(artists: &[crate::ExistingArtist]) -> Vec<&str> {
     artists.iter().map(|artist| artist.artist_id.as_str()).collect()
 }
 
-#[test]
-fn a_read_credit_is_new_until_the_library_holds_its_artist() {
-    let conn = library();
-    assert_eq!(read_credit(&conn, "Artist Name", None), crate::CreditResolution::New);
+#[tokio::test]
+async fn a_read_credit_is_new_until_the_library_holds_its_artist() {
+    let (db, _tmp) = library().await;
+    assert_eq!(read_credit(&db, "Artist Name", None).await, crate::CreditResolution::New);
 
-    add_artist(&conn, "library-artist", "Ärtist Name", None, None);
+    add_artist(&db, "library-artist", "Ärtist Name", None, None).await;
 
-    let crate::CreditResolution::Library { artist } = read_credit(&conn, "artist name", None)
+    let crate::CreditResolution::Library { artist } = read_credit(&db, "artist name", None).await
     else {
         panic!("the folded name names the library artist");
     };
     assert_eq!(artist.artist_id, "library-artist");
 }
 
-#[test]
-fn a_read_credit_shared_by_two_library_artists_is_ambiguous() {
-    let conn = library();
-    add_artist(&conn, "first", "Artist Name", None, None);
-    add_artist(&conn, "second", "Artist Name", None, Some("mb-2"));
+#[tokio::test]
+async fn a_read_credit_shared_by_two_library_artists_is_ambiguous() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "first", "Artist Name", None, None).await;
+    add_artist(&db, "second", "Artist Name", None, Some("mb-2")).await;
 
-    let crate::CreditResolution::Ambiguous { artists } = read_credit(&conn, "Artist Name", None)
+    let crate::CreditResolution::Ambiguous { artists } =
+        read_credit(&db, "Artist Name", None).await
     else {
         panic!("two artists share the name");
     };
     assert_eq!(artist_ids(&artists), ["first", "second"]);
 }
 
-#[test]
-fn a_read_credit_with_another_catalog_id_than_the_named_artist_is_new() {
-    let conn = library();
-    add_artist(&conn, "library-artist", "Artist Name", Some("discogs-x"), None);
+#[tokio::test]
+async fn a_read_credit_with_another_catalog_id_than_the_named_artist_is_new() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "library-artist", "Artist Name", Some("discogs-x"), None).await;
 
-    assert_eq!(read_credit(&conn, "Artist Name", Some("discogs-y")), crate::CreditResolution::New);
+    assert_eq!(
+        read_credit(&db, "Artist Name", Some("discogs-y")).await,
+        crate::CreditResolution::New
+    );
 }
 
 /// A read of a credit whose two ids name two artists names the MusicBrainz
 /// one, as the write does.
-#[test]
-fn a_read_credit_whose_ids_name_two_artists_is_the_musicbrainz_one() {
-    let conn = library();
-    add_artist(&conn, "by-discogs", "Artist One", Some("discogs-1"), None);
-    add_artist(&conn, "by-musicbrainz", "Artist Two", None, Some("mb-1"));
+#[tokio::test]
+async fn a_read_credit_whose_ids_name_two_artists_is_the_musicbrainz_one() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "by-discogs", "Artist One", Some("discogs-1"), None).await;
+    add_artist(&db, "by-musicbrainz", "Artist Two", None, Some("mb-1")).await;
 
-    let resolution = resolve_credit_on(
-        &conn,
-        &bae_catalogs::credits::ArtistCredit {
-            credited_as: None,
-            name: "Artist Name".to_string(),
-            sort_name: None,
-            musicbrainz_artist_id: Some("mb-1".to_string()),
-            discogs_artist_id: Some("discogs-1".to_string()),
-        },
-    )
-    .unwrap();
+    let credit = bae_catalogs::credits::ArtistCredit {
+        credited_as: None,
+        name: "Artist Name".to_string(),
+        sort_name: None,
+        musicbrainz_artist_id: Some("mb-1".to_string()),
+        discogs_artist_id: Some("discogs-1".to_string()),
+    };
+    let resolution = db.read(move |sql| resolve_credit_on(&sql, &credit)).await.unwrap();
 
     let crate::CreditResolution::Library { artist } = resolution else {
         panic!("the MusicBrainz id names the artist, got {resolution:?}");
@@ -384,14 +395,14 @@ fn a_read_credit_whose_ids_name_two_artists_is_the_musicbrainz_one() {
 
 /// A read of a credit whose id two library artists hold names the one the
 /// next write merges them into.
-#[test]
-fn a_read_credit_whose_id_two_artists_hold_is_the_smaller_one() {
-    let conn = library();
-    add_artist(&conn, "first", "Artist One", Some("discogs-1"), None);
-    add_artist(&conn, "second", "Artist Two", Some("discogs-1"), None);
+#[tokio::test]
+async fn a_read_credit_whose_id_two_artists_hold_is_the_smaller_one() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "first", "Artist One", Some("discogs-1"), None).await;
+    add_artist(&db, "second", "Artist Two", Some("discogs-1"), None).await;
 
     let crate::CreditResolution::Library { artist } =
-        read_credit(&conn, "Artist Name", Some("discogs-1"))
+        read_credit(&db, "Artist Name", Some("discogs-1")).await
     else {
         panic!("one id names one artist");
     };

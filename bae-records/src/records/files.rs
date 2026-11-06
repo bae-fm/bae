@@ -167,7 +167,7 @@ pub fn artist_image_version_sql(artist_id: &str) -> String {
 }
 
 /// The version of one image row, or `None` when there is no such row.
-pub(super) fn image_version_on<Q: QueryOne>(
+pub(super) fn image_version_on<Q: coven::SqlRead>(
     sql: &Q,
     image_type: &LibraryImageType,
     id: &str,
@@ -186,7 +186,7 @@ pub(super) fn image_version_on<Q: QueryOne>(
 }
 
 /// The coven file one image row names, or `None` when there is no such row.
-pub fn image_file_on<Q: QueryOne>(
+pub fn image_file_on<Q: coven::SqlRead>(
     sql: &Q,
     image_type: &LibraryImageType,
     id: &str,

@@ -66,7 +66,7 @@ pub(crate) enum GroupingFacts {
 }
 
 pub(super) fn load_candidate_on(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     key: &CandidateKey,
 ) -> Result<Option<StoredReleaseCandidate>, DbError> {
     let Some((root, stored)) = folder_scans::load_item_by_key(sql, key, RowSources::Any)? else {
@@ -131,7 +131,7 @@ pub(super) fn forget_at_or_below(
 }
 
 pub(super) fn skipped_on(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     candidate: &FolderCandidate,
 ) -> Result<bool, DbError> {
     match &candidate.grouping {
@@ -401,7 +401,7 @@ pub(super) const PARENT_FILES_READER: &str =
 /// a folder with a sidecar, only the one already reading it may. Files still
 /// downloading are read by no release until the download ends.
 fn parent_files_on(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     key: &CandidateKey,
     folder: Option<&Path>,
     reading: bool,
@@ -487,7 +487,7 @@ fn blocked(
 /// The folder a grouping is anchored at, addressed below the watched folder
 /// covering it.
 fn anchored_at(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     anchor: &Path,
 ) -> Result<FolderReleaseDecisionKey, DbError> {
     let root = super::watched_folders::watched_folder_among_on(sql, anchor.ancestors())?
@@ -502,7 +502,7 @@ fn anchored_at(
 
 /// Why grouping `key`'s release cannot be worked on, when something says so.
 pub(super) fn load_block_on(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     key: &CandidateKey,
 ) -> Result<Option<GroupingBlock>, DbError> {
     let columns: Option<(Option<String>, Option<String>, Option<String>)> = sql

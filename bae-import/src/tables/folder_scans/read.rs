@@ -90,7 +90,7 @@ pub(crate) struct StoredScanItem {
 /// An entry stamped with a generation the root never reached is a store
 /// nothing here wrote, so the assembly refuses it.
 pub(super) fn load_items(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
     sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
@@ -117,7 +117,7 @@ pub(super) fn load_items(
 /// The entry at `entry_key`, and the root it is under. Watched roots never
 /// overlap and keys are absolute paths, so at most one root holds it.
 pub(crate) fn load_item_by_key(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     entry_key: &CandidateKey,
     sources: RowSources,
 ) -> Result<Option<(PathBuf, StoredScanItem)>, DbError> {
@@ -125,7 +125,7 @@ pub(crate) fn load_item_by_key(
 }
 
 pub(crate) fn load_item_by_key_rows(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     entry_key: &CandidateKey,
     sources: RowSources,
 ) -> Result<Option<FinishRead<(PathBuf, StoredScanItem)>>, DbError> {
@@ -167,7 +167,7 @@ pub(crate) fn load_item_by_key_rows(
 /// Whether a valid or invalid entry, rather than a tentative one or none, is
 /// stored at `path`.
 pub(crate) fn settled_entry_is_stored(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
     path: &CandidateKey,
 ) -> Result<bool, DbError> {
@@ -200,7 +200,7 @@ pub(crate) enum Readers<'a> {
 /// which SQLite picks from its statistics on `scan_candidate`. Coven gathers
 /// them while a scan fills the table, once it holds 100 rows.
 pub(crate) fn entries_reading(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
     coverage: &Coverage,
     readers: Readers<'_>,
@@ -286,7 +286,7 @@ pub(crate) fn require_current_candidate(
 
 /// The version of one of the candidate's files that its scan read.
 pub(super) fn scanned_file_version(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     file_id: &str,
@@ -375,7 +375,7 @@ struct CandidateRow {
 
 /// The entries `entries` names, each read with what hangs off it.
 pub(crate) fn load_candidate_items_rows(
-    sql: &(impl QueryOne + QueryRows),
+    sql: &impl coven::SqlRead,
     entries: EntryRows<'_>,
     sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {

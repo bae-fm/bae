@@ -136,14 +136,14 @@ pub(crate) fn committed_rows(values: ReleaseValues) -> bae_records::ReleaseRows 
 /// commits into an empty library, by row id: which credits the commit makes
 /// one artist.
 #[cfg(test)]
-pub(crate) fn committed_artists(
+pub(crate) async fn committed_artists(
     parsed: &bae_records::ReleaseRows,
 ) -> std::collections::HashMap<String, String> {
     parsed
         .artists
         .iter()
         .map(|artist| artist.id.clone())
-        .zip(bae_records::resolved_in_an_empty_library(&parsed.artists))
+        .zip(bae_records::resolved_in_an_empty_library(&parsed.artists).await)
         .collect()
 }
 

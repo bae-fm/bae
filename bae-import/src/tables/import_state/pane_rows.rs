@@ -295,7 +295,7 @@ impl ImportTables {
 
 /// Whether the candidate `content_hash` holds a draft row.
 pub(super) fn has_draft_row_on(
-    sql: &impl bae_store::query::QueryOne,
+    sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<bool, DbError> {
     Ok(sql
@@ -315,7 +315,7 @@ pub(super) fn has_draft_row_on(
 /// one. A candidate this device imported holds no draft, so reading one
 /// fails.
 pub(super) fn load_draft_and_cover_on(
-    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
+    sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<(CandidateDraft, Option<CoverSelection>), DbError> {
     if let Some(draft) = load_drafts_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)
@@ -350,7 +350,7 @@ pub(super) fn load_draft_and_cover_on(
 /// Every candidate's complete stored draft, or the one `only` names: one row
 /// per draft, its lists riding on it as JSON arrays in their stored order.
 pub(crate) fn load_drafts_on(
-    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
+    sql: &impl coven::SqlRead,
     only: CandidateRows<'_>,
 ) -> Result<HashMap<String, CandidateDraft>, DbError> {
     let filter = only.filter("edit.content_hash");

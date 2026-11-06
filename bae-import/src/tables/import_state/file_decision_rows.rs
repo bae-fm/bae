@@ -234,7 +234,7 @@ impl ImportTables {
 /// moved past zero though none stands now. Any other candidate has none at
 /// revision zero, which is what a scan reads where nothing is stored.
 pub(crate) fn load_stored_candidate_edits_on(
-    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
+    sql: &impl coven::SqlRead,
 ) -> Result<FinishRead<crate::folder_scanner::StoredCandidateEdits>, DbError> {
     let rows = sql.query(
         &format!(
@@ -263,7 +263,7 @@ pub(crate) fn load_stored_candidate_edits_on(
 /// compute a content hash, so each emitted row performs one indexed lookup
 /// instead of rereading the whole table.
 pub(crate) fn load_candidate_file_edits_on(
-    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
+    sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<FinishRead<CandidateFileEdits>, DbError> {
     let stored = sql
