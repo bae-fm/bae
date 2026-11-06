@@ -227,3 +227,12 @@ export declare function MacTrackColumns(props: { children?: React.ReactNode }): 
 export declare function MacBrowseSplit(props: { children?: React.ReactNode }): React.ReactElement;
 export interface MacArtistAlbumTileProps { title: string; year?: string; noCover?: boolean }
 export declare function MacArtistAlbumTile(props: MacArtistAlbumTileProps): React.ReactElement;
+export interface MacSortCriteriaProps { criteria?: string; full?: boolean }
+export declare function MacSortCriteria(props: MacSortCriteriaProps): React.ReactElement;
+export interface MacCheckboxProps { label: string; on?: boolean }
+export declare function MacCheckbox(props: MacCheckboxProps): React.ReactElement;
+export declare function MacArtistGroupHeading(props: { name: string }): React.ReactElement;
+export interface AndroidMenuProps { top?: number; left?: number; right?: number; width?: number; children?: React.ReactNode }
+export declare function AndroidMenu(props: AndroidMenuProps): React.ReactElement;
+export interface AndroidMenuItemProps { selected?: boolean; check?: boolean; heading?: boolean; divider?: boolean; highlighted?: boolean; children?: React.ReactNode }
+export declare function AndroidMenuItem(props: AndroidMenuItemProps): React.ReactElement;

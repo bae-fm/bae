@@ -80,7 +80,7 @@
       "title": "Home: \u22ee menu with Libraries",
       "w": 412,
       "x": 0,
-      "y": 4796
+      "y": 5668
     },
     "InviteForm.dc.html": {
       "h": 916,
@@ -104,7 +104,7 @@
       "title": "Libraries (from \u22ee)",
       "w": 412,
       "x": 492,
-      "y": 4796
+      "y": 5668
     },
     "Library.dc.html": {
       "h": 916,
@@ -1107,62 +1107,6 @@
       "x": 1476,
       "y": 260
     },
-    "home/GroupedByArtist.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Grouped by artist: today",
-      "w": 412,
-      "x": 1968,
-      "y": 3480
-    },
-    "home/GroupedHeader.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Grouped: artist header over a grid",
-      "w": 412,
-      "x": 2460,
-      "y": 3480
-    },
-    "home/GroupedSticky.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Grouped: scrolled, artist pinned",
-      "w": 412,
-      "x": 2952,
-      "y": 3480
-    },
-    "home/HeadingFull.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Like macOS: top of the list",
-      "w": 412,
-      "x": 492,
-      "y": 3480
-    },
-    "home/HeadingMenu.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "The \u22ee menu open",
-      "w": 412,
-      "x": 1476,
-      "y": 3480
-    },
-    "home/HeadingScrolled.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Like macOS: scrolled",
-      "w": 412,
-      "x": 984,
-      "y": 3480
-    },
-    "home/Main.dc.html": {
-      "h": 916,
-      "page": "home",
-      "title": "Today",
-      "w": 412,
-      "x": 0,
-      "y": 3480
-    },
     "loading/Main.dc.html": {
       "h": 960,
       "is_interactive": true,
@@ -1724,6 +1668,86 @@
       "w": 1200,
       "x": 2560,
       "y": 1636
+    },
+    "LibAndroidScrolled.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Albums, scrolled",
+      "w": 412,
+      "x": 0,
+      "y": 3032
+    },
+    "LibAndroidViewMenu.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "The view menu",
+      "w": 412,
+      "x": 492,
+      "y": 3032
+    },
+    "LibAndroidMoreMenu.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "The \u22ee menu",
+      "w": 412,
+      "x": 984,
+      "y": 3032
+    },
+    "LibAndroidGrouped.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Grouped by artist",
+      "w": 412,
+      "x": 1476,
+      "y": 3032
+    },
+    "LibAndroidGroupedPinned.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Grouped, scrolled: the artist stays pinned",
+      "w": 412,
+      "x": 1968,
+      "y": 3032
+    },
+    "LibAndroidSearch.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Search, before typing",
+      "w": 412,
+      "x": 2460,
+      "y": 3032
+    },
+    "LibMacScrolled.dc.html": {
+      "h": 760,
+      "page": "home",
+      "title": "macOS: Albums, scrolled",
+      "w": 1200,
+      "x": 0,
+      "y": 4428
+    },
+    "LibMacViewMenu.dc.html": {
+      "h": 760,
+      "page": "home",
+      "title": "macOS: the view menu",
+      "w": 1200,
+      "x": 1280,
+      "y": 4428
+    },
+    "LibMacGrouped.dc.html": {
+      "h": 760,
+      "page": "home",
+      "title": "macOS: grouped by artist",
+      "w": 1200,
+      "x": 2560,
+      "y": 4428
+    },
+    "LibMacSortTwo.dc.html": {
+      "h": 760,
+      "page": "home",
+      "title": "macOS: sorted by two fields",
+      "w": 1200,
+      "x": 3840,
+      "y": 4428
     }
   },
   "createdOnFiles": {
@@ -1809,11 +1833,12 @@
     "code-make-admin",
     "code-rename",
     "code-switch",
-    "row-home-heading",
     "row-loading-track",
     "row-lib-flow-android",
     "row-lib-flow-mac",
-    "lib-today"
+    "lib-today",
+    "row-lib-head-android",
+    "row-lib-head-mac"
   ],
   "notes": {
     "canvas-key-library": {
@@ -2148,7 +2173,7 @@
       "text": "macOS keeps switching libraries from the main window's menu.",
       "w": 380,
       "x": 984,
-      "y": 4796
+      "y": 5668
     },
     "sync-rules": {
       "fill": "blue",
@@ -2334,10 +2359,10 @@
       "kind": "title1",
       "maxW": 1364,
       "page": "home",
-      "text": "Switch library",
+      "text": "Switch library (Android, proposed)",
       "w": 240,
       "x": 0,
-      "y": 4556
+      "y": 5428
     },
     "code-casting": {
       "page": "settings",
@@ -2384,17 +2409,8 @@
       "size": 24,
       "w": 420,
       "x": 1424,
-      "y": 4796,
+      "y": 5668,
       "text": "What the code needs for these boards:\n- Android switches libraries from the home screen's \u22ee menu: Libraries opens the list of this device's libraries, each with Remove. Today it is \u201cSwitch to another library on this device\u201d in Library settings (SettingsLibrarySection.kt:111), and the \u22ee menu holds Sort by, Shuffle library and Settings (decisions.md 2026-11-01). The list is the one the welcome screen shows (code-welcome). bae change, Android."
-    },
-    "row-home-heading": {
-      "kind": "title1",
-      "maxW": 3364,
-      "page": "home",
-      "text": "Android: the home heading (plans/android-home-header.md)",
-      "w": 240,
-      "x": 0,
-      "y": 3240
     },
     "row-loading-track": {
       "kind": "title1",
@@ -2430,7 +2446,25 @@
       "x": 3840,
       "y": 1636,
       "fill": "blue",
-      "text": "These two rows draw the apps as the code has them today, from the design system's library parts (each part's page names its file). Next: redraw the rows below on the same parts, then iterate."
+      "text": "The rows marked today draw the apps as the code has them, from the design system's library parts (each part's page names its file). The examples are made up. Next: Search and Playback pages, then iterate on the design."
+    },
+    "row-lib-head-android": {
+      "kind": "title1",
+      "maxW": 2872,
+      "page": "home",
+      "text": "Heading, menus, grouping, search: Android (today)",
+      "w": 240,
+      "x": 0,
+      "y": 2792
+    },
+    "row-lib-head-mac": {
+      "kind": "title1",
+      "maxW": 4920,
+      "page": "home",
+      "text": "Heading, sort, grouping: macOS (today)",
+      "w": 240,
+      "x": 0,
+      "y": 4188
     }
   },
   "order": [
@@ -2469,13 +2503,6 @@
     "storage/WindowProposed.dc.html",
     "storage/WindowFilter.dc.html",
     "storage/WindowBoth.dc.html",
-    "home/Main.dc.html",
-    "home/HeadingFull.dc.html",
-    "home/HeadingScrolled.dc.html",
-    "home/HeadingMenu.dc.html",
-    "home/GroupedByArtist.dc.html",
-    "home/GroupedHeader.dc.html",
-    "home/GroupedSticky.dc.html",
     "loading/Main.dc.html",
     "loading/ScrubFill.dc.html",
     "Library.dc.html",
@@ -2647,7 +2674,17 @@
     "LibAndroidArtist.dc.html",
     "LibMacAlbums.dc.html",
     "LibMacAlbumOpen.dc.html",
-    "LibMacArtist.dc.html"
+    "LibMacArtist.dc.html",
+    "LibAndroidScrolled.dc.html",
+    "LibAndroidViewMenu.dc.html",
+    "LibAndroidMoreMenu.dc.html",
+    "LibAndroidGrouped.dc.html",
+    "LibAndroidGroupedPinned.dc.html",
+    "LibAndroidSearch.dc.html",
+    "LibMacScrolled.dc.html",
+    "LibMacViewMenu.dc.html",
+    "LibMacGrouped.dc.html",
+    "LibMacSortTwo.dc.html"
   ],
   "pages": [
     {

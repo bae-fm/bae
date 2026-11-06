@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Home: the ⋮ menu with Libraries</title>
+<title>Home: ⋮ menu with Libraries</title>
 <script src="./support.js"></script>
 <link rel="stylesheet" href="ds/bae/tokens.css">
 <link rel="stylesheet" href="ds/bae/components/bundle.css">
@@ -12,47 +12,17 @@
 <x-dc>
 <helmet>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
 <style>
-body{margin:0}
-.ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:var(--text-primary);cursor:pointer}
-.ib svg{fill:currentColor}
-.tile{aspect-ratio:1;border-radius:8px;background:var(--elevated)}
-.t1{font-size:14px;line-height:20px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:8px}
-.t2{font-size:13px;line-height:18px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mi{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:48px;padding:0 16px;box-sizing:border-box;background:none;border:0;color:var(--text-primary);font:16px Roboto,system-ui,sans-serif;text-align:left;cursor:pointer}
+body{margin:0;background:var(--background)}
+
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidScreen">
-  <header style="padding: 24px 4px 8px 16px; display: flex; align-items: center; gap: 4px; flex: none">
-<x-import component-from-global-scope="Bae.AndroidButton" kind="text">Albums</x-import>
-<x-import component-from-global-scope="Bae.AndroidIconButton" icon="search" label="Search"></x-import>
-<x-import component-from-global-scope="Bae.AndroidIconButton" icon="more" label="More options"></x-import>
-</header>
-  <div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
-  <div><div class="tile"></div><div class="t1">Another Album With a Long Title</div><div class="t2">Artist Name</div></div>
-  <div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
-  <div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
-  <div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
-  <div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
-  <div role="menu" aria-label="More options" style="position: absolute; top: 76px; right: 12px; width: 220px; padding: 8px 0; border-radius: 12px; background: #2A2A3B; box-shadow: 0 8px 24px rgba(0,0,0,0.5)">
-<div role="heading" aria-level="2" style="padding: 8px 16px 4px; font-size: 13px; line-height: 18px; color: var(--text-secondary)">Sort by</div>
-<button class="mi" role="menuitemradio" aria-checked="true" style="color: var(--accent); font-weight: 600">Title</button>
-<button class="mi" role="menuitemradio" aria-checked="false">Artist</button>
-<button class="mi" role="menuitemradio" aria-checked="false">Year</button>
-<button class="mi" role="menuitemradio" aria-checked="false">Date added</button>
-<button class="mi" role="menuitem">Ascending</button>
-<button class="mi" role="menuitemcheckbox" aria-checked="false">Group by artist</button>
-<div aria-hidden="true" style="height: 1px; margin: 8px 0; background: rgba(255,255,255,0.10)"></div>
-<button class="mi" role="menuitem">Shuffle library</button>
-<button class="mi" role="menuitem" style="background: var(--hairline)">Libraries</button>
-<button class="mi" role="menuitem">Settings</button>
-</div>
-</x-import>
+<x-import component-from-global-scope="Bae.AndroidLibraryScreen" view="Albums" track-title="Low Tide Hours" track-artist="Mara Quill" track-album="Low Tide Hours" playing="{{yes}}" position="0.35" held="0.6" elapsed="1:42" duration="5:03"><x-import component-from-global-scope="Bae.AndroidAlbumGrid"><x-import component-from-global-scope="Bae.AndroidAlbumTile" title="Low Tide Hours" line="Mara Quill"></x-import><x-import component-from-global-scope="Bae.AndroidAlbumTile" title="Paper Lanterns" line="The Slow Orchards"></x-import><x-import component-from-global-scope="Bae.AndroidAlbumTile" title="Glass Harbor" line="Ines Varga Trio"></x-import><x-import component-from-global-scope="Bae.AndroidAlbumTile" title="Copper Sky" line="Odile Fen"></x-import><x-import component-from-global-scope="Bae.AndroidAlbumTile" title="Salt and Cedar" line="The Slow Orchards"></x-import><x-import component-from-global-scope="Bae.AndroidAlbumTile" title="Field Recordings" line="Mara Quill"></x-import><x-import component-from-global-scope="Bae.AndroidAlbumTile" title="Winter Kitchen" line="Odile Fen"></x-import><x-import component-from-global-scope="Bae.AndroidAlbumTile" title="Small Hours" line="Tomas Brell"></x-import></x-import><x-import component-from-global-scope="Bae.AndroidMenu" top="52" right="8" width="220"><x-import component-from-global-scope="Bae.AndroidMenuItem" heading="{{yes}}">Sort by</x-import><x-import component-from-global-scope="Bae.AndroidMenuItem">Title</x-import><x-import component-from-global-scope="Bae.AndroidMenuItem">Artist</x-import><x-import component-from-global-scope="Bae.AndroidMenuItem">Year</x-import><x-import component-from-global-scope="Bae.AndroidMenuItem" selected="{{yes}}">Date Added</x-import><x-import component-from-global-scope="Bae.AndroidMenuItem">Descending</x-import><x-import component-from-global-scope="Bae.AndroidMenuItem" check="{{ false }}">Group by artist</x-import><x-import component-from-global-scope="Bae.AndroidMenuItem" divider="{{yes}}"></x-import><x-import component-from-global-scope="Bae.AndroidMenuItem">Shuffle library</x-import><x-import component-from-global-scope="Bae.AndroidMenuItem" highlighted="{{yes}}">Libraries</x-import><x-import component-from-global-scope="Bae.AndroidMenuItem">Settings</x-import></x-import></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {
-  renderVals() { return {}; }
+  renderVals() { return { yes: true }; }
 }
 </script>
 </body>

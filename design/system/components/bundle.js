@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"Bae","components":[{"name":"MacButton"},{"name":"MacTextField"},{"name":"MacRadio"},{"name":"MacPopUpButton"},{"name":"MacSwitch"},{"name":"MacAccentPicker"},{"name":"MacMenuItem"},{"name":"MacMenu"},{"name":"MacSegmentedControl"},{"name":"MacDisclosure"},{"name":"MacProgress"},{"name":"MacSpinner"},{"name":"MacErrorText"},{"name":"MacNote"},{"name":"MacRow"},{"name":"MacFieldRow"},{"name":"MacBox"},{"name":"MacSection"},{"name":"MacSheetFooter"},{"name":"MacSheet"},{"name":"MacAlert"},{"name":"MacSettingsWindow"},{"name":"MacWindow"},{"name":"AndroidButton"},{"name":"AndroidIconButton"},{"name":"AndroidSwitch"},{"name":"AndroidAccentPicker"},{"name":"AndroidTextField"},{"name":"AndroidRadio"},{"name":"AndroidNote"},{"name":"AndroidProgress"},{"name":"AndroidSpinner"},{"name":"AndroidRow"},{"name":"AndroidCard"},{"name":"AndroidSection"},{"name":"AndroidDialogActions"},{"name":"AndroidDialog"},{"name":"AndroidScreen"},{"name":"StatusChip"},{"name":"Notice"},{"name":"MacScanCode"},{"name":"AndroidScanCode"},{"name":"Artwork"},{"name":"MacMainWindow"},{"name":"MacNowPlayingBar"},{"name":"MacSeekBar"},{"name":"MacPlayPause"},{"name":"MacIconButton"},{"name":"MacLibraryHeading"},{"name":"MacAlbumGrid"},{"name":"MacAlbumTile"},{"name":"MacTrackRow"},{"name":"MacEyebrow"},{"name":"MacBrowseRow"},{"name":"MacDetailHeader"},{"name":"MacQueueRow"},{"name":"MacAlbumPanel"},{"name":"MacTrackColumns"},{"name":"MacBrowseSplit"},{"name":"MacArtistAlbumTile"},{"name":"AndroidLibraryScreen"},{"name":"AndroidDetailScreen"},{"name":"AndroidNowPlayingBar"},{"name":"AndroidSeekBar"},{"name":"AndroidPlayPause"},{"name":"AndroidAlbumGrid"},{"name":"AndroidAlbumTile"},{"name":"AndroidArtistHeading"},{"name":"AndroidTrackRow"},{"name":"AndroidEyebrow"},{"name":"AndroidBrowseRow"},{"name":"AndroidAlbumHeader"},{"name":"AndroidDownloadControl"}]} */
+/* @ds-bundle: {"format":4,"namespace":"Bae","components":[{"name":"MacButton"},{"name":"MacTextField"},{"name":"MacRadio"},{"name":"MacPopUpButton"},{"name":"MacSwitch"},{"name":"MacAccentPicker"},{"name":"MacMenuItem"},{"name":"MacMenu"},{"name":"MacSegmentedControl"},{"name":"MacDisclosure"},{"name":"MacProgress"},{"name":"MacSpinner"},{"name":"MacErrorText"},{"name":"MacNote"},{"name":"MacRow"},{"name":"MacFieldRow"},{"name":"MacBox"},{"name":"MacSection"},{"name":"MacSheetFooter"},{"name":"MacSheet"},{"name":"MacAlert"},{"name":"MacSettingsWindow"},{"name":"MacWindow"},{"name":"AndroidButton"},{"name":"AndroidIconButton"},{"name":"AndroidSwitch"},{"name":"AndroidAccentPicker"},{"name":"AndroidTextField"},{"name":"AndroidRadio"},{"name":"AndroidNote"},{"name":"AndroidProgress"},{"name":"AndroidSpinner"},{"name":"AndroidRow"},{"name":"AndroidCard"},{"name":"AndroidSection"},{"name":"AndroidDialogActions"},{"name":"AndroidDialog"},{"name":"AndroidScreen"},{"name":"StatusChip"},{"name":"Notice"},{"name":"MacScanCode"},{"name":"AndroidScanCode"},{"name":"Artwork"},{"name":"MacMainWindow"},{"name":"MacNowPlayingBar"},{"name":"MacSeekBar"},{"name":"MacPlayPause"},{"name":"MacIconButton"},{"name":"MacLibraryHeading"},{"name":"MacAlbumGrid"},{"name":"MacAlbumTile"},{"name":"MacTrackRow"},{"name":"MacEyebrow"},{"name":"MacBrowseRow"},{"name":"MacDetailHeader"},{"name":"MacQueueRow"},{"name":"MacAlbumPanel"},{"name":"MacTrackColumns"},{"name":"MacBrowseSplit"},{"name":"MacArtistAlbumTile"},{"name":"MacSortCriteria"},{"name":"MacCheckbox"},{"name":"MacArtistGroupHeading"},{"name":"AndroidMenu"},{"name":"AndroidMenuItem"},{"name":"AndroidLibraryScreen"},{"name":"AndroidDetailScreen"},{"name":"AndroidNowPlayingBar"},{"name":"AndroidSeekBar"},{"name":"AndroidPlayPause"},{"name":"AndroidAlbumGrid"},{"name":"AndroidAlbumTile"},{"name":"AndroidArtistHeading"},{"name":"AndroidTrackRow"},{"name":"AndroidEyebrow"},{"name":"AndroidBrowseRow"},{"name":"AndroidAlbumHeader"},{"name":"AndroidDownloadControl"}]} */
 (function () {
   var React = window.React;
   var h = React.createElement;
@@ -631,6 +631,46 @@
       h('div', { className: 'bae-m-tile-title' }, props.title), h('div', { className: 'bae-m-atile-year' }, props.year || ' '));
   }
 
+
+  // A sort criterion: field menu, direction, remove (when there are several); then + to add one.
+  function MacSortCriteria(props) {
+    var items = String(props.criteria || 'Date Added:down').split(',').map(function (c) { var p = c.trim().split(':'); return { field: p[0], dir: p[1] || 'up' }; });
+    var arrow = function (d) { return h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: d === 'down' ? 'M12 4v16M5 13l7 7 7-7' : 'M12 20V4M5 11l7-7 7 7' })); };
+    return h('div', { className: 'bae-m-sortrow' },
+      items.map(function (it, i) {
+        return h('span', { key: i, className: 'bae-m-sortpill' },
+          h('span', { className: 'bae-m-sortpill-field' }, it.field, h(Glyph, { set: 'mac', name: 'down', size: 9, className: 'bae-muted' })),
+          h('span', { className: 'bae-muted', 'aria-label': it.dir === 'down' ? 'Descending' : 'Ascending' }, arrow(it.dir)),
+          items.length > 1 ? h('span', { className: 'bae-muted', 'aria-label': 'Remove sort criterion' }, h(Glyph, { set: 'mac', name: 'close', size: 8 })) : null);
+      }),
+      props.full ? null : h('span', { className: 'bae-m-sortadd', 'aria-label': 'Add sort criterion' }, h(Glyph, { set: 'mac', name: 'add', size: 13 })));
+  }
+  SF.add = 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z';
+
+  function MacCheckbox(props) {
+    return h('label', { className: 'bae-m-checkbox' }, h('span', { className: cx('bae-m-checkbox-box', props.on && 'bae-m-checkbox-on') }, props.on ? h(CheckGlyph) : null), props.label);
+  }
+
+  // Names an artist above their albums when the grid is grouped by artist.
+  function MacArtistGroupHeading(props) {
+    return h('div', { className: 'bae-m-groupheading' }, props.name);
+  }
+
+  // A Material menu: `AndroidMenuItem`s, a "Sort by" style label, dividers.
+  function AndroidMenu(props) {
+    var style = { position: 'absolute', top: Number(props.top || 56), minWidth: Number(props.width || 200) };
+    if (props.left != null) style.left = Number(props.left); else style.right = Number(props.right != null ? props.right : 8);
+    return h('div', { className: 'bae-a-menu', role: 'menu', style: style }, props.children);
+  }
+  function AndroidMenuItem(props) {
+    if (props.divider) return h('div', { className: 'bae-a-menu-divider', role: 'separator' });
+    if (props.heading) return h('div', { className: 'bae-a-menu-heading' }, props.children);
+    return h('div', { className: cx('bae-a-menu-item', props.selected && 'bae-a-menu-item-on', props.highlighted && 'bae-a-menu-item-hl'), role: 'menuitem' },
+      h('span', null, props.children),
+      props.check != null ? h('span', { className: 'bae-a-menu-check', style: { opacity: props.check ? 1 : 0 } }, h(Material, { name: 'check', size: 24 })) : null);
+  }
+  MATERIAL.check = 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z';
+
   // ---- Android library ----
 
   function AndroidIcon(props) {
@@ -737,7 +777,7 @@
   }
 
   window.Bae = Object.assign(window.Bae || {}, {
-    Artwork: Artwork, MacMainWindow: MacMainWindow, MacNowPlayingBar: MacNowPlayingBar, MacSeekBar: MacSeekBar, MacPlayPause: MacPlayPause, MacIconButton: MacIconButton, MacLibraryHeading: MacLibraryHeading, MacAlbumGrid: MacAlbumGrid, MacAlbumTile: MacAlbumTile, MacTrackRow: MacTrackRow, MacEyebrow: MacEyebrow, MacBrowseRow: MacBrowseRow, MacDetailHeader: MacDetailHeader, MacQueueRow: MacQueueRow, MacAlbumPanel: MacAlbumPanel, MacTrackColumns: MacTrackColumns, MacBrowseSplit: MacBrowseSplit, MacArtistAlbumTile: MacArtistAlbumTile,
+    Artwork: Artwork, MacMainWindow: MacMainWindow, MacNowPlayingBar: MacNowPlayingBar, MacSeekBar: MacSeekBar, MacPlayPause: MacPlayPause, MacIconButton: MacIconButton, MacLibraryHeading: MacLibraryHeading, MacAlbumGrid: MacAlbumGrid, MacAlbumTile: MacAlbumTile, MacTrackRow: MacTrackRow, MacEyebrow: MacEyebrow, MacBrowseRow: MacBrowseRow, MacDetailHeader: MacDetailHeader, MacQueueRow: MacQueueRow, MacAlbumPanel: MacAlbumPanel, MacTrackColumns: MacTrackColumns, MacBrowseSplit: MacBrowseSplit, MacArtistAlbumTile: MacArtistAlbumTile, MacSortCriteria: MacSortCriteria, MacCheckbox: MacCheckbox, MacArtistGroupHeading: MacArtistGroupHeading, AndroidMenu: AndroidMenu, AndroidMenuItem: AndroidMenuItem,
     AndroidLibraryScreen: AndroidLibraryScreen, AndroidDetailScreen: AndroidDetailScreen, AndroidNowPlayingBar: AndroidNowPlayingBar, AndroidSeekBar: AndroidSeekBar, AndroidPlayPause: AndroidPlayPause, AndroidAlbumGrid: AndroidAlbumGrid, AndroidAlbumTile: AndroidAlbumTile, AndroidArtistHeading: AndroidArtistHeading, AndroidTrackRow: AndroidTrackRow, AndroidEyebrow: AndroidEyebrow, AndroidBrowseRow: AndroidBrowseRow, AndroidAlbumHeader: AndroidAlbumHeader, AndroidDownloadControl: AndroidDownloadControl,
     MacWindow: MacWindow, MacAlert: MacAlert, MacSettingsWindow: MacSettingsWindow, MacSection: MacSection, MacBox: MacBox, MacRow: MacRow, MacFieldRow: MacFieldRow, MacButton: MacButton,
     MacTextField: MacTextField, MacRadio: MacRadio, MacPopUpButton: MacPopUpButton, MacSegmentedControl: MacSegmentedControl, MacDisclosure: MacDisclosure, MacSheet: MacSheet,

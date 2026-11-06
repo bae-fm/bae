@@ -1,0 +1,15 @@
+<!-- @dsCard group="Android library" height=300 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidMenuItem</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
+<body class="bae-preview bae-preview-android" style="padding: 0;">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h('div', { style: { position: 'relative', height: 260 } }, h(B.AndroidMenu, { top: 0, left: 0 }, h(B.AndroidMenuItem, { selected: true }, 'Albums'), h(B.AndroidMenuItem, null, 'Artists'), h(B.AndroidMenuItem, { check: false }, 'Group by artist'), h(B.AndroidMenuItem, { check: true }, 'Group by artist')))));
+</script>
+</body>
+</html>

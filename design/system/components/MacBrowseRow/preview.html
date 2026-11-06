@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Resting', h(B.MacBrowseRow, { name: 'Neil Young', count: '12 albums' })), W('Hover', h(B.MacBrowseRow, { name: 'Joni Mitchell', count: '8 albums', hover: true })), W('Selected', h(B.MacBrowseRow, { name: 'Nick Drake', count: '3 albums', selected: true })), W('Loading', h(B.MacBrowseRow, { loading: true }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Resting', h(B.MacBrowseRow, { name: 'Mara Quill', count: '12 albums' })), W('Hover', h(B.MacBrowseRow, { name: 'The Slow Orchards', count: '8 albums', hover: true })), W('Selected', h(B.MacBrowseRow, { name: 'Odile Fen', count: '3 albums', selected: true })), W('Loading', h(B.MacBrowseRow, { loading: true }))));
 </script>
 </body>
 </html>
