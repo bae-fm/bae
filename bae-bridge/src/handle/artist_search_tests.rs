@@ -5,7 +5,7 @@
 /// refuses a view once cancelled.
 #[test]
 fn artist_search_answers_each_view_on_one_subscription() {
-    let (handle, _root) = super::super::tests::fresh_bridge_handle("artist-search-views");
+    let handle = super::super::tests::fresh_bridge_handle("artist-search-views");
     let subscription = handle.subscribe_artist_search();
 
     let idle = handle.runtime.block_on(subscription.clone().next()).expect("idle search snapshot");

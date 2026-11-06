@@ -27,7 +27,7 @@ fn pull_until(
 /// follow each setter's write; cancelling ends the pulls.
 #[test]
 fn the_preferences_follow_each_write_until_cancelled() {
-    let (handle, _root) = super::super::tests::fresh_bridge_handle("config-pulls");
+    let handle = super::super::tests::fresh_bridge_handle("config-pulls");
     let values = handle.subscribe_config();
 
     let first = pull_until(&handle, &values, |_| true);

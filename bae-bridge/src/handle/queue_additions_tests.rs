@@ -7,7 +7,7 @@ use bae_util::test_channels::HANG_GUARD;
 fn handle_over_one_album(
     test_name: &str,
     tracks: &[&str],
-) -> (std::sync::Arc<super::AppHandle>, Vec<String>) {
+) -> (super::super::tests::TestHandle, Vec<String>) {
     let (runtime, library, root) = super::super::tests::fresh_test_library(test_name);
     let fixture = bae_library::LibraryFixture {
         albums: vec![bae_library::FixtureAlbum {
@@ -35,7 +35,7 @@ fn handle_over_one_album(
             .map(|track| track.id)
             .collect()
     });
-    (super::super::tests::start_test_handle(runtime, library, &root), track_ids)
+    (super::super::tests::start_test_handle(runtime, library, root), track_ids)
 }
 
 /// An addition reaches the app as a value of its own, with how many tracks

@@ -48,9 +48,9 @@ fn until(
 /// returns, as combining selects the release it makes.
 #[test]
 fn separating_the_selection_selects_the_releases_it_returns() {
-    let (handle, root) = crate::handle::tests::fresh_bridge_handle("separate-selection");
+    let handle = crate::handle::tests::fresh_bridge_handle("separate-selection");
     let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
-    let music = root.join("music");
+    let music = handle.root().join("music");
     for part in ["Part A", "Part B"] {
         let folder = music.join("Collection").join(part);
         std::fs::create_dir_all(&folder).unwrap();
@@ -106,9 +106,9 @@ fn separating_the_selection_selects_the_releases_it_returns() {
 /// stream, an action run after writes nothing into it.
 #[test]
 fn a_cancelled_progress_stream_hears_no_later_action() {
-    let (handle, root) = crate::handle::tests::fresh_bridge_handle("cancelled-selection-progress");
+    let handle = crate::handle::tests::fresh_bridge_handle("cancelled-selection-progress");
     let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
-    let music = root.join("music");
+    let music = handle.root().join("music");
     let folder = music.join("Album");
     std::fs::create_dir_all(&folder).unwrap();
     std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
@@ -170,7 +170,7 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
 /// gave it, as every import failure does, not as a plain import failure.
 #[test]
 fn a_grouping_refusal_crosses_in_the_class_core_gave_it() {
-    let (handle, _root) = crate::handle::tests::fresh_bridge_handle("grouping-refusal-class");
+    let handle = crate::handle::tests::fresh_bridge_handle("grouping-refusal-class");
     let error = handle
         .runtime
         .block_on(handle.clone().candidate_source_folders(b"no-such-candidate".to_vec()))

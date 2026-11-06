@@ -114,28 +114,51 @@ fn queue_entry_precomputes_duration_clock() {
 }
 
 /// A handle over a fresh, empty library, built the way the app builds one.
-pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::PathBuf) {
+pub(super) fn fresh_bridge_handle(test_name: &str) -> TestHandle {
     let (runtime, library, root) = fresh_test_library(test_name);
-    (start_test_handle(runtime, library, &root), root)
+    start_test_handle(runtime, library, root)
 }
 
-/// A fresh library opened in a directory named for `test_name`, on the
-/// runtime a handle over it runs on.
+/// A started handle together with the directory its library lives in. The
+/// handle field comes first so it drops, and shuts down, before the directory
+/// is removed.
+pub(super) struct TestHandle {
+    handle: Arc<super::AppHandle>,
+    root: tempfile::TempDir,
+}
+
+impl TestHandle {
+    /// The directory holding the handle's library and bae directory.
+    pub(super) fn root(&self) -> &std::path::Path {
+        self.root.path()
+    }
+}
+
+impl std::ops::Deref for TestHandle {
+    type Target = Arc<super::AppHandle>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.handle
+    }
+}
+
+/// A fresh library opened in its own temporary directory (named for
+/// `test_name`, unique per call so concurrent test processes never share
+/// one), on the runtime a handle over it runs on. The directory goes when the
+/// returned `TempDir` drops.
 pub(super) fn fresh_test_library(
     test_name: &str,
-) -> (tokio::runtime::Runtime, bae_library::test_libraries::TestLibrary, std::path::PathBuf) {
-    let root = std::env::temp_dir().join(format!("bae-bridge-{test_name}"));
-    match std::fs::remove_dir_all(&root) {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => panic!("remove stale test library dir: {error}"),
-    }
+) -> (tokio::runtime::Runtime, bae_library::test_libraries::TestLibrary, tempfile::TempDir) {
+    let root = tempfile::Builder::new()
+        .prefix(&format!("bae-bridge-{test_name}-"))
+        .tempdir()
+        .expect("test library dir");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .thread_stack_size(16 * 1024 * 1024)
         .enable_all()
         .build()
         .expect("test runtime");
-    let app_dir = bae_app_dir::AppDir::under_home(&root).unwrap();
+    let app_dir = bae_app_dir::AppDir::under_home(root.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = runtime
         .block_on(
@@ -145,7 +168,7 @@ pub(super) fn fresh_test_library(
         .expect("test store");
     let library = runtime.block_on(bae_library::test_libraries::test_library_from_handle(
         handle,
-        &root,
+        root.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     ));
@@ -163,31 +186,32 @@ pub(crate) fn test_host(home: &std::path::Path) -> Arc<crate::BridgeHost> {
 }
 
 /// Start a handle over `library` on `runtime`, for a host over the bae
-/// directory under `home`, as the app starts one.
+/// directory under `root`, as the app starts one.
 pub(super) fn start_test_handle(
     runtime: tokio::runtime::Runtime,
     library: bae_library::test_libraries::TestLibrary,
-    home: &std::path::Path,
-) -> Arc<super::AppHandle> {
+    root: tempfile::TempDir,
+) -> TestHandle {
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)
             .await
             .expect("the test library's services start")
     });
-    Arc::new(
+    let handle = Arc::new(
         super::AppHandle::start(
             services,
             runtime,
             bae_diagnostics::Diagnostics::noop(),
-            test_host(home),
+            test_host(root.path()),
         )
         .expect("the bridge handle starts"),
-    )
+    );
+    TestHandle { handle, root }
 }
 
 #[test]
 fn album_browse_subscription_pulls_count_before_any_windows() {
-    let (handle, _root) = fresh_bridge_handle("album-browse-empty-windows");
+    let handle = fresh_bridge_handle("album-browse-empty-windows");
     let subscription = handle.subscribe_album_browse(Vec::new(), false);
 
     let snapshot =
@@ -215,7 +239,7 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
 
 #[test]
 fn cancelling_album_browse_finishes_pending_next() {
-    let (handle, _root) = fresh_bridge_handle("album-browse-cancel");
+    let handle = fresh_bridge_handle("album-browse-cancel");
     let subscription = handle.subscribe_album_browse(Vec::new(), false);
     handle.runtime.block_on(subscription.clone().next()).expect("initial album browse snapshot");
 
@@ -245,14 +269,14 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
         std::panic::set_hook(Box::new(move |_| {
             panic_flag.store(true, std::sync::atomic::Ordering::SeqCst);
         }));
-        let (handle, _root) = fresh_bridge_handle("save-sync-config-stack");
+        let handle = fresh_bridge_handle("save-sync-config-stack");
         let caller_runtime = tokio::runtime::Runtime::new().expect("create caller runtime");
         std::thread::Builder::new()
             .name("uniffi-worker".to_string())
             .stack_size(544 * 1024)
             .spawn(move || {
                 caller_runtime
-                    .block_on(handle.save_sync_config(
+                    .block_on(Arc::clone(&handle).save_sync_config(
                         crate::types::BridgeSaveSyncConfig {
                             bucket: "bucket".to_string(),
                             region: "us-east-1".to_string(),
@@ -293,10 +317,13 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
 
 #[test]
 fn enqueue_export_missing_release_does_not_panic() {
-    let (handle, root) = fresh_bridge_handle("enqueue-export-missing-release");
+    let handle = fresh_bridge_handle("enqueue-export-missing-release");
     let result = handle.runtime.block_on(async {
         Arc::clone(&handle)
-            .enqueue_export("missing-release".to_string(), coven::path_bytes(&root.join("exports")))
+            .enqueue_export(
+                "missing-release".to_string(),
+                coven::path_bytes(&handle.root().join("exports")),
+            )
             .await
     });
 
@@ -630,7 +657,7 @@ mod candidate_runtime {
 
     #[test]
     fn a_claimed_import_crosses_as_in_flight_and_leaves_when_it_fails() {
-        let (handle, _root) = fresh_bridge_handle("candidate-runtime-claim");
+        let handle = fresh_bridge_handle("candidate-runtime-claim");
         let key = b"/watch/Album Title".to_vec();
         let watching = handle.subscribe_candidate_runtime(key.clone());
         assert!(pull_until(&handle, &watching, |_| true).is_none(), "nothing runs yet");
@@ -783,7 +810,7 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
 #[cfg(desktop)]
 #[test]
 fn a_library_refusal_crosses_in_the_class_core_gave_it() {
-    let (handle, _root) = fresh_bridge_handle("library-refusal-class");
+    let handle = fresh_bridge_handle("library-refusal-class");
     let result = handle.runtime.block_on(async {
         Arc::clone(&handle)
             .add_artist_credit_name("missing-artist".to_string(), "   ".to_string())

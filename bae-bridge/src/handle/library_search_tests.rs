@@ -4,7 +4,7 @@
 /// subscription, carrying the query and revision it answered.
 #[test]
 fn library_search_answers_each_query_on_one_subscription() {
-    let (handle, _root) = super::super::tests::fresh_bridge_handle("library-search-queries");
+    let handle = super::super::tests::fresh_bridge_handle("library-search-queries");
     let subscription = handle.subscribe_library_search();
 
     let idle = handle.runtime.block_on(subscription.clone().next()).expect("idle search snapshot");

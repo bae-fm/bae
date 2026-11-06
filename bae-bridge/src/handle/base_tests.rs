@@ -7,10 +7,10 @@ use std::sync::Arc;
 fn bridge_handle_holding(
     test_name: &str,
     fixture: &bae_library::LibraryFixture,
-) -> (Arc<super::AppHandle>, std::path::PathBuf) {
+) -> crate::handle::tests::TestHandle {
     let (runtime, library, root) = crate::handle::tests::fresh_test_library(test_name);
     runtime.block_on(library.write_fixture(fixture)).expect("write the library fixture");
-    (crate::handle::tests::start_test_handle(runtime, library, &root), root)
+    crate::handle::tests::start_test_handle(runtime, library, root)
 }
 
 /// Deleting an album through the handle takes it out of the grid and leaves
@@ -24,7 +24,7 @@ fn delete_album_takes_the_album_out_of_the_grid() {
         tracks: vec!["Track Title".to_string()],
         cover: None,
     };
-    let (handle, _root) = bridge_handle_holding(
+    let handle = bridge_handle_holding(
         "delete-album",
         &bae_library::LibraryFixture {
             albums: vec![album("Deleted Album"), album("Kept Album")],

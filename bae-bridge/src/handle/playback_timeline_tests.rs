@@ -7,7 +7,7 @@ use bae_util::test_channels::HANG_GUARD;
 /// ends the pulls.
 #[test]
 fn the_timeline_starts_with_no_line_until_cancelled() {
-    let (handle, _root) = super::super::tests::fresh_bridge_handle("playback-timeline");
+    let handle = super::super::tests::fresh_bridge_handle("playback-timeline");
     let timeline = handle.subscribe_playback_timeline();
 
     let first = handle

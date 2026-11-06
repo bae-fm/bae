@@ -27,7 +27,7 @@ fn pull_until(
 /// change playback makes; cancelling ends the pulls.
 #[test]
 fn playback_values_follow_playback_until_cancelled() {
-    let (handle, _root) = super::super::tests::fresh_bridge_handle("playback-values");
+    let handle = super::super::tests::fresh_bridge_handle("playback-values");
     let values = handle.subscribe_playback_values();
 
     let first = pull_until(&handle, &values, |_| true);
