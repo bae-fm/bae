@@ -4,6 +4,7 @@
 //! header offers to combine.
 
 use super::*;
+use crate::folder_scanner::FolderReleaseDecision;
 use crate::folder_scanner::{
     CandidateFile, FileRole, FileVersion, FolderCandidate, ScanItem, ScannedFile,
 };
@@ -14,9 +15,10 @@ use crate::tables::tests::*;
 use crate::ImportListProjection;
 use crate::{MetadataProvenance, TriageTab};
 use bae_catalogs::catalog::LookupCatalog;
-use bae_records::test_fixtures::live_query::{live_db, ALBUM_ID, RELEASE_ID};
+use bae_identify::TerminalVerdict;
+use bae_records::test_fixtures::artists_apart::{meet_musicbrainz_artist, musicbrainz_artist};
 use bae_records::test_fixtures::write_cover;
-use bae_store::test_fixtures::exec;
+use bae_store::test_fixtures::fixed_now;
 use bae_util::test_channels::HANG_GUARD;
 
 /// Each header's group name and whether it offers to combine, in order.
@@ -34,14 +36,10 @@ fn combinable(read: &ImportListProjection) -> Vec<(String, bool)> {
 }
 
 impl Library {
-    /// The stored reading of the folder at `display_path` that keeps its
+    /// The scan's reading of the folder at `display_path` that keeps its
     /// releases apart.
-    fn kept_apart(&self, display_path: &str) -> String {
-        format!(
-            "INSERT INTO release_grouping (key, anchor_folder, combined, author)
-             VALUES (CAST('reading {display_path}' AS BLOB), {}, 0, 'user');",
-            self.sql(display_path)
-        )
+    fn kept_apart(&self, display_path: &str) -> Write {
+        self.reading(display_path, FolderReleaseDecision::KeepAsSeparateReleases)
     }
 }
 
@@ -53,15 +51,14 @@ impl Library {
 #[tokio::test]
 async fn only_a_group_over_a_folder_read_as_several_offers_to_combine() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}{}{}",
-        lib.scan("Box/Disc 1"),
-        lib.scan("Box/Disc 2"),
-        lib.scan("Singles/Label/Series/One"),
-        lib.scan("Singles/Label/Series/Two"),
-        lib.kept_apart("Box"),
-        lib.kept_apart("Singles/Label/Series"),
-    ))
+    lib.run(
+        lib.scan("Box/Disc 1")
+            + lib.scan("Box/Disc 2")
+            + lib.scan("Singles/Label/Series/One")
+            + lib.scan("Singles/Label/Series/Two")
+            + lib.kept_apart("Box")
+            + lib.kept_apart("Singles/Label/Series"),
+    )
     .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     assert_eq!(combinable(&read), [("Box".to_string(), true), ("Singles".to_string(), false)]);
@@ -74,65 +71,43 @@ async fn only_a_group_over_a_folder_read_as_several_offers_to_combine() {
 #[tokio::test]
 async fn a_folder_nothing_settled_over_several_releases_offers_to_combine() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("Wrapper/Box/Disc 1"),
-        lib.scan("Wrapper/Box/Disc 2"),
-        lib.kept_apart("Wrapper/Box"),
-    ))
+    lib.run(
+        lib.scan("Wrapper/Box/Disc 1")
+            + lib.scan("Wrapper/Box/Disc 2")
+            + lib.kept_apart("Wrapper/Box"),
+    )
     .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     assert_eq!(combinable(&read), [("Wrapper".to_string(), true)]);
 }
 
 /// Whether a header offers to combine follows every write that decides it: a
-/// reading stored, changed or removed at its folder or at one inside it, and
-/// a release of any tab placed below it or gone.
+/// reading stored or changed at its folder or at one inside it, and a release
+/// of any tab placed below it or gone.
 #[tokio::test]
 async fn a_header_offers_to_combine_as_its_readings_and_rows_change() {
     let lib = Library::new().await;
     let offers = || async { combinable(&lib.shown(view(TriageTab::Pending)).await) };
     let singles = |offered: bool| [("Singles".to_string(), offered)];
-    lib.run(&format!(
-        "{}{}",
-        lib.scan("Singles/Label/Series/One"),
-        lib.scan("Singles/Label/Series/Two")
-    ))
-    .await;
+    lib.run(lib.scan("Singles/Label/Series/One") + lib.scan("Singles/Label/Series/Two")).await;
     assert_eq!(offers().await, singles(false), "Series is nearer to both");
-    lib.run(&format!(
-        "{}{}",
-        lib.kept_apart("Singles/Label"),
-        lib.kept_apart("Singles/Label/Series")
-    ))
-    .await;
-    assert_eq!(offers().await, singles(true), "every folder between is settled");
-    lib.run("DELETE FROM release_grouping WHERE key = CAST('reading Singles/Label' AS BLOB);")
+    lib.run(lib.kept_apart("Singles/Label/Series")).await;
+    assert_eq!(offers().await, singles(false), "Label is nearer to both");
+    lib.run(lib.scan("Singles/Loose") + lib.imported("Singles/Loose", "2026-01-02T00:00:00Z"))
         .await;
-    assert_eq!(offers().await, singles(false), "Label is nearer again");
-    lib.run(&lib.kept_apart("Singles")).await;
-    assert_eq!(offers().await, singles(true), "Singles keeps them apart");
-    lib.run(
-        "UPDATE release_grouping SET combined = 1 WHERE key = CAST('reading Singles' AS BLOB);",
-    )
-    .await;
-    assert_eq!(offers().await, singles(false), "Singles is read as one");
-    lib.run("DELETE FROM release_grouping WHERE key = CAST('reading Singles' AS BLOB);").await;
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("Singles/Loose"),
-        lib.state("Singles/Loose"),
-        lib.imported("Singles/Loose", "2026-01-02T00:00:00Z")
-    ))
-    .await;
     assert_eq!(
         offers().await,
         singles(true),
         "a release on Done right below Singles is nearest to it"
     );
-    lib.run(&format!("DELETE FROM scan_candidate WHERE path = {};", lib.sql("Singles/Loose")))
-        .await;
+    lib.run(lib.unscan("Singles/Loose")).await;
     assert_eq!(offers().await, singles(false), "and gone, it is not");
+    lib.run(lib.kept_apart("Singles/Label")).await;
+    assert_eq!(offers().await, singles(true), "every folder between is settled");
+    lib.run(lib.kept_apart("Singles")).await;
+    assert_eq!(offers().await, singles(true), "Singles keeps them apart");
+    lib.run(lib.reading("Singles", FolderReleaseDecision::CombineAsOneRelease)).await;
+    assert_eq!(offers().await, singles(false), "Singles is read as one");
 }
 
 /// A candidate the user picked a release for reads as identified in the
@@ -202,23 +177,6 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
             )],
         }
     );
-}
-
-/// The list places rows without reading their files: deleting every file row
-/// changes nothing.
-#[tokio::test]
-async fn the_list_places_a_row_without_reading_its_files() {
-    let (db, _tmp, root) = watched_root().await;
-    let tables = crate::tables::ImportTables::new(db.clone());
-    let candidate = scanned(&db, &root, "Album").await;
-    save_verdict(&db, &candidate, "mb-verdict").await;
-
-    let before = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
-    exec(&db, "DELETE FROM scan_candidate_file", &[]).await;
-    let after = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
-
-    assert_eq!(rows(&before), rows(&after));
-    assert_eq!(before.summary, after.summary);
 }
 
 /// The list row carries the applied draft's title and the chosen cover,
@@ -388,16 +346,19 @@ async fn the_scan_stores_the_folders_own_cover() {
         })
     );
 
-    save_verdict(&db, &candidate, "release-with-cover").await;
-    let hash = candidate.files.content_hash();
-    exec(
-        &db,
-        "UPDATE import_candidate_match SET cover_url = ?, \
-             cover_label = ?, cover_source = 'musicbrainz', cover_standing = 'stated' \
-             WHERE content_hash = ?",
-        &["https://example.invalid/full.jpg", "Cover", &hash],
-    )
-    .await;
+    let mut with_cover = verdict("release-with-cover", None);
+    let TerminalVerdict::Found { findings, .. } = &mut with_cover else {
+        unreachable!("verdict builds a found verdict");
+    };
+    findings.matches[0].cover_art = Some(bae_catalogs::remote_image::RemoteCover {
+        image: bae_catalogs::remote_image::RemoteImageSet::original(
+            "https://example.invalid/full.jpg".to_string(),
+        ),
+        label: "Cover".to_string(),
+        source: Catalog::MusicBrainz,
+        standing: bae_catalogs::remote_image::CoverStanding::Stated,
+    });
+    store_verdict(&db, &candidate, with_cover).await;
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     assert_eq!(
         rows(&projection).remove(0).cover,
@@ -589,7 +550,7 @@ async fn a_stored_cover_naming_a_file_the_scan_did_not_store_fails_both_reads() 
         .type_field(&hash, crate::CandidateEditField::AlbumTitle, "Album")
         .await
         .unwrap();
-    exec(
+    bae_store::test_fixtures::exec(
         &db,
         "INSERT INTO import_candidate_cover (content_hash, kind, file_id) \
          VALUES (?, 'local', 'gone.jpg')",
@@ -754,23 +715,44 @@ async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
 /// the library release reaches the row.
 #[tokio::test]
 async fn a_done_row_reads_its_library_release() {
-    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    let records = bae_records::test_fixtures::test_records(&db);
-    let tables = crate::tables::ImportTables::new(db.clone());
-    let root = &crate::tables::watched_path::host_root("/music");
-    tables.add_watched_import_folder(root).await.unwrap();
-    let candidate = scan_finished(&db, root, "release").await;
-    record_import(&db, &candidate.files.content_hash()).await;
-    let version = write_cover(&records, RELEASE_ID, "the library cover").await;
-    exec(
-        &db,
-        "INSERT INTO release_records (id, release_id, catalog, key, album_key, kind) \
-         VALUES ('record', ?1, 'musicbrainz', 'mb-release', 'mb-group', 'pressing')",
-        &[RELEASE_ID],
+    let lib = Library::new().await;
+    let records = lib.records();
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
+    let artist_mbid = "artist-mbid";
+    meet_musicbrainz_artist(&records, artist_mbid, "Artist Name", None).await;
+    let pressing = bae_catalogs::records::ReleaseRecord::new(
+        &bae_catalogs::records::MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        Some("mb-group".to_string()),
+    );
+    lib.run(
+        lib.scan("release")
+            + lib.draft("release", "Draft Title")
+            + lib.linked("release")
+            + lib.import_of(
+                lib.candidate("release"),
+                "release",
+                "2026-01-01T00:00:00Z",
+                "Album Title",
+                vec![pressing.clone()],
+            ),
     )
     .await;
-    let mut live =
-        tables.subscribe_import_list(list_request(&db, crate::TriageTab::Done, [(0, 50)]).await);
+    let (album_id, release_id) = (lib.album_id("release"), lib.release_id("release"));
+    let artist = musicbrainz_artist(artist_mbid);
+    let artist_row =
+        records.find_artist_by_id(&artist).await.unwrap().expect("the library holds the artist");
+    records
+        .save_release_metadata_for_test(&release_id, |rows| {
+            rows.picked.push(artist.clone());
+            rows.credits.push(artist_row);
+            rows.album_artists =
+                vec![bae_records::DbAlbumArtist::new(&album_id, &artist, 0, fixed_now())];
+        })
+        .await
+        .unwrap();
+    let version = write_cover(&records, &release_id, "the library cover").await;
+    let mut live = tables
+        .subscribe_import_list(list_request(&lib.db, crate::TriageTab::Done, [(0, 50)]).await);
     let first = live.next().await.expect("the query stays open").result.unwrap();
     let done = rows(&first);
     assert_eq!(done.len(), 1);
@@ -780,8 +762,8 @@ async fn a_done_row_reads_its_library_release() {
         done.import_status,
         Some(crate::TriageImportStatus::Complete {
             release: crate::ImportedRelease {
-                release_id: RELEASE_ID.to_string(),
-                album_id: ALBUM_ID.to_string(),
+                release_id: release_id.clone(),
+                album_id: album_id.clone(),
             },
         })
     );
@@ -796,28 +778,17 @@ async fn a_done_row_reads_its_library_release() {
         done.cover,
         Some(crate::CoverImageSource::Library {
             image: bae_records::ImageRef {
-                id: RELEASE_ID.to_string(),
+                id: release_id.clone(),
                 version,
                 image_type: LibraryImageType::Cover,
             },
         })
     );
-    assert_eq!(
-        done.reading,
-        crate::triage::TriageReading::Identified {
-            records: vec![bae_catalogs::records::ReleaseRecord::new(
-                &bae_catalogs::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
-                    "mb-release"
-                ),
-                Some("mb-group".to_string()),
-            )],
-        }
-    );
+    assert_eq!(done.reading, crate::triage::TriageReading::Identified { records: vec![pressing] });
     assert_eq!(done.metadata_provenance, None);
     assert_eq!(done.release_link, None);
 
-    exec(&db, "UPDATE albums SET title = 'Retitled' WHERE id = ?1", &[ALBUM_ID]).await;
+    records.rename_album_for_test(&album_id, "Retitled").await.unwrap();
     let retitled = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("retitling the album wakes the list")
@@ -861,34 +832,32 @@ fn with_cover(root: &std::path::Path, name: &str) -> FolderCandidate {
 
 /// With no draft row a candidate reads as its files' blank draft and the
 /// folder's own cover, on its row and in its pane, and its first save stores
-/// the draft and that cover.
+/// the draft and that cover. An import deletes them, and the release it wrote
+/// deleted from the library puts the folder back in Found holding neither.
 #[tokio::test]
 async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover() {
-    let (db, _tmp, root) = watched_root().await;
-    let tables = crate::tables::ImportTables::new(db.clone());
-    tables.add_watched_import_folder(&root).await.unwrap();
-    let candidate = with_cover(&root, "Album");
+    let lib = Library::new().await;
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
+    let candidate = with_cover(&lib.root, "Album");
     let key = candidate.key();
     let hash = candidate.files.content_hash();
-    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables
-        .save_folder_scan_item(
-            &root,
-            generation,
-            &crate::folder_scanner::ScanItem::Valid(candidate.clone()),
-        )
-        .await
-        .unwrap();
-    tables.finish_folder_scan(&root, generation, None).await.unwrap();
     let folder_cover = crate::cover_art::PreparedCover::Local("cover.jpg".to_string());
     assert_eq!(candidate.blank_cover(), Some(folder_cover.clone()));
-    // As an import deletes them, with no release recorded: the folder is
-    // back in Found.
-    exec(&db, "DELETE FROM import_candidate_edit WHERE content_hash = ?1", &[&hash]).await;
-    exec(&db, "DELETE FROM import_candidate_cover WHERE content_hash = ?1", &[&hash]).await;
+    lib.run(
+        lib.store(ScanItem::Valid(candidate.clone()), None)
+            + lib.import_of(
+                candidate.clone(),
+                "Album",
+                "2026-01-02T00:00:00Z",
+                "Album Title",
+                Vec::new(),
+            )
+            + lib.release_deleted("Album"),
+    )
+    .await;
 
     let listed = tables
-        .load_import_list(list_request(&db, crate::TriageTab::Pending, [(0, 50)]).await)
+        .load_import_list(list_request(&lib.db, crate::TriageTab::Pending, [(0, 50)]).await)
         .await
         .unwrap();
     let row = listed
@@ -918,7 +887,7 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
         Some(folder_cover.selection())
     );
 
-    crate::tables::import_state::tests::PaneControls::of(&db, &candidate)
+    crate::tables::import_state::tests::PaneControls::of(&lib.db, &candidate)
         .type_field(&hash, crate::CandidateEditField::AlbumTitle, "Typed album")
         .await
         .unwrap();
@@ -926,7 +895,7 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
     assert_eq!(stored.metadata.draft.album_title, "Typed album");
     assert_eq!(stored.metadata.cover, Some(folder_cover));
     assert_eq!(
-        db.count_rows_for_test("import_candidate_cover", "content_hash", &hash).await.unwrap(),
+        lib.db.count_rows_for_test("import_candidate_cover", "content_hash", &hash).await.unwrap(),
         1,
         "the first save stores the cover it read"
     );

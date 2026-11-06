@@ -3,12 +3,14 @@
 //! deciding over the stored tables.
 
 use super::*;
+use crate::candidate_runtime::IdentificationChange;
 use crate::list::ImportListItem;
 use crate::tables::import_list::tests::*;
 use crate::tables::tests::*;
 use crate::TriageTab;
 use crate::{CandidateAction, TriageImportStatus, TriagePlacement};
 use crate::{NeedsYouReason, PendingStanding};
+use bae_catalogs::search::MetadataResult;
 use bae_catalogs::InternalFailure;
 use bae_identify::MediumConflict;
 use bae_identify::TerminalVerdict;
@@ -24,12 +26,11 @@ fn offers_import(live: &crate::CandidateLiveState) -> bool {
 #[tokio::test]
 async fn an_identified_row_is_pending_and_offers_import() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        scanned_with_states(&lib, &["Release"]),
-        lib.linked("Release"),
-        lib.valid_draft("Release"),
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Release"])
+            + lib.linked("Release")
+            + lib.valid_draft("Release"),
+    )
     .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     let (row, live) = row_at(&read, "Release");
@@ -38,18 +39,20 @@ async fn an_identified_row_is_pending_and_offers_import() {
     assert!(offers_import(live));
 }
 
-/// A state for a file shape the candidate has moved past is not the
+/// A state for a file shape other than the one the scan row read is not the
 /// candidate's answer: its draft offers nothing, and its lookup and link
-/// place nothing.
+/// place nothing. A pass that read the folder before its file decisions
+/// landed lists it so.
 #[tokio::test]
-async fn a_state_at_a_stale_edit_revision_is_not_the_row_s_answer() {
+async fn a_state_at_another_edit_revision_is_not_the_row_s_answer() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}UPDATE scan_candidate SET file_edit_revision = 2;",
-        scanned_with_states(&lib, &["Release"]),
-        lib.linked("Release"),
-        lib.valid_draft("Release"),
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Release"])
+            + lib.linked("Release")
+            + lib.valid_draft("Release")
+            + lib.file_decision("Release")
+            + lib.scan_revised("Release", 0),
+    )
     .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     let (row, live) = row_at(&read, "Release");
@@ -63,11 +66,9 @@ async fn a_state_at_a_stale_edit_revision_is_not_the_row_s_answer() {
 #[tokio::test]
 async fn an_imported_content_hash_puts_its_row_in_done() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}",
-        scanned_with_states(&lib, &["Release"]),
-        lib.imported("Release", "2026-01-02T00:00:00Z")
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Release"]) + lib.imported("Release", "2026-01-02T00:00:00Z"),
+    )
     .await;
     let read = lib.shown(view(TriageTab::Done)).await;
     let (row, live) = row_at(&read, "Release");
@@ -83,7 +84,7 @@ async fn an_imported_content_hash_puts_its_row_in_done() {
 #[tokio::test]
 async fn a_skipped_candidate_lands_in_skipped() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Release"), lib.skip("Release"))).await;
+    lib.run(lib.scan("Release") + lib.skip("Release")).await;
     let read = lib.shown(view(TriageTab::Skipped)).await;
     assert_eq!(row_at(&read, "Release").0.placement, TriagePlacement::Skipped);
     assert_eq!(read.summary.counts.skipped, 1);
@@ -95,12 +96,11 @@ async fn a_skipped_candidate_lands_in_skipped() {
 #[tokio::test]
 async fn a_claimed_import_leaves_the_row_pending() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        scanned_with_states(&lib, &["Release"]),
-        lib.valid_draft("Release"),
-        lib.importing("Release", "reading_files")
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Release"])
+            + lib.valid_draft("Release")
+            + lib.importing("Release", "reading_files"),
+    )
     .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     let (row, live) = row_at(&read, "Release");
@@ -112,17 +112,16 @@ async fn a_claimed_import_leaves_the_row_pending() {
 
 /// The failure is a row, so it survives the session that produced it: a
 /// relaunched queue still says why the attempt failed. It stays on Pending —
-/// nothing was imported — and importing it again is the ordinary import.
-/// Retrying clears it, and the release it writes outranks any failure left.
+/// nothing was imported — and importing it again is the ordinary import,
+/// whose release clears it.
 #[tokio::test]
 async fn a_failed_import_stays_pending_until_its_retry_lands_in_done() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        scanned_with_states(&lib, &["Release"]),
-        lib.valid_draft("Release"),
-        lib.import_failed("Release"),
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Release"])
+            + lib.valid_draft("Release")
+            + lib.import_failed("Release"),
+    )
     .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     let (row, live) = row_at(&read, "Release");
@@ -135,16 +134,7 @@ async fn a_failed_import_stays_pending_until_its_retry_lands_in_done() {
     assert!(offers_import(live));
     assert_eq!(read.summary.counts.pending, 1);
 
-    lib.run("DELETE FROM import_candidate_failure;").await;
-    let read = lib.shown(view(TriageTab::Pending)).await;
-    assert_eq!(row_at(&read, "Release").0.placement, TriagePlacement::Pending);
-
-    lib.run(&format!(
-        "{}{}",
-        lib.import_failed("Release"),
-        lib.imported("Release", "2026-01-02T00:00:00Z")
-    ))
-    .await;
+    lib.run(lib.imported("Release", "2026-01-02T00:00:00Z")).await;
     let done = lib.shown(view(TriageTab::Done)).await;
     assert!(matches!(
         row_at(&done, "Release").0.import_status,
@@ -159,17 +149,14 @@ async fn a_failed_import_stays_pending_until_its_retry_lands_in_done() {
 #[tokio::test]
 async fn a_row_offers_import_exactly_when_its_draft_would_import() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}{}{}{}{}",
-        scanned_with_states(&lib, &["Valid", "Several", "Picked", "Not Found"]),
-        lib.valid_draft("Valid"),
-        lib.verdict("Several", "found", Some(11)),
-        lib.found_release("Several", 0, 0, (Some("listed"), Some(11))),
-        lib.found_release("Several", 1, 1, (Some("listed"), Some(11))),
-        lib.linked("Picked"),
-        lib.valid_draft("Picked"),
-        lib.verdict("Not Found", "not_found", None),
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Valid", "Several", "Picked", "Not Found"])
+            + lib.valid_draft("Valid")
+            + lib.found("Several", 2, FITS)
+            + lib.linked("Picked")
+            + lib.valid_draft("Picked")
+            + lib.verdict("Not Found", "not_found", None),
+    )
     .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     for (display_path, offers) in
@@ -186,14 +173,13 @@ async fn a_row_offers_import_exactly_when_its_draft_would_import() {
 #[tokio::test]
 async fn a_pick_does_not_outrank_skipped_or_done() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}{}",
-        scanned_with_states(&lib, &["Skipped", "Imported"]),
-        lib.linked("Skipped"),
-        lib.linked("Imported"),
-        lib.skip("Skipped"),
-        lib.imported("Imported", "2026-01-02T00:00:00Z"),
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Skipped", "Imported"])
+            + lib.linked("Skipped")
+            + lib.linked("Imported")
+            + lib.skip("Skipped")
+            + lib.imported("Imported", "2026-01-02T00:00:00Z"),
+    )
     .await;
     assert_eq!(
         row_at(&lib.shown(view(TriageTab::Skipped)).await, "Skipped").0.placement,
@@ -211,12 +197,11 @@ async fn a_pick_does_not_outrank_skipped_or_done() {
 async fn a_candidate_under_identification_offers_only_its_cancel_and_skip() {
     for stage in ["queued", "running", "finalizing"] {
         let lib = Library::new().await;
-        lib.run(&format!(
-            "{}{}{}",
-            scanned_with_states(&lib, &["Release"]),
-            lib.valid_draft("Release"),
-            lib.identifying("Release", stage),
-        ))
+        lib.run(
+            scanned_with_states(&lib, &["Release"])
+                + lib.valid_draft("Release")
+                + lib.identifying("Release", stage),
+        )
         .await;
         let read = lib.shown(view(TriageTab::Pending)).await;
         let (row, live) = row_at(&read, "Release");
@@ -230,21 +215,6 @@ async fn a_candidate_under_identification_offers_only_its_cancel_and_skip() {
             ],
             "{stage}"
         );
-    }
-}
-
-impl Library {
-    /// A run of the release at `display_path` that picked its release
-    /// unattended, which is being read in full.
-    fn reading_pick(&self, display_path: &str) -> String {
-        format!(
-            "INSERT INTO import_candidate_standing
-                 (candidate_key, identification, content_hash, file_edit_revision, identify_run,
-                  import_asked)
-             VALUES ({}, 'reading_pick', '{}', 0, 1, 0);",
-            self.sql(display_path),
-            hash(display_path)
-        )
     }
 }
 
@@ -270,36 +240,34 @@ async fn each_row_reads_back_in_the_standing_its_tables_put_it_in() {
         "Fits",
         "Unidentified",
     ];
-    let mut sql = scanned_with_states(&lib, &releases);
-    sql.push_str(&lib.found("Several", 3, FITS));
-    sql.push_str(&lib.found("No Tracklist", 1, (Some("nothing"), None)));
-    sql.push_str(&lib.found("Medium", 2, FITS));
-    sql.push_str(&format!(
-        "UPDATE import_candidate_verdict SET medium_conflict = 'cd_rip'
-         WHERE content_hash = '{}';",
-        hash("Medium")
-    ));
-    sql.push_str(&lib.verdict("Not Found", "not_found", None));
-    sql.push_str(&lib.verdict("Nothing Found", "found", Some(11)));
-    sql.push_str(&lib.verdict("Manual", "manual_only", Some(11)));
-    sql.push_str(&lib.verdict("Broke", "error", None));
-    sql.push_str(&lib.verdict("Lookup Failed", "failed", Some(11)));
-    sql.push_str(&lib.found("Unread", 1, FITS));
-    sql.push_str(&format!(
-        "UPDATE import_candidate_match SET document_failure = 'timeout'
-         WHERE content_hash = '{}';",
-        hash("Unread")
-    ));
-    for kept in ["Kept", "Kept Then Linked"] {
-        sql.push_str(&lib.found(kept, 3, FITS));
-        sql.push_str(&format!(
-            "UPDATE import_candidate_verdict SET kept_own_draft = 1 WHERE content_hash = '{}';",
-            hash(kept)
-        ));
-    }
-    sql.push_str(&lib.linked("Kept Then Linked"));
-    sql.push_str(&lib.found("Fits", 1, FITS));
-    lib.run(&sql).await;
+    let pressings =
+        |count: u32| (0..count).map(|pressing| (found_release(pressing, FITS), pressing));
+    let mut medium = found_verdict(11, pressings(2));
+    findings_of(&mut medium).medium_conflict = Some(MediumConflict::CdRip);
+    let unread = MetadataResult {
+        document_failure: Some(bae_catalogs::LookupFailure::Timeout),
+        ..found_release(0, FITS)
+    };
+    let kept: Write = ["Kept", "Kept Then Linked"]
+        .into_iter()
+        .map(|kept| lib.found(kept, 3, FITS) + lib.kept_own_draft(kept))
+        .sum();
+    lib.run(
+        scanned_with_states(&lib, &releases)
+            + lib.found("Several", 3, FITS)
+            + lib.found("No Tracklist", 1, (Some("nothing"), None))
+            + lib.concluded("Medium", medium)
+            + lib.verdict("Not Found", "not_found", None)
+            + lib.verdict("Nothing Found", "found", Some(11))
+            + lib.verdict("Manual", "manual_only", Some(11))
+            + lib.verdict("Broke", "error", None)
+            + lib.verdict("Lookup Failed", "failed", Some(11))
+            + lib.concluded("Unread", found_verdict(11, [(unread, 0)]))
+            + kept
+            + lib.linked("Kept Then Linked")
+            + lib.found("Fits", 1, FITS),
+    )
+    .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     let standing = |display_path: &str| row_at(&read, display_path).1.standing.clone();
     let needs_you = |reason| Some(PendingStanding::NeedsYou { reason });
@@ -356,22 +324,24 @@ async fn each_row_reads_back_in_the_standing_its_tables_put_it_in() {
 async fn running_work_decides_over_the_tables() {
     let lib = Library::new().await;
     let releases = ["Running", "Importing", "Reading", "Not Written"];
-    let mut sql = scanned_with_states(&lib, &releases);
-    for display_path in releases {
-        sql.push_str(&lib.verdict(display_path, "not_found", None));
-    }
-    sql.push_str(&lib.identifying("Running", "running"));
-    sql.push_str(&lib.importing("Importing", "queued"));
-    sql.push_str(&format!(
-        "UPDATE import_candidate_standing SET identification = 'queued', content_hash = '{}',
-             file_edit_revision = 0, admission = 'requested'
-         WHERE candidate_key = {};",
-        hash("Importing"),
-        lib.sql("Importing")
-    ));
-    sql.push_str(&lib.reading_pick("Reading"));
-    sql.push_str(&lib.not_written("Not Written", "disk full"));
-    lib.run(&sql).await;
+    let not_found: Write =
+        releases.into_iter().map(|display_path| lib.verdict(display_path, "not_found", None)).sum();
+    lib.run(
+        scanned_with_states(&lib, &releases)
+            + not_found
+            + lib.identifying("Running", "running")
+            + lib.importing_with(
+                "Importing",
+                "queued",
+                Some(IdentificationChange::Admit {
+                    files: lib.files("Importing"),
+                    admission: crate::Admission::Requested,
+                }),
+            )
+            + lib.identifying("Reading", "reading_pick")
+            + lib.not_written("Not Written", "disk full"),
+    )
+    .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     let standing = |display_path: &str| row_at(&read, display_path).1.standing.clone();
     assert_eq!(standing("Running"), Some(PendingStanding::Identifying));
@@ -388,7 +358,7 @@ async fn running_work_decides_over_the_tables() {
         Some(crate::PendingBadge::Error)
     );
 
-    lib.run("DELETE FROM import_candidate_standing;").await;
+    lib.run(lib.reopened()).await;
     let at_rest = lib.shown(view(TriageTab::Pending)).await;
     for display_path in releases {
         assert_eq!(
@@ -408,15 +378,17 @@ async fn running_work_decides_over_the_tables() {
 async fn a_row_shows_its_lookup_at_work_only_while_in_progress_counts_it() {
     let lib = Library::new().await;
     let releases = ["Queued", "Running", "Finalizing", "Reading"];
-    let mut sql = scanned_with_states(&lib, &releases);
-    for display_path in releases {
-        sql.push_str(&lib.verdict(display_path, "not_found", None));
-    }
-    sql.push_str(&lib.identifying("Queued", "queued"));
-    sql.push_str(&lib.identifying("Running", "running"));
-    sql.push_str(&lib.identifying("Finalizing", "finalizing"));
-    sql.push_str(&lib.reading_pick("Reading"));
-    lib.run(&sql).await;
+    let not_found: Write =
+        releases.into_iter().map(|display_path| lib.verdict(display_path, "not_found", None)).sum();
+    lib.run(
+        scanned_with_states(&lib, &releases)
+            + not_found
+            + lib.identifying("Queued", "queued")
+            + lib.identifying("Running", "running")
+            + lib.identifying("Finalizing", "finalizing")
+            + lib.identifying("Reading", "reading_pick"),
+    )
+    .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     let shown = |display_path: &str| {
         let live = row_at(&read, display_path).1;
@@ -460,17 +432,16 @@ async fn a_row_shows_its_lookup_at_work_only_while_in_progress_counts_it() {
 async fn a_pane_shows_a_pick_being_read_only_while_it_is_read() {
     let lib = Library::new().await;
     let releases = ["Queued", "Running", "Finalizing", "Reading", "Asked", "Idle"];
-    let mut sql = scanned_with_states(&lib, &releases);
-    sql.push_str(&lib.identifying("Queued", "queued"));
-    sql.push_str(&lib.identifying("Running", "running"));
-    sql.push_str(&lib.identifying("Finalizing", "finalizing"));
-    sql.push_str(&lib.reading_pick("Reading"));
-    sql.push_str(&lib.reading_pick("Asked"));
-    sql.push_str(&format!(
-        "UPDATE import_candidate_standing SET import_asked = 1 WHERE candidate_key = {};",
-        lib.sql("Asked")
-    ));
-    lib.run(&sql).await;
+    lib.run(
+        scanned_with_states(&lib, &releases)
+            + lib.identifying("Queued", "queued")
+            + lib.identifying("Running", "running")
+            + lib.identifying("Finalizing", "finalizing")
+            + lib.identifying("Reading", "reading_pick")
+            + lib.identifying("Asked", "reading_pick")
+            + lib.identification("Asked", vec![IdentificationChange::ImportAsked]),
+    )
+    .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     for (display_path, reading) in [
         ("Queued", false),

@@ -13,9 +13,8 @@ use crate::{MetadataProvenance, TriageTab};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::PayloadSource;
 use bae_identify::TerminalVerdict;
-use bae_records::test_fixtures::live_query::{live_db, ALBUM_ID, RELEASE_ID};
+use bae_store::test_fixtures::empty_db;
 use bae_store::test_fixtures::fixed_now;
-use bae_store::test_fixtures::{empty_db, exec};
 use std::path::PathBuf;
 
 /// A MusicBrainz release linking a Discogs release, in a group linking
@@ -295,24 +294,21 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
     }] if disc_id == "disc-1"));
 }
 
-/// A verdict stored for another file-edit revision does not resume.
+/// A verdict stored for another file-edit revision does not resume: one
+/// stored over the folder's file decisions while a pass that read the folder
+/// before they landed lists it.
 #[tokio::test]
 async fn a_verdict_from_another_revision_does_not_resume() {
-    let (db, _tmp, root) = watched_root().await;
-    let tables = crate::tables::ImportTables::new(db.clone());
-    let candidate = scanned(&db, &root, "Album").await;
-    save_verdict(&db, &candidate, "mb-verdict").await;
-    let key = crate::CandidateKey::folder(&candidate.path);
-    let edited = key.clone();
-    exec(
-        &db,
-        &format!(
-            "UPDATE scan_candidate SET file_edit_revision = 1 WHERE path = X'{}'",
-            hex::encode(edited.as_bytes())
-        ),
-        &[],
+    let lib = Library::new().await;
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
+    lib.run(
+        lib.scan("Album")
+            + lib.file_decision("Album")
+            + lib.scan_revised("Album", 0)
+            + lib.concluded_at("Album", verdict("mb-verdict", None), 1),
     )
     .await;
+    let key = lib.key("Album");
 
     let detail = tables
         .load_import_candidate(&key)
@@ -331,11 +327,10 @@ async fn a_verdict_from_another_revision_does_not_resume() {
 /// scan, holding no draft.
 #[tokio::test]
 async fn the_pane_of_an_imported_candidate_is_placed_done() {
-    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    let tables = crate::tables::ImportTables::new(db.clone());
-    let root = &crate::tables::watched_path::host_root("/music");
-    tables.add_watched_import_folder(root).await.unwrap();
-    let candidate = scan_finished(&db, root, "release").await;
+    let lib = Library::new().await;
+    let db = lib.db.clone();
+    lib.run(lib.scan("release")).await;
+    let candidate = lib.candidate("release");
     let key = candidate.key();
     let detail = |db: Store, key: crate::CandidateKey| async move {
         let tables = crate::tables::ImportTables::new(db);
@@ -352,15 +347,16 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
         crate::CandidatePanePlacement::Pending { .. }
     ));
 
-    record_import(&db, &candidate.files.content_hash()).await;
+    lib.run(lib.imported("release", "2026-01-01T00:00:00Z")).await;
+    let (release_id, album_id) = (lib.release_id("release"), lib.album_id("release"));
     let done = detail(db.clone(), key).await;
     assert_eq!(done.placement, crate::CandidatePanePlacement::Done);
     assert_eq!(
         done.import_status,
         Some(crate::CandidateImportStatus::Complete {
             release: crate::ImportedRelease {
-                release_id: RELEASE_ID.to_string(),
-                album_id: ALBUM_ID.to_string(),
+                release_id: release_id.clone(),
+                album_id: album_id.clone(),
             },
         })
     );
@@ -369,8 +365,8 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
         done.stage,
         crate::CandidateStage::Imported {
             release: crate::ImportedRelease {
-                release_id: RELEASE_ID.to_string(),
-                album_id: ALBUM_ID.to_string(),
+                release_id: release_id.clone(),
+                album_id: album_id.clone(),
             },
             folder: crate::mapping::folder_files(&candidate.files),
         },
@@ -448,7 +444,7 @@ async fn the_pane_s_import_status_says_the_step_the_import_is_at() {
 /// each value answers the key set last, and no key reads nothing.
 #[tokio::test]
 async fn import_candidate_moves_between_candidates_on_one_subscription() {
-    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
+    let (db, _temp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &crate::tables::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();

@@ -5,179 +5,257 @@
 
 use crate::tables::import_list::placement::tests::*;
 use crate::tables::import_list::tests::*;
-use bae_records::test_fixtures::{ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A};
-
-/// An imported release's Done row, showing `title` and `artists`.
-fn done(title: &str, artists: &str) -> Placed {
-    found("Album").on("done").dated(1_767_225_600_000).shown(title, Some(artists))
-}
-
-fn uuid(name: &str) -> String {
-    bae_util::test_ids::test_uuid(name)
-}
+use bae_records::test_fixtures::artists_apart::{
+    meet_musicbrainz_artist, merge_apart, musicbrainz_artist,
+};
+use bae_records::test_fixtures::test_records;
 
 /// What this device imported from a folder's files puts it on Done, dated by
 /// when its release was written and showing its library album, whatever else
-/// is stored for it.
+/// is stored for it; the release deleted from the library puts it back.
 #[tokio::test]
 async fn an_imported_release_is_done_dated_by_its_release() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}
-         INSERT INTO skipped_import_candidates (candidate_path) VALUES ({});
-         INSERT INTO albums (id, title, is_compilation, created_at)
-         VALUES ('{ALBUM_A}', 'Album Title', 0, '2026-01-01T00:00:00Z');
-         INSERT INTO releases (id, album_id, created_at, album_order)
-         VALUES ('{RELEASE_A}', '{ALBUM_A}', '2026-01-01T00:00:00.123456789+00:00', 0);",
-        lib.scan("Album"),
-        lib.discovered("Album", 100),
-        lib.state("Album"),
-        lib.sql("Album")
-    ))
-    .await;
+    lib.run(lib.scan_dated("Album", 100) + lib.skip("Album")).await;
     let imported_at = 1_767_225_600_000;
     assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO local_release_origin (release_id, content_hash)
-             VALUES ('{RELEASE_A}', '{}');",
-            hash("Album")
-        ))
-        .await,
+        lib.moved(lib.imported("Album", "2026-01-01T00:00:00.123456789+00:00")).await,
         moves([(
             lib.release("Album"),
             Some(found("Album").on("done").dated(imported_at + 123).shown("Album Title", Some("")))
         )])
     );
     assert_eq!(
-        lib.moved(&format!("DELETE FROM local_release_origin WHERE release_id = '{RELEASE_A}';"))
-            .await,
+        lib.moved(lib.release_deleted("Album")).await,
         moves([(lib.release("Album"), Some(found("Album").on("skipped").dated(100)))])
     );
 }
 
+/// The MusicBrainz artist the album is first credited to.
+const ARTIST_A_MUSICBRAINZ: &str = "artist-a-mbid";
+
+/// The MusicBrainz artist the album's second credit names.
+const ARTIST_B_MUSICBRAINZ: &str = "artist-b-mbid";
+
+/// A MusicBrainz artist whose library id sorts before `than`'s, which a
+/// merge of the two keeps.
+fn surviving_musicbrainz(than: &str) -> String {
+    let id = musicbrainz_artist(than);
+    (0..)
+        .map(|n| format!("survivor-mbid-{n}"))
+        .find(|candidate| musicbrainz_artist(candidate) < id)
+        .expect("some id sorts first")
+}
+
+/// The name each device's library holds for artist `artist_id`.
+async fn artist_name(db: &bae_store::Store, artist_id: &str) -> String {
+    test_records(db)
+        .find_artist_by_id(artist_id)
+        .await
+        .unwrap()
+        .expect("the library holds the artist")
+        .name
+}
+
 /// The Done row follows its library album: retitling it, its credits coming,
-/// going and changing, the artists they name being renamed or merged, the
-/// credit names they print, and the release moving to another album. A
-/// release nobody imported, credited to the same artists in its draft, moves
-/// only where its draft names them.
-#[tokio::test]
-async fn a_done_row_follows_its_library_album() {
-    let lib = Library::new().await;
-    let other_album = uuid("other album");
-    let survivor = uuid("survivor artist");
-    lib.run(&format!(
-        "{}{}{}{}{}
-         INSERT INTO artists (id, name, name_key, created_at) VALUES
-             ('{ARTIST_A}', 'Artist A', 'artist a', '2026-01-01T00:00:00Z'),
-             ('{ARTIST_B}', 'Artist B', 'artist b', '2026-01-01T00:00:00Z'),
-             ('{survivor}', 'Survivor', 'survivor', '2026-01-01T00:00:00Z');
-         INSERT INTO albums (id, title, is_compilation, created_at) VALUES
-             ('{ALBUM_A}', 'Album Title', 0, '2026-01-01T00:00:00Z'),
-             ('{other_album}', 'Other Album', 0, '2026-01-01T00:00:00Z');
-         INSERT INTO releases (id, album_id, created_at, album_order)
-         VALUES ('{RELEASE_A}', '{ALBUM_A}', '2026-01-01T00:00:00Z', 0);
-         INSERT INTO local_release_origin (release_id, content_hash)
-         VALUES ('{RELEASE_A}', '{album_hash}');",
-        lib.scan("Album"),
-        lib.state("Album"),
-        lib.draft("Album", "Draft Title"),
-        lib.scan("Other"),
-        lib.state("Other"),
-        album_hash = hash("Album"),
-    ))
-    .await;
-    assert_eq!(
-        lib.placed().await.get(&lib.release("Album")),
-        Some(&done("Album Title", "")),
-        "the library album's title, not the draft's"
-    );
-    let moved_to =
-        |title: &str, artists: &str| moves([(lib.release("Album"), Some(done(title, artists)))]);
-    assert_eq!(
-        lib.moved(&format!("UPDATE albums SET title = 'Retitled' WHERE id = '{ALBUM_A}';")).await,
-        moved_to("Retitled", "")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO album_artists (id, album_id, artist_id, position, join_phrase, created_at)
-             VALUES ('{}', '{ALBUM_A}', '{ARTIST_A}', 0, ' & ', '2026-01-01T00:00:00Z');",
-            uuid("credit a")
-        ))
-        .await,
-        moved_to("Retitled", "Artist A")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO album_artists (id, album_id, artist_id, position, created_at)
-             VALUES ('{}', '{ALBUM_A}', '{ARTIST_B}', 1, '2026-01-01T00:00:00Z');",
-            uuid("credit b")
-        ))
-        .await,
-        moved_to("Retitled", "Artist A & Artist B")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO artist_credits (artist_id, name_key, name, created_at)
-             VALUES ('{ARTIST_B}', 'printed b', 'Printed B', '2026-01-01T00:00:00Z');"
-        ))
-        .await,
-        moves([]),
-        "a credit name no credit prints shows nowhere"
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE album_artists SET credit_key = 'printed b' WHERE id = '{}';",
-            uuid("credit b")
-        ))
-        .await,
-        moved_to("Retitled", "Artist A & Printed B")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE artist_credits SET name = 'Printed Bee' WHERE artist_id = '{ARTIST_B}';"
-        ))
-        .await,
-        moved_to("Retitled", "Artist A & Printed Bee")
-    );
-    assert_eq!(
-        lib.moved(&format!("UPDATE artists SET name = 'Renamed A' WHERE id = '{ARTIST_A}';")).await,
-        moved_to("Retitled", "Renamed A & Printed Bee")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE album_artists SET join_phrase = ' with ' WHERE id = '{}';",
-            uuid("credit a")
-        ))
-        .await,
-        moved_to("Retitled", "Renamed A with Printed Bee")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO artist_merges (id, into_artist_id, created_at)
-             VALUES ('{ARTIST_A}', '{survivor}', '2026-01-01T00:00:00Z');
-             INSERT INTO artist_merge_refresh (artist_id, into_artist_id)
-             VALUES ('{ARTIST_A}', '{survivor}');"
-        ))
-        .await,
-        moved_to("Retitled", "Survivor with Printed Bee"),
-        "a merged artist prints as the artist it shows as"
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE artists SET name = 'Renamed Survivor' WHERE id = '{survivor}';"
-        ))
-        .await,
-        moved_to("Retitled", "Renamed Survivor with Printed Bee")
-    );
-    assert_eq!(
-        lib.moved(&format!("DELETE FROM album_artists WHERE id = '{}';", uuid("credit b"))).await,
-        moved_to("Retitled", "Renamed Survivor")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE releases SET album_id = '{other_album}' WHERE id = '{RELEASE_A}';"
-        ))
-        .await,
-        moved_to("Other Album", "")
-    );
+/// going and changing, the artists they name being renamed or merged by
+/// another device, the credit names they print, and the release moving to
+/// another album. A release nobody imported moves for none of it.
+#[test]
+fn a_done_row_follows_its_library_album() {
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+        devices.pause().await;
+        let lib = Library::on(devices.a().clone()).await;
+        let records = lib.records();
+        meet_musicbrainz_artist(&records, ARTIST_A_MUSICBRAINZ, "Artist A", None).await;
+        meet_musicbrainz_artist(&records, ARTIST_B_MUSICBRAINZ, "Artist B", None).await;
+        let (artist_a, artist_b) =
+            (musicbrainz_artist(ARTIST_A_MUSICBRAINZ), musicbrainz_artist(ARTIST_B_MUSICBRAINZ));
+        lib.run(
+            lib.scan_dated("Album", 100)
+                + lib.draft("Album", "Draft Title")
+                + lib.imported("Album", "2026-01-01T00:00:00Z")
+                + lib.scan_dated("Other", 100),
+        )
+        .await;
+        let done = |title: &str, artists: &str| {
+            found("Album").on("done").dated(1_767_225_600_000).shown(title, Some(artists))
+        };
+        assert_eq!(
+            lib.placed().await.get(&lib.release("Album")),
+            Some(&done("Album Title", "")),
+            "the library album's title, not the draft's"
+        );
+        let moved_to = |title: &str, artists: &str| {
+            moves([(lib.release("Album"), Some(done(title, artists)))])
+        };
+        let release_id = lib.release_id("Album");
+        let album_id = records.find_release_by_id(&release_id).await.unwrap().unwrap().album_id;
+        let credit = |artist: &str, position: u32, credit: Option<&str>, join: Option<&str>| {
+            bae_records::DbAlbumArtist {
+                credit: credit.map(bae_records::credits::CreditName::of),
+                join_phrase: join.map(str::to_string),
+                ..bae_records::DbAlbumArtist::new(
+                    &album_id,
+                    artist,
+                    position,
+                    bae_store::test_fixtures::fixed_now(),
+                )
+            }
+        };
+        let credited = |credits: Vec<bae_records::DbAlbumArtist>| {
+            let records = records.clone();
+            let release_id = release_id.clone();
+            async move {
+                let mut artists = Vec::new();
+                for credit in &credits {
+                    artists.push(
+                        records
+                            .find_artist_by_id(&credit.artist_id)
+                            .await
+                            .unwrap()
+                            .expect("the library holds the credited artist"),
+                    );
+                }
+                records
+                    .save_release_metadata_for_test(&release_id, |rows| {
+                        for artist in artists {
+                            if !rows.picked.contains(&artist.id) {
+                                rows.picked.push(artist.id.clone());
+                            }
+                            if !rows.credits.iter().any(|credit| credit.id == artist.id) {
+                                rows.credits.push(artist);
+                            }
+                        }
+                        rows.album_artists = credits;
+                    })
+                    .await
+                    .unwrap()
+            }
+        };
+        assert_eq!(
+            lib.moved_after(async {
+                records.rename_album_for_test(&album_id, "Retitled").await.unwrap()
+            })
+            .await,
+            moved_to("Retitled", "")
+        );
+        assert_eq!(
+            lib.moved_after(credited(vec![credit(&artist_a, 0, None, Some(" & "))])).await,
+            moved_to("Retitled", "Artist A")
+        );
+        assert_eq!(
+            lib.moved_after(credited(vec![
+                credit(&artist_a, 0, None, Some(" & ")),
+                credit(&artist_b, 1, None, None),
+            ]))
+            .await,
+            moved_to("Retitled", "Artist A & Artist B")
+        );
+        let entered = |name: &str| bae_store::EnteredName::parse(name).unwrap();
+        assert_eq!(
+            lib.moved_after(async {
+                records.add_artist_credit_name(&artist_b, &entered("Printed B")).await.unwrap()
+            })
+            .await,
+            moves([]),
+            "a credit name no credit prints shows nowhere"
+        );
+        assert_eq!(
+            lib.moved_after(credited(vec![
+                credit(&artist_a, 0, None, Some(" & ")),
+                credit(&artist_b, 1, Some("Printed B"), None),
+            ]))
+            .await,
+            moved_to("Retitled", "Artist A & Printed B")
+        );
+        assert_eq!(
+            lib.moved_after(async {
+                records
+                    .rename_artist_credit_name(
+                        &artist_b,
+                        &bae_records::credits::CreditName::of("Printed B").key,
+                        &entered("Printed Bee"),
+                    )
+                    .await
+                    .unwrap()
+            })
+            .await,
+            moved_to("Retitled", "Artist A & Printed Bee")
+        );
+        // B, apart, meets artist A under another name; the later write's
+        // name lands on A.
+        meet_musicbrainz_artist(
+            &test_records(devices.b()),
+            ARTIST_A_MUSICBRAINZ,
+            "Renamed A",
+            None,
+        )
+        .await;
+        assert_eq!(
+            lib.moved_after(async {
+                devices.resume().await;
+                devices
+                    .settle("artist A's new name", async |_, db| {
+                        artist_name(db, &musicbrainz_artist(ARTIST_A_MUSICBRAINZ)).await
+                            == "Renamed A"
+                    })
+                    .await;
+            })
+            .await,
+            moved_to("Retitled", "Renamed A & Printed Bee")
+        );
+        assert_eq!(
+            lib.moved_after(credited(vec![
+                credit(&artist_a, 0, None, Some(" with ")),
+                credit(&artist_b, 1, Some("Printed Bee"), None),
+            ]))
+            .await,
+            moved_to("Retitled", "Renamed A with Printed Bee")
+        );
+        // Each device gives one artist the same Discogs id while apart: the
+        // one B holds, whose id sorts first, survives the merge.
+        let survivor_musicbrainz = surviving_musicbrainz(ARTIST_A_MUSICBRAINZ);
+        meet_musicbrainz_artist(
+            &test_records(devices.b()),
+            &survivor_musicbrainz,
+            "Survivor",
+            None,
+        )
+        .await;
+        assert_eq!(
+            lib.moved_after(merge_apart(devices, ("Renamed A", "Survivor"), "discogs-merged"))
+                .await,
+            moved_to("Retitled", "Survivor with Printed Bee"),
+            "a merged artist prints as the artist it shows as"
+        );
+        assert_eq!(
+            lib.moved_after(credited(vec![credit(&artist_a, 0, None, None)])).await,
+            moved_to("Retitled", "Survivor")
+        );
+        let other_album = bae_util::test_ids::test_uuid("other album");
+        assert_eq!(
+            lib.moved_after(async {
+                records
+                    .set_records_atomic(bae_records::RecordsChange {
+                        release_id: release_id.clone(),
+                        records: Vec::new(),
+                        current_album_id: album_id.clone(),
+                        target_album_id: other_album.clone(),
+                        new_album: Some(bae_records::DbAlbum {
+                            id: other_album.clone(),
+                            title: "Other Album".to_string(),
+                            year: None,
+                            is_compilation: false,
+                            created_at: bae_store::test_fixtures::fixed_now(),
+                        }),
+                    })
+                    .await
+                    .unwrap()
+            })
+            .await,
+            moved_to("Other Album", "Survivor"),
+            "the album it lands on takes its credits"
+        );
+    });
 }

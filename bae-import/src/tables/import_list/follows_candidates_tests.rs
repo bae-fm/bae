@@ -2,210 +2,246 @@
 //! failure, what is running for it, and the verdict its lookup stored and why
 //! a found one picks none of its releases unattended.
 
+use crate::candidate_runtime::IdentificationChange;
 use crate::tables::import_list::placement::tests::*;
 use crate::tables::import_list::tests::*;
-use bae_records::test_fixtures::{ARTIST_A, ARTIST_B};
+use crate::{ArtistAssignment, CandidateEditField, Credited};
+use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::credits::ArtistCredit;
+use bae_catalogs::search::MetadataResult;
+use bae_identify::TerminalVerdict;
+use bae_records::test_fixtures::artists_apart::{meet_musicbrainz_artist, musicbrainz_artist};
+use bae_records::test_fixtures::test_records;
 
 /// The draft counts only while its state describes the folder's current
-/// files: it shows once it is not blank, and an older revision's shows nothing.
+/// files: it shows once it is not blank, a field the list doesn't read moves
+/// nothing, and a pass that read the folder before its file decisions landed
+/// shows nothing of it until the next pass reads them.
 #[tokio::test]
 async fn the_draft_shows_while_its_state_is_current() {
     let lib = Library::new().await;
-    lib.run(&lib.scan("Album")).await;
-    assert_eq!(lib.moved(&lib.state("Album")).await, moves([]));
+    lib.run(lib.scan("Album")).await;
+    let drafted =
+        moves([(lib.release("Album"), Some(found("Album").shown("Album Title", Some(""))))]);
+    assert_eq!(lib.moved(lib.draft("Album", "Album Title")).await, drafted);
     assert_eq!(
-        lib.moved(&lib.draft("Album", "Album Title")).await,
-        moves([(lib.release("Album"), Some(found("Album").shown("Album Title", Some(""))))])
-    );
-    let draft = |set: &str| format!("{set} WHERE content_hash = '{}';", hash("Album"));
-    assert_eq!(
-        lib.moved(&draft("UPDATE import_candidate_edit SET draft_valid = 1")).await,
+        lib.moved(lib.typed("Album", CandidateEditField::PressingYear, "2026")).await,
         moves([])
     );
+    assert_eq!(lib.moved(lib.file_decision("Album")).await, moves([]));
     assert_eq!(
-        lib.moved(&draft(
-            "UPDATE import_candidate_state SET edit_revision = 1, metadata_revision = 4"
-        ))
-        .await,
+        lib.moved(lib.scan_revised("Album", 0)).await,
         moves([(lib.release("Album"), Some(found("Album")))])
     );
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE scan_candidate SET file_edit_revision = 1 WHERE path = {};",
-            lib.sql("Album")
-        ))
-        .await,
-        moves([(lib.release("Album"), Some(found("Album").shown("Album Title", Some(""))))])
-    );
-    assert_eq!(
-        lib.moved(&draft("DELETE FROM import_candidate_state")).await,
-        moves([(lib.release("Album"), Some(found("Album")))])
-    );
+    assert_eq!(lib.moved(lib.scan_revised("Album", 1)).await, drafted);
 }
 
-/// A blank draft shows once a source or a link answered it.
+/// A blank draft shows once a source answered it.
 #[tokio::test]
 async fn a_blank_draft_shows_once_something_answered_it() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album"))).await;
-    let provenance = format!(
-        "INSERT INTO import_candidate_draft_provenance (content_hash, kind)
-         VALUES ('{}', 'file_tags');",
-        hash("Album")
-    );
+    lib.run(lib.scan("Album")).await;
     assert_eq!(
-        lib.moved(&provenance).await,
+        lib.moved(lib.blank_answer("Album", Some(crate::MetadataProvenance::FileMetadata))).await,
         moves([(lib.release("Album"), Some(found("Album").shown("", Some(""))))])
     );
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM import_candidate_draft_provenance WHERE content_hash = '{}';",
-            hash("Album")
-        ))
-        .await,
+        lib.moved(lib.blank_answer("Album", None)).await,
         moves([(lib.release("Album"), Some(found("Album")))])
     );
 }
 
+/// The MusicBrainz artist the draft below picks.
+const PICKED_MUSICBRAINZ: &str = "picked-artist-mbid";
+
+/// A credit printing `name`, its catalogs' artist unknown, as `credited_as`
+/// when that differs, followed by `join`.
+fn credited(name: &str, credited_as: Option<&str>, join: Option<&str>) -> Credited {
+    Credited {
+        artist: ArtistAssignment::Credit {
+            credit: ArtistCredit {
+                credited_as: credited_as.map(str::to_string),
+                name: name.to_string(),
+                sort_name: None,
+                musicbrainz_artist_id: None,
+                discogs_artist_id: None,
+            },
+        },
+        join: join.map(str::to_string),
+    }
+}
+
+/// The name the library holds for artist `artist_id`.
+async fn artist_name(db: &bae_store::Store, artist_id: &str) -> String {
+    test_records(db)
+        .find_artist_by_id(artist_id)
+        .await
+        .unwrap()
+        .expect("the library holds the artist")
+        .name
+}
+
 /// The draft's album credits print as one line: each credit's printed name,
-/// after the join the credit before it states, or a comma.
-#[tokio::test]
-async fn the_album_credits_print_as_one_line() {
-    let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}
-         INSERT INTO artists (id, name, name_key, created_at)
-         VALUES ('{ARTIST_A}', 'Picked Artist', 'picked artist', '2026-01-01T00:00:00Z');",
-        lib.scan("Album"),
-        lib.state("Album"),
-        lib.draft("Album", "Album Title")
-    ))
-    .await;
-    let shown = |artists: &str| {
-        moves([(lib.release("Album"), Some(found("Album").shown("Album Title", Some(artists))))])
-    };
-    let hash = hash("Album");
-    assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO import_candidate_album_artist_assignment
-                 (content_hash, position, assignment_kind, name, credited_as, join_phrase)
-             VALUES ('{hash}', 0, 'credit', 'First Artist', NULL, ' & '),
-                    ('{hash}', 2, 'credit', 'Second Artist', 'Printed Second', NULL);"
-        ))
-        .await,
-        shown("First Artist & Printed Second")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO import_candidate_album_artist_assignment
-                 (content_hash, position, assignment_kind, artist_id, credit_key)
-             VALUES ('{hash}', 3, 'picked', '{ARTIST_A}', 'other name');"
-        ))
-        .await,
-        shown("First Artist & Printed Second, Picked Artist")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE import_candidate_album_artist_assignment SET join_phrase = ' feat. '
-             WHERE content_hash = '{hash}' AND position = 2;"
-        ))
-        .await,
-        shown("First Artist & Printed Second feat. Picked Artist")
-    );
-    assert_eq!(
-        lib.moved(&format!("UPDATE artists SET name = 'Renamed Artist' WHERE id = '{ARTIST_A}';"))
+/// after the join the credit before it states, or a comma. A picked artist
+/// prints the credit name the draft names it by while the artist goes by it,
+/// else its own name, which another device can rename.
+#[test]
+fn the_album_credits_print_as_one_line() {
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+        devices.pause().await;
+        let lib = Library::on(devices.a().clone()).await;
+        meet_musicbrainz_artist(&lib.records(), PICKED_MUSICBRAINZ, "Picked Artist", None).await;
+        let picked_id = musicbrainz_artist(PICKED_MUSICBRAINZ);
+        lib.run(lib.scan_dated("Album", 100) + lib.draft("Album", "Album Title")).await;
+        let shown = |artists: &str| {
+            moves([(
+                lib.release("Album"),
+                Some(found("Album").dated(100).shown("Album Title", Some(artists))),
+            )])
+        };
+        let first = credited("First Artist", None, Some(" & "));
+        let second = credited("Second Artist", Some("Printed Second"), None);
+        assert_eq!(
+            lib.moved(lib.credit("Album", vec![first.clone(), second.clone()])).await,
+            shown("First Artist & Printed Second")
+        );
+        let picked = Credited {
+            artist: ArtistAssignment::Picked {
+                artist: bae_records::ExistingArtist {
+                    artist_id: picked_id.clone(),
+                    name: "Picked Artist".to_string(),
+                    sort_name: None,
+                    musicbrainz_artist_id: Some(PICKED_MUSICBRAINZ.to_string()),
+                    discogs_artist_id: None,
+                },
+                credit_name: Some(bae_records::credits::CreditName::of("Other Name")),
+            },
+            join: None,
+        };
+        assert_eq!(
+            lib.moved(lib.credit("Album", vec![first.clone(), second.clone(), picked.clone()]))
+                .await,
+            shown("First Artist & Printed Second, Picked Artist")
+        );
+        let second = Credited { join: Some(" feat. ".to_string()), ..second };
+        assert_eq!(
+            lib.moved(lib.credit("Album", vec![first.clone(), second.clone(), picked.clone()]))
+                .await,
+            shown("First Artist & Printed Second feat. Picked Artist")
+        );
+        // B, apart, meets the picked artist under another name; the later
+        // write's name lands on A.
+        meet_musicbrainz_artist(
+            &test_records(devices.b()),
+            PICKED_MUSICBRAINZ,
+            "Renamed Artist",
+            None,
+        )
+        .await;
+        assert_eq!(
+            lib.moved_after(async {
+                devices.resume().await;
+                devices
+                    .settle("the picked artist's new name", async |_, db| {
+                        artist_name(db, &musicbrainz_artist(PICKED_MUSICBRAINZ)).await
+                            == "Renamed Artist"
+                    })
+                    .await;
+            })
             .await,
-        shown("First Artist & Printed Second feat. Renamed Artist")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO artist_credits (artist_id, name_key, name, created_at)
-             VALUES ('{ARTIST_A}', 'other name', 'Other Name', '2026-01-01T00:00:00Z');"
-        ))
-        .await,
-        shown("First Artist & Printed Second feat. Other Name")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE artist_credits SET name = 'Other Printing' WHERE artist_id = '{ARTIST_A}';"
-        ))
-        .await,
-        shown("First Artist & Printed Second feat. Other Printing")
-    );
-    assert_eq!(
-        lib.moved(&format!("DELETE FROM artist_credits WHERE artist_id = '{ARTIST_A}';")).await,
-        shown("First Artist & Printed Second feat. Renamed Artist")
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM import_candidate_album_artist_assignment
-             WHERE content_hash = '{hash}' AND position = 0;"
-        ))
-        .await,
-        shown("Printed Second feat. Renamed Artist")
-    );
-    // An artist no draft credits renames nothing.
-    assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO artists (id, name, name_key, created_at)
-             VALUES ('{ARTIST_B}', 'Other Artist', 'other artist', '2026-01-01T00:00:00Z');
-             UPDATE artists SET name = 'Still Other' WHERE id = '{ARTIST_B}';"
-        ))
-        .await,
-        moves([])
-    );
+            shown("First Artist & Printed Second feat. Renamed Artist")
+        );
+        let records = lib.records();
+        let other_name = bae_records::credits::CreditName::of("Other Name");
+        let entered = |name: &str| bae_store::EnteredName::parse(name).unwrap();
+        assert_eq!(
+            lib.moved_after(async {
+                records.add_artist_credit_name(&picked_id, &entered("Other Name")).await.unwrap()
+            })
+            .await,
+            shown("First Artist & Printed Second feat. Other Name")
+        );
+        assert_eq!(
+            lib.moved_after(async {
+                records
+                    .rename_artist_credit_name(&picked_id, &other_name.key, &entered("Other NAME"))
+                    .await
+                    .unwrap()
+            })
+            .await,
+            shown("First Artist & Printed Second feat. Other NAME")
+        );
+        assert_eq!(
+            lib.moved_after(async {
+                records.remove_artist_credit_name(&picked_id, &other_name.key).await.unwrap()
+            })
+            .await,
+            shown("First Artist & Printed Second feat. Renamed Artist")
+        );
+        assert_eq!(
+            lib.moved(lib.credit("Album", vec![second, picked])).await,
+            shown("Printed Second feat. Renamed Artist")
+        );
+        // An artist no draft credits renames nothing.
+        devices.pause().await;
+        meet_musicbrainz_artist(&lib.records(), "other-artist-mbid", "Other Artist", None).await;
+        meet_musicbrainz_artist(
+            &test_records(devices.b()),
+            "other-artist-mbid",
+            "Still Other",
+            None,
+        )
+        .await;
+        assert_eq!(
+            lib.moved_after(async {
+                devices.resume().await;
+                devices
+                    .settle("the other artist's new name", async |_, db| {
+                        artist_name(db, &musicbrainz_artist("other-artist-mbid")).await
+                            == "Still Other"
+                    })
+                    .await;
+            })
+            .await,
+            moves([])
+        );
+    });
 }
 
 /// A link to the catalogs makes the release identified and shows its draft.
 #[tokio::test]
 async fn a_linked_release_is_identified() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album"))).await;
+    lib.run(lib.scan("Album")).await;
     assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO import_candidate_release_link (content_hash, kind)
-             VALUES ('{}', 'album');",
-            hash("Album")
-        ))
-        .await,
+        lib.moved(lib.linked("Album")).await,
         moves([(
             lib.release("Album"),
             Some(found("Album").state("identified").shown("", Some("")))
         )])
     );
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM import_candidate_release_link WHERE content_hash = '{}';",
-            hash("Album")
-        ))
-        .await,
+        lib.moved(lib.link("Album", None)).await,
         moves([(lib.release("Album"), Some(found("Album")))])
     );
 }
 
-/// A failed import keeps its release on Found, saying so, until the failure
-/// is cleared; it counts whatever revision the state is at.
+/// A failed import keeps its release on Found, saying so, until an import of
+/// it lands.
 #[tokio::test]
 async fn a_failed_import_is_founds_import_error() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album"))).await;
+    lib.run(lib.scan("Album")).await;
     assert_eq!(
-        lib.moved(&format!(
-            "UPDATE import_candidate_state SET edit_revision = 3 WHERE content_hash = '{0}';
-             INSERT INTO import_candidate_failure (content_hash, error, failed_at)
-             VALUES ('{0}', 'it broke', '2026-01-01T00:00:00Z');",
-            hash("Album")
-        ))
-        .await,
+        lib.moved(lib.import_failed("Album")).await,
         moves([(lib.release("Album"), Some(found("Album").state("import_error")))])
     );
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM import_candidate_failure WHERE content_hash = '{}';",
-            hash("Album")
-        ))
-        .await,
-        moves([(lib.release("Album"), Some(found("Album")))])
+        lib.moved(lib.imported("Album", "2026-01-01T00:00:00Z")).await,
+        moves([(
+            lib.release("Album"),
+            Some(found("Album").on("done").dated(1_767_225_600_000).shown("Album Title", Some("")))
+        )])
     );
 }
 
@@ -214,121 +250,100 @@ async fn a_failed_import_is_founds_import_error() {
 #[tokio::test]
 async fn what_is_running_decides_a_found_releases_state() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("Album"),
-        lib.state("Album"),
-        lib.verdict("Album", "not_found", None)
-    ))
-    .await;
-    let key = lib.sql("Album");
-    let standing = |set: &str| format!("{set} WHERE candidate_key = {key};");
+    lib.run(lib.scan("Album") + lib.verdict("Album", "not_found", None)).await;
     let now = |state: &str| moves([(lib.release("Album"), Some(found("Album").state(state)))]);
+    let run = crate::IdentifyRunId::of_number(1);
+    assert_eq!(lib.moved(lib.importing("Album", "queued")).await, now("importing"));
     assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO import_candidate_standing (candidate_key, import_step, import_id)
-             VALUES ({key}, 'queued', 'import-1');"
-        ))
-        .await,
-        now("importing")
-    );
-    assert_eq!(
-        lib.moved(&standing(&format!(
-            "UPDATE import_candidate_standing SET import_step = 'reading_files', identification = 'queued', \
-             content_hash = '{}', file_edit_revision = 0, admission = 'requested'",
-            hash("Album")
-        )))
+        lib.moved(
+            lib.import_moved("Album", "reading_files")
+                + lib.identification(
+                    "Album",
+                    vec![IdentificationChange::Admit {
+                        files: lib.files("Album"),
+                        admission: crate::Admission::Requested,
+                    }]
+                )
+        )
         .await,
         moves([])
     );
+    assert_eq!(lib.moved(lib.import_ended("Album")).await, now("identifying"));
     assert_eq!(
-        lib.moved(&standing(
-            "UPDATE import_candidate_standing SET import_step = NULL, import_id = NULL"
-        ))
-        .await,
-        now("identifying")
-    );
-    assert_eq!(
-        lib.moved(&standing(
-            "UPDATE import_candidate_standing SET identification = 'reading_pick', \
-             admission = NULL, identify_run = 1, import_asked = 0"
+        lib.moved(lib.identification(
+            "Album",
+            vec![
+                IdentificationChange::RunStarted { files: lib.files("Album"), run },
+                IdentificationChange::RunAnswered { run, reads_pick: true },
+            ]
         ))
         .await,
         now("identified")
     );
     assert_eq!(
-        lib.moved(&standing(
-            "UPDATE import_candidate_standing SET identification = 'not_written', \
-             identify_run = NULL, import_asked = NULL, save_failure_error = 'disk full'"
+        lib.moved(lib.identification(
+            "Album",
+            vec![IdentificationChange::AnswerFailed {
+                files: lib.files("Album"),
+                run,
+                failure: crate::SaveFailure::NotWritten { error: "disk full".to_string() },
+            }]
         ))
         .await,
         now("error")
     );
     assert_eq!(
-        lib.moved(&standing("DELETE FROM import_candidate_standing")).await,
+        lib.moved(lib.identification("Album", vec![IdentificationChange::Ended])).await,
         moves([(lib.release("Album"), Some(found("Album").needs_you("not_found")))])
     );
     // Off Found nothing running is a state.
-    lib.run(&format!("INSERT INTO skipped_import_candidates (candidate_path) VALUES ({key});"))
-        .await;
-    assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO import_candidate_standing (candidate_key, import_step, import_id)
-             VALUES ({key}, 'queued', 'import-1');"
-        ))
-        .await,
-        moves([])
-    );
+    lib.run(lib.skip("Album")).await;
+    assert_eq!(lib.moved(lib.importing("Album", "queued")).await, moves([]));
 }
 
-/// With its draft gone a release shows its folder's name again.
+/// A release imported and then deleted from the library holds no draft, and
+/// shows its folder's name again.
 #[tokio::test]
 async fn a_release_whose_draft_is_gone_shows_its_folder() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("Album"),
-        lib.state("Album"),
-        lib.draft("Album", "Album Title")
-    ))
+    lib.run(
+        lib.scan("Album")
+            + lib.draft("Album", "Album Title")
+            + lib.imported("Album", "2026-01-01T00:00:00Z"),
+    )
     .await;
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM import_candidate_edit WHERE content_hash = '{}';",
-            hash("Album")
-        ))
-        .await,
+        lib.moved(lib.release_deleted("Album")).await,
         moves([(lib.release("Album"), Some(found("Album")))])
     );
 }
 
-/// A draft stored already written shows as soon as it is stored.
+/// A draft stored already written, where none was, shows as soon as it is
+/// stored.
 #[tokio::test]
 async fn a_draft_stored_written_shows_at_once() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}INSERT INTO import_candidate_state (content_hash, candidate_key) VALUES ('{}', {});",
-        lib.scan("Album"),
-        hash("Album"),
-        lib.sql("Album")
-    ))
+    lib.run(
+        lib.scan("Album")
+            + lib.imported("Album", "2026-01-01T00:00:00Z")
+            + lib.release_deleted("Album"),
+    )
     .await;
     assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO import_candidate_edit
-                 (content_hash, album_title, album_year, year, author, draft_blank, draft_valid)
-             VALUES ('{}', 'Tagged Title', '', '', 'person', 0, 1);",
-            hash("Album")
+        lib.moved(lib.metadata(
+            "Album",
+            crate::tables::import_state::tests::metadata_draft("Tagged Title", "Artist"),
+            None
         ))
         .await,
-        moves([(lib.release("Album"), Some(found("Album").shown("Tagged Title", Some(""))))])
+        moves([(lib.release("Album"), Some(found("Album").shown("Tagged Title", Some("Artist"))))])
     );
 }
 
 /// A release whose stored state is current, ready for a verdict.
 async fn looked_up() -> Library {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album"))).await;
+    lib.run(lib.scan("Album")).await;
     lib
 }
 
@@ -350,37 +365,45 @@ async fn each_verdict_kind_places_its_release() {
     ] {
         let lib = looked_up().await;
         assert_eq!(
-            lib.moved(&lib.verdict("Album", kind, track_count)).await,
+            lib.moved(lib.verdict("Album", kind, track_count)).await,
             now(&lib, placed),
             "{kind}"
         );
     }
 }
 
-/// The person keeping their own draft over the verdict leaves the release
-/// unmatched, and taking the verdict away leaves it not looked up.
+/// The run's ledger, saying what each step found: nothing anywhere.
+fn nothing_found_ledger() -> bae_identify::IdentifyRunView {
+    bae_identify::IdentifyRunView {
+        providers: vec![LookupCatalog::MusicBrainz],
+        disc_id: bae_identify::DiscIdStepView::Absent,
+        barcode: bae_identify::BarcodeStepView::Absent,
+        catalog: bae_identify::CatalogStepView::NoneFound,
+        isrc: bae_identify::IsrcStepView::Absent,
+        search: bae_identify::SearchStepView::NotNeeded,
+    }
+}
+
+/// What the ledger records of a run moves nothing; the person keeping their
+/// own draft over the verdict leaves the release unmatched, and a file
+/// decision clearing the verdict leaves it not looked up.
 #[tokio::test]
 async fn keeping_ones_own_draft_leaves_the_release_unmatched() {
     let lib = looked_up().await;
-    lib.run(&lib.verdict("Album", "not_found", None)).await;
-    let verdict = |set: &str| format!("{set} WHERE content_hash = '{}';", hash("Album"));
+    lib.run(lib.verdict("Album", "not_found", None)).await;
     assert_eq!(
-        lib.moved(&verdict("UPDATE import_candidate_verdict SET kept_own_draft = 1")).await,
-        now(&lib, found("Album").state("unmatched"))
-    );
-    assert_eq!(
-        lib.moved(&verdict(
-            "UPDATE import_candidate_verdict SET disc_id_step = 'absent', \
-             barcode_step = 'absent', catalog_step = 'none_found', isrc_step = 'absent', \
-             search_step = 'not_needed'"
+        lib.moved(lib.concluded(
+            "Album",
+            TerminalVerdict::NotFoundAnywhere { ledger: Some(nothing_found_ledger()) }
         ))
         .await,
         moves([])
     );
     assert_eq!(
-        lib.moved(&verdict("DELETE FROM import_candidate_verdict")).await,
-        now(&lib, found("Album"))
+        lib.moved(lib.kept_own_draft("Album")).await,
+        now(&lib, found("Album").state("unmatched"))
     );
+    assert_eq!(lib.moved(lib.file_decision("Album")).await, now(&lib, found("Album")));
 }
 
 /// A found verdict picks its one pressing when its lead's tracklist fits the
@@ -395,7 +418,7 @@ async fn a_found_verdict_is_judged_by_its_lead() {
         ((None, None), found("Album").needs_you("no_tracklist")),
     ] {
         let lib = looked_up().await;
-        lib.run(&lib.verdict("Album", "found", Some(11))).await;
+        lib.run(lib.verdict("Album", "found", Some(11))).await;
         // Before it found anything, it found nothing that could be the
         // folder's.
         let expected = match placed == found("Album").needs_you("not_found") {
@@ -403,7 +426,10 @@ async fn a_found_verdict_is_judged_by_its_lead() {
             false => now(&lib, placed),
         };
         assert_eq!(
-            lib.moved(&lib.found_release("Album", 0, 0, source_tracks)).await,
+            lib.moved(
+                lib.concluded("Album", found_verdict(11, [(found_release(0, source_tracks), 0)]))
+            )
+            .await,
             expected,
             "{source_tracks:?}"
         );
@@ -413,92 +439,95 @@ async fn a_found_verdict_is_judged_by_its_lead() {
 /// Several pressings are the person's to pick between; the lead is the
 /// release at the lowest position agreement kept; a record whose document
 /// went unread is a lookup error; and the folder's own files ruling out
-/// every release is named over all of it.
+/// every release is named over all of it. Each is a lookup run again.
 #[tokio::test]
 async fn a_found_verdict_names_what_holds_its_pick_back() {
     let lib = looked_up().await;
-    let fits = (Some("listed"), Some(11));
-    lib.run(&format!(
-        "{}{}",
-        lib.verdict("Album", "found", Some(11)),
-        lib.found_release("Album", 1, 0, fits)
-    ))
-    .await;
-    let found_releases =
-        |set: &str| format!("{set} WHERE content_hash = '{}' AND position = 0;", hash("Album"));
+    let fits = found_release(1, FITS);
+    let longer = found_release(0, (Some("listed"), Some(12)));
+    lib.run(lib.concluded("Album", found_verdict(11, [(fits.clone(), 0)]))).await;
     assert_eq!(
-        lib.moved(&lib.found_release("Album", 0, 1, (Some("listed"), Some(12)))).await,
+        lib.moved(
+            lib.concluded("Album", found_verdict(11, [(longer.clone(), 1), (fits.clone(), 0)]))
+        )
+        .await,
         now(&lib, found("Album").needs_you("matches"))
     );
+    let mut narrowed = found_verdict(11, [(fits.clone(), 0)]);
+    findings_of(&mut narrowed).narrowed_out =
+        bae_identify::NarrowedOut { matches: vec![longer.clone()], pressings: vec![0] };
     assert_eq!(
-        lib.moved(&found_releases("UPDATE import_candidate_match SET listing = 'narrowed_out'"))
-            .await,
+        lib.moved(lib.concluded("Album", narrowed)).await,
         now(&lib, found("Album").state("unmatched"))
     );
+    let mut only_ledger_lists = found_verdict(11, [(fits.clone(), 0)]);
+    let TerminalVerdict::Found { ledger, .. } = &mut only_ledger_lists else {
+        unreachable!("a found verdict")
+    };
+    *ledger = Some(bae_identify::IdentifyRunView {
+        disc_id: bae_identify::DiscIdStepView::Read {
+            discs: vec![bae_identify::DiscIdRow {
+                disc_id: "disc-1".to_string(),
+                lookup: bae_identify::LookupView::Found {
+                    count: 1,
+                    groups: bae_identify::release_group::group_results(
+                        bae_identify::release_group::unranked(vec![longer.clone()]),
+                        None,
+                    ),
+                },
+            }],
+        },
+        ..nothing_found_ledger()
+    });
     assert_eq!(
-        lib.moved(&found_releases(
-            "UPDATE import_candidate_match SET listing = 'unlisted', pressing = NULL"
-        ))
-        .await,
+        lib.moved(lib.concluded("Album", only_ledger_lists)).await,
         moves([]),
         "a release only the ledger lists is no more offered than one set aside"
     );
     assert_eq!(
-        lib.moved(&found_releases(
-            "UPDATE import_candidate_match SET listing = 'offered', pressing = 0"
-        ))
+        lib.moved(
+            lib.concluded("Album", found_verdict(11, [(longer.clone(), 0), (fits.clone(), 0)]))
+        )
         .await,
         now(&lib, found("Album").needs_you("not_found"))
     );
+    let unread = MetadataResult {
+        document_failure: Some(bae_catalogs::LookupFailure::Network),
+        ..found_release(0, FITS)
+    };
     assert_eq!(
-        lib.moved(&found_releases(
-            "UPDATE import_candidate_match SET source_tracks_count = 11, \
-             document_failure = 'network'"
-        ))
+        lib.moved(
+            lib.concluded("Album", found_verdict(11, [(unread.clone(), 0), (fits.clone(), 0)]))
+        )
         .await,
         now(&lib, found("Album").state("lookup_error"))
     );
+    let mut ruled_out = found_verdict(11, [(unread, 0), (fits.clone(), 0)]);
+    findings_of(&mut ruled_out).medium_conflict = Some(bae_identify::MediumConflict::CdRip);
     assert_eq!(
-        lib.moved(&format!(
-            "UPDATE import_candidate_verdict SET medium_conflict = 'cd_rip'
-             WHERE content_hash = '{}';",
-            hash("Album")
-        ))
-        .await,
+        lib.moved(lib.concluded("Album", ruled_out)).await,
         now(&lib, found("Album").needs_you("medium_mismatch"))
     );
     assert_eq!(
-        lib.moved(&format!(
-            "UPDATE import_candidate_verdict SET medium_conflict = NULL
-             WHERE content_hash = '{}';
-             {}",
-            hash("Album"),
-            found_releases("DELETE FROM import_candidate_match")
-        ))
-        .await,
+        lib.moved(lib.concluded("Album", found_verdict(11, [(fits.clone(), 0)]))).await,
         now(&lib, found("Album").state("unmatched"))
     );
+    let retitled = MetadataResult { title: "Retitled".to_string(), ..fits };
     assert_eq!(
-        lib.moved(&format!(
-            "UPDATE import_candidate_match SET title = 'Retitled'
-             WHERE content_hash = '{}';",
-            hash("Album")
-        ))
-        .await,
+        lib.moved(lib.concluded("Album", found_verdict(11, [(retitled, 0)]))).await,
         moves([])
     );
 }
 
-/// A verdict counts only through a state at the folder's current files.
+/// A verdict counts only through a state at the folder's current files: one
+/// stored while a pass that read the folder before its file decisions landed
+/// lists it places nothing.
 #[tokio::test]
 async fn a_verdict_of_older_files_places_nothing() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}UPDATE import_candidate_state SET edit_revision = 2 WHERE content_hash = '{}';",
-        lib.scan("Album"),
-        lib.state("Album"),
-        hash("Album")
-    ))
-    .await;
-    assert_eq!(lib.moved(&lib.verdict("Album", "not_found", None)).await, moves([]));
+    lib.run(lib.scan("Album") + lib.file_decision("Album") + lib.scan_revised("Album", 0)).await;
+    assert_eq!(
+        lib.moved(lib.concluded_at("Album", verdict_of("not_found", None), 1)).await,
+        moves([])
+    );
 }

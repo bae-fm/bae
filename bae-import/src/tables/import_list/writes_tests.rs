@@ -11,7 +11,7 @@ use crate::TriageTab;
 async fn every_group_folds_and_opens_at_once() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!("{}{}{}", lib.scan("A/One"), lib.scan("B/Two"), lib.scan("Loose"))).await;
+    lib.run(lib.scan("A/One") + lib.scan("B/Two") + lib.scan("Loose")).await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
     let folded = tables.set_import_list_groups_folded(list, true).await.unwrap();
     let read = lib.read(list).await;
@@ -33,14 +33,7 @@ async fn every_group_folds_and_opens_at_once() {
 async fn a_view_opens_at_its_first_selected_row() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!(
-        "{}{}{}{}",
-        lib.scan("Box/1"),
-        lib.scan("Box/2"),
-        lib.scan("Loose"),
-        lib.scan("Zed")
-    ))
-    .await;
+    lib.run(lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("Loose") + lib.scan("Zed")).await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathDescending)).await;
     assert_eq!(lib.read(list).await.summary.opened_at, 0, "a list opens at its top");
     lib.select(list, SelectionChange::Replace { keys: vec![lib.key("Zed"), lib.key("Box/2")] })

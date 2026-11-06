@@ -41,11 +41,11 @@ async fn a_row_moved_out_of_the_view_leaves_the_selection_in_its_write() {
     let lib = five_rows().await;
     let list = lib.open(under(TriageTab::Pending, PendingFilter::NotLookedUp)).await;
     lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A"), lib.key("B")] }).await;
-    lib.run(&lib.linked("A")).await;
+    lib.run(lib.linked("A")).await;
     let read = lib.read(list).await;
     assert_eq!(read.selection.count, 1);
     assert_eq!(read.selection.single, Some(SingleSelection::Candidate { key: lib.key("B") }));
-    lib.run(&lib.draft("B", "Album")).await;
+    lib.run(lib.draft("B", "Album")).await;
     assert_eq!(
         lib.read(list).await.selection.count,
         1,
@@ -86,7 +86,7 @@ async fn the_selected_rows_come_in_the_list_s_order() {
 async fn a_folder_that_failed_validation_is_selected_and_offers_nothing() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&lib.scan_as("Broken", "invalid")).await;
+    lib.run(lib.scan_as("Broken", "invalid")).await;
     let list = lib.open(view(TriageTab::Skipped)).await;
     tables.select_all_in_import_list(list).await.unwrap();
     let read = lib.read(list).await;
@@ -104,12 +104,11 @@ async fn a_folder_that_failed_validation_is_selected_and_offers_nothing() {
 #[tokio::test]
 async fn identify_is_offered_for_the_rows_no_lookup_is_stored_for() {
     let lib = five_rows().await;
-    lib.run(&format!(
-        "{}{}{}",
-        lib.verdict("A", "not_found", None),
-        lib.verdict("B", "failed", Some(11)),
-        lib.verdict("C", "not_found", None),
-    ))
+    lib.run(
+        lib.verdict("A", "not_found", None)
+            + lib.verdict("B", "failed", Some(11))
+            + lib.verdict("C", "not_found", None),
+    )
     .await;
     let list = lib.open(view(TriageTab::Pending)).await;
     lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A"), lib.key("C")] }).await;
@@ -138,15 +137,17 @@ async fn identify_is_offered_for_the_rows_no_lookup_is_stored_for() {
 async fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    let releases = ["Identified", "Picked Among Several", "Several", "Tagged"];
-    let mut sql = scanned_with_states(&lib, &releases);
-    for display_path in ["Identified", "Picked Among Several"] {
-        sql.push_str(&lib.linked(display_path));
-        sql.push_str(&lib.valid_draft(display_path));
-    }
-    sql.push_str(&lib.valid_draft("Tagged"));
-    sql.push_str(&lib.verdict("Several", "not_found", None));
-    lib.run(&sql).await;
+    let identified: Write = ["Identified", "Picked Among Several"]
+        .into_iter()
+        .map(|display_path| lib.linked(display_path) + lib.valid_draft(display_path))
+        .sum();
+    lib.run(
+        scanned_with_states(&lib, &["Identified", "Picked Among Several", "Several"])
+            + lib.scan_tagged("Tagged", "Tagged", "Artist", Some("Track title"))
+            + identified
+            + lib.verdict("Several", "not_found", None),
+    )
+    .await;
 
     let identified = lib.open(under(TriageTab::Pending, PendingFilter::Identified)).await;
     tables.select_all_in_import_list(identified).await.unwrap();
@@ -189,14 +190,13 @@ async fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
 async fn selecting_all_rows_in_progress_offers_their_cancel_and_no_import() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!(
-        "{}{}{}{}{}",
-        scanned_with_states(&lib, &["Identified", "Tagged"]),
-        lib.linked("Identified"),
-        lib.valid_draft("Identified"),
-        lib.identifying("Identified", "running"),
-        lib.identifying("Tagged", "running"),
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Identified", "Tagged"])
+            + lib.linked("Identified")
+            + lib.valid_draft("Identified")
+            + lib.identifying("Identified", "running")
+            + lib.identifying("Tagged", "running"),
+    )
     .await;
     let list = lib.open(under(TriageTab::Pending, PendingFilter::InProgress)).await;
     tables.select_all_in_import_list(list).await.unwrap();
@@ -217,15 +217,17 @@ async fn needs_you_rows_offer_what_their_drafts_and_lookups_allow() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     let releases = ["Broke", "Failed Import", "Lookup Failed", "Nothing Found", "Several Tagged"];
-    let mut sql = scanned_with_states(&lib, &releases);
-    sql.push_str(&lib.verdict("Broke", "error", None));
-    sql.push_str(&lib.verdict("Lookup Failed", "failed", Some(11)));
-    sql.push_str(&lib.verdict("Nothing Found", "not_found", None));
-    sql.push_str(&lib.verdict("Several Tagged", "not_found", None));
-    sql.push_str(&lib.valid_draft("Several Tagged"));
-    sql.push_str(&lib.valid_draft("Failed Import"));
-    sql.push_str(&lib.import_failed("Failed Import"));
-    lib.run(&sql).await;
+    lib.run(
+        scanned_with_states(&lib, &releases)
+            + lib.verdict("Broke", "error", None)
+            + lib.verdict("Lookup Failed", "failed", Some(11))
+            + lib.verdict("Nothing Found", "not_found", None)
+            + lib.verdict("Several Tagged", "not_found", None)
+            + lib.valid_draft("Several Tagged")
+            + lib.valid_draft("Failed Import")
+            + lib.import_failed("Failed Import"),
+    )
+    .await;
     let list = lib.open(under(TriageTab::Pending, PendingFilter::NeedsYou)).await;
     tables.select_all_in_import_list(list).await.unwrap();
     let sorted = |mut keys: Vec<crate::CandidateKey>| {
@@ -294,9 +296,14 @@ async fn a_release_gone_from_the_scan_leaves_the_selection() {
     let lib = five_rows().await;
     let list = lib.open(view(TriageTab::Pending)).await;
     lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A")] }).await;
-    lib.run(&format!("DELETE FROM scan_candidate WHERE path = {};", lib.sql("A"))).await;
+    lib.run(lib.unscan("A")).await;
     assert_eq!(lib.read(list).await.selection.count, 0);
-    lib.run(&lib.scan("A")).await;
+    lib.run(
+        lib.begin_pass()
+            + scanned_with_states(&lib, &["A", "B", "C", "D", "E"])
+            + lib.finish_pass(),
+    )
+    .await;
     let read = lib.read(list).await;
     assert_eq!(read.total_count, 5);
     assert_eq!(read.selection.count, 0, "it comes back unselected");
@@ -308,7 +315,7 @@ async fn a_release_gone_from_the_scan_leaves_the_selection() {
 async fn a_selection_holds_only_rows_the_list_shows() {
     let lib = five_rows().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!("{}{}", lib.skip("E"), lib.linked("D"))).await;
+    lib.run(lib.skip("E") + lib.linked("D")).await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
     let opened = lib.read(list).await.selection_revision;
     let revision = lib
@@ -354,7 +361,7 @@ async fn a_selection_holds_only_rows_the_list_shows() {
 async fn folding_a_group_takes_its_rows_out_of_the_selection() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!("{}{}", lib.scan("Box/1"), lib.scan("Box/2"))).await;
+    lib.run(lib.scan("Box/1") + lib.scan("Box/2")).await;
     let list = lib.open(view(TriageTab::Pending)).await;
     tables.select_all_in_import_list(list).await.unwrap();
     assert_eq!(lib.read(list).await.selection.count, 2);
@@ -368,14 +375,7 @@ async fn folding_a_group_takes_its_rows_out_of_the_selection() {
 async fn extending_selects_the_run_between_two_rows() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!(
-        "{}{}{}{}",
-        lib.scan("A"),
-        lib.scan("Box/1"),
-        lib.scan("Box/2"),
-        lib.scan("C")
-    ))
-    .await;
+    lib.run(lib.scan("A") + lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("C")).await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
     lib.select(list, SelectionChange::Extend { from: lib.key("C"), to: lib.key("Box/1") }).await;
     let selected = tables.load_import_list_selected(list).await.unwrap();

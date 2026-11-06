@@ -4,36 +4,14 @@
 
 use super::*;
 use crate::tables::import_list::tests::*;
-use crate::tables::tests::*;
 use crate::ImportListItem;
 use crate::ImportListProjection;
+use bae_catalogs::search::MetadataResult;
 
 impl Library {
-    /// A second watched folder, `root`, at `position`, with the settled
-    /// release `name` directly in it.
-    fn second_root_release(&self, root: &std::path::Path, position: i64, name: &str) -> String {
-        let path = sql_blob(&coven::path_bytes(&folder_below(root, name)));
-        format!(
-            "{}INSERT INTO scan_candidate
-                 (watched_folder_path, path, generation, kind, name, relative_folder, folder,
-                  file_root, scope, content_hash)
-             VALUES ({root_sql}, {path}, 1, 'valid', '{name}', {relative}, {path}, {path},
-                     'direct', 'hash-{root}-{name}');",
-            self.watch(root, position),
-            root_sql = sql_blob(&coven::path_bytes(root)),
-            relative = sql_relative(name),
-            root = root.display(),
-        )
-    }
-
-    /// The scan's releases at `display_paths`, each found at its date.
-    fn dated(&self, releases: &[(&str, i64)]) -> String {
-        releases
-            .iter()
-            .map(|(display_path, at)| {
-                format!("{}{}", self.scan(display_path), self.discovered(display_path, *at))
-            })
-            .collect()
+    /// The scan's releases at `display_paths`, each its folder's date.
+    fn dated(&self, releases: &[(&str, i64)]) -> Write {
+        releases.iter().map(|(display_path, at)| self.scan_dated(display_path, *at)).sum()
     }
 }
 
@@ -41,12 +19,11 @@ impl Library {
 async fn rows_order_by_watched_root_then_natural_path() {
     let lib = Library::new().await;
     let second = crate::tables::watched_path::host_root("/second");
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("Release 10"),
-        lib.scan("Release 2"),
-        lib.second_root_release(&second, 1, "Release 1")
-    ))
+    lib.run(
+        lib.scan("Release 10")
+            + lib.scan("Release 2")
+            + lib.scan_other_root(&second, "Release 1", None),
+    )
     .await;
     assert_eq!(
         lib.items(view(TriageTab::Pending)).await,
@@ -58,7 +35,7 @@ async fn rows_order_by_watched_root_then_natural_path() {
 #[tokio::test]
 async fn the_descending_order_reverses_the_whole_queue() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Release 2"), lib.scan("Release 10"))).await;
+    lib.run(lib.scan("Release 2") + lib.scan("Release 10")).await;
     assert_eq!(
         lib.items(ordered(TriageTab::Pending, ImportListOrder::PathDescending)).await,
         ["candidate Release 10", "candidate Release 2"]
@@ -69,7 +46,7 @@ async fn the_descending_order_reverses_the_whole_queue() {
 async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!("{}{}", lib.scan("Group/Release 1"), lib.scan("Group/Release 2"))).await;
+    lib.run(lib.scan("Group/Release 1") + lib.scan("Group/Release 2")).await;
     let list = lib.open(view(TriageTab::Pending)).await;
     tables.set_import_list_group_folded(list, lib.group_key("Group"), true).await.unwrap();
     let read = lib.read(list).await;
@@ -108,14 +85,7 @@ fn header_positions(projection: &ImportListProjection) -> Vec<Option<u64>> {
 #[tokio::test]
 async fn a_group_member_names_its_headers_position() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}",
-        lib.scan("A/One"),
-        lib.scan("A/Two"),
-        lib.scan("B/Three"),
-        lib.scan("Loose")
-    ))
-    .await;
+    lib.run(lib.scan("A/One") + lib.scan("A/Two") + lib.scan("B/Three") + lib.scan("Loose")).await;
     let read = lib.shown(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
     assert_eq!(
         sequence(&read),
@@ -137,14 +107,8 @@ async fn a_group_member_names_its_headers_position() {
 #[tokio::test]
 async fn a_window_starting_inside_a_group_names_the_header_before_it() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}",
-        lib.scan("A/Disc 1"),
-        lib.scan("A/Disc 2"),
-        lib.scan("A/Disc 3"),
-        lib.scan("Loose")
-    ))
-    .await;
+    lib.run(lib.scan("A/Disc 1") + lib.scan("A/Disc 2") + lib.scan("A/Disc 3") + lib.scan("Loose"))
+        .await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
     let read = lib.read_through(list, LibraryPageWindow { offset: 2, limit: 3 }).await;
     assert_eq!(sequence(&read), ["candidate A/Disc 2", "candidate A/Disc 3", "candidate Loose"]);
@@ -159,15 +123,14 @@ async fn a_window_starting_inside_a_group_names_the_header_before_it() {
 async fn a_folded_lists_members_name_their_headers_position() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!(
-        "{}{}{}{}{}{}",
-        lib.scan("A/Disc 1"),
-        lib.scan("A/Disc 2"),
-        lib.scan("B/Disc 1"),
-        lib.scan("B/Disc 2"),
-        lib.scan("B/Disc 3"),
-        lib.scan("Loose")
-    ))
+    lib.run(
+        lib.scan("A/Disc 1")
+            + lib.scan("A/Disc 2")
+            + lib.scan("B/Disc 1")
+            + lib.scan("B/Disc 2")
+            + lib.scan("B/Disc 3")
+            + lib.scan("Loose"),
+    )
     .await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
     tables.set_import_list_group_folded(list, lib.group_key("A"), true).await.unwrap();
@@ -195,13 +158,11 @@ async fn a_folded_lists_members_name_their_headers_position() {
 #[tokio::test]
 async fn only_pending_groups_its_rows() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}",
-        scanned_with_states(&lib, &["Group/Release 1", "Group/Release 2"]),
-        lib.imported("Group/Release 1", "2026-01-02T00:00:00Z"),
-        lib.skip("Group/Release 2"),
-        ""
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Group/Release 1", "Group/Release 2"])
+            + lib.imported("Group/Release 1", "2026-01-02T00:00:00Z")
+            + lib.skip("Group/Release 2"),
+    )
     .await;
     let pending = lib.shown(view(TriageTab::Pending)).await;
     assert!(sequence(&pending).is_empty(), "both rows left Pending");
@@ -214,13 +175,12 @@ async fn only_pending_groups_its_rows() {
 #[tokio::test]
 async fn done_orders_by_newest_import_first() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}",
-        scanned_with_states(&lib, &["A old", "B new", "C middle"]),
-        lib.imported("A old", "2026-01-01T00:00:00Z"),
-        lib.imported("B new", "2026-01-03T00:00:00.250+00:00"),
-        lib.imported("C middle", "2026-01-02T00:00:00Z"),
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["A old", "B new", "C middle"])
+            + lib.imported("A old", "2026-01-01T00:00:00Z")
+            + lib.imported("B new", "2026-01-03T00:00:00.250+00:00")
+            + lib.imported("C middle", "2026-01-02T00:00:00Z"),
+    )
     .await;
     assert_eq!(
         lib.items(view(TriageTab::Done)).await,
@@ -232,27 +192,29 @@ async fn done_orders_by_newest_import_first() {
     );
 }
 
+/// The list is newest first unless asked otherwise; a group sorts by its
+/// newest member, and a folder the filesystem gives no date for by when the
+/// scans first saw it.
 #[tokio::test]
 async fn default_is_newest_first_and_groups_use_their_newest_member() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!(
-        "{}{}",
-        lib.dated(&[("A/Old", 10), ("B/Recent", 30), ("A/New", 50), ("Single", 40)]),
-        lib.scan("Unknown")
-    ))
+    lib.run(
+        lib.dated(&[("A/Old", 10), ("B/Recent", 30), ("A/New", 50), ("Single", 40)])
+            + lib.scan("Seen"),
+    )
     .await;
     assert_eq!(ImportListView::default().order, ImportListOrder::NewestFirst);
     assert_eq!(
         lib.items(view(TriageTab::Pending)).await,
         [
+            "candidate Seen",
             "group A",
             "candidate A/New",
             "candidate A/Old",
             "candidate Single",
             "group B",
             "candidate B/Recent",
-            "candidate Unknown",
         ]
     );
     assert_eq!(
@@ -264,25 +226,22 @@ async fn default_is_newest_first_and_groups_use_their_newest_member() {
             "group A",
             "candidate A/Old",
             "candidate A/New",
-            "candidate Unknown",
+            "candidate Seen",
         ]
     );
     let list = lib.open(view(TriageTab::Pending)).await;
     let location = tables.locate_import_candidate(list, &lib.key("Single")).await.unwrap().unwrap();
-    assert_eq!(location.visible_position, 3);
+    assert_eq!(location.visible_position, 4);
 }
 
 #[tokio::test]
 async fn dates_cross_watched_roots_and_ties_have_a_stable_natural_path_order() {
     let lib = Library::new().await;
     let second = crate::tables::watched_path::host_root("/second");
-    lib.run(&format!(
-        "{}{}INSERT INTO folder_discovery (folder, first_seen_at, settled)
-             VALUES ({}, 20, 1);",
-        lib.dated(&[("Release 10", 10), ("Release 2", 10)]),
-        lib.second_root_release(&second, 1, "Newest"),
-        sql_blob(&coven::path_bytes(&folder_below(&second, "Newest"))),
-    ))
+    lib.run(
+        lib.dated(&[("Release 10", 10), ("Release 2", 10)])
+            + lib.scan_other_root(&second, "Newest", Some(20)),
+    )
     .await;
     assert_eq!(
         lib.items(view(TriageTab::Pending)).await,
@@ -293,7 +252,7 @@ async fn dates_cross_watched_roots_and_ties_have_a_stable_natural_path_order() {
 #[tokio::test]
 async fn name_orders_ignore_dates_and_case_ties_do_not_split_groups() {
     let lib = Library::new().await;
-    lib.run(&lib.dated(&[("Box/1", 10), ("box/2", 30), ("Box/3", 20)])).await;
+    lib.run(lib.dated(&[("Box/1", 10), ("box/2", 30), ("Box/3", 20)])).await;
     assert_eq!(
         lib.items(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await,
         ["group Box", "candidate Box/1", "candidate Box/3", "group box", "candidate box/2"]
@@ -308,7 +267,7 @@ async fn name_orders_ignore_dates_and_case_ties_do_not_split_groups() {
 async fn filtering_collapsing_and_paging_preserve_group_date_order() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&lib.dated(&[("A/Old", 10), ("B/Old", 20), ("A/New", 30)])).await;
+    lib.run(lib.dated(&[("A/Old", 10), ("B/Old", 20), ("A/New", 30)])).await;
     let filtered = ImportListView { filter_text: "Old".into(), ..view(TriageTab::Pending) };
     let list = lib.open(filtered).await;
     assert_eq!(
@@ -328,7 +287,7 @@ async fn filtering_collapsing_and_paging_preserve_group_date_order() {
 #[tokio::test]
 async fn a_window_past_the_end_holds_what_is_left() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}{}", lib.scan("A"), lib.scan("B"), lib.scan("C"))).await;
+    lib.run(lib.scan("A") + lib.scan("B") + lib.scan("C")).await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
     let read = lib.read_through(list, LibraryPageWindow { offset: 2, limit: 5 }).await;
     assert_eq!(sequence(&read), ["candidate C"]);
@@ -338,27 +297,6 @@ async fn a_window_past_the_end_holds_what_is_left() {
 }
 
 impl Library {
-    /// Credit the draft of the release at `display_path` to `artist`.
-    fn credited(&self, display_path: &str, artist: &str) -> String {
-        format!(
-            "INSERT INTO import_candidate_album_artist_assignment
-                 (content_hash, position, assignment_kind, name)
-             VALUES ('{}', 0, 'credit', '{artist}');",
-            hash(display_path)
-        )
-    }
-
-    /// What the tags of the folder at `display_path`, which failed
-    /// validation, call it.
-    fn tagged(&self, display_path: &str, album_title: &str) -> String {
-        format!(
-            "INSERT INTO scan_skipped_tags (watched_folder_path, candidate_path, album_title)
-             VALUES ({}, {}, '{album_title}');",
-            self.sql_root(),
-            self.sql(display_path)
-        )
-    }
-
     /// The items a list on `tab` shows with `needle` typed into its filter.
     async fn found_by(&self, tab: TriageTab, needle: &str) -> Vec<String> {
         self.items(ImportListView { filter_text: needle.to_string(), ..view(tab) }).await
@@ -370,7 +308,7 @@ impl Library {
 #[tokio::test]
 async fn the_filter_finds_an_undrafted_row_by_its_folder_name_not_its_path() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Group/Wanted"), lib.scan("Other"))).await;
+    lib.run(lib.scan("Group/Wanted") + lib.scan("Other")).await;
     assert_eq!(
         lib.found_by(TriageTab::Pending, "want").await,
         ["group Group", "candidate Group/Wanted"],
@@ -384,14 +322,13 @@ async fn the_filter_finds_an_undrafted_row_by_its_folder_name_not_its_path() {
 #[tokio::test]
 async fn the_filter_finds_a_drafted_row_by_the_draft_it_shows() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}{}",
-        scanned_with_states(&lib, &["Folder", "Other"]),
-        lib.draft("Folder", "Album"),
-        lib.credited("Folder", "Artist"),
-        lib.verdict("Folder", "found", Some(11)),
-        lib.found_release("Folder", 0, 0, (Some("listed"), Some(11))),
-    ))
+    let lead = MetadataResult { title: "Album Title".to_string(), ..found_release(0, FITS) };
+    lib.run(
+        scanned_with_states(&lib, &["Folder", "Other"])
+            + lib.draft("Folder", "Album")
+            + lib.credited_to("Folder", "Artist")
+            + lib.concluded("Folder", found_verdict(11, [(lead, 0)])),
+    )
     .await;
     for needle in ["album", "ARTIST"] {
         assert_eq!(
@@ -413,12 +350,7 @@ async fn the_filter_finds_a_drafted_row_by_the_draft_it_shows() {
 #[tokio::test]
 async fn the_filter_folds_case_beyond_ascii() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}",
-        scanned_with_states(&lib, &["Folder"]),
-        lib.draft("Folder", "ÉTÉ Œuvre"),
-    ))
-    .await;
+    lib.run(scanned_with_states(&lib, &["Folder"]) + lib.draft("Folder", "ÉTÉ Œuvre")).await;
     assert_eq!(lib.found_by(TriageTab::Pending, "été œuvre").await, ["candidate Folder"]);
 }
 
@@ -427,13 +359,12 @@ async fn the_filter_folds_case_beyond_ascii() {
 #[tokio::test]
 async fn the_filter_matches_wildcard_characters_as_themselves() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}",
-        scanned_with_states(&lib, &["Starred", "Asked", "Bracketed", "Plain"]),
-        lib.draft("Starred", "A*B"),
-        lib.draft("Asked", "Why?"),
-        lib.draft("Bracketed", "[Live]"),
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Starred", "Asked", "Bracketed", "Plain"])
+            + lib.draft("Starred", "A*B")
+            + lib.draft("Asked", "Why?")
+            + lib.draft("Bracketed", "[Live]"),
+    )
     .await;
     for (needle, found) in [
         ("*", "candidate Starred"),
@@ -452,12 +383,11 @@ async fn the_filter_matches_wildcard_characters_as_themselves() {
 #[tokio::test]
 async fn the_filter_finds_one_or_two_characters() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        scanned_with_states(&lib, &["Folder", "Other"]),
-        lib.draft("Folder", "Xy"),
-        lib.draft("Other", "Yz"),
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Folder", "Other"])
+            + lib.draft("Folder", "Xy")
+            + lib.draft("Other", "Yz"),
+    )
     .await;
     assert_eq!(
         lib.found_by(TriageTab::Pending, "y").await,
@@ -472,17 +402,13 @@ async fn the_filter_finds_one_or_two_characters() {
 #[tokio::test]
 async fn the_filter_finds_a_done_row_by_its_library_album() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}{}
-         UPDATE albums SET title = 'Second Album' WHERE id IN
-             (SELECT album_id FROM releases WHERE id = '{}');",
-        scanned_with_states(&lib, &["Folder", "Other"]),
-        lib.draft("Other", "Draft Title"),
-        lib.credited("Other", "Draft Artist"),
-        lib.imported("Folder", "2026-01-02T00:00:00Z"),
-        lib.imported("Other", "2026-01-03T00:00:00Z"),
-        lib.release_id("Other"),
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Folder", "Other"])
+            + lib.draft("Other", "Draft Title")
+            + lib.credited_to("Other", "Draft Artist")
+            + lib.imported("Folder", "2026-01-02T00:00:00Z")
+            + lib.imported_as("Other", "2026-01-03T00:00:00Z", "Second Album"),
+    )
     .await;
     assert_eq!(
         lib.found_by(TriageTab::Done, "album").await,
@@ -500,12 +426,9 @@ async fn the_filter_finds_a_done_row_by_its_library_album() {
 #[tokio::test]
 async fn the_filter_matches_an_invalid_folder_by_its_name_and_its_tags() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan_as("Broken", "invalid"),
-        lib.scan_as("Tagged", "invalid"),
-        lib.tagged("Tagged", "Tagged Title"),
-    ))
+    lib.run(
+        lib.scan_as("Broken", "invalid") + lib.scan_invalid("Tagged", Some(("Tagged Title", None))),
+    )
     .await;
     assert_eq!(lib.found_by(TriageTab::Skipped, "broken").await, ["invalid Broken"]);
     assert_eq!(lib.found_by(TriageTab::Skipped, "tagged title").await, ["invalid Tagged"]);
@@ -557,7 +480,7 @@ impl ImportTables {
 async fn every_order_reads_its_windows_off_its_index() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!("{}{}", lib.scan("Box/1"), lib.scan("Loose"))).await;
+    lib.run(lib.scan("Box/1") + lib.scan("Loose")).await;
     for (order, index) in [
         (ImportListOrder::NewestFirst, "import_list_newest_first"),
         (ImportListOrder::OldestFirst, "import_list_oldest_first"),
@@ -604,7 +527,7 @@ async fn every_order_reads_its_windows_off_its_index() {
 async fn a_search_reads_the_rows_its_index_finds() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!("{}{}", lib.scan("Box/Wanted"), lib.scan("Loose"))).await;
+    lib.run(lib.scan("Box/Wanted") + lib.scan("Loose")).await;
     for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
         let list =
             lib.open(ImportListView { filter_text: "wanted".to_string(), ..view(tab) }).await;
@@ -631,7 +554,7 @@ async fn a_search_reads_the_rows_its_index_finds() {
 async fn found_reads_its_windows_off_its_runs() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!("{}{}{}", lib.scan("Box/1"), lib.scan("Other/1"), lib.scan("Loose"))).await;
+    lib.run(lib.scan("Box/1") + lib.scan("Other/1") + lib.scan("Loose")).await;
     for (order, index) in [
         (ImportListOrder::NewestFirst, "import_list_newest_first"),
         (ImportListOrder::OldestFirst, "import_list_oldest_first"),

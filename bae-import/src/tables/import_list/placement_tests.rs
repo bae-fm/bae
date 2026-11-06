@@ -30,7 +30,14 @@ pub(crate) type Item = (String, &'static str, String);
 /// or `None` for one it took out.
 pub(crate) type Moved = BTreeMap<Item, Option<Placed>>;
 
-/// A release on Found nobody has looked up, as its scan alone places it.
+/// When the scans first saw a folder no filesystem date dates: the time of
+/// the test store's clock, in milliseconds.
+pub(crate) fn seen() -> i64 {
+    bae_store::test_fixtures::fixed_now().timestamp_millis()
+}
+
+/// A release on Found nobody has looked up, as its scan alone places it:
+/// dated by when the scan first saw its folder.
 pub(crate) fn found(display_path: &str) -> Placed {
     Placed {
         root_position: 0,
@@ -38,8 +45,8 @@ pub(crate) fn found(display_path: &str) -> Placed {
         pending_state: Some("not_looked_up".to_string()),
         needs_you_reason: None,
         group_name: None,
-        own_date: None,
-        unit_date: None,
+        own_date: Some(seen()),
+        unit_date: Some(seen()),
         display_path: Some(display_path.to_string()),
         shown_title: Some(last_component(display_path).to_string()),
         shown_artists: None,
@@ -127,6 +134,11 @@ impl Library {
         (self.root_text(), "candidate", coven::path_text(&self.folder(relative)))
     }
 
+    /// The release the grouping `grouping:{id}` reads.
+    pub(crate) fn grouped_release(&self, id: &str) -> Item {
+        (self.root_text(), "candidate", format!("grouping:{id}"))
+    }
+
     pub(crate) fn invalid(&self, display_path: &str) -> Item {
         (self.root_text(), "invalid", self.text(display_path))
     }
@@ -186,10 +198,17 @@ impl Library {
             .unwrap()
     }
 
-    /// What running `sql` did to the placement.
-    pub(crate) async fn moved(&self, sql: &str) -> Moved {
+    /// What running `write` did to the placement.
+    pub(crate) async fn moved(&self, write: Write) -> Moved {
+        self.moved_after(self.run(write)).await
+    }
+
+    /// What `change`, a write this library's own writes can't make, such as
+    /// another device's arriving, did to the placement.
+    pub(crate) async fn moved_after(&self, change: impl std::future::Future<Output = ()>) -> Moved {
         let before = self.placed().await;
-        self.run(sql).await;
+        change.await;
+        self.searchable().await;
         let after = self.placed().await;
         before
             .keys()

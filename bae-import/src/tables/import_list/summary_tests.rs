@@ -6,16 +6,17 @@ use crate::tables::import_list::tests::*;
 use crate::ImportListItem;
 use crate::ImportListProjection;
 use crate::TriageTab;
+use bae_catalogs::search::MetadataResult;
 
 /// Two groups and two releases outside any, in two of Found's entries.
 async fn grouped_in_two_entries() -> Library {
     let lib = Library::new().await;
     let releases = ["A/1", "A/2", "A/3", "B/1", "B/2", "C", "D"];
-    let mut sql = scanned_with_states(&lib, &releases);
-    for display_path in ["A/2", "B/1", "B/2", "C"] {
-        sql.push_str(&lib.verdict(display_path, "failed", Some(11)));
-    }
-    lib.run(&sql).await;
+    let failed: Write = ["A/2", "B/1", "B/2", "C"]
+        .into_iter()
+        .map(|display_path| lib.verdict(display_path, "failed", Some(11)))
+        .sum();
+    lib.run(scanned_with_states(&lib, &releases) + failed).await;
     lib
 }
 
@@ -91,7 +92,7 @@ async fn a_list_counts_what_it_lists() {
 #[tokio::test]
 async fn a_tentative_candidate_is_neither_a_row_nor_a_count() {
     let lib = Library::new().await;
-    lib.run(&lib.scan_as("Box/CD1", "tentative")).await;
+    lib.run(lib.scan_as("Box/CD1", "tentative")).await;
     let read = lib.shown(view(TriageTab::Pending)).await;
     assert!(sequence(&read).is_empty());
     assert_eq!(read.total_count, 0);
@@ -102,7 +103,7 @@ async fn a_tentative_candidate_is_neither_a_row_nor_a_count() {
 #[tokio::test]
 async fn a_release_counts_pending_and_an_invalid_folder_counts_skipped() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Release"), lib.scan_as("Broken", "invalid"))).await;
+    lib.run(lib.scan("Release") + lib.scan_as("Broken", "invalid")).await;
     let pending = lib.shown(view(TriageTab::Pending)).await;
     assert_eq!(pending.summary.counts, crate::TriageTabCounts { pending: 1, done: 0, skipped: 1 });
     assert_eq!(sequence(&pending), ["candidate Release"]);
@@ -114,13 +115,7 @@ async fn a_release_counts_pending_and_an_invalid_folder_counts_skipped() {
 #[tokio::test]
 async fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("Group/Wanted"),
-        lib.scan("Group/Other"),
-        lib.scan("Loose")
-    ))
-    .await;
+    lib.run(lib.scan("Group/Wanted") + lib.scan("Group/Other") + lib.scan("Loose")).await;
     let narrowed = lib
         .shown(ImportListView { filter_text: "wanted".to_string(), ..view(TriageTab::Pending) })
         .await;
@@ -143,98 +138,74 @@ async fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
 }
 
 impl Library {
-    /// Write `title` into the draft of the release at `display_path` and
-    /// credit it to an artist: a draft the row shows.
-    fn drafted(&self, display_path: &str) -> String {
-        format!(
-            "{}INSERT INTO import_candidate_album_artist_assignment
-                 (content_hash, position, assignment_kind, name)
-             VALUES ('{}', 0, 'credit', 'Artist');",
-            self.draft(display_path, "Album"),
-            hash(display_path)
-        )
-    }
-
-    /// The draft of the release at `display_path` read from its files' tags,
-    /// by the tag prefill.
-    fn read_from_tags(&self, display_path: &str) -> String {
-        format!(
-            "INSERT INTO import_candidate_draft_provenance (content_hash, kind)
-             VALUES ('{h}', 'file_tags');
-             UPDATE import_candidate_edit SET author = 'prefill' WHERE content_hash = '{h}';",
-            h = hash(display_path)
+    /// The person's own draft of the release at `display_path`, titled
+    /// Album and credited to one artist, that would import.
+    fn answered(&self, display_path: &str) -> Write {
+        self.metadata(
+            display_path,
+            crate::tables::import_state::tests::metadata_draft("Album", "Artist"),
+            None,
         )
     }
 }
 
 /// Every kind of Found row the rules tell apart, and a Done and a Skipped
-/// one, written as the rows the tables hold.
+/// one, each written as the import writes it.
 async fn every_kind() -> Library {
     let lib = Library::new().await;
-    let all = [
+    let untagged = [
         "Identified",
         "Picked Among Several",
         "Track Count Differs",
         "Several",
-        "Several Tagged",
         "Nothing Found",
         "Lookup Failed",
         "Failed Import",
-        "Tagged",
         "Unidentified",
-        "Pick Set Aside",
         "Unread",
         "Nothing To Look Up",
         "Broke",
         "Imported",
         "Set Aside",
     ];
-    let mut sql = scanned_with_states(&lib, &all);
-    for display_path in [
-        "Identified",
-        "Picked Among Several",
-        "Track Count Differs",
-        "Several Tagged",
-        "Failed Import",
-        "Tagged",
-        "Pick Set Aside",
-    ] {
-        sql.push_str(&lib.drafted(display_path));
-    }
-    for display_path in
+    // Read from tags that name the album, its artist and its track: a draft
+    // that would import.
+    let tagged = lib.scan_tagged("Several Tagged", "Album", "Artist", Some("Track title"))
+        + lib.scan_tagged("Tagged", "Album", "Artist", Some("Track title"));
+    // Read from tags that leave the track untitled, then changed by the
+    // person: their draft, which would not import.
+    let set_aside = lib.scan_tagged("Pick Set Aside", "Album", "Artist", None)
+        + lib.typed("Pick Set Aside", crate::CandidateEditField::PressingYear, "2026");
+    let answered: Write =
         ["Identified", "Picked Among Several", "Track Count Differs", "Failed Import"]
-    {
-        sql.push_str(&lib.linked(display_path));
-        sql.push_str(&lib.valid_draft(display_path));
-    }
-    for display_path in ["Several Tagged", "Tagged", "Pick Set Aside"] {
-        sql.push_str(&lib.read_from_tags(display_path));
-    }
-    sql.push_str(&lib.valid_draft("Several Tagged"));
-    sql.push_str(&lib.valid_draft("Tagged"));
-    sql.push_str(
-        "UPDATE import_candidate_edit SET author = 'person' WHERE content_hash = 'hash-Pick Set Aside';",
-    );
-    sql.push_str(&lib.found("Identified", 1, FITS));
-    sql.push_str(&lib.found("Picked Among Several", 2, FITS));
-    sql.push_str(&lib.found("Track Count Differs", 1, (Some("listed"), Some(10))));
-    sql.push_str(&lib.found("Several", 2, FITS));
-    sql.push_str(&lib.found("Several Tagged", 2, FITS));
-    sql.push_str(&lib.found("Pick Set Aside", 1, FITS));
-    sql.push_str(&lib.found("Unread", 1, FITS));
-    sql.push_str(&format!(
-        "UPDATE import_candidate_match SET document_failure = 'timeout'
-         WHERE content_hash = '{}';",
-        hash("Unread")
-    ));
-    sql.push_str(&lib.verdict("Nothing Found", "not_found", None));
-    sql.push_str(&lib.verdict("Lookup Failed", "failed", Some(11)));
-    sql.push_str(&lib.verdict("Nothing To Look Up", "manual_only", Some(11)));
-    sql.push_str(&lib.verdict("Broke", "error", None));
-    sql.push_str(&lib.import_failed("Failed Import"));
-    sql.push_str(&lib.imported("Imported", "2026-01-02T00:00:00Z"));
-    sql.push_str(&lib.skip("Set Aside"));
-    lib.run(&sql).await;
+            .into_iter()
+            .map(|display_path| lib.answered(display_path) + lib.linked(display_path))
+            .sum();
+    let unread = MetadataResult {
+        document_failure: Some(bae_catalogs::LookupFailure::Timeout),
+        ..found_release(0, FITS)
+    };
+    lib.run(
+        scanned_with_states(&lib, &untagged)
+            + tagged
+            + set_aside
+            + answered
+            + lib.found("Identified", 1, FITS)
+            + lib.found("Picked Among Several", 2, FITS)
+            + lib.found("Track Count Differs", 1, (Some("listed"), Some(10)))
+            + lib.found("Several", 2, FITS)
+            + lib.found("Several Tagged", 2, FITS)
+            + lib.found("Pick Set Aside", 1, FITS)
+            + lib.concluded("Unread", found_verdict(11, [(unread, 0)]))
+            + lib.verdict("Nothing Found", "not_found", None)
+            + lib.verdict("Lookup Failed", "failed", Some(11))
+            + lib.verdict("Nothing To Look Up", "manual_only", Some(11))
+            + lib.verdict("Broke", "error", None)
+            + lib.import_failed("Failed Import")
+            + lib.imported("Imported", "2026-01-02T00:00:00Z")
+            + lib.skip("Set Aside"),
+    )
+    .await;
     lib
 }
 
@@ -242,12 +213,11 @@ async fn every_kind() -> Library {
 /// import of Identified, and a run whose answer bae could not store for
 /// Tagged.
 async fn running(lib: &Library) {
-    lib.run(&format!(
-        "{}{}{}",
-        lib.identifying("Several", "running"),
-        lib.importing("Identified", "reading_files"),
-        lib.not_written("Tagged", "writing the answer: the disk is full"),
-    ))
+    lib.run(
+        lib.identifying("Several", "running")
+            + lib.importing("Identified", "reading_files")
+            + lib.not_written("Tagged", "writing the answer: the disk is full"),
+    )
     .await;
 }
 
@@ -378,7 +348,7 @@ async fn a_chosen_entry_holding_no_row_stays_chosen() {
     running(&lib).await;
     let list = lib.open(under(TriageTab::Pending, PendingFilter::InProgress)).await;
     assert_eq!(lib.read(list).await.total_count, 2);
-    lib.run("DELETE FROM import_candidate_standing;").await;
+    lib.run(lib.reopened()).await;
     let ended = lib.read(list).await;
     assert_eq!(ended.total_count, 0);
     assert_eq!(ended.summary.narrowing.pending_filter, PendingFilter::InProgress);
@@ -443,12 +413,9 @@ async fn the_text_filter_composes_with_the_pending_filter() {
 async fn the_first_identifying_candidate_follows_the_queue_order() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("Release 1"),
-        lib.scan("Release 2"),
-        lib.identifying("Release 2", "running")
-    ))
+    lib.run(
+        lib.scan("Release 1") + lib.scan("Release 2") + lib.identifying("Release 2", "running"),
+    )
     .await;
     let first = |view: ImportListView| async {
         let list = lib.open(view).await;
@@ -459,9 +426,9 @@ async fn the_first_identifying_candidate_follows_the_queue_order() {
         ImportListView { filter_text: "Release 1".to_string(), ..view(TriageTab::Pending) };
     assert_eq!(first(filtered).await, Some(lib.key("Release 2")));
     assert_eq!(first(view(TriageTab::Done)).await, Some(lib.key("Release 2")));
-    lib.run(&lib.identifying("Release 1", "queued")).await;
+    lib.run(lib.identifying("Release 1", "queued")).await;
     assert_eq!(first(view(TriageTab::Pending)).await, Some(lib.key("Release 1")));
-    lib.run("DELETE FROM import_candidate_standing;").await;
+    lib.run(lib.reopened()).await;
     assert_eq!(first(view(TriageTab::Pending)).await, None);
 }
 
@@ -469,13 +436,12 @@ async fn the_first_identifying_candidate_follows_the_queue_order() {
 async fn the_first_identifying_candidate_of_a_group_is_its_first_member() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!(
-        "{}{}{}{}",
-        lib.scan("Group/Release 1"),
-        lib.scan("Group/Release 2"),
-        lib.identifying("Group/Release 2", "running"),
-        lib.identifying("Group/Release 1", "running"),
-    ))
+    lib.run(
+        lib.scan("Group/Release 1")
+            + lib.scan("Group/Release 2")
+            + lib.identifying("Group/Release 2", "running")
+            + lib.identifying("Group/Release 1", "running"),
+    )
     .await;
     let list = lib.open(view(TriageTab::Pending)).await;
     assert_eq!(
@@ -490,12 +456,11 @@ async fn the_first_identifying_candidate_of_a_group_is_its_first_member() {
 async fn candidate_location_opens_only_its_group() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("Earlier/Release 1"),
-        lib.scan("Earlier/Release 2"),
-        lib.scan("Target/Release 1")
-    ))
+    lib.run(
+        lib.scan("Earlier/Release 1")
+            + lib.scan("Earlier/Release 2")
+            + lib.scan("Target/Release 1"),
+    )
     .await;
     let list = lib
         .open(ImportListView {
@@ -527,11 +492,9 @@ async fn candidate_location_opens_only_its_group() {
 async fn candidate_location_follows_an_import_from_pending_to_done() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!(
-        "{}{}",
-        scanned_with_states(&lib, &["Release"]),
-        lib.imported("Release", "2026-01-02T00:00:00Z")
-    ))
+    lib.run(
+        scanned_with_states(&lib, &["Release"]) + lib.imported("Release", "2026-01-02T00:00:00Z"),
+    )
     .await;
     let list = lib.open(view(TriageTab::Pending)).await;
     let location = tables

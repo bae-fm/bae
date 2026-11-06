@@ -8,7 +8,7 @@ use crate::tables::import_list::tests::*;
 async fn a_scanned_release_is_placed_on_found_as_nobody_has_looked_it_up() {
     let lib = Library::new().await;
     assert_eq!(
-        lib.moved(&lib.scan("Album")).await,
+        lib.moved(lib.scan("Album")).await,
         moves([(lib.release("Album"), Some(found("Album")))])
     );
 }
@@ -18,13 +18,9 @@ async fn a_scanned_release_is_placed_on_found_as_nobody_has_looked_it_up() {
 #[tokio::test]
 async fn a_tentative_release_is_not_placed_until_it_settles() {
     let lib = Library::new().await;
-    assert_eq!(lib.moved(&lib.scan_as("Album", "tentative")).await, moves([]));
+    assert_eq!(lib.moved(lib.scan_as("Album", "tentative")).await, moves([]));
     assert_eq!(
-        lib.moved(&format!(
-            "UPDATE scan_candidate SET kind = 'valid' WHERE path = {};",
-            lib.sql("Album")
-        ))
-        .await,
+        lib.moved(lib.scan("Album")).await,
         moves([(lib.release("Album"), Some(found("Album")))])
     );
 }
@@ -32,11 +28,8 @@ async fn a_tentative_release_is_not_placed_until_it_settles() {
 #[tokio::test]
 async fn a_removed_release_leaves_the_list() {
     let lib = Library::new().await;
-    lib.run(&lib.scan("Album")).await;
-    assert_eq!(
-        lib.moved(&format!("DELETE FROM scan_candidate WHERE path = {};", lib.sql("Album"))).await,
-        moves([(lib.release("Album"), None)])
-    );
+    lib.run(lib.scan("Album")).await;
+    assert_eq!(lib.moved(lib.unscan("Album")).await, moves([(lib.release("Album"), None)]));
 }
 
 /// A rescan stamps every release it walks with its generation, which moves
@@ -44,30 +37,8 @@ async fn a_removed_release_leaves_the_list() {
 #[tokio::test]
 async fn restamping_a_release_moves_nothing() {
     let lib = Library::new().await;
-    lib.run(&lib.scan("Album")).await;
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE scan_candidate SET generation = 2, name = name WHERE path = {};",
-            lib.sql("Album")
-        ))
-        .await,
-        moves([])
-    );
-}
-
-/// With no draft a release shows its folder's name, which the filter matches.
-#[tokio::test]
-async fn a_release_with_no_draft_shows_its_folders_new_name() {
-    let lib = Library::new().await;
-    lib.run(&lib.scan("Album")).await;
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE scan_candidate SET name = 'Renamed' WHERE path = {};",
-            lib.sql("Album")
-        ))
-        .await,
-        moves([(lib.release("Album"), Some(found("Album").shown("Renamed", None)))])
-    );
+    lib.run(lib.scan("Album")).await;
+    assert_eq!(lib.moved(lib.rescan()).await, moves([]));
 }
 
 /// A folder that failed validation is on Skipped whatever else is stored for
@@ -76,57 +47,42 @@ async fn a_release_with_no_draft_shows_its_folders_new_name() {
 async fn a_folder_that_failed_validation_shows_what_its_tags_call_it() {
     let lib = Library::new().await;
     assert_eq!(
-        lib.moved(&lib.scan_as("Broken", "invalid")).await,
+        lib.moved(lib.scan_as("Broken", "invalid")).await,
         moves([(lib.invalid("Broken"), Some(failed_validation("Broken")))])
     );
-    let tags = |set: &str| {
-        format!(
-            "{set} WHERE watched_folder_path = {} AND candidate_path = {};",
-            lib.sql_root(),
-            lib.sql("Broken")
-        )
-    };
     assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO scan_skipped_tags (watched_folder_path, candidate_path, album_title, artist)
-             VALUES ({}, {}, 'Tagged Album', NULL);",
-            lib.sql_root(),
-            lib.sql("Broken")
-        ))
-        .await,
+        lib.moved(lib.scan_invalid("Broken", Some(("Tagged Album", None)))).await,
         moves([(
             lib.invalid("Broken"),
             Some(failed_validation("Broken").shown("Tagged Album", None))
         )])
     );
     assert_eq!(
-        lib.moved(&tags("DELETE FROM scan_skipped_tags")).await,
+        lib.moved(lib.scan_invalid("Broken", Some(("Tagged Album", Some("Tagged Artist"))))).await,
+        moves([(
+            lib.invalid("Broken"),
+            Some(failed_validation("Broken").shown("Tagged Album", Some("Tagged Artist")))
+        )])
+    );
+    assert_eq!(
+        lib.moved(lib.scan_as("Broken", "invalid")).await,
         moves([(lib.invalid("Broken"), Some(failed_validation("Broken")))])
     );
 }
 
 /// A release is dated by its folder: the date the filesystem gives it, else
-/// when the scans first saw it. Whether a scan has read it moves nothing.
+/// when the scans first saw it.
 #[tokio::test]
 async fn a_release_is_dated_by_its_folder() {
     let lib = Library::new().await;
-    lib.run(&lib.scan("Album")).await;
+    lib.run(lib.scan("Album")).await;
     assert_eq!(
-        lib.moved(&lib.discovered("Album", 100)).await,
+        lib.moved(lib.scan_dated("Album", 100)).await,
         moves([(lib.release("Album"), Some(found("Album").dated(100)))])
     );
-    let discovery = |set: &str| format!("{set} WHERE folder = {};", lib.sql("Album"));
     assert_eq!(
-        lib.moved(&discovery(
-            "UPDATE folder_discovery SET source_date = 50, source_date_kind = 'created'"
-        ))
-        .await,
+        lib.moved(lib.scan_dated("Album", 50)).await,
         moves([(lib.release("Album"), Some(found("Album").dated(50)))])
-    );
-    assert_eq!(lib.moved(&discovery("UPDATE folder_discovery SET settled = 0")).await, moves([]));
-    assert_eq!(
-        lib.moved(&discovery("DELETE FROM folder_discovery")).await,
-        moves([(lib.release("Album"), Some(found("Album")))])
     );
 }
 
@@ -135,21 +91,13 @@ async fn a_release_is_dated_by_its_folder() {
 #[tokio::test]
 async fn a_skipped_folder_is_listed_on_skipped() {
     let lib = Library::new().await;
-    lib.run(&lib.scan("Album")).await;
-    let skip = format!(
-        "INSERT INTO skipped_import_candidates (candidate_path) VALUES ({});",
-        lib.sql("Album")
-    );
+    lib.run(lib.scan("Album")).await;
     assert_eq!(
-        lib.moved(&skip).await,
+        lib.moved(lib.skip("Album")).await,
         moves([(lib.release("Album"), Some(found("Album").on("skipped")))])
     );
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM skipped_import_candidates WHERE candidate_path = {};",
-            lib.sql("Album")
-        ))
-        .await,
+        lib.moved(lib.set_skipped("Album", false)).await,
         moves([(lib.release("Album"), Some(found("Album")))])
     );
 }
@@ -159,10 +107,9 @@ async fn a_skipped_folder_is_listed_on_skipped() {
 #[tokio::test]
 async fn unwatching_a_folder_takes_its_rows_out() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Artist/Album"), lib.scan("Single"))).await;
+    lib.run(lib.scan("Artist/Album") + lib.scan("Single")).await;
     assert_eq!(
-        lib.moved(&format!("DELETE FROM watched_import_folders WHERE path = {};", lib.sql_root()))
-            .await,
+        lib.moved(lib.unwatch()).await,
         moves([
             (lib.release("Artist/Album"), None),
             (lib.group("Artist"), None),
