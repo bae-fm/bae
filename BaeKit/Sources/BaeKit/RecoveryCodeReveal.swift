@@ -25,6 +25,13 @@ public final class RecoveryCodeReveal {
     @ObservationIgnored
     private var task: Task<Void, Never>?
 
+    #if DEBUG
+        /// Every generation started, whether it was replaced, hidden or
+        /// ran to its end, for a test to wait on.
+        @ObservationIgnored
+        private var started: [Task<Void, Never>] = []
+    #endif
+
     public init() {
         state = .hidden
     }
@@ -45,7 +52,7 @@ public final class RecoveryCodeReveal {
     ) {
         task?.cancel()
         state = .loading
-        task = Task {
+        let run = Task {
             do {
                 // Cancelling this task also cancels the Rust call.
                 let share = try await generate()
@@ -70,7 +77,21 @@ public final class RecoveryCodeReveal {
                 state = DisplayError(error).map(State.failed) ?? .hidden
             }
         }
+        task = run
+        #if DEBUG
+            started.append(run)
+        #endif
     }
+
+    #if DEBUG
+        /// Return once every generation started so far has ended, replaced
+        /// or not, so what a late one would have shown is already shown.
+        public func generationsEnded() async {
+            for run in started {
+                await run.value
+            }
+        }
+    #endif
 
     /// Hide the code, cancelling a generation still running.
     public func hide() {

@@ -263,10 +263,16 @@ enum Wait {
         }
     }
 
-    /// Return once `value` has read the same for `steadiness`: a hosted view
-    /// whose frames stopped moving, a list whose geometry came to rest.
+    /// Return once `value` has read the same for `steadiness`: a hosted tree
+    /// whose frames stopped moving.
     ///
-    /// A view that has not started moving yet also reads the same, so when
+    /// SwiftUI lays a hosted tree out over several main-actor turns and says
+    /// nothing when the last one ends, so this is the one wait that decides by
+    /// a stretch of time, and it is only for that. A value a store publishes,
+    /// a selection, a scroll, or an update a view took is waited for with the
+    /// event that carries it.
+    ///
+    /// A tree that has not started moving yet also reads the same, so when
     /// the step before the wait must change the value — a scroll — the
     /// caller passes what it read before that step as `changedFrom`, and the
     /// wait holds out for a reading that differs from it first.

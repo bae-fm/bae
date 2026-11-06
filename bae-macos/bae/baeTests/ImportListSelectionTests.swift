@@ -213,7 +213,6 @@ struct ImportListSelectionTests {
         ) { table in
             let window = try #require(table.window)
             try ImportListHosting.press(row: 1, in: table)
-            try await Wait.untilSteady { table.selectedRowIndexes }
             #expect(changes.all.isEmpty)
             #expect(table.selectedRowIndexes == [0])
 

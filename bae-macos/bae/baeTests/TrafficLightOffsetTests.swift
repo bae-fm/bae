@@ -50,12 +50,10 @@ struct TrafficLightOffsetTests {
             window.setContentSize(CGSize(width: 1_000, height: 640))
             Self.layOut(window)
         }
-        try await Wait.untilSteady { try Self.buttonOrigins(in: offset) }
-
-        #expect(
+        try await Wait.untilLaidOut(try #require(offset.contentView)) {
             try Self.buttonOrigins(in: offset)
                 == Self.movedOrigins(Self.buttonOrigins(in: usual))
-        )
+        }
     }
 
     private static let xOffset: CGFloat = 6

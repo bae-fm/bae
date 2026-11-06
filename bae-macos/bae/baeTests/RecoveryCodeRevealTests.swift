@@ -97,7 +97,7 @@ struct RecoveryCodeRevealTests {
         #expect(reveal.state == .hidden)
 
         gate.open()
-        try await Wait.untilSteady { reveal.state }
+        await reveal.generationsEnded()
         #expect(reveal.state == .hidden)
     }
 
@@ -115,7 +115,7 @@ struct RecoveryCodeRevealTests {
         try await Wait.until { reveal.state == .shown(code: "CVR1-NEW") }
 
         gate.open()
-        try await Wait.untilSteady { reveal.state }
+        await reveal.generationsEnded()
         #expect(reveal.state == .shown(code: "CVR1-NEW"))
     }
 }
