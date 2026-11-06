@@ -12,7 +12,7 @@ fn rows(snapshot: &BridgeImportListSnapshot) -> (Vec<Vec<u8>>, Vec<Vec<u8>>) {
     let shown: Vec<_> = snapshot
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             BridgeImportListItem::Candidate { row, .. } => Some(row),
             _ => None,

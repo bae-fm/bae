@@ -87,10 +87,10 @@ pub enum BridgeImportListItem {
     },
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeImportListWindow {
-    pub window: BridgeLibraryPageWindow,
-    pub items: Vec<BridgeImportListItem>,
+crate::screens::browse_window! {
+    /// One requested window of the import list, with the items that landed in it.
+    window: BridgeImportListWindow,
+    row: bae_import::ImportListItem => BridgeImportListItem,
 }
 
 /// The list view and position that reveal one candidate at its current

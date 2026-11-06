@@ -393,7 +393,7 @@ pub(crate) fn sequence(projection: &ImportListProjection) -> Vec<String> {
     projection
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .map(|item| match item {
             ImportListItem::GroupHeader { group, .. } => format!("group {}", group.name),
             ImportListItem::Candidate { row, .. } => format!("candidate {}", row.display_path),
@@ -412,7 +412,7 @@ pub(crate) fn row_at<'a>(
     projection
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .find_map(|item| match item {
             ImportListItem::Candidate { row, live, .. } if row.display_path == display_path => {
                 Some((row, live))
@@ -568,7 +568,7 @@ pub(crate) fn rows(projection: &crate::ImportListProjection) -> Vec<crate::Triag
     projection
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             ImportListItem::Candidate { row, .. } => Some(row.clone()),
             _ => None,

@@ -214,7 +214,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
     let standings: std::collections::BTreeMap<String, Option<PendingStanding>> = projection
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             bae_import::ImportListItem::Candidate { row, live, .. } => {
                 Some((row.display_path.clone(), live.standing.clone()))
@@ -292,7 +292,7 @@ async fn fixture_candidates_carry_what_their_states_name() {
         .await
         .windows
         .into_iter()
-        .flat_map(|window| window.items)
+        .flat_map(|window| window.rows)
         .filter_map(|item| match item {
             bae_import::ImportListItem::Candidate { row, .. } => Some(row),
             _ => None,

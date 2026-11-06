@@ -112,7 +112,7 @@ impl Automation {
                 .await
                 .map_err(AutomationError::from)?;
             for window in projection.windows {
-                for item in window.items {
+                for item in window.rows {
                     let candidate_key = match item {
                         ImportListItem::Candidate { row, .. } => row.candidate_key,
                         ImportListItem::Invalid { candidate, .. } => {

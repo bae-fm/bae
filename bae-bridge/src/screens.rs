@@ -177,7 +177,7 @@ macro_rules! browse_window {
         }
 
         impl $window {
-            fn from_core(window: bae_store::LibraryBrowseWindow<$core_row>) -> Self {
+            pub(crate) fn from_core(window: bae_store::LibraryBrowseWindow<$core_row>) -> Self {
                 Self {
                     window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
                     rows: window.rows.into_iter().map(<$bridge_row>::from_core).collect(),
@@ -186,6 +186,8 @@ macro_rules! browse_window {
         }
     };
 }
+
+pub(crate) use browse_window;
 
 /// The windows a screen asks a list for, as core reads them.
 fn core_windows(

@@ -18,7 +18,7 @@
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::triage::{CandidateLiveState, TriageGroup, TriageRow, TriageTabCounts};
 use super::watched_folder::WatchedFolder;
-use bae_store::{LibraryPageWindow, LibraryPageWindows};
+use bae_store::{LibraryBrowseWindow, LibraryPageWindows};
 
 mod path_order;
 mod pending_filter;
@@ -149,13 +149,6 @@ pub struct ImportCandidateListLocation {
     pub visible_position: u64,
 }
 
-/// The items one window of the list holds.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ImportListWindow {
-    pub window: LibraryPageWindow,
-    pub items: Vec<ImportListItem>,
-}
-
 /// Everything the chrome around the list shows, read with the items so none
 /// of it can drift from them.
 #[derive(Debug, Clone, PartialEq)]
@@ -212,7 +205,7 @@ pub struct ImportCounts {
 /// the tables hold them.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportListProjection {
-    pub windows: Vec<ImportListWindow>,
+    pub windows: Vec<LibraryBrowseWindow<ImportListItem>>,
     pub total_count: u64,
     pub summary: ImportQueueSummary,
     /// Every entry of Found's filter, in the menu's order, with how many of
@@ -232,7 +225,7 @@ pub struct ImportListProjection {
 /// A projection, and what woke the live query.
 #[derive(Debug, Clone)]
 pub struct ImportListSnapshot {
-    pub windows: Vec<ImportListWindow>,
+    pub windows: Vec<LibraryBrowseWindow<ImportListItem>>,
     pub total_count: u64,
     pub summary: ImportQueueSummary,
     /// Every entry of Found's filter, in the menu's order, with how many of

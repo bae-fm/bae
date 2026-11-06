@@ -270,8 +270,8 @@ pub use import_failure::{ImportFailure, ImportFailureReason};
 pub use list::{
     ImportCandidateListLocation, ImportCounts, ImportListId, ImportListItem, ImportListNarrowing,
     ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListView,
-    ImportListWindow, ImportQueueSummary, LiveImportList, LiveImportListError, NarrowedCount,
-    PendingFilter, PendingFilterEntry,
+    ImportQueueSummary, LiveImportList, LiveImportListError, NarrowedCount, PendingFilter,
+    PendingFilterEntry,
 };
 #[cfg(desktop)]
 pub use mapping::{

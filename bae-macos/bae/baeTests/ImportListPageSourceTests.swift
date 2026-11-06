@@ -202,7 +202,7 @@ struct ImportListPageSourceTests {
             windows: windows.map { fixture in
                 BridgeImportListWindow(
                     window: fixture.window,
-                    items: fixture.keys.map(item)
+                    rows: fixture.keys.map(item)
                 )
             },
             totalCount: totalCount,

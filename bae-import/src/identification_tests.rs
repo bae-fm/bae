@@ -801,7 +801,7 @@ pub(crate) fn page_live(
     snapshot
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             crate::ImportListItem::Candidate { row, live, .. } => {
                 Some((row.candidate_key.clone(), live.clone()))
@@ -831,7 +831,7 @@ pub(crate) fn page_rows(
     snapshot
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             crate::ImportListItem::Candidate { row, live, .. } => {
                 Some((row.candidate_key.clone(), (row.clone(), live.clone())))
@@ -900,16 +900,14 @@ pub(crate) async fn queue_item(
         let view = crate::ImportListView { tab, ..crate::ImportListView::default() };
         let projection = fixture.import.wait_for_list(view, |_| true).await;
         let row =
-            projection.windows.iter().flat_map(|window| &window.items).find_map(
-                |item| match item {
-                    crate::ImportListItem::Candidate { row, live, .. }
-                        if row.candidate_key == key.clone() =>
-                    {
-                        Some((row.clone(), live.clone()))
-                    }
-                    _ => None,
-                },
-            );
+            projection.windows.iter().flat_map(|window| &window.rows).find_map(|item| match item {
+                crate::ImportListItem::Candidate { row, live, .. }
+                    if row.candidate_key == key.clone() =>
+                {
+                    Some((row.clone(), live.clone()))
+                }
+                _ => None,
+            });
         if let Some(row) = row {
             return row;
         }

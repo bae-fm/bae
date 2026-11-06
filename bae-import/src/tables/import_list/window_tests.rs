@@ -24,7 +24,7 @@ use bae_util::test_channels::HANG_GUARD;
 /// Each header's group name and whether it offers to combine, in order.
 fn combinable(read: &ImportListProjection) -> Vec<(String, bool)> {
     read.windows[0]
-        .items
+        .rows
         .iter()
         .filter_map(|item| match item {
             ImportListItem::GroupHeader { group, .. } => {
@@ -695,7 +695,7 @@ async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
     let listed: Vec<&InvalidCandidate> = list
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             ImportListItem::Invalid { candidate, .. } => Some(candidate),
             _ => None,
@@ -859,7 +859,7 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
     let row = listed
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .find_map(|item| match item {
             crate::ImportListItem::Candidate { row, .. } => Some(row.clone()),
             _ => None,

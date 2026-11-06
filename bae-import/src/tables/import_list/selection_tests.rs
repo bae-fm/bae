@@ -96,7 +96,7 @@ async fn a_folder_that_failed_validation_is_selected_and_offers_nothing() {
         Some(SingleSelection::InvalidCandidate { key: lib.key("Broken") })
     );
     assert!(read.selection.offers.is_empty());
-    assert!(matches!(&read.windows[0].items[0], ImportListItem::Invalid { selected: true, .. }));
+    assert!(matches!(&read.windows[0].rows[0], ImportListItem::Invalid { selected: true, .. }));
 }
 
 /// A selection of identified rows offers no Identify; a mixed one counts only

@@ -6,8 +6,7 @@
 use super::order::HeaderPlaces;
 use super::*;
 use crate::list::{
-    ImportListNarrowing, ImportListProjection, ImportListRequest, ImportListWindow,
-    ImportQueueSummary,
+    ImportListNarrowing, ImportListProjection, ImportListRequest, ImportQueueSummary,
 };
 
 #[derive(Clone, PartialEq)]
@@ -99,9 +98,9 @@ impl ImportListRows {
             .windows
             .into_iter()
             .map(|(window, items)| {
-                Ok(ImportListWindow {
+                Ok(bae_store::LibraryBrowseWindow {
                     window,
-                    items: items
+                    rows: items
                         .into_iter()
                         .map(window::WindowItemRows::process)
                         .collect::<Result<_, _>>()?,

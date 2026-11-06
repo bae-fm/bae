@@ -72,7 +72,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         HANG_GUARD,
         import_handle.wait_for_list(crate::ImportListView::default(), |projection| {
             projection.windows.iter().any(|window| {
-                window.items.iter().any(|item| match item {
+                window.rows.iter().any(|item| match item {
                     crate::ImportListItem::Candidate { row, .. } => row.candidate_key == key,
                     _ => false,
                 })

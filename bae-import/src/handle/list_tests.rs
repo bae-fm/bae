@@ -80,7 +80,7 @@ impl LiveList {
             snapshot
                 .windows
                 .iter()
-                .flat_map(|window| &window.items)
+                .flat_map(|window| &window.rows)
                 .filter_map(|item| match item {
                     crate::ImportListItem::Candidate { row, .. } => Some(row.candidate_key.clone()),
                     _ => None,
@@ -238,7 +238,7 @@ async fn one_row_on_the_page(
     let on_page: Vec<crate::CandidateKey> = snapshot
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(candidate_key)
         .cloned()
         .collect();
@@ -293,7 +293,7 @@ async fn a_run_off_the_page_delivers_its_count() {
         moved
             .windows
             .iter()
-            .flat_map(|window| &window.items)
+            .flat_map(|window| &window.rows)
             .filter_map(candidate_key)
             .collect::<Vec<_>>(),
         vec![&on_page],
@@ -792,7 +792,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     assert_eq!(moved.view_revision, initial.view_revision);
     assert_eq!(moved.cause, coven::LiveQueryCause::Request);
     assert_eq!(
-        moved.windows[0].items, writing.windows[0].items,
+        moved.windows[0].rows, writing.windows[0].rows,
         "the window move read the rows as they were delivered"
     );
 }

@@ -163,7 +163,7 @@ impl DecisionFixture {
                 let names: Vec<String> = projection
                     .windows
                     .iter()
-                    .flat_map(|window| &window.items)
+                    .flat_map(|window| &window.rows)
                     .filter_map(|item| match item {
                         crate::ImportListItem::Candidate { row, .. } => {
                             Some(row.folder_name.clone())

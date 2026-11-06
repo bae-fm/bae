@@ -448,7 +448,7 @@ mirror_struct! {
 }
 
 impl crate::types::BridgeImportListItem {
-    pub(super) fn from_core(item: bae_import::ImportListItem) -> Self {
+    pub(crate) fn from_core(item: bae_import::ImportListItem) -> Self {
         let stable_key = item.stable_key();
         match item {
             bae_import::ImportListItem::GroupHeader {
@@ -564,16 +564,6 @@ mirror_struct! {
         tab: (crate::types::BridgeTriageTab),
         group_key: (opt crate::types::BridgeFolderReleaseDecisionKey),
         visible_position,
-    },
-}
-
-mirror_struct! {
-    crate::types::BridgeImportListWindow
-        = bae_import::ImportListWindow,
-    from_core: fn,
-    fields: {
-        window: (crate::types::BridgeLibraryPageWindow),
-        items: (each crate::types::BridgeImportListItem),
     },
 }
 

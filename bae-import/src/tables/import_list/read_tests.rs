@@ -18,7 +18,7 @@ fn candidate_names(projection: &crate::ImportListProjection) -> Vec<String> {
     projection
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             crate::ImportListItem::Candidate { row, .. } => Some(row.folder_name.clone()),
             _ => None,
@@ -187,7 +187,7 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
         .await
         .result
         .unwrap();
-    assert_eq!(moved.windows[0].items, initial.windows[0].items);
+    assert_eq!(moved.windows[0].rows, initial.windows[0].rows);
 }
 
 /// The list is a live query over the scan tables, so a scan item written while
@@ -248,7 +248,7 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
     }
     let moved =
         next_run_is_only_the_request(&mut live, through(list, [(0, 49)])).await.result.unwrap();
-    assert_eq!(moved.windows[0].items, initial.windows[0].items);
+    assert_eq!(moved.windows[0].rows, initial.windows[0].rows);
 }
 
 /// A scan's progress moves the folder scans' own query and sends the list
@@ -305,7 +305,7 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
         coven::LiveQueryCause::Request,
         "the scan's progress sent the list nothing"
     );
-    assert_eq!(next.result.unwrap().windows[0].items, initial.result.unwrap().windows[0].items);
+    assert_eq!(next.result.unwrap().windows[0].rows, initial.result.unwrap().windows[0].rows);
 }
 
 /// The import list's items in the windows `request` names, as one read with
@@ -321,7 +321,7 @@ async fn import_items(
         .unwrap()
         .windows
         .into_iter()
-        .map(|window| window.items)
+        .map(|window| window.rows)
         .collect()
 }
 
@@ -362,7 +362,7 @@ async fn a_scrolled_import_list_holds_its_offsets_items_across_a_scan() {
                     .unwrap()
                     .windows
                     .into_iter()
-                    .map(|window| window.items)
+                    .map(|window| window.rows)
                     .collect::<Vec<_>>();
             }
         }
@@ -460,7 +460,7 @@ async fn measure_import_list(db: &Store, n: u64) {
                     let read = query.next().await.unwrap().result.unwrap();
                     if target == offset {
                         runs.push(started.elapsed());
-                        rows = read.windows[0].items.len();
+                        rows = read.windows[0].rows.len();
                     }
                 }
                 runs.sort();

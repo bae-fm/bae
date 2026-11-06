@@ -462,7 +462,7 @@ fn standings(
     projection
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             ImportListItem::Candidate { row, live, .. } => {
                 Some((row.candidate_key.clone(), live.standing.clone()))

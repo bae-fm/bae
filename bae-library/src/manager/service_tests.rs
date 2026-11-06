@@ -106,7 +106,7 @@ fn done_names(projection: &bae_import::ImportListProjection) -> Vec<String> {
     projection
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             bae_import::ImportListItem::Candidate { row, .. } => Some(row.folder_name.clone()),
             _ => None,
@@ -207,11 +207,11 @@ async fn done_runs_the_releases_still_uploading_first() {
 
 /// Each Done row's name and how its release's upload stands, in order.
 fn done_uploads(
-    windows: &[bae_import::ImportListWindow],
+    windows: &[bae_store::LibraryBrowseWindow<bae_import::ImportListItem>],
 ) -> Vec<(String, Option<bae_records::UploadProgress>)> {
     windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             bae_import::ImportListItem::Candidate { row, .. } => {
                 Some((row.folder_name.clone(), row.upload.clone()))

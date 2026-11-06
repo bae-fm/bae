@@ -77,7 +77,7 @@ async fn list_showing(
         .unwrap();
     let snapshot = until(&list, |snapshot| {
         snapshot.total_count == count
-            && snapshot.windows.iter().map(|window| window.items.len() as u64).sum::<u64>() == count
+            && snapshot.windows.iter().map(|window| window.rows.len() as u64).sum::<u64>() == count
     })
     .await;
     (list, snapshot)
@@ -88,7 +88,7 @@ fn selected_on_page(snapshot: &ImportListSnapshot) -> Vec<bae_import::CandidateK
     snapshot
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             ImportListItem::Candidate { row, .. } if row.selected => {
                 Some(row.candidate_key.clone())
@@ -103,7 +103,7 @@ fn on_page(snapshot: &ImportListSnapshot) -> Vec<bae_import::CandidateKey> {
     snapshot
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             ImportListItem::Candidate { row, .. } => Some(row.candidate_key.clone()),
             _ => None,
@@ -244,7 +244,7 @@ async fn shown_keys(services: &AppServices, view: ImportListView) -> Vec<bae_imp
         .unwrap();
     list.windows
         .into_iter()
-        .flat_map(|window| window.items)
+        .flat_map(|window| window.rows)
         .filter_map(|item| match item {
             ImportListItem::Candidate { row, .. } => Some(row.candidate_key),
             _ => None,

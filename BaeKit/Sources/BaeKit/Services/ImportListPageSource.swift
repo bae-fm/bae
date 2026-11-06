@@ -323,7 +323,7 @@ import Foundation
                     offset: window.window.offset,
                     limit: window.window.limit
                 )
-                sinks[key]?.value(window.items, Int(snapshot.totalCount))
+                sinks[key]?.value(window.rows, Int(snapshot.totalCount))
             }
             onSelection(snapshot.selection, snapshot.selectionRevision)
             fulfillViewWaiters(

@@ -25,7 +25,7 @@ fn releases(projection: &ImportListProjection) -> Vec<String> {
     projection
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             ImportListItem::Candidate { row, .. } => Some(row.display_path.clone()),
             _ => None,
@@ -72,7 +72,7 @@ async fn a_list_counts_what_it_lists() {
                     ),
                     false => assert_eq!(read.summary.narrowed, None, "{what}"),
                 }
-                for item in read.windows.iter().flat_map(|window| &window.items) {
+                for item in read.windows.iter().flat_map(|window| &window.rows) {
                     let ImportListItem::GroupHeader { group, entry_count, .. } = item else {
                         continue;
                     };

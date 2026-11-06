@@ -52,8 +52,7 @@ async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     let read = lib.read(list).await;
     assert_eq!(sequence(&read), ["group Group"]);
     assert_eq!(read.total_count, 1);
-    let ImportListItem::GroupHeader { expanded, entry_count, .. } = &read.windows[0].items[0]
-    else {
+    let ImportListItem::GroupHeader { expanded, entry_count, .. } = &read.windows[0].rows[0] else {
         panic!("the header is the one item");
     };
     assert!(!expanded);
@@ -72,7 +71,7 @@ fn header_positions(projection: &ImportListProjection) -> Vec<Option<u64>> {
     projection
         .windows
         .iter()
-        .flat_map(|window| &window.items)
+        .flat_map(|window| &window.rows)
         .map(|item| match item {
             ImportListItem::Candidate { header_position, .. } => *header_position,
             ImportListItem::GroupHeader { .. } | ImportListItem::Invalid { .. } => None,
