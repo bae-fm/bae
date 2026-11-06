@@ -134,8 +134,14 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
         )?;
     let context = match (source_kind, shuffled, cursor) {
         (Some(source_kind), Some(shuffled), Some(cursor)) => Some((
-            ContextSource::from_columns(&source_kind, source_release_id)
-                .map_err(DbError::Message)?,
+            ContextSource::from_columns(&source_kind, source_release_id.clone()).map_err(
+                |_unwritten| {
+                    DbError::unreadable(
+                        "playback_queue.source_kind and source_release_id",
+                        (&source_kind, &source_release_id),
+                    )
+                },
+            )?,
             shuffled,
             cursor,
         )),
