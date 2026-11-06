@@ -67,7 +67,7 @@ tempfile = { workspace = true }
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 lofty = { workspace = true }
 # A scanned file's name is matched against a sheet's or a tag's with its
-# Unicode composition set aside (src/folder_scanner.rs).
+# Unicode composition set aside (src/folder_scanner/sheet_references.rs).
 unicode-normalization = { workspace = true }
 notify = { workspace = true }
 strsim = { workspace = true }
