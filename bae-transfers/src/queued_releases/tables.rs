@@ -1,7 +1,9 @@
 //! The transfer queues' tables: `download_queue` and `output_queue`, each
 //! entry a release in the order queued with its phase, and whether each queue
 //! is paused (`release_queues`), as functions over coven's SQL contexts. The
-//! queue owners ([`crate::QueuedReleases`]) are the only writers; the panes,
+//! queue owners ([`crate::QueuedReleases`]) are the only writers, but for the
+//! write that makes a release local, which ends the release's download entry
+//! ([`end_download_entry_on`]); the panes,
 //! the detail views and the sync activity read the same tables through live
 //! queries.
 //!
@@ -476,6 +478,14 @@ pub(crate) fn cancel_queued_release_on<P: QueuedPayload>(
     release_id: &str,
 ) -> Result<bool, DbError> {
     Ok(sql.execute(&format!("DELETE FROM {} WHERE release_id = ?", P::TABLE), [release_id])? > 0)
+}
+
+/// Take `release_id` out of the download queue in any phase, as the write that
+/// makes the release local does: a release held here has nothing to download,
+/// so its entry, failed or not, can't outlive that write.
+pub(crate) fn end_download_entry_on(sql: &CovenWrite<'_>, release_id: &str) -> Result<(), DbError> {
+    cancel_queued_release_on::<()>(sql, release_id)?;
+    Ok(())
 }
 
 /// Empty both queues and let them run, and end every storage transition:

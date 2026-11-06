@@ -202,8 +202,10 @@ pub async fn unpin_release(
 /// Switch a release's files to this device only, each to the copy
 /// `prepared` placed, which becomes the original coven records for it, and
 /// end its make-local transition, in one write: the release shows the
-/// transition until its files are here and never after. A write that fails
-/// switches nothing, and coven removes the copies.
+/// transition until its files are here and never after, and the release's
+/// download queue entry, which a release held here has no use for, ends in
+/// the same write. A write that fails switches nothing, and coven removes
+/// the copies.
 pub async fn make_release_local(
     store: &Store,
     release_id: &str,
@@ -213,6 +215,7 @@ pub async fn make_release_local(
     store
         .call_sql(move |sql| {
             sql.make_device_only(prepared)?;
+            crate::queued_releases::tables::end_download_entry_on(&sql, &release_id)?;
             end_transition_on(&sql, &release_id, StoredTransition::DetachAudio)
         })
         .await

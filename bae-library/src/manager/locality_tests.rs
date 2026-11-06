@@ -672,3 +672,34 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
 const REL_NONE: &str = "cdb5eed8-db50-45f6-814a-dc623215ae04"; // was "rel-none"
 
 const REL_X: &str = "e6b79143-6ab2-4358-8f53-460594936d69"; // was "rel-x"
+
+/// A release whose pin failed has a failed entry in the download queue; making
+/// it local leaves nothing to download, so the entry goes with the write that
+/// switches its files.
+#[tokio::test]
+async fn making_a_release_local_ends_its_failed_download() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let release_id = insert_pinnable_release(&manager).await;
+    manager.storage.set_online(false);
+    manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
+    download_queue_until(&manager, |queue| {
+        matches!(
+            queue.rows.first().map(|row| &row.op.state),
+            Some(bae_transfers::DownloadPhase::Failed { .. })
+        )
+    })
+    .await;
+    manager.storage.set_online(true);
+
+    let folder = temp_dir.path().join("local");
+    std::fs::create_dir(&folder).unwrap();
+    manager
+        .detach_release_audio_into(&release_id, &folder, &crate::CancellationToken::new())
+        .await
+        .unwrap();
+
+    assert!(
+        download_queue_now(&manager).await.rows.is_empty(),
+        "a release made local has no download entry"
+    );
+}

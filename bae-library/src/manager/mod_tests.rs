@@ -142,6 +142,24 @@ pub(super) async fn download_queue_now(
     manager.download_snapshot().await.unwrap()
 }
 
+/// Wait until the download queue's live read holds what `done` looks for.
+pub(super) async fn download_queue_until(
+    manager: &LibraryManager,
+    done: impl Fn(&bae_transfers::DownloadSnapshot) -> bool,
+) -> bae_transfers::DownloadSnapshot {
+    let mut values = manager.subscribe_download_snapshot();
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+        loop {
+            let queue = values.next().await.expect("the query stays open").unwrap();
+            if done(&queue) {
+                return queue;
+            }
+        }
+    })
+    .await
+    .expect("the download queue reaches the state waited for")
+}
+
 pub(super) async fn insert_release(manager: &LibraryManager, release: &DbRelease) {
     crate::test_libraries::insert_release(&manager.records, release).await;
 }

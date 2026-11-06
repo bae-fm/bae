@@ -643,21 +643,3 @@ async fn fail_download(
 async fn clear_transfers_as_opening(manager: &LibraryManager) -> Result<(), bae_store::DbError> {
     manager.store.call(bae_transfers::tables::clear_transfers_on).await
 }
-
-/// Wait until the download queue's live read holds what `done` looks for.
-async fn download_queue_until(
-    manager: &LibraryManager,
-    done: impl Fn(&bae_transfers::DownloadSnapshot) -> bool,
-) -> bae_transfers::DownloadSnapshot {
-    let mut values = manager.subscribe_download_snapshot();
-    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        loop {
-            let queue = values.next().await.expect("the query stays open").unwrap();
-            if done(&queue) {
-                return queue;
-            }
-        }
-    })
-    .await
-    .expect("the download queue reaches the state waited for")
-}

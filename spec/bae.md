@@ -2087,7 +2087,8 @@ bytes arrive, a few times a second; they are kept only in memory, keyed by
 release, beside the tables, and the release leaves them as its transition
 ends, however it ends. Then one write switches every file to
 Carol's device only, coven recording each copy as the file's original there,
-and ends the release's transition (§4.2); no synced row of the release
+and ends the release's transition (§4.2), and the same write takes the
+release out of the download queue; no synced row of the release
 changes. Other devices see the files on Carol's device,
 drop their pins and cached bytes of them, and can't play the release. The
 stored bytes go once nothing names them. A cancel or failure before that write
