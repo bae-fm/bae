@@ -1,0 +1,12 @@
+# Whole-tree checks that land.sh runs on a cherry-picked result before pushing it.
+# No compile and no test run: those stay with the coordinator.
+scripts/check-source-file-size.py
+scripts/check-rust-visibility.sh
+scripts/check-reqwest-error-display.py
+scripts/check-uniffi-runtime-boundary.py
+python3 scripts/check-screen-pulls.py && python3 scripts/tests/check-screen-pulls-test.py
+python3 scripts/check-rust-files-compiled.py && python3 scripts/tests/check-rust-files-compiled-test.py
+python3 scripts/check-test-keychain.py && python3 scripts/tests/check-test-keychain-test.py
+scripts/check-xcode-trees.py
+python3 scripts/loc-chrome-orphans.py
+python3 scripts/loc-words.py && python3 scripts/tests/loc-words-test.py
