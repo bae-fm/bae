@@ -102,7 +102,9 @@ impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
                 }
                 match value {
                     Some(value) => {
-                        Ok(value.map_err(|error| coven::task::reported(self.bugs.as_ref(), error))?)
+                        value.map_err(|error| {
+                            LiveQueryError::Query(coven::task::reported(self.bugs.as_ref(), error))
+                        })
                     }
                     None => Err(LiveQueryError::Cancelled),
                 }

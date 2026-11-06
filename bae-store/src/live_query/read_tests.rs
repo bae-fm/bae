@@ -97,7 +97,7 @@ async fn a_read_whose_query_ended_takes_a_new_request_and_reads_nothing() {
     let (store, _tmp) = crate::test_fixtures::temp_db(Schema::new(&[])).await;
     let query = store
         .subscribe_reconfigurable(None::<String>, |request: &Option<String>, _read| {
-            Ok(request.clone())
+            Ok::<_, crate::DbError>(request.clone())
         });
     let read = LiveRead::new(
         CancellableLiveQuery::new(

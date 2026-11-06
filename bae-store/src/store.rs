@@ -129,16 +129,18 @@ impl Store {
     }
 
     /// A live query whose request can be replaced without a new
-    /// subscription.
-    pub fn subscribe_reconfigurable<Q, F, R>(
+    /// subscription. It fails with its query's own error, of which a failed
+    /// read is one.
+    pub fn subscribe_reconfigurable<Q, F, R, E>(
         &self,
         initial_request: Q,
         query: F,
-    ) -> coven::ReconfigurableLiveQuery<Q, R, DbError>
+    ) -> coven::ReconfigurableLiveQuery<Q, R, E>
     where
         Q: Clone + PartialEq + Send + Sync + 'static,
-        F: Fn(&Q, SqlReadContext<'_>) -> Result<R, DbError> + Send + Sync + 'static,
+        F: Fn(&Q, SqlReadContext<'_>) -> Result<R, E> + Send + Sync + 'static,
         R: Send + 'static,
+        E: From<coven::DbError> + CarriesBug + Send + 'static,
     {
         self.inner.handle.subscribe_reconfigurable(initial_request, query)
     }

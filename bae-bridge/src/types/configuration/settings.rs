@@ -717,6 +717,18 @@ impl From<bae_import::ImportError> for BridgeError {
     }
 }
 
+/// An import read's end is the caller's cancellation; its failed read is the
+/// import's failure.
+#[cfg(desktop)]
+impl From<bae_store::live_query::LiveQueryError<bae_import::ImportError>> for BridgeError {
+    fn from(error: bae_store::live_query::LiveQueryError<bae_import::ImportError>) -> Self {
+        match error {
+            bae_store::live_query::LiveQueryError::Cancelled => Self::Cancelled,
+            bae_store::live_query::LiveQueryError::Query(error) => error.into(),
+        }
+    }
+}
+
 /// Carry a core `LibraryError`'s diagnostic class across the bridge: the class
 /// (keyring vs cloud credentials vs network vs membership vs …) becomes the
 /// `BridgeErrorCategory` the UI renders a localized line for; the error chain

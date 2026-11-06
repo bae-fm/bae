@@ -29,9 +29,10 @@ pub use values::{LiveSource, LiveValues, NextValue};
 /// ended.
 pub struct LiveQueryCancelled;
 
-/// Why a subscription's read or request got no answer.
+/// Why a subscription's read or request got no answer. `E` is the error its
+/// query fails with: the store's, or that of the domain whose read it is.
 #[derive(Debug, thiserror::Error)]
-pub enum LiveQueryError {
+pub enum LiveQueryError<E = crate::DbError> {
     /// The surface cancelled, or the library closed.
     #[error("live query cancelled")]
     Cancelled,
@@ -40,10 +41,12 @@ pub enum LiveQueryError {
     /// as it arrived, or an earlier bug the store failed with. The query has
     /// ended then.
     #[error(transparent)]
-    Query(#[from] crate::DbError),
+    Query(E),
 }
 
-impl bae_util::task_failure::ReportedBug for LiveQueryError {
+impl<E: bae_util::task_failure::ReportedBug> bae_util::task_failure::ReportedBug
+    for LiveQueryError<E>
+{
     fn reported_bug(&self) -> Option<&coven::task::Bug> {
         match self {
             Self::Cancelled => None,
@@ -53,18 +56,17 @@ impl bae_util::task_failure::ReportedBug for LiveQueryError {
 }
 
 /// The live query ending is the subscription's cancellation.
-impl From<LiveQueryCancelled> for LiveQueryError {
+impl<E> From<LiveQueryCancelled> for LiveQueryError<E> {
     fn from(_: LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
 }
 
-/// A reconfigurable live query and the cancellation that ends it.
-pub struct CancellableLiveQuery<Request, Projection> {
+/// A reconfigurable live query and the cancellation that ends it. `E` is the
+/// error its query fails with.
+pub struct CancellableLiveQuery<Request, Projection, E = crate::DbError> {
     requests: std::sync::Mutex<Option<coven::LiveQueryRequests<Request>>>,
-    query: tokio::sync::Mutex<
-        Option<coven::ReconfigurableLiveQuery<Request, Projection, crate::DbError>>,
-    >,
+    query: tokio::sync::Mutex<Option<coven::ReconfigurableLiveQuery<Request, Projection, E>>>,
     cancellation: CancellationToken,
     /// Where a bug a run of the query carries goes as it arrives.
     bugs: coven::task::BugSinkRef,
@@ -74,15 +76,16 @@ pub struct CancellableLiveQuery<Request, Projection> {
     runs: std::sync::Mutex<coven::LiveQueryRuns>,
 }
 
-impl<Request, Projection> CancellableLiveQuery<Request, Projection>
+impl<Request, Projection, E> CancellableLiveQuery<Request, Projection, E>
 where
     Request: Clone + PartialEq + Send + Sync + 'static,
     Projection: Clone + PartialEq + Send + 'static,
+    E: From<coven::DbError> + coven::task::CarriesBug + Send + 'static,
 {
     /// `query`, ended by `cancel` or by `cancellation`, reporting a bug a
     /// run carries to `bugs`.
     pub fn new(
-        query: coven::ReconfigurableLiveQuery<Request, Projection, crate::DbError>,
+        query: coven::ReconfigurableLiveQuery<Request, Projection, E>,
         cancellation: CancellationToken,
         bugs: coven::task::BugSinkRef,
     ) -> Self {
@@ -129,10 +132,8 @@ where
     /// carries a bug is reported as it arrives.
     pub async fn next(
         &self,
-    ) -> Result<
-        coven::ReconfigurableLiveQueryEvent<Request, Projection, crate::DbError>,
-        LiveQueryCancelled,
-    > {
+    ) -> Result<coven::ReconfigurableLiveQueryEvent<Request, Projection, E>, LiveQueryCancelled>
+    {
         tokio::select! {
             biased;
             () = self.cancellation.cancelled() => Err(LiveQueryCancelled),
@@ -154,7 +155,7 @@ where
     }
 }
 
-impl<Request, Projection> CancellableLiveQuery<Request, Projection> {
+impl<Request, Projection, E> CancellableLiveQuery<Request, Projection, E> {
     /// Refuse every later request and settle a waiting read. The query itself
     /// lives until [`Self::close`] takes it, or until this is dropped.
     pub(crate) fn cancel(&self) {
@@ -169,7 +170,7 @@ impl<Request, Projection> CancellableLiveQuery<Request, Projection> {
     }
 }
 
-impl<Request, Projection> Drop for CancellableLiveQuery<Request, Projection> {
+impl<Request, Projection, E> Drop for CancellableLiveQuery<Request, Projection, E> {
     fn drop(&mut self) {
         self.cancel();
     }

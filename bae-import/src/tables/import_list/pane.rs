@@ -206,7 +206,7 @@ fn candidate_album_on(
 }
 
 impl CandidateDetailRows {
-    pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, DbError> {
+    pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, crate::ImportError> {
         let Self { candidate, source_error, actionable, skipped, current, standing, listed, stage } =
             self;
         let listed = listed.listed(&candidate.key())?;
@@ -214,8 +214,7 @@ impl CandidateDetailRows {
         let lookup_choices =
             current.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default();
 
-        let audio = crate::probe::audio_facts(&candidate.files)
-            .map_err(|error| DbError::Message(error.to_string()))?;
+        let audio = crate::probe::audio_facts(&candidate.files)?;
         let mut verdict = None;
         let mut resumed_identify_state = bae_identify::IdentifyState::Idle;
         let identify = current.as_ref().and_then(|state| state.identify.as_ref());
@@ -245,15 +244,8 @@ impl CandidateDetailRows {
                     album,
                     cover,
                 } = *draft;
-                let durations = crate::probe::source_durations(&candidate.files)
-                    .map_err(|error| DbError::Message(error.to_string()))?;
-                let pane = crate::pane::draft_pane(&candidate.files, &durations, &pane_rows.draft)
-                    .map_err(|error| {
-                        DbError::Message(format!(
-                            "candidate {} cannot be drawn: {error}",
-                            candidate.key()
-                        ))
-                    })?;
+                let durations = crate::probe::source_durations(&candidate.files)?;
+                let pane = crate::pane::draft_pane(&candidate.files, &durations, &pane_rows.draft)?;
                 ProjectedStage::Drafting(Box::new(DraftProjection {
                     metadata_provenance: current
                         .as_ref()
@@ -358,12 +350,12 @@ impl ImportTables {
     ) -> coven::ReconfigurableLiveQuery<
         Option<crate::CandidateKey>,
         Option<ImportCandidateDetailProjection>,
-        bae_store::DbError,
+        crate::ImportError,
     > {
         self.store
             .subscribe_reconfigurable(initial, |key, sql| match key {
                 None => Ok(None),
-                Some(key) => pane::load_candidate_detail_on(&sql, key),
+                Some(key) => Ok(pane::load_candidate_detail_on(&sql, key)?),
             })
             .process(|process| process.map(pane::CandidateDetailRows::process).transpose())
     }
@@ -408,7 +400,7 @@ impl ImportTables {
     pub(crate) async fn load_import_candidate(
         &self,
         key: &crate::CandidateKey,
-    ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
+    ) -> Result<Option<ImportCandidateDetailProjection>, crate::ImportError> {
         let key = key.clone();
         self.store
             .read(move |sql| pane::load_candidate_detail_on(&sql, &key))

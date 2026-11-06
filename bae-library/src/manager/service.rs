@@ -198,13 +198,14 @@ impl LibraryManager {
     /// on it then answers that it was cancelled, and it takes no more
     /// requests. One opened while the library closes is cancelled from the
     /// start.
-    pub fn until_closed<Request, Projection>(
+    pub fn until_closed<Request, Projection, E>(
         &self,
-        query: coven::ReconfigurableLiveQuery<Request, Projection, bae_store::DbError>,
-    ) -> bae_store::live_query::CancellableLiveQuery<Request, Projection>
+        query: coven::ReconfigurableLiveQuery<Request, Projection, E>,
+    ) -> bae_store::live_query::CancellableLiveQuery<Request, Projection, E>
     where
         Request: Clone + PartialEq + Send + Sync + 'static,
         Projection: Clone + PartialEq + Send + 'static,
+        E: From<coven::DbError> + coven::task::CarriesBug + Send + 'static,
     {
         bae_store::live_query::CancellableLiveQuery::new(
             query,

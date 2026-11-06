@@ -599,3 +599,21 @@ async fn the_skipped_pane_reads_nothing_for_a_valid_folder() {
         .unwrap();
     assert!(read.is_none(), "{read:?}");
 }
+
+/// A stored draft that cannot be drawn over its folder's audio fails the
+/// pane's read as the import's own failure, not as the store's.
+#[tokio::test]
+async fn a_draft_that_cannot_be_drawn_fails_the_pane_as_the_import() {
+    let (db, tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let candidate = scanned(&db, &root, "Album").await;
+    crate::tables::ImportTables::plant_draft_tracks_on_file_for_test(tmp.path(), "elsewhere.flac")
+        .await;
+
+    let error = tables
+        .load_import_candidate(&crate::CandidateKey::folder(&candidate.path))
+        .await
+        .expect_err("a track over a file the folder does not hold is not drawn");
+
+    assert!(matches!(error, crate::ImportError::Internal { .. }), "{error:?}");
+}

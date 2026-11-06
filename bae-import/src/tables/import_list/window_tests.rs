@@ -554,10 +554,18 @@ async fn a_stored_cover_naming_a_file_the_scan_did_not_store_fails_both_reads() 
         .unwrap();
     tables.damage_cover_file_for_test(&hash, "gone.jpg").await.unwrap();
 
-    let pane = tables.load_import_candidate(&candidate.key()).await.map(|_| ());
-    let row = tables.load_import_list_read(request(TriageTab::Pending).await).await.map(|_| ());
+    let pane = tables
+        .load_import_candidate(&candidate.key())
+        .await
+        .map(|_| ())
+        .map_err(|error| error.to_string());
+    let row = tables
+        .load_import_list_read(request(TriageTab::Pending).await)
+        .await
+        .map(|_| ())
+        .map_err(|error| error.to_string());
     for (read, error) in [("pane", pane), ("row", row)] {
-        let error = error.expect_err(read).to_string();
+        let error = error.expect_err(read);
         assert!(error.contains("names missing file gone.jpg"), "{read}: {error}");
     }
 }

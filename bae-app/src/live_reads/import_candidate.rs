@@ -2,7 +2,7 @@
 //! identification queue which candidate the pane shows.
 
 use bae_import::identification::ShownCandidate;
-use bae_import::{CandidateKey, ImportCandidateDetail};
+use bae_import::{CandidateKey, ImportCandidateDetail, ImportError};
 use bae_library::LiveDetail;
 use bae_store::live_query::LiveQueryError;
 
@@ -10,14 +10,14 @@ use bae_store::live_query::LiveQueryError;
 /// candidate, the identification queue starts that candidate's job ahead of
 /// every other; set to another, or ended, it no longer does.
 pub struct LiveImportCandidate {
-    read: LiveDetail<ImportCandidateDetail, CandidateKey>,
+    read: LiveDetail<ImportCandidateDetail, CandidateKey, ImportError>,
     /// Gone once the read is cancelled, which says the pane shows nothing.
     shown: std::sync::Mutex<Option<ShownCandidate>>,
 }
 
 impl LiveImportCandidate {
     pub(crate) fn new(
-        read: LiveDetail<ImportCandidateDetail, CandidateKey>,
+        read: LiveDetail<ImportCandidateDetail, CandidateKey, ImportError>,
         shown: ShownCandidate,
     ) -> Self {
         Self { read, shown: std::sync::Mutex::new(Some(shown)) }
@@ -25,7 +25,7 @@ impl LiveImportCandidate {
 
     /// Read `key` from now on, telling the queue before any value for it is
     /// delivered, and return the revision each read for it carries.
-    pub fn set(&self, key: Option<CandidateKey>) -> Result<u64, LiveQueryError> {
+    pub fn set(&self, key: Option<CandidateKey>) -> Result<u64, LiveQueryError<ImportError>> {
         if let Some(shown) =
             self.shown.lock().expect("import candidate shown mutex poisoned").as_mut()
         {
@@ -37,8 +37,10 @@ impl LiveImportCandidate {
     /// The next value for the key last set, or the end of the read.
     pub async fn next(
         &self,
-    ) -> Result<bae_library::DetailSnapshot<ImportCandidateDetail, CandidateKey>, LiveQueryError>
-    {
+    ) -> Result<
+        bae_library::DetailSnapshot<ImportCandidateDetail, CandidateKey>,
+        LiveQueryError<ImportError>,
+    > {
         self.read.next().await
     }
 

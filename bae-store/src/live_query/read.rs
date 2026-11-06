@@ -54,16 +54,22 @@ pub struct ReadFor<'a, Request> {
 /// A live read whose request changes in place through [`set`](Self::set):
 /// one query for as long as the read is open, never one per request. Its
 /// query's cancellation is the library's, so closing the library ends it.
-pub struct LiveRead<Request, Value> {
-    read: Box<dyn Resolved<Request, Value>>,
+/// `E` is the error its query fails with.
+pub struct LiveRead<Request, Value, E = crate::DbError> {
+    read: Box<dyn Resolved<Request, Value, E>>,
 }
 
-impl<Request: LiveRequest, Value: Send + 'static> LiveRead<Request, Value> {
+impl<Request, Value, E> LiveRead<Request, Value, E>
+where
+    Request: LiveRequest,
+    Value: Send + 'static,
+    E: From<coven::DbError> + coven::task::CarriesBug + Send + 'static,
+{
     /// `query`'s reads that answer the request last set, each resolved by
     /// `resolve` from the read it came from and what the query read. A read
     /// `resolve` answers `None` for delivers nothing.
     pub fn new<Projection: Clone + PartialEq + Send + 'static>(
-        query: CancellableLiveQuery<Request, Projection>,
+        query: CancellableLiveQuery<Request, Projection, E>,
         resolve: impl FnMut(ReadFor<'_, Request>, Projection) -> Option<Value> + Send + 'static,
     ) -> Self {
         Self {
@@ -76,17 +82,17 @@ impl<Request: LiveRequest, Value: Send + 'static> LiveRead<Request, Value> {
     }
 }
 
-impl<Request, Value> LiveRead<Request, Value> {
+impl<Request, Value, E> LiveRead<Request, Value, E> {
     /// Read `request` from now on, and return the revision each read for it
     /// carries. Repeating the standing request keeps its revision and reads
     /// nothing again.
-    pub fn set(&self, request: Request) -> Result<u64, LiveQueryError> {
+    pub fn set(&self, request: Request) -> Result<u64, LiveQueryError<E>> {
         self.read.set(request)
     }
 
     /// The next value that answers the request last set, or the end of the
     /// read. Query errors are values, not the end.
-    pub async fn next(&self) -> Result<Value, LiveQueryError> {
+    pub async fn next(&self) -> Result<Value, LiveQueryError<E>> {
         self.read.next().await
     }
 
@@ -101,10 +107,10 @@ type Pending<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 /// A live read with the type its query reads hidden, so a read is named by
 /// its request and what it delivers alone.
-trait Resolved<Request, Value>: Send + Sync {
-    fn set(&self, request: Request) -> Result<u64, LiveQueryError>;
+trait Resolved<Request, Value, E>: Send + Sync {
+    fn set(&self, request: Request) -> Result<u64, LiveQueryError<E>>;
 
-    fn next(&self) -> Pending<'_, Result<Value, LiveQueryError>>;
+    fn next(&self) -> Pending<'_, Result<Value, LiveQueryError<E>>>;
 
     fn cancel(&self) -> Pending<'_, ()>;
 }
@@ -112,8 +118,8 @@ trait Resolved<Request, Value>: Send + Sync {
 type Resolve<Request, Projection, Value> =
     Box<dyn FnMut(ReadFor<'_, Request>, Projection) -> Option<Value> + Send>;
 
-struct Resolving<Request, Projection, Value> {
-    query: CancellableLiveQuery<Request, Projection>,
+struct Resolving<Request, Projection, Value, E> {
+    query: CancellableLiveQuery<Request, Projection, E>,
     /// The request last set; a read for another one is delivered only when
     /// it still answers this one. `None` while the query's first request is
     /// the only one. Held while a request is set, so no read is judged
@@ -122,20 +128,22 @@ struct Resolving<Request, Projection, Value> {
     resolve: std::sync::Mutex<Resolve<Request, Projection, Value>>,
 }
 
-impl<Request, Projection, Value> Resolved<Request, Value> for Resolving<Request, Projection, Value>
+impl<Request, Projection, Value, E> Resolved<Request, Value, E>
+    for Resolving<Request, Projection, Value, E>
 where
     Request: LiveRequest,
     Projection: Clone + PartialEq + Send + 'static,
     Value: Send + 'static,
+    E: From<coven::DbError> + coven::task::CarriesBug + Send + 'static,
 {
-    fn set(&self, request: Request) -> Result<u64, LiveQueryError> {
+    fn set(&self, request: Request) -> Result<u64, LiveQueryError<E>> {
         let mut current = self.current.lock().expect("live read request mutex poisoned");
         let revision = self.query.set(request.clone())?;
         *current = Some(request);
         Ok(revision)
     }
 
-    fn next(&self) -> Pending<'_, Result<Value, LiveQueryError>> {
+    fn next(&self) -> Pending<'_, Result<Value, LiveQueryError<E>>> {
         Box::pin(async move {
             loop {
                 let event = self.query.next().await?;
@@ -148,7 +156,7 @@ where
                 if !answers {
                     continue;
                 }
-                let projection = event.result?;
+                let projection = event.result.map_err(LiveQueryError::Query)?;
                 let read = ReadFor {
                     request: &event.request,
                     revision: event.revision.0,

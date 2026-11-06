@@ -822,5 +822,29 @@ pub struct DbCandidatePaneRows {
 }
 
 #[cfg(test)]
+impl ImportTables {
+    /// Plant damage for a test: every draft track in the library under
+    /// `directory` plays the file `file_id`. A draft is written over its
+    /// folder's audio, so no write stores a track over a file the folder
+    /// does not hold.
+    pub(crate) async fn plant_draft_tracks_on_file_for_test(
+        directory: &std::path::Path,
+        file_id: &str,
+    ) {
+        let directory = directory.to_path_buf();
+        let damage = format!("UPDATE import_candidate_track SET file_id = '{file_id}';");
+        tokio::task::spawn_blocking(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "import_candidate_track",
+                &damage,
+            )
+        })
+        .await
+        .unwrap();
+    }
+}
+
+#[cfg(test)]
 #[path = "pane_rows_tests.rs"]
 mod tests;
