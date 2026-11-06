@@ -20,10 +20,17 @@
 //! scaling from turning a cheap, intermittently scheduled playback workload
 //! into a false regression against a full-speed decode.
 //!
+//! A measurement, so it never runs in the hook, CI or a normal test run: the
+//! machine's other work moves its readings. Run it on an otherwise idle
+//! machine, in the release profile, which measures the playback that ships:
+//!
+//!   scripts/cargo.sh test -p bae-library --release --features test-utils \
+//!     --test test_playback_cpu -- --ignored --nocapture
+//!
 //! Its own test binary, apart from the integration tests' (`tests/integration/`),
 //! so the process-wide getrusage reading takes no other test's work and the
-//! release build CI measures it in compiles only this; `#[serial]` keeps the
-//! two cases from overlapping within it, so neither needs `--test-threads=1`.
+//! release build compiles only this; `#[serial]` keeps the two cases from
+//! overlapping within it, so neither needs `--test-threads=1`.
 
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_playback::{PlaybackProgress, PlaybackState};
@@ -482,6 +489,7 @@ fn playback_cpu_gate_requires_both_limits() {
 /// CUE/FLAC steady-state playback stays cheap (one big FLAC, sliced into tracks).
 #[tokio::test]
 #[serial]
+#[ignore = "a measurement, run on its own in the release profile"]
 async fn test_playback_cpu_cue_flac() {
     let mut fixture = PlaybackTestFixture::new(
         create_cue_flac_test_album(),
@@ -498,6 +506,7 @@ async fn test_playback_cpu_cue_flac() {
 /// MP3 per-track steady-state playback stays cheap.
 #[tokio::test]
 #[serial]
+#[ignore = "a measurement, run on its own in the release profile"]
 async fn test_playback_cpu_mp3() {
     let mut fixture = PlaybackTestFixture::new(
         create_mp3_test_album(),

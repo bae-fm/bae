@@ -210,14 +210,7 @@ jobs:
     - name: Run bae-library tests
       if: ${{ !cancelled() && steps.nextest.conclusion == 'success' }}
       run: |
-        status=0
-        # The CPU test reads process-wide getrusage, so it runs alone, in release: it
-        # measures the playback that ships.
-        cargo nextest run --no-fail-fast -p bae-library --features bae-library/test-utils -- --skip test_playback_cpu || status=1
-        # The runner's disk can't hold the debug and release trees at once.
-        rm -rf target/debug
-        cargo nextest run --no-fail-fast -p bae-library --release --features bae-library/test-utils --test test_playback_cpu -j 1 || status=1
-        exit $status
+        cargo nextest run --no-fail-fast -p bae-library --features bae-library/test-utils
 
   avalonia:
     # The Avalonia skeleton on Linux, in its own job for the disk, and the

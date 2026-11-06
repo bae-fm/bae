@@ -392,15 +392,8 @@ check "actionlint" env SHELLCHECK_OPTS="--severity=error" actionlint
 
 # ── bae-library tests ────────────────────────────────────────────────────────────
 section "bae-library tests"
-# A test that changes process-wide state runs in a process of its own; the CPU
-# test, a binary of its own, runs alone below because it reads process-wide
-# getrusage.
 check "cargo test (bae-library)" \
-  scripts/cargo.sh test -p bae-library --features bae-library/test-utils \
-    -- --skip test_playback_cpu
-check "cargo test (bae-library playback CPU, release)" \
-  scripts/cargo.sh test -p bae-library --release --features bae-library/test-utils \
-    --test test_playback_cpu
+  scripts/cargo.sh test -p bae-library --features bae-library/test-utils
 
 # ── Summary ────────────────────────────────────────────────────────────────────
 echo ""
