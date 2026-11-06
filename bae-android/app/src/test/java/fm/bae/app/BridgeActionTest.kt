@@ -72,7 +72,8 @@ class BridgeActionTest {
     }
 
     private data object TestErrorDisplays : ErrorDisplays {
-        override fun display(reason: BridgePlaybackErrorReason) = DisplayError("localized playback error", reason.diagnosticDetail)
+        override fun display(reason: BridgePlaybackErrorReason) =
+            DisplayError("localized playback error", (reason as? BridgePlaybackErrorReason.Diagnostic)?.error?.diagnosticDetail)
 
         override fun display(error: BridgeException) = DisplayError("localized bridge error", error.diagnosticDetail)
 

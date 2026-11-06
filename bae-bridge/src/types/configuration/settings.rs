@@ -450,6 +450,74 @@ pub fn bridge_error_line_key(error: &BridgeError) -> Option<String> {
     }
 }
 
+/// The detail an error shows under its line, or `None` when it shows the
+/// line alone: it has no detail, or its category's line already names the
+/// whole fault and the detail would say it again, in English. Core decides
+/// per category ([`bae_diagnostics::UiErrorClass::detail_adds_to_line`]), so
+/// no app judges which details are worth showing.
+#[uniffi::export]
+pub fn bridge_error_shown_detail(error: &BridgeError) -> Option<String> {
+    match error {
+        BridgeError::Cancelled | BridgeError::NotFound { .. } => None,
+        BridgeError::Diagnostic { category, detail } => {
+            category.detail_adds_to_line().then(|| detail.clone())
+        }
+    }
+}
+
+impl BridgeErrorCategory {
+    /// Whether this category's detail says something its line doesn't: core's
+    /// answer for the category's class.
+    fn detail_adds_to_line(&self) -> bool {
+        use bae_diagnostics::UiErrorClass as K;
+        let class = match self {
+            Self::Database => K::Database,
+            Self::Config => K::Config,
+            Self::Internal => K::Internal,
+            Self::SyncUpdateRequired => K::SyncUpdateRequired,
+            Self::DeviceResetRequired => K::DeviceResetRequired,
+            Self::DeviceRemoved => K::DeviceRemoved,
+            Self::Import => K::Import,
+            Self::ImportData => K::ImportData,
+            Self::CandidateImportInProgress => K::CandidateImportInProgress,
+            Self::CandidateBeingIdentified => K::CandidateBeingIdentified,
+            Self::FilesAlreadyImported => K::FilesAlreadyImported,
+            Self::MetadataTrackCount { .. } => K::MetadataTrackCount,
+            Self::TiedMediums { .. } => K::TiedMediums,
+            Self::ReleaseChangedSinceOpened => K::ReleaseChangedSinceOpened,
+            Self::GroupingBlocked { .. } => K::GroupingBlocked,
+            Self::Export => K::Export,
+            Self::Save => K::Save,
+            Self::Storage { .. } => K::Storage,
+            Self::StorageCheck { .. } => K::StorageCheck,
+            Self::S3VersioningUnknown { .. } => K::S3VersioningUnknown,
+            Self::S3VersioningUnsupported { .. } => K::S3VersioningUnsupported,
+            Self::StorageLocationChangeUnsupported => K::StorageLocationChangeUnsupported,
+            Self::S3Prefix { .. } => K::S3Prefix,
+            Self::DeviceIdentityMissing => K::DeviceIdentityMissing,
+            Self::Credentials => K::Credentials,
+            Self::Network => K::Network,
+            Self::Keyring => K::Keyring,
+            Self::KeyringLocked => K::KeyringLocked,
+            Self::KeychainEntitlementMissing => K::KeychainEntitlementMissing,
+            Self::SavedRestoreCodesFull => K::SavedRestoreCodesFull,
+            Self::SavedRestoreCodeTooLarge => K::SavedRestoreCodeTooLarge,
+            Self::Membership => K::Membership,
+            Self::InviteJoining => K::InviteJoining,
+            Self::StoreOwnerAccount => K::StoreOwnerAccount,
+            Self::Renderer => K::Renderer,
+            // The categories core has no counterpart for, which the bridge
+            // gives the errors it classes itself. The queue's refusal and the
+            // unfinished replacement are said whole by their lines; which
+            // AirPlay limit a receiver hit, and the setting it advertises
+            // that can't be read, are in the detail only.
+            Self::QueueChanged | Self::ReplacementUnfinished { .. } => return false,
+            Self::AirPlayUnsupported | Self::AirPlayUnreadableSettings => return true,
+        };
+        class.detail_adds_to_line()
+    }
+}
+
 /// What kept the audio output from starting. Mirrors
 /// `bae_playback::AudioOutputProblem`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

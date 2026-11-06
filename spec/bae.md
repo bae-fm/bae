@@ -3925,6 +3925,14 @@ the Rust error chain, untranslated, to copy. A category says what the person
 can do: fix credentials, retry the network, unlock the keyring, wait for an
 identification. Appendix G lists them.
 
+Core says per category whether the detail says anything its line doesn't: a
+path, an underlying cause, the provider's or the network's own message. Only
+then does an app show the detail under the line and offer it to copy. A
+category whose line names the whole fault, with the counts, discs or folder it
+carries, shows the line alone, since its detail is the same sentence again in
+English. An app that words its own headline over a failure, so the category's
+line isn't shown, keeps the detail.
+
 A failure while bringing a library up has a step as well as a category: bae
 starting, opening secure storage, reading sign-in settings, listing this
 device's libraries, or opening, resetting, closing or removing one. Each app
@@ -4815,6 +4823,15 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `QueueChanged` | sees the queue as it now is: an entry the command named left the queue first (§7.1) |
 | `AirPlayUnsupported`, `AirPlayUnreadableSettings` | uses another receiver |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
+
+These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
+`DeviceRemoved`, `CandidateImportInProgress`, `CandidateBeingIdentified`,
+`FilesAlreadyImported`, `MetadataTrackCount`, `TiedMediums`,
+`ReleaseChangedSinceOpened`, `StorageLocationChangeUnsupported`, `S3Prefix`,
+`DeviceIdentityMissing`, `KeychainEntitlementMissing`,
+`SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge`, `StoreOwnerAccount`,
+`QueueChanged` and `ReplacementUnfinished`. Every other category shows its
+detail under its line.
 
 ### G.2 Why a found release isn't picked
 

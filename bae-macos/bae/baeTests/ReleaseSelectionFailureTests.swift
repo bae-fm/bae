@@ -162,26 +162,31 @@ struct ReleaseSelectionFailureTests {
         #expect(!shown.error.line.isEmpty)
     }
 
-    /// A failure with no detail draws no Copy details, which the disclosure
-    /// offers only for a detail; the row still offers its Retry.
-    @Test("expected release failures show Retry without diagnostic controls")
-    func expectedFailureHasNoCopyControl() async throws {
+    /// A failure whose detail core says repeats its line has no detail to
+    /// show, so it draws no Copy details, which the disclosure offers only
+    /// for a detail; the row still offers its Retry.
+    @Test(
+        "a release failure whose line says it all shows Retry without diagnostic controls"
+    )
+    func failureLineSayingItAllHasNoCopyControl() async throws {
         let pressing = try #require(
             PreviewData.searchStateFoundExact.identifiedGroups.first?
                 .pressings.first
         )
+        let detail =
+            "discs [1, 3] of the release fit the folder's audio equally"
         let failure = try await failedSelection(
             pressing: pressing,
             error: .Diagnostic(
-                category: .import,
-                detail: "Provider returned 404"
+                category: .tiedMediums(mediums: [1, 3]),
+                detail: detail
             )
         )
         #expect(failure.error.detail == nil)
         let shown = try #require(
             row(pressing, failure: failure) { _ in }.rowFailure
         )
-        #expect(!shown.error.line.contains("Provider returned 404"))
+        #expect(!shown.error.line.contains(detail))
     }
 }
 

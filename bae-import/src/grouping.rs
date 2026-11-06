@@ -22,7 +22,8 @@ use std::path::{Path, PathBuf};
 /// Why a grouping's release cannot be worked on as it stands. The release
 /// keeps what it was last built from until this is fixed or the grouping is
 /// undone. Each reason is typed so every surface says it in the person's own
-/// language; the names it carries are for the log, never for display.
+/// language; the names it carries ride in the untranslated detail shown under
+/// that line, never in the line itself.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum GroupingBlock {
     /// A release it takes in was read again and is no longer valid.

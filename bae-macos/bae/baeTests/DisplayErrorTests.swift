@@ -26,6 +26,25 @@ struct DisplayErrorTests {
         #expect(displayed.detail == "no such table: albums")
     }
 
+    /// Core says this category's line names the whole fault, so its detail,
+    /// the same sentence again in English, is not shown or offered.
+    @Test("a category whose line says it all shows the line alone")
+    func repeatedDetailIsNotShown() throws {
+        let error = BridgeError.Diagnostic(
+            category: .filesAlreadyImported,
+            detail: "this device already imported these files, as release r1"
+        )
+
+        let displayed = try #require(DisplayError(error as any Error))
+
+        #expect(
+            displayed.line
+                == BridgeErrorCategory.filesAlreadyImported.localizedLine
+        )
+        #expect(displayed.detail == nil)
+        #expect(displayed.detailSummary == nil)
+    }
+
     @Test("a not-found renders its entity's line and has no detail to disclose")
     func notFoundRendersEntityLine() throws {
         let error = BridgeError.NotFound(entity: .library, id: "library-1")

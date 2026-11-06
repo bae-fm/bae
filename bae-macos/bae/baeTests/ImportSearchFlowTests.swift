@@ -215,12 +215,13 @@ struct ImportSearchFlowMetadataApplicationTests {
 
 extension ImportSearchFlowMetadataApplicationTests {
     @Test(
-        "unexpected release failures retain their diagnostic",
+        "a release failure whose detail adds to its line keeps the detail",
         arguments: [
             BridgeErrorCategory.internal, .database, .config, .importData,
+            .import,
         ]
     )
-    func unexpectedFailureRetainsDiagnostic(_ category: BridgeErrorCategory)
+    func failureDetailAddingToLineIsKept(_ category: BridgeErrorCategory)
         async throws
     {
         let store = unsettledStore()
@@ -247,16 +248,18 @@ extension ImportSearchFlowMetadataApplicationTests {
         #expect(failure.error.detail == detail)
     }
 
-    @Test(
-        "expected release failures keep their friendly line without diagnostic controls"
-    )
-    func expectedFailureHasNoDiagnostic() async throws {
+    /// Core says the tied discs' detail repeats their line, so the row
+    /// shows the line alone, without diagnostic controls.
+    @Test("a release failure whose line says it all shows no diagnostic")
+    func failureLineSayingItAllHasNoDiagnostic() async throws {
         let store = unsettledStore()
+        let tied = BridgeErrorCategory.tiedMediums(mediums: [2, 4])
         let importer = Importer(
             applyCandidateExternalMetadata: { _, _, _ in
                 throw BridgeError.Diagnostic(
-                    category: .import,
-                    detail: "Provider returned 500"
+                    category: tied,
+                    detail:
+                        "discs [2, 4] of the release fit the folder's audio equally"
                 )
             }
         )
@@ -275,11 +278,7 @@ extension ImportSearchFlowMetadataApplicationTests {
             store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
         )
         #expect(failure.error.detail == nil)
-        #expect(
-            failure.error.line.contains(
-                BridgeErrorCategory.import.localizedLine
-            )
-        )
+        #expect(failure.error.line.contains(tied.localizedLine))
     }
 
     @Test("a replacement release keeps only its own diagnostic")

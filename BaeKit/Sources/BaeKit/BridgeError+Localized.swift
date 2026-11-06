@@ -67,16 +67,13 @@ extension BridgeError {
         return localizedCoreString(key)
     }
 
-    /// The opaque Rust error chain, for logs and a copyable disclosure. Present
-    /// only on `Diagnostic`; never translated. `NotFound`/`Cancelled` carry no
-    /// detail to surface.
-    public var detail: String? {
-        switch self {
-        case .Diagnostic(_, let detail):
-            return detail
-        case .NotFound, .Cancelled:
-            return nil
-        }
+    /// The opaque Rust error chain to show under the line and offer to copy,
+    /// never translated, or `nil` when core says there is none to show: a
+    /// `NotFound` or `Cancelled` carries no detail, and a category whose line
+    /// names the whole fault shows that line alone rather than the same
+    /// sentence again in English. Core's answer, not this app's.
+    public var shownDetail: String? {
+        bridgeErrorShownDetail(error: self)
     }
 }
 
@@ -109,12 +106,12 @@ extension BridgePlaybackErrorReason {
         }
     }
 
-    /// The opaque, log-only detail — present only on the diagnostic arm, where
-    /// it rides on the composed `BridgeError`.
-    public var detail: String? {
+    /// The detail to show under the line. Only the diagnostic arm has one:
+    /// the composed `BridgeError`'s shown detail.
+    public var shownDetail: String? {
         switch self {
         case .diagnostic(let error):
-            return error.detail
+            return error.shownDetail
         case .syncDisconnected, .onOtherDevice, .originalMissing,
             .audioOutput:
             return nil

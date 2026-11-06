@@ -3,9 +3,9 @@ import SwiftUI
 
 extension View {
     /// The shared "Error" alert driven by `uiStore.lastError`. Presents while an
-    /// error is set, names the concrete fault under core's category line, offers
-    /// a "Copy details" button for the whole chain, and clears the error on
-    /// dismiss. Used by every scene that surfaces `UiStore` errors (the main
+    /// error is set, names the concrete fault under core's category line when
+    /// core says the fault adds to it, offers a "Copy details" button for the
+    /// whole chain, and clears the error on dismiss. Used by every scene that surfaces `UiStore` errors (the main
     /// window and the Storage Manager window own separate alerts on the same
     /// store).
     ///

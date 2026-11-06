@@ -137,32 +137,19 @@ extension ImportSearchFlow {
 
     /// A catalog release that failed to load, or that core refused because
     /// it lists another number of tracks than the folder holds, as its row
-    /// says it.
+    /// says it. The detail under the line is the one core says to show.
     private static func metadataApplicationError(_ error: Error)
         -> DisplayError?
     {
         guard let displayed = DisplayError(error) else { return nil }
-        let detail: String?
-        if case BridgeError.Diagnostic(let category, let diagnostic) = error {
-            if case .metadataTrackCount = category {
-                return DisplayError(line: displayed.line)
-            }
-            switch category {
-            case .importData, .database, .internal, .config:
-                detail = diagnostic
-            default:
-                detail = nil
-            }
+        if case BridgeError.Diagnostic(let category, _) = error,
+            case .metadataTrackCount = category
+        {
+            return displayed
         }
-        else {
-            detail = displayed.detail
+        return displayed.rewording {
+            String(localized: "Failed to load release details: \($0)")
         }
-        return DisplayError(
-            line: String(
-                localized: "Failed to load release details: \(displayed.line)"
-            ),
-            detail: detail
-        )
     }
 
     // MARK: - Import status helpers

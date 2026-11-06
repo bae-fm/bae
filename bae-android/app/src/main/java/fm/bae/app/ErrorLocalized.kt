@@ -11,6 +11,7 @@ import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeS3PrefixProblem
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.bridgeErrorLineKey
+import uniffi.bae_bridge.bridgeErrorShownDetail
 import uniffi.bae_bridge.bridgePlayOutcomeKey
 import uniffi.bae_bridge.bridgePlaybackErrorReasonLine
 import uniffi.bae_bridge.bridgeSyncRetryOutcomeKey
@@ -101,21 +102,32 @@ fun Context.localizedLine(reason: BridgePlaybackErrorReason): String? =
         }
     }
 
-/** The diagnostic core wrote behind a failure: the Rust error chain of a diagnostic, nothing for a keyed one. */
+/**
+ * The diagnostic core wrote behind a failure: the Rust error chain of a diagnostic, nothing for a keyed one.
+ * For a headline this app words itself, where the category's line isn't shown.
+ */
 val BridgeException.diagnosticDetail: String?
     get() = (this as? BridgeException.Diagnostic)?.detail
 
-/** The diagnostic behind a playback failure, when it is one core could not name for the person. */
-val BridgePlaybackErrorReason.diagnosticDetail: String?
-    get() = (this as? BridgePlaybackErrorReason.Diagnostic)?.error?.diagnosticDetail
+/**
+ * The diagnostic to show under core's line, or null when core says there is none to show: a keyed
+ * failure has none, and a category whose line names the whole fault shows that line alone rather
+ * than the same sentence again in English. Core's answer, not this app's.
+ */
+val BridgeException.shownDetail: String?
+    get() = bridgeErrorShownDetail(this)
+
+/** The diagnostic to show under a playback failure's line: only a diagnostic one has one, as core says. */
+val BridgePlaybackErrorReason.shownDetail: String?
+    get() = (this as? BridgePlaybackErrorReason.Diagnostic)?.error?.shownDetail
 
 /** A [BridgeException] ready to show, or null when core says it has nothing to show — a cancellation. */
 fun Context.displayError(error: BridgeException): DisplayError? =
-    localizedLine(error)?.let { line -> DisplayError(line, error.diagnosticDetail) }
+    localizedLine(error)?.let { line -> DisplayError(line, error.shownDetail) }
 
 /** A [BridgePlaybackErrorReason] ready to show, or null when core says it has nothing to show. */
 fun Context.displayError(reason: BridgePlaybackErrorReason): DisplayError? =
-    localizedLine(reason)?.let { line -> DisplayError(line, reason.diagnosticDetail) }
+    localizedLine(reason)?.let { line -> DisplayError(line, reason.shownDetail) }
 
 /**
  * What a retry that didn't sync shows, or null when it synced. A failed pass

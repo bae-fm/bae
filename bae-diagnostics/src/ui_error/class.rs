@@ -129,6 +129,67 @@ impl UiErrorClass {
     pub fn named(name: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|class| class.name() == name)
     }
+
+    /// Whether a failure of this class shows its detail under its line: true
+    /// when the detail says something the line doesn't, false when the line
+    /// already names the whole fault and the detail is that sentence again,
+    /// in English. A surface that shows the class's line shows the detail
+    /// only when this says so; one that words its own headline over the
+    /// failure keeps the detail, since the line it repeats isn't shown.
+    pub fn detail_adds_to_line(self) -> bool {
+        match self {
+            // A generic line over the fault the detail names: the query that
+            // failed, the setting refused, the broken invariant, the source
+            // that couldn't be read or written.
+            Self::Database
+            | Self::Config
+            | Self::Internal
+            | Self::Import
+            | Self::ImportData
+            | Self::Export
+            | Self::Save
+            | Self::Keyring
+            | Self::Membership
+            // The provider's or the network's own message: what the storage
+            // answered, the check that failed and why, the sign-in's refusal.
+            | Self::Storage
+            | Self::StorageCheck
+            | Self::S3VersioningUnknown
+            | Self::Credentials
+            | Self::Network
+            // What the device playback was sent to said when it refused.
+            | Self::Renderer
+            // The cause the line leaves out: why the device must be reset (a
+            // damaged database, another copy using its id), why the keychain
+            // refused this second, whether the invite's person is joining or
+            // the invite ended.
+            | Self::DeviceResetRequired
+            | Self::KeyringLocked
+            | Self::InviteJoining
+            // What the line names without saying which: the folder a grouped
+            // release can't be read from, the bucket's versioning state.
+            | Self::GroupingBlocked
+            | Self::S3VersioningUnsupported => true,
+            // The line names the whole fault, with the counts, discs or
+            // folder it carries; the detail says it again, at most with an id
+            // the person can't use.
+            Self::SyncUpdateRequired
+            | Self::DeviceRemoved
+            | Self::CandidateImportInProgress
+            | Self::CandidateBeingIdentified
+            | Self::FilesAlreadyImported
+            | Self::MetadataTrackCount
+            | Self::TiedMediums
+            | Self::ReleaseChangedSinceOpened
+            | Self::StorageLocationChangeUnsupported
+            | Self::S3Prefix
+            | Self::DeviceIdentityMissing
+            | Self::KeychainEntitlementMissing
+            | Self::SavedRestoreCodesFull
+            | Self::SavedRestoreCodeTooLarge
+            | Self::StoreOwnerAccount => false,
+        }
+    }
 }
 
 impl UiErrorCategory {

@@ -2,14 +2,15 @@ import Foundation
 
 /// A typed core failure that renders to a localized line plus optional opaque
 /// detail. Both `BridgeError` and `BridgePlaybackErrorReason` satisfy it (they
-/// expose `localizedLine`/`detail` in `BridgeError+Localized`), so a
+/// expose `localizedLine`/`shownDetail` in `BridgeError+Localized`), so a
 /// `DisplayError` builds from either uniformly.
 ///
-/// `localizedLine` is optional because core decides whether a failure has a line
-/// at all: a cancellation has none. `nil` means show nothing.
+/// Both are optional because core decides them: whether a failure has a line
+/// at all (a cancellation has none, and `nil` means show nothing), and whether
+/// its detail says anything that line doesn't (`nil` shows the line alone).
 public protocol LocalizedFailure {
     var localizedLine: String? { get }
-    var detail: String? { get }
+    var shownDetail: String? { get }
 }
 
 extension BridgeError: LocalizedFailure {}
@@ -45,7 +46,8 @@ public struct DisplayError: Equatable, Sendable {
     /// disclosure and the copy button.
     ///
     /// `nil` when there is nothing to say: a keyed failure carries no
-    /// diagnostic, and a blank one is not a fault name.
+    /// diagnostic, a failure whose line core says names the whole fault
+    /// carries none to show, and a blank one is not a fault name.
     public var detailSummary: String? {
         guard let detail else { return nil }
         let firstLine = detail.prefix { !$0.isNewline }
@@ -96,15 +98,15 @@ public struct DisplayError: Equatable, Sendable {
     public init?(_ failure: BridgePlaybackErrorReason) {
         guard let line = failure.localizedLine else { return nil }
         self.line = line
-        self.detail = failure.detail
+        self.detail = failure.shownDetail
     }
 
     /// Any error on its way to a human.
     ///
-    /// A failure that crossed the bridge renders core's keyed line and keeps its
-    /// opaque detail for the copy button. Anything else is Swift-origin prose and
-    /// passes through unchanged — which is why a `catch` can be routed here
-    /// without first proving what it can throw.
+    /// A failure that crossed the bridge renders core's keyed line and keeps the
+    /// opaque detail core says to show beside it, for the copy button. Anything
+    /// else is Swift-origin prose and passes through unchanged — which is why a
+    /// `catch` can be routed here without first proving what it can throw.
     ///
     /// Route here rather than to `localizedDescription` on the way to a human. A
     /// bridge error's `localizedDescription` is core's line too, but it leaves
@@ -121,6 +123,6 @@ public struct DisplayError: Equatable, Sendable {
         }
         guard let line = failure.localizedLine else { return nil }
         self.line = line
-        self.detail = failure.detail
+        self.detail = failure.shownDetail
     }
 }

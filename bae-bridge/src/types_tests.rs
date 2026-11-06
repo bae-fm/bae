@@ -746,3 +746,38 @@ fn a_bootstrap_open_and_each_load_step_cross_with_their_progress() {
     assert_eq!(load(coven::LoadStep::Reading), BridgeLoadStep::Reading);
     assert_eq!(load(coven::LoadStep::Applying), BridgeLoadStep::Applying);
 }
+
+/// An error shows its detail under its line only when core says the detail
+/// adds to it: a category whose line names the whole fault shows the line
+/// alone, one whose detail carries a cause keeps it, and an error with no
+/// diagnostic has no detail to show.
+#[test]
+fn an_error_shows_its_detail_only_when_it_adds_to_the_line() {
+    let repeated = BridgeError::diagnostic(
+        BridgeErrorCategory::FilesAlreadyImported,
+        "this device already imported these files, as release r1",
+    );
+    assert_eq!(bridge_error_shown_detail(&repeated), None);
+    let caused = BridgeError::diagnostic(BridgeErrorCategory::Network, "dns error: no such host");
+    assert_eq!(bridge_error_shown_detail(&caused).as_deref(), Some("dns error: no such host"));
+
+    // The categories only the bridge gives follow the same rule.
+    let queue = BridgeError::diagnostic(
+        BridgeErrorCategory::QueueChanged,
+        "the queue changed before the command, so nothing changed",
+    );
+    assert_eq!(bridge_error_shown_detail(&queue), None);
+    let receiver = BridgeError::diagnostic(
+        BridgeErrorCategory::AirPlayUnreadableSettings,
+        "features value `0xZZ` is not hex",
+    );
+    assert_eq!(
+        bridge_error_shown_detail(&receiver).as_deref(),
+        Some("features value `0xZZ` is not hex")
+    );
+
+    assert_eq!(bridge_error_shown_detail(&BridgeError::Cancelled), None);
+    let missing =
+        BridgeError::NotFound { entity: BridgeEntityKind::Library, id: "library-1".into() };
+    assert_eq!(bridge_error_shown_detail(&missing), None);
+}
