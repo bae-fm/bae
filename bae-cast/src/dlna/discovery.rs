@@ -8,7 +8,7 @@
 //! RenderingControl control URLs the SOAP layer drives.
 
 use std::collections::{HashMap, HashSet};
-use std::net::{Ipv4Addr, UdpSocket};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -27,8 +27,6 @@ use bae_util::task_failure::caught_sync;
 const SSDP_MULTICAST: &str = "239.255.255.250:1900";
 /// The device type searched for: a UPnP A/V MediaRenderer.
 const MEDIA_RENDERER: &str = "urn:schemas-upnp-org:device:MediaRenderer:1";
-/// How long a `recv` blocks before the loop re-checks the stop flag.
-const RECV_TIMEOUT: Duration = Duration::from_millis(900);
 /// How often the search is re-multicast so devices that missed or dropped the
 /// first datagram still answer.
 const RESEARCH_INTERVAL: Duration = Duration::from_secs(5);
@@ -41,16 +39,18 @@ const DESCRIPTION_TIMEOUT: Duration = Duration::from_secs(5);
 /// thread.
 pub(crate) type DlnaDiscovery = ProtocolDiscovery<DlnaSearch>;
 
-/// A live SSDP search: its stop flag and the thread draining responses.
+/// A live SSDP search: its stop flag, where a datagram wakes its reader from
+/// a blocking read, and the thread draining responses.
 pub(crate) struct DlnaSearch {
     stop: Arc<AtomicBool>,
+    wake: SocketAddr,
     reader: JoinHandle<()>,
 }
 
 impl Browse for DlnaSearch {
     fn start(devices: &PublishedDevices, diagnostics: &Diagnostics) -> Option<Self> {
-        let socket = match open_search_socket() {
-            Ok(socket) => socket,
+        let (socket, wake) = match open_search_socket() {
+            Ok(opened) => opened,
             Err(e) => {
                 warn!("dlna discovery: failed to open SSDP socket: {e}");
                 return None;
@@ -63,23 +63,31 @@ impl Browse for DlnaSearch {
         let diagnostics = diagnostics.clone();
         let reader =
             std::thread::spawn(move || run_search(socket, reader_stop, devices, diagnostics));
-        Some(Self { stop, reader })
+        Some(Self { stop, wake, reader })
     }
 
+    /// Set the stop flag, then wake the reader's read with a datagram so it
+    /// sees the flag. A wake that can't be sent leaves the read to end at the
+    /// next re-search.
     fn stop(self) {
-        self.stop.store(true, Ordering::Relaxed);
+        self.stop.store(true, Ordering::Release);
+        if let Err(error) = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0))
+            .and_then(|socket| socket.send_to(&[], self.wake))
+        {
+            warn!("dlna discovery: couldn't wake the search reader to stop it: {error}");
+        }
         if self.reader.join().is_err() {
             warn!("dlna discovery: search reader thread panicked");
         }
     }
 }
 
-/// Bind a UDP socket for the search and set the recv timeout that lets the loop
-/// re-check its stop flag between datagrams.
-fn open_search_socket() -> std::io::Result<UdpSocket> {
+/// Bind a UDP socket for the search, and the loopback address a datagram
+/// wakes its reader at.
+fn open_search_socket() -> std::io::Result<(UdpSocket, SocketAddr)> {
     let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))?;
-    socket.set_read_timeout(Some(RECV_TIMEOUT))?;
-    Ok(socket)
+    let wake = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), socket.local_addr()?.port());
+    Ok((socket, wake))
 }
 
 /// The `M-SEARCH` datagram: an SSDP discover for MediaRenderers, `MX=2` seconds
@@ -100,8 +108,10 @@ fn msearch_datagram() -> String {
 /// The search-thread body: multicast the search, then drain unicast answers,
 /// fetching and parsing each new responder's description into a device. Re-sends
 /// the search every [`RESEARCH_INTERVAL`] and publishes a snapshot whenever the
-/// set changes. Returns when the stop flag is set. A response whose handling
-/// panics is reported and skipped; the search reads on.
+/// set changes. Each read blocks until a datagram arrives or the next re-search
+/// is due; [`DlnaSearch::stop`] sets the stop flag and sends a datagram, and
+/// the loop returns. A response whose handling panics is reported and skipped;
+/// the search reads on.
 fn run_search(
     socket: UdpSocket,
     stop: Arc<AtomicBool>,
@@ -128,15 +138,27 @@ fn run_search(
     let mut by_id: HashMap<String, RendererDevice> = HashMap::new();
     let mut buf = [0u8; 2048];
 
-    while !stop.load(Ordering::Relaxed) {
+    loop {
         if last_search.elapsed() >= RESEARCH_INTERVAL {
             if let Err(e) = socket.send_to(datagram.as_bytes(), SSDP_MULTICAST) {
                 debug!("dlna discovery: re-search send failed: {e}");
             }
             last_search = Instant::now();
         }
+        // Read until the next re-search is due; a zero timeout is refused, so
+        // at least a millisecond.
+        let until_search =
+            RESEARCH_INTERVAL.saturating_sub(last_search.elapsed()).max(Duration::from_millis(1));
+        if let Err(e) = socket.set_read_timeout(Some(until_search)) {
+            warn!("dlna discovery: can't time the read to the next re-search: {e}");
+            return;
+        }
 
-        let received = match socket.recv_from(&mut buf) {
+        let received = socket.recv_from(&mut buf);
+        if stop.load(Ordering::Acquire) {
+            return;
+        }
+        let received = match received {
             Ok((len, _from)) => len,
             Err(e)
                 if e.kind() == std::io::ErrorKind::WouldBlock
