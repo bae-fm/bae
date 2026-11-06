@@ -57,7 +57,7 @@ impl Automation {
     ) -> Result<AutomationScanResult, AutomationError> {
         match wait {
             ScanWait::NoWait => {
-                self.services.import_scan_watched_folders()?;
+                self.services.import_scan_watched_folders().await?;
             }
             ScanWait::UntilFinished { timeout_ms } => {
                 let statuses = tokio::time::timeout(

@@ -110,9 +110,20 @@ impl ImportServiceHandle {
             .map_err(|detail| crate::ImportError::Watch { detail })
     }
 
-    /// Ask for every watched folder to be read.
-    pub fn scan_watched_folders(&self) -> Result<(), crate::ImportError> {
-        self.send_watcher_command(WatcherCommand::RescanAll, "Failed to start watching folder")
+    /// Ask for every watched folder to be read, returning once each read is
+    /// asked for, or why the watched folders could not be listed.
+    pub async fn scan_watched_folders(&self) -> Result<(), crate::ImportError> {
+        let (completion, receiver) = tokio::sync::oneshot::channel();
+        self.send_watcher_command(
+            WatcherCommand::RescanAll { completion },
+            "Failed to start watching folder",
+        )?;
+        receiver
+            .await
+            .map_err(|error| crate::ImportError::Internal {
+                detail: format!("the watched folders' rescan ended without a result: {error}"),
+            })?
+            .map_err(|detail| crate::ImportError::Watch { detail })
     }
 
     /// Read every watched folder and return, once each read has ended, where

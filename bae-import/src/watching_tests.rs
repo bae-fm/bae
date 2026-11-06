@@ -244,6 +244,8 @@ pub(crate) struct CoordinatorHarness {
     pub(crate) scans: FakeScanStarter,
     /// The store the coordinator reads which folders are watched from.
     pub(crate) db: Store,
+    /// The bugs the coordinator reported.
+    pub(crate) bugs: Arc<bae_diagnostics::RecordingBugReporter>,
     pub(crate) folder_state_commit: crate::FolderStateCommit,
     pub(crate) removal_backend: Arc<FakeRemovalBackend>,
     /// Every event the coordinator sent.
@@ -261,7 +263,9 @@ impl CoordinatorHarness {
     /// [`root_path`] gives it.
     pub(crate) async fn with_roots(roots: &[&str]) -> Self {
         let roots: Vec<PathBuf> = roots.iter().map(|root| host_root(root)).collect();
-        let test = setup_import_service().await;
+        let mut test = setup_import_service().await;
+        let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+        test.report_bugs_to(bugs.clone());
         let tables = test.tables().clone();
         for root in &roots {
             tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
@@ -315,12 +319,29 @@ impl CoordinatorHarness {
             fs_events,
             scans,
             db,
+            bugs,
             folder_state_commit,
             removal_backend,
             events,
             coordinator_thread: Mutex::new(Some(coordinator_thread)),
             _temp: temp,
         }
+    }
+
+    /// Store a watched folder inside `/music`, which the store's own add
+    /// refuses, so that reading the watched folders fails from here on.
+    pub(crate) async fn corrupt_watched_folders(&self) {
+        let inner = root_path("/music").join("artist");
+        self.db
+            .call(move |conn| {
+                conn.execute(
+                    "INSERT INTO watched_import_folders (path, position) VALUES (?, 99)",
+                    rusqlite::params![coven::path_bytes(&inner)],
+                )?;
+                Ok(())
+            })
+            .await
+            .unwrap();
     }
 
     /// Hand the coordinator `report` as its watch would, and wait until it

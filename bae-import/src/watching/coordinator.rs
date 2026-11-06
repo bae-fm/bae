@@ -8,8 +8,11 @@ use super::*;
 
 /// Commands to the folder scan coordinator.
 pub(crate) enum WatcherCommand {
-    /// Read every watched folder the store lists.
-    RescanAll,
+    /// Read every watched folder the store lists. `completion` hears once
+    /// each read is asked for, or why the folders could not be listed.
+    RescanAll {
+        completion: tokio::sync::oneshot::Sender<Result<(), String>>,
+    },
     Rescan(std::path::PathBuf),
     Refresh {
         path: std::path::PathBuf,
@@ -256,13 +259,25 @@ impl Coordinator {
         let tables = &self.tables;
         let active_roots = &mut self.active_roots;
         match command {
-            WatcherCommand::RescanAll => {
-                for root in watched_roots(tables).await {
+            WatcherCommand::RescanAll { completion } => {
+                let roots = match watched_roots(tables).await {
+                    Ok(roots) => roots,
+                    Err(error) => {
+                        if completion.send(Err(error.to_string())).is_err() {
+                            debug!("rescan caller dropped before the watched folders failed");
+                        }
+                        return;
+                    }
+                };
+                for root in roots {
                     active_roots.request_scan(
                         root,
                         RootScanCause::Asked("every watched folder was asked for"),
                         None,
                     );
+                }
+                if completion.send(Ok(())).is_err() {
+                    debug!("rescan caller dropped before the reads were asked for");
                 }
             }
             WatcherCommand::Rescan(path) => {
@@ -369,7 +384,13 @@ impl Coordinator {
     /// Start the check of every network root not already being checked or
     /// removed.
     async fn check_network_folders(&mut self) {
-        let roots = watched_roots(&self.tables).await;
+        let roots = match watched_roots(&self.tables).await {
+            Ok(roots) => roots,
+            Err(error) => {
+                self.diagnostics.report_bug("list the watched folders to check them", &error);
+                return;
+            }
+        };
         for root in roots {
             if self.active_roots.is_being_removed(&root) {
                 continue;
@@ -461,7 +482,13 @@ async fn take_watch_report(
     let events = match report {
         Ok(events) => events,
         Err(errors) => {
-            let roots = watched_roots(tables).await;
+            let roots = match watched_roots(tables).await {
+                Ok(roots) => roots,
+                Err(error) => {
+                    diagnostics.report_bug("list the watched folders for a watch error", &error);
+                    return;
+                }
+            };
             let mut error_paths = Vec::new();
             for e in errors {
                 error_paths.extend(e.paths.iter().cloned());
@@ -477,7 +504,13 @@ async fn take_watch_report(
     // A watch that lost track names where to start: no path,
     // or one holding a root, reads the whole root; one inside
     // a root reads that folder again.
-    let roots = watched_roots(tables).await;
+    let roots = match watched_roots(tables).await {
+        Ok(roots) => roots,
+        Err(error) => {
+            diagnostics.report_bug("list the watched folders for a watch report", &error);
+            return;
+        }
+    };
     let mut whole: HashSet<PathBuf> = HashSet::new();
     for event in events.iter().filter(|event| event.need_rescan()) {
         if event.paths.is_empty() {
@@ -550,19 +583,13 @@ async fn holds_its_own_release(tables: &crate::tables::ImportTables, root: &Path
     }
 }
 
-/// What the store lists as watched; a failed read is logged and lists nothing.
-async fn watched_folders(tables: &crate::tables::ImportTables) -> Vec<crate::WatchedFolder> {
-    match tables.load_watched_import_folders().await {
-        Ok(folders) => folders,
-        Err(error) => {
-            error!("could not read the watched folders: {error}");
-            Vec::new()
-        }
-    }
-}
-
-async fn watched_roots(tables: &crate::tables::ImportTables) -> Vec<PathBuf> {
-    watched_folders(tables).await.into_iter().map(|folder| folder.path).collect()
+/// The roots the store lists as watched. A failed read is the caller's to
+/// act on: it never reads as nothing being watched.
+async fn watched_roots(
+    tables: &crate::tables::ImportTables,
+) -> Result<Vec<PathBuf>, bae_store::DbError> {
+    let folders = tables.load_watched_import_folders().await?;
+    Ok(folders.into_iter().map(|folder| folder.path).collect())
 }
 
 #[cfg(test)]

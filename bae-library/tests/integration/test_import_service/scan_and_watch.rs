@@ -65,7 +65,7 @@ async fn watcher_reconciles_added_and_removed_candidates() {
     fs::create_dir_all(&album2).unwrap();
     generate_album_files(&album2, &["01 Track.flac"]);
     let album2_key = bae_import::CandidateKey::folder(&album2);
-    f.handle.scan_watched_folders().unwrap();
+    f.handle.scan_watched_folders().await.unwrap();
 
     let second = scan_batch_until(&mut scan_rx, "the newly-added folder's candidate", |e| {
         matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if bae_import::CandidateKey::folder(&c.path) == album2_key)
@@ -78,7 +78,7 @@ async fn watcher_reconciles_added_and_removed_candidates() {
 
     // The first release folder is deleted; re-scan removes its candidate.
     fs::remove_dir_all(&album1).unwrap();
-    f.handle.scan_watched_folders().unwrap();
+    f.handle.scan_watched_folders().await.unwrap();
 
     let third = scan_batch_until(&mut scan_rx, "the deleted folder's candidate removal", |e| {
         matches!(e, ScanEvent::CandidateRemoved { candidate_key } if candidate_key == &album1_key)

@@ -273,3 +273,42 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
             .await;
     }
 }
+
+/// A failed read of the watched folders is not "nothing is watched": the
+/// report's changes are not read, and the failure is reported as a bug.
+#[tokio::test]
+async fn a_watch_report_over_unreadable_watched_folders_reports_the_failure() {
+    let harness = CoordinatorHarness::new().await;
+    harness.corrupt_watched_folders().await;
+    harness
+        .watch_report(Ok(vec![watch_event(
+            notify::EventKind::Create(notify::event::CreateKind::File),
+            root_path("/music").join("Album/01.flac"),
+        )]))
+        .await;
+
+    let reports = harness.bugs.reports();
+    assert_eq!(reports.len(), 1, "{reports:?}");
+    assert!(reports[0].1.contains("cannot overlap"), "{reports:?}");
+    harness.shutdown().await;
+}
+
+/// A rescan of every watched folder over an unreadable list fails to the one
+/// who asked, and starts no scan.
+#[tokio::test]
+async fn a_rescan_of_unreadable_watched_folders_fails_to_its_caller() {
+    let harness = CoordinatorHarness::new().await;
+    harness.corrupt_watched_folders().await;
+    let (completion, answer) = tokio::sync::oneshot::channel();
+    harness.commands.send(WatcherCommand::RescanAll { completion }).unwrap();
+
+    let error = tokio::time::timeout(HANG_GUARD, answer)
+        .await
+        .expect("the coordinator answers")
+        .expect("the coordinator is running")
+        .expect_err("the unreadable list fails the rescan");
+    assert!(error.contains("cannot overlap"), "{error}");
+    harness.commands_handled().await;
+    assert!(harness.scans.scans.lock().unwrap().is_empty());
+    harness.shutdown().await;
+}

@@ -553,7 +553,7 @@ where
         if reads_watched_folders {
             timing
                 .stage(&library_id, "request watched-folder scan", || {
-                    app_services.import_scan_watched_folders()
+                    runtime.block_on(app_services.import_scan_watched_folders())
                 })
                 .map_err(|error| BootstrapError::Database(error.to_string()))?;
         }
