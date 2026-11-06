@@ -31,8 +31,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 cd "$(dirname "$0")/.."
-source scripts/xcode-trees.sh
 ./scripts/build-layout.sh
+source scripts/xcode-trees.sh
 
 case "$EDITION" in
     bae)

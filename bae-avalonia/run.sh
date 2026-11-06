@@ -56,8 +56,8 @@ fi
 
 cd "$(dirname "$0")/.."
 REPO="$PWD"
-source scripts/xcode-trees.sh
 ./scripts/build-layout.sh
+source scripts/xcode-trees.sh
 for tool in cargo rustc dotnet python3 uniffi-bindgen-cs codesign security install_name_tool otool; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "Required command missing: $tool" >&2

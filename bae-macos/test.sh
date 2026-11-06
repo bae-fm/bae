@@ -21,6 +21,7 @@ if [[ "${1:-}" == "--build-only" ]]; then
 fi
 
 cd "$(dirname "$0")/.."
+./scripts/build-layout.sh
 source scripts/xcode-trees.sh
 
 # The project lists the test files that existed when it was last generated, so

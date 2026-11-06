@@ -27,12 +27,29 @@
 
 _xcode_trees_repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Each tree is named by its real path: <folder> (a `.build` the builds tool
+# links to the build volume) resolved through its links, then <leaf>.
+# xcodebuild resolves the links in a -derivedDataPath that exists and keeps one
+# that doesn't yet as given, so a tree named by its linked path was recorded
+# under one path by the build that created it and another by the next; every
+# compile command names the tree, so that next build recompiled all of it (889
+# Swift files for test.sh's tree). A folder that doesn't exist (CI, before the
+# links) is named as given.
+_xcode_trees_real() {
+    local folder="$1" leaf="$2" real
+    if real="$(cd "$folder" 2>/dev/null && pwd -P)"; then
+        printf '%s/%s\n' "$real" "$leaf"
+    else
+        printf '%s/%s\n' "$folder" "$leaf"
+    fi
+}
+
 # BAE_MACOS_RUN_TREE is overridden by bae-macos/tests/run-isolation.sh, which
 # runs run.sh against a stub xcodebuild and must not touch the real tree.
-XCODE_MACOS_RUN_TREE="${BAE_MACOS_RUN_TREE:-$_xcode_trees_repo/bae-macos/bae/.build/runApp}"
-XCODE_MACOS_UNSIGNED_TREE="$_xcode_trees_repo/bae-macos/bae/.build/unsigned"
-XCODE_MACOS_PACKAGES="$_xcode_trees_repo/bae-macos/bae/.build/SourcePackages"
-XCODE_IOS_TREE="$_xcode_trees_repo/bae-ios/bae/.build/derivedData"
+XCODE_MACOS_RUN_TREE="${BAE_MACOS_RUN_TREE:-$(_xcode_trees_real "$_xcode_trees_repo/bae-macos/bae/.build" runApp)}"
+XCODE_MACOS_UNSIGNED_TREE="$(_xcode_trees_real "$_xcode_trees_repo/bae-macos/bae/.build" unsigned)"
+XCODE_MACOS_PACKAGES="$(_xcode_trees_real "$_xcode_trees_repo/bae-macos/bae/.build" SourcePackages)"
+XCODE_IOS_TREE="$(_xcode_trees_real "$_xcode_trees_repo/bae-ios/bae/.build" derivedData)"
 
 XCODE_MACOS_RUN_ARGS=(-derivedDataPath "$XCODE_MACOS_RUN_TREE")
 XCODE_MACOS_UNSIGNED_ARGS=(-derivedDataPath "$XCODE_MACOS_UNSIGNED_TREE")
