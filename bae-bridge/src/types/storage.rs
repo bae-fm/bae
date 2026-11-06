@@ -190,9 +190,10 @@ impl BridgeStorageSetup {
 /// `coven::StorageSetupStep`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeStorageSetupStep {
-    /// S3, creating the library where member keys reach a whole bucket:
-    /// checking the bucket holds nothing else.
-    CheckingBucket,
+    /// Creating or reconnecting a library on an S3 bucket, a Dropbox shared
+    /// folder or a OneDrive folder: checking the location holds nothing but
+    /// this library, which has it to itself.
+    CheckingLocation,
     /// S3: probing the service for the settings the location needs.
     DetectingSettings,
     /// iCloud, creating the library: reading the account and saving its zone.
@@ -224,7 +225,7 @@ impl BridgeStorageSetupProgress {
         use coven::StorageSetupStep as Step;
         Self {
             step: match value.step {
-                Step::CheckingLocation => BridgeStorageSetupStep::CheckingBucket,
+                Step::CheckingLocation => BridgeStorageSetupStep::CheckingLocation,
                 Step::DetectingSettings => BridgeStorageSetupStep::DetectingSettings,
                 Step::PreparingZone => BridgeStorageSetupStep::PreparingZone,
                 Step::ReadingAccount => BridgeStorageSetupStep::ReadingAccount,
@@ -247,8 +248,8 @@ impl BridgeStorageSetupProgress {
 #[uniffi::export]
 pub fn bridge_storage_setup_step_key(step: BridgeStorageSetupStep) -> String {
     match step {
-        BridgeStorageSetupStep::CheckingBucket => {
-            "core.library.storage_setup_step.checking_bucket".to_string()
+        BridgeStorageSetupStep::CheckingLocation => {
+            "core.library.storage_setup_step.checking_location".to_string()
         }
         BridgeStorageSetupStep::DetectingSettings => {
             "core.library.storage_setup_step.detecting_settings".to_string()

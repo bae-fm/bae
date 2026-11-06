@@ -447,7 +447,7 @@ fn produced_keys() -> Vec<String> {
     // bridge_storage_setup_step_key — each step carries a key; a loading
     // step's is the load step's, covered above.
     for step in [
-        BridgeStorageSetupStep::CheckingBucket,
+        BridgeStorageSetupStep::CheckingLocation,
         BridgeStorageSetupStep::DetectingSettings,
         BridgeStorageSetupStep::PreparingZone,
         BridgeStorageSetupStep::ReadingAccount,

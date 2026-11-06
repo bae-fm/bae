@@ -2687,8 +2687,9 @@ most a minute of rate limits, and on a reconnect loading what other devices
 published. So each setup call is handed a stream of its own, of the kind a
 setup call reports in (§9.1), and writes into it the steps coven reports
 ([coven §20.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#208-checking-a-provider-before-use)):
-checking the bucket and detecting its settings on S3, preparing iCloud, reading
-the account on Dropbox and OneDrive, connecting and checking the provider,
+checking the location holds nothing but this library on S3, Dropbox and
+OneDrive, detecting the settings on S3, preparing iCloud, reading the account
+on Dropbox and OneDrive, connecting and checking the provider,
 creating the library in storage, or loading with loading's own steps, and
 recording changed access. The apps show the step's name over a bar in place of
 a spinner, counted for loading's steps. Signing in to Dropbox or OneDrive in
@@ -2696,15 +2697,18 @@ the browser, listing the provider's folders, and making a new OneDrive folder
 each say so while they run, on both apps. The dev reset connects its
 storage without such a stream: it reports connecting storage as its own step.
 
-Every S3 library has its bucket to itself
-([coven §20.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#203-where-a-store-lives)):
-coven can't tell how far an access key reaches, so it takes every key to
-reach the whole bucket, and a member of one library could otherwise delete
-another's objects. Setting a new library up refuses a bucket holding anything
-but that library's own folder and coven's marker naming it, with a line saying
-to use an empty bucket only this library uses. Reconnecting, restoring and
-joining read only the marker. A key prefix the person types is refused the
-same way.
+Every library has its storage location to itself: an S3 bucket, a Dropbox
+shared folder or a OneDrive folder
+([coven §20.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#203-where-a-store-lives)).
+coven can't tell how far an S3 access key reaches, so it takes every key to
+reach the whole bucket, and every member of a Dropbox or OneDrive library
+reaches all of its folder: a member of one library could otherwise delete
+another's objects. Setting a new library up refuses a location holding
+anything but that library's own folder and coven's marker naming it, with a
+line saying to use an empty bucket or folder only this library uses.
+Reconnecting, restoring and joining read only the marker, and refuse a
+location whose marker is missing or names another library. A key prefix the
+person types is refused the same way.
 
 **Dropbox and OneDrive setup.** The person signs in through the browser, then
 picks the folder the library lives in. On Dropbox that is a shared folder, so

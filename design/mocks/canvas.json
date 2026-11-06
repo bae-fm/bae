@@ -722,7 +722,7 @@
       "x": 6160,
       "y": 6692
     },
-    "MacSetupS3StepCheckingBucket.dc.html": {
+    "MacSetupS3StepCheckingLocation.dc.html": {
       "h": 600,
       "page": "library",
       "title": "macOS: Set up sync: S3-compatible, step 1 of 4",
@@ -1931,7 +1931,7 @@
     "MacSetupS3Choose.dc.html",
     "MacSetupS3.dc.html",
     "MacSetupS3Advanced.dc.html",
-    "MacSetupS3StepCheckingBucket.dc.html",
+    "MacSetupS3StepCheckingLocation.dc.html",
     "MacSetupS3StepDetecting.dc.html",
     "MacSetupS3StepConnecting.dc.html",
     "MacSetupS3StepCreating.dc.html",

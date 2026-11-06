@@ -110,7 +110,7 @@ pub(crate) fn storage_failure_key(failure: BridgeStorageFailure) -> &'static str
         BridgeStorageFailure::Conflict => "core.error.storage.conflict",
         BridgeStorageFailure::ContainerNotFound => "core.error.cloud_setup.container_not_found",
         BridgeStorageFailure::RegionMismatch => "core.error.cloud_setup.region_mismatch",
-        BridgeStorageFailure::OwnLocationRequired => "core.error.storage.own_bucket_required",
+        BridgeStorageFailure::OwnLocationRequired => "core.error.storage.own_location_required",
         BridgeStorageFailure::StoreExists => "core.error.cloud_setup.location_occupied",
         BridgeStorageFailure::ClockSkew => "core.error.storage.clock_skew",
         BridgeStorageFailure::QuotaExceeded => "core.error.cloud_setup.quota_exceeded",
