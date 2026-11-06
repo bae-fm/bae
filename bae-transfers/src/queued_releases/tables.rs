@@ -74,7 +74,7 @@ impl QueuedPayload for OutputRequest {
             OutputKind::Save { preset } => (
                 "save",
                 Some(serde_json::to_string(preset).map_err(|error| {
-                    DbError::Message(format!("save preset {}: {error}", preset.id))
+                    DbError::encode(format!("save preset {}", preset.id), error)
                 })?),
             ),
         };
