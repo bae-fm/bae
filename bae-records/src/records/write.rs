@@ -1,4 +1,6 @@
 use super::*;
+#[cfg(any(test, feature = "test-utils", desktop))]
+use rusqlite::Params;
 
 /// The `album_order` that puts a release last among those of the album whose
 /// id `album_id` names (a SQL expression; a bound parameter or a column).
