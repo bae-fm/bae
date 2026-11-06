@@ -64,6 +64,11 @@ async fn a_profile_names_each_new_avatar_at_once() {
     let second_source = solid_png(16, 16, [20, 160, 90]);
     let first_jpeg = bae_util::stored_image::stored_jpeg(&first_source).unwrap();
     let second_jpeg = bae_util::stored_image::stored_jpeg(&second_source).unwrap();
+    // Coven sends a file a row references with the write that references it,
+    // paused uploads or not, so the files stay on this device only for as
+    // long as the test holds the provider's creates.
+    let gate = std::sync::Arc::new(tokio::sync::Semaphore::new(0));
+    storage.gate_creations(gate.clone()).await;
     library.set_avatar(Some(first_source)).await.unwrap();
     let avatar = async || people.profile(profile.id).await.unwrap().unwrap().avatar;
     let first = avatar().await.expect("the first avatar");
@@ -77,8 +82,21 @@ async fn a_profile_names_each_new_avatar_at_once() {
     // it only.
     assert!(second.version.starts_with(&format!("{}@", second.file.0)), "{}", second.version);
     assert_eq!(library.avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
-    library.drain_uploads_for_test().await.unwrap();
-    let stored = avatar().await.expect("the stored avatar");
+    gate.add_permits(tokio::sync::Semaphore::MAX_PERMITS);
+    let mut profiles = library.subscribe_profiles();
+    let stored = bae_library::followed::value_matching(&mut profiles, |profiles| {
+        profiles.iter().find(|candidate| candidate.id == profile.id).is_some_and(|candidate| {
+            candidate
+                .avatar
+                .as_ref()
+                .is_some_and(|avatar| avatar.version == second.file.0.to_string())
+        })
+    })
+    .await
+    .into_iter()
+    .find(|candidate| candidate.id == profile.id)
+    .and_then(|candidate| candidate.avatar)
+    .expect("the stored avatar");
     assert_eq!(stored.file, second.file, "the upload changes no row");
     assert_eq!(
         stored.version,
