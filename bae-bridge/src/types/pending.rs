@@ -56,6 +56,7 @@ pub struct BridgePendingReason {
 pub(crate) enum PendingReasonKind {
     Missing,
     Waits,
+    WaitsForRaise,
     KeyUnavailable,
     UpdateRequired,
     NoStorage,
@@ -81,6 +82,7 @@ impl BridgePendingReason {
         use PendingReasonKind as K;
         let kind = match &reason {
             R::Missing { .. } => K::Missing,
+            R::Waits(coven::Prerequisite::Raise { .. }) => K::WaitsForRaise,
             R::Waits(_) => K::Waits,
             R::KeyUnavailable { .. } => K::KeyUnavailable,
             R::UpdateRequired(_) => K::UpdateRequired,
@@ -168,6 +170,7 @@ impl PendingReasonKind {
         match self {
             R::Missing => "core.pending.reason.missing",
             R::Waits => "core.pending.reason.waits",
+            R::WaitsForRaise => "core.pending.reason.waits_for_raise",
             R::KeyUnavailable => "core.pending.reason.key_unavailable",
             R::UpdateRequired => "core.error.sync_update_required",
             R::NoStorage => "core.pending.reason.no_storage",
@@ -272,3 +275,7 @@ pub(crate) fn subject_message(subject: bae_sync_status::PendingSubjectName) -> B
     };
     BridgeMessage { key: key.to_string(), args: Vec::new() }
 }
+
+#[cfg(test)]
+#[path = "pending_tests.rs"]
+mod tests;

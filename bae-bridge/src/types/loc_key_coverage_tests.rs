@@ -340,6 +340,7 @@ fn produced_keys() -> Vec<String> {
     for reason in [
         PendingReasonKind::Missing,
         PendingReasonKind::Waits,
+        PendingReasonKind::WaitsForRaise,
         PendingReasonKind::KeyUnavailable,
         PendingReasonKind::UpdateRequired,
         PendingReasonKind::NoStorage,

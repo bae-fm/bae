@@ -2851,7 +2851,9 @@ words in the app's own catalog: core sends only the status it read. Opening it l
 records
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
 in plain words, in the order they arose, with an action wherever the person
-can act. A record whose condition changes keeps its place. The error behind
+can act. A change of this device's that waits for the data it changes to be
+updated to this version of bae says that, not that it waits for earlier
+changes. A record whose condition changes keeps its place. The error behind
 a record sits behind a disclosure, to copy: its text names every cause below
 it, with secrets and URLs already cut by coven. coven keeps that text beside
 the record, written with it by the run that met the failure, and clears it as
