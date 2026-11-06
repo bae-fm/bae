@@ -5,6 +5,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
 import fm.bae.app.data.ImageStore
@@ -15,11 +16,10 @@ import kotlinx.coroutines.awaitCancellation
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /** A gallery image can come from the release's storage, so while it loads the gallery says so. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class GalleryLoadingTest {
     @get:Rule

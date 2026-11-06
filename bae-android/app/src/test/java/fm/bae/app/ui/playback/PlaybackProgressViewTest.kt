@@ -2,37 +2,23 @@ package fm.bae.app.ui.playback
 
 import android.app.Activity
 import android.os.Looper
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.fastvalues.LatestStream
 import org.junit.Assert.assertEquals
-import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import org.robolectric.shadows.ShadowChoreographer
 import uniffi.bae_bridge.BridgeTrackBuffered
 import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.BridgeTrackSpan
 import java.time.Duration
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class PlaybackProgressViewTest {
-    /**
-     * Pace frames by the looper's clock, as a display paces them. Robolectric
-     * otherwise runs a frame as soon as one is asked for, at the same instant,
-     * so a bar following an active position, which asks for the next frame
-     * from each one, never lets the looper go idle.
-     */
-    @Before
-    fun paceFramesByTheClock() {
-        ShadowChoreographer.setPaused(true)
-        ShadowChoreographer.setFrameDelay(FRAME_INTERVAL)
-    }
-
     @Test
     fun setPositionUpdatesProgressAndLabels() {
         val view = PlaybackProgressView(RuntimeEnvironment.getApplication())
@@ -203,7 +189,6 @@ class PlaybackProgressViewTest {
     private companion object {
         const val KEY = "track"
         const val DURATION_MS = 100_000L
-        val FRAME_INTERVAL: Duration = Duration.ofMillis(16)
         val FRAME: Duration = Duration.ofMillis(20)
     }
 }

@@ -2,6 +2,7 @@ package fm.bae.app.playback
 
 import android.os.Looper
 import androidx.media3.common.MediaItem
+import fm.bae.app.BaeRobolectricTestRunner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -9,7 +10,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
  * also verifies the player advertises the command — without it the request
  * would be dropped before reaching the handler.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class BrowsePlaybackTest {
     private fun player(handle: FakeAppHandle): BaeCorePlayer =

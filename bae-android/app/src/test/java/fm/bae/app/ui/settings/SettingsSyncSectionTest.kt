@@ -3,6 +3,7 @@ package fm.bae.app.ui.settings
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.LocalBugReports
 import fm.bae.app.NoErrorDisplays
 import fm.bae.app.data.SyncStatusStore
@@ -12,7 +13,6 @@ import fm.bae.app.ui.BaeTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
@@ -20,7 +20,7 @@ import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class SettingsSyncSectionTest {
     @get:Rule

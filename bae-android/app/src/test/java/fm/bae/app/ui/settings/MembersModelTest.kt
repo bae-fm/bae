@@ -1,6 +1,7 @@
 package fm.bae.app.ui.settings
 
 import android.os.Looper
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.playback.FakeAppHandle
@@ -12,7 +13,6 @@ import kotlinx.coroutines.channels.Channel
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeAdminChange
@@ -41,7 +41,7 @@ import java.time.Instant
  * Retry reads again; a cancelled read shows nothing and leaves the list as it
  * was.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class MembersModelTest {
     @Test

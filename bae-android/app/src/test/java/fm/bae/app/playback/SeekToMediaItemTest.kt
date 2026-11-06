@@ -2,13 +2,13 @@ package fm.bae.app.playback
 
 import android.os.Looper
 import androidx.media3.common.Player
+import fm.bae.app.BaeRobolectricTestRunner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -25,7 +25,7 @@ import uniffi.bae_bridge.BridgeTrackDisplay
  * told to skip to it. The now-playing slot has no queue-entry id, so seeking to
  * it is a no-op.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class SeekToMediaItemTest {
     private fun entry(id: String) =

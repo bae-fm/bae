@@ -4,6 +4,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.LocalBugReports
 import fm.bae.app.NoErrorDisplays
 import fm.bae.app.data.SyncStatusStore
@@ -14,7 +15,6 @@ import fm.bae.app.ui.SessionActions
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeLibraryClosing
@@ -26,7 +26,7 @@ import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 
 /** The list of what sync waits on runs each record's action as the library's storage takes it. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class SyncPendingScreenTest {
     @get:Rule

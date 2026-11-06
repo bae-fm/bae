@@ -4,12 +4,12 @@ import android.app.Application
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.R
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeSidePauseCountdown
@@ -18,7 +18,7 @@ import uniffi.bae_bridge.BridgeSidePauseCountdown
  * The countdown choice under the pause-between-sides switch: drawn only while
  * pausing is on, offering Off and each length, and writing the one picked.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class SidePauseCountdownPickerTest {
     @get:Rule

@@ -1,5 +1,6 @@
 package fm.bae.app.playback
 
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -8,7 +9,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
@@ -17,7 +17,7 @@ import org.robolectric.annotation.Config
  * last showed until the next value arrives, so the now-playing surfaces and
  * the queue never show the last value as current.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class PlaybackReadFailureTest {
     private val failure = DisplayError("Couldn't read playback.")

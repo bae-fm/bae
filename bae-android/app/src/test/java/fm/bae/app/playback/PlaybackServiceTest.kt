@@ -2,6 +2,7 @@ package fm.bae.app.playback
 
 import android.os.Looper
 import androidx.media3.common.Player
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.BugReports
 import fm.bae.app.NoErrorDisplays
@@ -26,7 +27,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.android.controller.ServiceController
@@ -65,7 +65,7 @@ import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.WorkDetailSubscription
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class PlaybackServiceTest {
     @Test

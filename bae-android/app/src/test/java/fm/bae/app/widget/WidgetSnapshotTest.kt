@@ -1,5 +1,6 @@
 package fm.bae.app.widget
 
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.playback.AudioFocus
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.FakeAppHandle
@@ -20,7 +21,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgePlaybackValueState
@@ -33,7 +33,7 @@ import java.io.File
  * round-trip through the store, which reads only the current format, and that
  * a saved track shows as playing only while a live player is playing it.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class WidgetSnapshotTest {
     @Test

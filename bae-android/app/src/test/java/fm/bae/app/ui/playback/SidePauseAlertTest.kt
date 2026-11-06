@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.R
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.SidePausePrompt
@@ -14,12 +15,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeSideCountdown
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class SidePauseAlertTest {
     @get:Rule

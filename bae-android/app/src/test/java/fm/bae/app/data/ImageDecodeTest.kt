@@ -1,13 +1,13 @@
 package fm.bae.app.data
 
 import androidx.exifinterface.media.ExifInterface
+import fm.bae.app.BaeRobolectricTestRunner
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -27,7 +27,7 @@ private const val WHITE = 0xFFFFFFFF.toInt()
 private const val QUADRANT_SOURCE = 64
 private val SOURCE_QUADRANTS = listOf(RED, GREEN, BLUE, WHITE)
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ImageDecodeTest {

@@ -2,12 +2,12 @@ package fm.bae.app.playback
 
 import android.content.Context
 import android.media.AudioManager
+import fm.bae.app.BaeRobolectricTestRunner
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -17,7 +17,7 @@ import uniffi.bae_bridge.BridgeAudioFocusAnswer
  * The gate core asks before every start of playback: Android's answer to a
  * focus request goes back to core as is, and stopping gives the focus back.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class AudioFocusTest {
     private val context = RuntimeEnvironment.getApplication()

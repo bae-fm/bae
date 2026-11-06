@@ -3,28 +3,19 @@ package fm.bae.app.ui.playback
 import android.app.Activity
 import android.os.Looper
 import android.view.View
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.fastvalues.LatestStream
 import org.junit.Assert.assertEquals
-import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import org.robolectric.shadows.ShadowChoreographer
 import java.time.Duration
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class StorageWaitArcViewTest {
-    /** Pace frames by the looper's clock, as a display paces them, so a turning arc lets the looper go idle. */
-    @Before
-    fun paceFramesByTheClock() {
-        ShadowChoreographer.setPaused(true)
-        ShadowChoreographer.setFrameDelay(Duration.ofMillis(16))
-    }
-
     /** The arc shows, read out by its label, while the track's load waits on storage, and goes once it doesn't. */
     @Test
     fun theArcShowsWhileTheLoadWaitsOnStorage() {

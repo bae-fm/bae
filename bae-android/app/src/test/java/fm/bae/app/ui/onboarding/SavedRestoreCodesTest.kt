@@ -2,6 +2,7 @@ package fm.bae.app.ui.onboarding
 
 import android.app.Application
 import android.os.Looper
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,13 +14,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeException
 
 /** The welcome's saved codes are read from coven, and a delete removes one from this phone and reads them again. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class SavedRestoreCodesTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

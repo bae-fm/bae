@@ -10,6 +10,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.SimpleBasePlayer
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.data.Library
 import fm.bae.app.testCoverRef
 import kotlinx.coroutines.CoroutineScope
@@ -18,7 +19,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
@@ -32,7 +32,7 @@ private const val PREFIX_READ =
  * the artwork provider isn't exported, so the session must grant the
  * controller's package read access to them.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class ArtworkReadGrantsTest {
     private val uriGrants = RecordingUriGrants(RuntimeEnvironment.getApplication())

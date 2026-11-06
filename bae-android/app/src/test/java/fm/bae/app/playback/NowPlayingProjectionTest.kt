@@ -2,6 +2,7 @@ package fm.bae.app.playback
 
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Timeline
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.testCoverRef
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,7 +13,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeDurationClock
@@ -26,7 +26,7 @@ import uniffi.bae_bridge.BridgeTrackDisplay
  * must reinsert it at the front — otherwise the lock screen / notification show
  * the wrong (first up-next) track.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class NowPlayingProjectionTest {
     private fun meta(id: String) =

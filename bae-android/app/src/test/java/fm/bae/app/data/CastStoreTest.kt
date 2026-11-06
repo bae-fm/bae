@@ -2,6 +2,7 @@ package fm.bae.app.data
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.DisplayError
 import org.junit.Assert.assertEquals
@@ -9,7 +10,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeRemoteDevice
 import uniffi.bae_bridge.BridgeRemotePlayback
@@ -19,7 +19,7 @@ import uniffi.bae_bridge.BridgeRemotePlayback
  * status core last announced, so the store must surface the latest one — a
  * receiver-side end arrives the same way a user stop does, with why.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class CastStoreTest {
     private val device = BridgeRemoteDevice(id = "cast-2", name = "Speaker Name")

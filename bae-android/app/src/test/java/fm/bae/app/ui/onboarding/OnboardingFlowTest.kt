@@ -2,6 +2,7 @@ package fm.bae.app.ui.onboarding
 
 import android.app.Application
 import android.os.Looper
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.fastvalues.LatestStream
 import kotlinx.coroutines.CoroutineScope
@@ -14,7 +15,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -30,7 +30,7 @@ import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeStorageLocation
 
 /** A scanned code goes straight into adding this device; a typed one shows what it read first. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class OnboardingFlowTest {
     /** A host whose restore from a code records the code and runs until the test ends. */

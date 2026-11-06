@@ -7,12 +7,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.R
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.fastvalues.LatestStream
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeSetupProgress
 import uniffi.bae_bridge.BridgeSetupStep
@@ -22,7 +22,7 @@ import uniffi.bae_bridge.BridgeSetupStep
  * View draws from the call's steps. A step's catalog key comes from the bridge, which a unit test can't load, so the
  * test names it from the step.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class SetupStepScreenTest {
     @get:Rule

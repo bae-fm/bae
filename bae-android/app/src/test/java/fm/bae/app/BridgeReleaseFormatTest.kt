@@ -4,7 +4,6 @@ import android.content.Context
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeFactTerm
@@ -13,7 +12,7 @@ import uniffi.bae_bridge.BridgeSourceAudioDifference
 import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeTermLabel
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class BridgeReleaseFormatTest {
     private val context: Context = RuntimeEnvironment.getApplication()

@@ -1,6 +1,7 @@
 package fm.bae.app.playback
 
 import android.os.Looper
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.testCoverRef
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -9,7 +10,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -28,7 +28,7 @@ import uniffi.bae_bridge.BridgeTrackDisplay
  * [BridgeQueueEntry]s through, and carries the context's source kind and
  * shuffle flag so the UI can label and mark the section.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class QueueProjectionTest {
     // A fixed clock (3:00) the projection copies straight through — its value is

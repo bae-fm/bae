@@ -2,13 +2,13 @@ package fm.bae.app.playback
 
 import android.os.Looper
 import androidx.media3.common.Timeline
+import fm.bae.app.BaeRobolectricTestRunner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -22,7 +22,7 @@ import uniffi.bae_bridge.BridgeTrackDisplay
  * session's highlighted index is 0. A queued entry of the playing track, or a
  * track queued twice, is an entry of its own and keeps its slot.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class GetStateCurrentIndexTest {
     private fun entry(

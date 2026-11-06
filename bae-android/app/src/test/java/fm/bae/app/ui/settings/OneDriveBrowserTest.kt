@@ -1,6 +1,7 @@
 package fm.bae.app.ui.settings
 
 import android.os.Looper
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.OAuthProviders
@@ -12,7 +13,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandleInterface
@@ -32,7 +32,7 @@ import uniffi.bae_bridge.BridgeSyncRetryOutcome
  * The OneDrive picker moves into a folder only once its listing loads: a
  * failed move keeps the folder shown, with the failure and Retry.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class OneDriveBrowserTest {
     private val root = folder("OneDrive")

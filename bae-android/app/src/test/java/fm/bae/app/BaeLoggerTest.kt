@@ -3,12 +3,11 @@ package fm.bae.app
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLog
 import java.net.UnknownHostException
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class BaeLoggerTest {
     /** A DNS failure keeps its trace: Log.getStackTraceString prints nothing for a chain holding one. */

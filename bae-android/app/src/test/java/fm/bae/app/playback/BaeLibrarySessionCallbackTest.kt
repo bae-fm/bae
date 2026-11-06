@@ -6,6 +6,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.data.Library
 import kotlinx.coroutines.CoroutineScope
@@ -18,12 +19,11 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.util.concurrent.TimeUnit
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class BaeLibrarySessionCallbackTest {
     @Test

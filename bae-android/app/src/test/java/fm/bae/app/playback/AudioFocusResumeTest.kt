@@ -3,13 +3,13 @@ package fm.bae.app.playback
 import android.content.Context
 import android.media.AudioManager
 import android.os.Looper
+import fm.bae.app.BaeRobolectricTestRunner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -22,7 +22,7 @@ import uniffi.bae_bridge.BridgePlaybackPauseReason
  * stream the user already paused must not resume on regain, or toggling
  * dictation over a paused track would restart music the user had stopped.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class AudioFocusResumeTest {
     private fun player(

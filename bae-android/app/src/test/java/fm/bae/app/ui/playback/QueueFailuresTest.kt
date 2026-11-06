@@ -1,6 +1,7 @@
 package fm.bae.app.ui.playback
 
 import android.content.Context
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.coreString
@@ -8,12 +9,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 /** What the queue sheet shows when a queue command fails. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class QueueFailuresTest {
     private val context: Context = RuntimeEnvironment.getApplication()

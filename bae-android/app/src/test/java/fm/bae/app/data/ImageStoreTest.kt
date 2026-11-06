@@ -1,5 +1,6 @@
 package fm.bae.app.data
 
+import fm.bae.app.BaeRobolectricTestRunner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -9,7 +10,6 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import uniffi.bae_bridge.BridgeGallerySource
@@ -25,7 +25,7 @@ import uniffi.bae_bridge.BridgeLibraryImageType
  * really reports what a bitmap costs — the cache budgets mean nothing against
  * shadow bitmaps.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ImageStoreTest {

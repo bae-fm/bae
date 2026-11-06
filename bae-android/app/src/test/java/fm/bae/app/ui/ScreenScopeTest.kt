@@ -3,6 +3,7 @@ package fm.bae.app.ui
 import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BugReports
 import fm.bae.app.HANG_GUARD
 import fm.bae.app.LocalBugReports
@@ -15,14 +16,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
  * A screen's coroutine that fails in a way nothing caught is a bug: reported,
  * with the app going on, and without ending the screen's other work.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class ScreenScopeTest {
     @get:Rule

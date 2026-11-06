@@ -10,11 +10,12 @@ import fm.bae.app.ui.shownTexts
 import fm.bae.app.ui.tellStep
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
+import fm.bae.app.BaeRobolectricTestRunner
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeBootstrapState
 import uniffi.bae_bridge.BridgeBootstrapStatus
@@ -29,7 +30,7 @@ import uniffi.bae_bridge.BridgeNextCheck
 import uniffi.bae_bridge.BridgeStorageLocation
 import java.time.Instant
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class OnboardingProgressTest {
     @get:Rule

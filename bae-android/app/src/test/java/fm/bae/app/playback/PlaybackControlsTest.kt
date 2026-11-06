@@ -2,13 +2,13 @@ package fm.bae.app.playback
 
 import android.os.Looper
 import androidx.media3.common.Player
+import fm.bae.app.BaeRobolectricTestRunner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -21,7 +21,7 @@ import uniffi.bae_bridge.BridgePlaybackValueState
  * core's volume/mute events into the flows the expanded now-playing controls
  * read.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class PlaybackControlsTest {
     @Test

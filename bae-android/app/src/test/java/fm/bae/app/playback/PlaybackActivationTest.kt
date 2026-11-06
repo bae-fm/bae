@@ -3,6 +3,7 @@ package fm.bae.app.playback
 import android.content.Context
 import android.os.Looper
 import androidx.media3.common.Player
+import fm.bae.app.BaeRobolectricTestRunner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -11,7 +12,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -24,7 +24,7 @@ import org.robolectric.annotation.Config
  * before the audio finishes downloading and the screen may lock — so background
  * playback survives and the lock-screen controls appear.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class PlaybackActivationTest {
     private fun player(

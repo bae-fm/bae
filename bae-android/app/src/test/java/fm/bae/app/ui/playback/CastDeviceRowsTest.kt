@@ -8,17 +8,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.ui.BaeTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeRendererKind
 
 /** Discovery runs while the picker is open, so an empty list says it is looking, and found devices replace that line. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class CastDeviceRowsTest {
     @get:Rule

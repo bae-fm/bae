@@ -15,6 +15,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.HANG_GUARD_MS
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CompletableDeferred
@@ -22,11 +23,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /** The welcome lists the codes saved on this phone: a tap restores one, and Delete asks first. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class SavedCodesSectionTest {
     @get:Rule

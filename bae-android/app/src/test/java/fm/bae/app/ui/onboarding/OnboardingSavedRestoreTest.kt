@@ -2,6 +2,7 @@ package fm.bae.app.ui.onboarding
 
 import android.app.Application
 import android.os.Looper
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import kotlinx.coroutines.CoroutineScope
@@ -14,7 +15,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -26,7 +26,7 @@ import uniffi.bae_bridge.BridgeSavedRestoreCodeInfo
  * its S3 key has to be typed in first; one deleted since the welcome listed it
  * returns there, saying so.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class OnboardingSavedRestoreTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

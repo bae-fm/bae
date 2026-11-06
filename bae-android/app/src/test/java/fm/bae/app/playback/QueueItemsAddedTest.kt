@@ -1,6 +1,7 @@
 package fm.bae.app.playback
 
 import android.os.Looper
+import fm.bae.app.BaeRobolectricTestRunner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -8,7 +9,6 @@ import kotlinx.coroutines.launch
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeQueueAddition
@@ -21,7 +21,7 @@ import uniffi.bae_bridge.BridgeQueueAddition
  * a collector that subscribes after an add must not see it, so a
  * recomposition or screen change never re-shows a stale "+N added".
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class QueueItemsAddedTest {
     @Test

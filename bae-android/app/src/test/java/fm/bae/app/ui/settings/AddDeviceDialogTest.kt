@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
 import fm.bae.app.playback.FakeAddedDeviceSubscription
@@ -19,7 +20,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AddedDeviceSubscription
 import uniffi.bae_bridge.BridgeActiveDevice
@@ -29,7 +29,7 @@ import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.NoHandle
 
 /** While Add device shows the code it runs the watch that came with it, and says so once a new device joins. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class AddDeviceDialogTest {
     @get:Rule

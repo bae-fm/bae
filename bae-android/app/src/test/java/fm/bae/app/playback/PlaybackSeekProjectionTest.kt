@@ -1,6 +1,7 @@
 package fm.bae.app.playback
 
 import android.os.Looper
+import fm.bae.app.BaeRobolectricTestRunner
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -8,7 +9,6 @@ import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -16,7 +16,7 @@ import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgeTimelinePoint
 import java.time.Duration
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class PlaybackSeekProjectionTest {
     /** What the player's scope reported, as the session scope's handler reports bugs. */

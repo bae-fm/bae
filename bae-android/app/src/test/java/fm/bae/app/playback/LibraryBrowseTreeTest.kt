@@ -2,6 +2,7 @@ package fm.bae.app.playback
 
 import android.net.Uri
 import androidx.media3.common.MediaItem
+import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.HANG_GUARD
 import fm.bae.app.HANG_GUARD_MS
@@ -19,7 +20,6 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeComposerDetailItem
@@ -32,7 +32,7 @@ import uniffi.bae_bridge.BridgeReleaseRoleSummary
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class LibraryBrowseTreeTest {
     private val labels = BrowseLabels(library = "Library", albums = "Albums", composers = "Composers")

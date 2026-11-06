@@ -5,7 +5,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
@@ -15,7 +14,7 @@ import org.robolectric.annotation.Config
  * (no extra, or an unrecognized value) resolves to no action so an ordinary
  * launch never triggers a shortcut side effect.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class ShortcutActionsTest {
     private fun intentWith(value: String?): Intent = Intent().apply { value?.let { putExtra(EXTRA_SHORTCUT_ACTION, it) } }
