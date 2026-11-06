@@ -27,7 +27,11 @@ impl LibraryManager {
         for release in &releases {
             // Each plan names the rows and coven files it was read against;
             // the write refuses a release that changed since.
-            deletions.push(self.records.plan_release_deletion(&release.id).await?);
+            let deletion =
+                self.records.plan_release_deletion(&release.id).await?.ok_or_else(|| {
+                    LibraryError::release_missing(&release.id, super::ReleaseWork::Edit)
+                })?;
+            deletions.push(deletion);
         }
 
         self.records.delete_album_with_cleanup(album_id, deletions).await?;

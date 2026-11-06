@@ -217,8 +217,9 @@ impl AlbumSummaryRow {
         self,
         credits: &[crate::credits::LibraryCredit],
     ) -> Result<DbAlbumSummary, DbError> {
-        let release_ids = serde_json::from_str(&self.release_ids_json)
-            .map_err(|error| DbError::Message(error.to_string()))?;
+        let release_ids = serde_json::from_str(&self.release_ids_json).map_err(|error| {
+            DbError::unreadable_json("release_ids_json", &self.release_ids_json, error)
+        })?;
         Ok(DbAlbumSummary {
             id: self.id,
             title: self.title,

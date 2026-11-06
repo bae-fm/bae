@@ -214,7 +214,7 @@ async fn delete_release_removes_its_cover_image() {
 async fn delete_release_refuses_a_plan_whose_cover_changed() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     store_test_cover(&manager, &release.id, b"cover").await;
-    let plan = manager.records.plan_release_deletion(&release.id).await.unwrap();
+    let plan = manager.records.plan_release_deletion(&release.id).await.unwrap().unwrap();
     store_test_cover(&manager, &release.id, b"replacement cover").await;
 
     let error = manager

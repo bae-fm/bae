@@ -284,6 +284,7 @@ impl From<bae_records::IdentityWriteError> for ImportError {
         use bae_records::IdentityWriteError as E;
         match error {
             E::Unresolvable(detail) => Self::Unresolvable { detail },
+            E::StoredName(error) => Self::Database(bae_store::DbError::cause(error)),
             E::Db(error) => Self::Database(error),
         }
     }

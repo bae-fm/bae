@@ -273,3 +273,12 @@ fn a_credit_name_key_without_its_name_is_unreadable() {
     assert!(crate::records::read::credits_from_json(&credit(r#""alias""#, "null")).is_err());
     assert!(crate::records::read::credits_from_json(&credit("null", r#""Alias""#)).is_err());
 }
+
+/// A damaged credit list keeps the decoder's own error as its cause.
+#[test]
+fn a_damaged_credit_list_is_unreadable_json() {
+    let error = crate::records::read::credits_from_json("not json").unwrap_err();
+    assert!(matches!(error, bae_store::DbError::UnreadableJson { .. }), "{error:?}");
+    let source = std::error::Error::source(&error).expect("the serde error is the source");
+    assert!(source.is::<serde_json::Error>());
+}

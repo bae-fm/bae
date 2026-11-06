@@ -25,25 +25,27 @@ impl ReleaseDeletion {
     pub(super) fn plan_on<Q: QueryOne + QueryRows>(
         sql: &Q,
         release_id: &str,
-    ) -> Result<Self, DbError> {
-        let album_id = sql
+    ) -> Result<Option<Self>, DbError> {
+        let Some(album_id) = sql
             .query_row("SELECT album_id FROM releases WHERE id = ?", params![release_id], |row| {
                 row.get::<_, String>(0)
             })
             .optional()?
-            .ok_or_else(|| DbError::Message(format!("release not found: {release_id}")))?;
+        else {
+            return Ok(None);
+        };
         let files = sql.query(
             "SELECT id, file FROM release_files WHERE release_id = ? ORDER BY id",
             params![release_id],
             |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<coven::FileId>>(1)?)),
         )?;
         let cover = super::files::image_file_on(sql, &LibraryImageType::Cover, release_id)?;
-        Ok(Self { release_id: release_id.to_string(), album_id, files, cover })
+        Ok(Some(Self { release_id: release_id.to_string(), album_id, files, cover }))
     }
 
     pub(super) fn apply_on(&self, sql: &CovenWrite<'_>) -> Result<(), DbError> {
         let current = Self::plan_on(sql, &self.release_id)?;
-        if current != *self {
+        if current.as_ref() != Some(self) {
             return Err(DbError::Message(format!(
                 "delete plan for release {} changed after planning",
                 self.release_id

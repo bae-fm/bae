@@ -41,6 +41,8 @@ pub enum IdentityWriteError {
     #[error("{0}")]
     Unresolvable(String),
     #[error(transparent)]
+    StoredName(#[from] crate::stored_name::StoredNameError),
+    #[error(transparent)]
     Db(#[from] DbError),
 }
 
@@ -134,7 +136,8 @@ impl IdentityWriteError {
     pub(super) fn into_db_error(self) -> DbError {
         match self {
             Self::Db(error) => error,
-            other => DbError::Message(other.to_string()),
+            Self::StoredName(error) => DbError::cause(error),
+            Self::Unresolvable(reason) => DbError::Message(reason),
         }
     }
 }

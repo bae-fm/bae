@@ -259,6 +259,7 @@ impl From<bae_records::IdentityWriteError> for LibraryError {
         match error {
             bae_records::IdentityWriteError::Db(error) => Self::Database(error),
             bae_records::IdentityWriteError::Unresolvable(detail) => Self::Refused(detail),
+            bae_records::IdentityWriteError::StoredName(error) => error.into(),
         }
     }
 }

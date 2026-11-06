@@ -190,14 +190,12 @@ impl LibraryManager {
     /// album with them if this was its last release. Coven owns retention of
     /// files still referenced by committed uploads or shared history.
     pub async fn delete_release(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.records
-            .find_release_by_id(release_id)
-            .await?
-            .ok_or_else(|| LibraryError::release_missing(release_id, super::ReleaseWork::Edit))?;
-
         // The queue's rows leave in the delete's own transaction, and the
         // player, following the tracks it holds, moves off a deleted one.
-        let deletion = self.records.plan_release_deletion(release_id).await?;
+        let deletion =
+            self.records.plan_release_deletion(release_id).await?.ok_or_else(|| {
+                LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
+            })?;
         // Deletion is a local transaction. Each coven file of the release goes
         // with its last reference, which takes its upload off the queue.
         self.records.delete_release_with_cleanup(deletion).await?;

@@ -443,10 +443,11 @@ impl Records {
     }
 
     /// Read what deleting `release_id` owes coven; see [`ReleaseDeletion`].
+    /// Caller-provided ID — may not exist.
     pub async fn plan_release_deletion(
         &self,
         release_id: &str,
-    ) -> Result<ReleaseDeletion, DbError> {
+    ) -> Result<Option<ReleaseDeletion>, DbError> {
         let release_id = release_id.to_string();
         self.store.read(move |sql| ReleaseDeletion::plan_on(&sql, &release_id)).await
     }

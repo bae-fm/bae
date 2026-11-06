@@ -117,20 +117,22 @@ struct CreditJson {
 /// [`super::query::track_credits_json_sql`] holds, in list order.
 pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbError> {
     let credits: Vec<CreditJson> = serde_json::from_str(json)
-        .map_err(|error| DbError::Message(format!("credit list {json:?}: {error}")))?;
+        .map_err(|error| DbError::unreadable_json("credit list", json, error))?;
     credits
         .into_iter()
         .map(|credit| {
             let created_at = DateTime::parse_from_rfc3339(&credit.created_at)
-                .map_err(|error| {
-                    DbError::Message(format!(
-                        "artist {} created_at {:?}: {error}",
-                        credit.id, credit.created_at
-                    ))
+                .map_err(|_unparsed| {
+                    DbError::unreadable(
+                        format!("artist {} created_at", credit.id),
+                        &credit.created_at,
+                    )
                 })?
                 .with_timezone(&Utc);
-            let credit_name = joined_credit_name(credit.credit_key, credit.credit_name)
-                .map_err(|error| DbError::Message(format!("artist {} {error}", credit.id)))?;
+            let credit_name =
+                joined_credit_name(credit.credit_key, credit.credit_name).map_err(|error| {
+                    DbError::unreadable(format!("artist {} credit name", credit.id), error)
+                })?;
             Ok(LibraryCredit {
                 artist: DbArtist {
                     id: credit.id,

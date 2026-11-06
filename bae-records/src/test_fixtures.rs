@@ -112,7 +112,7 @@ pub fn credit(name: &str) -> crate::DbArtist {
 /// Delete `release_id` as the library deletes a release: its tracks, files
 /// and credits go with it in one write.
 pub async fn delete_release(records: &crate::Records, release_id: &str) {
-    let plan = records.plan_release_deletion(release_id).await.unwrap();
+    let plan = records.plan_release_deletion(release_id).await.unwrap().unwrap();
     records.delete_release_with_cleanup(plan).await.unwrap();
 }
 
