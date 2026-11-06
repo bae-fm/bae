@@ -1536,7 +1536,11 @@ picks another. Saving the cover picked, in the import's picker or a library
 release's, can download it from its catalog or read it from the release's
 storage, so the picker says it is saving the cover while it does. A draft read from the tags, typed in or cleared, or a
 candidate linked to an album or unlinked, is offered no catalog's covers. A catalog's cover is fetched with the draft, before the
-import runs, so the import never asks a catalog for it. The artists' pictures
+import runs, so the import never asks a catalog for it. A cover is a catalog's image, or
+one of the folder's images or the artwork its tags hold as the scan read
+them: a draft naming a file the scan did not store as an image, or artwork
+the tags do not hold, is refused when it is saved, and the cover stays as
+it was. The artists' pictures
 are not part of the draft: nothing before the import shows them, and many
 drafts are never imported, so a pick or an edit fetches none and the import
 fetches them (step 2). Every stored image is downscaled to at most 600 pixels

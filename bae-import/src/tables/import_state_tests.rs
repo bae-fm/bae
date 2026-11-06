@@ -292,10 +292,30 @@ pub(crate) fn existing_artist() -> DbArtist {
     }
 }
 
+/// The candidate the pane controls address, as a scan of `root` reads it:
+/// one track and a `cover.jpg` beside it.
+pub(crate) fn pane_candidate_item(root: &Path) -> crate::folder_scanner::ScanItem {
+    let mut item = scanned_candidate(root, "Album");
+    let crate::folder_scanner::ScanItem::Valid(candidate) = &mut item else {
+        unreachable!("the fixture creates a valid candidate")
+    };
+    candidate.files.files.push(crate::folder_scanner::CandidateFile {
+        file: crate::folder_scanner::ScannedFile::new(
+            PathBuf::from("cover.jpg"),
+            "cover.jpg".to_string(),
+            456,
+            1,
+        ),
+        role: crate::folder_scanner::FileRole::Artwork,
+    });
+    item
+}
+
+/// [`pane_candidate_item`] stored by a scan of `/music`.
 pub(crate) async fn stored_pane_candidate(db: &Store) -> (CategorizedFiles, String) {
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
-    let item = scanned_candidate(&root, "Album");
+    let item = pane_candidate_item(&root);
     let crate::folder_scanner::ScanItem::Valid(candidate) = &item else {
         unreachable!("the fixture creates a valid candidate")
     };

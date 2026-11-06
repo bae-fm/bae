@@ -532,3 +532,44 @@ async fn track_artist_assignments_fill_across_named_rows() {
 
     shut_down(handle).await;
 }
+
+/// A cover is one of the folder's images or the artwork its tags hold, as its
+/// scan stored them: a file the folder does not hold, a file that is not one
+/// of its images, or tag artwork its tags do not hold is refused to whoever
+/// chose it, and the candidate keeps the cover it had.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cover_the_scan_did_not_store_is_refused() {
+    let (handle, _tmp, key, hash) = pane_fixture().await;
+    let before = crate::preparations::stored_preparation(&handle.tables, &hash)
+        .await
+        .unwrap()
+        .expect("the candidate is prepared");
+
+    for (cover, refusal) in [
+        (
+            crate::CoverSelection::Local("gone.jpg".to_string()),
+            crate::CoverRefusal::NotInFolder { file_id: "gone.jpg".to_string() },
+        ),
+        (
+            crate::CoverSelection::Local("01 Track.flac".to_string()),
+            crate::CoverRefusal::NotAnImage { file_id: "01 Track.flac".to_string() },
+        ),
+        (
+            crate::CoverSelection::Embedded("01 Track.flac".to_string()),
+            crate::CoverRefusal::NoTagArtwork { source_file_id: "01 Track.flac".to_string() },
+        ),
+    ] {
+        let error = handle.set_candidate_cover(&key, cover.clone()).await.expect_err("refused");
+        assert!(
+            matches!(&error, crate::ImportError::Cover(refused) if *refused == refusal),
+            "{cover:?}: {error:?}"
+        );
+    }
+
+    let after = crate::preparations::stored_preparation(&handle.tables, &hash)
+        .await
+        .unwrap()
+        .expect("the candidate remains prepared");
+    shut_down(handle).await;
+    assert_eq!(after, before);
+}

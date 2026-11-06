@@ -121,6 +121,12 @@ pub enum ImportError {
     #[error("{reason}")]
     GroupingBlocked { reason: crate::grouping::GroupingBlock },
 
+    /// The cover chosen names a file or tag artwork the candidate's scan did
+    /// not store.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    Cover(#[from] crate::CoverRefusal),
+
     /// The draft or edit does not shape into a savable one (the editor's
     /// typed error).
     #[cfg(desktop)]
@@ -377,6 +383,7 @@ impl ImportError {
             | Self::DecodeVerification { .. }
             | Self::SourceRead { .. }
             | Self::Edit(_)
+            | Self::Cover(_)
             | Self::SheetBinding { .. }
             | Self::WatchedFolder(_)
             | Self::Watch { .. } => C::Import,

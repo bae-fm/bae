@@ -209,6 +209,7 @@ impl CandidatePreparations {
                 read.file_edit_revision,
                 CandidateWrite::FileDecisions,
             )),
+            CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }
     }
 
@@ -261,6 +262,7 @@ impl CandidatePreparations {
             CandidateSaved::Superseded => Err(ImportError::Refused(format!(
                 "{content_hash} changed while its link was replaced"
             ))),
+            CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }
     }
 
@@ -378,6 +380,7 @@ impl CandidatePreparations {
                 "{} changed while its album was being linked",
                 read.content_hash
             ))),
+            CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }
     }
 
@@ -428,6 +431,7 @@ impl CandidatePreparations {
                 "{} changed while its release link was being set aside",
                 read.content_hash
             ))),
+            CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }
     }
 
@@ -515,6 +519,7 @@ impl CandidatePreparations {
             CandidateSaved::Superseded => {
                 Err(ImportError::Refused("candidate changed before its metadata was stored".into()))
             }
+            CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }
     }
 }

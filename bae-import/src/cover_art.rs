@@ -47,6 +47,19 @@ pub enum CoverSelection {
     Embedded(String),
 }
 
+/// Why a cover was refused: it names something the candidate's scan did not
+/// store. A cover is one of the folder's images or the artwork its tags hold,
+/// as the scan read them, and nothing else.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum CoverRefusal {
+    #[error("the folder holds no file {file_id}")]
+    NotInFolder { file_id: String },
+    #[error("{file_id} is not one of the folder's images")]
+    NotAnImage { file_id: String },
+    #[error("the tags read from {source_file_id} hold no artwork")]
+    NoTagArtwork { source_file_id: String },
+}
+
 /// The cover a candidate's draft holds: a [`CoverSelection`] with whatever
 /// the import needs to store it without asking anyone again. A catalog's
 /// image carries the bytes fetched for it, so no draft holds a remote cover

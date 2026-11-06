@@ -3,7 +3,6 @@
 
 use super::*;
 use crate::cover_art::PreparedCover;
-use crate::folder_scanner::ScanItem;
 use crate::folder_scanner::ScannedFile;
 use crate::import_cancel::ImportStop;
 use crate::service::tests::*;
@@ -199,123 +198,6 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
     assert!(
         matches!(&err, crate::ImportError::LocalCover { detail } if detail.contains("Selected cover") && detail.contains("not found")),
         "got: {err}"
-    );
-}
-
-#[tokio::test]
-async fn selected_local_cover_path_must_match_discovered_file() {
-    let TestService { service, preparations, db: _, temp: tmp } = setup_import_service().await;
-    let tables = service.tables.clone();
-    let folder = tmp.path().join("release");
-    std::fs::create_dir(&folder).unwrap();
-    write_test_jpeg(&folder.join("front.jpg"));
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),
-        folder.join("01.flac"),
-    )
-    .unwrap();
-    let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
-        &folder,
-        crate::ReleaseFileScope::Recursive,
-        &crate::folder_scanner::StoredCandidateEdits::none(),
-    )
-    .unwrap();
-    let expected_content_hash = files.content_hash();
-    let watched_folder_path = folder.to_string_lossy().into_owned();
-    tables.add_watched_import_folder(std::path::Path::new(&watched_folder_path)).await.unwrap();
-    let generation = tables
-        .begin_folder_scan(std::path::Path::new(&watched_folder_path), crate::VolumeKind::Local)
-        .await
-        .unwrap();
-    crate::store_scan_item(
-        &tables,
-        &bae_diagnostics::Diagnostics::noop(),
-        std::path::Path::new(&watched_folder_path),
-        generation,
-        &ScanItem::Valid(crate::folder_scanner::FolderCandidate {
-            path: folder.clone(),
-            file_root: folder.clone(),
-            name: "Candidate".to_string(),
-            files,
-            watched_folder_path: std::path::PathBuf::from(&watched_folder_path),
-            scope: crate::ReleaseFileScope::Recursive,
-            file_edit_revision: 0,
-            relative_folder: crate::RelativeFolder::test("Candidate"),
-            grouping: None,
-        }),
-    )
-    .await
-    .unwrap()
-    .expect("the stored scan generation is current");
-    tables
-        .finish_folder_scan(std::path::Path::new(&watched_folder_path), generation, None)
-        .await
-        .unwrap();
-    let metadata_revision = prepare_named_candidate(
-        &service,
-        &preparations,
-        &expected_content_hash,
-        std::path::Path::new(&watched_folder_path),
-        &crate::CandidateKey::folder(&folder),
-        "Candidate",
-    )
-    .await;
-    preparations
-        .set_prepared_cover(
-            std::path::Path::new(&watched_folder_path),
-            &crate::CandidateKey::folder(&folder),
-            &crate::CandidateAsRead {
-                content_hash: expected_content_hash.clone(),
-                file_edit_revision: 0,
-                metadata_revision,
-            },
-            &PreparedCover::Local("cover.bmp".to_string()),
-        )
-        .await
-        .unwrap();
-    let file_tag_snapshot = tables
-        .load_candidate_file_tag_snapshot(
-            std::path::Path::new(&watched_folder_path),
-            &crate::CandidateKey::folder(&folder),
-        )
-        .await
-        .unwrap()
-        .expect("the candidate is stored")
-        .snapshot;
-    let audio_path = folder.join("01.flac");
-    let opens_before = bae_audio::test_reads::probes(&audio_path);
-
-    service.queue_import_for_test(&crate::CandidateKey::folder(&folder), "import-1").await;
-    let result = service
-        .prepare_and_run_folder_import(
-            "import-1".to_string(),
-            crate::CandidateKey::folder(&folder),
-            crate::release_candidate::CandidateSource {
-                path: folder,
-                scope: crate::folder_scanner::ReleaseFileScope::Recursive,
-                parts: Vec::new(),
-            },
-            crate::service::ImportExpectation {
-                candidate: crate::CandidateAsRead {
-                    content_hash: expected_content_hash,
-                    file_edit_revision: 0,
-                    metadata_revision: metadata_revision + 1,
-                },
-                file_tag_snapshot,
-            },
-            ImportDestination::Local,
-        )
-        .await;
-
-    let err = result.unwrap_err();
-    assert!(
-        matches!(&err, ImportStop::Failed(crate::ImportError::LocalCover { detail }) if detail.contains("Selected cover cover.bmp not found")),
-        "got: {err:?}"
-    );
-    assert_eq!(
-        bae_audio::test_reads::probes(&audio_path),
-        opens_before,
-        "import must reuse the stored scan facts without reopening the audio probe",
     );
 }
 

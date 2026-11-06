@@ -357,13 +357,13 @@ async fn an_entry_rewritten_with_other_files_ends_its_identification() {
     // The same files again keep it.
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables
-        .save_folder_scan_item(&root, generation, &scanned_candidate(&root, "Album"))
+        .save_folder_scan_item(&root, generation, &pane_candidate_item(&root))
         .await
         .unwrap()
         .expect("the current scan accepts the candidate");
     assert!(tables.load_candidate_standing(&key).await.unwrap().identification.is_some());
 
-    let mut reshaped = scanned_candidate(&root, "Album");
+    let mut reshaped = pane_candidate_item(&root);
     let crate::folder_scanner::ScanItem::Valid(candidate) = &mut reshaped else {
         unreachable!("the fixture creates a valid candidate")
     };
@@ -415,13 +415,13 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
 
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables
-        .save_folder_scan_item(&root, generation, &scanned_candidate(&root, "Album"))
+        .save_folder_scan_item(&root, generation, &pane_candidate_item(&root))
         .await
         .unwrap()
         .expect("the current scan accepts the candidate");
     assert!(searched(db.clone()).await.is_some(), "the same files keep their search");
 
-    let mut reshaped = scanned_candidate(&root, "Album");
+    let mut reshaped = pane_candidate_item(&root);
     let crate::folder_scanner::ScanItem::Valid(candidate) = &mut reshaped else {
         unreachable!("the fixture creates a valid candidate")
     };

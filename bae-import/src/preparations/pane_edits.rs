@@ -183,6 +183,7 @@ impl CandidatePreparations {
             CandidateSaved::Superseded => Err(crate::ImportError::Refused(format!(
                 "candidate {content_hash} changed while its edit was being stored"
             ))),
+            CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }
     }
 }

@@ -574,22 +574,28 @@ async fn a_stored_catalog_cover_reads_back_as_its_choice() {
     .await;
 }
 
-/// A cover is stored under the candidate's content hash, which fixes its
-/// files, so a cover naming a file the scan did not store is a damaged row:
-/// the pane and the row both fail reading it, and neither draws nothing in
-/// its place.
+/// No write stores a cover naming a file the scan did not store, and the
+/// cover is stored under the candidate's content hash, which fixes its files,
+/// so such a cover is a damaged row: the pane and the row both fail reading
+/// it, and neither draws nothing in its place.
 #[tokio::test]
 async fn a_stored_cover_naming_a_file_the_scan_did_not_store_fails_both_reads() {
     let (db, _tmp, root) = watched_root().await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate = scanned(&db, &root, "Album").await;
+    let hash = candidate.files.content_hash();
+    // A typed field stores the draft row the pane reads the cover beside.
     crate::tables::import_state::tests::PaneControls::of(&db, &candidate)
-        .choose_cover(
-            &candidate.files.content_hash(),
-            &crate::cover_art::PreparedCover::Local("gone.jpg".to_string()),
-        )
+        .type_field(&hash, crate::CandidateEditField::AlbumTitle, "Album")
         .await
         .unwrap();
+    exec(
+        &db,
+        "INSERT INTO import_candidate_cover (content_hash, kind, file_id) \
+         VALUES (?, 'local', 'gone.jpg')",
+        &[&hash],
+    )
+    .await;
 
     let pane = tables.load_import_candidate(&candidate.key()).await.map(|_| ());
     let row = tables.load_import_list_read(request(TriageTab::Pending).await).await.map(|_| ());

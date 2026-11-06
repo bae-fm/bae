@@ -231,7 +231,7 @@ pub use catalog_sessions::{CatalogSessionError, CatalogSessions, DiscogsKeyError
 #[cfg(desktop)]
 pub use cover_art::CoverSelection;
 #[cfg(desktop)]
-pub use cover_art::{CoverChoice, CoverImageSource};
+pub use cover_art::{CoverChoice, CoverImageSource, CoverRefusal};
 pub use error::ImportError;
 #[cfg(desktop)]
 pub use event_bus::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};

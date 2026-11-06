@@ -113,6 +113,9 @@ pub(crate) enum CandidateSaved {
     /// The stored revisions had moved past the expectation between the load
     /// and this write; nothing was written.
     Superseded,
+    /// The cover names a file or tag artwork the candidate's scan did not
+    /// store; nothing was written.
+    CoverRefused(crate::CoverRefusal),
 }
 
 /// What one read of a candidate's whole stored state found: the state, or
@@ -176,6 +179,22 @@ pub(super) fn save_preparation_on(
 ) -> Result<CandidateSaved, DbError> {
     prep.validate().map_err(DbError::Message)?;
     let content_hash = prep.content_hash.as_str();
+    let scan_generation = expected
+        .scanned
+        .as_ref()
+        .map(|scanned| scanned.verify(sql, content_hash, expected.edit_revision))
+        .transpose()?;
+    // Before any write, so a refused cover leaves everything as it was.
+    if let Some(cover) = &prep.metadata.cover {
+        if let Some(refusal) = folder_scans::cover_refusal(
+            sql,
+            content_hash,
+            cover,
+            extras.file_tag_snapshot.as_ref(),
+        )? {
+            return Ok(CandidateSaved::CoverRefused(refusal));
+        }
+    }
     let expected_edit = to_i64(expected.edit_revision, "candidate edit revision")?;
     let expected_metadata = to_i64(expected.metadata_revision, "candidate metadata revision")?;
     let next_edit = to_i64(prep.file_edits.revision, "candidate edit revision")?;
@@ -212,12 +231,6 @@ pub(super) fn save_preparation_on(
         }
         return Ok(CandidateSaved::Superseded);
     }
-
-    let scan_generation = expected
-        .scanned
-        .as_ref()
-        .map(|scanned| scanned.verify(sql, content_hash, expected.edit_revision))
-        .transpose()?;
 
     // What is stored now, which each row group is written over: a group the
     // save leaves as it is writes nothing, and the rows the import list's
@@ -416,6 +429,12 @@ impl ImportTables {
                     )?))
                 }
                 CandidateSaved::Superseded => Ok(RunVerdictSaved::Superseded),
+                // A run's verdict brings a catalog's cover or keeps the one
+                // stored, which its own save checked.
+                CandidateSaved::CoverRefused(refusal) => Err(DbError::Message(format!(
+                    "a run's verdict for {} keeps a cover its scan does not hold: {refusal}",
+                    candidate_key
+                ))),
             })
             .await
     }
