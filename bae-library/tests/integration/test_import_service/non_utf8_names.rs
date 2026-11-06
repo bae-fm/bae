@@ -198,7 +198,7 @@ async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escape
         .map(|entry| (entry.file.relative_path.as_str(), entry.file.file_name.as_str()))
         .collect();
     assert_eq!(shown, [(r"Caf\xE9.flac", r"Caf\xE9.flac")]);
-    assert_eq!(release.files.files[0].file.path, track);
+    assert_eq!(release.files.files[0].file.version.path, track);
 
     let release_id = import_scanned(&f, &album).await;
 
@@ -300,7 +300,7 @@ async fn two_tracks_showing_one_name_are_skipped_with_that_name() {
 
     let expected = bae_import::InvalidReason::SameName { name: r"Caf\xE9.flac".to_string() };
     wait_for_tab(&f, "the folder under Skipped", bae_import::TriageTab::Skipped, |snapshot| {
-        snapshot.windows.iter().flat_map(|window| &window.items).any(|item| match item {
+        snapshot.windows.iter().flat_map(|window| &window.rows).any(|item| match item {
             bae_import::ImportListItem::Invalid { candidate, .. } => {
                 candidate.path == album
                     && candidate.reason() == expected
