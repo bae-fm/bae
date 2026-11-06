@@ -183,58 +183,75 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
     );
 }
 
-/// The rows an import spends, seeded under `content_hash` the way the pane
-/// and a run leave them: a found verdict with one release and the ledger
-/// whose barcode lookup found it, the lookups the person let it use, where
-/// the pane was, an artist decision, a label decision, a picked album and a
-/// link to an album, beside the draft and the folder's cover the candidate
-/// holds.
-async fn seed_spent_rows(test: &TestService, content_hash: &str) {
-    let db = &test.db;
-    for statement in [
-        "INSERT INTO import_candidate_verdict \
-             (content_hash, kind, track_count, kept_own_draft, disc_id_step, barcode_step, \
-              catalog_step, isrc_step, search_step) \
-         VALUES (?1, 'found', 3, 0, 'absent', 'rows', 'none_found', 'absent', 'not_needed')",
-        "INSERT INTO import_candidate_match \
-             (content_hash, position, listing, pressing, source, release_id, title, media_kind, \
-              album_links) \
-         VALUES (?1, 0, 'offered', 0, 'musicbrainz', 'release-1', 'Box Set', 'undescribed', \
-                 'not_asked')",
-        "INSERT INTO import_candidate_lookup_provider (content_hash, position, catalog) \
-         VALUES (?1, 0, 'musicbrainz')",
-        "INSERT INTO import_candidate_lookup_value \
-             (content_hash, step, position, value, excluded) \
-         VALUES (?1, 'barcode', 0, '012345678905', 0)",
-        "INSERT INTO import_candidate_lookup \
-             (content_hash, step, position, cell, catalog, answer) \
-         VALUES (?1, 'barcode', 0, 0, 'musicbrainz', 'answered')",
-        "INSERT INTO import_candidate_lookup_release \
-             (content_hash, step, position, cell, ordinal, match_position) \
-         VALUES (?1, 'barcode', 0, 0, 0, 0)",
-        "INSERT INTO import_candidate_lookup_choices (content_hash, disc_id_excluded) \
-         VALUES (?1, 0)",
-        "INSERT INTO import_candidate_chosen_catalog (content_hash, position, value) \
-         VALUES (?1, 0, 'CAT-1')",
-        "INSERT INTO import_candidate_session \
-             (content_hash, presentation, find_online_section, search_tab, search_artist, \
-              search_album, search_catalog, search_barcode) \
-         VALUES (?1, 'find_online', 'automatic', 'general', '', '', '', '')",
-        "INSERT INTO albums (id, title, created_at) \
-         VALUES ('album-picked', 'Picked Album', '2026-01-01T00:00:00+00:00')",
-        "INSERT INTO import_candidate_album_pick (content_hash, album_id) \
-         VALUES (?1, 'album-picked')",
-        "INSERT INTO import_candidate_release_link (content_hash, kind) VALUES (?1, 'album')",
-        "INSERT INTO import_candidate_release_link_album (content_hash, kind, catalog, album_id) \
-         VALUES (?1, 'album', 'musicbrainz', 'mb-group')",
-    ] {
-        // The album is the library's own row; the rest are the candidate's.
-        let params = match statement.contains("?1") {
-            true => vec![content_hash.to_string()],
-            false => Vec::new(),
-        };
-        db.execute_for_test(statement, params).await.unwrap();
-    }
+/// The library album a person picks for an import to join: an album of its
+/// own holding one release of one track, credited to "Picked Artist".
+async fn picked_album(test: &TestService) -> bae_records::DbAlbum {
+    let records = bae_records::test_fixtures::test_records(&test.db);
+    let artist = crate::handle::tests::make_artist("Picked Artist", None, None);
+    records.insert_artist(&artist).await.unwrap();
+    let album = bae_records::DbAlbum::new_test("Picked Album");
+    let release = bae_records::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
+    records
+        .insert_album_with_release_and_tracks(
+            &album,
+            &[bae_records::DbAlbumArtist::new_test(&album.id, &artist.id)],
+            &release,
+            &[bae_records::DbReleaseMedium::new_test(&release.id)],
+            &[bae_records::DbTrack::new_test(
+                &release.id,
+                &uuid::Uuid::new_v4().to_string(),
+                "Track 1",
+                1,
+            )],
+            &[],
+        )
+        .await
+        .unwrap();
+    album
+}
+
+/// The rows an import spends, written under `content_hash` the way the pane
+/// and a run leave them: a found verdict with its release and the ledger
+/// whose disc ID lookup found it, the lookups the person let it use, where
+/// the pane was, a picked album and a link to an album, beside the draft and
+/// the folder's cover the candidate holds.
+async fn seed_spent_rows(
+    test: &TestService,
+    candidate_key: &crate::CandidateKey,
+    content_hash: &str,
+) {
+    let tables = test.tables();
+    let verdict = crate::tables::import_state::tests::sample_verdict();
+    let row = crate::tables::import_state::tests::new_candidate_row(
+        content_hash,
+        &candidate_key.test_folder(),
+        &verdict,
+    );
+    assert!(test.preparations.store_verdict(&row).await.unwrap(), "the verdict lands");
+    tables
+        .save_import_candidate_lookup_choices(
+            content_hash,
+            &bae_identify::LookupChoices {
+                chosen_catalogs: vec!["CAT-1".to_string()],
+                ..bae_identify::LookupChoices::default()
+            },
+        )
+        .await
+        .unwrap();
+    tables
+        .save_import_candidate_session(content_hash, &crate::CandidateSession::initial(false, true))
+        .await
+        .unwrap();
+    let album = picked_album(test).await;
+    tables.set_candidate_album_pick(content_hash, Some(&album.id)).await.unwrap();
+    let link = crate::ReleaseLink::Album(
+        bae_identify::AlbumLink::new([bae_catalogs::records::MetadataRef::new(
+            bae_catalogs::catalog::Catalog::MusicBrainz,
+            "mb-group",
+        )])
+        .expect("one album of one catalog"),
+    );
+    test.preparations.replace_link(content_hash, Some(&link), &[]).await.unwrap();
 }
 
 /// How many rows each spent table holds under `content_hash`.
@@ -292,7 +309,7 @@ async fn an_import_deletes_what_it_spent_and_the_done_row_still_shows() {
     let test = setup_import_service().await;
     let (folder, candidate_key, expectation) = spent_rows_candidate(&test).await;
     let content_hash = expectation.candidate.content_hash.clone();
-    seed_spent_rows(&test, &content_hash).await;
+    seed_spent_rows(&test, &candidate_key, &content_hash).await;
     assert!(
         spent_row_counts(&test, &content_hash).await.iter().all(|(_, count)| *count > 0),
         "every spent table holds the candidate's rows before the import"
@@ -333,8 +350,8 @@ async fn an_import_deletes_what_it_spent_and_the_done_row_still_shows() {
         .unwrap();
     assert_eq!(
         done,
-        vec!["done|Picked Album|".to_string()],
-        "the picked album, which credits nobody"
+        vec!["done|Picked Album|Picked Artist".to_string()],
+        "the picked album and its credit"
     );
 }
 
@@ -345,7 +362,7 @@ async fn a_failed_import_keeps_what_a_retry_reads() {
     let test = setup_import_service().await;
     let (folder, candidate_key, expectation) = spent_rows_candidate(&test).await;
     let content_hash = expectation.candidate.content_hash.clone();
-    seed_spent_rows(&test, &content_hash).await;
+    seed_spent_rows(&test, &candidate_key, &content_hash).await;
     let before = spent_row_counts(&test, &content_hash).await;
 
     let blocked = crate::tests::files::UnopenableFile::block(&folder.join("02 Track 2.flac"));
@@ -450,7 +467,11 @@ async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
         .await
         .unwrap()
         .expect("the import is recorded");
-    test.db.execute_for_test("DELETE FROM releases WHERE id = ?1", vec![release_id]).await.unwrap();
+    bae_records::test_fixtures::delete_release(
+        &bae_records::test_fixtures::test_records(&test.db),
+        &release_id,
+    )
+    .await;
     assert_eq!(shown_row(&test).await, vec!["pending|Box Set Renamed|-".to_string()]);
     let pane = tables
         .load_import_candidate(&candidate_key)
