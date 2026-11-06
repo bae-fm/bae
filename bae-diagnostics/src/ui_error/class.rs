@@ -30,7 +30,6 @@ pub enum UiErrorClass {
     S3VersioningUnsupported,
     StorageLocationChangeUnsupported,
     S3Prefix,
-    DeviceIdentityMissing,
     Credentials,
     Network,
     Keyring,
@@ -50,7 +49,7 @@ pub enum UiErrorClass {
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 39] = [
+    const ALL: [Self; 38] = [
         Self::Database,
         Self::Config,
         Self::Internal,
@@ -74,7 +73,6 @@ impl UiErrorClass {
         Self::S3VersioningUnsupported,
         Self::StorageLocationChangeUnsupported,
         Self::S3Prefix,
-        Self::DeviceIdentityMissing,
         Self::Credentials,
         Self::Network,
         Self::Keyring,
@@ -118,7 +116,6 @@ impl UiErrorClass {
             Self::S3VersioningUnsupported => "versioning_unsupported",
             Self::StorageLocationChangeUnsupported => "storage_location_change",
             Self::S3Prefix => "s3_prefix",
-            Self::DeviceIdentityMissing => "device_identity_missing",
             Self::Credentials => "credentials",
             Self::Network => "network",
             Self::Keyring => "keyring",
@@ -199,7 +196,6 @@ impl UiErrorClass {
             | Self::ReleaseChangedSinceOpened
             | Self::StorageLocationChangeUnsupported
             | Self::S3Prefix
-            | Self::DeviceIdentityMissing
             | Self::KeychainEntitlementMissing
             | Self::SavedRestoreCodesFull
             | Self::SavedRestoreCodeTooLarge
@@ -238,7 +234,6 @@ impl UiErrorCategory {
             Self::S3VersioningUnsupported(_) => K::S3VersioningUnsupported,
             Self::StorageLocationChangeUnsupported => K::StorageLocationChangeUnsupported,
             Self::S3Prefix(_) => K::S3Prefix,
-            Self::DeviceIdentityMissing => K::DeviceIdentityMissing,
             Self::Credentials => K::Credentials,
             Self::Network => K::Network,
             Self::Keyring => K::Keyring,
@@ -277,7 +272,6 @@ impl UiErrorCategory {
             K::Export => Self::Export,
             K::Save => Self::Save,
             K::StorageLocationChangeUnsupported => Self::StorageLocationChangeUnsupported,
-            K::DeviceIdentityMissing => Self::DeviceIdentityMissing,
             K::Credentials => Self::Credentials,
             K::Network => Self::Network,
             K::Keyring => Self::Keyring,

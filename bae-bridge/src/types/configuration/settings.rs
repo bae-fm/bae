@@ -169,7 +169,6 @@ pub enum BridgeErrorCategory {
     S3Prefix {
         problem: BridgeS3PrefixProblem,
     },
-    DeviceIdentityMissing,
     /// A cloud provider's sign-in (OAuth) failed: the person signs in again.
     Credentials,
     /// The cloud backend or the network to it was unreachable — retryable.
@@ -359,7 +358,6 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
                 "core.error.storage.prefix.segment_too_long"
             }
         },
-        BridgeErrorCategory::DeviceIdentityMissing => "core.error.identity_missing",
         BridgeErrorCategory::Credentials => "core.error.category.credentials",
         BridgeErrorCategory::Network => "core.error.category.network",
         BridgeErrorCategory::Keyring => "core.error.category.keyring",
@@ -494,7 +492,6 @@ impl BridgeErrorCategory {
             Self::S3VersioningUnsupported { .. } => K::S3VersioningUnsupported,
             Self::StorageLocationChangeUnsupported => K::StorageLocationChangeUnsupported,
             Self::S3Prefix { .. } => K::S3Prefix,
-            Self::DeviceIdentityMissing => K::DeviceIdentityMissing,
             Self::Credentials => K::Credentials,
             Self::Network => K::Network,
             Self::Keyring => K::Keyring,
@@ -600,7 +597,6 @@ mirror_enum! {
         S3VersioningUnsupported(state:(BridgeS3BucketVersioning)),
         StorageLocationChangeUnsupported,
         S3Prefix(problem: (BridgeS3PrefixProblem)),
-        DeviceIdentityMissing,
         Credentials,
         Network,
         Keyring,

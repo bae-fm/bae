@@ -132,7 +132,6 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::S3VersioningUnknown(_)
             | UiErrorCategory::S3VersioningUnsupported(_)
             | UiErrorCategory::StorageLocationChangeUnsupported
-            | UiErrorCategory::DeviceIdentityMissing
             | UiErrorCategory::Credentials
             | UiErrorCategory::Network
             | UiErrorCategory::Keyring

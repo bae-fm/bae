@@ -4815,7 +4815,6 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `StorageLocationChangeUnsupported` | keeps the library's storage location; it can't move |
 | `StoreOwnerAccount` | signs in with the account that holds the library's storage: setting up its storage again or restoring it as the person whose account holds it, under another account, is refused, since their access can't move to another account ([coven §20.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#209-sharing-with-accounts)) |
 | `S3Prefix` | changes the key prefix: it has two slashes in a row, or the folder the line names holds a character other than a–z, A–Z, a digit, `-` or `_`, or runs over 255 characters |
-| `DeviceIdentityMissing` | creates, joins or restores |
 | `Credentials` | fixes the storage settings |
 | `Network` | retries |
 | `Keyring`, `KeyringLocked` | fixes the keyring, or unlocks and is asked again |
@@ -4831,10 +4830,9 @@ These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 `DeviceRemoved`, `CandidateImportInProgress`, `CandidateBeingIdentified`,
 `FilesAlreadyImported`, `MetadataTrackCount`, `TiedMediums`,
 `ReleaseChangedSinceOpened`, `StorageLocationChangeUnsupported`, `S3Prefix`,
-`DeviceIdentityMissing`, `KeychainEntitlementMissing`,
-`SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge`, `StoreOwnerAccount`,
-`QueueChanged` and `ReplacementUnfinished`. Every other category shows its
-detail under its line.
+`KeychainEntitlementMissing`, `SavedRestoreCodesFull`,
+`SavedRestoreCodeTooLarge`, `StoreOwnerAccount`, `QueueChanged` and
+`ReplacementUnfinished`. Every other category shows its detail under its line.
 
 ### G.2 Why a found release isn't picked
 

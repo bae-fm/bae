@@ -68,7 +68,6 @@ impl FailureColumns {
             | K::S3VersioningUnsupported
             | K::StorageLocationChangeUnsupported
             | K::S3Prefix
-            | K::DeviceIdentityMissing
             | K::Credentials
             | K::Network
             | K::InviteJoining

@@ -268,7 +268,6 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::S3Prefix {
             problem: BridgeS3PrefixProblem::SegmentTooLong { segment: "b".repeat(256) },
         },
-        BridgeErrorCategory::DeviceIdentityMissing,
         BridgeErrorCategory::Credentials,
         BridgeErrorCategory::Network,
         BridgeErrorCategory::Keyring,

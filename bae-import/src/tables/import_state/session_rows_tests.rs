@@ -49,7 +49,6 @@ fn every_failure_class_reads_back_as_itself() {
         C::Storage(F::MemberKeysMissing),
         C::Storage(F::File),
         C::Storage(F::Protocol),
-        C::DeviceIdentityMissing,
         C::Credentials,
         C::Network,
         C::Keyring,

@@ -65,9 +65,6 @@ pub enum UiErrorCategory {
     /// `_`, or a folder name over 255 characters. The line names the folder
     /// at fault.
     S3Prefix(coven::S3PrefixError),
-    /// The local store has no device identity. Create, join, and restore establish
-    /// that identity before exposing a library.
-    DeviceIdentityMissing,
     /// A cloud provider's sign-in failed (OAuth): the person signs in again.
     Credentials,
     /// The cloud backend or the network to it was unreachable — a transient

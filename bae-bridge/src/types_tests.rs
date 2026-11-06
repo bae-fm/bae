@@ -209,11 +209,6 @@ mod conversion_roundtrip {
                 BridgeErrorCategory::Storage { failure: bridge },
             );
         }
-
-        assert_eq!(
-            BridgeErrorCategory::from_core(UiErrorCategory::DeviceIdentityMissing),
-            BridgeErrorCategory::DeviceIdentityMissing,
-        );
     }
 
     /// A grouping block crosses as its own translated line from either path,
