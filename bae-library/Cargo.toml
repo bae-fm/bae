@@ -19,6 +19,7 @@ bae-audio = { workspace = true }
 bae-catalogs = { workspace = true }
 bae-db = { workspace = true }
 bae-store = { workspace = true }
+bae-people = { workspace = true }
 bae-records = { workspace = true }
 bae-diagnostics = { workspace = true }
 # The identify reducer, its view and its verdicts, which only the desktop
@@ -80,6 +81,7 @@ bae-app-dir = { workspace = true, features = ["test-utils"] }
 # Test databases with bae's schema and the rows db's fixtures seed them with.
 bae-db = { workspace = true, features = ["test-utils"] }
 bae-store = { workspace = true, features = ["test-utils"] }
+bae-people = { workspace = true, features = ["test-utils"] }
 bae-records = { workspace = true, features = ["test-utils"] }
 # The capture devices and manual clock the playback tests run on.
 bae-playback = { workspace = true, features = ["test-utils"] }
@@ -174,7 +176,7 @@ dev-reset = ["bae-app-dir/dev-reset"]
 # service's test seams, bae-types's so they get the pressing values their
 # fixtures are built from, and bae-catalogs's so they get the catalog clients'
 # and the image cache's test constructors.
-test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-store/test-utils", "bae-records/test-utils", "bae-import/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-transfers/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
+test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-store/test-utils", "bae-people/test-utils", "bae-records/test-utils", "bae-import/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-transfers/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
 
 [lints]
 workspace = true

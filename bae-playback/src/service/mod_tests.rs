@@ -257,7 +257,7 @@ pub(super) fn playback_service_over(
     let service = PlaybackService {
         store: db.clone(),
         records: bae_records::test_fixtures::test_records(db),
-        database: bae_db::test_fixtures::test_database(db),
+        people: bae_people::People::new(db.clone()),
         ids: Arc::new(coven::UuidIds),
         diagnostics,
         command_tx,

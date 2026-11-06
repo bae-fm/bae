@@ -1,9 +1,9 @@
-use super::membership::{member_columns, member_row, SELF_IS_ADMIN};
 use super::profile_request::{
     end_profile_request, insert_profile_request, profile_request_on, ProfileRequest,
     ProfileRequestState,
 };
 use super::*;
+use crate::membership::{member_columns, member_row, SELF_IS_ADMIN};
 use crate::people::{Avatar, Person, PersonProfile, ProfileError, Sharing};
 
 /// The columns [`profile_row`] reads of the `people` row `p`: its own, and
@@ -23,7 +23,7 @@ fn profile_sql() -> String {
     format!("SELECT {} FROM people AS p WHERE p.id = ?", profile_columns())
 }
 
-impl Database {
+impl People {
     /// The member using this device, once its registration has applied.
     pub(crate) async fn current_member(&self) -> Result<Option<coven::MemberId>, DbError> {
         Ok(self.own_person().await?.map(|person| person.membership.id))

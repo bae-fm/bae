@@ -1,18 +1,20 @@
 use super::*;
-use bae_db::collections::{CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars};
-use bae_db::people::Sharing;
 use bae_library::LibraryError;
+use bae_people::collections::{
+    CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars,
+};
+use bae_people::people::Sharing;
 
 impl AppServices {
-    delegate_async!(manager, create_profile => create_profile(name: &str) -> Result<(), bae_db::people::ProfileError>);
-    delegate_async!(manager, rename_profile => rename_profile(name: &str) -> Result<(), bae_db::people::ProfileError>);
-    delegate_async!(manager, set_history_sharing => set_history_sharing(sharing: bae_db::people::Sharing) -> Result<(), bae_db::people::ProfileError>);
+    delegate_async!(manager, create_profile => create_profile(name: &str) -> Result<(), bae_people::people::ProfileError>);
+    delegate_async!(manager, rename_profile => rename_profile(name: &str) -> Result<(), bae_people::people::ProfileError>);
+    delegate_async!(manager, set_history_sharing => set_history_sharing(sharing: bae_people::people::Sharing) -> Result<(), bae_people::people::ProfileError>);
     delegate_async!(manager, set_avatar => set_avatar(bytes: Option<Vec<u8>>) -> Result<(), bae_library::people::AvatarError>);
-    delegate_async!(manager, avatar => avatar(person: coven::MemberId) -> Result<Option<Vec<u8>>, bae_db::people::ProfileError>);
-    delegate_values!(subscribe_profiles => subscribe_profiles() -> Vec<bae_db::people::PersonProfile>);
-    delegate_values!(subscribe_requested_profile => subscribe_requested_profile() -> Option<bae_db::people::RequestedProfile>);
-    delegate_async!(manager, people => people() -> Result<Vec<bae_db::people::Person>, LibraryError>);
-    delegate_async!(manager, own_person => own_person() -> Result<Option<bae_db::people::Person>, LibraryError>);
+    delegate_async!(manager, avatar => avatar(person: coven::MemberId) -> Result<Option<Vec<u8>>, bae_people::people::ProfileError>);
+    delegate_values!(subscribe_profiles => subscribe_profiles() -> Vec<bae_people::people::PersonProfile>);
+    delegate_values!(subscribe_requested_profile => subscribe_requested_profile() -> Option<bae_people::people::RequestedProfile>);
+    delegate_async!(manager, people => people() -> Result<Vec<bae_people::people::Person>, LibraryError>);
+    delegate_async!(manager, own_person => own_person() -> Result<Option<bae_people::people::Person>, LibraryError>);
     delegate_async!(manager, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);
     delegate_async!(manager, ratings => ratings() -> Result<Vec<Rating>, bae_store::DbError>);
     delegate_async!(manager, create_playlist => create_playlist(name: &str, sharing: Sharing) -> Result<Playlist, CollectionError>);

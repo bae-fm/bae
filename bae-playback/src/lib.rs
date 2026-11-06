@@ -45,11 +45,11 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] =
     &[tables::QUEUE_SCHEMA, tables::NOW_SCHEMA, tables::TIMELINE_SCHEMA, renderer::picker::SCHEMA];
 
 /// The schema this crate's tests open their stores on: records' and release
-/// storage's parts, bae-db's part, preferences' and playback's.
+/// storage's parts, people's and membership's, preferences' and playback's.
 #[cfg(test)]
 const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
     bae_records::SCHEMA_PARTS,
-    bae_db::SCHEMA_PARTS,
+    bae_people::SCHEMA_PARTS,
     bae_preferences::SCHEMA_PARTS,
     SCHEMA_PARTS,
 ]);

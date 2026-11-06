@@ -4100,7 +4100,8 @@ bindings export none of their symbols.
 | bae-transfers | the transfer queues and storage transitions: the download queue that keeps releases on this device and the export and save queue, each worked through one release at a time, paused, cancelled and retried, their entries as this device's tables hold them, and the storage transition each release is in, ended in the write that changes its files |
 | bae-store | the library's store over coven, with no table: the `Store` every read, write and live query runs through, the coven calls bae makes on a library (storage setup, sync, keys, files, pins, uploads, invites, restore codes), the schema's shape (each crate's parts, run in crate order as one migration) and the SQL functions and collation the parts declare, list windows, the cancellable live queries a surface pulls values from, and the names a person enters |
 | bae-records | the library's records and where each release's files are: artists, albums, releases, tracks, works and labels with their files, the rules that resolve credits and labels and merge identities, the row writers an import and an edit call inside their own writes, and release storage, with the `Records` owner over them |
-| bae-db | the library's own part of the schema and the synced tables it declares, the people, collections and history a library holds, and the sync status as the status line shows it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do and why the last start failed |
+| bae-people | the library's members and each person's own data: who is in the library and on which devices, the admin changes this device asked for, profiles, plays, ratings and playlists, with the `Membership` and `People` owners |
+| bae-db | the library's own part of the schema, and the sync status as the status line shows it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do and why the last start failed |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the tasks and threads whose panics are reported, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through, which reports a panic in its own disk work; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |
@@ -4213,8 +4214,10 @@ The schema is one migration, which coven applies as migration 1: each
 crate's parts of it, in crate order, each part a domain's SQL files beside its
 code. bae-library assembles it from bae-records' parts, under
 `bae-records/src/`: the records' (`records.sql`) and release storage's
-(`release_storage.sql`), bae-db's part, `bae-db/migrations/001_initial.sql`,
-which holds every table no other part does, bae-preferences' (`bae-preferences/src/row.sql`), bae-playback's, under
+(`release_storage.sql`), bae-people's, under `bae-people/src/`: the people's
+(`people.sql`) and membership's (`membership.sql`), bae-db's part,
+`bae-db/migrations/001_initial.sql`, which holds the sync status's table,
+bae-preferences' (`bae-preferences/src/row.sql`), bae-playback's, under
 `bae-playback/src/`: the queue's (`tables/queue.sql`), what playback is doing
 (`tables/now.sql`), where it is (`tables/timeline.sql`) and the cast
 picker's (`renderer/picker.sql`) and, on a desktop,
@@ -4348,10 +4351,13 @@ album, even a box set of thousands, rewrites no other release's row.
 Whether a release is local or uploaded is not a column: it is whether every
 one of its files references a coven file that coven records as stored.
 
-### A.2 People
+### A.2 People (bae-people)
 
 All sync (§5), except `local_history`, `profile_request` and
 `admin_operations`.
+
+These are people's tables (`people.sql`) except `admin_operations`, which is
+membership's (`membership.sql`).
 
 | Table | One row per |
 |---|---|
@@ -4510,7 +4516,7 @@ queue empty and running, and no release in a storage transition.
 
 ## Appendix B. Synced tables
 
-From each schema part's synced tables: records' (`bae_records::synced`) and people's (`bae_db::synced`). *Shared key* rows take an id computed
+From each schema part's synced tables: records' (`bae_records::synced`) and people's (`bae_people::synced`). *Shared key* rows take an id computed
 from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*

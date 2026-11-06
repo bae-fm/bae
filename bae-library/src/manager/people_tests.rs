@@ -4,9 +4,9 @@
 use crate::manager::tests::*;
 use crate::test_libraries::run_two_device_test;
 use crate::test_libraries::{run_library_test, TestDevice};
-use bae_db::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
-use bae_db::membership::ActiveDevice;
-use bae_db::people::{RequestedProfile, RequestedProfileState};
+use bae_people::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
+use bae_people::membership::ActiveDevice;
+use bae_people::people::{RequestedProfile, RequestedProfileState};
 use std::time::Duration;
 
 /// The person's phone restores from the code Add Device shows while the
@@ -70,8 +70,8 @@ fn the_watch_syncs_often_while_it_is_open() {
 /// This device's own registration, as its own membership lists it.
 async fn this_device(device: &TestDevice) -> ActiveDevice {
     device
-        .database()
         .membership()
+        .members()
         .await
         .unwrap()
         .members
@@ -95,8 +95,8 @@ fn the_watch_reports_a_device_that_joined_before_its_first_look() {
         let phone_device = this_device(&phone).await;
         tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             while !first
-                .database()
                 .membership()
+                .members()
                 .await
                 .unwrap()
                 .members

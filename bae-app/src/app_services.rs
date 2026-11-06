@@ -465,14 +465,14 @@ impl AppServices {
     delegate_async!(manager, delete_album => delete_album(album_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, save_s3_config => save_s3_config(data: bae_library::sync::S3ConfigData, device_name: &str, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
     delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<bae_library::sync::restore_code::RestoreCodeShare, bae_library::LibraryError>);
-    delegate_async!(manager, get_members => get_members() -> Result<bae_db::membership::Membership, bae_library::LibraryError>);
+    delegate_async!(manager, get_members => get_members() -> Result<bae_people::membership::Members, bae_library::LibraryError>);
     delegate_async!(manager, remove_member => remove_member(member: &coven::MemberId) -> Result<(), bae_library::LibraryError>);
-    delegate_values!(subscribe_members => subscribe_members() -> bae_db::membership::Membership);
+    delegate_values!(subscribe_members => subscribe_members() -> bae_people::membership::Members);
     delegate_async!(manager, add_device => add_device() -> Result<bae_library::sync::membership::AddingDevice, bae_library::LibraryError>);
-    delegate_values!(subscribe_added_device => subscribe_added_device(watch: bae_library::sync::membership::AddedDeviceWatch) -> Option<bae_db::membership::ActiveDevice>);
+    delegate_values!(subscribe_added_device => subscribe_added_device(watch: bae_library::sync::membership::AddedDeviceWatch) -> Option<bae_people::membership::ActiveDevice>);
     delegate_async!(manager, remove_device => remove_device(device: coven::DeviceId) -> Result<Option<coven::ProviderSignOut>, bae_library::LibraryError>);
     delegate_async!(manager, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> Result<(), bae_library::LibraryError>);
-    delegate_values!(subscribe_admin_changes => subscribe_admin_changes() -> Vec<bae_db::admin_change::AdminChange>);
+    delegate_values!(subscribe_admin_changes => subscribe_admin_changes() -> Vec<bae_people::admin_change::AdminChange>);
     delegate_async!(manager, acknowledge_admin_change => acknowledge_admin_change(operation: coven::OperationId) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, delivery: coven::InviteDelivery) -> Result<coven::InviteId, bae_library::LibraryError>);
     /// This device's open invites, each with the pending record of its

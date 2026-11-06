@@ -3,22 +3,22 @@
 //! can sync and those that lost access, each list in device-id order.
 
 use super::*;
-use crate::membership::{ActiveDevice, FormerDevice, Membership, MembershipMember};
+use crate::membership::{ActiveDevice, FormerDevice, Members, MembershipMember};
 use bae_store::read::column_conversion_error;
 use bae_store::FormerDeviceState;
 
-impl Database {
-    pub async fn membership(&self) -> Result<Membership, DbError> {
-        self.inner.store.read(|sql| Ok(membership_on(&sql)?)).await
+impl Membership {
+    pub async fn members(&self) -> Result<Members, DbError> {
+        self.store.read(|sql| Ok(membership_on(&sql)?)).await
     }
 
-    pub fn subscribe_membership(&self) -> coven::LiveQuery<Membership> {
-        self.inner.store.subscribe(|sql| Ok(membership_on(&sql)?))
+    pub fn subscribe_members(&self) -> coven::LiveQuery<Members> {
+        self.store.subscribe(|sql| Ok(membership_on(&sql)?))
     }
 }
 
 /// Whether the member using this device is an admin.
-pub(super) const SELF_IS_ADMIN: &str = "SELECT EXISTS(SELECT 1 FROM coven_members \
+pub(crate) const SELF_IS_ADMIN: &str = "SELECT EXISTS(SELECT 1 FROM coven_members \
      WHERE is_self AND NOT removed AND role = 'admin')";
 
 /// The columns [`member_row`] reads of the `coven_members` row `m`: the
@@ -36,7 +36,7 @@ macro_rules! member_columns {
           FROM coven_devices AS d WHERE d.member = m.member AND d.state <> 'active')"
     };
 }
-pub(super) use member_columns;
+pub(crate) use member_columns;
 
 /// The current members in member-id order.
 const MEMBERS: &str = concat!(
@@ -45,14 +45,14 @@ const MEMBERS: &str = concat!(
     " FROM coven_members AS m WHERE NOT m.removed ORDER BY m.member"
 );
 
-fn membership_on(sql: &SqlReadContext<'_>) -> rusqlite::Result<Membership> {
+fn membership_on(sql: &SqlReadContext<'_>) -> rusqlite::Result<Members> {
     let self_is_admin: bool = sql.query_row(SELF_IS_ADMIN, [], |row| row.get(0))?;
     let members = sql.query(MEMBERS, [], |row| member_row(row, 0, self_is_admin))?;
-    Ok(Membership { members, self_is_admin })
+    Ok(Members { members, self_is_admin })
 }
 
 /// The member whose [`member_columns`] start at column `first`.
-pub(super) fn member_row(
+pub(crate) fn member_row(
     row: &Row<'_>,
     first: usize,
     self_is_admin: bool,

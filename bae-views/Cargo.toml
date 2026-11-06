@@ -42,6 +42,7 @@ tokio = { workspace = true, features = ["sync"] }
 # and two stores syncing over shared storage.
 bae-db = { workspace = true, features = ["test-utils"] }
 bae-store = { workspace = true, features = ["test-utils"] }
+bae-people = { workspace = true, features = ["test-utils"] }
 bae-records = { workspace = true, features = ["test-utils"] }
 # The playback queue's window cost, measured beside the views', and the
 # playback tables those tests read.

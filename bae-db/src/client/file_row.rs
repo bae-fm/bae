@@ -61,7 +61,7 @@ impl FileRowColumns {
     /// has a record of. A namespace bae declares no files in is a broken
     /// record.
     pub(super) fn file_row(self) -> Result<Option<FileRow>, DbError> {
-        use crate::synced::AVATARS_NAMESPACE;
+        use bae_people::synced::AVATARS_NAMESPACE;
         use bae_records::synced::{
             ARTIST_IMAGES_NAMESPACE, COVERS_NAMESPACE, RELEASE_FILES_NAMESPACE,
         };

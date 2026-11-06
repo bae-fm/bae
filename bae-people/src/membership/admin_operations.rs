@@ -128,7 +128,7 @@ pub(super) fn insert_admin_operation(
     Ok(())
 }
 
-impl Database {
+impl Membership {
     /// Make an admin change in a write of its own: `change` runs coven's step
     /// and the write records what it changes, when it journals an operation
     /// (none when the library already has it), so the change and its row
@@ -140,8 +140,7 @@ impl Database {
             + Send
             + 'static,
     ) -> Result<R, coven::SyncError> {
-        self.inner
-            .store
+        self.store
             .write(move |sql| {
                 let (operation, value) = change(&sql)?;
                 if let Some(operation) = operation {
@@ -156,7 +155,7 @@ impl Database {
     /// The admin changes this device asked for, live: each until its outcome
     /// is acknowledged.
     pub fn subscribe_admin_changes(&self) -> coven::LiveQuery<Vec<AdminChange>> {
-        self.inner.store.subscribe(|sql| Ok(admin_changes_on(&sql)?))
+        self.store.subscribe(|sql| Ok(admin_changes_on(&sql)?))
     }
 
     /// Acknowledge a finished admin change's outcome, so it leaves the list:
@@ -166,8 +165,7 @@ impl Database {
         &self,
         operation: coven::OperationId,
     ) -> Result<(), DbError> {
-        self.inner
-            .store
+        self.store
             .call(move |sql| {
                 sql.acknowledge_operation(operation)?;
                 let deleted = sql
@@ -183,7 +181,7 @@ impl Database {
     }
 }
 
-impl Database {
+impl Membership {
     /// Rename the store as an admin: the write journals the rename, which
     /// a pass claims, and records it to show (§5.6).
     pub async fn rename_store(&self, name: &str) -> Result<(), coven::SyncError> {
@@ -236,7 +234,6 @@ impl Database {
     ) -> Result<(), coven::SyncError> {
         let invite = request.invite;
         let invitee = self
-            .inner
             .store
             .read_coven(coven::Invite::list)
             .await?

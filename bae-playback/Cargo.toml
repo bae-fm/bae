@@ -19,8 +19,8 @@ path = "src/lib.rs"
 bae-audio = { workspace = true }
 # The store the queue, its resume point and history are kept in, and the
 # track audio playback resolves.
-bae-db = { workspace = true }
 bae-store = { workspace = true }
+bae-people = { workspace = true }
 bae-records = { workspace = true }
 # The bugs and telemetry a playback failure reports.
 bae-diagnostics = { workspace = true }
@@ -67,8 +67,8 @@ cpal = { workspace = true }
 # The test codec helpers and the instrumentation the tests read.
 bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"] }
 # Test databases with bae's schema.
-bae-db = { workspace = true, features = ["test-utils"] }
 bae-store = { workspace = true, features = ["test-utils"] }
+bae-people = { workspace = true, features = ["test-utils"] }
 bae-records = { workspace = true, features = ["test-utils"] }
 # The bug reporter and telemetry transport that record what they are handed.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
@@ -97,7 +97,7 @@ default = []
 # manual playback clock, and the seams the playback tests of the crates above
 # read. Dev/test-only: a
 # production build never enables it.
-test-utils = ["bae-db/test-utils", "bae-store/test-utils", "bae-records/test-utils", "bae-util/test-utils"]
+test-utils = ["bae-store/test-utils", "bae-people/test-utils", "bae-records/test-utils", "bae-util/test-utils"]
 
 [lints]
 workspace = true

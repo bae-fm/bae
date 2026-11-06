@@ -1,5 +1,5 @@
 use super::*;
-use bae_db::membership::MembershipMember;
+use bae_people::membership::MembershipMember;
 
 fn device(id: u64) -> ActiveDevice {
     ActiveDevice {
@@ -28,7 +28,7 @@ fn member(id: u128, is_self: bool, devices: &[u64]) -> MembershipMember {
 /// person's new device.
 #[test]
 fn a_watch_finds_the_persons_device_that_joins_after_the_code() {
-    let membership = |own: &[u64], others: &[u64]| Membership {
+    let membership = |own: &[u64], others: &[u64]| Members {
         members: vec![member(1, true, own), member(2, false, others)],
         self_is_admin: false,
     };

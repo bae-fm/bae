@@ -28,6 +28,8 @@ struct RunningLibrary {
     manager: LibraryManager,
     store: Store,
     records: bae_records::Records,
+    people: bae_people::People,
+    membership: bae_people::Membership,
     database: Database,
     cycles: SyncCycles,
 }
@@ -43,6 +45,16 @@ impl TestDevice {
 
     pub fn records(&self) -> &bae_records::Records {
         &self.library.records
+    }
+
+    /// The device's People owner, distinct from `LibraryManager::people()`,
+    /// which lists the library's people.
+    pub fn people_owner(&self) -> &bae_people::People {
+        &self.library.people
+    }
+
+    pub fn membership(&self) -> &bae_people::Membership {
+        &self.library.membership
     }
 
     pub fn database(&self) -> &Database {
@@ -274,6 +286,8 @@ impl RunningLibrary {
             manager,
             store,
             records: library.records().clone(),
+            people: library.people_owner().clone(),
+            membership: library.membership().clone(),
             database: library.database().clone(),
             cycles,
         }

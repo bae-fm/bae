@@ -1,6 +1,6 @@
 //! Add Device's watch for the person's device that joins from its code.
 
-use bae_db::membership::{ActiveDevice, Membership};
+use bae_people::membership::{ActiveDevice, Members};
 
 /// Watches the membership for a device of this device's person that wasn't
 /// among their active devices when Add Device made its code. Add Device's
@@ -18,7 +18,7 @@ pub struct AddedDeviceWatch {
 impl AddedDeviceWatch {
     /// Watch for a device of the person's that isn't among their active
     /// devices in `membership`.
-    pub fn new(membership: &Membership) -> Self {
+    pub fn new(membership: &Members) -> Self {
         Self {
             known: membership
                 .members
@@ -32,7 +32,7 @@ impl AddedDeviceWatch {
 
     /// The first of the person's other active devices, in device-id order,
     /// that wasn't known; none until one joins.
-    pub fn added(&self, membership: &Membership) -> Option<ActiveDevice> {
+    pub fn added(&self, membership: &Members) -> Option<ActiveDevice> {
         membership
             .members
             .iter()

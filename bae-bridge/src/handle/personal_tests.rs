@@ -17,8 +17,8 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
     ));
     runtime.block_on(bae_library::test_libraries::connect_storage(&library, &storage));
     let made = runtime.block_on(bae_library::test_libraries::made_profile(&library, "Robin"));
-    let database = library.database().clone();
     let store = library.store().clone();
+    let people = bae_people::People::new(store.clone());
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)
             .await
@@ -63,13 +63,13 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         let profile = BridgePersonProfile::from_core(made.clone());
         app.clone().set_history_sharing(BridgeSharing::Household).await.unwrap();
         assert_eq!(
-            database
+            people
                 .profile(coven::MemberId(profile.id.parse().unwrap()))
                 .await
                 .unwrap()
                 .unwrap()
                 .history_sharing,
-            bae_db::people::Sharing::Household
+            bae_people::people::Sharing::Household
         );
         store.execute_local_sql_for_test(
             "INSERT INTO albums(id,title,created_at) VALUES('bridge-album','Album','2026-01-01');",

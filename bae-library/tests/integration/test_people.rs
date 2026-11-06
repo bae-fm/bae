@@ -1,7 +1,7 @@
-use bae_db::people::{ProfileError, Sharing};
 use bae_library::test_libraries::{
     connect_storage, made_profile, made_profile_on, requested_profile_on, storage_library,
 };
+use bae_people::people::{ProfileError, Sharing};
 
 #[tokio::test]
 async fn profile_requires_membership_and_is_idempotent_after_setup() {
@@ -12,25 +12,25 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let database = library.database().clone();
+    let people = library.people_owner().clone();
     assert!(matches!(library.create_profile("Robin").await, Err(ProfileError::NotRegistered)));
-    assert!(database.profiles().await.unwrap().is_empty());
+    assert!(people.profiles().await.unwrap().is_empty());
     connect_storage(&library, &storage).await;
     let profile = made_profile(&library, "Robin").await;
     assert_eq!(profile.history_sharing, Sharing::Private);
     library.create_profile("Robin").await.unwrap();
-    assert_eq!(database.profile(profile.id).await.unwrap(), Some(profile.clone()));
+    assert_eq!(people.profile(profile.id).await.unwrap(), Some(profile.clone()));
     assert!(matches!(
         library.create_profile("Another Name").await,
         Err(ProfileError::AlreadyExists)
     ));
-    let people = library.people().await.unwrap();
-    assert_eq!(people.len(), 1);
-    assert_eq!(people[0].profile.as_ref(), Some(&profile));
-    assert!(people[0].membership.is_self);
+    let listed = library.people().await.unwrap();
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].profile.as_ref(), Some(&profile));
+    assert!(listed[0].membership.is_self);
     library.rename_profile("New Name").await.unwrap();
     library.set_history_sharing(Sharing::Household).await.unwrap();
-    let profile = database.profile(profile.id).await.unwrap().unwrap();
+    let profile = people.profile(profile.id).await.unwrap().unwrap();
     assert_eq!(profile.name, "New Name");
     assert_eq!(profile.history_sharing, Sharing::Household);
     library.close().await.unwrap();
@@ -56,7 +56,7 @@ async fn a_profile_names_each_new_avatar_at_once() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let database = library.database().clone();
+    let people = library.people_owner().clone();
     connect_storage(&library, &storage).await;
     let profile = made_profile(&library, "Rowan").await;
     assert_eq!(library.avatar(profile.id).await.unwrap(), None);
@@ -65,7 +65,7 @@ async fn a_profile_names_each_new_avatar_at_once() {
     let first_jpeg = bae_util::stored_image::stored_jpeg(&first_source).unwrap();
     let second_jpeg = bae_util::stored_image::stored_jpeg(&second_source).unwrap();
     library.set_avatar(Some(first_source)).await.unwrap();
-    let avatar = async || database.profile(profile.id).await.unwrap().unwrap().avatar;
+    let avatar = async || people.profile(profile.id).await.unwrap().unwrap().avatar;
     let first = avatar().await.expect("the first avatar");
     assert_eq!(library.avatar(profile.id).await.unwrap().unwrap(), first_jpeg);
     library.set_avatar(Some(second_source)).await.unwrap();
@@ -191,7 +191,7 @@ pub(super) struct Household {
     owner: coven::CovenHandle,
     storage: std::sync::Arc<coven::MemoryStorage>,
     clock: coven::ClockRef,
-    robin: bae_db::people::PersonProfile,
+    robin: bae_people::people::PersonProfile,
 }
 
 /// The Dropbox account a household on Dropbox invites.
@@ -209,8 +209,8 @@ impl Household {
 
     async fn on(provider: coven::CloudProvider, sign_in: Option<&DropboxSignIn>) -> Self {
         let (dir, owner, storage, clock) = Self::owner(provider, sign_in).await;
-        let database = bae_db::Database::new(bae_store::Store::new(owner.clone(), clock.clone()));
-        let robin = made_profile_on(&owner, &database, "Robin").await;
+        let people = bae_people::People::new(bae_store::Store::new(owner.clone(), clock.clone()));
+        let robin = made_profile_on(&owner, &people, "Robin").await;
         Self { _dir: dir, owner, storage, clock, robin }
     }
 
@@ -374,11 +374,11 @@ async fn joined_profile(
     guest: &coven::CovenHandle,
     household: &Household,
     requested: Option<Result<(), ProfileError>>,
-) -> bae_db::people::PersonProfile {
+) -> bae_people::people::PersonProfile {
     requested.expect("a new person's profile").unwrap();
-    let database =
-        bae_db::Database::new(bae_store::Store::new(guest.clone(), household.clock.clone()));
-    requested_profile_on(guest, &database).await
+    let people =
+        bae_people::People::new(bae_store::Store::new(guest.clone(), household.clock.clone()));
+    requested_profile_on(guest, &people).await
 }
 
 /// An invite the owner's sync has granted: the code to join with, and the
@@ -416,9 +416,9 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
         owner.members().await.unwrap().into_iter().find(|member| member.is_self).unwrap().id;
     let name = format!("bae-person:{member}");
     let made = landed_circle(&owner, &name).await;
-    let database = bae_db::Database::new(bae_store::Store::new(owner.clone(), clock.clone()));
-    database.create_profile("Robin").await.unwrap();
-    let profile = database.profile(member).await.unwrap().unwrap();
+    let people = bae_people::People::new(bae_store::Store::new(owner.clone(), clock.clone()));
+    people.create_profile("Robin").await.unwrap();
+    let profile = people.profile(member).await.unwrap().unwrap();
     assert_eq!(profile.private_circle, made);
     owner.close().await.unwrap();
 
@@ -429,9 +429,9 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
     for _ in 0..2 {
         landed_circle(&owner, &name).await;
     }
-    let database = bae_db::Database::new(bae_store::Store::new(owner.clone(), clock));
+    let people = bae_people::People::new(bae_store::Store::new(owner.clone(), clock));
     assert!(matches!(
-        database.create_profile("Robin").await,
+        people.create_profile("Robin").await,
         Err(ProfileError::InvalidPrivateCircle)
     ));
     owner.close().await.unwrap();
@@ -544,19 +544,18 @@ fn a_replacement_invite_writes_no_profile() {
         .unwrap();
         let (replacement, profile) = joined.unwrap().unwrap();
         assert!(profile.is_none());
-        let database = bae_db::Database::new(bae_store::Store::new(
+        let people = bae_people::People::new(bae_store::Store::new(
             replacement.clone(),
             household.clock.clone(),
         ));
-        assert_eq!(database.profile(rowan.id).await.unwrap(), Some(rowan.clone()));
+        assert_eq!(people.profile(rowan.id).await.unwrap(), Some(rowan.clone()));
         // The owner's membership lists each member's devices that can sync
         // apart from those that lost access, as coven's own member list has
         // them.
-        let owner = bae_db::Database::new(bae_store::Store::new(
-            household.owner.clone(),
-            household.clock.clone(),
-        ));
-        let membership = owner.membership().await.unwrap();
+        let owner_store = bae_store::Store::new(household.owner.clone(), household.clock.clone());
+        let owner = bae_people::Membership::new(owner_store.clone());
+        let owner_people = bae_people::People::new(owner_store);
+        let membership = owner.members().await.unwrap();
         assert!(membership.self_is_admin);
         let listed: Vec<_> = household
             .owner
@@ -606,18 +605,18 @@ fn a_replacement_invite_writes_no_profile() {
         assert_eq!(read, listed);
         // Everyone in the library, as the membership lists them, each with
         // their profile; and the person using this device among them.
-        let people = owner.people().await.unwrap();
+        let people = owner_people.people().await.unwrap();
         assert_eq!(
             people.iter().map(|person| person.membership.clone()).collect::<Vec<_>>(),
             membership.members
         );
         for person in &people {
-            assert_eq!(person.profile, owner.profile(person.membership.id).await.unwrap());
+            assert_eq!(person.profile, owner_people.profile(person.membership.id).await.unwrap());
         }
         assert!(people
             .iter()
             .any(|person| person.membership.id == rowan.id && person.profile.is_some()));
-        let own = owner.own_person().await.unwrap().expect("the owner is in");
+        let own = owner_people.own_person().await.unwrap().expect("the owner is in");
         assert!(own.membership.is_self);
         assert_eq!(own.profile.as_ref(), Some(&household.robin));
         replacement.close().await.unwrap();

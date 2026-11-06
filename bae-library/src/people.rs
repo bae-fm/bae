@@ -1,7 +1,7 @@
 //! Where an open invite stands, as People shows it, and setting a person's
 //! avatar from a picked image.
 
-use bae_db::people::ProfileError;
+use bae_people::people::ProfileError;
 
 /// Where an open invite stands, as People shows it (§5.6).
 #[derive(Clone, Debug, PartialEq, Eq)]

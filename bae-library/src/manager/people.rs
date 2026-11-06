@@ -10,19 +10,19 @@ const ADD_DEVICE_SYNC_INTERVAL: std::time::Duration = std::time::Duration::from_
 impl LibraryManager {
     /// Create this person's profile: at once when their private circle
     /// exists, otherwise once sync has made it (§5.4).
-    pub async fn create_profile(&self, name: &str) -> Result<(), bae_db::people::ProfileError> {
-        self.database.create_profile(name).await
+    pub async fn create_profile(&self, name: &str) -> Result<(), bae_people::people::ProfileError> {
+        self.people.create_profile(name).await
     }
 
-    pub async fn rename_profile(&self, name: &str) -> Result<(), bae_db::people::ProfileError> {
-        self.database.rename_profile(name).await
+    pub async fn rename_profile(&self, name: &str) -> Result<(), bae_people::people::ProfileError> {
+        self.people.rename_profile(name).await
     }
 
     pub async fn set_history_sharing(
         &self,
-        sharing: bae_db::people::Sharing,
-    ) -> Result<(), bae_db::people::ProfileError> {
-        self.database.set_history_sharing(sharing).await
+        sharing: bae_people::people::Sharing,
+    ) -> Result<(), bae_people::people::ProfileError> {
+        self.people.set_history_sharing(sharing).await
     }
 
     /// Set this person's avatar to the image in `bytes`, downscaled to the
@@ -44,34 +44,34 @@ impl LibraryManager {
             }
             None => None,
         };
-        Ok(self.database.set_avatar(avatar).await?)
+        Ok(self.people.set_avatar(avatar).await?)
     }
 
     pub async fn avatar(
         &self,
         person: coven::MemberId,
-    ) -> Result<Option<Vec<u8>>, bae_db::people::ProfileError> {
-        self.database.avatar(person).await
+    ) -> Result<Option<Vec<u8>>, bae_people::people::ProfileError> {
+        self.people.avatar(person).await
     }
 
     /// The profile this person asked for, until it is written, live.
     pub fn subscribe_requested_profile(
         &self,
-    ) -> coven::LiveQuery<Option<bae_db::people::RequestedProfile>> {
-        self.database.subscribe_requested_profile()
+    ) -> coven::LiveQuery<Option<bae_people::people::RequestedProfile>> {
+        self.people.subscribe_requested_profile()
     }
 
-    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<bae_db::people::PersonProfile>> {
-        self.database.subscribe_profiles()
+    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<bae_people::people::PersonProfile>> {
+        self.people.subscribe_profiles()
     }
 
-    pub async fn people(&self) -> Result<Vec<bae_db::people::Person>, LibraryError> {
-        Ok(self.database.people().await?)
+    pub async fn people(&self) -> Result<Vec<bae_people::people::Person>, LibraryError> {
+        Ok(self.people.people().await?)
     }
 
     /// The person using this device, once their registration has applied.
-    pub async fn own_person(&self) -> Result<Option<bae_db::people::Person>, LibraryError> {
-        Ok(self.database.own_person().await?)
+    pub async fn own_person(&self) -> Result<Option<bae_people::people::Person>, LibraryError> {
+        Ok(self.people.own_person().await?)
     }
 
     /// This person's restore code, and for the QR code the one that holds, on
@@ -85,12 +85,12 @@ impl LibraryManager {
             .map_err(LibraryError::TransferCode)
     }
 
-    pub async fn get_members(&self) -> Result<bae_db::membership::Membership, LibraryError> {
-        Ok(self.database.membership().await?)
+    pub async fn get_members(&self) -> Result<bae_people::membership::Members, LibraryError> {
+        Ok(self.membership.members().await?)
     }
 
-    pub fn subscribe_members(&self) -> coven::LiveQuery<bae_db::membership::Membership> {
-        self.database.subscribe_membership()
+    pub fn subscribe_members(&self) -> coven::LiveQuery<bae_people::membership::Members> {
+        self.membership.subscribe_members()
     }
 
     /// Add Device's sheet: this person's restore code to show, and the watch
@@ -110,7 +110,7 @@ impl LibraryManager {
     pub fn subscribe_added_device(
         &self,
         watch: crate::sync::membership::AddedDeviceWatch,
-    ) -> coven::LiveQuery<Option<bae_db::membership::ActiveDevice>> {
+    ) -> coven::LiveQuery<Option<bae_people::membership::ActiveDevice>> {
         let sync_often = self.store.sync_often(ADD_DEVICE_SYNC_INTERVAL);
         self.subscribe_members().process(move |membership| {
             // The subscription owns the request; dropping it ends the request.
@@ -123,8 +123,8 @@ impl LibraryManager {
     /// dismisses its outcome, live (§5.6).
     pub fn subscribe_admin_changes(
         &self,
-    ) -> coven::LiveQuery<Vec<bae_db::admin_change::AdminChange>> {
-        self.database.subscribe_admin_changes()
+    ) -> coven::LiveQuery<Vec<bae_people::admin_change::AdminChange>> {
+        self.membership.subscribe_admin_changes()
     }
 
     /// Dismiss a finished admin change: coven's record of its outcome and
@@ -133,13 +133,13 @@ impl LibraryManager {
         &self,
         operation: coven::OperationId,
     ) -> Result<(), LibraryError> {
-        Ok(self.database.acknowledge_admin_change(operation).await?)
+        Ok(self.membership.acknowledge_admin_change(operation).await?)
     }
 
     /// Remove a member. The change is recorded on this device at once,
     /// offline too, and takes effect once sync publishes it (§5.6).
     pub async fn remove_member(&self, member: &coven::MemberId) -> Result<(), LibraryError> {
-        Ok(self.database.remove_member(member).await?)
+        Ok(self.membership.remove_member(member).await?)
     }
 
     /// Remove a device, recorded as a removal is, and say what is left to
@@ -148,7 +148,7 @@ impl LibraryManager {
         &self,
         device: coven::DeviceId,
     ) -> Result<Option<coven::ProviderSignOut>, LibraryError> {
-        Ok(self.database.remove_device(device).await?)
+        Ok(self.membership.remove_device(device).await?)
     }
 
     /// Change a member's role, recorded as a removal is.
@@ -157,7 +157,7 @@ impl LibraryManager {
         member: &coven::MemberId,
         role: coven::MemberRole,
     ) -> Result<(), LibraryError> {
-        Ok(self.database.set_member_role(member, role).await?)
+        Ok(self.membership.set_member_role(member, role).await?)
     }
 
     /// Re-inviting creates a fresh identity; the removed person's rows retain
@@ -177,7 +177,7 @@ impl LibraryManager {
         &self,
         request: &coven::JoinRequest,
     ) -> Result<(), LibraryError> {
-        Ok(self.database.approve_join_request(request).await?)
+        Ok(self.membership.approve_join_request(request).await?)
     }
 
     pub async fn decline_join_request(

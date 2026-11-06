@@ -29,9 +29,9 @@ pub enum BridgeAdminChangeState {
     Stopped { stop: super::BridgeDeviceStop },
 }
 impl BridgeAdminChange {
-    pub(crate) fn from_core(value: bae_db::admin_change::AdminChange) -> Self {
-        use bae_db::admin_change::{AdminChangeKind, AdminChangeState};
-        let bae_db::admin_change::AdminChange { operation, change, state } = value;
+    pub(crate) fn from_core(value: bae_people::admin_change::AdminChange) -> Self {
+        use bae_people::admin_change::{AdminChangeKind, AdminChangeState};
+        let bae_people::admin_change::AdminChange { operation, change, state } = value;
         Self {
             operation: operation.0,
             change: match change {

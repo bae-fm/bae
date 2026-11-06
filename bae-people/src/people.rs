@@ -1,6 +1,63 @@
 //! Profiles belong to coven members; private data belongs to their
 //! self-only circle.
 
+use bae_store::{DbError, Store};
+use chrono::{DateTime, Utc};
+use coven::{CovenWrite, SqlReadContext};
+use rusqlite::{params, OptionalExtension, Params, Row};
+use std::collections::HashSet;
+use std::sync::Arc;
+
+mod collections;
+mod history;
+mod profile_request;
+mod profiles;
+
+/// People's part of the schema: `people.sql`.
+pub const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[include_str!("people.sql")])
+    .synced(crate::synced::synced_tables, crate::synced::namespaces);
+
+struct PeopleInner {
+    /// The store every read and write of the people runs through.
+    store: Store,
+    /// Held while a profile is created, so two creations never overlap.
+    profile_creation: tokio::sync::Mutex<()>,
+    /// Held while a play is registered or local history moves into a profile.
+    history_registration: tokio::sync::Mutex<()>,
+}
+
+/// The library's profiles, ratings, playlists and plays over the store. Its
+/// clones share the locks that serialize profile creation and history
+/// registration.
+#[derive(Clone)]
+pub struct People {
+    inner: Arc<PeopleInner>,
+}
+
+impl std::fmt::Debug for People {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("People").finish_non_exhaustive()
+    }
+}
+
+impl People {
+    pub fn new(store: Store) -> Self {
+        People {
+            inner: Arc::new(PeopleInner {
+                store,
+                profile_creation: tokio::sync::Mutex::new(()),
+                history_registration: tokio::sync::Mutex::new(()),
+            }),
+        }
+    }
+}
+
+fn uuid_column(row: &Row<'_>, index: usize) -> rusqlite::Result<uuid::Uuid> {
+    let value: String = row.get(index)?;
+    uuid::Uuid::parse_str(&value)
+        .map_err(|error| bae_store::read::column_conversion_error(row, index, error))
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Sharing {
     Private,

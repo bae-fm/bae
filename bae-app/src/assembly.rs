@@ -3,7 +3,6 @@
 //! call this, so tests run the app's wiring.
 
 use crate::AppServices;
-use bae_db::Database;
 use bae_diagnostics::Diagnostics;
 #[cfg(desktop)]
 use bae_library::CancellationToken;
@@ -36,7 +35,7 @@ pub async fn start_library_services(
     manager: LibraryManager,
     store: Store,
     records: bae_records::Records,
-    database: Database,
+    people: bae_people::People,
     #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
     #[cfg(desktop)] closing: CancellationToken,
     #[cfg(desktop)] clock: ClockRef,
@@ -62,7 +61,7 @@ pub async fn start_library_services(
         PlaybackOutput::System(audio_focus) => bae_playback::PlaybackService::start(
             store.clone(),
             records.clone(),
-            database.clone(),
+            people.clone(),
             ids.clone(),
             queue_tables,
             now_row,
@@ -78,7 +77,7 @@ pub async fn start_library_services(
         PlaybackOutput::Device(device) => bae_playback::PlaybackService::start_with_audio_device(
             store.clone(),
             records.clone(),
-            database.clone(),
+            people.clone(),
             ids.clone(),
             queue_tables,
             now_row,

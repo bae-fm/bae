@@ -15,6 +15,8 @@ use coven::{ClockRef, IdSourceRef};
 pub async fn open_library_manager(
     store: Store,
     records: bae_records::Records,
+    people: bae_people::People,
+    membership: bae_people::Membership,
     database: Database,
     #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
     closing: CancellationToken,
@@ -33,6 +35,8 @@ pub async fn open_library_manager(
     LibraryManager::open(
         store,
         records,
+        people,
+        membership,
         database,
         app_dir,
         clock,

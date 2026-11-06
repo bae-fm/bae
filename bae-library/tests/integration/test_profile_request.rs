@@ -1,8 +1,8 @@
 //! A profile asked for while the person's private circle is made: the
 //! request coven's operation answers, and the write that ends it (§5.4).
 
-use bae_db::people::{ProfileError, Sharing};
 use bae_library::test_libraries::{connect_storage, requested_profile, storage_library};
+use bae_people::people::{ProfileError, Sharing};
 
 /// Robin asks for her profile with sync stopped. The write journals her
 /// private circle and records the request, offline too; she has no profile
@@ -18,8 +18,8 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let database = library.database().clone();
     let db = library.store().clone();
+    let people = bae_people::People::new(db.clone());
     connect_storage(&library, &storage).await;
     library.stop_sync().await.unwrap();
     let track = bae_util::test_ids::test_uuid("waiting-track");
@@ -29,7 +29,7 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     db.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('waiting-album','Album Title','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','waiting-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{track}','{release}','Track Title','{medium}',1,1,0,180000,'2026-01-01'); INSERT INTO local_history (id, track_id, started_at, played_ms) VALUES ('{play}', '{track}', '2026-10-18T16:00:00Z', 30000);")).await.unwrap();
 
     library.create_profile("Robin").await.unwrap();
-    assert!(database.profiles().await.unwrap().is_empty());
+    assert!(people.profiles().await.unwrap().is_empty());
     let requested = db.query_texts_for_test("SELECT name FROM profile_request").await.unwrap();
     assert_eq!(requested, ["Robin"]);
     let running = db

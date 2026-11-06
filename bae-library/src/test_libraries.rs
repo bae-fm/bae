@@ -36,6 +36,8 @@ pub struct TestLibrary {
     manager: LibraryManager,
     store: Store,
     records: bae_records::Records,
+    people: bae_people::People,
+    membership: bae_people::Membership,
     database: Database,
     catalogs: CatalogSessions,
     closing: CancellationToken,
@@ -89,6 +91,8 @@ impl TestLibrary {
     ) -> Self {
         let remote_images = RemoteImageCache::for_test(http, diagnostics.clone());
         let records = bae_records::Records::new(store.clone(), ids.clone());
+        let people = bae_people::People::new(store.clone());
+        let membership = bae_people::Membership::new(store.clone());
         let database = Database::new(store.clone());
         let catalogs = CatalogSessions::new(
             providers,
@@ -100,6 +104,8 @@ impl TestLibrary {
         let manager = crate::open_library_manager(
             store.clone(),
             records.clone(),
+            people.clone(),
+            membership.clone(),
             database.clone(),
             catalogs.clone(),
             closing.clone(),
@@ -116,6 +122,8 @@ impl TestLibrary {
             manager,
             store,
             records,
+            people,
+            membership,
             database,
             catalogs,
             closing,
@@ -136,7 +144,18 @@ impl TestLibrary {
         &self.records
     }
 
-    /// The library's people, membership and sync status.
+    /// The People owner, distinct from `LibraryManager::people()`, which lists
+    /// the library's people.
+    pub fn people_owner(&self) -> &bae_people::People {
+        &self.people
+    }
+
+    /// The library's members and admin changes.
+    pub fn membership(&self) -> &bae_people::Membership {
+        &self.membership
+    }
+
+    /// The library's sync status rows.
     pub fn database(&self) -> &Database {
         &self.database
     }
@@ -292,7 +311,7 @@ impl TestLibrary {
         bae_playback::PlaybackService::start_with_audio_device(
             self.store.clone(),
             self.records.clone(),
-            self.database.clone(),
+            self.people.clone(),
             self.ids.clone(),
             bae_playback::tables::PlaybackQueueTables::new(self.store.clone()),
             bae_playback::tables::PlaybackNowRow::new(self.store.clone()),

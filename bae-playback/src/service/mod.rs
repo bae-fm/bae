@@ -459,7 +459,7 @@ pub struct PlaybackService {
     /// The library's records: the tracks and their audio.
     records: bae_records::Records,
     /// The plays the listening history records.
-    database: bae_db::Database,
+    people: bae_people::People,
     /// Mints the id of each play the listening history records.
     ids: coven::IdSourceRef,
     /// Where the service, its decoders, its fills and its watchers report a

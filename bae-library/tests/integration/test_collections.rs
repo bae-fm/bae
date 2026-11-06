@@ -1,6 +1,6 @@
-use bae_db::collections::{CollectionError, RatingTarget, Stars};
-use bae_db::people::Sharing;
 use bae_library::test_libraries::{connect_storage, made_profile, storage_library};
+use bae_people::collections::{CollectionError, RatingTarget, Stars};
+use bae_people::people::Sharing;
 use bae_util::test_ids::test_uuid;
 
 #[tokio::test]
@@ -12,8 +12,8 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let db = library.database().clone();
     let store = library.store().clone();
+    let people = bae_people::People::new(store.clone());
     connect_storage(&library, &storage).await;
     let person = made_profile(&library, "Robin").await;
     let release = test_uuid("collection-release");
@@ -22,35 +22,39 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let medium = test_uuid("collection-medium");
     store.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('collection-album','Collection','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','collection-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{first}','{release}','First','{medium}',1,1,0,180000,'2026-01-01'), ('{second}','{release}','Second','{medium}',1,2,1,180000,'2026-01-01');")).await.unwrap();
     let target = RatingTarget::Track(first.clone());
-    db.set_rating(target.clone(), Some(Stars::Three)).await.unwrap();
-    db.set_rating(target.clone(), Some(Stars::Five)).await.unwrap();
-    let ratings = db.ratings().await.unwrap();
+    people.set_rating(target.clone(), Some(Stars::Three)).await.unwrap();
+    people.set_rating(target.clone(), Some(Stars::Five)).await.unwrap();
+    let ratings = people.ratings().await.unwrap();
     assert_eq!(ratings.len(), 1);
     assert_eq!(ratings[0].person, person.id);
     assert_eq!(ratings[0].stars, Stars::Five);
-    db.set_rating(target, None).await.unwrap();
-    assert!(db.ratings().await.unwrap().is_empty());
-    db.set_rating(RatingTarget::Album("collection-album".into()), Some(Stars::Two)).await.unwrap();
+    people.set_rating(target, None).await.unwrap();
+    assert!(people.ratings().await.unwrap().is_empty());
+    people
+        .set_rating(RatingTarget::Album("collection-album".into()), Some(Stars::Two))
+        .await
+        .unwrap();
 
     let id = uuid::Uuid::new_v4();
-    let playlist = db.create_playlist(id, "Evening", Sharing::Private).await.unwrap();
+    let playlist = people.create_playlist(id, "Evening", Sharing::Private).await.unwrap();
     assert_eq!(playlist.audience, coven::Audience::Circle(person.private_circle));
     let a = uuid::Uuid::new_v4();
     let b = uuid::Uuid::new_v4();
     let c = uuid::Uuid::new_v4();
-    db.append_playlist_entry(id, a, first.clone()).await.unwrap();
-    db.append_playlist_entry(id, b, second).await.unwrap();
-    db.append_playlist_entry(id, c, first.clone()).await.unwrap();
+    people.append_playlist_entry(id, a, first.clone()).await.unwrap();
+    people.append_playlist_entry(id, b, second).await.unwrap();
+    people.append_playlist_entry(id, c, first.clone()).await.unwrap();
     assert!(matches!(
-        db.reorder_playlist(id, vec![b, a]).await,
+        people.reorder_playlist(id, vec![b, a]).await,
         Err(CollectionError::OrderChanged)
     ));
     assert!(matches!(
-        db.reorder_playlist(id, vec![a, a, c]).await,
+        people.reorder_playlist(id, vec![a, a, c]).await,
         Err(CollectionError::OrderChanged)
     ));
     assert_eq!(
-        db.playlist_entries(id)
+        people
+            .playlist_entries(id)
             .await
             .unwrap()
             .iter()
@@ -58,20 +62,20 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
             .collect::<Vec<_>>(),
         vec![a, b, c]
     );
-    db.reorder_playlist(id, vec![c, b, a]).await.unwrap();
-    let entries = db.playlist_entries(id).await.unwrap();
+    people.reorder_playlist(id, vec![c, b, a]).await.unwrap();
+    let entries = people.playlist_entries(id).await.unwrap();
     assert_eq!(entries.iter().map(|entry| entry.position_id).collect::<Vec<_>>(), vec![c, b, a]);
     assert_eq!(entries[0].track_id, first);
-    db.set_playlist_sharing(id, Sharing::Household).await.unwrap();
-    db.rename_playlist(id, "Gathering").await.unwrap();
-    let playlists = db.playlists().await.unwrap();
+    people.set_playlist_sharing(id, Sharing::Household).await.unwrap();
+    people.rename_playlist(id, "Gathering").await.unwrap();
+    let playlists = people.playlists().await.unwrap();
     assert_eq!(playlists[0].audience, coven::Audience::Store);
     assert_eq!(playlists[0].name, "Gathering");
-    assert_eq!(db.playlist_entries(id).await.unwrap(), entries);
-    db.remove_playlist_entry(id, b).await.unwrap();
-    assert_eq!(db.playlist_entries(id).await.unwrap().len(), 2);
-    db.delete_playlist(id).await.unwrap();
-    assert!(db.playlists().await.unwrap().is_empty());
-    assert!(db.playlist_entries(id).await.unwrap().is_empty());
+    assert_eq!(people.playlist_entries(id).await.unwrap(), entries);
+    people.remove_playlist_entry(id, b).await.unwrap();
+    assert_eq!(people.playlist_entries(id).await.unwrap().len(), 2);
+    people.delete_playlist(id).await.unwrap();
+    assert!(people.playlists().await.unwrap().is_empty());
+    assert!(people.playlist_entries(id).await.unwrap().is_empty());
     library.close().await.unwrap();
 }

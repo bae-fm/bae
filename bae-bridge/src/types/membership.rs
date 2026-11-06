@@ -39,8 +39,8 @@ pub struct BridgeActiveDevice {
     pub can_remove: bool,
 }
 impl BridgeActiveDevice {
-    pub(crate) fn from_core(device: bae_db::membership::ActiveDevice) -> Self {
-        let bae_db::membership::ActiveDevice { id, name, is_self, can_remove } = device;
+    pub(crate) fn from_core(device: bae_people::membership::ActiveDevice) -> Self {
+        let bae_people::membership::ActiveDevice { id, name, is_self, can_remove } = device;
         Self { id: id.0, name, is_self, can_remove }
     }
 }
@@ -52,8 +52,8 @@ pub struct BridgeFormerDevice {
     pub state: BridgeFormerDeviceState,
 }
 impl BridgeFormerDevice {
-    fn from_core(device: bae_db::membership::FormerDevice) -> Self {
-        let bae_db::membership::FormerDevice { id, name, state } = device;
+    fn from_core(device: bae_people::membership::FormerDevice) -> Self {
+        let bae_people::membership::FormerDevice { id, name, state } = device;
         Self { id: id.0, name, state: BridgeFormerDeviceState::from_core(state) }
     }
 }
@@ -86,8 +86,8 @@ pub struct BridgeMember {
     pub former_devices: Vec<BridgeFormerDevice>,
 }
 impl BridgeMember {
-    fn from_core(value: bae_db::membership::MembershipMember) -> Self {
-        let bae_db::membership::MembershipMember {
+    fn from_core(value: bae_people::membership::MembershipMember) -> Self {
+        let bae_people::membership::MembershipMember {
             id,
             keys,
             role,
@@ -115,8 +115,8 @@ pub struct BridgeMembership {
     pub self_is_admin: bool,
 }
 impl BridgeMembership {
-    pub(crate) fn from_core(value: bae_db::membership::Membership) -> Self {
-        let bae_db::membership::Membership { members, self_is_admin } = value;
+    pub(crate) fn from_core(value: bae_people::membership::Members) -> Self {
+        let bae_people::membership::Members { members, self_is_admin } = value;
         Self { members: members.into_iter().map(BridgeMember::from_core).collect(), self_is_admin }
     }
 }
@@ -128,8 +128,8 @@ pub struct BridgePerson {
     pub membership: BridgeMember,
 }
 impl BridgePerson {
-    pub(crate) fn from_core(value: bae_db::people::Person) -> Self {
-        let bae_db::people::Person { profile, membership } = value;
+    pub(crate) fn from_core(value: bae_people::people::Person) -> Self {
+        let bae_people::people::Person { profile, membership } = value;
         Self {
             profile: profile.map(BridgePersonProfile::from_core),
             membership: BridgeMember::from_core(membership),

@@ -585,7 +585,7 @@ impl PlaybackService {
     }
     /// Playback reads the library's tracks and preferences and streams their
     /// files from `store`, and its tracks' audio from `records`, and writes
-    /// its resume row there and its listening history through `database`, each play under an id `ids` mints.
+    /// its resume row there and its listening history through `people`, each play under an id `ids` mints.
     /// `restore_playback` controls whether startup resumes the saved track and
     /// position over the queue the tables hold; opening the library settled
     /// the tables for it first (`settle_playback_queue`). The crash-safe row
@@ -600,7 +600,7 @@ impl PlaybackService {
     pub fn start(
         store: bae_store::Store,
         records: bae_records::Records,
-        database: bae_db::Database,
+        people: bae_people::People,
         ids: coven::IdSourceRef,
         queue_tables: crate::tables::PlaybackQueueTables,
         now_row: crate::tables::PlaybackNowRow,
@@ -615,7 +615,7 @@ impl PlaybackService {
         Self::start_inner(
             store,
             records,
-            database,
+            people,
             ids,
             queue_tables,
             now_row,
@@ -637,7 +637,7 @@ impl PlaybackService {
     pub fn start_with_audio_device(
         store: bae_store::Store,
         records: bae_records::Records,
-        database: bae_db::Database,
+        people: bae_people::People,
         ids: coven::IdSourceRef,
         queue_tables: crate::tables::PlaybackQueueTables,
         now_row: crate::tables::PlaybackNowRow,
@@ -652,7 +652,7 @@ impl PlaybackService {
         Self::start_inner(
             store,
             records,
-            database,
+            people,
             ids,
             queue_tables,
             now_row,
@@ -671,7 +671,7 @@ impl PlaybackService {
     pub(super) fn start_inner(
         store: bae_store::Store,
         records: bae_records::Records,
-        database: bae_db::Database,
+        people: bae_people::People,
         ids: coven::IdSourceRef,
         queue_tables: crate::tables::PlaybackQueueTables,
         now_row: crate::tables::PlaybackNowRow,
@@ -745,7 +745,7 @@ impl PlaybackService {
                         let mut service = PlaybackService {
                             store,
                             records,
-                            database,
+                            people,
                             ids,
                             diagnostics,
                             command_tx: command_tx.clone(),

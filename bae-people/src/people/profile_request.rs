@@ -118,7 +118,7 @@ fn requested_profile(request: ProfileRequest) -> Result<crate::people::Requested
     Ok(crate::people::RequestedProfile { name: request.name, state })
 }
 
-impl Database {
+impl People {
     /// The profile this device's person asked for, until it is written,
     /// live.
     pub fn subscribe_requested_profile(

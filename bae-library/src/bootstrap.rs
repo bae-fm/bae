@@ -10,7 +10,7 @@ use tokio::sync::watch;
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreFromCodeError {
     #[error(transparent)]
-    Profile(#[from] bae_db::people::ProfileError),
+    Profile(#[from] bae_people::people::ProfileError),
     #[error("restore cancelled")]
     Cancelled,
     #[error("restore failed: {0}")]
@@ -126,7 +126,7 @@ pub async fn restore_from_saved_code(
 /// existing member's keys: that person keeps the row they already have
 /// (§5.4). An asked-for profile is written once sync has made the person's
 /// private circle.
-pub type JoinedLibrary = (coven::CovenHandle, Option<Result<(), bae_db::people::ProfileError>>);
+pub type JoinedLibrary = (coven::CovenHandle, Option<Result<(), bae_people::people::ProfileError>>);
 
 /// The app's hold on a running join: cancel it before its request is sent, or
 /// check for approval at once. One control covers coven's join and any
@@ -277,7 +277,7 @@ async fn with_profile(
 ) -> JoinedLibrary {
     let profile = match invitee {
         Some(name) => Some(
-            bae_db::Database::new(bae_store::Store::new(handle.clone(), clock))
+            bae_people::People::new(bae_store::Store::new(handle.clone(), clock))
                 .create_profile(name)
                 .await,
         ),

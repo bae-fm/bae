@@ -9,6 +9,7 @@ members = [
     "bae-cast",
     "bae-library",
     "bae-db",
+    "bae-people",
     "bae-records",
     "bae-store",
     "bae-desktop",
@@ -83,6 +84,7 @@ bae-cast = { path = "bae-cast" }
 bae-catalogs = { path = "bae-catalogs" }
 bae-library = { path = "bae-library" }
 bae-db = { path = "bae-db" }
+bae-people = { path = "bae-people" }
 bae-records = { path = "bae-records" }
 bae-store = { path = "bae-store" }
 bae-desktop = { path = "bae-desktop" }

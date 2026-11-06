@@ -1,0 +1,53 @@
+[package]
+name = "bae-people"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+
+[lib]
+name = "bae_people"
+path = "src/lib.rs"
+
+[dependencies]
+# The error categories a person is shown for a failed people, collection or
+# admin write.
+bae-diagnostics = { workspace = true }
+# People's tables reference albums and tracks, so records' part of the schema
+# runs first and people's tests need it.
+bae-records = { workspace = true }
+# The store every read and write runs through.
+bae-store = { workspace = true }
+# The store: its connection, schema migrations, sync, files and live queries.
+coven = { workspace = true }
+rusqlite = { workspace = true }
+thiserror = { workspace = true }
+# The locks people and history writes take.
+tokio = { workspace = true, features = ["sync"] }
+uuid = { workspace = true, features = ["v4", "v5"] }
+chrono = { workspace = true, features = ["serde"] }
+
+[dev-dependencies]
+bae-store = { workspace = true, features = ["test-utils"] }
+bae-records = { workspace = true, features = ["test-utils"] }
+coven = { workspace = true, features = ["test-utils"] }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
+# The schema tests read the tables the schema creates.
+regex = { workspace = true }
+
+[features]
+default = []
+# Test stores on people's schema, for the tests of every crate that builds on
+# this one. Dev/test-only: a production build never enables it.
+test-utils = [
+    "bae-store/test-utils",
+    "bae-records/test-utils",
+    "coven/test-utils",
+    "tokio/rt",
+    "tokio/rt-multi-thread",
+    "tokio/time",
+]
+
+[lints]
+workspace = true

@@ -1,8 +1,8 @@
 //! The personal lists come back in the order their statements state, read
 //! along an index rather than sorted after the read.
 
-use crate::client::collections::{PLAYLISTS_SQL, PLAYLIST_ENTRIES_SQL};
-use crate::client::people::profiles_sql;
+use crate::people::collections::{PLAYLISTS_SQL, PLAYLIST_ENTRIES_SQL};
+use crate::people::profiles::profiles_sql;
 use bae_store::Store;
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
@@ -17,7 +17,7 @@ async fn plan(store: &Store, statement: String) -> Vec<String> {
                 )),
                 |row| row.get::<_, String>(3),
             )
-            .map_err(crate::client::DbError::from)
+            .map_err(bae_store::DbError::from)
         })
         .await
         .unwrap()

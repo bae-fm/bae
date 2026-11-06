@@ -1,6 +1,38 @@
 //! People and their devices, with permissions derived from coven's
 //! membership, as db reads them from coven's views.
 
+use bae_store::read::json_column;
+use bae_store::{DbError, Store};
+use coven::{CovenWrite, SqlReadContext};
+use rusqlite::{params, Row};
+
+mod admin_operations;
+mod members;
+pub(crate) use members::{member_columns, member_row, SELF_IS_ADMIN};
+
+/// Membership's part of the schema: `membership.sql`.
+pub const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("membership.sql")]);
+
+/// The library's members and the admin changes this device asks for, over the
+/// store.
+#[derive(Clone)]
+pub struct Membership {
+    store: Store,
+}
+
+impl std::fmt::Debug for Membership {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Membership").finish_non_exhaustive()
+    }
+}
+
+impl Membership {
+    pub fn new(store: Store) -> Self {
+        Membership { store }
+    }
+}
+
 /// A device that can still sync, and whether this device's person may remove
 /// it. This device leaves by removing the library from it instead.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -36,8 +68,10 @@ pub struct MembershipMember {
     pub former_devices: Vec<FormerDevice>,
 }
 
+/// The library's members: everyone in it, and whether this device's person
+/// is an admin.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Membership {
+pub struct Members {
     pub members: Vec<MembershipMember>,
     pub self_is_admin: bool,
 }

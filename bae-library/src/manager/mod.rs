@@ -438,6 +438,8 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
 pub struct LibraryManager {
     store: Store,
     records: bae_records::Records,
+    people: bae_people::People,
+    membership: bae_people::Membership,
     database: Database,
     /// The app directory this library is registered under: where renaming
     /// another library finds it, where the active-library pointer is written,

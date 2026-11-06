@@ -14,25 +14,25 @@ name = "bae_db"
 path = "src/lib.rs"
 
 [dependencies]
-# The error categories a person is shown for a failed people, collection or
-# sync-start write.
+# The error categories a person is shown for a failed sync-start write.
 bae-diagnostics = { workspace = true }
-# The records the people, ratings and plays name.
+# The avatars namespace the pending rows name.
+bae-people = { workspace = true }
+# The records' namespaces the pending rows name.
 bae-records = { workspace = true }
 # The store every read and write runs through.
 bae-store = { workspace = true }
 # The store: its connection, schema migrations, sync, files and live queries.
 coven = { workspace = true }
 rusqlite = { workspace = true }
-thiserror = { workspace = true }
 # The locks people and history writes take.
 tokio = { workspace = true, features = ["sync"] }
 # Row ids, and the ids derived from catalog ids.
 uuid = { workspace = true, features = ["v4", "v5"] }
-chrono = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 bae-store = { workspace = true, features = ["test-utils"] }
+bae-people = { workspace = true, features = ["test-utils"] }
 bae-records = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
@@ -45,6 +45,7 @@ default = []
 # this one. Dev/test-only: a production build never enables it.
 test-utils = [
     "bae-store/test-utils",
+    "bae-people/test-utils",
     "bae-records/test-utils",
     "coven/test-utils",
     "tokio/rt",

@@ -2,7 +2,7 @@ use super::*;
 use crate::collections::{CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars};
 use crate::people::Sharing;
 
-impl Database {
+impl People {
     pub async fn set_rating(
         &self,
         target: RatingTarget,

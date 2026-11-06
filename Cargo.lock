@@ -741,6 +741,7 @@ dependencies = [
  "bae-identify",
  "bae-import",
  "bae-library",
+ "bae-people",
  "bae-playback",
  "bae-preferences",
  "bae-records",
@@ -833,6 +834,7 @@ dependencies = [
  "bae-library",
  "bae-loc",
  "bae-mirror",
+ "bae-people",
  "bae-playback",
  "bae-preferences",
  "bae-records",
@@ -924,13 +926,12 @@ name = "bae-db"
 version = "0.0.0-dev"
 dependencies = [
  "bae-diagnostics",
+ "bae-people",
  "bae-records",
  "bae-store",
- "chrono",
  "coven",
  "regex",
  "rusqlite",
- "thiserror 2.0.18",
  "tokio",
  "uuid",
 ]
@@ -1038,6 +1039,7 @@ dependencies = [
  "bae-diagnostics",
  "bae-identify",
  "bae-import",
+ "bae-people",
  "bae-playback",
  "bae-preferences",
  "bae-records",
@@ -1103,12 +1105,28 @@ name = "bae-mirror"
 version = "0.1.0"
 
 [[package]]
+name = "bae-people"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-diagnostics",
+ "bae-records",
+ "bae-store",
+ "chrono",
+ "coven",
+ "regex",
+ "rusqlite",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "bae-playback"
 version = "0.0.0-dev"
 dependencies = [
  "bae-audio",
- "bae-db",
  "bae-diagnostics",
+ "bae-people",
  "bae-preferences",
  "bae-records",
  "bae-store",
@@ -1316,6 +1334,7 @@ dependencies = [
  "bae-catalogs",
  "bae-db",
  "bae-diagnostics",
+ "bae-people",
  "bae-playback",
  "bae-records",
  "bae-store",

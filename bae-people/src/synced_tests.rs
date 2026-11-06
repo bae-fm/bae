@@ -63,8 +63,6 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     // What each admin change this device asked for changes, while coven
     // lists its operation.
     "admin_operations",
-    // Why this device's last attempt to start sync failed.
-    "sync_start_failure",
 ];
 
 #[test]

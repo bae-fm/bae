@@ -6,7 +6,7 @@ impl LibraryManager {
     /// Coven checks administrator authority and records the rename on this
     /// device at once, offline too; sync publishes the new name.
     pub async fn rename_library(&self, name: &bae_store::EnteredName) -> Result<(), LibraryError> {
-        self.database.rename_store(name.as_str()).await?;
+        self.membership.rename_store(name.as_str()).await?;
         Ok(())
     }
 

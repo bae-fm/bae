@@ -41,6 +41,8 @@ impl LibraryManager {
     pub(crate) async fn open(
         store: Store,
         records: bae_records::Records,
+        people: bae_people::People,
+        membership: bae_people::Membership,
         database: Database,
         app_dir: bae_app_dir::AppDir,
         clock: ClockRef,
@@ -70,6 +72,8 @@ impl LibraryManager {
             catalogs,
             store,
             records,
+            people,
+            membership,
             database,
             app_dir,
             #[cfg(desktop)]
@@ -103,7 +107,7 @@ impl LibraryManager {
         self.spawn_supervised_task(
             "profile request worker",
             async move {
-                if let Err(error) = manager.database.finish_profile_requests().await {
+                if let Err(error) = manager.people.finish_profile_requests().await {
                     manager.diagnostics.report_bug(
                         "write the requested profile",
                         &bae_util::error_text::CauseChain(&error),

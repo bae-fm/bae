@@ -343,7 +343,7 @@ pulled_read! {
 pulled_read! {
     /// The store's members and their devices.
     MembersSubscription:
-        LiveValues<bae_db::membership::Membership> => crate::types::BridgeMembership,
+        LiveValues<bae_people::membership::Members> => crate::types::BridgeMembership,
     converted by crate::types::BridgeMembership::from_core,
     built by members
 }
@@ -362,9 +362,9 @@ pulled_read! {
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.
     AdminChangesSubscription:
-        LiveValues<Vec<bae_db::admin_change::AdminChange>>
+        LiveValues<Vec<bae_people::admin_change::AdminChange>>
             => Vec<crate::types::BridgeAdminChange>,
-    converted by |changes: Vec<bae_db::admin_change::AdminChange>| {
+    converted by |changes: Vec<bae_people::admin_change::AdminChange>| {
         changes.into_iter().map(crate::types::BridgeAdminChange::from_core).collect::<Vec<_>>()
     },
     built by admin_changes
@@ -374,9 +374,9 @@ pulled_read! {
     /// This person's device that joined after Add Device made its code; none
     /// until one does.
     AddedDeviceSubscription:
-        LiveValues<Option<bae_db::membership::ActiveDevice>>
+        LiveValues<Option<bae_people::membership::ActiveDevice>>
             => Option<crate::types::BridgeActiveDevice>,
-    converted by |device: Option<bae_db::membership::ActiveDevice>| {
+    converted by |device: Option<bae_people::membership::ActiveDevice>| {
         device.map(crate::types::BridgeActiveDevice::from_core)
     },
     built by added_device
@@ -385,8 +385,8 @@ pulled_read! {
 pulled_read! {
     /// Every person's profile.
     ProfilesSubscription:
-        LiveValues<Vec<bae_db::people::PersonProfile>> => Vec<crate::types::BridgePersonProfile>,
-    converted by |profiles: Vec<bae_db::people::PersonProfile>| {
+        LiveValues<Vec<bae_people::people::PersonProfile>> => Vec<crate::types::BridgePersonProfile>,
+    converted by |profiles: Vec<bae_people::people::PersonProfile>| {
         profiles.into_iter().map(crate::types::BridgePersonProfile::from_core).collect::<Vec<_>>()
     },
     built by profiles
@@ -396,9 +396,9 @@ pulled_read! {
     /// The profile this person asked for, until it is written: none before
     /// they ask and once it is.
     RequestedProfileSubscription:
-        LiveValues<Option<bae_db::people::RequestedProfile>>
+        LiveValues<Option<bae_people::people::RequestedProfile>>
             => Option<crate::types::BridgeRequestedProfile>,
-    converted by |requested: Option<bae_db::people::RequestedProfile>| {
+    converted by |requested: Option<bae_people::people::RequestedProfile>| {
         requested.map(crate::types::BridgeRequestedProfile::from_core)
     },
     built by requested_profile

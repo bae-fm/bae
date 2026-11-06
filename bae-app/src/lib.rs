@@ -432,6 +432,8 @@ where
         })
         .map_err(classify_open_error)?;
     let records = bae_records::Records::new(store.clone(), ids.clone());
+    let people = bae_people::People::new(store.clone());
+    let membership = bae_people::Membership::new(store.clone());
     let database = bae_db::Database::new(store.clone());
     #[cfg(desktop)]
     let remote_images = bae_catalogs::remote_image::RemoteImageCache::new(
@@ -454,6 +456,8 @@ where
             runtime.block_on(bae_library::open_library_manager(
                 store.clone(),
                 records.clone(),
+                people.clone(),
+                membership,
                 database.clone(),
                 #[cfg(desktop)]
                 catalogs.clone(),
@@ -522,7 +526,7 @@ where
                     library_manager,
                     store,
                     records,
-                    database,
+                    people,
                     #[cfg(desktop)]
                     catalogs,
                     #[cfg(desktop)]

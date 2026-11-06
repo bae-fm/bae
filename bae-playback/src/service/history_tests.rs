@@ -30,12 +30,12 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
     source.lock().unwrap().pull_samples(&mut vec![0.0; 1900], &mut audio_tx);
     let (fmt, position) = source.lock().unwrap().position_event();
     service.handle_position_event(fmt, position).await;
-    assert!(service.database.history().await.unwrap().is_empty());
+    assert!(service.people.history().await.unwrap().is_empty());
     service.pause();
     service.capture_listening_position();
     service.persist_listening().await;
     service.resume().await;
-    assert!(service.database.history().await.unwrap().is_empty());
+    assert!(service.people.history().await.unwrap().is_empty());
 
     // The decoder starts at thirty seconds after a seek. Only its hundred
     // consumed samples add to the nineteen seconds already heard.
@@ -50,7 +50,7 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
     source.lock().unwrap().pull_samples(&mut vec![0.0; 100], &mut audio_tx);
     let (fmt, position) = source.lock().unwrap().position_event();
     service.handle_position_event(fmt, position).await;
-    let rows = service.database.history().await.unwrap();
+    let rows = service.people.history().await.unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].played, Duration::from_secs(20));
     assert_eq!(rows[0].started_at, test_clock_start());
@@ -58,7 +58,7 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
     // No position tick covers these final samples. Stop captures them itself.
     source.lock().unwrap().pull_samples(&mut [0.0; 50], &mut audio_tx);
     service.stop().await;
-    let rows = service.database.history().await.unwrap();
+    let rows = service.people.history().await.unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].id, id);
     assert_eq!(rows[0].played, Duration::from_millis(20_500));
@@ -95,25 +95,25 @@ async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
     };
     let (fmt, position) = hear(2100);
     service.handle_position_event(fmt, position).await;
-    let saved = |rows: Vec<bae_db::history::HistoryEntry>| {
+    let saved = |rows: Vec<bae_people::history::HistoryEntry>| {
         assert_eq!(rows.len(), 1);
         rows[0].played
     };
-    assert_eq!(saved(service.database.history().await.unwrap()), Duration::from_secs(21));
+    assert_eq!(saved(service.people.history().await.unwrap()), Duration::from_secs(21));
     for _ in 0..5 {
         let (fmt, position) = hear(100);
         service.handle_position_event(fmt, position).await;
         service.checkpoint_listening().await;
     }
     assert_eq!(
-        saved(service.database.history().await.unwrap()),
+        saved(service.people.history().await.unwrap()),
         Duration::from_secs(21),
         "progress after the play counted must not write it again"
     );
     service.pause();
     service.capture_listening_position();
     service.persist_listening().await;
-    assert_eq!(saved(service.database.history().await.unwrap()), Duration::from_secs(26));
+    assert_eq!(saved(service.people.history().await.unwrap()), Duration::from_secs(26));
     assert!(!drained_a_playback_error(&mut progress));
 }
 
@@ -154,7 +154,7 @@ async fn gapless_crossing_records_the_finishing_play_and_starts_a_distinct_one()
     service.drain_current_audio_events().await;
     let (fmt, position) = source.lock().unwrap().position_event();
     service.handle_position_event(fmt, position).await;
-    let rows = service.database.history().await.unwrap();
+    let rows = service.people.history().await.unwrap();
     assert_eq!(rows.len(), 2);
     let a = rows.iter().find(|row| row.track_id == TRACK_A).unwrap();
     let b = rows.iter().find(|row| row.track_id == TRACK_B).unwrap();
@@ -193,21 +193,21 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
         service
             .handle_audio_event(AudioEvent::Completion(source.take_completion_event().unwrap()))
             .await;
-        assert_eq!(service.database.history().await.unwrap()[0].played, Duration::from_secs(38));
+        assert_eq!(service.people.history().await.unwrap()[0].played, Duration::from_secs(38));
         assert!(
             drained_track_completed_ids(&mut progress).is_empty(),
             "the receiver still has two seconds to play"
         );
         clock.advance(Duration::from_secs(1));
         service.persist_listening().await;
-        assert_eq!(service.database.history().await.unwrap()[0].played, Duration::from_secs(39));
+        assert_eq!(service.people.history().await.unwrap()[0].played, Duration::from_secs(39));
         if pause_tail {
             service.pause();
         }
         clock.advance(Duration::from_secs(1));
         service.persist_listening().await;
         assert_eq!(
-            service.database.history().await.unwrap()[0].played,
+            service.people.history().await.unwrap()[0].played,
             Duration::from_secs(if pause_tail { 39 } else { 40 })
         );
         service.publish_audible_completion();
@@ -235,7 +235,7 @@ async fn remote_listening_keeps_one_play_across_seek_and_pause() {
     service
         .handle_remote_event(RendererSessionEvent::Status(status(RendererPlayerState::Playing, 30)))
         .await;
-    let first = service.database.history().await.unwrap();
+    let first = service.people.history().await.unwrap();
     assert_eq!(first.len(), 1);
     assert_eq!(first[0].played, Duration::from_secs(30));
     service.seek(StreamPosition::from_millis(90_000)).await;
@@ -252,7 +252,7 @@ async fn remote_listening_keeps_one_play_across_seek_and_pause() {
         .handle_remote_event(RendererSessionEvent::Status(status(RendererPlayerState::Paused, 93)))
         .await;
     service.stop().await;
-    let rows = service.database.history().await.unwrap();
+    let rows = service.people.history().await.unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].id, first[0].id);
     assert_eq!(rows[0].played, Duration::from_secs(33));
@@ -288,7 +288,7 @@ async fn a_short_track_of_unknown_length_heard_to_its_end_counts_as_played() {
         .await;
     service.persist_listening().await;
 
-    let rows = service.database.history().await.unwrap();
+    let rows = service.people.history().await.unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].played, Duration::from_secs(20));
     assert!(!drained_a_playback_error(&mut progress));

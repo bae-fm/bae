@@ -294,8 +294,7 @@ impl Database {
                 FailureColumns::of(&category).map(|columns| (columns, detail))
             })
             .transpose()?;
-        self.inner
-            .store
+        self.store
             .call(move |sql| {
                 match &row {
                     Some((columns, detail)) => sql.execute(

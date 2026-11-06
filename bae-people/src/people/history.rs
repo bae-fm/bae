@@ -2,7 +2,7 @@ use super::*;
 use crate::history::{HistoryAudience, HistoryEntry, HistoryPlay};
 use std::time::Duration;
 
-impl Database {
+impl People {
     /// Capture the person's setting once. A later setting change cannot publish this play.
     pub async fn begin_play(
         &self,
