@@ -140,11 +140,6 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    fn detach_release_audio(release_id: String, new_path: Vec<u8>) -> () {
-        let new_path = crate::from_app::path(new_path)?;
-        Ok(this.services.detach_release_audio(&release_id, &new_path).await?)
-    }
-
     fn delete_release(release_id: String) -> () {
         Ok(this.services.delete_release(&release_id).await?)
     }

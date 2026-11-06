@@ -185,6 +185,14 @@ forward! {
 forward! {
     #[cfg(desktop)]
     async this => {
+        /// Make an uploaded release local into the folder at `new_path`: coven
+        /// downloads each file there, then one write switches the release to
+        /// this device only.
+        fn detach_release_audio(release_id: String, new_path: Vec<u8>) -> () {
+            let new_path = crate::from_app::path(new_path)?;
+            Ok(this.services.detach_release_audio(&release_id, &new_path).await?)
+        }
+
         /// Change the cover art for an album's release: a library image, or a
         /// remote cover fetched and stored.
         fn change_cover(release_id: String, selection: BridgeCoverSelection) -> () {

@@ -2073,7 +2073,7 @@ queued; the person sees the error and the failure is reported as a bug.
 ### 4.4 Making a release local again
 
 Making an uploaded release local again brings its files into a folder the
-person picks, and leaves them on this device only.
+person picks, and leaves them on this device only. Only the desktop apps offer it.
 
 Carol wants her box set out of storage. She picks a folder on her drive. bae
 hands coven the folder and each file's path below it, in one call

@@ -489,6 +489,7 @@ impl AppServices {
     delegate_async!(manager, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, unpin_release => unpin_release(release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, upload_releases => upload_releases(release_ids: &[String]) -> Result<bae_library::UploadReleasesOutcome, bae_library::LibraryError>);
+    #[cfg(desktop)]
     delegate_async!(manager, detach_release_audio => detach_release_audio(release_id: &str, new_path: &std::path::Path) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, delete_release => delete_release(release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, delete_album => delete_album(album_id: &str) -> Result<(), bae_library::LibraryError>);

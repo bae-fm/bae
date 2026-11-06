@@ -333,13 +333,6 @@ internal open class FakeAppHandle(
         unfaked("deleteAlbum")
     }
 
-    override suspend fun detachReleaseAudio(
-        releaseId: String,
-        newPath: ByteArray,
-    ) {
-        unfaked("detachReleaseAudio")
-    }
-
     override suspend fun generateRestoreCode(): BridgeRestoreCodeShare = unfaked("generateRestoreCode")
 
     override suspend fun addDevice(): BridgeAddDevice = unfaked("addDevice")
