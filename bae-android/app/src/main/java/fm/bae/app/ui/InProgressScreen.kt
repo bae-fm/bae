@@ -17,7 +17,6 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.OpenProgressLine
-import fm.bae.app.ui.components.StepBar
 import fm.bae.app.ui.components.StepProgressLine
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.stepFraction
@@ -50,7 +49,7 @@ internal fun InProgressScreen(screen: AppScreen.InProgress) {
         }
 
         is AppScreen.FinishingRemovals -> {
-            SetupStepScreen(steps = screen.steps, starting = BridgeSetupStep.FINISHING_REMOVALS)
+            SetupStepScreen(steps = screen.steps, title = R.string.loading_removing_library)
         }
 
         is AppScreen.Resetting -> {
@@ -115,15 +114,14 @@ internal fun ClosingScreen(
 
 /**
  * A setup call running: the step it runs over a bar of how much of it is
- * done, counted where the step counts, drawn from [steps] each display frame.
- * While the call runs no step, the screen names [starting], the step the call
- * starts with, over a bar without a count. [stepKey] gives a step's catalog
- * key.
+ * done, counted where the step counts, drawn from [steps] each display frame,
+ * and, while the call runs no step, [title], what the screen waits on, under
+ * a spinner. [stepKey] gives a step's catalog key.
  */
 @Composable
 internal fun SetupStepScreen(
     steps: LatestSource<BridgeSetupProgress>,
-    starting: BridgeSetupStep,
+    @StringRes title: Int,
     stepKey: (BridgeSetupStep) -> String = ::bridgeSetupStepKey,
 ) {
     val context = LocalContext.current
@@ -134,7 +132,7 @@ internal fun SetupStepScreen(
             fraction = { stepFraction(it.done, it.total)?.toDouble() },
             modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
         ) {
-            StepBar(title = context.coreString(stepKey(starting)), fraction = null)
+            WaitingIndicator(text = stringResource(title))
         }
     }
 }
@@ -167,7 +165,7 @@ private fun FinishingRemovalsPreview() {
                 LatestStream
                     .setupProgress(BridgeSetupProgress(BridgeSetupStep.FINISHING_REMOVALS, 1uL, 2uL))
                     .only,
-            starting = BridgeSetupStep.FINISHING_REMOVALS,
+            title = R.string.loading_removing_library,
         )
     }
 }

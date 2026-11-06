@@ -3142,7 +3142,9 @@ fail, saying the laptop left the library and its files are still on it.
   *Retry* deletes only what is left on this device; it never tries to leave
   again. While it runs, it reports finishing earlier removals through a setup
   call's stream, counted by removal once their records are read, and the app
-  shows that step over its bar, never a bare spinner. A record whose store
+  shows that step over its bar; before the first step, or once the stream
+  holds nothing, it names its work, removing the library, under a spinner.
+  A record whose store
   coven still lists stopped before the delete: it
   is cleared, and bae says the library is still on this device, with nothing
   to retry. Removals, finishing them and looking for them each hold one
