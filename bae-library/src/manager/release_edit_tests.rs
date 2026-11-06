@@ -267,26 +267,39 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
         created_at: Utc::now(),
     };
     manager.records.insert_artist(&composer).await.unwrap();
-    let work_id = bae_records::identity::work_id("mb-work-1");
-    for (statement, params) in [
-        (
-            "INSERT INTO works (id, title, musicbrainz_work_id, created_at) \
-             VALUES (?, 'Work Title', 'mb-work-1', '2026-01-01T00:00:00Z')",
-            vec![work_id.clone()],
-        ),
-        (
-            "INSERT INTO track_works (id, track_id, work_id, position, source, created_at) \
-             VALUES ('9a1d3b7e-0000-4000-8000-000000000001', ?, ?, 0, 'musicbrainz', '2026-01-01T00:00:00Z')",
-            vec![track.id.clone(), work_id.clone()],
-        ),
-        (
-            "INSERT INTO track_artist_roles (id, track_id, artist_id, position, source, source_credit, created_at) \
-             VALUES ('9a1d3b7e-0000-4000-8000-000000000002', ?, ?, 0, 'musicbrainz', 'composer', '2026-01-01T00:00:00Z')",
-            vec![track.id.clone(), composer.id.clone()],
-        ),
-    ] {
-        manager.store.execute_for_test(statement, params).await.unwrap();
-    }
+    let work = bae_records::DbWork {
+        id: bae_records::identity::work_id("mb-work-1"),
+        title: "Work Title".to_string(),
+        disambiguation: None,
+        work_type: None,
+        musicbrainz_work_id: "mb-work-1".to_string(),
+        created_at: Utc::now(),
+    };
+    manager
+        .records
+        .insert_library_rows_for_test(bae_records::test_fixtures::library::LibraryRows {
+            track_works: vec![bae_records::DbTrackWork::new(
+                &track.id,
+                &work.id,
+                0,
+                bae_catalogs::catalog::Catalog::MusicBrainz,
+                Uuid::new_v4().to_string(),
+                Utc::now(),
+            )],
+            works: vec![work],
+            track_artist_roles: vec![bae_records::DbTrackArtistRole {
+                id: Uuid::new_v4().to_string(),
+                track_id: track.id.clone(),
+                artist_id: composer.id.clone(),
+                position: 0,
+                source: bae_catalogs::catalog::Catalog::MusicBrainz,
+                source_credit: Some("composer".to_string()),
+                created_at: Utc::now(),
+            }],
+            ..bae_records::test_fixtures::library::LibraryRows::default()
+        })
+        .await
+        .unwrap();
 
     let discogs_release_id = "80000201";
     let discogs_raw = serde_json::json!({
