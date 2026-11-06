@@ -11,16 +11,12 @@ pub fn subscribe_release_files(
     library: &LibraryManager,
     library_views: &LibraryViews,
 ) -> LiveReleaseFiles {
-    let views = library_views.clone();
-    follow_request(
-        library,
-        "release files",
-        move |request| views.subscribe_release_files(request),
-        |request, files| ReleaseFilesSnapshot {
+    follow_request(library, library_views.subscribe_release_files(None), |request, files| {
+        ReleaseFilesSnapshot {
             request: request.clone(),
             files: files.map(|files| {
                 files.into_iter().map(bae_views::album_detail::FileDetail::from_raw).collect()
             }),
-        },
-    )
+        }
+    })
 }

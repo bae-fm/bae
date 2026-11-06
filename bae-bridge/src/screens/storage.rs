@@ -120,7 +120,7 @@ impl StorageBrowseSubscription {
         selected: Vec<String>,
     ) -> Result<(), BridgeError> {
         self.inner
-            .set(bae_views::StorageBrowseView {
+            .set(bae_views::StorageBrowseRequest {
                 sort: sort.into_core(),
                 filter: filter.into_core(),
                 search,

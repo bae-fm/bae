@@ -1,11 +1,5 @@
 use super::*;
 
-/// A subscription opened while its library closes, from a task the close is
-/// ending, has nothing left to read.
-fn subscription_unstarted(error: &LibraryError) {
-    tracing::warn!(%error, "a subscription asked for as its library closed ends unstarted");
-}
-
 /// The manager's background tasks, and the signal that ends them and the
 /// subscriptions [`LibraryManager::until_closed`] made.
 #[derive(Clone)]
@@ -198,28 +192,6 @@ impl LibraryManager {
             },
             on_panic,
         )
-    }
-
-    /// Start the task behind a subscription to the library as one of the
-    /// manager's tasks, which closing the library ends before the store
-    /// closes; otherwise it runs until it ends or `stop` is cancelled. A
-    /// panic in it is reported, and `reader` is told it failed. One asked for
-    /// while the library closes starts nothing: the task and the sender it
-    /// holds are dropped, so the subscription ends at once.
-    pub fn spawn_stoppable_subscription_task<F>(
-        &self,
-        task_name: &'static str,
-        stop: crate::CancellationToken,
-        reader: impl crate::SubscriptionReader,
-        task: F,
-    ) where
-        F: Future<Output = ()> + Send + 'static,
-    {
-        if let Err(error) = self.spawn_stoppable_task(task_name, stop, task, move |failed| {
-            reader.fail(failed.into());
-        }) {
-            subscription_unstarted(&error);
-        }
     }
 
     /// `query` as a subscription a surface reads by pulling its values,

@@ -11,7 +11,7 @@ use bae_store::Store;
 use bae_util::content_type::ContentType;
 use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::ReleaseStorageState;
-use bae_views::StorageBrowseView;
+use bae_views::StorageBrowseRequest;
 use bae_views::{StorageFilter, StorageSortCriterion, StorageSortField};
 use chrono::Utc;
 use coven::MemoryStorage;
@@ -494,7 +494,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     let values = bae_app::live_reads::subscribe_storage_browse(
         &mgr,
         &views,
-        StorageBrowseView {
+        StorageBrowseRequest {
             sort: StorageSortCriterion {
                 field: StorageSortField::AlbumTitle,
                 direction: SortDirection::Ascending,

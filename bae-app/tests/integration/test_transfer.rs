@@ -11,7 +11,7 @@ use bae_store::SortDirection;
 use bae_util::content_type::ContentType;
 use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::ReleaseStorageState;
-use bae_views::StorageBrowseView;
+use bae_views::StorageBrowseRequest;
 use bae_views::{StorageFilter, StorageSortCriterion, StorageSortField};
 use chrono::Utc;
 use std::path::Path;
@@ -477,7 +477,7 @@ async fn transition_completions_deliver_storage_values() {
     let values = bae_app::live_reads::subscribe_storage_browse(
         &mgr,
         &views,
-        StorageBrowseView {
+        StorageBrowseRequest {
             sort: StorageSortCriterion {
                 field: StorageSortField::AlbumTitle,
                 direction: SortDirection::Ascending,
@@ -524,7 +524,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
     let values = bae_app::live_reads::subscribe_storage_browse(
         &mgr,
         &views,
-        StorageBrowseView {
+        StorageBrowseRequest {
             sort: StorageSortCriterion {
                 field: StorageSortField::AlbumTitle,
                 direction: SortDirection::Ascending,
@@ -609,7 +609,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     .expect("pin task completes");
 
     let views = bae_views::LibraryViews::new(mgr.store().clone());
-    let view = |selected: &[&String]| StorageBrowseView {
+    let view = |selected: &[&String]| StorageBrowseRequest {
         sort: StorageSortCriterion {
             field: StorageSortField::AlbumTitle,
             direction: SortDirection::Ascending,

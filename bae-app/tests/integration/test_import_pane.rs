@@ -8,7 +8,7 @@ use tempfile::TempDir;
 
 /// The pane's values until one `accept` admits.
 async fn until(
-    pane: &bae_library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey>,
+    pane: &bae_app::live_reads::LiveImportCandidate,
     accept: impl Fn(&ImportCandidateDetail) -> bool,
 ) -> ImportCandidateDetail {
     tokio::time::timeout(HANG_GUARD, async {

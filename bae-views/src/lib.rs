@@ -52,9 +52,7 @@ pub use release_files::{
 pub use search::{
     LibrarySearchQuery, LibrarySearchSnapshot, LiveLibrarySearch, SEARCH_RESULT_LIMIT,
 };
-pub use storage_browse::{
-    ReleaseQueueRun, StorageBrowseSnapshot, StorageBrowseView, StorageQueues, UploadQueueRun,
-};
+pub use storage_browse::{ReleaseQueueRun, StorageBrowseSnapshot, StorageQueues, UploadQueueRun};
 pub use sync_activity::{
     DownloadsInFlight, SyncActivity, SyncActivityRows, UploadQueueCounts, UploadsInFlight,
 };

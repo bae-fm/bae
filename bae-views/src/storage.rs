@@ -700,9 +700,11 @@ pub(crate) fn storage_order(sort: &StorageSortCriterion) -> ListOrder {
     ListOrder::new(terms)
 }
 
-/// What the Storage Manager list reads: the sort, filter and search text it
-/// shows, the windows of that list it holds, and the releases selected in it.
-/// Text that parses as no library search (blank) narrows nothing.
+/// What the Storage Manager shows, and its list reads: the list under one
+/// sort, filter and search text, the windows of it on screen, and the
+/// releases selected in it. The search narrows the list to the releases whose
+/// album library search finds (§2.3); text that is no search (blank) narrows
+/// nothing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageBrowseRequest {
     pub sort: StorageSortCriterion,

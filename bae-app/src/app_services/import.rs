@@ -3,7 +3,6 @@
 
 use super::*;
 use bae_import::{ImportCandidateDetail, ImportListView, LiveImportList};
-use bae_library::live_query_events::reconfigurable_live_query_events;
 
 impl AppServices {
     /// The library albums a parsed, non-blank query finds, as the album
@@ -294,9 +293,7 @@ impl AppServices {
     /// selection. Another candidate is a new key on the same read. While the
     /// read is set to a candidate, that candidate's identification goes ahead
     /// of every other.
-    pub fn subscribe_import_candidate(
-        &self,
-    ) -> bae_library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey> {
+    pub fn subscribe_import_candidate(&self) -> crate::live_reads::LiveImportCandidate {
         self.read_import_candidate(self.inner.import.subscribe_candidate(None))
     }
 
@@ -321,50 +318,15 @@ impl AppServices {
             Option<bae_import::ImportCandidateDetailProjection>,
             coven::CovenError,
         >,
-    ) -> bae_library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey> {
-        let (key_tx, mut keys) = tokio::sync::watch::channel(None::<bae_import::CandidateKey>);
-        let (tx, rx) = bae_library::live_read_channel();
-        let manager = self.inner.manager.clone();
-        // Dropped with the read's task, which says the pane shows nothing.
-        let mut shown = self.inner.identification.shown_candidate();
-        let task = bae_library::CancellationToken::new();
-        self.inner.manager.spawn_stoppable_subscription_task(
-            "import candidate",
-            task.clone(),
-            tx.clone(),
-            async move {
-                let mut query = reconfigurable_live_query_events(&manager, query, tx.clone());
-                // A key set before this task runs is the first one read.
-                let mut key = keys.borrow_and_update().clone();
-                if key.is_some() {
-                    shown.show(key.clone());
-                    query.set(key.clone());
-                }
-                loop {
-                    let value = tokio::select! {
-                        event = query.recv() => match event {
-                            None => return,
-                            Some(Ok(read)) => {
-                                Ok(read.map(bae_import::ImportCandidateDetailProjection::resolve))
-                            }
-                            Some(Err(error)) => Err(error),
-                        },
-                        changed = keys.changed() => {
-                            if changed.is_err() { return; }
-                            key = keys.borrow_and_update().clone();
-                            shown.show(key.clone());
-                            query.set(key.clone());
-                            continue;
-                        }
-                    };
-                    let value =
-                        value.map(|value| bae_library::DetailSnapshot { id: key.clone(), value });
-                    if tx.send(value).is_err() {
-                        return;
-                    }
-                }
-            },
-        );
-        bae_library::LiveDetail::new(key_tx, rx, task)
+    ) -> crate::live_reads::LiveImportCandidate {
+        crate::live_reads::LiveImportCandidate::new(
+            bae_library::LiveRead::new(self.inner.manager.until_closed(query), |key, _, read| {
+                Some(bae_library::DetailSnapshot {
+                    id: key.clone(),
+                    value: read.map(bae_import::ImportCandidateDetailProjection::resolve),
+                })
+            }),
+            self.inner.identification.shown_candidate(),
+        )
     }
 }

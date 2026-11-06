@@ -46,10 +46,9 @@ impl AppServices {
     pub fn subscribe_invalid_candidate(
         &self,
     ) -> LiveDetail<bae_import::InvalidCandidateDetail, bae_import::CandidateKey> {
-        let import = self.inner.import.clone();
         live_reads::detail_read(
-            self.inner.manager.clone(),
-            move |key| import.subscribe_invalid_candidate(key),
+            &self.inner.manager,
+            self.inner.import.subscribe_invalid_candidate(None),
             |detail| detail,
         )
     }

@@ -95,7 +95,7 @@ async fn until<Value, Error: std::fmt::Debug>(
 /// query from reaching its first value: a subscription that keeps restarting
 /// its read delivers neither a value nor an error, which reads on screen as a
 /// spinner that never resolves. The release detail and the storage page read
-/// the same way, through the same `reconfigurable_live_query_events`.
+/// the same way, through the same `LiveRead`.
 ///
 /// The load here is sync-shaped without a sync loop: reads keeping coven's
 /// reader connection busy so the query's read waits its turn behind them, and
@@ -277,7 +277,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     let values = bae_app::live_reads::subscribe_storage_browse(
         &manager,
         &views(&manager),
-        bae_views::StorageBrowseView {
+        bae_views::StorageBrowseRequest {
             sort: bae_views::StorageSortCriterion {
                 field: bae_views::StorageSortField::AlbumTitle,
                 direction: bae_store::SortDirection::Ascending,
@@ -335,7 +335,7 @@ async fn the_storage_view_moves_one_subscription() {
     seed_albums(&manager, 3).await;
     let window = |offset, limit| bae_store::LibraryPageWindow { offset, limit };
     let view = |direction, filter, windows: &[bae_store::LibraryPageWindow]| {
-        bae_views::StorageBrowseView {
+        bae_views::StorageBrowseRequest {
             sort: bae_views::StorageSortCriterion {
                 field: bae_views::StorageSortField::AlbumTitle,
                 direction,
@@ -398,7 +398,7 @@ async fn a_transition_reaches_the_reads_from_its_row() {
     let storage = bae_app::live_reads::subscribe_storage_browse(
         &manager,
         &views,
-        bae_views::StorageBrowseView {
+        bae_views::StorageBrowseRequest {
             sort: bae_views::StorageSortCriterion {
                 field: bae_views::StorageSortField::AlbumTitle,
                 direction: bae_store::SortDirection::Ascending,

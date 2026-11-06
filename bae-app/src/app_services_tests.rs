@@ -408,7 +408,7 @@ async fn closing_the_library_ends_a_held_subscriptions_task_before_its_store_clo
 /// A live read its holder still keeps ends with the library the same way,
 /// before the store closes.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes() {
+async fn closing_the_library_ends_a_held_live_read_before_its_store_closes() {
     let (services, _track_ids, _temp_dir) = playing_app_services(3).await;
     let release = services.subscribe_release_detail();
     release.set(Some("c61a9e19-f3ba-4728-842c-c59dbc82e238".to_string())).unwrap();
@@ -423,10 +423,7 @@ async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes
     loop {
         match tokio::time::timeout(HANG_GUARD, release.next()).await.expect("the live read ends") {
             Ok(_) => {}
-            Err(
-                bae_library::LiveReadError::Query(error)
-                | bae_library::LiveReadError::Failed(error),
-            ) => {
+            Err(bae_library::LiveReadError::Query(error)) => {
                 panic!("the live read heard from the closed store: {error}")
             }
             Err(bae_library::LiveReadError::Cancelled) => break,

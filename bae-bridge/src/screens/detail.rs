@@ -28,6 +28,23 @@ macro_rules! detail_subscription {
         value: $bridge_value:ty,
         id: $id:ty = $core_id:ty,
     ) => {
+        detail_subscription! {
+            object: $object,
+            built by $make,
+            snapshot: $snapshot,
+            value: $bridge_value,
+            id: $id = $core_id,
+            read: bae_library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
+        }
+    };
+    (
+        object: $object:ident,
+        built by $make:ident,
+        snapshot: $snapshot:ident,
+        value: $bridge_value:ty,
+        id: $id:ty = $core_id:ty,
+        read: $read:ty,
+    ) => {
         /// One value a detail read delivered: the id it was read for, and that
         /// item's detail, or none once no such item exists.
         #[derive(Debug, Clone, uniffi::Record)]
@@ -38,8 +55,7 @@ macro_rules! detail_subscription {
 
         pulled_read! {
             /// A read that shows nothing until `set_id` names an item.
-            $object: bae_library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>
-                => $snapshot,
+            $object: $read => $snapshot,
             converted by |snapshot: bae_library::DetailSnapshot<
                 <$bridge_value as DetailValue>::Core,
                 $core_id,
@@ -126,6 +142,7 @@ detail_subscription! {
     snapshot: BridgeImportCandidateSnapshot,
     value: crate::types::BridgeImportCandidateDetail,
     id: Vec<u8> = bae_import::CandidateKey,
+    read: bae_app::live_reads::LiveImportCandidate,
 }
 
 detail_subscription! {
@@ -163,11 +180,10 @@ detail_subscription! {
     value: crate::types::BridgeWorkDetail,
 }
 
-/// A task-driven live read's failure as the bridge reports it.
+/// A live read's failure as the bridge reports it.
 pub(super) fn live_read_error(error: bae_library::LiveReadError) -> BridgeError {
     match error {
         bae_library::LiveReadError::Cancelled => BridgeError::Cancelled,
         bae_library::LiveReadError::Query(error) => BridgeError::database_query(error),
-        bae_library::LiveReadError::Failed(error) => BridgeError::from(error),
     }
 }

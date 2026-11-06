@@ -6,7 +6,7 @@
 use super::*;
 use crate::manager::tests::*;
 use crate::test_libraries::TestLibrary;
-use crate::{LiveRead, LiveReadError};
+use crate::LiveReadError;
 use coven::MemoryStorage;
 use tempfile::TempDir;
 
@@ -428,29 +428,30 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
     );
 }
 
-/// A live read whose task panics ends with the failure, which its reader
-/// tells apart from its own cancel, and the panic is reported once.
-#[tokio::test]
-async fn a_live_read_whose_task_panics_ends_with_its_failure() {
-    let (manager, _temp_dir, bugs) = setup_test_manager_reporting_bugs().await;
-    let (requests, _) = tokio::sync::watch::channel(());
-    let (values, read) = crate::live_read_channel::<()>();
-    let task = crate::CancellationToken::new();
-    manager.spawn_stoppable_subscription_task(
-        "test subscription",
-        task.clone(),
-        values.clone(),
-        async move {
-            let _values = values;
-            panic!("the subscription broke");
-        },
-    );
-    let read = LiveRead::new(requests, read, task);
+/// Closing the library ends a live read's waiting `next` before the store
+/// closes: the read answers that it was cancelled, never that the store it
+/// read is closed, and takes no more requests.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn closing_the_library_cancels_a_waiting_live_read() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let read = Arc::new(crate::subscribe_queue_upcoming(&manager));
+    read.next().await.expect("the initial value");
+    let waiting = tokio::spawn({
+        let read = read.clone();
+        async move { read.next().await }
+    });
 
-    let ended = read.next().await;
+    manager.library.close().await.unwrap();
 
-    assert!(matches!(ended, Err(LiveReadError::Failed(LibraryError::Internal(_)))), "{ended:?}");
-    assert_eq!(bugs.reports().len(), 1, "{:?}", bugs.reports());
+    let ended = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, waiting)
+        .await
+        .expect("the waiting read ends")
+        .unwrap();
+    assert!(matches!(ended, Err(LiveReadError::Cancelled)), "{ended:?}");
+    assert!(matches!(
+        read.set([bae_store::LibraryPageWindow { offset: 0, limit: 10 }].into()),
+        Err(LiveReadError::Cancelled)
+    ));
 }
 
 /// A file operation that panics fails as something that went wrong, is

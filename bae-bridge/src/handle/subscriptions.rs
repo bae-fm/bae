@@ -134,7 +134,7 @@ impl AppHandle {
         filter: BridgeStorageFilter,
     ) -> Arc<crate::StorageBrowseSubscription> {
         crate::screens::storage_browse(
-            self.services.subscribe_storage_browse(bae_views::StorageBrowseView {
+            self.services.subscribe_storage_browse(bae_views::StorageBrowseRequest {
                 sort: sort.into_core(),
                 filter: filter.into_core(),
                 search: String::new(),

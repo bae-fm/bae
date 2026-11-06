@@ -8,7 +8,7 @@ impl AppServices {
     /// [`crate::live_reads::subscribe_storage_browse`].
     pub fn subscribe_storage_browse(
         &self,
-        initial: bae_views::StorageBrowseView,
+        initial: bae_views::StorageBrowseRequest,
     ) -> crate::live_reads::LiveStorageBrowse {
         crate::live_reads::subscribe_storage_browse(&self.inner.manager, &self.inner.views, initial)
     }

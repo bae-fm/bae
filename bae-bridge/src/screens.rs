@@ -60,23 +60,33 @@ live_query_read!(bae_library::LiveAlbumSelection => bae_library::AlbumSelectionS
 #[cfg(desktop)]
 live_query_read!(bae_library::LiveLibraryStatus => bae_library::LibraryStatusSnapshot);
 
-/// A read core's task produces, whose request moves in place.
-impl<Request, Value> PulledRead for bae_library::LiveRead<Request, Value>
-where
-    Request: PartialEq + Send + Sync + 'static,
-    Value: Send + 'static,
-{
-    type Value = Value;
+/// A read over one live query whose request moves in place.
+macro_rules! live_read {
+    ($read:ty => $value:ty $(, over [$($generics:tt)*])?) => {
+        impl$(<$($generics)*>)? PulledRead for $read {
+            type Value = $value;
 
-    async fn next(&self) -> Result<Value, BridgeError> {
-        bae_library::LiveRead::next(self).await.map_err(detail::live_read_error)
-    }
+            async fn next(&self) -> Result<$value, BridgeError> {
+                <$read>::next(self).await.map_err(detail::live_read_error)
+            }
 
-    async fn cancel(&self) -> Result<(), BridgeError> {
-        bae_library::LiveRead::cancel(self);
-        Ok(())
-    }
+            async fn cancel(&self) -> Result<(), BridgeError> {
+                <$read>::cancel(self);
+                Ok(())
+            }
+        }
+    };
 }
+
+live_read!(
+    bae_library::LiveRead<Request, Value> => Value,
+    over [Request: Send + Sync + 'static, Value: Send + 'static]
+);
+#[cfg(desktop)]
+live_read!(
+    bae_app::live_reads::LiveImportCandidate
+        => bae_library::DetailSnapshot<bae_import::ImportCandidateDetail, bae_import::CandidateKey>
+);
 
 /// A screen's read as the app pulls it: `$object` holds `$inner`, a
 /// [`PulledRead`], each pulled value converted to `$bridge` by `$convert`,

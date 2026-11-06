@@ -33,39 +33,14 @@ pub type LiveQueueUpcoming = super::LiveRead<LibraryPageWindows, QueueUpcomingSn
 ///
 /// [`LiveRead::set`]: super::LiveRead::set
 pub fn subscribe_queue_upcoming(library: &crate::LibraryManager) -> crate::LiveQueueUpcoming {
-    let (windows_tx, mut windows) =
-        tokio::sync::watch::channel(bae_store::LibraryPageWindows::new());
-    let (tx, rx) = crate::live_read_channel();
-    let manager = library.clone();
-    let task = crate::CancellationToken::new();
-    library.spawn_stoppable_subscription_task(
-        "queue upcoming",
-        task.clone(),
-        tx.clone(),
-        async move {
-            let mut query = crate::live_query_events::reconfigurable_live_query_events(
-                &manager,
-                manager.subscribe_queue_upcoming(windows.borrow_and_update().clone()),
-                tx.clone(),
-            );
-            loop {
-                tokio::select! {
-                    event = query.recv() => {
-                        let Some(result) = event else { return };
-                        let value = result.map(|read| crate::QueueUpcomingSnapshot {
-                            upcoming_total: read.upcoming_total,
-                            context_version: read.context_version,
-                            windows: read.windows,
-                        });
-                        if tx.send(value).is_err() { return; }
-                    }
-                    changed = windows.changed() => {
-                        if changed.is_err() { return; }
-                        query.set(windows.borrow_and_update().clone());
-                    }
-                }
-            }
+    crate::LiveQueueUpcoming::new(
+        library.until_closed(library.subscribe_queue_upcoming(LibraryPageWindows::new())),
+        |_, _, read| {
+            Some(crate::QueueUpcomingSnapshot {
+                upcoming_total: read.upcoming_total,
+                context_version: read.context_version,
+                windows: read.windows,
+            })
         },
-    );
-    crate::LiveQueueUpcoming::new(windows_tx, rx, task)
+    )
 }

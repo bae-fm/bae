@@ -1,7 +1,6 @@
 //! The Storage Manager inspector's live read on [`AppServices`].
 
 use super::*;
-use bae_library::LibraryError;
 use bae_views::storage_inspector::StorageInspector;
 
 /// What the reader was last told of the release shown.
@@ -26,70 +25,38 @@ pub fn subscribe_storage_inspector(
     library: &LibraryManager,
     library_views: &LibraryViews,
 ) -> bae_library::LiveDetail<StorageInspector> {
-    let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
-    let (tx, rx) = bae_library::live_read_channel();
-    let manager = library.clone();
-    let views = library_views.clone();
-    let task = bae_library::CancellationToken::new();
-    library.spawn_stoppable_subscription_task(
-        "storage inspector",
-        task.clone(),
-        tx.clone(),
-        async move {
-            let mut id: Option<String> = None;
-            let mut query = reconfigurable_live_query_events(
-                &manager,
-                views.subscribe_storage_inspector(None),
-                tx.clone(),
-            );
-            let mut told = Told::Nothing;
-            let fail = |error: LibraryError| tx.send(Err(error)).is_ok();
-            loop {
-                // The shown release as read: `None` once no such release
-                // exists.
-                let rows: Option<bae_views::DbStorageInspector> = tokio::select! {
-                    changed = ids.changed() => {
-                        if changed.is_err() { return; }
-                        id = ids.borrow_and_update().clone();
-                        query.set(id.clone());
-                        told = Told::Nothing;
-                        continue;
-                    }
-                    value = query.recv() => match value {
-                        None => return,
-                        Some(Ok(rows)) => rows,
-                        Some(Err(error)) => {
-                            if !fail(error) { return; }
-                            continue;
-                        }
-                    },
-                };
-                let Some(release_id) = id.clone() else {
-                    continue;
-                };
-                let value = match rows {
-                    None => {
-                        if matches!(told, Told::Gone) {
-                            continue;
-                        }
-                        told = Told::Gone;
-                        None
-                    }
-                    Some(rows) => {
-                        let inspector = StorageInspector::read(&release_id, rows);
-                        if matches!(&told, Told::Shown(shown) if *shown == inspector) {
-                            continue;
-                        }
-                        told = Told::Shown(inspector.clone());
-                        Some(inspector)
-                    }
-                };
-                let snapshot = bae_library::DetailSnapshot { id: Some(release_id), value };
-                if tx.send(Ok(snapshot)).is_err() {
-                    return;
-                }
+    // What the reader was told, and the revision of the id it was told for:
+    // a new revision is a new `set`, which starts telling over.
+    let mut told = Told::Nothing;
+    let mut told_for: Option<u64> = None;
+    bae_library::LiveDetail::new(
+        library.until_closed(library_views.subscribe_storage_inspector(None)),
+        move |id: &Option<String>, revision, rows: Option<bae_views::DbStorageInspector>| {
+            if told_for != Some(revision) {
+                told_for = Some(revision);
+                told = Told::Nothing;
             }
+            let release_id = id.clone()?;
+            // `rows` is the shown release as read: `None` once no such
+            // release exists.
+            let value = match rows {
+                None => {
+                    if matches!(told, Told::Gone) {
+                        return None;
+                    }
+                    told = Told::Gone;
+                    None
+                }
+                Some(rows) => {
+                    let inspector = StorageInspector::read(&release_id, rows);
+                    if matches!(&told, Told::Shown(shown) if *shown == inspector) {
+                        return None;
+                    }
+                    told = Told::Shown(inspector.clone());
+                    Some(inspector)
+                }
+            };
+            Some(bae_library::DetailSnapshot { id: Some(release_id), value })
         },
-    );
-    bae_library::LiveDetail::new(id_tx, rx, task)
+    )
 }

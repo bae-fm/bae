@@ -1,20 +1,7 @@
 //! The Storage Manager list, read through one live query whose sort, filter,
 //! search text and windows change in place.
 
-use bae_store::{LibraryBrowseWindow, LibraryPageWindows};
-
-/// What the Storage Manager shows: the list under one sort, filter and
-/// search text, the windows of it on screen, and the releases selected in it.
-/// The search narrows the list to the releases whose album library search
-/// finds (§2.3); text that is no search (blank) narrows nothing.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StorageBrowseView {
-    pub sort: crate::StorageSortCriterion,
-    pub filter: crate::StorageFilter,
-    pub search: String,
-    pub windows: LibraryPageWindows,
-    pub selected: std::collections::BTreeSet<String>,
-}
+use bae_store::LibraryBrowseWindow;
 
 /// Every window of the list read under one sort, filter and search text —
 /// the ones named here, which a UI that has since moved on drops — with the
