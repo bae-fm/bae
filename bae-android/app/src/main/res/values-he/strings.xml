@@ -237,6 +237,8 @@
     <string name="onboarding_status_finishing">מסיימים…</string>
     <string name="loading_finding_libraries">מחפש את הספריות שלך…</string>
     <string name="loading_opening_library">פותח את הספרייה…</string>
+    <string name="loading_closing_library">סוגר את הספרייה…</string>
+    <string name="loading_removing_library">מסיר את הספרייה…</string>
     <string name="loading_resetting_device">מאפס את המכשיר הזה…</string>
     <string name="onboarding_checking">בודק…</string>
     <string name="onboarding_next_check">הבדיקה הבאה בעוד %1$s</string>

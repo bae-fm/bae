@@ -233,6 +233,8 @@
     <string name="onboarding_status_finishing">Viimeistellään…</string>
     <string name="loading_finding_libraries">Etsitään kirjastojasi…</string>
     <string name="loading_opening_library">Avataan kirjastoa…</string>
+    <string name="loading_closing_library">Suljetaan kirjastoa…</string>
+    <string name="loading_removing_library">Poistetaan kirjastoa…</string>
     <string name="loading_resetting_device">Nollataan tätä laitetta…</string>
     <string name="onboarding_checking">Tarkistetaan…</string>
     <string name="onboarding_next_check">Seuraava tarkistus %1$s kuluttua</string>

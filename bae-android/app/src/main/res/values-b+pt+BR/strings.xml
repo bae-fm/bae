@@ -236,6 +236,8 @@
     <string name="onboarding_status_finishing">Finalizando…</string>
     <string name="loading_finding_libraries">Procurando suas bibliotecas…</string>
     <string name="loading_opening_library">Abrindo a biblioteca…</string>
+    <string name="loading_closing_library">Fechando a biblioteca…</string>
+    <string name="loading_removing_library">Removendo a biblioteca…</string>
     <string name="loading_resetting_device">Redefinindo este dispositivo…</string>
     <string name="onboarding_checking">Verificando…</string>
     <string name="onboarding_next_check">Próxima verificação em %1$s</string>

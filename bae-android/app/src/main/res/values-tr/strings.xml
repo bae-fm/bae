@@ -234,6 +234,8 @@
     <string name="onboarding_status_finishing">Tamamlanıyor…</string>
     <string name="loading_finding_libraries">Kitaplıklarınız aranıyor…</string>
     <string name="loading_opening_library">Kitaplık açılıyor…</string>
+    <string name="loading_closing_library">Kitaplık kapatılıyor…</string>
+    <string name="loading_removing_library">Kitaplık kaldırılıyor…</string>
     <string name="loading_resetting_device">Bu cihaz sıfırlanıyor…</string>
     <string name="onboarding_checking">Denetleniyor…</string>
     <string name="onboarding_next_check">Sonraki denetim %1$s sonra</string>

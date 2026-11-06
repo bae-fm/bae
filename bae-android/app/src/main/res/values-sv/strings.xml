@@ -233,6 +233,8 @@
     <string name="onboarding_status_finishing">Slutför …</string>
     <string name="loading_finding_libraries">Söker efter dina bibliotek…</string>
     <string name="loading_opening_library">Öppnar biblioteket…</string>
+    <string name="loading_closing_library">Stänger biblioteket…</string>
+    <string name="loading_removing_library">Tar bort biblioteket…</string>
     <string name="loading_resetting_device">Återställer den här enheten…</string>
     <string name="onboarding_checking">Kontrollerar…</string>
     <string name="onboarding_next_check">Nästa kontroll om %1$s</string>

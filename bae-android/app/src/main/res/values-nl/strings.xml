@@ -234,6 +234,8 @@
     <string name="onboarding_status_finishing">Afronden…</string>
     <string name="loading_finding_libraries">Je bibliotheken worden gezocht…</string>
     <string name="loading_opening_library">Bibliotheek wordt geopend…</string>
+    <string name="loading_closing_library">Bibliotheek wordt gesloten…</string>
+    <string name="loading_removing_library">Bibliotheek wordt verwijderd…</string>
     <string name="loading_resetting_device">Dit apparaat wordt opnieuw ingesteld…</string>
     <string name="onboarding_checking">Bezig met controleren…</string>
     <string name="onboarding_next_check">Volgende controle over %1$s</string>

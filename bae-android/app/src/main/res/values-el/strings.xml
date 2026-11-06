@@ -233,6 +233,8 @@
     <string name="onboarding_status_finishing">Γίνεται ολοκλήρωση…</string>
     <string name="loading_finding_libraries">Εύρεση των βιβλιοθηκών σας…</string>
     <string name="loading_opening_library">Άνοιγμα της βιβλιοθήκης…</string>
+    <string name="loading_closing_library">Κλείσιμο της βιβλιοθήκης…</string>
+    <string name="loading_removing_library">Αφαίρεση της βιβλιοθήκης…</string>
     <string name="loading_resetting_device">Επαναφορά αυτής της συσκευής…</string>
     <string name="onboarding_checking">Γίνεται έλεγχος…</string>
     <string name="onboarding_next_check">Επόμενος έλεγχος σε %1$s</string>

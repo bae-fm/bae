@@ -236,6 +236,8 @@
     <string name="onboarding_status_finishing">Completamento in corso…</string>
     <string name="loading_finding_libraries">Ricerca delle tue librerie…</string>
     <string name="loading_opening_library">Apertura della libreria…</string>
+    <string name="loading_closing_library">Chiusura della libreria…</string>
+    <string name="loading_removing_library">Rimozione della libreria…</string>
     <string name="loading_resetting_device">Ripristino di questo dispositivo…</string>
     <string name="onboarding_checking">Controllo in corso…</string>
     <string name="onboarding_next_check">Prossimo controllo tra %1$s</string>

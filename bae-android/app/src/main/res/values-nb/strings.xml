@@ -233,6 +233,8 @@
     <string name="onboarding_status_finishing">Fullfører …</string>
     <string name="loading_finding_libraries">Finner bibliotekene dine…</string>
     <string name="loading_opening_library">Åpner biblioteket…</string>
+    <string name="loading_closing_library">Lukker biblioteket…</string>
+    <string name="loading_removing_library">Fjerner biblioteket…</string>
     <string name="loading_resetting_device">Tilbakestiller denne enheten…</string>
     <string name="onboarding_checking">Sjekker…</string>
     <string name="onboarding_next_check">Neste sjekk om %1$s</string>

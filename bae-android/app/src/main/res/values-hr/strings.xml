@@ -237,6 +237,8 @@
     <string name="onboarding_status_finishing">Dovršavanje…</string>
     <string name="loading_finding_libraries">Traženje vaših fonoteka…</string>
     <string name="loading_opening_library">Otvaranje fonoteke…</string>
+    <string name="loading_closing_library">Zatvaranje fonoteke…</string>
+    <string name="loading_removing_library">Uklanjanje fonoteke…</string>
     <string name="loading_resetting_device">Ponovno postavljanje ovog uređaja…</string>
     <string name="onboarding_checking">Provjera…</string>
     <string name="onboarding_next_check">Sljedeća provjera za %1$s</string>

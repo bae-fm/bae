@@ -46,7 +46,7 @@ internal fun InProgressScreen(screen: AppScreen.InProgress) {
         }
 
         is AppScreen.Closing -> {
-            ClosingScreen(steps = screen.steps, starting = BridgeClosingStep.STOPPING_PLAYBACK)
+            ClosingScreen(steps = screen.steps, title = screen.work.title())
         }
 
         is AppScreen.FinishingRemovals -> {
@@ -65,6 +65,8 @@ private fun AppScreen.LoadingWork.title(): Int =
     when (this) {
         AppScreen.LoadingWork.FINDING_LIBRARIES -> R.string.loading_finding_libraries
         AppScreen.LoadingWork.OPENING -> R.string.loading_opening_library
+        AppScreen.LoadingWork.CLOSING -> R.string.loading_closing_library
+        AppScreen.LoadingWork.REMOVING -> R.string.loading_removing_library
     }
 
 /**
@@ -87,15 +89,15 @@ private fun LoadingScreen(
 private val OPEN_PROGRESS_MAX_WIDTH = 360.dp
 
 /**
- * The open library closing: the step the close runs over a bar without a
- * count, drawn from [steps] each display frame. While the close runs no step,
- * before its first and once it ends, the screen names [starting], the step
- * the close starts with. [stepKey] gives a step's catalog key.
+ * The open library closing or being removed: the step it runs over a bar
+ * without a count, drawn from [steps] each display frame, and, while it runs
+ * no step, [title], what the screen waits on, under a spinner. [stepKey]
+ * gives a step's catalog key.
  */
 @Composable
 internal fun ClosingScreen(
     steps: LatestSource<BridgeClosingStep>,
-    starting: BridgeClosingStep,
+    @StringRes title: Int,
     stepKey: (BridgeClosingStep) -> String = ::bridgeClosingStepKey,
 ) {
     val context = LocalContext.current
@@ -106,7 +108,7 @@ internal fun ClosingScreen(
             fraction = { null },
             modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
         ) {
-            StepBar(title = context.coreString(stepKey(starting)), fraction = null)
+            WaitingIndicator(text = stringResource(title))
         }
     }
 }
@@ -176,7 +178,7 @@ private fun ClosingScreenPreview() {
     BaeTheme {
         ClosingScreen(
             steps = LatestStream.closingSteps(BridgeClosingStep.STOPPING_SYNC).only,
-            starting = BridgeClosingStep.STOPPING_PLAYBACK,
+            title = R.string.loading_closing_library,
         )
     }
 }

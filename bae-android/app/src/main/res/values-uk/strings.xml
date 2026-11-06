@@ -240,6 +240,8 @@
     <string name="onboarding_status_finishing">Завершення…</string>
     <string name="loading_finding_libraries">Пошук ваших бібліотек…</string>
     <string name="loading_opening_library">Відкриття бібліотеки…</string>
+    <string name="loading_closing_library">Закриття бібліотеки…</string>
+    <string name="loading_removing_library">Вилучення бібліотеки…</string>
     <string name="loading_resetting_device">Скидання цього пристрою…</string>
     <string name="onboarding_checking">Перевірка…</string>
     <string name="onboarding_next_check">Наступна перевірка через %1$s</string>

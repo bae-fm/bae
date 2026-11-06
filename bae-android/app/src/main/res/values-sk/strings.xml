@@ -239,6 +239,8 @@
     <string name="onboarding_status_finishing">Dokončuje sa…</string>
     <string name="loading_finding_libraries">Hľadajú sa vaše knižnice…</string>
     <string name="loading_opening_library">Otvára sa knižnica…</string>
+    <string name="loading_closing_library">Zatvára sa knižnica…</string>
+    <string name="loading_removing_library">Odstraňuje sa knižnica…</string>
     <string name="loading_resetting_device">Resetuje sa toto zariadenie…</string>
     <string name="onboarding_checking">Prebieha kontrola…</string>
     <string name="onboarding_next_check">Ďalšia kontrola o %1$s</string>

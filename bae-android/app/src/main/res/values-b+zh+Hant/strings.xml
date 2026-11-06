@@ -231,6 +231,8 @@
     <string name="onboarding_status_finishing">正在完成…</string>
     <string name="loading_finding_libraries">正在尋找你的資料庫…</string>
     <string name="loading_opening_library">正在開啟資料庫…</string>
+    <string name="loading_closing_library">正在關閉資料庫…</string>
+    <string name="loading_removing_library">正在移除資料庫…</string>
     <string name="loading_resetting_device">正在重設此裝置…</string>
     <string name="onboarding_checking">正在檢查…</string>
     <string name="onboarding_next_check">%1$s 後再次檢查</string>

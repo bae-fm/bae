@@ -285,6 +285,8 @@
     <string name="onboarding_status_finishing">Finishing…</string>
     <string name="loading_finding_libraries">Finding your libraries…</string>
     <string name="loading_opening_library">Opening the library…</string>
+    <string name="loading_closing_library">Closing the library…</string>
+    <string name="loading_removing_library">Removing the library…</string>
     <string name="loading_resetting_device">Resetting this device…</string>
     <string name="onboarding_checking">Checking…</string>
     <!-- %1$s = the time left until the next check, as minutes and seconds -->

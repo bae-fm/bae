@@ -234,6 +234,8 @@
     <string name="onboarding_status_finishing">Завършване…</string>
     <string name="loading_finding_libraries">Търсене на вашите библиотеки…</string>
     <string name="loading_opening_library">Библиотеката се отваря…</string>
+    <string name="loading_closing_library">Библиотеката се затваря…</string>
+    <string name="loading_removing_library">Библиотеката се премахва…</string>
     <string name="loading_resetting_device">Това устройство се нулира…</string>
     <string name="onboarding_checking">Проверка…</string>
     <string name="onboarding_next_check">Следваща проверка след %1$s</string>

@@ -236,6 +236,8 @@
     <string name="onboarding_status_finishing">Se finalizează…</string>
     <string name="loading_finding_libraries">Se caută bibliotecile tale…</string>
     <string name="loading_opening_library">Se deschide biblioteca…</string>
+    <string name="loading_closing_library">Se închide biblioteca…</string>
+    <string name="loading_removing_library">Se elimină biblioteca…</string>
     <string name="loading_resetting_device">Se resetează acest dispozitiv…</string>
     <string name="onboarding_checking">Se verifică…</string>
     <string name="onboarding_next_check">Următoarea verificare în %1$s</string>

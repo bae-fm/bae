@@ -4038,10 +4038,11 @@ release's or track's id as UTF-8, or a candidate's key.
   (whose runtime outlives the library's) and hands to the close: stopping the
   desktop's servers, stopping playback, stopping identification and import,
   stopping sync once its running pass ends, ending the library's background
-  work, and closing the store. The apps show the step's name while it runs,
-  never a bare spinner: on the Mac over a moving bar on the loading screen, on
-  Android over one on its own screen, which names stopping playback, the
-  close's first step there, until the close reports a step. That covers closing a library, the
+  work, and closing the store. The apps show the step's name while it runs:
+  on the Mac over a moving bar on the loading screen, on Android over one on
+  its own screen. While the close runs no step, before its first or once its
+  stream holds nothing, both screens name what they wait on, closing or
+  removing the library, under a spinner. That covers closing a library, the
   close before restoring or resetting this device's copy, and, on Android, the
   close of the library a newly opened one replaces. Quitting the Mac app, and
   the close after a removal or a failed open, show nothing and report nowhere.

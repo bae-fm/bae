@@ -234,6 +234,8 @@
     <string name="onboarding_status_finishing">Wird abgeschlossen …</string>
     <string name="loading_finding_libraries">Deine Bibliotheken werden gesucht…</string>
     <string name="loading_opening_library">Bibliothek wird geöffnet…</string>
+    <string name="loading_closing_library">Bibliothek wird geschlossen…</string>
+    <string name="loading_removing_library">Bibliothek wird entfernt…</string>
     <string name="loading_resetting_device">Dieses Gerät wird zurückgesetzt…</string>
     <string name="onboarding_checking">Wird geprüft…</string>
     <string name="onboarding_next_check">Nächste Prüfung in %1$s</string>

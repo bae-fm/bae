@@ -231,6 +231,8 @@
     <string name="onboarding_status_finishing">最終処理をしています…</string>
     <string name="loading_finding_libraries">ライブラリを探しています…</string>
     <string name="loading_opening_library">ライブラリを開いています…</string>
+    <string name="loading_closing_library">ライブラリを閉じています…</string>
+    <string name="loading_removing_library">ライブラリを削除しています…</string>
     <string name="loading_resetting_device">このデバイスをリセットしています…</string>
     <string name="onboarding_checking">確認中…</string>
     <string name="onboarding_next_check">次の確認まで %1$s</string>
