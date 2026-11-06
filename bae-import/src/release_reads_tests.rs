@@ -7,14 +7,12 @@ use bae_catalogs::catalog::LookupCatalog;
 #[tokio::test]
 async fn a_release_read_fails_when_the_preferences_cannot_be_read() {
     let (sessions, database, temp_dir) = crate::catalog_sessions::tests::test_sessions().await;
-    crate::candidate_runtime::tests::add_to_library_schema(
-        temp_dir.path(),
-        "preferences",
-        "PRAGMA ignore_check_constraints = 1; \
-         UPDATE preferences SET replay_gain_mode = 'unknown';"
-            .to_string(),
-    )
-    .await;
+    let directory = temp_dir.path().to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        bae_preferences::plant_unknown_replay_gain_mode_for_test(&directory)
+    })
+    .await
+    .unwrap();
     let reads = ReleaseReads::new(database, sessions);
 
     let error = reads

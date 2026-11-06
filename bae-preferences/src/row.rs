@@ -367,6 +367,50 @@ fn invalid(row: &Row<'_>, column: &str, value: impl std::fmt::Display) -> rusqli
     )
 }
 
+/// Plant damage for a test: the `preferences` row of the library stored
+/// under `directory` names a replay gain mode no build knows. The column's
+/// CHECK refuses that value, so no write stores it; a damaged file could
+/// hold it, and the read checks for it. Opens the library's file on a
+/// connection of its own, past the store, as damage arrives from outside it.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn plant_unknown_replay_gain_mode_for_test(directory: &std::path::Path) {
+    let mut planted = false;
+    let mut dirs = vec![directory.to_path_buf()];
+    while let Some(dir) = dirs.pop() {
+        for entry in std::fs::read_dir(&dir).expect("the library's directory reads") {
+            let path = entry.expect("the library's directory lists").path();
+            if path.is_dir() {
+                dirs.push(path);
+                continue;
+            }
+            let is_database =
+                std::fs::read(&path).is_ok_and(|bytes| bytes.starts_with(b"SQLite format 3\0"));
+            if !is_database {
+                continue;
+            }
+            let connection = rusqlite::Connection::open(&path).expect("the library's file opens");
+            let holds_preferences: bool = connection
+                .query_row(
+                    "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE name = 'preferences')",
+                    [],
+                    |row| row.get(0),
+                )
+                .expect("the library's schema reads");
+            if !holds_preferences {
+                continue;
+            }
+            connection
+                .execute_batch(
+                    "PRAGMA ignore_check_constraints = 1; \
+                     UPDATE preferences SET replay_gain_mode = 'unknown';",
+                )
+                .expect("the damage is planted");
+            planted = true;
+        }
+    }
+    assert!(planted, "the library under the directory holds its preferences");
+}
+
 #[cfg(test)]
 #[path = "row_tests.rs"]
 mod tests;
