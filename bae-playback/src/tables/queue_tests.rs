@@ -16,6 +16,19 @@ async fn play(db: &Store, start: ReleaseStart) -> crate::QueueEntry {
     }
 }
 
+/// Play `tracks` in order, from the one at `start`, returning the entry
+/// playing.
+async fn play_tracks(db: &Store, tracks: &[String], start: usize) -> crate::QueueEntry {
+    match PlaybackQueueTables::new(db.clone())
+        .fill(ContextFill::Tracks { track_ids: tracks.to_vec(), start })
+        .await
+        .unwrap()
+    {
+        ContextFilled::Playing { current, .. } => current,
+        other => panic!("the tracks play nothing: {other:?}"),
+    }
+}
+
 async fn upcoming(db: &Store) -> Vec<String> {
     let manual = queue_value(db).await.unwrap().manual;
     manual.into_iter().chain(queue_upcoming(db).await.unwrap()).map(|item| item.track_id).collect()
@@ -57,6 +70,19 @@ async fn the_schema_refuses_a_half_written_context_and_a_negative_position() {
     );
 }
 
+/// The count and the number of the addition it belongs to are set together.
+#[tokio::test]
+async fn the_schema_refuses_a_count_without_an_addition() {
+    let (db, _tmp, _tracks) = release_db(1).await;
+    for sql in [
+        "UPDATE playback_queue SET added_tracks = 2",
+        "UPDATE playback_queue SET additions = 1",
+        "UPDATE playback_queue SET additions = 1, added_tracks = 0",
+    ] {
+        assert!(rejects(&db, sql).await, "{sql}");
+    }
+}
+
 /// The same track queued twice shows twice, in order, each with its own
 /// entry id.
 #[tokio::test]
@@ -73,11 +99,11 @@ async fn duplicate_entries_show_in_order_with_distinct_ids() {
 /// A deleted track leaves both lanes.
 #[tokio::test]
 async fn deleting_a_queued_track_takes_its_rows() {
-    let (db, _tmp, tracks) = release_db(3).await;
-    play(&db, ReleaseStart::First).await;
+    let (db, _tmp, tracks) = single_track_releases_db(3).await;
+    play_tracks(&db, &tracks, 0).await;
     queue_items(&db, &[&tracks[1], &tracks[2]]).await;
 
-    exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[1]]).await;
+    delete_release_of(&db, &tracks[1]).await;
 
     assert_eq!(upcoming(&db).await, vec![tracks[2].clone(), tracks[2].clone()]);
 }
@@ -86,9 +112,9 @@ async fn deleting_a_queued_track_takes_its_rows() {
 /// deleted, through each lane's plain index on its track.
 #[tokio::test]
 async fn deleting_a_track_queued_twice_takes_every_entry() {
-    let (db, _tmp, tracks) = release_db(2).await;
+    let (db, _tmp, tracks) = single_track_releases_db(2).await;
     let filled = PlaybackQueueTables::new(db.clone())
-        .fill(ContextFill::Releases(vec![RELEASE_A.to_string(), RELEASE_A.to_string()]))
+        .fill(ContextFill::Tracks { track_ids: [&tracks[..], &tracks[..]].concat(), start: 0 })
         .await
         .unwrap();
     assert!(matches!(filled, ContextFilled::Playing { track_count: 4, .. }));
@@ -104,7 +130,7 @@ async fn deleting_a_track_queued_twice_takes_every_entry() {
         ]
     );
 
-    exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[1]]).await;
+    delete_release_of(&db, &tracks[1]).await;
 
     assert_eq!(upcoming(&db).await, vec![tracks[0].clone()]);
 }
@@ -113,10 +139,10 @@ async fn deleting_a_track_queued_twice_takes_every_entry() {
 /// still plays next and the one before it is still behind.
 #[tokio::test]
 async fn deleting_the_playing_track_keeps_the_lane_s_place() {
-    let (db, _tmp, tracks) = release_db(3).await;
-    play(&db, ReleaseStart::Track(tracks[1].clone())).await;
+    let (db, _tmp, tracks) = single_track_releases_db(3).await;
+    play_tracks(&db, &tracks, 1).await;
 
-    exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[1]]).await;
+    delete_release_of(&db, &tracks[1]).await;
 
     assert_eq!(upcoming(&db).await, vec![tracks[2].clone()]);
     assert!(queue_value(&db).await.unwrap().has_previous);
@@ -141,11 +167,11 @@ async fn context_head(db: &Store) -> (Option<String>, Option<String>, Option<boo
 /// The context lane's last row leaving takes what it played from with it.
 #[tokio::test]
 async fn the_lane_s_last_track_deleted_clears_the_context() {
-    let (db, _tmp, tracks) = release_db(1).await;
-    play(&db, ReleaseStart::First).await;
+    let (db, _tmp, tracks) = single_track_releases_db(1).await;
+    play_tracks(&db, &tracks, 0).await;
     assert!(queue_value(&db).await.unwrap().context.is_some());
 
-    exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[0]]).await;
+    delete_release_of(&db, &tracks[0]).await;
 
     assert!(queue_value(&db).await.unwrap().context.is_none());
     assert_eq!(context_head(&db).await, (None, None, None, None));
@@ -191,7 +217,7 @@ async fn the_lane_s_tracks_deleted_together_clear_the_context() {
     let (db, _tmp, _tracks) = release_db(3).await;
     play(&db, ReleaseStart::First).await;
 
-    exec(&db, "DELETE FROM tracks WHERE release_id = ?", &[RELEASE_A]).await;
+    delete_release(&test_records(&db), RELEASE_A).await;
 
     assert_eq!(context_head(&db).await, (None, None, None, None));
 }
@@ -240,8 +266,8 @@ async fn the_context_lane_has_no_trigger() {
 /// with nothing to resume.
 #[tokio::test]
 async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
-    let (db, _tmp, tracks) = release_db(2).await;
-    let current = play(&db, ReleaseStart::First).await;
+    let (db, _tmp, tracks) = single_track_releases_db(2).await;
+    let current = play_tracks(&db, &tracks, 0).await;
     let state = PlaybackResumeRow { current: Some(current.clone()), position_ms: Some(42_000) };
     save_playback_state(&db, &state).await.unwrap();
 
@@ -249,7 +275,7 @@ async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
     assert_eq!(loaded.current, Some(current));
     assert_eq!(loaded.position_ms, Some(42_000));
 
-    exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[0]]).await;
+    delete_release_of(&db, &tracks[0]).await;
     let forgotten = load_playback_state(&db).await.unwrap().expect("the row stays");
     assert_eq!(forgotten.current, None);
 
@@ -422,7 +448,7 @@ async fn an_up_next_row_is_named_by_its_entry() {
 /// foreign key, so filling the lane looks nothing up in `tracks` per row.
 #[tokio::test]
 async fn the_queue_tables_hold_no_foreign_key_and_a_deleted_track_still_leaves() {
-    let (db, _tmp, tracks) = release_db(3).await;
+    let (db, _tmp, tracks) = single_track_releases_db(3).await;
     let definitions: Vec<String> = db
         .read(|sql| {
             Ok(sql.query(
@@ -437,9 +463,9 @@ async fn the_queue_tables_hold_no_foreign_key_and_a_deleted_track_still_leaves()
     assert_eq!(definitions.len(), 2);
     assert!(definitions.iter().all(|sql| !sql.contains("REFERENCES")), "{definitions:?}");
 
-    play(&db, ReleaseStart::First).await;
+    play_tracks(&db, &tracks, 0).await;
     queue_items(&db, &[&tracks[2]]).await;
-    exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[2]]).await;
+    delete_release_of(&db, &tracks[2]).await;
     assert_eq!(upcoming(&db).await, vec![tracks[1].clone()]);
 }
 
@@ -551,43 +577,15 @@ mod playback_queue_bench {
     }
 
     /// `RELEASE_A` holding `TRACKS` tracks with random ids, as a library's are.
-    /// The tracks go in through a plain connection with triggers off: through
-    /// coven every synced row's write is captured whole, which would take
-    /// minutes, and the queue tables read nothing of `tracks` but its rows.
     async fn library_db() -> (Store, tempfile::TempDir, std::path::PathBuf) {
         let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
-        db.call(move |conn| {
-            seed_artist_album_release(conn)?;
-            conn.execute(
-                "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) \
-                 VALUES (?1, ?2, 1, 'cd', 1, '2026-01-01T00:00:00Z')",
-                params![bae_records::identity::release_medium_id(RELEASE_A, 1), RELEASE_A],
-            )?;
-            Ok(())
-        })
-        .await
-        .unwrap();
+        db.call(seed_artist_album_release).await.unwrap();
+        test_records(&db)
+            .insert_release_medium(&bae_records::DbReleaseMedium::new_test(RELEASE_A))
+            .await
+            .unwrap();
         let path = database_file(tmp.path());
-        let plain = plain_connection(&path);
-        plain
-            .set_db_config(rusqlite::config::DbConfig::SQLITE_DBCONFIG_ENABLE_TRIGGER, false)
-            .unwrap();
-        plain
-            .execute(
-                &format!(
-                    "WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n WHERE i < {TRACKS} - 1) \
-                     INSERT INTO tracks \
-                         (position, id, release_id, title, medium_id, side, track_number, duration_ms, created_at) \
-                     SELECT i, \
-                            lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' \
-                                  || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(2)) \
-                                  || '-' || hex(randomblob(6))), \
-                            ?1, 'Track Title ' || i, ?2, 1, i + 1, 1000, '2026-01-01T00:00:00Z' \
-                     FROM n"
-                ),
-                params![RELEASE_A, bae_records::identity::release_medium_id(RELEASE_A, 1)],
-            )
-            .unwrap();
+        bae_records::test_fixtures::bulk_tracks::insert_with_triggers_off(&path, RELEASE_A, TRACKS);
         (db, tmp, path)
     }
 

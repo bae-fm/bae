@@ -403,9 +403,10 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     );
 }
 
-/// A track deleted where this device's library didn't delete it — another
-/// device's deletion, arriving by sync — leaves the player all the same: the
-/// playing track's row going stops playback.
+/// A track deleted where playback didn't ask for it — its release deleted
+/// in the library, as another device's deletion arriving by sync deletes it —
+/// leaves the player all the same: the playing track's row going stops
+/// playback.
 #[tokio::test]
 async fn a_playing_track_deleted_by_sync_stops_playback() {
     const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
@@ -418,12 +419,8 @@ async fn a_playing_track_deleted_by_sync_stops_playback() {
     let db: bae_store::Store = (*store).clone();
 
     let delete_then_watch = async move {
-        db.call(|sql| {
-            sql.execute("DELETE FROM tracks WHERE id = ?", [TRACK_A])?;
-            Ok(())
-        })
-        .await
-        .expect("the track's row is deleted");
+        let records = bae_records::test_fixtures::test_records(&db);
+        bae_records::test_fixtures::delete_release(&records, RELEASE).await;
         let stopped = tokio::time::timeout(HANG_GUARD, async {
             while let Some(progress) = progress_rx.recv().await {
                 if matches!(

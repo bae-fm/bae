@@ -148,7 +148,7 @@ async fn a_deleted_playing_track_reads_as_nothing_to_show() {
     .await
     .unwrap();
 
-    exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[0]]).await;
+    delete_release_of(&db, &tracks[0]).await;
     assert_eq!(now_playing(&db).await.unwrap(), None);
 
     row.apply(&PlaybackChange::State(PlaybackState::Stopped)).await.unwrap();

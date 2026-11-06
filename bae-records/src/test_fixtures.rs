@@ -57,6 +57,13 @@ pub async fn stored_image_version(records: &crate::Records, table: &str, id: &st
     }
 }
 
+/// Delete `release_id` as the library deletes a release: its tracks, files
+/// and credits go with it in one write.
+pub async fn delete_release(records: &crate::Records, release_id: &str) {
+    let plan = records.plan_release_deletion(release_id).await.unwrap();
+    records.delete_release_with_cleanup(plan).await.unwrap();
+}
+
 /// `ARTIST_PRIMARY` owning `ALBUM_A`, whose primary release is `RELEASE_A`.
 pub fn seed_artist_album_release(conn: &coven::CovenWrite<'_>) -> Result<(), bae_store::DbError> {
     conn.execute_batch(
@@ -74,6 +81,7 @@ pub fn seed_artist_album_release(conn: &coven::CovenWrite<'_>) -> Result<(), bae
 
 pub mod aggregate_ordering;
 pub mod album_listing;
+pub mod bulk_tracks;
 pub mod chunked_tracks;
 pub mod composed_work;
 pub mod labels;

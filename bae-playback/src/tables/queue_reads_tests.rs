@@ -54,24 +54,6 @@ async fn starting_playback_forgets_the_additions() {
     }
 }
 
-/// The count and the number of the addition it belongs to are set together.
-#[tokio::test]
-async fn the_schema_refuses_a_count_without_an_addition() {
-    let (db, _tmp, _tracks) = release_db(1).await;
-    for sql in [
-        "UPDATE playback_queue SET added_tracks = 2",
-        "UPDATE playback_queue SET additions = 1",
-        "UPDATE playback_queue SET additions = 1, added_tracks = 0",
-    ] {
-        let statement = sql.to_string();
-        let refused = db
-            .call(move |conn| conn.execute_batch(&statement).map_err(DbError::from))
-            .await
-            .is_err();
-        assert!(refused, "{sql}");
-    }
-}
-
 /// The live query delivers one value per addition and none for writes to
 /// the queue that add nothing.
 #[tokio::test]

@@ -152,6 +152,93 @@ impl Records {
     }
 }
 
+impl Records {
+    /// Rename `track_id` as a person's metadata edit of its release does,
+    /// writing the album, the release and the track's credits back as they
+    /// stand.
+    pub async fn rename_track_for_test(
+        &self,
+        track_id: &str,
+        title: &str,
+    ) -> Result<(), IdentityWriteError> {
+        let track = self.find_track_by_id(track_id).await?.expect("the track to rename");
+        let release = self.find_release_by_id(&track.release_id).await?.expect("its release");
+        let album = self.find_album_by_id(&release.album_id).await?.expect("its album");
+        let (album_id, track_id) = (album.id.clone(), track.id.clone());
+        let (album_credits, track_credits) = self
+            .store
+            .read(move |sql| {
+                Ok((
+                    credits_for_test(&sql, "album_artists", "album_id", &album_id)?,
+                    credits_for_test(&sql, "track_artists", "track_id", &track_id)?,
+                ))
+            })
+            .await?;
+        let mut credits = Vec::new();
+        for (artist_id, ..) in album_credits.iter().chain(&track_credits) {
+            credits.push(self.find_artist_by_id(artist_id).await?.expect("a credited artist"));
+        }
+        let now = self.store.now_utc();
+        let album_artists = album_credits
+            .into_iter()
+            .map(|(artist_id, position, credit, join_phrase)| DbAlbumArtist {
+                credit,
+                join_phrase,
+                ..DbAlbumArtist::new(&album.id, &artist_id, position, now)
+            })
+            .collect();
+        let track_artists = track_credits
+            .into_iter()
+            .map(|(artist_id, position, credit, join_phrase)| DbTrackArtist {
+                credit,
+                join_phrase,
+                ..DbTrackArtist::new(&track.id, &artist_id, position, now)
+            })
+            .collect();
+        let renamed = DbTrack { title: title.to_string(), ..track };
+        self.update_release_metadata_user_edit(ReleaseMetadataRows {
+            album,
+            release,
+            track_updates: vec![(renamed.id.clone(), renamed)],
+            picked: credits.iter().map(|artist| artist.id.clone()).collect(),
+            credits,
+            album_artists,
+            track_artists,
+        })
+        .await
+    }
+}
+
+/// One credit as a test writes it back: the artist, its place, the other
+/// printed name it prints if any, and what follows it.
+type CreditForTest = (String, u32, Option<crate::credits::CreditName>, Option<String>);
+
+/// The credits `table` holds for `owner_column = owner`, in order.
+fn credits_for_test(
+    sql: &SqlReadContext<'_>,
+    table: &str,
+    owner_column: &str,
+    owner: &str,
+) -> Result<Vec<CreditForTest>, DbError> {
+    Ok(sql.query(
+        &format!(
+            "SELECT c.artist_id, c.position, c.credit_key, n.name, c.join_phrase FROM {table} AS c \
+             LEFT JOIN artist_credits AS n \
+               ON n.artist_id = c.artist_id AND n.name_key = c.credit_key \
+             WHERE c.{owner_column} = ?1 ORDER BY c.position"
+        ),
+        [owner],
+        |row| {
+            let credit = match (row.get::<_, Option<String>>(2)?, row.get::<_, Option<String>>(3)?)
+            {
+                (Some(key), Some(name)) => Some(crate::credits::CreditName { key, name }),
+                _ => None,
+            };
+            Ok((row.get(0)?, row.get(1)?, credit, row.get(4)?))
+        },
+    )?)
+}
+
 /// The column of `table` that references a coven file.
 fn file_column_for_test(table: &str) -> &'static str {
     match table {

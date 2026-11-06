@@ -5,38 +5,59 @@ const RELEASE_LONELY: &str = "fcf4be32-159f-4790-87a1-697700a74462";
 const RELEASE_OTHER: &str = "ce596bd7-be97-4416-8b6d-47f315bae466";
 const TRACK_LONELY: &str = "03c41035-ce18-4fa0-8e83-c446df26a551";
 const TRACK_OTHER: &str = "69e67928-545a-4dcf-8ae7-ef7778331231";
+const ALBUM_NO_PRIMARY: &str = "c6648d5a-617e-4b69-87da-b7f1c4fb5e65";
+const ALBUM_PRIMARY: &str = "82a53f44-1b76-435b-89f0-42749371ee15";
+const RELEASE_PRIMARY: &str = "2ffa8060-aa00-4147-8ad4-f373ef66c407";
 
 /// One album holds one release; the other holds two, and the queued track is
 /// on the one that is NOT its primary.
 async fn cover_db() -> (Store, tempfile::TempDir) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     let records = bae_records::test_fixtures::test_records(&db);
-    db.call(move |conn| {
-        conn.execute_batch(
-            "
-            INSERT INTO artists (id, name, name_key, created_at) VALUES ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
-
-            INSERT INTO albums (id, title, year, is_compilation, created_at) VALUES ('c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'Album With No Primary', 2026, 0, '2026-01-01T00:00:00Z'),
-             ('82a53f44-1b76-435b-89f0-42749371ee15', 'Album With A Primary', 2026, 0, '2026-01-01T00:00:00Z');
-            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('0fc94c90-bb11-4234-a13e-3fe4df508122', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 0, '2026-01-01T00:00:00Z'),
-             ('7ad05ec6-4f7c-4ce5-ab5f-d97ec80f1a92', '82a53f44-1b76-435b-89f0-42749371ee15', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 0, '2026-01-01T00:00:00Z');
-
-            INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('fcf4be32-159f-4790-87a1-697700a74462', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', '2026-01-01T00:00:00Z', 0),
-             ('2ffa8060-aa00-4147-8ad4-f373ef66c407', '82a53f44-1b76-435b-89f0-42749371ee15', '2026-01-01T00:00:00Z', 1),
-             ('ce596bd7-be97-4416-8b6d-47f315bae466', '82a53f44-1b76-435b-89f0-42749371ee15', '2026-01-01T00:00:01Z', 2);
-
-            INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES ('963cc1cc-0f18-5b6b-a604-fa66bfad6e3e', 'ce596bd7-be97-4416-8b6d-47f315bae466', 1, 'cd', 1, '2026-01-01T00:00:00Z'), ('9b885716-3e9d-5b85-8d85-8a84db7a0b6d', 'fcf4be32-159f-4790-87a1-697700a74462', 1, 'cd', 1, '2026-01-01T00:00:00Z');
-
-            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, created_at, medium_id) VALUES ('03c41035-ce18-4fa0-8e83-c446df26a551', 'fcf4be32-159f-4790-87a1-697700a74462', 'Track On The Only Release', 1, 1, 1000, '2026-01-01T00:00:00Z', '9b885716-3e9d-5b85-8d85-8a84db7a0b6d'),
-             ('69e67928-545a-4dcf-8ae7-ef7778331231', 'ce596bd7-be97-4416-8b6d-47f315bae466', 'Track On The Non-Primary Release', 1, 1, 1000, '2026-01-01T00:00:00Z', '963cc1cc-0f18-5b6b-a604-fa66bfad6e3e');
-
-            ",
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    let artist = bae_records::DbArtist {
+        id: ARTIST_A.to_string(),
+        name: "Artist Name".to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: chrono::Utc::now(),
+    };
+    records.insert_artist(&artist).await.unwrap();
+    for (album_id, title, releases) in [
+        (ALBUM_NO_PRIMARY, "Album With No Primary", &[RELEASE_LONELY][..]),
+        (ALBUM_PRIMARY, "Album With A Primary", &[RELEASE_PRIMARY, RELEASE_OTHER][..]),
+    ] {
+        let album = bae_records::DbAlbum {
+            id: album_id.to_string(),
+            year: Some(2026),
+            ..bae_records::DbAlbum::new_test(title)
+        };
+        records.insert_album(&album).await.unwrap();
+        records
+            .insert_album_artist(&bae_records::DbAlbumArtist::new_test(album_id, ARTIST_A))
+            .await
+            .unwrap();
+        for release_id in releases {
+            records
+                .insert_release(&bae_records::DbRelease::new_test(album_id, release_id))
+                .await
+                .unwrap();
+        }
+    }
+    for (release_id, track_id, title) in [
+        (RELEASE_LONELY, TRACK_LONELY, "Track On The Only Release"),
+        (RELEASE_OTHER, TRACK_OTHER, "Track On The Non-Primary Release"),
+    ] {
+        records
+            .insert_release_medium(&bae_records::DbReleaseMedium::new_test(release_id))
+            .await
+            .unwrap();
+        let track = bae_records::DbTrack {
+            duration_ms: 1000,
+            ..bae_records::DbTrack::new_test(release_id, track_id, title, 1)
+        };
+        records.insert_track(&track).await.unwrap();
+    }
     write_cover(&records, RELEASE_LONELY, "lonely release cover").await;
     write_cover(&records, RELEASE_OTHER, "other release cover").await;
     (db, tmp)
