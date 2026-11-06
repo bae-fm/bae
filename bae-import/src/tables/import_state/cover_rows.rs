@@ -1,8 +1,6 @@
-//! The candidate's cover choice: its row in `import_candidate_cover`, the
-//! copies a catalog serves of a remote one in `import_candidate_cover_copy`,
-//! and the bytes a remote one was fetched with in
-//! `import_candidate_remote_cover_asset`, which are written with the row they
-//! belong to or removed with it.
+//! The candidate's cover choice: its row in `import_candidate_cover`, which
+//! holds the bytes a remote one was fetched with, and the copies a catalog
+//! serves of a remote one in `import_candidate_cover_copy`.
 //! Its tables are `cover_rows.sql`, which every device's library holds.
 
 pub(super) const SQL: &str = include_str!("cover_rows.sql");
@@ -48,8 +46,8 @@ fn cover_columns(
     }
 }
 
-/// Store `cover` as the candidate's: its row, the copies a catalog serves of
-/// a remote one, and the bytes a remote one was fetched with.
+/// Store `cover` as the candidate's: its row, with the bytes a remote one was
+/// fetched with, and the copies a catalog serves of a remote one.
 pub(super) fn save_cover(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -58,40 +56,41 @@ pub(super) fn save_cover(
     require_state_row(sql, content_hash)?;
     let selection = cover.selection();
     let (kind, file_id, url, source) = cover_columns(&selection);
+    let fetched = match cover {
+        PreparedCover::Remote { fetched, .. } => {
+            Some((fetched.content_type.as_str(), fetched.bytes.as_slice()))
+        }
+        PreparedCover::Local(_) | PreparedCover::Embedded(_) => None,
+    };
     // The copies reference the previous choice's address, which the upsert
     // replaces, so they go first.
     sql.execute("DELETE FROM import_candidate_cover_copy WHERE content_hash = ?", [content_hash])?;
     sql.execute(
         &format!(
-            "INSERT INTO import_candidate_cover ({COVER_COLUMNS}) VALUES (?, ?, ?, ?, ?) \
+            "INSERT INTO import_candidate_cover ({COVER_COLUMNS}, content_type, bytes) \
+             VALUES (?, ?, ?, ?, ?, ?, ?) \
              ON CONFLICT (content_hash) DO UPDATE SET \
                  kind = excluded.kind, file_id = excluded.file_id, \
-                 url = excluded.url, source = excluded.source"
+                 url = excluded.url, source = excluded.source, \
+                 content_type = excluded.content_type, bytes = excluded.bytes"
         ),
-        params![content_hash, kind, file_id, url, source],
+        params![
+            content_hash,
+            kind,
+            file_id,
+            url,
+            source,
+            fetched.map(|(content_type, _)| content_type),
+            fetched.map(|(_, bytes)| bytes),
+        ],
     )?;
-    match cover {
-        PreparedCover::Remote { image, fetched, .. } => {
-            for copy in &image.downscaled {
-                sql.execute(
-                    "INSERT INTO import_candidate_cover_copy \
-                         (content_hash, image_url, max_edge, url) \
-                     VALUES (?, ?, ?, ?)",
-                    params![content_hash, image.url, copy.max_edge, copy.url],
-                )?;
-            }
+    if let PreparedCover::Remote { image, .. } = cover {
+        for copy in &image.downscaled {
             sql.execute(
-                "INSERT INTO import_candidate_remote_cover_asset \
-                     (content_hash, content_type, bytes) VALUES (?, ?, ?) \
-                 ON CONFLICT (content_hash) DO UPDATE SET \
-                     content_type = excluded.content_type, bytes = excluded.bytes",
-                params![content_hash, fetched.content_type.as_str(), fetched.bytes],
-            )?;
-        }
-        PreparedCover::Local(_) | PreparedCover::Embedded(_) => {
-            sql.execute(
-                "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
-                [content_hash],
+                "INSERT INTO import_candidate_cover_copy \
+                     (content_hash, image_url, max_edge, url) \
+                 VALUES (?, ?, ?, ?)",
+                params![content_hash, image.url, copy.max_edge, copy.url],
             )?;
         }
     }
@@ -193,46 +192,33 @@ pub(super) fn load_cover_on(
 }
 
 /// The candidate's cover `selection` with the bytes stored for it: a remote
-/// selection with the image its write fetched, a folder's image as it is.
-/// The cover's save writes the two together, so a remote cover stored
-/// without its bytes, or bytes stored beside a cover of the folder, is a
-/// damaged row, and the read fails naming it.
+/// selection with the image its write fetched, which its row holds, a
+/// folder's image as it is.
 pub(super) fn load_prepared_cover_on(
     sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     content_hash: &str,
     selection: Option<CoverSelection>,
 ) -> Result<Option<PreparedCover>, DbError> {
-    let fetched = sql
-        .query_row(
-            "SELECT content_type, bytes FROM import_candidate_remote_cover_asset \
-             WHERE content_hash = ?",
-            [content_hash],
-            |row| {
-                Ok(bae_catalogs::remote_image::RemoteImage {
-                    content_type: ContentType::from_mime(&row.get::<_, String>(0)?),
-                    bytes: row.get(1)?,
-                })
-            },
-        )
-        .optional()?;
-    match (selection, fetched) {
-        (Some(CoverSelection::Remote(image, source)), Some(fetched)) => {
-            Ok(Some(PreparedCover::Remote { image, source, fetched }))
+    Ok(match selection {
+        None => None,
+        Some(CoverSelection::Local(file_id)) => Some(PreparedCover::Local(file_id)),
+        Some(CoverSelection::Embedded(source_file_id)) => {
+            Some(PreparedCover::Embedded(source_file_id))
         }
-        (Some(CoverSelection::Remote(..)), None) => Err(DbError::Message(format!(
-            "candidate {content_hash}'s remote cover has no stored bytes"
-        ))),
-        (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) => {
-            Err(DbError::Message(format!(
-                "candidate {content_hash} stores remote-cover bytes without a remote cover"
-            )))
+        Some(CoverSelection::Remote(image, source)) => {
+            let fetched = sql.query_row(
+                "SELECT content_type, bytes FROM import_candidate_cover WHERE content_hash = ?",
+                [content_hash],
+                |row| {
+                    Ok(bae_catalogs::remote_image::RemoteImage {
+                        content_type: ContentType::from_mime(&row.get::<_, String>(0)?),
+                        bytes: row.get(1)?,
+                    })
+                },
+            )?;
+            Some(PreparedCover::Remote { image, source, fetched })
         }
-        (Some(CoverSelection::Local(file_id)), None) => Ok(Some(PreparedCover::Local(file_id))),
-        (Some(CoverSelection::Embedded(source_file_id)), None) => {
-            Ok(Some(PreparedCover::Embedded(source_file_id)))
-        }
-        (None, None) => Ok(None),
-    }
+    })
 }
 
 #[cfg(test)]

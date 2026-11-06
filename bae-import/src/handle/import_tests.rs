@@ -618,9 +618,9 @@ async fn an_automatic_import_behind_another_import_records_no_failure() {
 }
 
 /// An automatic start that a failure refuses has nobody to tell: a candidate
-/// whose stored remote cover lost its bytes cannot be read, so the start is
-/// recorded as the candidate's failed import, where the person sees it, and
-/// reported as the bug it is.
+/// whose stored draft is damaged cannot be read, so the start is recorded as
+/// the candidate's failed import, where the person sees it, and reported as
+/// the bug it is.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_automatic_start_a_damaged_row_refuses_records_the_failure_and_reports_it() {
     let fixture = Fixture::new("auto-import-damaged").await;
@@ -642,11 +642,8 @@ async fn an_automatic_start_a_damaged_row_refuses_records_the_failure_and_report
     fixture.scan(1).await;
     fixture.drain_automatic().await;
     assert_eq!(fixture.judgement_for(&dir).await, (true, None));
-    crate::tables::import_state::tests::lose_remote_cover_bytes(
-        &fixture.db,
-        &fixture.content_hash(&dir),
-    )
-    .await;
+    crate::tables::import_state::tests::disown_the_draft(&fixture.db, &fixture.content_hash(&dir))
+        .await;
 
     let error = fixture
         .import
@@ -656,7 +653,7 @@ async fn an_automatic_start_a_damaged_row_refuses_records_the_failure_and_report
 
     assert!(matches!(error, crate::ImportError::Database(_)), "{error:?}");
     let failure = fixture.import_failure(&dir).await.expect("the refused start is recorded");
-    assert!(failure.reason.detail.contains("no stored bytes"), "{failure:?}");
+    assert!(failure.reason.detail.contains("cannot be read from"), "{failure:?}");
     let bugs = fixture.bugs.reports();
     assert_eq!(bugs.len(), 1, "{bugs:?}");
     assert!(bugs[0].0.contains("start the automatic import"), "{bugs:?}");

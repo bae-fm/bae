@@ -442,13 +442,13 @@ pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdi
     (read, listings)
 }
 
-/// Damage the candidate `content_hash`'s cover rows as no write leaves them:
-/// its remote cover's bytes are gone, so reading the candidate fails as a
-/// damaged row.
-pub(crate) async fn lose_remote_cover_bytes(db: &Store, content_hash: &str) {
+/// Damage the candidate `content_hash`'s draft as no write leaves it: it
+/// says nobody wrote it while it is read from a source, so reading the
+/// candidate fails as a damaged row.
+pub(crate) async fn disown_the_draft(db: &Store, content_hash: &str) {
     bae_store::test_fixtures::exec(
         db,
-        "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?1",
+        "UPDATE import_candidate_edit SET author = 'nobody' WHERE content_hash = ?1",
         &[content_hash],
     )
     .await;
