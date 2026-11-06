@@ -56,11 +56,7 @@ async fn a_changed_release_rebuilds_the_grouping_in_the_same_write() {
     let (db, _temp, members) = scanned(&["Volume A", "Volume B"]).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
-    tables
-        .combine_releases(crate::CandidateKey::grouping("test"), members.clone())
-        .await
-        .unwrap()
-        .unwrap();
+    tables.combine_releases(crate::CandidateKey::grouping("test"), members.clone()).await.unwrap();
     let Some(ScanItem::Valid(before)) = stored(&db, &crate::CandidateKey::grouping("test")).await
     else {
         panic!("the grouping built its release");
@@ -95,11 +91,7 @@ async fn a_grouping_missing_one_of_its_releases_says_so_and_can_be_undone() {
     let (db, _temp, members) = scanned(&["Volume A", "Volume B"]).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
-    tables
-        .combine_releases(crate::CandidateKey::grouping("test"), members.clone())
-        .await
-        .unwrap()
-        .unwrap();
+    tables.combine_releases(crate::CandidateKey::grouping("test"), members.clone()).await.unwrap();
 
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables
@@ -156,7 +148,7 @@ async fn folders_whose_names_show_the_same_combine_into_no_importable_release() 
     .await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let key = crate::CandidateKey::grouping("test");
-    tables.combine_releases(key.clone(), members).await.unwrap().unwrap();
+    tables.combine_releases(key.clone(), members).await.unwrap();
     let Some(ScanItem::Invalid(release)) = stored(&db, &key).await else {
         panic!("the grouping's release cannot be imported");
     };
@@ -171,12 +163,28 @@ async fn a_release_is_taken_into_one_grouping_at_most() {
     tables
         .combine_releases(crate::CandidateKey::grouping("first"), members[..2].to_vec())
         .await
-        .unwrap()
         .unwrap();
     assert!(tables
         .combine_releases(crate::CandidateKey::grouping("second"), members[1..].to_vec())
         .await
         .is_err());
+}
+
+/// Folders that cannot be read as one release refuse the combination as the
+/// reason they cannot, and nothing of it is written.
+#[tokio::test]
+async fn a_combination_that_does_not_compose_is_refused_as_its_reason() {
+    let (db, _temp, members) = scanned(&["Volume A", "Volume B"]).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let key = crate::CandidateKey::grouping("twice");
+
+    let error = tables
+        .combine_releases(key.clone(), vec![members[0].clone(), members[0].clone()])
+        .await
+        .expect_err("one folder is not read twice into a release");
+
+    assert!(matches!(error, crate::ImportError::Internal { .. }), "{error:?}");
+    assert!(stored(&db, &key).await.is_none());
 }
 
 /// One grouping table family holds every reading of folders as releases:
@@ -277,7 +285,6 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
     tables
         .combine_releases(crate::CandidateKey::grouping("discs"), members[..2].to_vec())
         .await
-        .unwrap()
         .unwrap();
     assert_eq!(
         release_files(&db, &crate::CandidateKey::grouping("discs")).await,
@@ -294,10 +301,14 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
     let error = tables
         .combine_releases(crate::CandidateKey::grouping("more"), members[2..4].to_vec())
         .await
-        .unwrap()
         .expect_err("the album's files already go with a release");
     assert!(
-        matches!(&error, GroupingBlock::FolderFilesTaken { folder, .. } if folder == "Album"),
+        matches!(
+            &error,
+            crate::ImportError::GroupingBlocked {
+                reason: GroupingBlock::FolderFilesTaken { folder, .. }
+            } if folder == "Album"
+        ),
         "{error}"
     );
 
@@ -307,7 +318,6 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
             vec![members[2].clone(), members[4].clone()],
         )
         .await
-        .unwrap()
         .unwrap();
     assert_eq!(
         release_files(&db, &crate::CandidateKey::grouping("apart")).await,
@@ -351,11 +361,7 @@ async fn a_release_reading_the_folders_files_replaces_its_sidecar() {
     let (db, _temp, members) = scanned(&["Album/Disc 1", "Album/Disc 2"]).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     sidecar_in(&db, sidecar_of("Album", &["cover.jpg"])).await;
-    tables
-        .combine_releases(crate::CandidateKey::grouping("discs"), members.clone())
-        .await
-        .unwrap()
-        .unwrap();
+    tables.combine_releases(crate::CandidateKey::grouping("discs"), members.clone()).await.unwrap();
 
     let album = candidate_with(
         &host_root("/music"),
@@ -410,13 +416,11 @@ async fn a_grouping_that_comes_to_read_taken_files_waits_for_them() {
     tables
         .combine_releases(crate::CandidateKey::grouping("first"), members[..2].to_vec())
         .await
-        .unwrap()
         .unwrap();
     // Each of these sits in a disc folder of its own, so none is shared.
     tables
         .combine_releases(crate::CandidateKey::grouping("second"), members[2..].to_vec())
         .await
-        .unwrap()
         .unwrap();
     assert!(!release_files(&db, &crate::CandidateKey::grouping("second"))
         .await
@@ -467,12 +471,10 @@ async fn groupings_contend_only_for_files_that_are_there() {
     tables
         .combine_releases(crate::CandidateKey::grouping("first"), members[..2].to_vec())
         .await
-        .unwrap()
         .unwrap();
     tables
         .combine_releases(crate::CandidateKey::grouping("second"), members[2..].to_vec())
         .await
-        .unwrap()
         .unwrap();
 
     let write = sidecar_in(&db, sidecar_of("Box", &["cover.jpg"])).await;
@@ -501,11 +503,7 @@ async fn groupings_contend_only_for_files_that_are_there() {
 async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
     let (db, _temp, members) = scanned(&["Album/Disc 1", "Album/Disc 2"]).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    tables
-        .combine_releases(crate::CandidateKey::grouping("discs"), members.clone())
-        .await
-        .unwrap()
-        .unwrap();
+    tables.combine_releases(crate::CandidateKey::grouping("discs"), members.clone()).await.unwrap();
     sidecar_in(&db, FolderSidecar { files: SidecarFiles::Downloading, ..sidecar_of("Album", &[]) })
         .await;
     let error = tables

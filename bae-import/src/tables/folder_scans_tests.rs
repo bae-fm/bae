@@ -523,11 +523,8 @@ async fn a_grouping_is_found_when_combined_only() {
         write(&db, &inner, generation, &ScanItem::Valid(member.clone())).await;
     }
     tables.finish_folder_scan(&inner, generation, None).await.unwrap();
-    let combined = tables
-        .combine_releases(crate::CandidateKey::grouping("picked"), members)
-        .await
-        .unwrap()
-        .unwrap();
+    let combined =
+        tables.combine_releases(crate::CandidateKey::grouping("picked"), members).await.unwrap();
     assert_eq!(combined.found, vec![crate::CandidateKey::grouping("picked")]);
 
     tables
@@ -604,7 +601,6 @@ async fn the_found_count_matches_the_current_generations_folders() {
             vec![renamed, members[1].clone()],
         )
         .await
-        .unwrap()
         .unwrap();
     let (kept, counted) = found_counts(&db).await;
     assert_eq!(kept, counted, "a grouping's row is no folder");

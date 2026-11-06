@@ -181,7 +181,6 @@ async fn joined_folders_sort_by_the_earliest_found_of_them() {
             vec![older.clone(), newest.clone()],
         )
         .await
-        .unwrap()
         .unwrap();
     assert_eq!(
         listed(joined.clone(), ImportListOrder::NewestFirst).await,

@@ -475,7 +475,7 @@ async fn separating_a_picked_grouping_ends_its_release_s_identification() {
     }
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
     let key = crate::CandidateKey::grouping("picked");
-    tables.combine_releases(key.clone(), members).await.unwrap().unwrap();
+    tables.combine_releases(key.clone(), members).await.unwrap();
     let release = tables
         .load_release_candidate(&key)
         .await

@@ -253,8 +253,7 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
             .map(|member| (member, crate::folder_scanner::CandidateFileEdits::default()))
             .collect::<Vec<_>>(),
         parent.valid(),
-    )
-    .map_err(|error| DbError::Message(error.to_string()));
+    );
     let mut candidate = match composed {
         Ok((candidate, _)) => candidate,
         Err(error) => {
@@ -659,41 +658,26 @@ impl ImportTables {
 
     /// Combine `members`, as the caller read them, into one release under the
     /// new grouping `key`, listed under the first member's watched folder;
-    /// they leave the queue in the same write. `Err(block)` when the files of
-    /// the folder they all sit in cannot be read; an error, writing nothing,
-    /// when a member changed or is already grouped or imported, or the
-    /// combined release already exists.
+    /// they leave the queue in the same write. An error, writing nothing,
+    /// when the folders cannot be read as one release, the files of the
+    /// folder they all sit in cannot be read, a member changed or is already
+    /// grouped or imported, or the combined release already exists.
     pub(crate) async fn combine_releases(
         &self,
         key: CandidateKey,
         members: Vec<FolderCandidate>,
-    ) -> Result<Result<GroupingChanges, GroupingBlock>, DbError> {
+    ) -> Result<GroupingChanges, crate::ImportError> {
         if members.len() < 2 {
             return Err(DbError::Message(
                 "combining a release requires at least two folders".into(),
-            ));
+            )
+            .into());
         }
         let root_for_compose = members[0].watched_folder_path.clone();
         let key_for_compose = key.clone();
-        // Check for a refusal on the read connection; the write checks again
-        // and fails if the store changed in between.
-        let sits_in = crate::grouping::shared_parent(
-            members
-                .iter()
-                .map(|member| (member.watched_folder_path.as_path(), member.file_root.as_path())),
-        );
-        let refusal_key = key.clone();
-        let refused = self
-            .store
-            .read(move |sql| {
-                Ok(parent_files_on(&sql, &refusal_key, sits_in.as_deref(), false)?.err())
-            })
-            .await?;
-        if let Some(block) = refused {
-            return Ok(Err(block));
-        }
         self.store
-            .call(move |sql| {
+            .write(move |sql| {
+                let sql = &sql;
                 // Each folder's file decisions, which the release starts from.
                 let mut with_edits = Vec::with_capacity(members.len());
                 for member in &members {
@@ -707,18 +691,13 @@ impl ImportTables {
                     (member.watched_folder_path.as_path(), member.file_root.as_path())
                 }));
                 let parent = parent_files_on(sql, &key_for_compose, sits_in.as_deref(), false)?
-                    .map_err(|block| {
-                        DbError::Message(format!(
-                            "{key_for_compose} could not be combined: {block}"
-                        ))
-                    })?;
+                    .map_err(|reason| crate::ImportError::GroupingBlocked { reason })?;
                 let (composed, inherited) = crate::grouping::compose(
                     &key_for_compose,
                     &root_for_compose,
                     &with_edits,
                     parent.valid(),
-                )
-                .map_err(|error| DbError::Message(error.to_string()))?;
+                )?;
                 // A release reading a broken folder file is invalid: it holds no
                 // files another release could share and no layout to start from.
                 if !matches!(parent, ParentFiles::Invalid(_)) {
@@ -733,7 +712,8 @@ impl ImportTables {
                         return Err(DbError::Message(
                             "this combined release is already present in the queue or library"
                                 .into(),
-                        ));
+                        )
+                        .into());
                     }
                     super::import_state::restart_state_on(sql, &content_hash, &key, &inherited)?;
                 }
@@ -746,7 +726,8 @@ impl ImportTables {
                         return Err(DbError::Message(format!(
                             "{} changed while the folders were being combined",
                             member.name
-                        )));
+                        ))
+                        .into());
                     }
                     let unavailable = sql.query_row(
                     "SELECT EXISTS(SELECT 1 FROM release_grouping_member WHERE member_key = ?1) \
@@ -758,7 +739,8 @@ impl ImportTables {
                         return Err(DbError::Message(format!(
                             "{} is already combined or imported",
                             member.name
-                        )));
+                        ))
+                        .into());
                     }
                 }
                 sql.execute(
@@ -796,16 +778,15 @@ impl ImportTables {
                 }
                 if changes.written.is_empty() {
                     // Nothing of it is kept: the whole write rolls back.
-                    return match load_block_on(sql, &key)? {
-                        Some(block) => {
-                            Err(DbError::Message(format!("{key} could not be combined: {block}")))
-                        }
-                        None => Err(DbError::Message(format!(
+                    return Err(match load_block_on(sql, &key)? {
+                        Some(reason) => crate::ImportError::GroupingBlocked { reason },
+                        None => DbError::Message(format!(
                             "{key} built no release from the folders it takes in"
-                        ))),
-                    };
+                        ))
+                        .into(),
+                    });
                 }
-                Ok(Ok(changes))
+                Ok(changes)
             })
             .await
     }

@@ -280,7 +280,7 @@ impl Library {
             members.iter().map(|member| self.candidate(member)).collect();
         let key = crate::CandidateKey::grouping(id);
         Write::step(async move {
-            tables.combine_releases(key, members).await.unwrap().unwrap();
+            tables.combine_releases(key, members).await.unwrap();
         })
     }
 

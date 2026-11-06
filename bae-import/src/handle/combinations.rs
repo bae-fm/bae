@@ -69,12 +69,7 @@ impl ImportServiceHandle {
         }
         let key = CandidateKey::grouping(&self.services.ids.new_id().to_string());
         let _commit = self.services.folder_state_commit.lock("combine releases").await;
-        let regrouped = self
-            .services
-            .tables
-            .combine_releases(key.clone(), members)
-            .await?
-            .map_err(|reason| ImportError::GroupingBlocked { reason })?;
+        let regrouped = self.services.tables.combine_releases(key.clone(), members).await?;
         for candidate_key in keys {
             self.identification_ended(&candidate_key).await;
             self.services

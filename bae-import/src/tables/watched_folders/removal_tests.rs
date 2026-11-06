@@ -67,7 +67,7 @@ async fn picked_grouping(
             .unwrap();
     }
     tables.finish_folder_scan(root, generation, None).await.unwrap();
-    tables.combine_releases(key.clone(), members).await.unwrap().unwrap();
+    tables.combine_releases(key.clone(), members).await.unwrap();
 }
 
 /// Removing a watched folder removes everything decided under it: skips,
@@ -184,7 +184,6 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
             vec![volume_a.clone(), volume_b.clone()],
         )
         .await
-        .unwrap()
         .unwrap();
     let skipped = one.join("Album");
     tables.set_import_candidate_skipped(&skipped, true).await.unwrap();
