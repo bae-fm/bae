@@ -176,13 +176,13 @@ impl CatalogSessions {
     /// Wait until every signal write started so far has ended, for a test.
     #[cfg(test)]
     pub(crate) async fn signals_recorded(&self) {
-        tokio::time::timeout(std::time::Duration::from_secs(10), async {
-            while !self.signal_writes.is_empty() {
-                tokio::task::yield_now().await;
-            }
-        })
-        .await
-        .expect("every Discogs signal is recorded");
+        // A tracker's wait ends only once it is closed and empty; closing it
+        // changes nothing else, and the next test call reopens it.
+        self.signal_writes.close();
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, self.signal_writes.wait())
+            .await
+            .expect("every Discogs signal is recorded");
+        self.signal_writes.reopen();
     }
 
     /// The session a search of `catalog` asks with, holding only what that

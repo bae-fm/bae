@@ -8,7 +8,6 @@ use crate::tables::NewImportCandidateVerdict;
 use bae_catalogs::test_releases::mb_release_json;
 use bae_util::test_channels::HANG_GUARD;
 use std::sync::Arc;
-use std::time::Duration;
 
 /// The priority the next run of `key` reports.
 async fn await_run_priority(
@@ -74,19 +73,14 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
         ("/release/mb-retry-2?", 200, mb_release_json("mb-retry-2", "rg-retry-2", &[probed, 0])),
     ]);
     fixture.identification().rerun_identify(key.clone());
-    tokio::time::timeout(Duration::from_secs(15), async {
-        loop {
-            if matches!(
-                fixture.identified_for(&dir).await.map(|row| row.verdict),
+    fixture
+        .await_state(&dir, |row| {
+            matches!(
+                row.identify.as_ref().map(|result| &result.verdict),
                 Some(TerminalVerdict::Found { .. })
-            ) {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await
-    .expect("the explicit re-run stores its own answer, not the previous run's");
+            )
+        })
+        .await;
     let runs: Vec<IdentifyRunId> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
@@ -158,13 +152,7 @@ async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
     tokio::time::timeout(HANG_GUARD, fixture.await_identified_row(&dir))
         .await
         .expect("an explicit lookup stores its verdict over a pre-filled draft");
-    tokio::time::timeout(Duration::from_secs(5), async {
-        while fixture.import.standing_facts_for_test(&key).await.identification.is_some() {
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await
-    .expect("a stored verdict leaves nothing pending on the key");
+    fixture.await_not_standing(&[key]).await;
 }
 
 /// Asking to identify an answered candidate runs it again: the person asked
@@ -211,19 +199,17 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
 
     fixture.start_explicit_lookup(&dir);
 
-    tokio::time::timeout(Duration::from_secs(20), async {
-        while !fixture.identified_for(&dir).await.is_some_and(|result| {
-            matches!(
-                &result.verdict,
-                TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. }
-                    if matches.iter().any(|m| m.release_id == "mb-asked-again")
-            )
-        }) {
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await
-    .expect("the run the person asked for replaces the stored result");
+    fixture
+        .await_state(&dir, |row| {
+            row.identify.as_ref().is_some_and(|result| {
+                matches!(
+                    &result.verdict,
+                    TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. }
+                        if matches.iter().any(|m| m.release_id == "mb-asked-again")
+                )
+            })
+        })
+        .await;
     assert!(fixture.provider.count_containing("/discid/") > 0);
 }
 
@@ -414,15 +400,12 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
 
     fixture.start_explicit_lookup(&other);
 
-    tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture.identification_status(&crate::CandidateKey::folder(&other)).await
-            != Some(crate::IdentificationStatus::Running)
-        {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .expect("the request supersedes the run that was going");
+    fixture
+        .await_identification_status(
+            &crate::CandidateKey::folder(&other),
+            crate::IdentificationStatus::Running,
+        )
+        .await;
     assert_eq!(
         fixture.identification_status(&crate::CandidateKey::folder(&running)).await,
         Some(crate::IdentificationStatus::Queued),
@@ -436,15 +419,12 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
         .await
         .expect("the automatic admission has nothing left outstanding")
         .unwrap();
-    tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture.identification_status(&crate::CandidateKey::folder(&running)).await.is_some()
-            || fixture.identification_status(&crate::CandidateKey::folder(&other)).await.is_some()
-        {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .expect("the stored answer retires every candidate it covers");
+    fixture
+        .await_not_standing(&[
+            crate::CandidateKey::folder(&running),
+            crate::CandidateKey::folder(&other),
+        ])
+        .await;
 }
 
 /// A run a person asked for is counted like any other: it opens a batch of its

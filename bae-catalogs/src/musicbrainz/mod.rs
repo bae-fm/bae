@@ -269,6 +269,13 @@ impl MusicBrainz {
         self.limiter.queued_tickets(priority)
     }
 
+    /// The requests waiting in `priority`'s queue once at least `count` are,
+    /// oldest first.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    pub async fn queued_requests_reaching(&self, priority: CallPriority, count: usize) -> Vec<u64> {
+        self.limiter.queued_tickets_reaching(priority, count).await
+    }
+
     /// Every request that waited for its slot, in the order admitted.
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn admitted_requests(&self) -> Vec<(CallPriority, u64)> {

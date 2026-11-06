@@ -83,6 +83,10 @@ pub struct RateLimiter {
     /// so the next candidate re-checks its turn instead of waiting out a timer
     /// it can no longer see.
     advanced: Notify,
+    /// Woken whenever a ticket joins a queue, for a test to wait on a queue's
+    /// length.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    joined: Notify,
 }
 
 /// The bookkeeping the lock protects. Held only for the bookkeeping itself —
@@ -199,7 +203,13 @@ impl RateLimiter {
     }
 
     fn build(interval: Duration, ledger: Option<Ledger>) -> Self {
-        Self { interval, inner: Mutex::new(Inner::new(ledger)), advanced: Notify::new() }
+        Self {
+            interval,
+            inner: Mutex::new(Inner::new(ledger)),
+            advanced: Notify::new(),
+            #[cfg(any(test, feature = "test-instrumentation"))]
+            joined: Notify::new(),
+        }
     }
 
     /// The bookkeeping. Nothing done while it is held panics — a broken
@@ -258,7 +268,10 @@ impl RateLimiter {
     }
 
     fn enqueue_ticket(&self, priority: CallPriority) -> u64 {
-        self.lock().push(priority)
+        let id = self.lock().push(priority);
+        #[cfg(any(test, feature = "test-instrumentation"))]
+        self.joined.notify_waiters();
+        id
     }
 
     fn ticket_turn(&self, priority: CallPriority, id: u64) -> Turn {
@@ -327,6 +340,27 @@ impl RateLimiter {
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub(crate) fn queued_tickets(&self, priority: CallPriority) -> Vec<u64> {
         self.lock().queue(priority).iter().copied().collect()
+    }
+
+    /// The tickets waiting in `priority`'s queue once at least `count` are,
+    /// oldest first. Waiters reach the queue only when they run, so a test
+    /// that cares about arrival order waits on the queue itself.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    pub(crate) async fn queued_tickets_reaching(
+        &self,
+        priority: CallPriority,
+        count: usize,
+    ) -> Vec<u64> {
+        loop {
+            let joined = self.joined.notified();
+            tokio::pin!(joined);
+            joined.as_mut().enable();
+            let queued = self.queued_tickets(priority);
+            if queued.len() >= count {
+                return queued;
+            }
+            joined.await;
+        }
     }
 
     /// Every queued ticket admitted so far, in admission order. A call admitted

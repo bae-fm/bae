@@ -9,7 +9,6 @@ use bae_util::test_channels::HANG_GUARD;
 use bae_util::test_host::FakeHost;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
 use tempfile::TempDir;
 
 /// A different barcode per numbered candidate folder, so each asks its own
@@ -37,6 +36,7 @@ impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
 struct Library {
     services: AppServices,
     import: ImportServiceHandle,
+    identification: bae_import::IdentificationHandle,
     db: bae_store::Store,
     provider: FakeHost,
     root: PathBuf,
@@ -73,17 +73,18 @@ impl Library {
         )
         .await;
         let import = library.start_import().await.unwrap();
+        let identification = import.start_identification_queue();
         let services = AppServices::new(
             LibraryManager::clone(&library),
             bae_views::LibraryViews::new(library.store().clone()),
             library.start_playback().await,
             library.cast_picker(),
             import.clone(),
-            import.start_identification_queue(),
+            identification.clone(),
         );
         let root = temp.path().join("watched");
         std::fs::create_dir_all(&root).unwrap();
-        Self { services, import, db, provider, root, _temp: temp }
+        Self { services, import, identification, db, provider, root, _temp: temp }
     }
 
     /// A candidate folder of two FLACs and one image, so identification runs
@@ -189,15 +190,15 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
         "the pane is back on the draft"
     );
     library.provider.release();
-    for dir in dirs.iter().filter(|dir| **dir != waiting) {
-        let key = CandidateKey::folder(dir);
-        tokio::time::timeout(Duration::from_secs(30), async {
-            while !library.identified(&key).await {
-                tokio::time::sleep(Duration::from_millis(20)).await;
-            }
-        })
+    tokio::time::timeout(HANG_GUARD, library.identification.drained_for_test())
         .await
-        .unwrap_or_else(|_| panic!("no run stored a verdict for {}", dir.display()));
+        .expect("every job still on the queue ends");
+    for dir in dirs.iter().filter(|dir| **dir != waiting) {
+        assert!(
+            library.identified(&CandidateKey::folder(dir)).await,
+            "no run stored a verdict for {}",
+            dir.display()
+        );
     }
     assert_eq!(
         library.provider.count_containing("query=barcode"),

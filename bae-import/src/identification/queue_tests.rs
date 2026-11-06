@@ -9,20 +9,13 @@ use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
 use bae_util::test_channels::HANG_GUARD;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 
-/// Wait until nothing is identifying `key`: its queue mark, its run and its
-/// answer are all gone.
-async fn await_not_identifying(fixture: &Fixture, key: &crate::CandidateKey) {
-    tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture.identification_status(key).await.is_some()
-            || fixture.import.is_identifying(key)
-        {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .unwrap_or_else(|_| panic!("{key} is still identifying after being cancelled"));
+/// Nothing is identifying `key`: its queue mark, its run and its answer are
+/// all gone. A cancel's reply comes after it clears them, so a test reads
+/// them once the cancel returned.
+async fn assert_not_identifying(fixture: &Fixture, key: &crate::CandidateKey) {
+    assert_eq!(fixture.identification_status(key).await, None, "{key} still stands");
+    assert!(!fixture.import.is_identifying(key), "{key} is still identifying");
 }
 
 /// Folders over the cap, each asking the provider a distinct question, with
@@ -89,37 +82,21 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
 
     let pass = fixture.drain_automatic_task();
 
-    if tokio::time::timeout(Duration::from_secs(10), async {
-        loop {
-            let mut statuses: Vec<Option<crate::IdentificationStatus>> = Vec::new();
-            for key in &keys {
-                statuses.push(fixture.import.standing_facts_for_test(key).await.identification);
-            }
-            let running = statuses
-                .iter()
-                .filter(|status| **status == Some(crate::IdentificationStatus::Running))
-                .count();
-            let queued = statuses
-                .iter()
-                .filter(|status| **status == Some(crate::IdentificationStatus::Queued))
-                .count();
-            if running == 1 && queued == 1 {
-                return;
-            }
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .is_err()
-    {
-        panic!(
-            "one member runs the shared job and the other waits on its answer; \
-             runtimes: {:?}; requests: {:?}; identifying: {:?}",
-            fixture.import.candidate_runtimes().await.unwrap(),
-            fixture.provider.requests(),
-            keys.iter().map(|key| fixture.import.is_identifying(key)).collect::<Vec<_>>()
-        );
-    }
+    // One member runs the shared job and the other waits on its answer.
+    let status_of = |facts: &std::collections::HashMap<_, crate::TriageRuntimeFacts>,
+                     wanted: crate::IdentificationStatus| {
+        keys.iter()
+            .filter(|key| {
+                facts.get(*key).is_some_and(|facts| facts.identification.as_ref() == Some(&wanted))
+            })
+            .count()
+    };
+    fixture
+        .await_facts(|facts| {
+            status_of(facts, crate::IdentificationStatus::Running) == 1
+                && status_of(facts, crate::IdentificationStatus::Queued) == 1
+        })
+        .await;
 
     fixture.provider.release();
     tokio::time::timeout(HANG_GUARD, pass)
@@ -166,15 +143,10 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
     let sweep = fixture.drain_automatic_task();
 
     let musicbrainz = &fixture.musicbrainz;
-    let waiting = tokio::time::timeout(Duration::from_secs(20), async {
-        loop {
-            let queued = musicbrainz.queued_requests(CallPriority::Background);
-            if queued.len() >= 2 {
-                return queued;
-            }
-            tokio::task::yield_now().await;
-        }
-    })
+    let waiting = tokio::time::timeout(
+        HANG_GUARD,
+        musicbrainz.queued_requests_reaching(CallPriority::Background, 2),
+    )
     .await
     .expect("automatic identification queues background lookups on the limiter");
 
@@ -726,7 +698,7 @@ async fn a_cancelled_waiting_candidate_is_never_looked_up() {
     let waiting_key = crate::CandidateKey::folder(&waiting);
 
     fixture.identification().cancel(vec![waiting_key.clone()]).await.unwrap();
-    await_not_identifying(&fixture, &waiting_key).await;
+    assert_not_identifying(&fixture, &waiting_key).await;
     fixture.provider.release();
     tokio::time::timeout(HANG_GUARD, sweep).await.expect("the pass ends").unwrap();
 
@@ -766,7 +738,7 @@ async fn a_cancelled_run_leaves_the_candidate_as_it_was_until_asked_again() {
         .await
         .expect("cancelling the only job drains the pass")
         .unwrap();
-    await_not_identifying(&fixture, &key).await;
+    assert_not_identifying(&fixture, &key).await;
     fixture.provider.release();
 
     assert_eq!(
@@ -806,7 +778,7 @@ async fn cancelling_everything_empties_the_queue() {
         .expect("cancelling everything drains the pass")
         .unwrap();
     for dir in &dirs {
-        await_not_identifying(&fixture, &crate::CandidateKey::folder(dir)).await;
+        assert_not_identifying(&fixture, &crate::CandidateKey::folder(dir)).await;
     }
     fixture.provider.release();
     fixture.drain_automatic().await;
@@ -849,7 +821,7 @@ async fn a_cancelled_answer_is_not_written() {
         .await
         .expect("cancelling the only job drains the pass")
         .unwrap();
-    await_not_identifying(&fixture, &key).await;
+    assert_not_identifying(&fixture, &key).await;
 
     assert!(fixture.identified_for(&dir).await.is_none());
     assert!(fixture.import.candidate_runtime(&key).await.unwrap().is_none());
@@ -890,7 +862,7 @@ async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
     assert!(fixture.import.is_identifying(&key));
 
     fixture.identification().cancel(vec![key.clone()]).await.unwrap();
-    await_not_identifying(&fixture, &key).await;
+    assert_not_identifying(&fixture, &key).await;
     fixture.provider.release();
 
     assert!(fixture.identified_for(&dir).await.is_none());

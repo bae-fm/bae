@@ -411,6 +411,8 @@ pub(super) async fn run(
     let mut queue = Queue::default();
     #[cfg(any(test, feature = "test-utils"))]
     let mut waiting_for_drain: Vec<(super::Drain, tokio::sync::oneshot::Sender<()>)> = Vec::new();
+    #[cfg(any(test, feature = "test-utils"))]
+    let mut commands_taken: Vec<tokio::sync::oneshot::Sender<()>> = Vec::new();
     let mut settling = JoinSet::<Finished>::new();
     // Shutdown cancels the settles and waits for them rather than aborting a
     // durable write.
@@ -420,6 +422,13 @@ pub(super) async fn run(
         fill_slots(context, &mut queue).await;
         #[cfg(any(test, feature = "test-utils"))]
         {
+            for taken in std::mem::take(&mut commands_taken) {
+                #[expect(
+                    clippy::let_underscore_must_use,
+                    reason = "a test that stopped waiting needs no answer"
+                )]
+                let _ = taken.send(());
+            }
             let (done, waiting) = std::mem::take(&mut waiting_for_drain)
                 .into_iter()
                 .partition(|(drain, _)| queue.is_drained(*drain));
@@ -480,11 +489,9 @@ pub(super) async fn run(
                     }
                     #[cfg(any(test, feature = "test-utils"))]
                     Command::AwaitCommandsTaken { taken } => {
-                        #[expect(
-                            clippy::let_underscore_must_use,
-                            reason = "a test that stopped waiting needs no answer"
-                        )]
-                        let _ = taken.send(());
+                        // Answered after the next fill, once the command's
+                        // jobs have the slots they can have.
+                        commands_taken.push(taken);
                     }
                 }
             }

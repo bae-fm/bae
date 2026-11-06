@@ -123,6 +123,24 @@ pub(crate) fn fixed_now() -> chrono::DateTime<chrono::Utc> {
         .with_timezone(&chrono::Utc)
 }
 
+/// Pull `query` until a value satisfies `wanted` and return it. A query that
+/// never reaches it is bounded by the hang guard.
+pub(crate) async fn live_until<T: Clone + PartialEq + Send + 'static>(
+    query: &mut coven::LiveQuery<T>,
+    wanted: impl Fn(&T) -> bool,
+) -> T {
+    tokio::time::timeout(HANG_GUARD, async {
+        loop {
+            let value = query.next().await.expect("the query stays open").expect("the query reads");
+            if wanted(&value) {
+                return value;
+            }
+        }
+    })
+    .await
+    .expect("the query reaches the value")
+}
+
 impl Fixture {
     pub(crate) async fn new(name: &str) -> Self {
         Self::with_ids(name, Arc::new(coven::SequentialIds::new())).await
@@ -296,40 +314,60 @@ impl Fixture {
         self.identification().rerun_identify(crate::CandidateKey::folder(dir));
     }
 
-    /// Ask to identify `dir` and wait until its run is registered.
+    /// Ask to identify `dir` and wait until the queue has taken the request
+    /// and started its run.
     pub(crate) async fn start_explicit_lookup_and_await_run(&self, dir: &Path) {
         let key = crate::CandidateKey::folder(dir);
         self.start_explicit_lookup(dir);
-        tokio::time::timeout(Duration::from_secs(10), async {
-            while !self.import.is_identifying(&key) {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        })
-        .await
-        .expect("identify registers the driver for the opened candidate");
+        tokio::time::timeout(HANG_GUARD, self.identification().commands_taken_for_test())
+            .await
+            .expect("the queue takes the request");
+        assert!(self.import.is_identifying(&key), "identify registers the driver for {key}");
     }
 
-    /// The candidate's row once a run has stored its verdict, waited for with
-    /// a bound.
+    /// The candidate's row once a run has stored its verdict, followed
+    /// through the state table's live read.
     pub(crate) async fn await_identified_row(&self, dir: &Path) -> DbImportCandidateState {
-        tokio::time::timeout(Duration::from_secs(30), async {
-            loop {
-                if let Some(row) = self.stored_for(dir).await {
-                    if row.identify.is_some() {
-                        return row;
-                    }
-                }
-                tokio::time::sleep(Duration::from_millis(20)).await;
-            }
+        self.await_state(dir, |row| row.identify.is_some()).await
+    }
+
+    /// The candidate's row once `wanted` holds of it, followed through the
+    /// state table's live read.
+    pub(crate) async fn await_state(
+        &self,
+        dir: &Path,
+        wanted: impl Fn(&DbImportCandidateState) -> bool,
+    ) -> DbImportCandidateState {
+        let hash = self.content_hash(dir);
+        let mut states = self.context.tables.subscribe_import_candidate_states();
+        let mut stored =
+            live_until(&mut states, |states| states.get(&hash).is_some_and(&wanted)).await;
+        stored.remove(&hash).expect("the wanted row is in the state it satisfied")
+    }
+
+    /// Wait until `key`'s runtime, as its live read has it, satisfies
+    /// `wanted`.
+    pub(crate) async fn await_runtime(
+        &self,
+        key: &crate::CandidateKey,
+        wanted: impl Fn(&crate::CandidateRuntimeSnapshot) -> bool,
+    ) {
+        let mut runtime = self.context.tables.subscribe_candidate_runtime(key);
+        live_until(&mut runtime, |runtime| runtime.as_ref().is_some_and(&wanted)).await;
+    }
+
+    /// Wait until nothing is recorded as running for `key`.
+    pub(crate) async fn await_no_runtime(&self, key: &crate::CandidateKey) {
+        let mut runtime = self.context.tables.subscribe_candidate_runtime(key);
+        live_until(&mut runtime, Option::is_none).await;
+    }
+
+    /// Wait until no candidate of `keys` stands identifying.
+    pub(crate) async fn await_not_standing(&self, keys: &[crate::CandidateKey]) {
+        self.await_facts(|facts| {
+            keys.iter().all(|key| facts.get(key).is_none_or(|facts| facts.identification.is_none()))
         })
-        .await
-        .unwrap_or_else(|_| {
-            panic!(
-                "no run stored a verdict for {}; requests so far: {:?}",
-                dir.display(),
-                self.provider.requests()
-            )
-        })
+        .await;
     }
 
     pub(crate) fn count_release_lookups(&self, release_id: &str) -> usize {
@@ -477,25 +515,28 @@ impl Fixture {
         assert_eq!(self.judgement_for(dir).await, (true, None));
     }
 
-    /// Wait until the runtime says `status` of `key`.
+    /// Wait until the standings, as their live read has them, satisfy `wanted`.
+    pub(crate) async fn await_facts(
+        &self,
+        wanted: impl Fn(
+            &std::collections::HashMap<crate::CandidateKey, crate::TriageRuntimeFacts>,
+        ) -> bool,
+    ) {
+        let mut facts = self.context.tables.subscribe_candidate_facts();
+        live_until(&mut facts, wanted).await;
+    }
+
+    /// Wait until the runtime says `status` of `key`, followed through its
+    /// standing's live read.
     pub(crate) async fn await_identification_status(
         &self,
         key: &crate::CandidateKey,
         status: crate::IdentificationStatus,
     ) {
-        let reached = tokio::time::timeout(Duration::from_secs(20), async {
-            while self.identification_status(key).await.as_ref() != Some(&status) {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
+        self.await_facts(|facts| {
+            facts.get(key).is_some_and(|facts| facts.identification.as_ref() == Some(&status))
         })
         .await;
-        if reached.is_err() {
-            panic!(
-                "{key} never read as {status:?}, it reads {:?}; requests so far: {:?}",
-                self.identification_status(key).await,
-                self.provider.requests()
-            );
-        }
     }
 
     /// Let the held read answer and wait for the queue to be done.

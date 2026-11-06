@@ -14,7 +14,6 @@ use bae_catalogs::test_releases::seed_two_track_discogs_release_in;
 use bae_catalogs::test_releases::seed_two_track_mb_release;
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
 use bae_util::test_channels::HANG_GUARD;
-use std::time::Duration;
 
 /// A pick is a person's decision about the folder, so it runs to its end once
 /// asked for: the bridge drops the call's future when the person looks at
@@ -752,28 +751,16 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
         )
         .await
         .unwrap();
-    tokio::time::timeout(Duration::from_secs(30), async {
-        loop {
-            let landed = fixture
-                .import
-                .candidate_runtime(&key)
-                .await
-                .unwrap()
-                .and_then(|runtime| runtime.search)
-                .is_some_and(|search| {
-                    matches!(
-                        search.source(bae_catalogs::catalog::LookupCatalog::MusicBrainz),
-                        Some(crate::SourceSearch::Done { .. })
-                    )
-                });
-            if landed {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await
-    .expect("the typed search lands its MusicBrainz results");
+    fixture
+        .await_runtime(&key, |runtime| {
+            runtime.search.as_ref().is_some_and(|search| {
+                matches!(
+                    search.source(bae_catalogs::catalog::LookupCatalog::MusicBrainz),
+                    Some(crate::SourceSearch::Done { .. })
+                )
+            })
+        })
+        .await;
     fixture
         .import
         .select_candidate_release(

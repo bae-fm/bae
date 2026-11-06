@@ -517,6 +517,21 @@ impl ImportTables {
         self.store.read(move |sql| load_standing_on(&sql, &candidate_key)).await
     }
 
+    /// Where every candidate with a standing stands, live: a test waits on
+    /// the write that moves one instead of reading again until it shows.
+    #[cfg(test)]
+    pub(crate) fn subscribe_candidate_facts(
+        &self,
+    ) -> coven::LiveQuery<HashMap<CandidateKey, TriageRuntimeFacts>> {
+        self.store.subscribe(|sql| {
+            load_standings_on(&sql)
+                .map(|standings| {
+                    standings.into_iter().map(|(key, standing)| (key, standing.facts())).collect()
+                })
+                .map_err(CovenError::from)
+        })
+    }
+
     /// How far the batch of identifications in flight has got, for a test;
     /// the live read carries it to everyone else.
     #[cfg(any(test, feature = "test-utils"))]

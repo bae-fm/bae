@@ -6,7 +6,6 @@ use super::*;
 use crate::identification::tests::*;
 use crate::tables::NewImportCandidateVerdict;
 use crate::IdentifyRunId;
-use crate::ImportCandidateSnapshot;
 use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
 use bae_identify::signals::{DiscIdSignal, Signals};
@@ -14,7 +13,6 @@ use bae_identify::TerminalVerdict;
 use bae_util::test_channels::HANG_GUARD;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
 
 impl Fixture {
     /// Store the verdict a settled lead produces, without running the pipeline.
@@ -280,13 +278,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
         assert!(first_poll.is_pending(), "the first poll asks for the write and waits on it");
     }
 
-    tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture.identification_status(&key).await.is_some() {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .expect("the write ends the save it ran for");
+    fixture.await_not_standing(&[key]).await;
     assert!(
         fixture.stored_for(&dir).await.is_some_and(|row| row.identify.is_some()),
         "the verdict landed"
@@ -319,21 +311,7 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
         "Album",
         "the automatic release choice seeds the editable metadata draft"
     );
-    // The write's event reaches the recorder through the bus; poll for it.
-    let cleared = tokio::time::timeout(Duration::from_secs(10), async {
-        loop {
-            if let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
-                fixture.import.get_candidate(&key).await
-            {
-                if runtime.is_none() {
-                    return;
-                }
-            }
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await;
-    assert!(cleared.is_ok(), "the recorded terminal state clears once its verdict is stored");
+    fixture.await_no_runtime(&key).await;
 }
 
 /// A run that applied its own pick and whose release passed every check

@@ -110,6 +110,17 @@ impl ImportTables {
             .await
     }
 
+    /// [`Self::load_import_candidate_states`], live: a test waits on the write
+    /// it is after instead of reading again until it shows.
+    #[cfg(test)]
+    pub(crate) fn subscribe_import_candidate_states(
+        &self,
+    ) -> coven::LiveQuery<HashMap<String, DbImportCandidateState>> {
+        self.store.subscribe(|sql| {
+            rows::load_states_on(&sql, CandidateRows::All).map_err(coven::CovenError::from)
+        })
+    }
+
     pub async fn load_import_candidate_state(
         &self,
         content_hash: &str,
