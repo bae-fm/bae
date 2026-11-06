@@ -2,15 +2,19 @@ import BaeKit
 import Testing
 
 /// A host whose restore from a code reports the code it was given, then ends
-/// as cancelled; no other call is made by these tests. It is the test host's
-/// core object, which the attempt's setup is made on.
+/// as cancelled; no other call is made by these tests. Each test's is the one
+/// core host of the test process, which the attempt's setup is made on: an
+/// attempt's reads end after the test does, as a screen's end after it goes,
+/// so the host they end on lives for the process, as the app's does.
 private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
+    private static let core = TestHost.make()
+
     let restoredCodes: AsyncStream<String>
     private let record: AsyncStream<String>.Continuation
 
     init() {
         (restoredCodes, record) = AsyncStream.makeStream(of: String.self)
-        super.init(unsafeFromHandle: TestHost.make().uniffiCloneHandle())
+        super.init(unsafeFromHandle: Self.core.uniffiCloneHandle())
     }
 
     required init(unsafeFromHandle handle: UInt64) {
