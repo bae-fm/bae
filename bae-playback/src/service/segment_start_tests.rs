@@ -129,9 +129,28 @@ mod scrub_points {
     /// sits from the point that serves it, and check the scrub's reads and
     /// samples.
     fn check_worst_scrub(flac: &[u8], segment: SegmentSpan, points: &[ScrubPoint], next: usize) {
-        let point = points[next - 1];
         let target = points[next].sample - 1;
+        check_scrub(
+            flac,
+            segment,
+            points,
+            points[next - 1],
+            target,
+            target + u64::from(SAMPLE_RATE),
+        );
+    }
 
+    /// Scrub to `target`, which `point` serves, and check that the scrub reads
+    /// only the file's head and one window from the point, and plays what a
+    /// decode from the track's start plays from `target` to `end`.
+    fn check_scrub(
+        flac: &[u8],
+        segment: SegmentSpan,
+        points: &[ScrubPoint],
+        point: ScrubPoint,
+        target: u64,
+        end: u64,
+    ) {
         // Handing over the target's frame, the scrub reads two runs: the file's
         // head (the probe of its header and first frames) and, from the point,
         // what one fill window holds. Nothing else before the point, and never the
@@ -150,7 +169,6 @@ mod scrub_points {
             "the scrub never read from the point: {reads:?}"
         );
 
-        let end = target + u64::from(SAMPLE_RATE);
         let (_, played) = scrub(flac, segment, points, target, end);
         let reference = from_track_start(flac, points[0].byte, target, end);
         assert_eq!(played.len(), (end - target) as usize * CHANNELS as usize);
@@ -178,6 +196,23 @@ mod scrub_points {
         }
         check_worst_scrub(&flac, whole, &points, 3);
         check_worst_scrub(&flac, whole, &points, points.len() - 1);
+    }
+
+    /// A scrub past a segment's last point, into its final frames, which the
+    /// binary search FFmpeg falls back to without a seektable can't place,
+    /// starts at that point and decodes forward: it reads the file's head and
+    /// one window from the point, nowhere else.
+    #[test]
+    fn a_scrub_past_the_last_point_reads_on_from_it() {
+        bae_audio::init();
+        let flac = noise_flac(30);
+        let whole = SegmentSpan::whole_file();
+        let points = import_scrub_points(&flac, whole);
+        let last = *points.last().expect("30 s of noise gets points");
+        let total = 30 * u64::from(SAMPLE_RATE);
+        for target in [last.sample + 1, total - 10] {
+            check_scrub(&flac, whole, &points, last, target, total);
+        }
     }
 
     /// A track that starts inside the file, as a CUE album's do: its decode starts
