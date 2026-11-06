@@ -3,6 +3,13 @@
 set -e
 
 source "$(git rev-parse --show-toplevel)/scripts/hooks/lib/file-list.sh"
+source "$(git rev-parse --show-toplevel)/scripts/hooks/lib/hook-mode.sh"
+
+# Quick mode (`builds mode`, or HOOK_MODE) swaps the heavy compile steps
+# (clippy, rustdoc, the mobile check) for one cargo check of the changed
+# crates; every cheap step still runs.
+MODE=$(hook_mode) || exit 1
+echo "Pre-commit hook mode: $MODE"
 
 # Git exports GIT_DIR/GIT_INDEX_FILE to hooks in a linked worktree, which breaks
 # SwiftPM's package clones; the hook's own git commands don't need them.
@@ -75,6 +82,14 @@ restage_and_fail_if_changed() {
 }
 
 run_check "pre-commit staged path matching" bash scripts/hooks/tests/file-list-test.sh || {
+    exit 1
+}
+
+run_check "pre-commit hook mode" bash scripts/hooks/tests/hook-mode-test.sh || {
+    exit 1
+}
+
+run_check "pre-commit hook mode" bash scripts/hooks/tests/hook-mode-test.sh || {
     exit 1
 }
 
@@ -213,49 +228,62 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     # The changed crates and every crate a change to them can break: a
     # changed public path or signature breaks a dependent's library or tests,
     # which a check of the changed crates alone never builds.
-    CLIPPY_ARGS=(clippy --all-targets)
+    COMPILE_ARGS=(clippy --all-targets)
+    if [ "$MODE" = quick ]; then
+        COMPILE_ARGS=(check --all-targets)
+    fi
     MOBILE_CHECK_ARGS=(check --lib --target aarch64-apple-ios)
     MOBILE_COVERED=0
     CHECK_PLAN=$(crate_check_plan "${DIRECTLY_CHANGED_CRATES[@]}")
     while read -r kind value; do
         case "$kind" in
-            crate) CLIPPY_ARGS+=(-p "$value") ;;
-            feature) CLIPPY_ARGS+=(--features "$value") ;;
+            crate) COMPILE_ARGS+=(-p "$value") ;;
+            feature) COMPILE_ARGS+=(--features "$value") ;;
             mobile)
                 MOBILE_COVERED=1
                 MOBILE_CHECK_ARGS+=(-p "$value")
                 ;;
         esac
     done <<< "$CHECK_PLAN"
-    CLIPPY_ARGS+=(-- -D warnings)
-    run_check "clippy (changed crates and their dependents)" scripts/cargo.sh "${CLIPPY_ARGS[@]}" || {
-        echo "Fix the warnings above and try again"
-        exit 1
-    }
-
-    # CI documents the workspace with warnings as errors; clippy does not see
-    # doc links, so a link to a private item only failed there. Only the
-    # changed crates are documented: documenting every dependent again costs
-    # more than the rest of the hook, and a dependent's doc link a change
-    # breaks fails CI on main, where it is fixed forward.
-    DOC_ARGS=(doc --no-deps)
-    for crate in "${DIRECTLY_CHANGED_CRATES[@]}"; do
-        DOC_ARGS+=(-p "$crate")
-    done
-    run_check "rustdoc (changed crates)" env RUSTDOCFLAGS="-D warnings" scripts/cargo.sh "${DOC_ARGS[@]}" || {
-        echo "Fix the documentation errors above and try again"
-        exit 1
-    }
-
-    # The mobile apps build bae-library and the crates below it without their
-    # desktop-only modules, where anything only those modules use is dead code
-    # and fails the build.
-    if [ "$MOBILE_COVERED" -eq 1 ]; then
-        run_check "bae-library and the crates below it for iOS (desktop-only code)" \
-            scripts/cargo.sh "${MOBILE_CHECK_ARGS[@]}" || {
-            echo "Gate code only desktop modules use with the same cfg and try again"
+    if [ "$MODE" = quick ]; then
+        # The same crates and features clippy would use, so the build is warm.
+        run_check "cargo check (changed crates and their dependents)" scripts/cargo.sh "${COMPILE_ARGS[@]}" || {
+            echo "Fix the errors above and try again"
             exit 1
         }
+    else
+        COMPILE_ARGS+=(-- -D warnings)
+        run_check "clippy (changed crates and their dependents)" scripts/cargo.sh "${COMPILE_ARGS[@]}" || {
+            echo "Fix the warnings above and try again"
+            exit 1
+        }
+    fi
+
+    if [ "$MODE" = strict ]; then
+        # CI documents the workspace with warnings as errors; clippy does not see
+        # doc links, so a link to a private item only failed there. Only the
+        # changed crates are documented: documenting every dependent again costs
+        # more than the rest of the hook, and a dependent's doc link a change
+        # breaks fails CI on main, where it is fixed forward.
+        DOC_ARGS=(doc --no-deps)
+        for crate in "${DIRECTLY_CHANGED_CRATES[@]}"; do
+            DOC_ARGS+=(-p "$crate")
+        done
+        run_check "rustdoc (changed crates)" env RUSTDOCFLAGS="-D warnings" scripts/cargo.sh "${DOC_ARGS[@]}" || {
+            echo "Fix the documentation errors above and try again"
+            exit 1
+        }
+
+        # The mobile apps build bae-library and the crates below it without their
+        # desktop-only modules, where anything only those modules use is dead code
+        # and fails the build.
+        if [ "$MOBILE_COVERED" -eq 1 ]; then
+            run_check "bae-library and the crates below it for iOS (desktop-only code)" \
+                scripts/cargo.sh "${MOBILE_CHECK_ARGS[@]}" || {
+                echo "Gate code only desktop modules use with the same cfg and try again"
+                exit 1
+            }
+        fi
     fi
 fi
 
