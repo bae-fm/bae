@@ -124,6 +124,9 @@
     <string name="settings_bucket">Κάδος</string>
     <string name="settings_region">Περιοχή</string>
     <string name="settings_endpoint">Τερματικό σημείο</string>
+    <string name="settings_folder">Φάκελος</string>
+    <string name="settings_open_in_browser">Άνοιγμα στο πρόγραμμα περιήγησης</string>
+    <string name="settings_folder_no_app">Καμία εφαρμογή σε αυτήν τη συσκευή δεν άνοιξε τη σελίδα του φακέλου.</string>
     <string name="settings_pause_uploads">Παύση μεταφορτώσεων</string>
     <string name="settings_pause_uploads_footer">Όσο είναι σε παύση, οι αλλαγές περιμένουν σε αυτή τη συσκευή και μεταφορτώνονται όταν συνεχίσετε.</string>
     <string name="members_title">Άτομα και συσκευές</string>

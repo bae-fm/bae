@@ -124,6 +124,9 @@
     <string name="settings_bucket">Bøtte</string>
     <string name="settings_region">Region</string>
     <string name="settings_endpoint">Endepunkt</string>
+    <string name="settings_folder">Mappe</string>
+    <string name="settings_open_in_browser">Åpne i nettleseren</string>
+    <string name="settings_folder_no_app">Ingen app på denne enheten åpnet mappens side.</string>
     <string name="settings_pause_uploads">Sett opplastinger på pause</string>
     <string name="settings_pause_uploads_footer">Mens de er satt på pause, venter endringene på denne enheten og lastes opp når du fortsetter.</string>
     <string name="members_title">Personer og enheter</string>

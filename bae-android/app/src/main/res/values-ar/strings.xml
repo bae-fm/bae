@@ -124,6 +124,9 @@
     <string name="settings_bucket">الحاوية</string>
     <string name="settings_region">المنطقة</string>
     <string name="settings_endpoint">نقطة النهاية</string>
+    <string name="settings_folder">المجلد</string>
+    <string name="settings_open_in_browser">فتح في المتصفح</string>
+    <string name="settings_folder_no_app">لم يفتح أي تطبيق على هذا الجهاز صفحة المجلد.</string>
     <string name="settings_pause_uploads">إيقاف الرفع مؤقتًا</string>
     <string name="settings_pause_uploads_footer">أثناء الإيقاف المؤقت، تنتظر التغييرات على هذا الجهاز وتُرفع عند الاستئناف.</string>
     <string name="members_title">الأشخاص والأجهزة</string>

@@ -119,6 +119,9 @@
     <string name="settings_bucket">バケット</string>
     <string name="settings_region">リージョン</string>
     <string name="settings_endpoint">エンドポイント</string>
+    <string name="settings_folder">フォルダ</string>
+    <string name="settings_open_in_browser">ブラウザで開く</string>
+    <string name="settings_folder_no_app">このデバイスのアプリでフォルダのページを開けませんでした。</string>
     <string name="settings_pause_uploads">アップロードを一時停止</string>
     <string name="settings_pause_uploads_footer">一時停止中は、変更はこのデバイスで待機し、再開するとアップロードされます。</string>
     <string name="members_title">メンバーとデバイス</string>

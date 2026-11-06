@@ -115,6 +115,58 @@ mod conversion_roundtrip {
         }
     }
 
+    /// The Sync page shows the folder's name and opens its web address, so
+    /// both cross to the app as coven recorded them. Going back, the label is
+    /// left to coven, which reads it at every connection.
+    #[test]
+    fn a_folder_label_crosses_to_the_app() {
+        let labelled: [coven::StorageConfig; 2] = [
+            serde_json::from_value(serde_json::json!({"Dropbox": {
+                "location": {"SharedFolder": {"namespace_id": "namespace-1"}},
+                "account_label": "person@example.com",
+                "folder_label": {"name": "Music", "web_url": "https://www.dropbox.com/home/Music"},
+            }}))
+            .unwrap(),
+            serde_json::from_value(serde_json::json!({"OneDrive": {
+                "drive_id": "drive-1",
+                "folder_id": "folder-1",
+                "account_label": "person@example.org",
+                "folder_label": {"name": "Music Library", "web_url": "https://onedrive.live.com/?id=folder-1"},
+            }}))
+            .unwrap(),
+        ];
+        let crossed: Vec<_> = labelled
+            .iter()
+            .map(|location| match BridgeStorageLocation::from_core(location.clone()) {
+                BridgeStorageLocation::Dropbox { folder_label, .. }
+                | BridgeStorageLocation::OneDrive { folder_label, .. } => folder_label,
+                other => panic!("a Dropbox or OneDrive location crossed as {other:?}"),
+            })
+            .collect();
+        assert_eq!(
+            crossed,
+            vec![
+                Some(BridgeFolderLabel {
+                    name: "Music".into(),
+                    web_url: "https://www.dropbox.com/home/Music".into(),
+                }),
+                Some(BridgeFolderLabel {
+                    name: "Music Library".into(),
+                    web_url: "https://onedrive.live.com/?id=folder-1".into(),
+                }),
+            ]
+        );
+        for location in labelled {
+            let back = BridgeStorageLocation::from_core(location.clone()).into_core().unwrap();
+            assert!(back.same_location(&location));
+            assert!(matches!(
+                back,
+                coven::StorageConfig::Dropbox { folder_label: None, .. }
+                    | coven::StorageConfig::OneDrive { folder_label: None, .. }
+            ));
+        }
+    }
+
     #[test]
     fn config_exposes_identify_automatically() {
         use bae_preferences::Config;

@@ -142,7 +142,7 @@ class OneDriveBrowserTest {
             assertEquals(1, drive.creates)
         }
 
-    private fun folder(name: String) = BridgeStorageFolder(name, BridgeStorageLocation.OneDrive("drive", name, null))
+    private fun folder(name: String) = BridgeStorageFolder(name, BridgeStorageLocation.OneDrive("drive", name, null, null))
 
     private fun offline(): Result<List<BridgeStorageFolder>> =
         Result.failure(BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline"))

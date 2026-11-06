@@ -59,7 +59,12 @@ class InviteDialogTest {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
                     InviteDialog(
                         session = session,
-                        storage = BridgeStorageLocation.Dropbox(BridgeDropboxLocation.AppFolder, accountLabel = "ana@example.com"),
+                        storage =
+                            BridgeStorageLocation.Dropbox(
+                                BridgeDropboxLocation.AppFolder,
+                                accountLabel = "ana@example.com",
+                                folderLabel = null,
+                            ),
                         onCreated = { created += it },
                         onDismiss = {},
                     )

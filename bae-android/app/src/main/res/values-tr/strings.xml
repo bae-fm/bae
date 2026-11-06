@@ -120,6 +120,9 @@
     <string name="settings_bucket">Bucket</string>
     <string name="settings_region">Bölge</string>
     <string name="settings_endpoint">Uç nokta</string>
+    <string name="settings_folder">Klasör</string>
+    <string name="settings_open_in_browser">Tarayıcıda aç</string>
+    <string name="settings_folder_no_app">Bu cihazdaki hiçbir uygulama klasörün sayfasını açmadı.</string>
     <string name="settings_pause_uploads">Yüklemeleri duraklat</string>
     <string name="settings_pause_uploads_footer">Duraklatıldığında değişiklikler bu cihazda bekler ve devam ettiğinizde yüklenir.</string>
     <string name="members_title">Kişiler ve cihazlar</string>

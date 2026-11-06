@@ -1,5 +1,9 @@
 package fm.bae.app.ui.settings
 
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
@@ -35,7 +40,9 @@ import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
+import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeFolderLabel
 import uniffi.bae_bridge.BridgeStorageLocation
 
 private val logger = BaeLogger("bae.SettingsSyncSection")
@@ -164,7 +171,7 @@ private fun SyncFailureOffers(
 
 /**
  * The cloud home's provider and, for S3, the bucket it names; Dropbox and
- * OneDrive show the signed-in account, since their folder has no name to show.
+ * OneDrive show the signed-in account and the folder coven recorded.
  */
 @Composable
 private fun CloudHomeRows(location: BridgeStorageLocation) {
@@ -178,14 +185,61 @@ private fun CloudHomeRows(location: BridgeStorageLocation) {
 
         is BridgeStorageLocation.Dropbox -> {
             location.accountLabel?.let { LabeledValueRow(stringResource(R.string.settings_account), it) }
+            location.folderLabel?.let { FolderRows(it) }
         }
 
         is BridgeStorageLocation.OneDrive -> {
             location.accountLabel?.let { LabeledValueRow(stringResource(R.string.settings_account), it) }
+            location.folderLabel?.let { FolderRows(it) }
         }
 
         is BridgeStorageLocation.CloudKit -> {
             Unit
+        }
+    }
+}
+
+/**
+ * A Dropbox shared folder's or a OneDrive folder's name, as the signed-in
+ * account named it at this device's latest connection, and Open in browser,
+ * which opens the folder's page at the provider.
+ */
+@Composable
+private fun FolderRows(folder: BridgeFolderLabel) {
+    val context = LocalContext.current
+    var openFailure by remember { mutableStateOf<DisplayError?>(null) }
+    LabeledValueRow(stringResource(R.string.settings_folder), folder.name)
+    TextButton(onClick = { openFailure = openInBrowser(context, folder.webUrl) }) {
+        Text(stringResource(R.string.settings_open_in_browser))
+    }
+    openFailure?.let { ErrorDetailDisclosure(it) }
+}
+
+/** Open `webUrl` in the browser; the error to show when no app on this device opens it. */
+private fun openInBrowser(
+    context: Context,
+    webUrl: String,
+): DisplayError? =
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(webUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        null
+    } catch (e: ActivityNotFoundException) {
+        logger.warning("no app opened the folder's web address $webUrl", e)
+        DisplayError(context.getString(R.string.settings_folder_no_app))
+    }
+
+@Preview(showBackground = true)
+@Composable
+private fun CloudHomeRowsDropboxPreview() {
+    BaeTheme {
+        Column {
+            CloudHomeRows(
+                BridgeStorageLocation.Dropbox(
+                    location = BridgeDropboxLocation.SharedFolder(namespaceId = "1234567890"),
+                    accountLabel = "name@example.com",
+                    folderLabel = BridgeFolderLabel(name = "Music", webUrl = "https://www.dropbox.com/home/Music"),
+                ),
+            )
         }
     }
 }

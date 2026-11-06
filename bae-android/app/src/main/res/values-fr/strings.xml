@@ -121,6 +121,9 @@
     <string name="settings_bucket">Bucket</string>
     <string name="settings_region">Région</string>
     <string name="settings_endpoint">Point de terminaison</string>
+    <string name="settings_folder">Dossier</string>
+    <string name="settings_open_in_browser">Ouvrir dans le navigateur</string>
+    <string name="settings_folder_no_app">Aucune application de cet appareil n\'a ouvert la page du dossier.</string>
     <string name="settings_pause_uploads">Suspendre les envois</string>
     <string name="settings_pause_uploads_footer">En pause, les modifications attendent sur cet appareil et sont envoyées à la reprise.</string>
     <string name="members_title">Personnes et appareils</string>

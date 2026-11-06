@@ -217,8 +217,9 @@ private struct UploadPauseToggle: View {
 #if DEBUG
     // MARK: - Previews
 
+    /// The Library tab over `configStore`'s library, its sync at `indicator`.
     @MainActor
-    private func librarySettingsTabPreview(
+    func librarySettingsTabPreview(
         configStore: ConfigStore,
         indicator: BridgeSyncIndicator? = .synced
     ) -> some View {
@@ -253,6 +254,7 @@ private struct UploadPauseToggle: View {
                 selfIsAdmin: true
             )
         )
+        .environment(SyncActivityStore.preview(needsAttention: false))
         .environment(UiStore())
         .environment(OutboxStore(uploadsPaused: false))
         .environment(LibraryNameStore.stub(name: "Preview Library"))
@@ -267,13 +269,33 @@ private struct UploadPauseToggle: View {
 
     #Preview("Synced") {
         librarySettingsTabPreview(
-            configStore: PreviewData.connectedConfigStore()
+            configStore: PreviewData.connectedConfigStore(
+                storage: PreviewData.previewStorage
+            )
+        )
+    }
+
+    #Preview("Dropbox") {
+        librarySettingsTabPreview(
+            configStore: PreviewData.connectedConfigStore(
+                storage: PreviewData.previewDropboxStorage
+            )
+        )
+    }
+
+    #Preview("OneDrive") {
+        librarySettingsTabPreview(
+            configStore: PreviewData.connectedConfigStore(
+                storage: PreviewData.previewOneDriveStorage
+            )
         )
     }
 
     #Preview("Credentials gone") {
         librarySettingsTabPreview(
-            configStore: PreviewData.connectedConfigStore(),
+            configStore: PreviewData.connectedConfigStore(
+                storage: PreviewData.previewStorage
+            ),
             indicator: nil
         )
     }
@@ -289,7 +311,11 @@ private struct UploadPauseToggle: View {
         .formStyle(.grouped)
         .frame(width: 500, height: 300)
         .environment(PreviewData.previewSync())
-        .environment(PreviewData.connectedConfigStore())
+        .environment(
+            PreviewData.connectedConfigStore(
+                storage: PreviewData.previewStorage
+            )
+        )
     }
 
     #Preview("Recovery code loading") {

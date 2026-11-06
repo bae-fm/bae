@@ -53,18 +53,6 @@ public func localizedCloudProviderName(provider: BridgeCloudProvider?) -> String
 }
 
 extension BridgeStorageLocation {
-    /// The one value that tells this location apart from another on the same
-    /// provider, shown under the provider's name in compact rows.
-    public var locationSummary: String {
-        switch self {
-        case .s3(let bucket, _, _, _): bucket
-        case .dropbox(.appFolder, _): String(localized: "App folder")
-        case .dropbox(.sharedFolder(let namespaceId), _): namespaceId
-        case .oneDrive(_, let folderId, _): folderId
-        case .cloudKit(let container, _, _): container
-        }
-    }
-
     /// The provider with the account or bucket a library is in, as restore
     /// rows and library rows show it: "Dropbox: ana@example.com", "S3-compatible:
     /// bucket (endpoint)", "iCloud". The endpoint is the one the person entered;
@@ -72,7 +60,7 @@ extension BridgeStorageLocation {
     /// OneDrive location coven hasn't set up has no account yet.
     public var accountLine: String {
         switch self {
-        case .dropbox(_, let account?), .oneDrive(_, _, let account?):
+        case .dropbox(_, let account?, _), .oneDrive(_, _, let account?, _):
             String(
                 localized: "\(displayName): \(account)",
                 comment:
@@ -93,7 +81,18 @@ extension BridgeStorageLocation {
     /// has set it up; S3 and iCloud have none.
     public var accountLabel: String? {
         switch self {
-        case .dropbox(_, let account), .oneDrive(_, _, let account): account
+        case .dropbox(_, let account, _), .oneDrive(_, _, let account, _):
+            account
+        case .s3, .cloudKit: nil
+        }
+    }
+
+    /// The name and web address of the folder a Dropbox or OneDrive library
+    /// is in, as the signed-in account named them at this device's latest
+    /// connection; S3, iCloud and Dropbox's App folder have none.
+    public var folderLabel: BridgeFolderLabel? {
+        switch self {
+        case .dropbox(_, _, let folder), .oneDrive(_, _, _, let folder): folder
         case .s3, .cloudKit: nil
         }
     }

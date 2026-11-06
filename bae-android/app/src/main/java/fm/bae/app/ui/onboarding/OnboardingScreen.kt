@@ -377,6 +377,7 @@ private fun OnboardingProgressWaitingPreview() {
                                                     location =
                                                         BridgeDropboxLocation.SharedFolder(namespaceId = "namespace-1"),
                                                     accountLabel = "person@example.com",
+                                                    folderLabel = null,
                                                 ),
                                             oauthAccess = null,
                                             carriesS3Key = false,

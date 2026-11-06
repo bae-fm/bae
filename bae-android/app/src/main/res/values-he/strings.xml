@@ -121,6 +121,9 @@
     <string name="settings_bucket">דלי</string>
     <string name="settings_region">אזור</string>
     <string name="settings_endpoint">נקודת קצה</string>
+    <string name="settings_folder">תיקייה</string>
+    <string name="settings_open_in_browser">פתח בדפדפן</string>
+    <string name="settings_folder_no_app">אף אפליקציה במכשיר הזה לא פתחה את דף התיקייה.</string>
     <string name="settings_pause_uploads">השהיית העלאות</string>
     <string name="settings_pause_uploads_footer">בזמן ההשהיה, השינויים ממתינים במכשיר הזה ומועלים כשתמשיך.</string>
     <string name="members_title">אנשים ומכשירים</string>

@@ -128,6 +128,9 @@
     <string name="settings_bucket">Kontajner</string>
     <string name="settings_region">Región</string>
     <string name="settings_endpoint">Koncový bod</string>
+    <string name="settings_folder">Priečinok</string>
+    <string name="settings_open_in_browser">Otvoriť v prehliadači</string>
+    <string name="settings_folder_no_app">Žiadna aplikácia v tomto zariadení neotvorila stránku priečinka.</string>
     <string name="settings_pause_uploads">Pozastaviť odosielanie</string>
     <string name="settings_pause_uploads_footer">Kým je pozastavené, zmeny čakajú na tomto zariadení a odošlú sa, keď budeš pokračovať.</string>
     <string name="members_title">Ľudia a zariadenia</string>

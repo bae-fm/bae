@@ -2780,6 +2780,19 @@ sees its tokens. bae's Dropbox app has access to the whole Dropbox, not an app
 folder: an app folder can't be shared, so a household couldn't be invited to
 it.
 
+**The folder in Settings.** Every connection to a Dropbox shared folder or a
+OneDrive folder reads the folder's name and web address as the signed-in
+account names them, and coven records them with the location
+([coven §20.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#202-the-providers-and-signing-in)).
+Settings' sync section shows that name as *Folder*, under the account, with
+*Open in browser*, which opens the folder's page at the provider; when no app
+on the device opens it, the section says so. S3 and iCloud show neither, and
+nor does Dropbox's App folder, which has no label. The name is the one coven
+had recorded when Settings read the location: on a Mac as the library opens
+and again once a setup stops running, on Android each time Settings opens. A
+folder renamed at the provider shows its new name from the first read after a
+connection has recorded it.
+
 **iCloud setup** uses the Apple Account the device is signed in to, and keeps
 the library in bae's iCloud container, `iCloud.fm.bae.desktop`.
 

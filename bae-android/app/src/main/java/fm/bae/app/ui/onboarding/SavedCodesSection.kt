@@ -286,6 +286,7 @@ private val previewEntries =
                         BridgeStorageLocation.Dropbox(
                             location = BridgeDropboxLocation.AppFolder,
                             accountLabel = "ana@example.com",
+                            folderLabel = null,
                         ),
                     oauthAccess = BridgeOAuthAccess.Dropbox(BridgeDropboxAccess.APP_FOLDER),
                     hasS3Credentials = false,

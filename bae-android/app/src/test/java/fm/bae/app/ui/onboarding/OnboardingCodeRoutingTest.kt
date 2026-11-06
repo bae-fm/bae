@@ -20,6 +20,7 @@ class OnboardingCodeRoutingTest {
                     driveId = "drive-1",
                     folderId = "folder-1",
                     accountLabel = "person@example.com",
+                    folderLabel = null,
                 ),
             oauthAccess = null,
             carriesS3Key = false,

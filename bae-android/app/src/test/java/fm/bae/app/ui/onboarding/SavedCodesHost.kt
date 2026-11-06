@@ -30,7 +30,7 @@ internal val dropboxCode =
     BridgeSavedRestoreCodeInfo(
         name = "Home Library",
         libraryId = "saved-dropbox",
-        location = BridgeStorageLocation.Dropbox(BridgeDropboxLocation.AppFolder, accountLabel = "ana@example.com"),
+        location = BridgeStorageLocation.Dropbox(BridgeDropboxLocation.AppFolder, accountLabel = "ana@example.com", folderLabel = null),
         oauthAccess = BridgeOAuthAccess.Dropbox(BridgeDropboxAccess.APP_FOLDER),
         hasS3Credentials = false,
     )

@@ -47,6 +47,29 @@
             profile: nil
         )
 
+        /// A Dropbox shared folder, with the account and the folder's label
+        /// coven read at the latest connection.
+        static let previewDropboxStorage = BridgeStorageLocation.dropbox(
+            location: .sharedFolder(namespaceId: "1234567890"),
+            accountLabel: "name@example.com",
+            folderLabel: BridgeFolderLabel(
+                name: "Music",
+                webUrl: "https://www.dropbox.com/home/Music"
+            )
+        )
+
+        /// A OneDrive folder, with the account and the folder's label coven
+        /// read at the latest connection.
+        static let previewOneDriveStorage = BridgeStorageLocation.oneDrive(
+            driveId: "drive-1",
+            folderId: "folder-1",
+            accountLabel: "name@example.com",
+            folderLabel: BridgeFolderLabel(
+                name: "Music Library",
+                webUrl: "https://onedrive.live.com/?id=folder-1"
+            )
+        )
+
         /// This device's person, an admin, whose earlier registration of this
         /// device was replaced, and one other member with a removable device
         /// and two removed ones. Ids are arbitrary UUIDs.
@@ -162,11 +185,14 @@
             )
         }
 
-        /// A `ConfigStore` whose library has a cloud home, so the Library
-        /// settings preview shows the storage, its sync and the people.
+        /// A `ConfigStore` whose library has its cloud home at `storage`, so
+        /// the Library settings preview shows the storage, its sync and the
+        /// people.
         @MainActor
-        static func connectedConfigStore() -> ConfigStore {
-            makeConfigStore(libraryFullWidth: false, storage: previewStorage)
+        static func connectedConfigStore(
+            storage: BridgeStorageLocation
+        ) -> ConfigStore {
+            makeConfigStore(libraryFullWidth: false, storage: storage)
         }
     }
 #endif

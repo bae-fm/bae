@@ -27,7 +27,9 @@ struct ImportCandidateBulkSelectionPaneTests {
             return try #require(Self.leadingCheckbox(in: host))
         }
         let inPane = try await Self.withHostedPane(
-            configStore: PreviewData.connectedConfigStore()
+            configStore: PreviewData.connectedConfigStore(
+                storage: PreviewData.previewStorage
+            )
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
             return try #require(Self.leadingCheckbox(in: host))
@@ -131,7 +133,9 @@ struct ImportCandidateBulkSelectionPaneTests {
         }
 
         let leading = try await Self.withHostedPane(
-            configStore: PreviewData.connectedConfigStore()
+            configStore: PreviewData.connectedConfigStore(
+                storage: PreviewData.previewStorage
+            )
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
             #expect(Self.checkboxes(in: host).count == 2)

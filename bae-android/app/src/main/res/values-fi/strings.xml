@@ -124,6 +124,9 @@
     <string name="settings_bucket">Säilö</string>
     <string name="settings_region">Alue</string>
     <string name="settings_endpoint">Päätepiste</string>
+    <string name="settings_folder">Kansio</string>
+    <string name="settings_open_in_browser">Avaa selaimessa</string>
+    <string name="settings_folder_no_app">Mikään tämän laitteen ohjelma ei avannut kansion sivua.</string>
     <string name="settings_pause_uploads">Keskeytä lähetykset</string>
     <string name="settings_pause_uploads_footer">Kun lähetykset ovat tauolla, muutokset odottavat tällä laitteella ja lähtevät, kun jatkat.</string>
     <string name="members_title">Ihmiset ja laitteet</string>

@@ -121,6 +121,9 @@
     <string name="settings_bucket">Spremnik</string>
     <string name="settings_region">Regija</string>
     <string name="settings_endpoint">Krajnja točka</string>
+    <string name="settings_folder">Mapa</string>
+    <string name="settings_open_in_browser">Otvori u pregledniku</string>
+    <string name="settings_folder_no_app">Nijedna aplikacija na ovom uređaju nije otvorila stranicu mape.</string>
     <string name="settings_pause_uploads">Pauziraj prijenose</string>
     <string name="settings_pause_uploads_footer">Dok je pauzirano, promjene čekaju na ovom uređaju i prenose se kada nastavite.</string>
     <string name="members_title">Osobe i uređaji</string>

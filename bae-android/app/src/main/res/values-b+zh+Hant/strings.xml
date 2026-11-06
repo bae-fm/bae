@@ -119,6 +119,9 @@
     <string name="settings_bucket">儲存桶</string>
     <string name="settings_region">地區</string>
     <string name="settings_endpoint">端點</string>
+    <string name="settings_folder">資料夾</string>
+    <string name="settings_open_in_browser">在瀏覽器中開啟</string>
+    <string name="settings_folder_no_app">此裝置上沒有應用程式開啟資料夾的頁面。</string>
     <string name="settings_pause_uploads">暫停上傳</string>
     <string name="settings_pause_uploads_footer">暫停期間，變更會在此裝置上等待，恢復後上傳。</string>
     <string name="members_title">成員和裝置</string>

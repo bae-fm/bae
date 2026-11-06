@@ -120,6 +120,9 @@
     <string name="settings_bucket">Кофа</string>
     <string name="settings_region">Регион</string>
     <string name="settings_endpoint">Крайна точка</string>
+    <string name="settings_folder">Папка</string>
+    <string name="settings_open_in_browser">Отваряне в браузъра</string>
+    <string name="settings_folder_no_app">Нито едно приложение на това устройство не отвори страницата на папката.</string>
     <string name="settings_pause_uploads">Пауза на качванията</string>
     <string name="settings_pause_uploads_footer">Докато е на пауза, промените изчакват на това устройство и се качват, когато възобновите.</string>
     <string name="members_title">Хора и устройства</string>

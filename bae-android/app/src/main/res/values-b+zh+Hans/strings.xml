@@ -119,6 +119,9 @@
     <string name="settings_bucket">存储桶</string>
     <string name="settings_region">区域</string>
     <string name="settings_endpoint">端点</string>
+    <string name="settings_folder">文件夹</string>
+    <string name="settings_open_in_browser">在浏览器中打开</string>
+    <string name="settings_folder_no_app">此设备上没有应用打开文件夹的页面。</string>
     <string name="settings_pause_uploads">暂停上传</string>
     <string name="settings_pause_uploads_footer">暂停期间，更改会在此设备上等待，恢复后上传。</string>
     <string name="members_title">成员和设备</string>

@@ -14,6 +14,9 @@ pub enum BridgeStorageLocation {
         location: BridgeDropboxLocation,
         /// The signed-in account's email; display only, none before setup.
         account_label: Option<String>,
+        /// The shared folder's name and web address as the latest connection
+        /// read them; none before setup and in the App folder.
+        folder_label: Option<BridgeFolderLabel>,
     },
     OneDrive {
         drive_id: String,
@@ -21,6 +24,9 @@ pub enum BridgeStorageLocation {
         /// The signed-in account's mail or principal name; display only, none
         /// before setup.
         account_label: Option<String>,
+        /// The folder's name and web address as the latest connection read
+        /// them; none before setup.
+        folder_label: Option<BridgeFolderLabel>,
     },
     CloudKit {
         container: String,
@@ -38,19 +44,27 @@ impl BridgeStorageLocation {
                 endpoint: endpoint.map(Into::into),
                 profile: profile.map(BridgeS3Profile::from_core),
             },
-            // No screen shows the folder's name or address yet.
-            coven::StorageConfig::Dropbox { location, account_label, folder_label: _ } => {
+            coven::StorageConfig::Dropbox { location, account_label, folder_label } => {
                 Self::Dropbox {
                     location: BridgeDropboxLocation::from_core(location),
                     account_label,
+                    folder_label: folder_label.map(|label| BridgeFolderLabel {
+                        name: label.name,
+                        web_url: label.web_url.into(),
+                    }),
                 }
             }
-            coven::StorageConfig::OneDrive {
-                drive_id,
-                folder_id,
-                account_label,
-                folder_label: _,
-            } => Self::OneDrive { drive_id, folder_id, account_label },
+            coven::StorageConfig::OneDrive { drive_id, folder_id, account_label, folder_label } => {
+                Self::OneDrive {
+                    drive_id,
+                    folder_id,
+                    account_label,
+                    folder_label: folder_label.map(|label| BridgeFolderLabel {
+                        name: label.name,
+                        web_url: label.web_url.into(),
+                    }),
+                }
+            }
             coven::StorageConfig::CloudKit { container, owner, zone } => {
                 Self::CloudKit { container, owner, zone }
             }
@@ -65,14 +79,17 @@ impl BridgeStorageLocation {
                 endpoint: endpoint.map(|s| s.parse()).transpose().map_err(BridgeError::config)?,
                 profile: profile.map(BridgeS3Profile::into_core),
             },
-            // A location the app passes names a folder to set up or list;
-            // setup reads the folder's label itself (coven §20.2).
-            Self::Dropbox { location, account_label } => coven::StorageConfig::Dropbox {
-                location: location.into_core(),
-                account_label,
-                folder_label: None,
-            },
-            Self::OneDrive { drive_id, folder_id, account_label } => {
+            // A location the app passes names a folder to set up or list. A
+            // folder's label is coven's reading of it, never the app's input:
+            // setup reads it itself, replacing any passed (coven §20.2).
+            Self::Dropbox { location, account_label, folder_label: _ } => {
+                coven::StorageConfig::Dropbox {
+                    location: location.into_core(),
+                    account_label,
+                    folder_label: None,
+                }
+            }
+            Self::OneDrive { drive_id, folder_id, account_label, folder_label: _ } => {
                 coven::StorageConfig::OneDrive {
                     drive_id,
                     folder_id,
@@ -85,6 +102,18 @@ impl BridgeStorageLocation {
             }
         })
     }
+}
+
+/// A Dropbox shared folder's or a OneDrive folder's name and web address, as
+/// the signed-in account named them at this device's latest connection.
+/// Display only: coven never reaches storage through them. Mirrors
+/// `coven::FolderLabel`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeFolderLabel {
+    /// The provider's name for the folder.
+    pub name: String,
+    /// Where the folder opens in a browser: an https address.
+    pub web_url: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

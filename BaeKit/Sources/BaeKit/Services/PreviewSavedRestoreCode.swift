@@ -42,7 +42,8 @@
                 libraryId: "saved-02",
                 location: .dropbox(
                     location: .appFolder,
-                    accountLabel: "ana@example.com"
+                    accountLabel: "ana@example.com",
+                    folderLabel: nil
                 ),
                 oauthAccess: .dropbox(access: .appFolder),
                 hasS3Credentials: false

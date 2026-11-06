@@ -124,6 +124,9 @@
     <string name="settings_bucket">Tároló</string>
     <string name="settings_region">Régió</string>
     <string name="settings_endpoint">Végpont</string>
+    <string name="settings_folder">Mappa</string>
+    <string name="settings_open_in_browser">Megnyitás böngészőben</string>
+    <string name="settings_folder_no_app">Az eszközön egyetlen alkalmazás sem nyitotta meg a mappa oldalát.</string>
     <string name="settings_pause_uploads">Feltöltések szüneteltetése</string>
     <string name="settings_pause_uploads_footer">Szüneteltetés alatt a módosítások ezen az eszközön várakoznak, és a folytatáskor töltődnek fel.</string>
     <string name="members_title">Személyek és eszközök</string>

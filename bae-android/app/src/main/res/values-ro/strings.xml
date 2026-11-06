@@ -126,6 +126,9 @@
     <string name="settings_bucket">Container</string>
     <string name="settings_region">Regiune</string>
     <string name="settings_endpoint">Punct final</string>
+    <string name="settings_folder">Dosar</string>
+    <string name="settings_open_in_browser">Deschide în browser</string>
+    <string name="settings_folder_no_app">Nicio aplicație de pe acest dispozitiv nu a deschis pagina dosarului.</string>
     <string name="settings_pause_uploads">Suspendă încărcările</string>
     <string name="settings_pause_uploads_footer">Cât timp sunt suspendate, modificările așteaptă pe acest dispozitiv și se încarcă la reluare.</string>
     <string name="members_title">Persoane și dispozitive</string>

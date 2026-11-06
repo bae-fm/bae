@@ -122,6 +122,9 @@
     <string name="settings_bucket">Zasobnik</string>
     <string name="settings_region">Region</string>
     <string name="settings_endpoint">Punkt końcowy</string>
+    <string name="settings_folder">Folder</string>
+    <string name="settings_open_in_browser">Otwórz w przeglądarce</string>
+    <string name="settings_folder_no_app">Żadna aplikacja na tym urządzeniu nie otworzyła strony folderu.</string>
     <string name="settings_pause_uploads">Wstrzymaj przesyłanie</string>
     <string name="settings_pause_uploads_footer">Podczas wstrzymania zmiany czekają na tym urządzeniu i zostaną przesłane po wznowieniu.</string>
     <string name="members_title">Osoby i urządzenia</string>

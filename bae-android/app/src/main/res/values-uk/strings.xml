@@ -122,6 +122,9 @@
     <string name="settings_bucket">Бакет</string>
     <string name="settings_region">Регіон</string>
     <string name="settings_endpoint">Кінцева точка</string>
+    <string name="settings_folder">Папка</string>
+    <string name="settings_open_in_browser">Відкрити в браузері</string>
+    <string name="settings_folder_no_app">Жоден застосунок на цьому пристрої не відкрив сторінку папки.</string>
     <string name="settings_pause_uploads">Призупинити вивантаження</string>
     <string name="settings_pause_uploads_footer">Під час паузи зміни очікують на цьому пристрої й вивантажуються, коли ви відновите.</string>
     <string name="members_title">Люди та пристрої</string>

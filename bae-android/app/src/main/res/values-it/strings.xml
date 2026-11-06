@@ -121,6 +121,9 @@
     <string name="settings_bucket">Bucket</string>
     <string name="settings_region">Regione</string>
     <string name="settings_endpoint">Endpoint</string>
+    <string name="settings_folder">Cartella</string>
+    <string name="settings_open_in_browser">Apri nel browser</string>
+    <string name="settings_folder_no_app">Nessuna app su questo dispositivo ha aperto la pagina della cartella.</string>
     <string name="settings_pause_uploads">Sospendi i caricamenti</string>
     <string name="settings_pause_uploads_footer">In pausa, le modifiche restano in attesa su questo dispositivo e vengono caricate alla ripresa.</string>
     <string name="members_title">Persone e dispositivi</string>

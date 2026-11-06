@@ -155,6 +155,9 @@
     <string name="settings_bucket">Bucket</string>
     <string name="settings_region">Region</string>
     <string name="settings_endpoint">Endpoint</string>
+    <string name="settings_folder">Folder</string>
+    <string name="settings_open_in_browser">Open in browser</string>
+    <string name="settings_folder_no_app">No app on this device opened the folder\'s page.</string>
     <string name="settings_pause_uploads">Pause uploads</string>
     <string name="settings_pause_uploads_footer">While paused, changes wait on this device and upload when you resume.</string>
 

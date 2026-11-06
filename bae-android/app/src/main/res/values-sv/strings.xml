@@ -124,6 +124,9 @@
     <string name="settings_bucket">Bucket</string>
     <string name="settings_region">Region</string>
     <string name="settings_endpoint">Slutpunkt</string>
+    <string name="settings_folder">Mapp</string>
+    <string name="settings_open_in_browser">Öppna i webbläsaren</string>
+    <string name="settings_folder_no_app">Ingen app på den här enheten öppnade mappens sida.</string>
     <string name="settings_pause_uploads">Pausa uppladdningar</string>
     <string name="settings_pause_uploads_footer">Under pausen väntar ändringarna på den här enheten och skickas upp när du fortsätter.</string>
     <string name="members_title">Personer och enheter</string>

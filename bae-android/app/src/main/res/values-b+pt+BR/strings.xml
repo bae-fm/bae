@@ -121,6 +121,9 @@
     <string name="settings_bucket">Bucket</string>
     <string name="settings_region">Região</string>
     <string name="settings_endpoint">Endpoint</string>
+    <string name="settings_folder">Pasta</string>
+    <string name="settings_open_in_browser">Abrir no navegador</string>
+    <string name="settings_folder_no_app">Nenhum app deste dispositivo abriu a página da pasta.</string>
     <string name="settings_pause_uploads">Pausar envios</string>
     <string name="settings_pause_uploads_footer">Enquanto pausado, as alterações aguardam neste dispositivo e são enviadas quando você retomar.</string>
     <string name="members_title">Pessoas e dispositivos</string>
