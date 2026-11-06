@@ -24,9 +24,6 @@ pub enum ImportEvent {
         /// not the key.
         run: crate::IdentifyRunId,
         state: bae_identify::IdentifyState,
-        /// The run's priority, which tells a candidate a person opened from
-        /// one the automatic admission picked up.
-        priority: bae_catalogs::rate_limiter::CallPriority,
     },
     /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
     /// classified text), sent on every change of the extraction, including an
@@ -42,9 +39,6 @@ pub enum ImportEvent {
         /// run's step. Kept outside the snapshot because a stored snapshot has
         /// no pass.
         artwork: bae_identify::signals::ArtworkScan,
-        /// The extraction's priority, as in
-        /// [`ImportEvent::IdentifyStateChanged`].
-        priority: bae_catalogs::rate_limiter::CallPriority,
     },
 }
 

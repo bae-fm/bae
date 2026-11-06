@@ -2,7 +2,7 @@
 //! when the person cannot tell which of them their copy is.
 
 use super::*;
-use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallClass;
 
 impl ImportServiceHandle {
     /// Link the candidate to the album the pressings its stored lookup offers
@@ -64,11 +64,7 @@ impl ImportServiceHandle {
         for lead in &shared.leads {
             let prepared = self
                 .release_reads
-                .release(
-                    lead,
-                    bae_catalogs::payloads::ReadDepth::Complete,
-                    CallPriority::Interactive,
-                )
+                .release(lead, bae_catalogs::payloads::ReadDepth::Complete, CallClass::AWAITED)
                 .await?;
             let release = &prepared.release;
             records.push(bae_catalogs::search::MetadataResult::of_release(release));

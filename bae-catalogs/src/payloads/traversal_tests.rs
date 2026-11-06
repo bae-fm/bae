@@ -142,7 +142,7 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
             &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::MusicBrainz, "selected"),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -210,7 +210,7 @@ async fn cyclic_release_and_album_links_fetch_each_document_once() {
             &LookupCatalog::ALL,
             &selected,
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         ),
     )
     .await
@@ -262,7 +262,7 @@ async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
             &LookupCatalog::ALL,
             &namer,
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -276,7 +276,7 @@ async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
             &LookupCatalog::ALL,
             &named,
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -309,7 +309,7 @@ async fn a_complete_read_of_a_discogs_release_asks_about_both_addresses_at_once(
             &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::Discogs, "920001"),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -375,7 +375,7 @@ async fn an_address_musicbrainz_does_not_know_is_absent_beside_one_it_does() {
             &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::Discogs, "920001"),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -417,7 +417,7 @@ async fn a_failed_lookup_by_both_addresses_fails_both() {
             &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::Discogs, "920001"),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -467,7 +467,7 @@ async fn an_identification_read_of_a_discogs_release_asks_musicbrainz_nothing() 
             &LookupCatalog::ALL,
             &selected,
             ReadDepth::Identification,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -548,7 +548,7 @@ async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statemen
             &LookupCatalog::ALL,
             &selected,
             ReadDepth::Identification,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -594,7 +594,7 @@ async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statemen
             &LookupCatalog::ALL,
             &selected,
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -624,12 +624,7 @@ async fn a_read_from_a_disc_id_answer_asks_for_no_release() {
     let discogs = server.fakes.discogs_client("fixture-token");
     let read = server
         .providers
-        .read_disc_id_release(
-            Some(&discogs),
-            &LookupCatalog::ALL,
-            &answered,
-            CallPriority::Interactive,
-        )
+        .read_disc_id_release(Some(&discogs), &LookupCatalog::ALL, &answered, CallClass::REQUESTED)
         .await
         .unwrap();
 
@@ -681,7 +676,7 @@ async fn a_read_from_a_disc_id_answer_asks_for_no_release() {
             &LookupCatalog::ALL,
             answered.release(),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap()
@@ -722,7 +717,7 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
             &LookupCatalog::ALL,
             &selected,
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -761,7 +756,7 @@ async fn a_malformed_optional_group_is_skipped() {
             &LookupCatalog::ALL,
             &selected,
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -805,7 +800,7 @@ async fn a_malformed_reverse_alias_is_skipped() {
             &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::Discogs, "940001"),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -829,7 +824,7 @@ async fn a_malformed_required_anchor_is_rejected() {
             &LookupCatalog::ALL,
             &selected,
             ReadDepth::Complete,
-            CallPriority::Interactive
+            CallClass::REQUESTED
         )
         .await
         .is_err());
@@ -860,7 +855,7 @@ async fn a_master_backlink_is_followed() {
             &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::Discogs, "7811"),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap()

@@ -322,7 +322,7 @@ async fn only_transient_wikidata_failures_are_retried() {
 async fn a_network_failure_names_its_cause() {
     let wikidata = Wikidata::for_test(Http::for_test().serve_every_host("http://bae-test.invalid"));
     let error = wikidata
-        .fetch_entity("Q424242", CallPriority::Interactive)
+        .fetch_entity("Q424242", CallClass::REQUESTED)
         .await
         .expect_err("nothing answers there");
     assert!(matches!(error, WikidataError::Network(_)), "{error}");

@@ -159,10 +159,7 @@ async fn a_musicbrainz_network_failure_names_its_cause_in_the_detail_a_surface_s
             bae_util::http::Http::for_test().serve_every_host(origin),
         );
         let error = musicbrainz
-            .lookup_by_discid(
-                "disc-unreachable",
-                bae_catalogs::rate_limiter::CallPriority::Interactive,
-            )
+            .lookup_by_discid("disc-unreachable", bae_catalogs::rate_limiter::CallClass::REQUESTED)
             .await
             .expect_err("nothing answers there");
         assert!(matches!(error, MusicBrainzError::Network(_)), "{error}");
@@ -186,7 +183,7 @@ async fn a_discogs_transport_failure_names_its_cause_in_the_detail_a_surface_sho
         "token".to_string(),
     );
     let error = client
-        .get_release("510001", bae_catalogs::rate_limiter::CallPriority::Interactive)
+        .get_release("510001", bae_catalogs::rate_limiter::CallClass::REQUESTED)
         .await
         .expect_err("nothing listens on port 1");
     assert!(matches!(error, bae_catalogs::discogs::client::DiscogsError::Transport(_)), "{error}");

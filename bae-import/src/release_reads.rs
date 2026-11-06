@@ -3,7 +3,7 @@
 
 use crate::{CatalogApplyStep, CatalogApplySteps, CatalogSessions, ImportError};
 use bae_catalogs::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
-use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallClass;
 use bae_catalogs::records::LookupRef;
 use bae_catalogs::source_release::PreparedRelease;
 use bae_store::Store;
@@ -30,12 +30,12 @@ impl ReleaseReads {
         &self,
         release_ref: &LookupRef,
         depth: ReadDepth,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<PreparedRelease, ImportError> {
         self.prepare(
             release_ref,
             depth,
-            self.fetch(release_ref, depth, priority),
+            self.fetch(release_ref, depth, class),
             &CatalogApplySteps::unread(),
         )
         .await
@@ -50,13 +50,8 @@ impl ReleaseReads {
         steps: &CatalogApplySteps,
     ) -> Result<PreparedRelease, ImportError> {
         let depth = ReadDepth::Complete;
-        self.prepare(
-            release_ref,
-            depth,
-            self.fetch(release_ref, depth, CallPriority::Interactive),
-            steps,
-        )
-        .await
+        self.prepare(release_ref, depth, self.fetch(release_ref, depth, CallClass::AWAITED), steps)
+            .await
     }
 
     /// The release a Disc ID lookup returned, read as far as an identify run
@@ -66,10 +61,10 @@ impl ReleaseReads {
     pub(crate) async fn disc_id_release(
         &self,
         answered: &DiscIdRelease,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<PreparedRelease, ImportError> {
         let read = async {
-            Ok(self.catalogs.session().await?.read_disc_id_release(answered, priority).await?)
+            Ok(self.catalogs.session().await?.read_disc_id_release(answered, class).await?)
         };
         self.prepare(
             answered.release(),
@@ -87,7 +82,7 @@ impl ReleaseReads {
         &self,
         primary: &LookupRef,
         partners: &[LookupRef],
-        priority: CallPriority,
+        class: CallClass,
         steps: &CatalogApplySteps,
     ) -> Result<Vec<PreparedRelease>, ImportError> {
         let mut claimed = vec![primary.catalog];
@@ -104,7 +99,7 @@ impl ReleaseReads {
             claimed.push(partner.catalog);
             let depth = ReadDepth::Complete;
             prepared.push(
-                self.prepare(partner, depth, self.fetch(partner, depth, priority), steps).await?,
+                self.prepare(partner, depth, self.fetch(partner, depth, class), steps).await?,
             );
         }
         Ok(prepared)
@@ -115,9 +110,9 @@ impl ReleaseReads {
         &self,
         release: &LookupRef,
         depth: ReadDepth,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<ReleasePayloads, ImportError> {
-        Ok(self.catalogs.session().await?.fetch_payloads(release, depth, priority).await?)
+        Ok(self.catalogs.session().await?.fetch_payloads(release, depth, class).await?)
     }
 
     /// `release_ref` from storage, unless reading it again at `depth` could

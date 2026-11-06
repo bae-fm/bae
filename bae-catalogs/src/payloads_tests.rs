@@ -532,7 +532,7 @@ async fn a_fetch_follows_the_item_musicbrainz_names() {
             &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::MusicBrainz, release_id),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .expect("the release's documents fetch");
@@ -583,7 +583,7 @@ async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
             &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::MusicBrainz, release_id),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .expect("a release whose item will not fetch still identifies");

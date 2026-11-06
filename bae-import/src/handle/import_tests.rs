@@ -94,7 +94,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
         .fetch_payloads(
             &edited,
             bae_catalogs::payloads::ReadDepth::Complete,
-            bae_catalogs::rate_limiter::CallPriority::Interactive,
+            bae_catalogs::rate_limiter::CallClass::REQUESTED,
         )
         .await
         .unwrap();

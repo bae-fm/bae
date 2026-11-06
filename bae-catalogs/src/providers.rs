@@ -7,6 +7,8 @@
 //! it everything a provider answers. A test builds its own and shares nothing
 //! with any other test.
 
+use std::collections::BTreeSet;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use crate::catalog::LookupCatalog;
@@ -16,7 +18,7 @@ use crate::discogs::client::{
 use crate::failure::Failure;
 use crate::musicbrainz::{MusicBrainz, ReleaseSearchParams};
 use crate::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
-use crate::rate_limiter::CallPriority;
+use crate::rate_limiter::{CallClass, CallWork};
 use crate::records::LookupRef;
 use crate::remote_image::{RemoteCover, RemoteImageError};
 use crate::search::MetadataResult;
@@ -34,6 +36,9 @@ pub struct Providers {
     musicbrainz: Arc<MusicBrainz>,
     discogs: Arc<Discogs>,
     wikidata: Arc<Wikidata>,
+    /// The number the next piece of work these providers' limiters tell apart
+    /// is known by.
+    next_work: Arc<AtomicU64>,
 }
 
 impl Providers {
@@ -43,6 +48,7 @@ impl Providers {
             discogs: Arc::new(Discogs::new(http.clone())),
             wikidata: Arc::new(Wikidata::new(http.clone())),
             http,
+            next_work: Arc::default(),
         }
     }
 
@@ -57,7 +63,22 @@ impl Providers {
         discogs: Arc<Discogs>,
         wikidata: Arc<Wikidata>,
     ) -> Self {
-        Self { http, musicbrainz, discogs, wikidata }
+        Self { http, musicbrainz, discogs, wikidata, next_work: Arc::default() }
+    }
+
+    /// A piece of work no other call of these providers is part of, whose
+    /// calls a person can come to await.
+    pub fn new_work(&self) -> CallWork {
+        CallWork(self.next_work.fetch_add(1, Ordering::Relaxed))
+    }
+
+    /// Make `works` the work a person awaits now: every provider admits their
+    /// calls, those already waiting included, ahead of all others, and any
+    /// other work's calls at their own class again.
+    pub fn await_work(&self, works: &BTreeSet<CallWork>) {
+        self.musicbrainz.await_work(works);
+        self.discogs.await_work(works);
+        self.wikidata.await_work(works);
     }
 
     /// A client asking Discogs with `api_key`, over this app's Discogs
@@ -82,7 +103,7 @@ impl Providers {
         asked: &[LookupCatalog],
         release: &LookupRef,
         depth: ReadDepth,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<ReleasePayloads, CatalogError> {
         crate::payloads::fetch_documents(
             &self.musicbrainz,
@@ -91,7 +112,7 @@ impl Providers {
             asked,
             release,
             depth,
-            priority,
+            class,
         )
         .await
     }
@@ -104,7 +125,7 @@ impl Providers {
         discogs: Option<&DiscogsClient>,
         asked: &[LookupCatalog],
         answered: &DiscIdRelease,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<ReleasePayloads, CatalogError> {
         crate::payloads::read_disc_id_release(
             &self.musicbrainz,
@@ -112,7 +133,7 @@ impl Providers {
             discogs,
             asked,
             answered,
-            priority,
+            class,
         )
         .await
     }
@@ -120,9 +141,9 @@ impl Providers {
     pub(crate) async fn search_musicbrainz(
         &self,
         params: ReleaseSearchParams,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<MetadataResult>, CatalogError> {
-        crate::search::search_mb(&self.musicbrainz, params, priority).await
+        crate::search::search_mb(&self.musicbrainz, params, class).await
     }
 }
 
@@ -161,9 +182,9 @@ impl CatalogSession {
     pub async fn search_musicbrainz(
         &self,
         params: ReleaseSearchParams,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<MetadataResult>, CatalogError> {
-        self.providers.search_musicbrainz(params, priority).await
+        self.providers.search_musicbrainz(params, class).await
     }
 
     /// The releases MusicBrainz lists under the disc ID `discid`, each with
@@ -171,62 +192,62 @@ impl CatalogSession {
     pub async fn lookup_musicbrainz_discid(
         &self,
         discid: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<(MetadataResult, DiscIdRelease)>, Failure> {
-        crate::search::lookup_by_discid(&self.providers.musicbrainz, discid, priority).await
+        crate::search::lookup_by_discid(&self.providers.musicbrainz, discid, class).await
     }
 
     /// The releases MusicBrainz lists the recordings `isrcs` on.
     pub async fn lookup_musicbrainz_isrcs(
         &self,
         isrcs: &[String],
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<MetadataResult>, Failure> {
-        crate::search::lookup_by_isrcs(&self.providers.musicbrainz, isrcs, priority).await
+        crate::search::lookup_by_isrcs(&self.providers.musicbrainz, isrcs, class).await
     }
 
     pub(crate) async fn search_discogs(
         &self,
         params: DiscogsSearchParams,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<crate::search::MetadataResult>, CatalogError> {
         let client = self.client.as_ref().ok_or(CatalogError::DiscogsNotConfigured)?;
-        Ok(crate::search::search_discogs(client, params, priority).await?)
+        Ok(crate::search::search_discogs(client, params, class).await?)
     }
 
     pub async fn fetch_payloads(
         &self,
         release: &LookupRef,
         depth: ReadDepth,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<ReleasePayloads, CatalogError> {
         self.providers
-            .fetch_payloads(self.client.as_deref(), &self.asked, release, depth, priority)
+            .fetch_payloads(self.client.as_deref(), &self.asked, release, depth, class)
             .await
     }
 
     pub async fn read_disc_id_release(
         &self,
         answered: &DiscIdRelease,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<ReleasePayloads, CatalogError> {
         self.providers
-            .read_disc_id_release(self.client.as_deref(), &self.asked, answered, priority)
+            .read_disc_id_release(self.client.as_deref(), &self.asked, answered, class)
             .await
     }
 
     pub async fn release_covers(
         &self,
         release_id: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<crate::remote_image::RemoteCover>, CatalogError> {
         let Some(client) = self.client.as_ref() else {
             return Err(CatalogError::DiscogsNotConfigured);
         };
-        let (release, _) = client.get_release(release_id, priority).await?;
+        let (release, _) = client.get_release(release_id, class).await?;
         let mut covers = release.covers;
         if let Some(master_id) = release.master_id {
-            let (_, json) = client.get_master(&master_id, priority).await?;
+            let (_, json) = client.get_master(&master_id, class).await?;
             for cover in crate::discogs::documents::parse_discogs_master_covers(&json)? {
                 crate::remote_image::push_unique_cover(&mut covers, cover);
             }
@@ -237,10 +258,10 @@ impl CatalogSession {
     pub async fn master_covers(
         &self,
         master_id: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<crate::remote_image::RemoteCover>, CatalogError> {
         let client = self.client.as_ref().ok_or(CatalogError::DiscogsNotConfigured)?;
-        let (master, _) = client.get_master(master_id, priority).await?;
+        let (master, _) = client.get_master(master_id, class).await?;
         Ok(master.covers)
     }
 
@@ -252,7 +273,7 @@ impl CatalogSession {
             );
             return Ok(None);
         };
-        Ok(client.get_artist_image(artist_id, CallPriority::Interactive).await?)
+        Ok(client.get_artist_image(artist_id, CallClass::REQUESTED).await?)
     }
 
     /// The archive's images of a MusicBrainz release, then of its group.
@@ -284,7 +305,7 @@ impl CatalogSession {
     /// with.
     pub async fn validate(&self) -> Option<DiscogsCheck> {
         let client = self.client.as_ref()?;
-        Some(DiscogsCheck::of(client.validate_token(CallPriority::Interactive).await))
+        Some(DiscogsCheck::of(client.validate_token(CallClass::REQUESTED).await))
     }
 }
 

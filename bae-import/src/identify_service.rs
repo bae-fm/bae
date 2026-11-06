@@ -6,7 +6,7 @@ use crate::candidate_runtime::RunSubject;
 use crate::extraction::{ExtractionWatch, SignalsSnapshot};
 use crate::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use bae_catalogs::catalog::LookupCatalog;
-use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallClass;
 use bae_catalogs::InternalFailure;
 use bae_identify::state::{step, IdentifyEvent, IdentifyState, TitleSearch};
 use bae_identify::LookupChoices;
@@ -142,9 +142,10 @@ impl IdentifyService {
     /// before it sends the state that says so; a library release's has no
     /// standing.
     ///
-    /// `priority` is the run's, not the call's: every provider lookup this run
-    /// dispatches is admitted under it, so a candidate a person opened outranks
-    /// one the automatic admission picked up.
+    /// `class` is the run's, not the call's: every provider lookup this run
+    /// dispatches asks to be admitted in it, so a run a person asked for
+    /// outranks one the automatic admission picked up, and one whose work a
+    /// person awaits outranks both.
     ///
     /// `title_search` is what the candidate's draft says about the release,
     /// which the run asks every provider once its identifiers have named
@@ -167,7 +168,7 @@ impl IdentifyService {
         run: IdentifyRunId,
         key: crate::CandidateKey,
         subject: RunSubject,
-        priority: CallPriority,
+        class: CallClass,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
         snapshots: ExtractionWatch,
@@ -199,7 +200,7 @@ impl IdentifyService {
                         key,
                         subject,
                         generation,
-                        priority,
+                        class,
                         providers,
                         choices,
                         title_search,
@@ -227,7 +228,6 @@ impl IdentifyService {
                             candidate_key: panicked_key,
                             run,
                             state: IdentifyState::Idle,
-                            priority,
                         });
                     },
                 );
@@ -279,7 +279,7 @@ async fn run_driver(
     // Whether this is still the key's current run, so a run a later start
     // superseded cannot deregister its successor.
     generation: u64,
-    priority: CallPriority,
+    class: CallClass,
     providers: Vec<LookupCatalog>,
     choices: LookupChoices,
     title_search: Option<TitleSearch>,
@@ -287,7 +287,7 @@ async fn run_driver(
     mut snapshots: ExtractionWatch,
 ) {
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<IdentifyEvent>();
-    let driver = Driver { inner, run, key, subject, priority, event_tx, token };
+    let driver = Driver { inner, run, key, subject, class, event_tx, token };
     let mut standing = RunStanding::NotStarted;
 
     let mut state = IdentifyState::Idle;
@@ -369,7 +369,7 @@ struct Driver {
     run: IdentifyRunId,
     key: crate::CandidateKey,
     subject: RunSubject,
-    priority: CallPriority,
+    class: CallClass,
     /// Where the effects' answers come back to the driver loop.
     event_tx: mpsc::UnboundedSender<IdentifyEvent>,
     token: CancellationToken,
@@ -415,14 +415,13 @@ impl Driver {
             candidate_key: self.key.clone(),
             run: self.run,
             state: state.clone(),
-            priority: self.priority,
         });
 
         for effect in effects {
             dispatch_effect(
                 self.inner.clone(),
                 effect,
-                self.priority,
+                self.class,
                 self.event_tx.clone(),
                 self.token.clone(),
             );

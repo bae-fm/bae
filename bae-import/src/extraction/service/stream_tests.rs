@@ -7,7 +7,6 @@ use super::*;
 use crate::extraction::service::tests::*;
 use crate::extraction::service::*;
 use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
-use bae_catalogs::rate_limiter::CallPriority;
 use bae_identify::signals::{ArtworkScan, TextOrigin};
 use bae_util::test_channels::HANG_GUARD;
 use std::fs;
@@ -308,12 +307,8 @@ async fn a_cancelled_pass_waiting_for_a_read_starts_none() {
             .await
             .unwrap();
         let key = crate::CandidateKey::test(&format!("cand-{attempt}"));
-        let mut watch = handle.start(
-            IdentifyRunId::for_test(1),
-            key.clone(),
-            folder_source(folder.clone()),
-            CallPriority::Interactive,
-        );
+        let mut watch =
+            handle.start(IdentifyRunId::for_test(1), key.clone(), folder_source(folder.clone()));
         // The pass sends its first snapshot just before it waits for a permit,
         // and runs on until it waits before the test runs again.
         tokio::time::timeout(HANG_GUARD, watch.wait_for(|snapshot| snapshot.is_some()))
@@ -556,13 +551,11 @@ async fn passes_running_at_once_share_the_bound() {
         IdentifyRunId::for_test(1),
         crate::CandidateKey::test("cand-1"),
         folder_source(first),
-        CallPriority::Interactive,
     );
     let mut second_run = handle.start(
         IdentifyRunId::for_test(2),
         crate::CandidateKey::test("cand-2"),
         folder_source(second),
-        CallPriority::Interactive,
     );
 
     let entries = bound_reached_and_held(entries, &handle.inner.image_reads).await;

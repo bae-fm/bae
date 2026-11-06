@@ -5,7 +5,6 @@
 use super::*;
 use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::ScanEvent;
-use bae_catalogs::rate_limiter::CallPriority;
 use bae_identify::signals::ArtworkScan;
 use bae_util::test_channels::HANG_GUARD;
 use std::collections::HashMap;
@@ -153,7 +152,6 @@ pub(super) async fn start_signals(
         IdentifyRunId::for_test(1),
         crate::CandidateKey::test("cand-1"),
         folder_source(folder),
-        CallPriority::Interactive,
     );
     (handle, rx, run, lib_tmp)
 }
@@ -219,7 +217,6 @@ pub(super) fn start(
         IdentifyRunId::for_test(1),
         crate::CandidateKey::test("cand-1"),
         folder_source(folder),
-        CallPriority::Interactive,
     )
 }
 
@@ -423,7 +420,6 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
         IdentifyRunId::for_test(1),
         crate::CandidateKey::test("cand-1"),
         folder_source(folder),
-        CallPriority::Interactive,
     );
 
     // One settled snapshot: nothing to decode with, so nothing is read.
@@ -458,7 +454,6 @@ FILE \"audio.flac\" WAVE\n  \
         IdentifyRunId::for_test(1),
         crate::CandidateKey::test("cand-1"),
         folder_source(folder),
-        CallPriority::Interactive,
     );
 
     let signals = collect_signals(&mut rx, 1).await;
@@ -492,12 +487,8 @@ async fn a_settled_reading_is_kept_before_it_is_announced() {
                 if matches!(signals.text, TextSignal::Settled { .. })
         )
     });
-    let mut run = handle.start(
-        IdentifyRunId::for_test(1),
-        crate::CandidateKey::test("cand-1"),
-        source,
-        CallPriority::Interactive,
-    );
+    let mut run =
+        handle.start(IdentifyRunId::for_test(1), crate::CandidateKey::test("cand-1"), source);
 
     tokio::time::timeout(HANG_GUARD, tx.send_held())
         .await
@@ -525,7 +516,6 @@ async fn an_unchanged_folder_is_not_read_again() {
         IdentifyRunId::for_test(2),
         crate::CandidateKey::test("cand-1"),
         folder_source(folder),
-        CallPriority::Interactive,
     );
     let second = collect_snapshots(&mut rx, 1).await;
     assert_eq!(second[0].0, first[1].0);
@@ -583,7 +573,6 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         run: IdentifyRunId::for_test(1),
         key: crate::CandidateKey::test("cand-1"),
         generation,
-        priority: CallPriority::Interactive,
         snapshots: watch::channel(None).0,
     };
 

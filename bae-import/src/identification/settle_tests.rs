@@ -897,7 +897,7 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
             &bae_identify::LookupChoices::default(),
             bae_identify::signals::AudioFacts::default(),
         ),
-        CallPriority::Background,
+        CallClass::BACKGROUND,
         CancellationToken::new(),
     )
     .await;

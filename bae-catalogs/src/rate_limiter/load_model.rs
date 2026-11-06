@@ -13,7 +13,7 @@ use reqwest::header::HeaderMap;
 use reqwest::StatusCode;
 use tokio::time::Instant;
 
-use super::{CallPriority, RateAnswer, RateLimiter};
+use super::{CallClass, RateAnswer, RateLimiter};
 
 /// A provider's count of requests from one address.
 pub trait Window: Send + 'static {
@@ -65,8 +65,7 @@ pub async fn sustain(
 
     let mut requests = Vec::new();
     for index in 0..load.requests {
-        let priority =
-            if index % 3 == 0 { CallPriority::Interactive } else { CallPriority::Background };
+        let class = if index % 3 == 0 { CallClass::REQUESTED } else { CallClass::BACKGROUND };
         let mut latencies: Vec<(Duration, Duration)> = (0..64)
             .map(|_| {
                 (rng.random_range(load.latency.clone()), rng.random_range(load.latency.clone()))
@@ -78,7 +77,7 @@ pub async fn sustain(
         requests.push(tokio::spawn(async move {
             loop {
                 let (there, back) = latencies.pop().expect("a request is refused fewer times");
-                let admitted = limiter.wait(priority).await;
+                let admitted = limiter.wait(class).await;
                 tokio::time::sleep(there).await;
                 let (status, headers) = window.lock().unwrap().arrive(Instant::now());
                 tokio::time::sleep(back).await;

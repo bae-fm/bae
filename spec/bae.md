@@ -1057,6 +1057,28 @@ those on a catalog switched on; the rest it names as not asked, and a later
 read asks them once their catalog is switched on. MusicBrainz is asked no more than once every 1.2 seconds, under
 the rate it allows.
 
+**Which lookups go first.** Each catalog's calls wait in three lines, and the
+next call allowed goes to the first line holding one, oldest first within it:
+
+1. **Awaited**: a person is looking at the screen the call fills. A typed
+   search, the covers of the picker, a pick and the reads that apply it,
+   linking an album, saving a Discogs key, a library release identified
+   again from its sheet, and every lookup of the run of the candidate a pane
+   has open.
+2. **Requested**: a person asked for it and isn't watching it, such as the
+   run of a release they asked to identify, the artist pictures an import
+   fetches, and checking a stored Discogs key again.
+3. **Background**: what nobody asked for, the runs of releases a scan found
+   on its own.
+
+Opening a candidate in the pane moves its identification up: if its run is
+still waiting its turn (runs go four at a time, below), it starts next, ahead
+of every other waiting run, and every lookup of its runs, those already waiting
+included, goes in the Awaited line. When the pane shows another candidate or
+closes, its lookups go back to their own line, behind the calls that were
+there before them. The spacing and any wait the catalog asks for hold every
+line together.
+
 **Rounds.** One lookup is not enough. Ana's Disc ID returns three CD
 pressings; one of them carries LBL-1001, which the folder also states, so that
 number is now worth asking Discogs about. A run therefore goes in rounds:

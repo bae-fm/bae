@@ -17,7 +17,6 @@ use super::pool::Pool;
 use super::release::{resolve_release_artwork_paths, resolve_release_identity};
 use crate::IdentifyRunId;
 use crate::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
-use bae_catalogs::rate_limiter::CallPriority;
 use bae_catalogs::{AudioOrigin, InternalFailure};
 use bae_identify::signals::{
     ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
@@ -118,7 +117,6 @@ struct RunningExtraction {
     key: crate::CandidateKey,
     /// Whether this is still the key's current extraction.
     generation: u64,
-    priority: CallPriority,
     snapshots: watch::Sender<Option<SignalsSnapshot>>,
 }
 
@@ -186,14 +184,12 @@ impl ExtractionService {
 
     /// Start extraction for candidate `key` from `source`, feeding `run`, and
     /// return the watch the run reads its snapshots off. Replaces any
-    /// extraction in flight for the key. `priority` is the run's, carried on
-    /// each snapshot; extraction itself calls no provider.
+    /// extraction in flight for the key. Extraction itself calls no provider.
     pub fn start(
         &self,
         run: IdentifyRunId,
         key: crate::CandidateKey,
         source: ExtractionSource,
-        priority: CallPriority,
     ) -> ExtractionWatch {
         let inner = self.inner.clone();
         let runtime_handle = self.inner.runtime_handle.clone();
@@ -202,7 +198,7 @@ impl ExtractionService {
             CandidateWork::Extraction,
             key.clone(),
             move |token, generation| {
-                let extraction = RunningExtraction { run, key, generation, priority, snapshots };
+                let extraction = RunningExtraction { run, key, generation, snapshots };
                 runtime_handle.spawn(async move {
                     run_extraction(inner, extraction, source, token).await;
                 });
@@ -529,7 +525,6 @@ fn emit_signals(
                 run: extraction.run,
                 signals,
                 artwork,
-                priority: extraction.priority,
             });
         },
     );

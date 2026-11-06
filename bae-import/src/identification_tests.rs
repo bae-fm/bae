@@ -199,6 +199,7 @@ impl Fixture {
             store: db.clone(),
             tables: crate::tables::ImportTables::new(db.clone()),
             diagnostics: bae_diagnostics::Diagnostics::noop(),
+            catalogs: parts.catalogs().clone(),
         };
         Fixture {
             parts,

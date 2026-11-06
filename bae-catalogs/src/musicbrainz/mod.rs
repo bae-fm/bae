@@ -13,7 +13,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::rate_limiter::{CallPriority, RateAnswer, RateLimiter};
+use crate::rate_limiter::{CallClass, CallWork, RateAnswer, RateLimiter};
 use bae_util::error_text::CauseChain;
 use bae_util::http::{is_cacheable, CachedResponse, Http, TransportFailure};
 use bae_util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
@@ -265,20 +265,24 @@ impl MusicBrainz {
 
     /// The requests waiting in `priority`'s queue for a slot, oldest first.
     #[cfg(any(test, feature = "test-instrumentation"))]
-    pub fn queued_requests(&self, priority: CallPriority) -> Vec<u64> {
+    pub fn queued_requests(&self, priority: crate::rate_limiter::CallPriority) -> Vec<u64> {
         self.limiter.queued_tickets(priority)
     }
 
     /// The requests waiting in `priority`'s queue once at least `count` are,
     /// oldest first.
     #[cfg(any(test, feature = "test-instrumentation"))]
-    pub async fn queued_requests_reaching(&self, priority: CallPriority, count: usize) -> Vec<u64> {
+    pub async fn queued_requests_reaching(
+        &self,
+        priority: crate::rate_limiter::CallPriority,
+        count: usize,
+    ) -> Vec<u64> {
         self.limiter.queued_tickets_reaching(priority, count).await
     }
 
     /// Every request that waited for its slot, in the order admitted.
     #[cfg(any(test, feature = "test-instrumentation"))]
-    pub fn admitted_requests(&self) -> Vec<(CallPriority, u64)> {
+    pub fn admitted_requests(&self) -> Vec<(crate::rate_limiter::CallPriority, u64)> {
         self.limiter.admitted_tickets()
     }
 
@@ -290,18 +294,23 @@ impl MusicBrainz {
         }
     }
 
+    /// Admit the calls of `works` ahead of every other, and no other work's.
+    pub(crate) fn await_work(&self, works: &std::collections::BTreeSet<CallWork>) {
+        self.limiter.set_awaited_work(works);
+    }
+
     /// One MusicBrainz GET, answered from the cache when this URL already has an
     /// answer — without waiting for a rate-limit slot — and otherwise sent, kept
     /// when the answer is stable, and returned. The body is the whole response;
     /// each caller parses what it needs out of it.
-    async fn get(&self, url: &str, priority: CallPriority) -> Result<String, MusicBrainzError> {
-        self.get_request(self.http.get(url), priority).await
+    async fn get(&self, url: &str, class: CallClass) -> Result<String, MusicBrainzError> {
+        self.get_request(self.http.get(url), class).await
     }
 
     async fn get_request(
         &self,
         request: reqwest::RequestBuilder,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<String, MusicBrainzError> {
         let request = request
             .header("Accept", "application/json")
@@ -315,7 +324,7 @@ impl MusicBrainz {
             return mb_body(cached, None);
         }
 
-        let response = self.send(request, priority).await?;
+        let response = self.send(request, class).await?;
         let status = response.status().as_u16();
         let told_wait = bae_util::http::told_wait(response.headers());
         let body = response.text().await.map_err(MusicBrainzError::from_reqwest)?;
@@ -339,11 +348,11 @@ impl MusicBrainz {
     async fn send(
         &self,
         request: reqwest::Request,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<reqwest::Response, MusicBrainzError> {
         loop {
             let attempt = request.try_clone().expect("a MusicBrainz request has no streamed body");
-            let admitted = self.limiter.wait(priority).await;
+            let admitted = self.limiter.wait(class).await;
             let response =
                 self.http.execute(attempt).await.map_err(MusicBrainzError::from_reqwest)?;
             let rate = mb_rate_answer(response.status(), response.headers());
@@ -372,21 +381,21 @@ impl MusicBrainz {
     pub async fn lookup_by_discid(
         &self,
         discid: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<(MbReleaseResponse, String)>, MusicBrainzError> {
-        mb_retry("MusicBrainz DiscID lookup", || self.lookup_by_discid_once(discid, priority)).await
+        mb_retry("MusicBrainz DiscID lookup", || self.lookup_by_discid_once(discid, class)).await
     }
 
     async fn lookup_by_discid_once(
         &self,
         discid: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<(MbReleaseResponse, String)>, MusicBrainzError> {
         debug!("MusicBrainz: Looking up DiscID '{}'", discid);
         let url = discid_url(discid);
         debug!("MusicBrainz API request: {}", url);
 
-        let body = match self.get(&url, priority).await {
+        let body = match self.get(&url, class).await {
             Ok(body) => body,
             Err(MusicBrainzError::Provider { status: Some(404), .. }) => {
                 return Err(MusicBrainzError::NotFound(discid.to_string()));
@@ -422,10 +431,10 @@ impl MusicBrainz {
     pub async fn lookup_release_by_id(
         &self,
         release_id: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<(MbReleaseResponse, String), MusicBrainzError> {
         mb_retry("MusicBrainz release fetch", || async {
-            let raw_json = match self.get(&release_url(release_id), priority).await {
+            let raw_json = match self.get(&release_url(release_id), class).await {
                 Ok(body) => body,
                 Err(MusicBrainzError::Provider { status: Some(404), .. }) => {
                     return Err(MusicBrainzError::NotFound(release_id.to_string()));
@@ -444,13 +453,13 @@ impl MusicBrainz {
     pub async fn fetch_release_group_json(
         &self,
         release_group_id: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<String, MusicBrainzError> {
         let url = release_group_url(release_group_id);
         debug!("Fetching release-group JSON: {}", url);
 
         mb_retry("MusicBrainz release-group fetch", || async {
-            let json = self.get(&url, priority).await?;
+            let json = self.get(&url, class).await?;
             parse_release_group(&json).map_err(|error| {
                 MusicBrainzError::Other(format!("Failed to parse release-group JSON: {error}"))
             })?;
@@ -468,12 +477,12 @@ impl MusicBrainz {
     pub async fn lookup_discogs_pages(
         &self,
         pages: &[DiscogsPage],
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<HashMap<DiscogsPage, Vec<String>>, MusicBrainzError> {
         let pages = asked_pages(pages);
         let url = discogs_lookup_url(&pages);
         mb_retry("MusicBrainz URL lookup", || async {
-            let body = match self.get(&url, priority).await {
+            let body = match self.get(&url, class).await {
                 Ok(body) => body,
                 // The URL endpoint answers one address it has no document
                 // for with a 404.
@@ -496,7 +505,7 @@ impl MusicBrainz {
     pub async fn search_recordings_by_isrcs(
         &self,
         isrcs: &[String],
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<SearchRecording>, MusicBrainzError> {
         // Outside the retry: no request is made, so repeating cannot help.
         if isrcs.is_empty() {
@@ -509,7 +518,7 @@ impl MusicBrainz {
         loop {
             let offset = recordings.len();
             let page = mb_retry("MusicBrainz ISRC search", || {
-                self.search_recordings_once(&query, offset, priority)
+                self.search_recordings_once(&query, offset, class)
             })
             .await?;
             let total = page.count;
@@ -525,7 +534,7 @@ impl MusicBrainz {
         &self,
         query: &str,
         offset: usize,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<RecordingSearchResponse, MusicBrainzError> {
         let offset = offset.to_string();
         let limit = RECORDING_SEARCH_PAGE.to_string();
@@ -534,7 +543,7 @@ impl MusicBrainz {
             ("limit", limit.as_str()),
             ("offset", offset.as_str()),
         ]);
-        let body = match self.get_request(request, priority).await {
+        let body = match self.get_request(request, class).await {
             Ok(body) => body,
             Err(MusicBrainzError::Provider { status: Some(404), .. }) => {
                 return Ok(RecordingSearchResponse { count: 0, recordings: Vec::new() })
@@ -549,7 +558,7 @@ impl MusicBrainz {
     pub async fn search_releases_with_params(
         &self,
         params: &ReleaseSearchParams,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<SearchRelease>, MusicBrainzError> {
         // Outside the retry: no request is made, so repeating cannot help.
         if !params.has_any_field() {
@@ -557,14 +566,14 @@ impl MusicBrainz {
                 "At least one search field must be provided".to_string(),
             ));
         }
-        mb_retry("MusicBrainz search", || self.search_releases_with_params_once(params, priority))
+        mb_retry("MusicBrainz search", || self.search_releases_with_params_once(params, class))
             .await
     }
 
     async fn search_releases_with_params_once(
         &self,
         params: &ReleaseSearchParams,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<SearchRelease>, MusicBrainzError> {
         let query = params.build_query();
         debug!("MusicBrainz: Searching with params: {:?}", params);
@@ -573,7 +582,7 @@ impl MusicBrainz {
         debug!("MusicBrainz API request: {}?query={}&limit=25", url, query);
 
         let request = self.http.get(&url).query(&[("query", query.as_str()), ("limit", "25")]);
-        let body = match self.get_request(request, priority).await {
+        let body = match self.get_request(request, class).await {
             Ok(body) => body,
             Err(MusicBrainzError::Provider { status: Some(404), .. }) => return Ok(Vec::new()),
             Err(error) => return Err(error),

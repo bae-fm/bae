@@ -31,7 +31,7 @@ async fn documents_a_fetch_could_not_get_are_named() {
             &LookupCatalog::ALL,
             &selected,
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -85,7 +85,7 @@ async fn a_read_asks_a_switched_off_discogs_nothing() {
         .fetch_payloads(
             &LookupRef::new(LookupCatalog::MusicBrainz, "cycle-release"),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -134,7 +134,7 @@ async fn a_read_asks_a_switched_off_musicbrainz_nothing() {
         .fetch_payloads(
             &LookupRef::new(LookupCatalog::Discogs, "920001"),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap();

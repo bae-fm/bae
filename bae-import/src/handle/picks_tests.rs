@@ -8,7 +8,7 @@ use super::*;
 use crate::handle::tests::*;
 use crate::identification::tests::*;
 use bae_catalogs::fake_catalogs::FakeCatalogs;
-use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallClass;
 use bae_catalogs::test_releases::seed_two_track_discogs_release;
 use bae_catalogs::test_releases::seed_two_track_discogs_release_in;
 use bae_catalogs::test_releases::seed_two_track_mb_release;
@@ -268,7 +268,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         .release(
             &release,
             bae_catalogs::payloads::ReadDepth::Identification,
-            bae_catalogs::rate_limiter::CallPriority::Interactive,
+            bae_catalogs::rate_limiter::CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -312,7 +312,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         .release(
             &release,
             bae_catalogs::payloads::ReadDepth::Complete,
-            bae_catalogs::rate_limiter::CallPriority::Interactive,
+            bae_catalogs::rate_limiter::CallClass::REQUESTED,
         )
         .await
         .unwrap();
@@ -715,7 +715,7 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
     let scratch = Fixture::new("disc-id-complete").await;
     route_two_pressings(&scratch, fixture.probed_total_ms(&dir));
     let (complete, _) =
-        scratch.import.read_pick(&release, &[], CallPriority::Interactive).await.unwrap();
+        scratch.import.read_pick(&release, &[], CallClass::REQUESTED).await.unwrap();
     assert_eq!(picked, complete.release);
 }
 

@@ -196,7 +196,7 @@ async fn a_signal_about_a_replaced_key_leaves_the_new_key_alone() {
     sessions.store_discogs_key("new-key", DiscogsValidation::Valid).await.unwrap();
     host.route("/masters/", 401, REJECTED);
 
-    old.master_covers("909", CallPriority::Interactive).await.unwrap_err();
+    old.master_covers("909", CallClass::REQUESTED).await.unwrap_err();
     sessions.signals_recorded().await;
 
     assert_eq!(host.count_containing("/masters/"), 1, "the old client asked");
@@ -220,7 +220,7 @@ async fn a_signal_that_cannot_be_recorded_is_reported() {
     .await
     .unwrap();
 
-    session.master_covers("909", CallPriority::Interactive).await.unwrap_err();
+    session.master_covers("909", CallClass::REQUESTED).await.unwrap_err();
     sessions.signals_recorded().await;
 
     let reports = bugs.reports();

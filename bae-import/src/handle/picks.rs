@@ -3,7 +3,7 @@
 //! ends the candidate's identification.
 
 use super::*;
-use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallClass;
 
 impl ImportServiceHandle {
     /// Prepare the release an explicit metadata application reads, a fetch
@@ -262,7 +262,7 @@ impl ImportServiceHandle {
         // one in place.
         let prepared_partners = self
             .release_reads
-            .partners(&link.record, &link.partners, CallPriority::Interactive, steps)
+            .partners(&link.record, &link.partners, CallClass::AWAITED, steps)
             .await?;
         for partner in &prepared_partners {
             self.tables
@@ -336,7 +336,7 @@ impl ImportServiceHandle {
         &self,
         primary: &bae_catalogs::records::LookupRef,
         partners: &[bae_catalogs::records::LookupRef],
-        priority: bae_catalogs::rate_limiter::CallPriority,
+        class: bae_catalogs::rate_limiter::CallClass,
     ) -> Result<
         (
             bae_catalogs::source_release::PreparedRelease,
@@ -346,11 +346,11 @@ impl ImportServiceHandle {
     > {
         let release = self
             .release_reads
-            .release(primary, bae_catalogs::payloads::ReadDepth::Complete, priority)
+            .release(primary, bae_catalogs::payloads::ReadDepth::Complete, class)
             .await?;
         let partners = self
             .release_reads
-            .partners(primary, partners, priority, &crate::CatalogApplySteps::unread())
+            .partners(primary, partners, class, &crate::CatalogApplySteps::unread())
             .await?;
         Ok((release, partners))
     }

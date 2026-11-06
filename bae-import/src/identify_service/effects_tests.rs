@@ -712,7 +712,7 @@ async fn album_links_a_run_cannot_keep_are_reported() {
                 )],
             )],
         },
-        CallPriority::Interactive,
+        CallClass::REQUESTED,
         event_tx,
         CancellationToken::new(),
     );

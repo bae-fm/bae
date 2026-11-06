@@ -38,14 +38,10 @@ fn emit_answer(
 async fn lookup_and_resolve(
     disc_id: &str,
     catalogs: &crate::CatalogSessions,
-    priority: CallPriority,
+    class: CallClass,
 ) -> Result<bae_identify::DiscIdAnswer, Failure> {
-    let (results, documents) = catalogs
-        .musicbrainz()
-        .lookup_musicbrainz_discid(disc_id, priority)
-        .await?
-        .into_iter()
-        .unzip();
+    let (results, documents) =
+        catalogs.musicbrainz().lookup_musicbrainz_discid(disc_id, class).await?.into_iter().unzip();
     Ok(bae_identify::DiscIdAnswer { results, documents })
 }
 
@@ -82,7 +78,7 @@ fn spawn_until_cancelled(
 pub(super) fn dispatch_effect(
     inner: Arc<IdentifyServiceInner>,
     effect: Effect,
-    priority: CallPriority,
+    class: CallClass,
     event_tx: mpsc::UnboundedSender<IdentifyEvent>,
     token: CancellationToken,
 ) {
@@ -93,7 +89,7 @@ pub(super) fn dispatch_effect(
         Effect::LookupDiscid { disc_id } => {
             let catalogs = inner.catalogs.clone();
             spawn_until_cancelled(&runtime, &inner.diagnostics, &token, &broke_tx, async move {
-                let event = match lookup_and_resolve(&disc_id, &catalogs, priority).await {
+                let event = match lookup_and_resolve(&disc_id, &catalogs, class).await {
                     Ok(answer) => {
                         IdentifyEvent::DiscidLookupAnswered { disc_id, outcome: Ok(answer) }
                     }
@@ -109,8 +105,7 @@ pub(super) fn dispatch_effect(
         Effect::LookupIsrcs { isrcs } => {
             let catalogs = inner.catalogs.clone();
             spawn_until_cancelled(&runtime, &inner.diagnostics, &token, &broke_tx, async move {
-                let lookup =
-                    catalogs.musicbrainz().lookup_musicbrainz_isrcs(&isrcs, priority).await;
+                let lookup = catalogs.musicbrainz().lookup_musicbrainz_isrcs(&isrcs, class).await;
                 let answer = outcome_of(lookup);
                 emit_answer(&event_tx, answer, |outcome| IdentifyEvent::IsrcLookupAnswered {
                     outcome,
@@ -132,7 +127,7 @@ pub(super) fn dispatch_effect(
                             &query
                         ))
                     })?;
-                    bae_catalogs::search::search_source(&session, source, &query, priority).await
+                    bae_catalogs::search::search_source(&session, source, &query, class).await
                 }
                 .await;
                 let answer = outcome_of(lookup);
@@ -162,7 +157,7 @@ pub(super) fn dispatch_effect(
                             &search
                         ))
                     })?;
-                    bae_catalogs::search::search_source(&session, source, &search, priority).await
+                    bae_catalogs::search::search_source(&session, source, &search, class).await
                 }
                 .await;
                 let answer = outcome_of(lookup);
@@ -181,7 +176,7 @@ pub(super) fn dispatch_effect(
                 let mut read = Vec::with_capacity(releases.len());
                 for release in releases {
                     let Some(stored) =
-                        read_release(&release_reads, &release, priority, &event_tx).await
+                        read_release(&release_reads, &release, class, &event_tx).await
                     else {
                         return;
                     };
@@ -207,7 +202,7 @@ pub(super) fn dispatch_effect(
                     PressingKey::Link { release } => {
                         let read = ReleaseToRead::ReleaseLookup(release.clone());
                         let Some(stored) =
-                            read_release(&release_reads, &read, priority, &event_tx).await
+                            read_release(&release_reads, &read, class, &event_tx).await
                         else {
                             return;
                         };
@@ -232,7 +227,7 @@ pub(super) fn dispatch_effect(
                                         &query
                                     ))
                                 })?;
-                            bae_catalogs::search::search_source(&session, source, &query, priority)
+                            bae_catalogs::search::search_source(&session, source, &query, class)
                                 .await
                         }
                         .await
@@ -252,7 +247,7 @@ pub(super) fn dispatch_effect(
                                         &query
                                     ))
                                 })?;
-                            bae_catalogs::search::search_source(&session, source, &query, priority)
+                            bae_catalogs::search::search_source(&session, source, &query, class)
                                 .await
                         }
                         .await
@@ -310,7 +305,7 @@ pub(super) fn dispatch_effect(
                             &query
                         ))
                     })?;
-                    bae_catalogs::search::search_source(&session, source, &query, priority).await
+                    bae_catalogs::search::search_source(&session, source, &query, class).await
                 }
                 .await;
                 let answer = outcome_of(lookup);
@@ -331,17 +326,17 @@ pub(super) fn dispatch_effect(
 async fn read_release(
     release_reads: &crate::ReleaseReads,
     read: &ReleaseToRead,
-    priority: CallPriority,
+    class: CallClass,
     event_tx: &mpsc::UnboundedSender<IdentifyEvent>,
 ) -> Option<Result<bae_catalogs::source_release::PreparedRelease, bae_catalogs::LookupFailure>> {
     let prepared = match read {
         ReleaseToRead::ReleaseLookup(release) => {
             release_reads
-                .release(release, bae_catalogs::payloads::ReadDepth::Identification, priority)
+                .release(release, bae_catalogs::payloads::ReadDepth::Identification, class)
                 .await
         }
         ReleaseToRead::DiscIdAnswer(answered) => {
-            release_reads.disc_id_release(answered, priority).await
+            release_reads.disc_id_release(answered, class).await
         }
     };
     let error = match prepared {

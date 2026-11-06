@@ -216,7 +216,6 @@ async fn drive_fixture(
                 grouping: None,
             },
         },
-        bae_catalogs::rate_limiter::CallPriority::Interactive,
     );
 
     // The run's watch holds its latest snapshot until the text settles.

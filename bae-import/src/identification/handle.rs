@@ -58,6 +58,12 @@ impl IdentificationHandle {
         }
     }
 
+    /// Where one pane says which candidate it shows, for as long as the pane
+    /// lives.
+    pub fn shown_candidate(&self) -> ShownCandidate {
+        ShownCandidate { commands: self.commands.clone(), shown: None }
+    }
+
     /// Take these candidates' jobs off the queue, whatever they are doing, and
     /// store nothing. Returns once they are gone; fails when the queue has
     /// stopped, or with the first ending of a candidate's standing that could
@@ -133,5 +139,42 @@ impl IdentificationHandle {
             reason = "a stopped queue ends the wait as surely as a taken command"
         )]
         let _ = wait.await;
+    }
+}
+
+/// The candidate one pane shows. While a pane shows a candidate, the queue
+/// starts that candidate's job ahead of every other waiting job, and its runs'
+/// calls are admitted ahead of every other call, those already waiting
+/// included. Dropping it says the pane shows nothing.
+pub struct ShownCandidate {
+    commands: mpsc::UnboundedSender<Command>,
+    /// What the queue was last told this pane shows.
+    shown: Option<crate::CandidateKey>,
+}
+
+impl ShownCandidate {
+    /// The pane shows `key` from now on, or nothing.
+    pub fn show(&mut self, key: Option<crate::CandidateKey>) {
+        if self.shown == key {
+            return;
+        }
+        let was = std::mem::replace(&mut self.shown, key.clone());
+        self.tell(was, key);
+    }
+
+    fn tell(&self, was: Option<crate::CandidateKey>, now: Option<crate::CandidateKey>) {
+        // A stopped queue identifies nothing, so there is nothing to move
+        // ahead.
+        if self.commands.send(Command::Shown { was, now }).is_err() {
+            debug!("identification: the queue has stopped; the pane's candidate goes untold");
+        }
+    }
+}
+
+impl Drop for ShownCandidate {
+    fn drop(&mut self) {
+        if let Some(was) = self.shown.take() {
+            self.tell(Some(was), None);
+        }
     }
 }

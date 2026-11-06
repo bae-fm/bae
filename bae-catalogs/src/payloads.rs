@@ -12,7 +12,7 @@ use crate::catalog::{parse_catalog_url, Catalog, CatalogPage, LookupCatalog};
 use crate::discogs::client::DiscogsClient;
 use crate::discogs::DiscogsRelease;
 use crate::musicbrainz::MbReleaseResponse;
-use crate::rate_limiter::CallPriority;
+use crate::rate_limiter::CallClass;
 use crate::records::{LookupRef, MetadataRef, PayloadSource, ReleaseRecord, SourcePayload};
 use crate::remote_image::RemoteCover;
 use crate::source_release::{

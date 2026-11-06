@@ -8,7 +8,7 @@ use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::parse_year;
 use crate::providers::CatalogSession;
-use crate::rate_limiter::CallPriority;
+use crate::rate_limiter::CallClass;
 use crate::records::{LookupRef, MetadataRef};
 use crate::remote_image::RemoteCover;
 use crate::CatalogError;
@@ -516,9 +516,9 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
 pub(crate) async fn search_mb(
     musicbrainz: &musicbrainz::MusicBrainz,
     params: ReleaseSearchParams,
-    priority: CallPriority,
+    class: CallClass,
 ) -> Result<Vec<MetadataResult>, CatalogError> {
-    let releases = musicbrainz.search_releases_with_params(&params, priority).await?;
+    let releases = musicbrainz.search_releases_with_params(&params, class).await?;
 
     Ok(releases
         .into_iter()
@@ -533,9 +533,9 @@ pub(crate) async fn search_mb(
 pub async fn search_discogs(
     client: &DiscogsClient,
     params: DiscogsSearchParams,
-    priority: CallPriority,
+    class: CallClass,
 ) -> Result<Vec<MetadataResult>, DiscogsError> {
-    let results = client.search_with_params(&params, priority).await?;
+    let results = client.search_with_params(&params, class).await?;
     Ok(results.into_iter().map(discogs_search_result_to_metadata).collect())
 }
 
@@ -556,13 +556,13 @@ pub async fn search_provider(
     session: &CatalogSession,
     source: LookupCatalog,
     query: &impl ProviderQuery,
-    priority: CallPriority,
+    class: CallClass,
 ) -> Result<Vec<MetadataResult>, CatalogError> {
     let mut results = match source {
         LookupCatalog::MusicBrainz => {
-            session.search_musicbrainz(query.musicbrainz_params(), priority).await?
+            session.search_musicbrainz(query.musicbrainz_params(), class).await?
         }
-        LookupCatalog::Discogs => session.search_discogs(query.discogs_params(), priority).await?,
+        LookupCatalog::Discogs => session.search_discogs(query.discogs_params(), class).await?,
     };
     query.keep_answers(&mut results);
     Ok(results)
@@ -574,9 +574,9 @@ pub async fn search_source(
     session: &CatalogSession,
     source: LookupCatalog,
     query: &impl ProviderQuery,
-    priority: CallPriority,
+    class: CallClass,
 ) -> SourceLookup {
-    search_provider(session, source, query, priority).await.map_err(|error| {
+    search_provider(session, source, query, class).await.map_err(|error| {
         lookup_or_internal(
             provider_failure(&error),
             &format!("asking {} a search for {query:?}", source.as_str()),
@@ -592,9 +592,9 @@ pub async fn search_source(
 pub(crate) async fn lookup_by_discid(
     musicbrainz: &musicbrainz::MusicBrainz,
     discid: &str,
-    priority: CallPriority,
+    class: CallClass,
 ) -> Result<Vec<(MetadataResult, crate::payloads::DiscIdRelease)>, Failure> {
-    let releases = match musicbrainz.lookup_by_discid(discid, priority).await {
+    let releases = match musicbrainz.lookup_by_discid(discid, class).await {
         Ok(releases) => releases,
         Err(musicbrainz::MusicBrainzError::NotFound(_)) => return Ok(Vec::new()),
         Err(e) => {
@@ -615,10 +615,10 @@ pub(crate) async fn lookup_by_discid(
 pub(crate) async fn lookup_by_isrcs(
     musicbrainz: &musicbrainz::MusicBrainz,
     isrcs: &[String],
-    priority: CallPriority,
+    class: CallClass,
 ) -> Result<Vec<MetadataResult>, Failure> {
     let recordings =
-        musicbrainz.search_recordings_by_isrcs(isrcs, priority).await.map_err(|error| {
+        musicbrainz.search_recordings_by_isrcs(isrcs, class).await.map_err(|error| {
             mb_failure(&error, &format!("reading MusicBrainz's answer for ISRCs {isrcs:?}"))
         })?;
     Ok(isrc_releases_to_metadata(isrcs, recordings))

@@ -1,5 +1,5 @@
 //! What a person's request does to the queue: ahead of every waiting
-//! automatic job, at interactive priority.
+//! automatic job, its calls as requested.
 
 use super::*;
 

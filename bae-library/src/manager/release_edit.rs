@@ -306,7 +306,7 @@ impl LibraryManager {
             .partners(
                 &link.record,
                 &link.partners,
-                bae_catalogs::rate_limiter::CallPriority::Interactive,
+                bae_catalogs::rate_limiter::CallClass::AWAITED,
                 steps,
             )
             .await?

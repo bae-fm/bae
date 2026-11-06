@@ -13,7 +13,7 @@
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsKeySignal};
 use bae_catalogs::providers::{CatalogSession, DiscogsCheck, Providers};
-use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::{CallClass, CallWork};
 use bae_diagnostics::Diagnostics;
 use bae_preferences::DiscogsValidation;
 use bae_store::DbError;
@@ -198,19 +198,31 @@ impl CatalogSessions {
         }
     }
 
+    /// A piece of work no other catalog call is part of, whose calls a
+    /// person can come to await.
+    pub(crate) fn new_work(&self) -> CallWork {
+        self.providers.new_work()
+    }
+
+    /// Make `works` the work a person awaits now: their calls go ahead of
+    /// every other, those already waiting included.
+    pub(crate) fn await_work(&self, works: &std::collections::BTreeSet<CallWork>) {
+        self.providers.await_work(works);
+    }
+
     /// The session that asks MusicBrainz alone, which needs no key.
     pub(crate) fn musicbrainz(&self) -> CatalogSession {
         CatalogSession::new(None, vec![LookupCatalog::MusicBrainz], self.providers.clone())
     }
 
     /// Ask Discogs whether it accepts `key`, which this library does not
-    /// store: how a key is tried before it is saved.
-    pub(crate) async fn try_discogs_key(
-        &self,
-        key: &str,
-        priority: CallPriority,
-    ) -> Result<(), DiscogsError> {
-        self.providers.discogs_client(key.to_string(), None).validate_token(priority).await
+    /// store: how a key is tried before it is saved, while the person who
+    /// submitted it waits on the answer.
+    pub(crate) async fn try_discogs_key(&self, key: &str) -> Result<(), DiscogsError> {
+        self.providers
+            .discogs_client(key.to_string(), None)
+            .validate_token(CallClass::AWAITED)
+            .await
     }
 
     /// The library's stored Discogs key, read from the keychain on a blocking
@@ -288,7 +300,7 @@ impl CatalogSessions {
         &self,
         token: &str,
     ) -> Result<DiscogsCheck, DiscogsKeyError> {
-        let check = DiscogsCheck::of(self.try_discogs_key(token, CallPriority::Interactive).await);
+        let check = DiscogsCheck::of(self.try_discogs_key(token).await);
         if !matches!(check, DiscogsCheck::Rejected) {
             self.store_discogs_key(token, DiscogsValidation::of(&check)).await?;
         }

@@ -14,6 +14,7 @@ impl ImportServiceHandle {
             self.store.clone(),
             self.tables.clone(),
             self.diagnostics.clone(),
+            self.catalogs.clone(),
         )
     }
 
@@ -45,7 +46,7 @@ impl ImportServiceHandle {
         run: crate::IdentifyRunId,
         key: crate::CandidateKey,
         source: crate::extraction::ExtractionSource,
-        priority: bae_catalogs::rate_limiter::CallPriority,
+        class: bae_catalogs::rate_limiter::CallClass,
         choices: bae_identify::LookupChoices,
         title_search: Option<bae_identify::TitleSearch>,
     ) -> Result<bool, crate::ImportError> {
@@ -59,10 +60,10 @@ impl ImportServiceHandle {
                 crate::candidate_runtime::RunSubject::Release
             }
         };
-        let snapshots = self.extraction.start(run, key.clone(), source, priority);
+        let snapshots = self.extraction.start(run, key.clone(), source);
         let started = self
             .identify
-            .start(run, key.clone(), subject, priority, choices, title_search, snapshots)
+            .start(run, key.clone(), subject, class, choices, title_search, snapshots)
             .await;
         if !matches!(started, Ok(true)) {
             self.extraction.cancel(&key);

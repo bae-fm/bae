@@ -425,7 +425,7 @@ async fn release_lookup_fetches_only_the_requested_document() {
     let musicbrainz = served_by(&url);
 
     let (release, archived) = musicbrainz
-        .lookup_release_by_id("release-only", CallPriority::Interactive)
+        .lookup_release_by_id("release-only", CallClass::REQUESTED)
         .await
         .expect("the release fetch succeeds independently of its parent");
 
@@ -531,7 +531,7 @@ async fn a_lookup_names_every_page_s_address_in_one_request() {
             _ => r#"{"urls":[]}"#.to_string(),
         };
         let (url, requests, paths) = mb_recording_server(vec![(200, raw)]).await;
-        served_by(&url).lookup_discogs_pages(&pages, CallPriority::Interactive).await.unwrap();
+        served_by(&url).lookup_discogs_pages(&pages, CallClass::REQUESTED).await.unwrap();
         assert_eq!(requests.load(Ordering::SeqCst), 1);
         let request_line = paths.lock().unwrap()[0].clone();
         let path = request_line.split_whitespace().nth(1).expect("request names its URL");
@@ -566,8 +566,7 @@ async fn a_lookup_distinguishes_absence_empty_answers_and_failures() {
             (200, "broken JSON", "parse"),
         ] {
             let (url, requests) = mb_response_server(vec![(status, body.into())]).await;
-            let result =
-                served_by(&url).lookup_discogs_pages(&pages, CallPriority::Interactive).await;
+            let result = served_by(&url).lookup_discogs_pages(&pages, CallClass::REQUESTED).await;
             match expected {
                 "missing" => assert!(result.unwrap().is_empty()),
                 "empty" => assert_eq!(
@@ -598,7 +597,7 @@ async fn a_lookup_retries_transient_failures_and_caches_the_answer() {
         [master_page("510005"), release_page("510004")],
     ] {
         let answer = musicbrainz
-            .lookup_discogs_pages(&pages, CallPriority::Interactive)
+            .lookup_discogs_pages(&pages, CallClass::REQUESTED)
             .await
             .expect("the retry obtains the URL documents");
         assert!(answer.is_empty());
@@ -621,7 +620,7 @@ async fn a_seeded_lookup_is_read_back_without_a_request() {
         musicbrainz
             .lookup_discogs_pages(
                 &[master_page("510007"), release_page("510006")],
-                CallPriority::Interactive
+                CallClass::REQUESTED
             )
             .await
             .unwrap(),
@@ -629,7 +628,7 @@ async fn a_seeded_lookup_is_read_back_without_a_request() {
     );
     assert_eq!(
         musicbrainz
-            .lookup_discogs_pages(&[master_page("510007")], CallPriority::Interactive)
+            .lookup_discogs_pages(&[master_page("510007")], CallClass::REQUESTED)
             .await
             .unwrap(),
         HashMap::from([(master_page("510007"), vec!["group-a".into()])])
@@ -688,11 +687,11 @@ async fn a_repeated_request_is_answered_without_a_second_round_trip() {
     let musicbrainz = served_by(&url);
 
     let first = musicbrainz
-        .fetch_release_group_json("rg-repeat", CallPriority::Interactive)
+        .fetch_release_group_json("rg-repeat", CallClass::REQUESTED)
         .await
         .expect("the release-group fetch succeeds");
     let second = musicbrainz
-        .fetch_release_group_json("rg-repeat", CallPriority::Interactive)
+        .fetch_release_group_json("rg-repeat", CallClass::REQUESTED)
         .await
         .expect("the repeated fetch is answered");
 
@@ -708,7 +707,7 @@ async fn a_not_found_answer_is_kept() {
 
     for _ in 0..2 {
         let error = musicbrainz
-            .lookup_by_discid("disc-not-found", CallPriority::Interactive)
+            .lookup_by_discid("disc-not-found", CallClass::REQUESTED)
             .await
             .expect_err("the disc is not in MusicBrainz");
         assert!(matches!(error, MusicBrainzError::NotFound(_)));
@@ -730,14 +729,14 @@ async fn transient_failures_are_not_kept() {
     let musicbrainz = served_by(&url);
 
     let error = musicbrainz
-        .lookup_by_discid("disc-transient", CallPriority::Interactive)
+        .lookup_by_discid("disc-transient", CallClass::REQUESTED)
         .await
         .expect_err("transient answers on every try exhaust the retries");
     assert!(matches!(error, MusicBrainzError::Provider { status: Some(429), .. }));
     assert_eq!(requests.load(Ordering::SeqCst), attempts, "each retry asked the server again");
 
     let releases = musicbrainz
-        .lookup_by_discid("disc-transient", CallPriority::Interactive)
+        .lookup_by_discid("disc-transient", CallClass::REQUESTED)
         .await
         .expect("the provider recovered");
     assert_eq!(releases[0].0.id, "mb-after-transient");
@@ -754,11 +753,11 @@ async fn two_clients_keep_their_own_answers() {
         mb_response_server(vec![(200, r#"{"id":"second"}"#.to_string())]).await;
 
     let first = served_by(&first_url)
-        .fetch_release_group_json("rg-two-bases", CallPriority::Interactive)
+        .fetch_release_group_json("rg-two-bases", CallClass::REQUESTED)
         .await
         .expect("the first server answers");
     let second = served_by(&second_url)
-        .fetch_release_group_json("rg-two-bases", CallPriority::Interactive)
+        .fetch_release_group_json("rg-two-bases", CallClass::REQUESTED)
         .await
         .expect("the second server answers");
 
@@ -771,7 +770,7 @@ async fn two_clients_keep_their_own_answers() {
 #[tokio::test]
 async fn invalid_request_is_diagnostic_not_a_network_outage() {
     let musicbrainz = MusicBrainz::for_test(Http::for_test());
-    let error = musicbrainz.get("not a URL", CallPriority::Interactive).await.unwrap_err();
+    let error = musicbrainz.get("not a URL", CallClass::REQUESTED).await.unwrap_err();
     assert!(matches!(&error, MusicBrainzError::Request(_)), "{error}");
     assert!(error.to_string().contains("relative URL without a base"), "{error}");
 }
@@ -821,7 +820,7 @@ async fn an_isrc_search_asks_every_code_at_once_and_reads_every_page() {
     let recordings = musicbrainz
         .search_recordings_by_isrcs(
             &["XX0000000001".to_string(), "XX0000000002".to_string(), "XX0000000003".to_string()],
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .expect("the search answers");

@@ -208,3 +208,54 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
     );
     assert!(!library.identified(&key).await);
 }
+
+/// The candidate the pane's read is set to goes ahead of the requests
+/// waiting before it: when a slot frees, its run takes it.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_candidate_the_pane_shows_runs_ahead_of_waiting_requests() {
+    let library = Library::open().await;
+    library.services.extraction_register_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
+    library.services.set_identify_automatically(false).await.unwrap();
+    let keys: Vec<CandidateKey> = (0..MAX_IN_FLIGHT + 2)
+        .map(|index| {
+            let dir = library.barcode_candidate(&format!("Album {index}"));
+            std::fs::write(dir.join(format!("playlist-{index}.m3u")), format!("{index}")).unwrap();
+            CandidateKey::folder(&dir)
+        })
+        .collect();
+    library.provider.route("/release?", 200, "{}");
+    library.provider.hold("query=barcode");
+    library.scan(MAX_IN_FLIGHT + 2).await;
+    // Asked for in order: the cap's worth run, and the last two wait, the
+    // second behind the first.
+    for key in &keys {
+        library.services.rerun_identify(key.clone());
+    }
+    library.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
+    let (first_waiting, shown) = (&keys[MAX_IN_FLIGHT], &keys[MAX_IN_FLIGHT + 1]);
+    assert!(library.is_queued(first_waiting).await && library.is_queued(shown).await);
+
+    // The pane shows a running candidate first, then moves to the waiting
+    // one. The read tells the queue before it delivers each.
+    let pane = library.services.subscribe_import_candidate();
+    for key in [&keys[0], shown] {
+        pane.set(Some(key.clone())).unwrap();
+        tokio::time::timeout(HANG_GUARD, async {
+            while pane.next().await.unwrap().id.as_ref() != Some(key) {}
+        })
+        .await
+        .expect("the pane reads the candidate");
+    }
+    tokio::time::timeout(HANG_GUARD, library.identification.commands_taken_for_test())
+        .await
+        .expect("the queue takes what the pane shows");
+
+    library.provider.let_one_through();
+    let shown_barcode =
+        bae_types::barcode::with_check_digit(&format!("01234567{:04}", MAX_IN_FLIGHT + 1));
+    library.provider.wait_for_request(&shown_barcode, 1).await;
+    assert!(library.is_queued(first_waiting).await, "the request ahead of it keeps waiting");
+
+    pane.cancel();
+    library.provider.release();
+}

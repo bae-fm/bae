@@ -132,7 +132,7 @@ async fn advance(
     }
     let job = &mut queue.jobs[index];
     let identity = job.identity.clone();
-    let priority = job.priority();
+    let class = job.class();
     let candidate = job
         .members
         .iter()
@@ -152,7 +152,7 @@ async fn advance(
             identity.clone(),
             representative_key,
             run,
-            settle_answer(context.clone(), identity, candidate, run, state, priority, settle_token),
+            settle_answer(context.clone(), identity, candidate, run, state, class, settle_token),
         )
         .await
     });

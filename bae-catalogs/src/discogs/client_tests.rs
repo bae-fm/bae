@@ -307,7 +307,7 @@ async fn master_fetch_returns_its_own_document_without_following_main_release() 
         r#"{"id":510005,"title":"Album Title","year":1982,"main_release":510006}"#.to_string();
     let (url, requests) = scripted_server(vec![(200, raw.clone())]).await;
     let (master, archived) =
-        client_at(url).get_master("510005", CallPriority::Interactive).await.unwrap();
+        client_at(url).get_master("510005", CallClass::REQUESTED).await.unwrap();
     assert_eq!(master.title.as_deref(), Some("Album Title"));
     assert_eq!(master.year, Some(1982));
     assert_eq!(archived, raw);
@@ -372,7 +372,7 @@ async fn transport_error_display_does_not_include_discogs_token() {
     let token = "secret-discogs-token";
     let client = DiscogsClient::new(served_by("http://127.0.0.1:1"), token.to_string());
 
-    let error = client.validate_token(CallPriority::Interactive).await.unwrap_err();
+    let error = client.validate_token(CallClass::REQUESTED).await.unwrap_err();
 
     assert!(!error.to_string().contains(token));
 }
@@ -395,7 +395,7 @@ async fn validate_token_sends_token_in_authorization_header() {
     let client = DiscogsClient::new(served_by(&url), token.to_string());
 
     client
-        .validate_token(CallPriority::Interactive)
+        .validate_token(CallClass::REQUESTED)
         .await
         .expect("token validation should accept 200 response");
 
@@ -419,7 +419,7 @@ async fn a_rate_limit_is_sent_again_until_it_answers_never_failed() {
     let client = DiscogsClient::new(served_by(&url), "token".to_string());
 
     let releases = client
-        .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
+        .search_with_params(&DiscogsSearchParams::default(), CallClass::REQUESTED)
         .await
         .expect("a rate limit is waited out, not failed");
 
@@ -438,7 +438,7 @@ async fn a_rate_limit_holds_every_discogs_request_for_its_stated_wait() {
     let client = DiscogsClient::new(discogs.clone(), "token".to_string());
     let asked_at = tokio::time::Instant::now();
     let asked = tokio::spawn(async move {
-        client.search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive).await
+        client.search_with_params(&DiscogsSearchParams::default(), CallClass::REQUESTED).await
     });
 
     let opens_at =
@@ -461,7 +461,7 @@ async fn search_does_not_retry_invalid_api_key() {
     let client = DiscogsClient::new(served_by(&url), "token".to_string());
 
     let error = client
-        .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
+        .search_with_params(&DiscogsSearchParams::default(), CallClass::REQUESTED)
         .await
         .expect_err("invalid API key should fail without retry");
 
@@ -478,7 +478,7 @@ async fn search_does_not_retry_client_error() {
     let client = DiscogsClient::new(served_by(&url), "token".to_string());
 
     let error = client
-        .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
+        .search_with_params(&DiscogsSearchParams::default(), CallClass::REQUESTED)
         .await
         .expect_err("a 400 should fail without retry");
 
@@ -516,7 +516,7 @@ async fn search_does_not_retry_not_found() {
     let client = DiscogsClient::new(served_by(&url), "token".to_string());
 
     let error = client
-        .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
+        .search_with_params(&DiscogsSearchParams::default(), CallClass::REQUESTED)
         .await
         .expect_err("not found should fail without retry");
 
@@ -538,7 +538,7 @@ async fn search_observer_records_one_signal_after_internal_retry() {
     let client = DiscogsClient::with_observer(served_by(&url), "token".to_string(), observer);
 
     client
-        .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
+        .search_with_params(&DiscogsSearchParams::default(), CallClass::REQUESTED)
         .await
         .expect("retry should return the successful search response");
 
@@ -606,11 +606,11 @@ async fn a_repeated_request_is_answered_without_a_second_round_trip() {
     let client = client_at(url);
 
     let (first, first_raw) = client
-        .get_release("510001", CallPriority::Interactive)
+        .get_release("510001", CallClass::REQUESTED)
         .await
         .expect("the release fetch succeeds");
     let (second, second_raw) = client
-        .get_release("510001", CallPriority::Interactive)
+        .get_release("510001", CallClass::REQUESTED)
         .await
         .expect("the repeated fetch is answered");
 
@@ -626,7 +626,7 @@ async fn a_not_found_answer_is_kept() {
 
     for _ in 0..2 {
         let error = client
-            .get_release("510002", CallPriority::Interactive)
+            .get_release("510002", CallClass::REQUESTED)
             .await
             .expect_err("Discogs has no such release");
         assert!(matches!(error, DiscogsError::NotFound));
@@ -646,7 +646,7 @@ async fn transient_failures_are_not_kept() {
     let client = client_at(url);
 
     let error = client
-        .get_release("510003", CallPriority::Interactive)
+        .get_release("510003", CallClass::REQUESTED)
         .await
         .expect_err("transient answers on every try exhaust the retries");
     assert!(matches!(
@@ -655,10 +655,8 @@ async fn transient_failures_are_not_kept() {
     ));
     assert_eq!(requests.load(Ordering::SeqCst), attempts, "each retry asked the server again");
 
-    let (release, _) = client
-        .get_release("510003", CallPriority::Interactive)
-        .await
-        .expect("the provider recovered");
+    let (release, _) =
+        client.get_release("510003", CallClass::REQUESTED).await.expect("the provider recovered");
     assert_eq!(release.id, "510003");
     assert_eq!(requests.load(Ordering::SeqCst), attempts + 1, "the failed answer was not kept");
 }
@@ -671,11 +669,11 @@ async fn two_transports_keep_their_own_answers() {
     let (second_url, second_requests) = scripted_server(vec![(200, release_body(510004))]).await;
 
     let (_, first_raw) = client_at(first_url)
-        .get_release("510004", CallPriority::Interactive)
+        .get_release("510004", CallClass::REQUESTED)
         .await
         .expect("the first server answers");
     let (_, second_raw) = client_at(second_url)
-        .get_release("510004", CallPriority::Interactive)
+        .get_release("510004", CallClass::REQUESTED)
         .await
         .expect("the second server answers");
 
@@ -730,7 +728,7 @@ async fn a_catalog_number_search_reads_every_page() {
     let releases = client
         .search_with_params(
             &DiscogsSearchParams { catno: Some("LBL 719".to_string()), ..Default::default() },
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .expect("both pages answer");

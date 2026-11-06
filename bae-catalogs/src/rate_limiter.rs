@@ -3,7 +3,7 @@
 //! window says it is nearly spent, and held all together when the provider
 //! turns one away for its rate.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -13,21 +13,53 @@ use tokio::time::Instant;
 mod ledger;
 use ledger::Ledger;
 
-/// Which stream a piece of import work belongs to — at bottom, whether a person
-/// is waiting on it.
-///
-/// One fact, two decisions. Provider admission: interactive calls are admitted
-/// ahead of background ones, and the interval still bounds the two together.
-/// And UI delivery: a run a person started publishes progress for its candidate
-/// row, while a background run's does not — the sidebar reads the queue's own
-/// aggregate progress line instead, so per-candidate progress from it would
-/// only re-render a queue nobody is looking at.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// How soon a person needs a call's answer, which orders its admission:
+/// awaited calls go ahead of requested ones, and requested ones ahead of
+/// background ones.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CallPriority {
-    /// A person is waiting on this call — a typed search, an opened candidate.
-    Interactive,
-    /// A sweep the user did not ask for and is not watching.
+    /// A person is looking at the screen the call fills: a pick, a typed
+    /// search, the open candidate's own identification.
+    Awaited,
+    /// A person asked for it and is not watching it.
+    Requested,
+    /// Work nobody asked for or is watching, such as identifying the releases
+    /// a scan found.
     Background,
+}
+
+/// One piece of work whose calls a person can come to await, such as a
+/// candidate's identification across its runs. The providers hand out each
+/// one once ([`crate::providers::Providers::new_work`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CallWork(pub(crate) u64);
+
+/// The class a call asks to be admitted in: its priority, or
+/// [`CallPriority::Awaited`] while a person awaits the work it is part of.
+/// The limiter reads it again whenever the work a person awaits changes, so
+/// a call already waiting moves with its work.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CallClass {
+    /// The class the call is admitted in while nobody awaits its work.
+    priority: CallPriority,
+    /// The work the call is part of.
+    work: Option<CallWork>,
+}
+
+impl CallClass {
+    /// A call a person is looking at.
+    pub const AWAITED: Self = Self { priority: CallPriority::Awaited, work: None };
+    /// A call a person asked for and is not watching.
+    pub const REQUESTED: Self = Self { priority: CallPriority::Requested, work: None };
+    /// A call nobody asked for, of no work in particular: a test's. Background
+    /// work in the app is always some work a person can come to await.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub const BACKGROUND: Self = Self { priority: CallPriority::Background, work: None };
+
+    /// A call of `work`, admitted at `priority` while nobody awaits the work.
+    pub fn of_work(priority: CallPriority, work: CallWork) -> Self {
+        Self { priority, work: Some(work) }
+    }
 }
 
 /// What a provider's response said about its rate, read off by the client
@@ -56,14 +88,20 @@ pub enum WindowCount {
 /// Admits each call a provider object makes. Each provider object owns one,
 /// shared by every call it makes.
 ///
-/// Admission order is the limiter's decision, not the caller's: an
-/// `Interactive` waiter is handed the next slot ahead of every `Background`
-/// waiter already queued, however long that queue is. Background work is
-/// admitted only when nothing interactive is waiting, so a sustained
-/// interactive stream starves the background one — that is the intent, since
-/// the background stream is a resumable sweep nobody is watching.
+/// Admission order is the limiter's decision, not the caller's: a waiter is
+/// handed the next slot ahead of every waiter of a lower class already
+/// queued, however long that queue is, and in arrival order within its
+/// class. A lower class is admitted only when nothing above it is waiting, so
+/// a sustained stream of awaited calls starves requested ones, and requested
+/// ones starve background ones — that is the intent, since each class below
+/// is work a person is waiting on less.
 ///
-/// A slot opens once three things allow it, for both classes together:
+/// A call's class is read again whenever the work a person awaits changes
+/// ([`crate::providers::Providers::await_work`]): every waiting call of that
+/// work moves to the awaited queue, in arrival order among the calls there,
+/// and back when the work is no longer awaited.
+///
+/// A slot opens once three things allow it, for every class together:
 /// the interval since the last admission has passed; no refusal's hold is in
 /// force; and the provider's last count of its window, less what was admitted
 /// since, has more than a reserve left.
@@ -79,9 +117,9 @@ pub struct RateLimiter {
     interval: Duration,
     inner: Mutex<Inner>,
     /// Woken whenever a ticket leaves a queue — admitted, or given up by a
-    /// dropped `wait` future — or an answer changes when the next slot opens,
-    /// so the next candidate re-checks its turn instead of waiting out a timer
-    /// it can no longer see.
+    /// dropped `wait` future — or moves to another, or an answer changes when
+    /// the next slot opens, so the next candidate re-checks its turn instead
+    /// of waiting out a timer it can no longer see.
     advanced: Notify,
     /// Woken whenever a ticket joins a queue, for a test to wait on a queue's
     /// length.
@@ -103,14 +141,23 @@ struct Inner {
     ledger: Option<Ledger>,
     /// Admissions so far; each admitted call is known by its number.
     admissions: u64,
-    /// Queued ticket ids, oldest first.
-    interactive: VecDeque<u64>,
-    background: VecDeque<u64>,
+    /// Queued tickets by the class each is admitted in now, oldest first.
+    awaited: VecDeque<WaitingCall>,
+    requested: VecDeque<WaitingCall>,
+    background: VecDeque<WaitingCall>,
+    /// The work a person awaits now, whose calls are admitted as awaited.
+    awaited_work: BTreeSet<CallWork>,
     next_ticket: u64,
-    /// Every queued ticket admitted, in admission order, so a test can see
-    /// which waiter went ahead of which.
+    /// Every queued ticket admitted, in admission order, with the class it
+    /// was admitted in, so a test can see which waiter went ahead of which.
     #[cfg(any(test, feature = "test-instrumentation"))]
     admitted: Vec<(CallPriority, u64)>,
+}
+
+/// A waiting ticket and the class its call asked for.
+struct WaitingCall {
+    id: u64,
+    class: CallClass,
 }
 
 impl Inner {
@@ -120,48 +167,94 @@ impl Inner {
             held_until: None,
             ledger,
             admissions: 0,
-            interactive: VecDeque::new(),
+            awaited: VecDeque::new(),
+            requested: VecDeque::new(),
             background: VecDeque::new(),
+            awaited_work: BTreeSet::new(),
             next_ticket: 0,
             #[cfg(any(test, feature = "test-instrumentation"))]
             admitted: Vec::new(),
         }
     }
 
-    fn queue(&mut self, priority: CallPriority) -> &mut VecDeque<u64> {
+    fn queue(&self, priority: CallPriority) -> &VecDeque<WaitingCall> {
         match priority {
-            CallPriority::Interactive => &mut self.interactive,
+            CallPriority::Awaited => &self.awaited,
+            CallPriority::Requested => &self.requested,
+            CallPriority::Background => &self.background,
+        }
+    }
+
+    fn queue_mut(&mut self, priority: CallPriority) -> &mut VecDeque<WaitingCall> {
+        match priority {
+            CallPriority::Awaited => &mut self.awaited,
+            CallPriority::Requested => &mut self.requested,
             CallPriority::Background => &mut self.background,
         }
     }
 
-    fn has_waiters(&self) -> bool {
-        !self.interactive.is_empty() || !self.background.is_empty()
+    /// The class a call asking for `class` is admitted in now.
+    fn priority_now(&self, class: CallClass) -> CallPriority {
+        match class.work {
+            Some(work) if self.awaited_work.contains(&work) => CallPriority::Awaited,
+            _ => class.priority,
+        }
     }
 
-    fn push(&mut self, priority: CallPriority) -> u64 {
+    fn has_waiters(&self) -> bool {
+        !self.awaited.is_empty() || !self.requested.is_empty() || !self.background.is_empty()
+    }
+
+    fn push(&mut self, class: CallClass) -> u64 {
         let id = self.next_ticket;
         self.next_ticket += 1;
-        self.queue(priority).push_back(id);
+        let priority = self.priority_now(class);
+        self.queue_mut(priority).push_back(WaitingCall { id, class });
         id
     }
 
-    fn remove(&mut self, priority: CallPriority, id: u64) {
-        let queue = self.queue(priority);
-        if let Some(at) = queue.iter().position(|queued| *queued == id) {
-            queue.remove(at);
+    /// Take `id` off whichever queue holds it: a waiter giving up its place
+    /// does not know which class its call is in now.
+    fn remove(&mut self, id: u64) {
+        for queue in [&mut self.awaited, &mut self.requested, &mut self.background] {
+            if let Some(at) = queue.iter().position(|queued| queued.id == id) {
+                queue.remove(at);
+                return;
+            }
         }
     }
 
-    /// Whether the next slot belongs to `id`: interactive before background,
-    /// arrival order within a class.
-    fn is_next(&self, priority: CallPriority, id: u64) -> bool {
-        match priority {
-            CallPriority::Interactive => self.interactive.front() == Some(&id),
-            CallPriority::Background => {
-                self.interactive.is_empty() && self.background.front() == Some(&id)
-            }
+    /// The ticket the next slot belongs to, and the class it waits in: the
+    /// oldest of the highest class waiting.
+    fn next(&self) -> Option<(CallPriority, u64)> {
+        [CallPriority::Awaited, CallPriority::Requested, CallPriority::Background]
+            .into_iter()
+            .find_map(|priority| self.queue(priority).front().map(|queued| (priority, queued.id)))
+    }
+
+    /// Make `works` the work a person awaits, and move every waiting ticket
+    /// to the queue of the class it is admitted in now, keeping arrival order
+    /// within each. Returns whether anything changed.
+    fn set_awaited_work(&mut self, works: &BTreeSet<CallWork>) -> bool {
+        if self.awaited_work == *works {
+            return false;
         }
+        self.awaited_work = works.clone();
+        let mut queued: Vec<WaitingCall> = [
+            std::mem::take(&mut self.awaited),
+            std::mem::take(&mut self.requested),
+            std::mem::take(&mut self.background),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        // Ticket ids are handed out in arrival order.
+        queued.sort_by_key(|queued| queued.id);
+        for ticket in queued {
+            let priority = self.priority_now(ticket.class);
+            self.queue_mut(priority).push_back(ticket);
+        }
+        true
     }
 
     /// When the next slot opens, or `None` when it is open now.
@@ -233,12 +326,12 @@ impl RateLimiter {
     /// place and costs no slot — the interval budget is spent on calls that are
     /// actually made. The call is in flight until the returned [`Admitted`] is
     /// answered or dropped.
-    pub async fn wait(&self, priority: CallPriority) -> Admitted<'_> {
+    pub async fn wait(&self, class: CallClass) -> Admitted<'_> {
         if let Some(admission) = self.admit_when_idle() {
             return Admitted::new(self, admission);
         }
 
-        let mut ticket = Ticket::take(self, priority);
+        let mut ticket = Ticket::take(self, class);
         loop {
             // Register for the wakeup before looking at the queue, so a ticket
             // leaving it between the look and the await cannot be missed.
@@ -246,7 +339,7 @@ impl RateLimiter {
             tokio::pin!(advanced);
             advanced.as_mut().enable();
 
-            match self.ticket_turn(priority, ticket.id) {
+            match self.ticket_turn(ticket.id) {
                 Turn::Admitted(admission) => {
                     ticket.queued = false;
                     self.advanced.notify_waiters();
@@ -272,31 +365,43 @@ impl RateLimiter {
         Some(inner.admit(now))
     }
 
-    fn enqueue_ticket(&self, priority: CallPriority) -> u64 {
-        let id = self.lock().push(priority);
+    fn enqueue_ticket(&self, class: CallClass) -> u64 {
+        let id = self.lock().push(class);
         #[cfg(any(test, feature = "test-instrumentation"))]
         self.joined.notify_waiters();
         id
     }
 
-    fn ticket_turn(&self, priority: CallPriority, id: u64) -> Turn {
+    /// Whether the next slot is `id`'s, by the queue its class puts it in now.
+    fn ticket_turn(&self, id: u64) -> Turn {
         let mut inner = self.lock();
-        if !inner.is_next(priority, id) {
-            return Turn::Behind;
-        }
+        let priority = match inner.next() {
+            Some((priority, next)) if next == id => priority,
+            _ => return Turn::Behind,
+        };
         let now = Instant::now();
         if let Some(deadline) = inner.opens_at(self.interval, now) {
             return Turn::NotBefore(deadline);
         }
         let admission = inner.admit(now);
-        inner.remove(priority, id);
+        inner.queue_mut(priority).pop_front();
         #[cfg(any(test, feature = "test-instrumentation"))]
         inner.admitted.push((priority, id));
         Turn::Admitted(admission)
     }
 
-    fn remove_ticket(&self, priority: CallPriority, id: u64) {
-        self.lock().remove(priority, id);
+    fn remove_ticket(&self, id: u64) {
+        self.lock().remove(id);
+    }
+
+    /// Make `works` the work a person awaits now, every other work no longer
+    /// awaited: the calls of each are admitted ahead of every other class,
+    /// those already waiting included.
+    pub fn set_awaited_work(&self, works: &BTreeSet<CallWork>) {
+        let moved = self.lock().set_awaited_work(works);
+        if moved {
+            self.advanced.notify_waiters();
+        }
     }
 
     /// Admission `admission` came back, carrying `answer` when it reached the
@@ -341,7 +446,7 @@ impl RateLimiter {
     /// The tickets waiting in `priority`'s queue, oldest first.
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub(crate) fn queued_tickets(&self, priority: CallPriority) -> Vec<u64> {
-        self.lock().queue(priority).iter().copied().collect()
+        self.lock().queue(priority).iter().map(|queued| queued.id).collect()
     }
 
     /// The tickets waiting in `priority`'s queue once at least `count` are,
@@ -440,15 +545,14 @@ impl Drop for Admitted<'_> {
 /// never made costs no slot.
 struct Ticket<'a> {
     limiter: &'a RateLimiter,
-    priority: CallPriority,
     id: u64,
     queued: bool,
 }
 
 impl<'a> Ticket<'a> {
-    fn take(limiter: &'a RateLimiter, priority: CallPriority) -> Self {
-        let id = limiter.enqueue_ticket(priority);
-        Self { limiter, priority, id, queued: true }
+    fn take(limiter: &'a RateLimiter, class: CallClass) -> Self {
+        let id = limiter.enqueue_ticket(class);
+        Self { limiter, id, queued: true }
     }
 }
 
@@ -457,7 +561,7 @@ impl Drop for Ticket<'_> {
         if !self.queued {
             return;
         }
-        self.limiter.remove_ticket(self.priority, self.id);
+        self.limiter.remove_ticket(self.id);
         self.limiter.advanced.notify_waiters();
     }
 }

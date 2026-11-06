@@ -34,7 +34,7 @@ async fn a_rate_refusal_is_sent_again_until_it_answers_never_failed() {
     let (url, requests, _) = mb_raw_server(script).await;
 
     let json = served_by(&url)
-        .fetch_release_group_json("rg-after-refusals", CallPriority::Interactive)
+        .fetch_release_group_json("rg-after-refusals", CallClass::REQUESTED)
         .await
         .expect("a rate refusal is waited out, not failed");
 
@@ -50,7 +50,7 @@ async fn a_503_without_a_zone_is_a_failure() {
     let (url, requests) = mb_response_server(vec![(503, String::new()); attempts]).await;
 
     let error = served_by(&url)
-        .fetch_release_group_json("rg-down", CallPriority::Interactive)
+        .fetch_release_group_json("rg-down", CallClass::REQUESTED)
         .await
         .expect_err("a failing server fails the lookup");
 
@@ -75,7 +75,7 @@ async fn a_rate_refusal_holds_every_musicbrainz_request_until_its_reset() {
     let asking = Arc::clone(&musicbrainz);
     let asked_at = tokio::time::Instant::now();
     let asked = tokio::spawn(async move {
-        asking.fetch_release_group_json("rg-held", CallPriority::Interactive).await
+        asking.fetch_release_group_json("rg-held", CallClass::REQUESTED).await
     });
 
     let opens_at =

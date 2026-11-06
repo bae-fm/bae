@@ -18,7 +18,7 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::catalog::{Catalog, CatalogPage};
-use crate::rate_limiter::{CallPriority, RateLimiter};
+use crate::rate_limiter::{CallClass, CallWork, RateLimiter};
 use bae_util::error_text::CauseChain;
 use bae_util::http::{is_cacheable, CachedResponse, Http, TransportFailure};
 use bae_util::retry::{Repeat, RetryPolicy};
@@ -165,10 +165,15 @@ impl Wikidata {
         }
     }
 
+    /// Admit the calls of `works` ahead of every other, and no other work's.
+    pub(crate) fn await_work(&self, works: &std::collections::BTreeSet<CallWork>) {
+        self.limiter.set_awaited_work(works);
+    }
+
     /// One Wikidata GET, answered from the cache when this URL already has an
     /// answer — without waiting for a rate-limit slot — and otherwise sent,
     /// kept when the answer is stable, and returned.
-    async fn get(&self, url: &str, priority: CallPriority) -> Result<String, WikidataError> {
+    async fn get(&self, url: &str, class: CallClass) -> Result<String, WikidataError> {
         let request = self
             .http
             .get(url)
@@ -183,7 +188,7 @@ impl Wikidata {
             return wikidata_body(cached, None);
         }
 
-        let _admitted = self.limiter.wait(priority).await;
+        let _admitted = self.limiter.wait(class).await;
         let response = self.http.execute(request).await.map_err(WikidataError::from_reqwest)?;
         let status = response.status().as_u16();
         let told_wait = bae_util::http::told_wait(response.headers());
@@ -223,20 +228,20 @@ impl Wikidata {
     pub async fn fetch_entity(
         &self,
         item: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<String, WikidataError> {
-        wikidata_retry("Wikidata entity fetch", || self.fetch_entity_once(item, priority)).await
+        wikidata_retry("Wikidata entity fetch", || self.fetch_entity_once(item, class)).await
     }
 
     async fn fetch_entity_once(
         &self,
         item: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<String, WikidataError> {
         let url = entity_url(item);
         debug!("Wikidata API request: {}", url);
 
-        let raw_json = match self.get(&url, priority).await {
+        let raw_json = match self.get(&url, class).await {
             Ok(body) => body,
             Err(WikidataError::Provider { status: Some(404), .. }) => {
                 return Err(WikidataError::NotFound(item.to_string()));

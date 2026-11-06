@@ -1,6 +1,6 @@
 //! The queue's order and slots: a planned candidate queued before its run
-//! reports, one run for candidates that share files, the interactive path
-//! ahead of automatic runs, progress counts, what turning automatic
+//! reports, one run for candidates that share files, a typed search ahead
+//! of automatic runs, progress counts, what turning automatic
 //! identification off leaves going, and a person cancelling identification.
 
 use super::*;
@@ -115,7 +115,7 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
 /// Two tickets are awaited rather than one, because the oldest may be admitted
 /// the moment it is seen.
 #[tokio::test(flavor = "multi_thread")]
-async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
+async fn a_typed_search_is_not_delayed_by_automatic_identification() {
     let fixture = Fixture::new("interactive-not-delayed").await;
     fixture.import.register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
     let mut dirs = Vec::new();
@@ -160,7 +160,7 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
                 album: Some("Album".to_string()),
                 ..Default::default()
             },
-            CallPriority::Interactive,
+            CallClass::AWAITED,
         )
         .await
         .expect("the typed search succeeds");
@@ -175,7 +175,7 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
     assert_eq!(typed.len(), 1);
     let typed_at = admitted
         .iter()
-        .position(|(priority, _)| *priority == CallPriority::Interactive)
+        .position(|(priority, _)| *priority == CallPriority::Awaited)
         .expect("the typed search queued behind background lookups");
     let ahead_of_typed = &admitted[..typed_at];
     let overtaken = waiting
@@ -187,6 +187,91 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
         "every background lookup waiting when the search was typed ({waiting:?}) \
          was admitted before it: {admitted:?}"
     );
+}
+
+/// A candidate a person opens in a pane is started ahead of the requests
+/// waiting before it, and its run's lookups are admitted ahead of requested
+/// calls already waiting on the limiter.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_open_candidate_runs_first_and_its_lookups_go_ahead() {
+    let fixture = Fixture::new("open-candidate-first").await;
+    fixture.import.register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
+    let keys: Vec<crate::CandidateKey> = (0..MAX_IN_FLIGHT + 2)
+        .map(|index| {
+            let dir = fixture.barcode_candidate(&format!("Album {index}"));
+            std::fs::write(dir.join(format!("notes-{index}.txt")), format!("{index}")).unwrap();
+            crate::CandidateKey::folder(&dir)
+        })
+        .collect();
+    fixture.provider.route("/release?", 200, r#"{"releases":[]}"#);
+    fixture.provider.hold("query=barcode");
+    fixture.set_identify_automatically(false).await;
+    fixture.scan(MAX_IN_FLIGHT + 2).await;
+    // Asked for in order: the cap's worth run, and the last two wait, the
+    // second behind the first.
+    for key in &keys {
+        fixture.identification().rerun_identify(key.clone());
+    }
+    fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
+    let (first_waiting, opened) = (&keys[MAX_IN_FLIGHT], &keys[MAX_IN_FLIGHT + 1]);
+
+    // Requested calls queue on the limiter behind the lookups already sent.
+    let musicbrainz = &fixture.musicbrainz;
+    for index in 0..4 {
+        let session = fixture.parts.catalogs().musicbrainz();
+        tokio::spawn(async move {
+            let params = bae_catalogs::musicbrainz::ReleaseSearchParams {
+                album: Some(format!("Asked {index}")),
+                ..Default::default()
+            };
+            session.search_musicbrainz(params, CallClass::REQUESTED).await
+        });
+    }
+    let requested = tokio::time::timeout(
+        HANG_GUARD,
+        musicbrainz.queued_requests_reaching(CallPriority::Requested, 3),
+    )
+    .await
+    .expect("the requested searches queue on the limiter");
+
+    let mut shown = fixture.identification().shown_candidate();
+    shown.show(Some(opened.clone()));
+    fixture.identification().cancel(vec![keys[0].clone()]).await.unwrap();
+    tokio::time::timeout(HANG_GUARD, fixture.identification().commands_taken_for_test())
+        .await
+        .expect("the queue takes the pane's candidate");
+
+    assert_eq!(
+        fixture.identification_status(opened).await,
+        Some(crate::IdentificationStatus::Running),
+        "the open candidate takes the freed slot"
+    );
+    assert_eq!(
+        fixture.identification_status(first_waiting).await,
+        Some(crate::IdentificationStatus::Queued),
+        "the request ahead of it keeps waiting"
+    );
+    let opened_barcode =
+        bae_types::barcode::with_check_digit(&format!("01234567{:04}", MAX_IN_FLIGHT + 1));
+    fixture.provider.wait_for_request(&opened_barcode, 1).await;
+    let admitted = musicbrainz.admitted_requests();
+    let opened_at = admitted
+        .iter()
+        .position(|(priority, _)| *priority == CallPriority::Awaited)
+        .expect("the open candidate's lookup queued as awaited");
+    let overtaken = requested
+        .iter()
+        .filter(|ticket| !admitted[..opened_at].contains(&(CallPriority::Requested, **ticket)))
+        .count();
+    assert!(
+        overtaken >= 1,
+        "every requested call waiting when the pane opened ({requested:?}) was admitted \
+         before the open candidate's lookup: {admitted:?}"
+    );
+
+    drop(shown);
+    fixture.identification().shut_down();
+    fixture.provider.release();
 }
 
 /// Progress events carry both counts: a batch admitted together opens at its
@@ -852,7 +937,7 @@ async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
             run,
             key.clone(),
             ExtractionSource::Candidate { candidate },
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
             LookupChoices::default(),
             None,
         )

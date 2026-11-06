@@ -19,7 +19,7 @@ async fn a_release_read_fails_when_the_preferences_cannot_be_read() {
         .release(
             &LookupRef::new(LookupCatalog::MusicBrainz, "mb-release-1"),
             ReadDepth::Complete,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await
         .unwrap_err();

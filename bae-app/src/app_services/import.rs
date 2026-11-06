@@ -153,7 +153,7 @@ impl AppServices {
                 run,
                 candidate_key.clone(),
                 bae_import::extraction::ExtractionSource::Release { release_id },
-                bae_catalogs::rate_limiter::CallPriority::Interactive,
+                bae_catalogs::rate_limiter::CallClass::AWAITED,
                 choices,
                 title_search,
             )
@@ -168,7 +168,7 @@ impl AppServices {
     /// lookup asks about and the sources the library asks now. A run takes its
     /// inputs once, at its start, so asking for it again is asking for a new
     /// run: whatever is going for this candidate is cancelled and a fresh
-    /// interactive run replaces it, along with any stored answer.
+    /// requested run replaces it, along with any stored answer.
     ///
     /// This is also what re-asking a failed provider is. Every lookup goes out
     /// again; the response cache answers the ones that had already succeeded,
@@ -291,7 +291,9 @@ impl AppServices {
     /// The import pane's candidate as it changes, read for the key the
     /// subscription is set to: its rows and where it stands among them.
     /// `None` once the key names no scanned folder, which is what clears a
-    /// selection. Another candidate is a new key on the same read.
+    /// selection. Another candidate is a new key on the same read. While the
+    /// read is set to a candidate, that candidate's identification goes ahead
+    /// of every other.
     pub fn subscribe_import_candidate(
         &self,
     ) -> bae_library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey> {
@@ -321,6 +323,8 @@ impl AppServices {
         let (key_tx, mut keys) = tokio::sync::watch::channel(None::<bae_import::CandidateKey>);
         let (tx, rx) = bae_library::live_read_channel();
         let manager = self.inner.manager.clone();
+        // Dropped with the read's task, which says the pane shows nothing.
+        let mut shown = self.inner.identification.shown_candidate();
         let task = bae_library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task(
             "import candidate",
@@ -331,6 +335,7 @@ impl AppServices {
                 // A key set before this task runs is the first one read.
                 let mut key = keys.borrow_and_update().clone();
                 if key.is_some() {
+                    shown.show(key.clone());
                     query.set(key.clone());
                 }
                 loop {
@@ -345,6 +350,7 @@ impl AppServices {
                         changed = keys.changed() => {
                             if changed.is_err() { return; }
                             key = keys.borrow_and_update().clone();
+                            shown.show(key.clone());
                             query.set(key.clone());
                             continue;
                         }

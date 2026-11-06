@@ -1,5 +1,5 @@
 //! What a person's request does to the queue: a run of its own, ahead of
-//! every waiting automatic job and at interactive priority, that supersedes a
+//! every waiting automatic job and its calls as requested, that supersedes a
 //! run going, and runs while automatic identification is off.
 
 use super::*;
@@ -8,26 +8,6 @@ use crate::tables::NewImportCandidateVerdict;
 use bae_catalogs::test_releases::mb_release_json;
 use bae_util::test_channels::HANG_GUARD;
 use std::sync::Arc;
-
-/// The priority the next run of `key` reports.
-async fn await_run_priority(
-    events: &mut crate::ImportEvents,
-    key: &crate::CandidateKey,
-) -> CallPriority {
-    tokio::time::timeout(HANG_GUARD, async {
-        loop {
-            if let ImportEvent::IdentifyStateChanged { candidate_key, priority, .. } =
-                events.recv().await.expect("the import event bus stays open")
-            {
-                if candidate_key == key.clone() {
-                    return priority;
-                }
-            }
-        }
-    })
-    .await
-    .expect("a run of the candidate reports a state")
-}
 
 /// The failing response is a 400 rather than a 5xx so the client's own retry
 /// policy stays out of it; what is under test is what identification does with
@@ -99,7 +79,7 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
+async fn a_requested_lookup_runs_while_automatic_lookup_is_off() {
     let fixture = Fixture::new("interactive-with-automatic-off").await;
     let dir = fixture.disc_id_candidate("Candidate");
     let probed = fixture.probed_total_ms(&dir);
@@ -121,7 +101,7 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
 
     tokio::time::timeout(HANG_GUARD, fixture.await_identified_row(&dir))
         .await
-        .expect("interactive lookup stores its verdict");
+        .expect("the requested lookup stores its verdict");
     assert!(fixture.provider.count_containing("/discid/") > 0);
 }
 
@@ -270,7 +250,7 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
     assert!(fixture.identified_for(&dir).await.is_none());
 }
 
-/// Re-run on a candidate whose driver is gone starts a fresh interactive run
+/// Re-run on a candidate whose driver is gone starts a fresh requested run
 /// instead of no-op'ing — the stored answer is what a re-run exists to
 /// replace, so it is not consulted.
 #[tokio::test(flavor = "multi_thread")]
@@ -296,9 +276,9 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
 }
 
 /// A request on a candidate the automatic admission has waiting moves it to
-/// the front of the queue as the same entry, and it takes the next slot at
-/// interactive priority — it does not open a fifth slot: the cap bounds local
-/// work whoever asked for it.
+/// the front of the queue as the same entry, requested now, and it takes the
+/// next slot — it does not open a fifth slot: the cap bounds local work
+/// whoever asked for it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     let fixture = Fixture::new("request-upgrades-waiting").await;
@@ -319,9 +299,6 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     let waiting =
         fixture.first_queued(&dirs).await.expect("one candidate is over the cap and waiting");
     let waiting_key = crate::CandidateKey::folder(&waiting);
-    // Read from here, so the first state the waiting candidate reports is the
-    // requested run's.
-    let mut events = fixture.import.every_event();
 
     fixture.start_explicit_lookup(&waiting);
 
@@ -330,9 +307,14 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
         .await
         .expect("the queue takes the request");
     assert_eq!(
-        fixture.identification_status(&waiting_key).await,
-        Some(crate::IdentificationStatus::Queued),
-        "the request waits for a slot like any other job"
+        fixture
+            .import
+            .candidate_runtime(&waiting_key)
+            .await
+            .unwrap()
+            .and_then(|runtime| runtime.identification),
+        Some(crate::IdentificationRuntime::Queued(crate::Admission::Requested)),
+        "the request waits for a slot like any other job, as one a person asked for"
     );
     assert_eq!(
         fixture.provider.count_containing("query=barcode"),
@@ -342,13 +324,6 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     );
 
     fixture.provider.release();
-    let priority = await_run_priority(&mut events, &waiting_key).await;
-    assert_eq!(
-        priority,
-        CallPriority::Interactive,
-        "the requested candidate takes the next slot at the priority a person \
-         waiting on it deserves"
-    );
     fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT + 1).await;
     assert_eq!(
         fixture.provider.count_containing("query=barcode"),

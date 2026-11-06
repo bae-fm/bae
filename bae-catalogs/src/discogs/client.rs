@@ -3,7 +3,7 @@ use crate::discogs::documents::{
 };
 use crate::discogs::models::{DiscogsMaster, DiscogsRelease};
 use crate::discogs::remote_cover_from_urls;
-use crate::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
+use crate::rate_limiter::{CallClass, CallWork, RateAnswer, RateLimiter, WindowCount};
 use crate::remote_image::RemoteCover;
 use bae_util::error_text::CauseChain;
 use bae_util::http::{is_cacheable, CachedResponse, Http};
@@ -87,6 +87,11 @@ impl Discogs {
             limiter,
             responses: SessionCache::new("Discogs response cache", PROVIDER_RESPONSE_CAPACITY),
         }
+    }
+
+    /// Admit the calls of `works` ahead of every other, and no other work's.
+    pub(crate) fn await_work(&self, works: &std::collections::BTreeSet<CallWork>) {
+        self.limiter.set_awaited_work(works);
     }
 
     /// Put `body` where a request for `url` would look for it.
@@ -394,11 +399,11 @@ impl DiscogsClient {
     async fn send(
         &self,
         request: reqwest::Request,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<(CachedResponse, Option<Duration>), DiscogsError> {
         loop {
             let attempt = request.try_clone().expect("a Discogs request has no streamed body");
-            let admitted = self.discogs.limiter.wait(priority).await;
+            let admitted = self.discogs.limiter.wait(class).await;
             let response = self.discogs.http.execute(attempt).await?;
             let rate = discogs_rate_answer(response.status(), response.headers());
             admitted.answered(rate);
@@ -424,7 +429,7 @@ impl DiscogsClient {
     async fn get_cached(
         &self,
         request: reqwest::RequestBuilder,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<String, DiscogsError> {
         let request = request.build()?;
         let key = request.url().to_string();
@@ -434,7 +439,7 @@ impl DiscogsClient {
             return classify_discogs_response(cached, None);
         }
 
-        let (response, told_wait) = self.send(request, priority).await?;
+        let (response, told_wait) = self.send(request, class).await?;
         if is_cacheable(response.status) {
             self.discogs.responses.put(key, response.clone());
         }
@@ -442,13 +447,13 @@ impl DiscogsClient {
     }
 
     /// Check the API token with a request cheap enough to throw away.
-    pub async fn validate_token(&self, priority: CallPriority) -> Result<(), DiscogsError> {
+    pub async fn validate_token(&self, class: CallClass) -> Result<(), DiscogsError> {
         let url = format!("{API_BASE_URL}/database/search");
         let query_params = [("per_page", "1")];
 
         discogs_retry("Discogs token validation", || async {
             let request = self.get(&url).query(&query_params).build()?;
-            let (response, told_wait) = self.send(request, priority).await?;
+            let (response, told_wait) = self.send(request, class).await?;
             classify_discogs_response(response, told_wait).map(|_| ())
         })
         .await
@@ -458,15 +463,15 @@ impl DiscogsClient {
     pub async fn search_with_params(
         &self,
         params: &DiscogsSearchParams,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<DiscogsSearchResult>, DiscogsError> {
-        self.observed(self.search_with_params_inner(params, priority)).await
+        self.observed(self.search_with_params_inner(params, class)).await
     }
 
     async fn search_with_params_inner(
         &self,
         params: &DiscogsSearchParams,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Vec<DiscogsSearchResult>, DiscogsError> {
         use tracing::{debug, warn};
         let url = format!("{API_BASE_URL}/database/search");
@@ -508,7 +513,7 @@ impl DiscogsClient {
                 }
                 discogs_retry("Discogs search", || async {
                     let body = self
-                        .get_cached(self.get(url).query(&query), priority)
+                        .get_cached(self.get(url).query(&query), class)
                         .await
                         .inspect_err(|error| match error {
                             DiscogsError::InvalidApiKey => warn!("Discogs invalid API key"),
@@ -561,19 +566,19 @@ impl DiscogsClient {
     pub async fn get_release(
         &self,
         id: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<(DiscogsRelease, String), DiscogsError> {
-        self.observed(self.get_release_inner(id, priority)).await
+        self.observed(self.get_release_inner(id, class)).await
     }
 
     async fn get_release_inner(
         &self,
         id: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<(DiscogsRelease, String), DiscogsError> {
         let url = release_url(id);
         discogs_retry("Discogs release fetch", || async {
-            let raw_json = self.get_cached(self.get(&url), priority).await?;
+            let raw_json = self.get_cached(self.get(&url), class).await?;
             let release = parse_discogs_release_json(&raw_json)?;
             Ok((release, raw_json))
         })
@@ -584,19 +589,19 @@ impl DiscogsClient {
     pub async fn get_master(
         &self,
         master_id: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<(DiscogsMaster, String), DiscogsError> {
-        self.observed(self.get_master_inner(master_id, priority)).await
+        self.observed(self.get_master_inner(master_id, class)).await
     }
 
     async fn get_master_inner(
         &self,
         master_id: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<(DiscogsMaster, String), DiscogsError> {
         let url = master_url(master_id);
         discogs_retry("Discogs master fetch", || async {
-            let raw_json = self.get_cached(self.get(&url), priority).await?;
+            let raw_json = self.get_cached(self.get(&url), class).await?;
             let master = parse_discogs_master_json(&raw_json)?;
             Ok((master, raw_json))
         })
@@ -606,19 +611,19 @@ impl DiscogsClient {
     pub async fn get_artist_image(
         &self,
         artist_id: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Option<String>, DiscogsError> {
-        self.observed(self.get_artist_image_inner(artist_id, priority)).await
+        self.observed(self.get_artist_image_inner(artist_id, class)).await
     }
 
     async fn get_artist_image_inner(
         &self,
         artist_id: &str,
-        priority: CallPriority,
+        class: CallClass,
     ) -> Result<Option<String>, DiscogsError> {
         let url = artist_url(artist_id);
         let Some(body) = discogs_retry("Discogs artist fetch", || async {
-            match self.get_cached(self.get(&url), priority).await {
+            match self.get_cached(self.get(&url), class).await {
                 Ok(body) => Ok(Some(body)),
                 Err(DiscogsError::NotFound) => {
                     warn!(

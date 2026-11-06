@@ -3,7 +3,7 @@
 
 use super::*;
 use bae_catalogs::catalog::LookupCatalog;
-use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallClass;
 use bae_catalogs::remote_image::RemoteCover;
 
 /// The persisted owner whose external identities supply a cover gallery.
@@ -126,7 +126,7 @@ impl ImportServiceHandle {
                     self.catalogs
                         .session()
                         .await?
-                        .release_covers(&release.key, CallPriority::Interactive)
+                        .release_covers(&release.key, CallClass::AWAITED)
                         .await?
                 }
                 (ReleaseRecord::Album { album }, LookupCatalog::MusicBrainz) => {
@@ -136,7 +136,7 @@ impl ImportServiceHandle {
                     self.catalogs
                         .session()
                         .await?
-                        .master_covers(&album.key, CallPriority::Interactive)
+                        .master_covers(&album.key, CallClass::AWAITED)
                         .await?
                 }
             };

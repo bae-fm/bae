@@ -1,7 +1,7 @@
 use super::*;
 use crate::candidate_search::{CandidateSearch, SearchRun};
 use bae_catalogs::catalog::LookupCatalog;
-use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallClass;
 use bae_catalogs::search::SearchQuery;
 
 /// Search results grouped by release group, with the per-release library dupe
@@ -94,7 +94,7 @@ impl ImportServiceHandle {
                         &session,
                         source,
                         &query,
-                        CallPriority::Interactive,
+                        CallClass::AWAITED,
                     )
                     .await
                 })
@@ -130,7 +130,7 @@ impl ImportServiceHandle {
             &self.catalogs.search_session(source).await?,
             source,
             &query,
-            CallPriority::Interactive,
+            CallClass::REQUESTED,
         )
         .await?;
 

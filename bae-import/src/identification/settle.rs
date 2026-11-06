@@ -84,11 +84,11 @@ pub(super) async fn settle_answer(
     candidate: FolderCandidate,
     run: IdentifyRunId,
     state: IdentifyState,
-    priority: CallPriority,
+    class: CallClass,
     token: CancellationToken,
 ) -> Finished {
     let representative_key = candidate.key();
-    let settled = settle_verdict(&context, &candidate, run, state, priority, &token).await;
+    let settled = settle_verdict(&context, &candidate, run, state, class, &token).await;
     let files = CandidateFiles::of(&candidate);
     let ended = match &settled {
         // A write that ran ended its own pending save.
@@ -133,7 +133,7 @@ async fn settle_verdict(
     candidate: &FolderCandidate,
     run: IdentifyRunId,
     state: IdentifyState,
-    priority: CallPriority,
+    class: CallClass,
     token: &CancellationToken,
 ) -> Settled {
     let audio = state.read_audio();
@@ -155,7 +155,7 @@ async fn settle_verdict(
         }
         Err(error) => return Settled::Unwritable { error: error.to_string() },
     };
-    let settled_lead = match settle_lead(context, &mut verdict, &text, priority, token).await {
+    let settled_lead = match settle_lead(context, &mut verdict, &text, class, token).await {
         Ok(settled_lead) => settled_lead,
         Err(settled) => return settled,
     };
@@ -325,7 +325,7 @@ async fn settle_lead(
     context: &Context,
     verdict: &mut TerminalVerdict,
     text: &bae_identify::CandidateText,
-    priority: CallPriority,
+    class: CallClass,
     token: &CancellationToken,
 ) -> Result<SettledLead, Settled> {
     let TerminalVerdict::Found { findings, track_count, .. } = &*verdict else {
@@ -343,7 +343,7 @@ async fn settle_lead(
     let (primary, partners) = pressing.claims();
     let pressing_year = bae_identify::row_facts::folder_pressing_year(text, &pressing.releases);
 
-    let settle = context.import.read_pick(&primary, &partners, priority);
+    let settle = context.import.read_pick(&primary, &partners, class);
     let prepared = tokio::select! {
         biased;
         // Shutdown is not a provider answer and writes nothing.

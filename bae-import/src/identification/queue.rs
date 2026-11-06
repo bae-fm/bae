@@ -2,7 +2,7 @@
 //! publishes into the candidate runtime.
 
 use super::*;
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use tokio::task::JoinSet;
 
 mod finish;
@@ -24,6 +24,9 @@ struct QueuedCandidate {
 /// answer covers them all.
 struct Job {
     identity: CandidateFiles,
+    /// What the catalogs know the calls of every run of this job by, so a
+    /// person opening one of its members moves them all ahead.
+    work: CallWork,
     /// At least one: a job is removed with its last member.
     members: Vec<QueuedCandidate>,
     state: JobState,
@@ -55,11 +58,14 @@ impl Job {
         }
     }
 
-    fn priority(&self) -> CallPriority {
-        match self.admission() {
-            Admission::Requested => CallPriority::Interactive,
+    /// The class its runs' calls ask for: by its admission, or awaited
+    /// while a person has one of its members open.
+    fn class(&self) -> CallClass {
+        let priority = match self.admission() {
+            Admission::Requested => CallPriority::Requested,
             Admission::Automatic => CallPriority::Background,
-        }
+        };
+        CallClass::of_work(priority, self.work)
     }
 
     fn holds(&self, key: &crate::CandidateKey) -> bool {
@@ -119,11 +125,33 @@ struct Held {
 #[derive(Default)]
 pub(super) struct Queue {
     /// The jobs in the order they run: requests first, each in the order it
-    /// was admitted.
+    /// was admitted. A job a person has open runs ahead of them all.
     jobs: VecDeque<Job>,
+    /// The candidate each open pane shows, once per pane showing it.
+    shown: Vec<crate::CandidateKey>,
 }
 
 impl Queue {
+    /// Whether a person has one of `job`'s members open.
+    fn is_awaited(&self, job: &Job) -> bool {
+        job.members.iter().any(|member| self.shown.contains(&member.candidate.key()))
+    }
+
+    /// The work of every job a person has open.
+    fn awaited_work(&self) -> BTreeSet<CallWork> {
+        self.jobs.iter().filter(|job| self.is_awaited(job)).map(|job| job.work).collect()
+    }
+
+    /// A pane that showed `was` shows `now`.
+    fn show(&mut self, was: Option<crate::CandidateKey>, now: Option<crate::CandidateKey>) {
+        if let Some(was) = was {
+            if let Some(at) = self.shown.iter().position(|shown| *shown == was) {
+                self.shown.swap_remove(at);
+            }
+        }
+        self.shown.extend(now);
+    }
+
     fn index_of_key(&self, key: &crate::CandidateKey) -> Option<usize> {
         self.jobs.iter().position(|job| job.holds(key))
     }
@@ -208,7 +236,12 @@ impl Queue {
                     self.jobs.insert(position, job);
                 }
                 (None, _) => {
-                    let job = Job { identity, members: vec![entry], state: JobState::Waiting };
+                    let job = Job {
+                        identity,
+                        work: context.catalogs.new_work(),
+                        members: vec![entry],
+                        state: JobState::Waiting,
+                    };
                     match admission {
                         Admission::Automatic => self.jobs.push_back(job),
                         Admission::Requested => {
@@ -319,12 +352,17 @@ impl Queue {
         }
     }
 
-    /// The waiting job nearest the front, while a slot is free.
+    /// The waiting job a person has open, else the one nearest the front,
+    /// while a slot is free.
     fn next_waiting(&self) -> Option<usize> {
         if self.running_count() >= MAX_IN_FLIGHT {
             return None;
         }
-        self.jobs.iter().position(|job| matches!(job.state, JobState::Waiting))
+        let waiting = |job: &Job| matches!(job.state, JobState::Waiting);
+        self.jobs
+            .iter()
+            .position(|job| waiting(job) && self.is_awaited(job))
+            .or_else(|| self.jobs.iter().position(waiting))
     }
 
     /// Stop every run the queue has going, at shutdown.
@@ -409,6 +447,10 @@ pub(super) async fn run(
     commands: &mut mpsc::UnboundedReceiver<Command>,
 ) {
     let mut queue = Queue::default();
+    // The work whose calls the catalogs admit as awaited. Nothing is awaited
+    // as the queue starts, whatever a queue before it left awaited.
+    let mut awaited = BTreeSet::new();
+    context.catalogs.await_work(&awaited);
     #[cfg(any(test, feature = "test-utils"))]
     let mut waiting_for_drain: Vec<(super::Drain, tokio::sync::oneshot::Sender<()>)> = Vec::new();
     #[cfg(any(test, feature = "test-utils"))]
@@ -419,6 +461,11 @@ pub(super) async fn run(
     let settle_token = token.child_token();
 
     loop {
+        let now_awaited = queue.awaited_work();
+        if now_awaited != awaited {
+            context.catalogs.await_work(&now_awaited);
+            awaited = now_awaited;
+        }
         fill_slots(context, &mut queue).await;
         #[cfg(any(test, feature = "test-utils"))]
         {
@@ -464,6 +511,7 @@ pub(super) async fn run(
                     Command::Request { candidate_key } => {
                         request(context, &mut queue, candidate_key).await;
                     }
+                    Command::Shown { was, now } => queue.show(was, now),
                     Command::Cancel { candidate_keys, done } => {
                         let mut cancelled = Ok(());
                         for key in &candidate_keys {
@@ -540,7 +588,7 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
         let job = &queue.jobs[index];
         let identity = job.identity.clone();
         let candidate = job.members[0].candidate.clone();
-        let priority = job.priority();
+        let class = job.class();
         let key = candidate.key();
         let queued = queue.jobs.len();
         let start = match candidate_run_start(context, &candidate).await {
@@ -555,7 +603,7 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
             }
         };
         let CandidateRunStart { choices, title_search } = start;
-        info!("identification: identifying {key} at {priority:?} ({} job(s) on the queue)", queued);
+        info!("identification: identifying {key} as {class:?} ({} job(s) on the queue)", queued);
         let run = context.import.new_identification_run();
         match context
             .import
@@ -563,7 +611,7 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
                 run,
                 key.clone(),
                 ExtractionSource::Candidate { candidate: candidate.clone() },
-                priority,
+                class,
                 choices,
                 title_search,
             )

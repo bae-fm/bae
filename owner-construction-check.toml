@@ -325,6 +325,9 @@ ImportPercentsWatch = "CandidateRuntime"
 CandidateRuntimeChanges = "CandidateRuntime"
 IdentificationCounts = "CandidateRuntime"
 ExtractionWatch = "ExtractionService"
+# Where one pane tells the identification queue which candidate it shows,
+# held while the pane's read lives.
+ShownCandidate = "IdentificationHandle"
 # One pin, unpin or audio detachment's progress.
 TransferProgressFeed = "LibraryManager"
 # One request a rate limiter let through, settled against the limiter.

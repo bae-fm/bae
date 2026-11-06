@@ -347,7 +347,7 @@ struct FetchDocuments<'a> {
     musicbrainz: Option<&'a crate::musicbrainz::MusicBrainz>,
     wikidata: &'a crate::wikidata::Wikidata,
     discogs: Option<&'a DiscogsClient>,
-    priority: CallPriority,
+    class: CallClass,
     documents: HashMap<DocumentKey, String>,
     attempted_musicbrainz: HashSet<DocumentKey>,
 }
@@ -369,11 +369,9 @@ impl FetchDocuments<'_> {
             return Ok(Fetched::FailedEarlier);
         }
         let json = match source {
-            PayloadSource::MusicBrainz => {
-                musicbrainz.lookup_release_by_id(id, self.priority).await?.1
-            }
+            PayloadSource::MusicBrainz => musicbrainz.lookup_release_by_id(id, self.class).await?.1,
             PayloadSource::MusicBrainzReleaseGroup => {
-                musicbrainz.fetch_release_group_json(id, self.priority).await?
+                musicbrainz.fetch_release_group_json(id, self.class).await?
             }
             _ => unreachable!("MusicBrainz entity fetch requires a release or group"),
         };
@@ -393,18 +391,18 @@ impl FetchDocuments<'_> {
                 let Some(client) = self.discogs else {
                     return Ok(Fetched::NotAsked);
                 };
-                client.get_release(id, self.priority).await?.1
+                client.get_release(id, self.class).await?.1
             }
             PayloadSource::DiscogsMaster => {
                 let Some(client) = self.discogs else {
                     return Ok(Fetched::NotAsked);
                 };
-                client.get_master(id, self.priority).await?.1
+                client.get_master(id, self.class).await?.1
             }
             PayloadSource::MusicBrainzDiscogsXref | PayloadSource::MusicBrainzDiscogsMasterXref => {
                 unreachable!("a lookup by Discogs address is asked with the walk's others")
             }
-            PayloadSource::Wikidata => self.wikidata.fetch_entity(id, self.priority).await?,
+            PayloadSource::Wikidata => self.wikidata.fetch_entity(id, self.class).await?,
         };
         self.documents.insert((source, id.to_owned()), json.clone());
         Ok(Fetched::Document(json))
@@ -422,7 +420,7 @@ impl FetchDocuments<'_> {
         let Some(musicbrainz) = self.musicbrainz else {
             return Ok(pages.iter().map(|page| (page.clone(), Ok(Fetched::NotAsked))).collect());
         };
-        let mut linked = musicbrainz.lookup_discogs_pages(pages, self.priority).await?;
+        let mut linked = musicbrainz.lookup_discogs_pages(pages, self.class).await?;
         let mut answers = Vec::with_capacity(pages.len());
         for page in pages {
             let fetched = match linked.remove(page).as_deref() {
@@ -460,14 +458,14 @@ impl<'a> FetchDocuments<'a> {
         discogs: Option<&'a DiscogsClient>,
         own: LookupCatalog,
         asked: &[LookupCatalog],
-        priority: CallPriority,
+        class: CallClass,
     ) -> Self {
         let asks = |catalog: LookupCatalog| catalog == own || asked.contains(&catalog);
         Self {
             musicbrainz: asks(LookupCatalog::MusicBrainz).then_some(musicbrainz),
             wikidata,
             discogs: discogs.filter(|_| asks(LookupCatalog::Discogs)),
-            priority,
+            class,
             documents: HashMap::new(),
             attempted_musicbrainz: HashSet::new(),
         }
@@ -484,10 +482,10 @@ pub(crate) async fn fetch_documents(
     asked: &[LookupCatalog],
     release: &LookupRef,
     depth: ReadDepth,
-    priority: CallPriority,
+    class: CallClass,
 ) -> Result<ReleasePayloads, CatalogError> {
     let mut fetcher =
-        FetchDocuments::new(musicbrainz, wikidata, discogs, release.catalog, asked, priority);
+        FetchDocuments::new(musicbrainz, wikidata, discogs, release.catalog, asked, class);
     let anchor =
         match fetcher.document(PayloadSource::release_of(release.catalog), &release.key).await? {
             Fetched::Document(json) => json,
@@ -514,7 +512,7 @@ pub(crate) async fn read_disc_id_release(
     discogs: Option<&DiscogsClient>,
     asked: &[LookupCatalog],
     answered: &DiscIdRelease,
-    priority: CallPriority,
+    class: CallClass,
 ) -> Result<ReleasePayloads, CatalogError> {
     let release = answered.release();
     let mut traversal =
@@ -525,7 +523,7 @@ pub(crate) async fn read_disc_id_release(
         UnfetchedReason::StoppedShort,
     );
     let fetcher =
-        FetchDocuments::new(musicbrainz, wikidata, discogs, release.catalog, asked, priority);
+        FetchDocuments::new(musicbrainz, wikidata, discogs, release.catalog, asked, class);
     Ok(walk(fetcher, traversal).await)
 }
 

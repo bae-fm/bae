@@ -2,12 +2,17 @@
 //!
 //! A candidate is admitted one of two ways:
 //!
-//! - **Automatic**, at [`CallPriority::Background`]: a release a scan
-//!   announces as found for the first time while identification runs on its
-//!   own (`found_while_automatic` on [`ScanEvent::FolderCandidate`]). Nothing
-//!   else admits a candidate on its own.
-//! - **Requested**, at [`CallPriority::Interactive`] and ahead of automatic
-//!   jobs: a person asked for it.
+//! - **Automatic**, its calls at [`CallPriority::Background`]: a release a
+//!   scan announces as found for the first time while identification runs on
+//!   its own (`found_while_automatic` on [`ScanEvent::FolderCandidate`]).
+//!   Nothing else admits a candidate on its own.
+//! - **Requested**, its calls at [`CallPriority::Requested`] and ahead of
+//!   automatic jobs: a person asked for it.
+//!
+//! A job a person has open in a pane ([`ShownCandidate`]) is started ahead of
+//! every other waiting job, and its runs' calls, those already waiting
+//! included, are admitted at [`CallPriority::Awaited`] until the pane shows
+//! another candidate.
 //!
 //! A job leaves the queue when its answer is stored or fails, when its
 //! candidate can no longer be answered, when a person's decision about the
@@ -31,7 +36,7 @@ use crate::tables::NewImportCandidateVerdict;
 use crate::IdentifyRunId;
 use crate::{Admission, CandidateFiles};
 use crate::{ImportEvent, ImportServiceHandle, ScanEvent};
-use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::{CallClass, CallPriority, CallWork};
 use bae_identify::LookupChoices;
 use bae_identify::{IdentifyState, TerminalVerdict, TitleSearch};
 use std::sync::{Arc, Mutex};
@@ -46,7 +51,7 @@ mod queue;
 mod settle;
 
 use admission::*;
-pub use handle::IdentificationHandle;
+pub use handle::{IdentificationHandle, ShownCandidate};
 use queue::{admit, Queue};
 use settle::*;
 
@@ -65,12 +70,17 @@ struct Context {
     tables: crate::tables::ImportTables,
     /// Where a bug in the queue's work is reported.
     diagnostics: bae_diagnostics::Diagnostics,
+    /// The catalogs the runs ask, which the queue tells what work a person
+    /// awaits.
+    catalogs: crate::CatalogSessions,
 }
 
 /// What the handle asks the queue's loop for.
 enum Command {
     /// A person asked for this candidate to be identified now.
     Request { candidate_key: crate::CandidateKey },
+    /// A pane that showed `was` shows `now`.
+    Shown { was: Option<crate::CandidateKey>, now: Option<crate::CandidateKey> },
     /// A person cancelled these candidates' identification. `done` hears
     /// once the jobs are gone, or the first ending that could not be written.
     Cancel {
@@ -98,18 +108,19 @@ enum Drain {
 }
 
 /// Start the identification queue over `import`, reading the store
-/// `store` and import's tables `tables`, and reporting bugs to
-/// `diagnostics`. There is one per import
-/// service, since it takes the service's event feed.
+/// `store` and import's tables `tables`, telling `catalogs` what work a
+/// person awaits, and reporting bugs to `diagnostics`. There is one per
+/// import service, since it takes the service's event feed.
 pub(crate) fn start(
     import: ImportServiceHandle,
     store: bae_store::Store,
     tables: crate::tables::ImportTables,
     diagnostics: bae_diagnostics::Diagnostics,
+    catalogs: crate::CatalogSessions,
 ) -> IdentificationHandle {
     let token = CancellationToken::new();
     let tasks = TaskTracker::new();
-    let context = Context { import, store, tables, diagnostics };
+    let context = Context { import, store, tables, diagnostics, catalogs };
 
     let mut bus =
         context.import.take_event_feed().expect("one identification queue per import service");
