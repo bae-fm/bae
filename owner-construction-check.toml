@@ -435,3 +435,366 @@ ImageHold = "RemoteImageHost"
 "bae-import/src/handle/identification.rs" = [
     "ImportServiceHandle::start_identification_queue",
 ]
+
+# SQLite: the store and the crates whose domains keep tables in it. Only
+# these name a raw rusqlite handle.
+[[capabilities]]
+name = "SQLite"
+homes = [
+    "bae-store/src/",
+    "bae-records/src/",
+    "bae-people/src/",
+    "bae-sync-status/src/",
+    "bae-preferences/src/row.rs",
+    "bae-playback/src/tables/",
+    "bae-playback/src/renderer/picker.rs",
+    "bae-import/src/tables/",
+    "bae-transfers/src/queued_releases/",
+    "bae-transfers/src/release_storage_action.rs",
+    "bae-views/src/",
+]
+
+[[capabilities.gates]]
+kind = "SQLite library (rusqlite / libsqlite3-sys)"
+crates = ["rusqlite", "libsqlite3_sys"]
+
+# The library's tables by the domain that writes them. SQL anywhere may read
+# a table; only its domain's homes write it, in a statement or a trigger's
+# body, create it and its indexes, and hold the tests that write it. Each
+# domain names the owner that does its work, and every table a crate's `.sql`
+# file creates is in one domain.
+[database]
+capability = "SQLite"
+
+[[database.domains]]
+name = "records"
+owner = "Records"
+homes = [
+    "bae-records/src/records.rs",
+    "bae-records/src/records.sql",
+    "bae-records/src/records/",
+    "bae-records/src/test_fixtures.rs",
+    "bae-records/src/test_fixtures/",
+]
+tables = [
+    "artists",
+    "artist_credits",
+    "artist_merges",
+    "artist_shown_as",
+    "artist_images",
+    "albums",
+    "album_artists",
+    "works",
+    "work_artists",
+    "work_parts",
+    "releases",
+    "labels",
+    "label_merges",
+    "release_labels",
+    "release_barcodes",
+    "release_media",
+    "covers",
+    "release_files",
+    "release_artist_roles",
+    "release_records",
+    "release_mediums",
+    "tracks",
+    "track_artists",
+    "track_artist_roles",
+    "track_works",
+    "audio_formats",
+    "audio_format_segments",
+    "audio_segment_scrub_points",
+]
+
+[[database.domains]]
+name = "release storage"
+owner = "Records"
+homes = ["bae-records/src/release_storage.rs", "bae-records/src/release_storage.sql"]
+tables = ["release_storage"]
+
+[[database.domains]]
+name = "people"
+owner = "People"
+homes = ["bae-people/src/people.rs", "bae-people/src/people.sql", "bae-people/src/people/"]
+tables = [
+    "people",
+    "ratings",
+    "playlists",
+    "playlist_entries",
+    "history",
+    "local_history",
+    "profile_request",
+]
+
+[[database.domains]]
+name = "membership"
+owner = "Membership"
+homes = [
+    "bae-people/src/membership.rs",
+    "bae-people/src/membership.sql",
+    "bae-people/src/membership/",
+]
+tables = ["admin_operations"]
+
+[[database.domains]]
+name = "sync"
+owner = "SyncStatus"
+homes = [
+    "bae-sync-status/src/sync_status.rs",
+    "bae-sync-status/src/sync_status.sql",
+    "bae-sync-status/src/sync_status/",
+]
+tables = ["sync_start_failure"]
+
+[[database.domains]]
+name = "preferences"
+owner = "Store"
+homes = ["bae-preferences/src/row.rs", "bae-preferences/src/row.sql"]
+tables = ["preferences", "save_preset", "save_preset_filename_token"]
+
+[[database.domains]]
+name = "playback queue"
+owner = "PlaybackQueueTables"
+homes = [
+    "bae-playback/src/tables/queue.rs",
+    "bae-playback/src/tables/queue.sql",
+    "bae-playback/src/tables/queue_fill.rs",
+    "bae-playback/src/tables/resume.rs",
+]
+tables = ["playback_queue", "playback_manual", "playback_context", "playback_state"]
+
+[[database.domains]]
+name = "playback now"
+owner = "PlaybackNowRow"
+homes = ["bae-playback/src/tables/now.rs", "bae-playback/src/tables/now.sql"]
+tables = ["playback_now"]
+
+[[database.domains]]
+name = "playback timeline"
+owner = "PlaybackTimelineRow"
+homes = ["bae-playback/src/tables/timeline.rs", "bae-playback/src/tables/timeline.sql"]
+tables = ["playback_timeline"]
+
+[[database.domains]]
+name = "cast picker"
+owner = "CastPicker"
+homes = ["bae-playback/src/renderer/picker.rs", "bae-playback/src/renderer/picker.sql"]
+tables = ["cast_device"]
+
+[[database.domains]]
+name = "watched folders"
+owner = "ImportTables"
+homes = [
+    "bae-import/src/tables/watched_folders.rs",
+    "bae-import/src/tables/watched_folders.sql",
+    "bae-import/src/tables/watched_folders/",
+]
+tables = ["watched_import_folders"]
+
+[[database.domains]]
+name = "skipped candidates"
+owner = "ImportTables"
+homes = [
+    "bae-import/src/tables/skipped_candidates.rs",
+    "bae-import/src/tables/skipped_candidates.sql",
+]
+tables = ["skipped_import_candidates"]
+
+[[database.domains]]
+name = "folder scans"
+owner = "ImportTables"
+homes = [
+    "bae-import/src/tables/folder_scans.rs",
+    "bae-import/src/tables/folder_scans.sql",
+    "bae-import/src/tables/folder_scans/",
+]
+tables = [
+    "folder_discovery",
+    "folder_scan_generation_sequence",
+    "folder_scan_roots",
+    "folder_scan_directory",
+    "scan_candidate",
+    "scan_candidate_file",
+    "scan_candidate_tag_snapshot",
+    "scan_candidate_file_tag",
+    "scan_candidate_part",
+    "scan_skipped_file",
+    "scan_skipped_tags",
+    "scan_sidecar",
+    "scan_sidecar_file",
+    "scan_cue_sheet",
+    "scan_cue_track",
+    "scan_cue_index",
+    "scan_sheet_audio_file",
+]
+
+[[database.domains]]
+name = "release groupings"
+owner = "ImportTables"
+homes = [
+    "bae-import/src/tables/release_groupings.rs",
+    "bae-import/src/tables/release_groupings.sql",
+    "bae-import/src/tables/release_groupings/",
+]
+tables = ["release_grouping", "release_grouping_member"]
+
+[[database.domains]]
+name = "candidate state"
+owner = "ImportTables"
+homes = ["bae-import/src/tables/import_state.rs", "bae-import/src/tables/import_state/"]
+tables = [
+    "import_candidate_state",
+    "import_candidate_folder",
+    "import_candidate_edit",
+    "import_candidate_edit_label",
+    "import_candidate_edit_barcode",
+    "import_candidate_album_artist_assignment",
+    "import_candidate_medium",
+    "import_candidate_track",
+    "import_candidate_track_artist_assignment",
+    "import_candidate_track_role",
+    "import_candidate_release_role",
+    "import_candidate_work",
+    "import_candidate_work_composer",
+    "import_candidate_work_part",
+    "import_candidate_track_work",
+    "import_candidate_sheet_disc",
+    "import_candidate_sheet_reference",
+    "import_candidate_cover",
+    "import_candidate_album_pick",
+    "import_candidate_cover_copy",
+    "import_candidate_draft_provenance",
+    "import_candidate_release_link",
+    "import_candidate_release_link_partner",
+    "import_candidate_release_link_album",
+    "import_candidate_session",
+    "import_candidate_standing",
+    "import_identification_batch",
+    "import_identify_run",
+    "import_candidate_search",
+    "import_candidate_search_source",
+    "import_candidate_failure",
+    "import_candidate_signals",
+    "import_candidate_signal_value",
+    "import_candidate_text_line",
+    "import_candidate_lookup_choices",
+    "import_candidate_chosen_catalog",
+    "import_candidate_discounted_catalog",
+    "import_candidate_excluded_barcode",
+    "import_candidate_verdict",
+    "import_candidate_match",
+    "import_candidate_match_label",
+    "import_candidate_match_barcode",
+    "import_candidate_match_cover_copy",
+    "import_candidate_match_link",
+    "import_candidate_match_album_link",
+    "import_candidate_match_medium",
+    "import_candidate_lookup_provider",
+    "import_candidate_lookup_isrc",
+    "import_candidate_lookup_offered_catalog",
+    "import_candidate_lookup_value",
+    "import_candidate_lookup",
+    "import_candidate_lookup_release",
+]
+
+[[database.domains]]
+name = "source releases"
+owner = "ImportTables"
+homes = [
+    "bae-import/src/tables/source_releases.rs",
+    "bae-import/src/tables/source_releases.sql",
+    "bae-import/src/tables/source_releases/",
+    "bae-import/src/tables/album_link_rows.rs",
+    "bae-import/src/tables/album_link_rows.sql",
+]
+tables = [
+    "source_release",
+    "source_release_label",
+    "source_release_barcode",
+    "source_release_album_artist",
+    "source_release_link",
+    "source_release_album_link",
+    "source_release_format",
+    "source_release_record",
+    "release_group_album_link",
+    "source_release_cover",
+    "source_release_cover_copy",
+    "source_release_archive_group",
+    "source_release_role",
+    "source_release_medium",
+    "source_release_medium_disc",
+    "source_release_entry",
+    "source_release_entry_credit",
+    "source_release_entry_role",
+    "source_release_work",
+    "source_release_work_composer",
+    "source_release_unfetched",
+]
+
+[[database.domains]]
+name = "import origin"
+owner = "ImportTables"
+homes = ["bae-import/src/tables/import_origin.rs", "bae-import/src/tables/import_origin.sql"]
+tables = ["local_release_origin"]
+
+[[database.domains]]
+name = "import list"
+owner = "ImportTables"
+homes = ["bae-import/src/tables/import_list.rs", "bae-import/src/tables/import_list/"]
+tables = [
+    "import_list_placement",
+    "import_list_tab_count",
+    "import_list_entry_count",
+    "import_list_group_entry_count",
+    "import_list_search",
+    "import_list",
+    "import_list_collapsed",
+    "import_list_selection",
+    "import_list_versions",
+]
+
+[[database.domains]]
+name = "transfers"
+owner = "QueuedReleases"
+homes = [
+    "bae-transfers/src/queued_releases.rs",
+    "bae-transfers/src/queued_releases/",
+    "bae-transfers/src/release_storage_action.rs",
+    "bae-transfers/src/release_storage_action.sql",
+]
+tables = [
+    "release_queues",
+    "download_queue",
+    "output_queue",
+    "release_storage_action",
+    "release_queue_versions",
+]
+
+[[database.domains]]
+name = "library views"
+owner = "LibraryViews"
+homes = ["bae-views/src/"]
+tables = [
+    "composer_work",
+    "composer_release",
+    "composer_unlinked_credit",
+    "composer_listing",
+    "composer_detail_row",
+    "album_listing",
+    "album_artist_link",
+    "artist_listing",
+    "release_listing",
+    "release_listing_totals",
+    "album_search_entry",
+    "album_search",
+    "track_search_entry",
+    "track_search",
+    "work_search_entry",
+    "work_search",
+    "artist_search_entry",
+    "artist_search",
+    "artist_credit_search_entry",
+    "artist_credit_search",
+    "library_list_versions",
+]
