@@ -280,8 +280,12 @@ impl BridgeHost {
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
     ) -> Result<Arc<Self>, BridgeError> {
-        let coven = coven::Coven::in_memory(app_dir.core().coven_app_dir());
-        Self::start(diagnostics.core().clone(), app_dir, coven, bae_playback::AudioFocus::Unshared)
+        let diagnostics = diagnostics.core().clone();
+        let coven = coven::Coven::in_memory_reporting_to(
+            app_dir.core().coven_app_dir(),
+            Arc::new(diagnostics.clone()),
+        );
+        Self::start(diagnostics, app_dir, coven, bae_playback::AudioFocus::Unshared)
     }
 }
 
@@ -537,7 +541,7 @@ fn installation(
     diagnostics: &Diagnostics,
     app_dir: &bae_app_dir::AppDir,
 ) -> Result<coven::Coven, BridgeError> {
-    app_dir.coven().map_err(|error| {
+    app_dir.coven(Arc::new(diagnostics.clone())).map_err(|error| {
         diagnostics.event(TelemetryEvent::KeyringInitFailed {});
         BridgeError::Diagnostic {
             category: crate::types::BridgeErrorCategory::Keyring,

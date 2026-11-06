@@ -353,3 +353,25 @@ fn a_bug_reaches_the_crash_reporter_the_platform_handed_in() {
     );
     Diagnostics::noop().report_bug("read the upload queue", &"logged only");
 }
+
+/// A bug coven finds in work nobody waits for reaches the crash reporter
+/// the platform handed in, naming the work that panicked.
+#[test]
+fn a_bug_coven_reports_reaches_the_crash_reporter() {
+    let reporter = Arc::new(RecordingBugReporter::default());
+    let sink: coven::task::BugSinkRef =
+        Arc::new(Diagnostics::noop().reporting_bugs_to(reporter.clone()));
+
+    sink.report(&coven::task::Bug {
+        operation: "upload a file",
+        message: "the queue broke its order".to_string(),
+    });
+
+    assert_eq!(
+        reporter.reports(),
+        [(
+            "upload a file".to_string(),
+            "upload a file panicked: the queue broke its order".to_string()
+        )]
+    );
+}

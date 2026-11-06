@@ -19,6 +19,15 @@ use bae_util::task_failure::{caught, caught_sync, Bug, TaskFailed};
 
 use super::Diagnostics;
 
+/// coven's bugs in work nobody waits for, such as a store's sync loop and
+/// upload worker or work whose caller stopped waiting, reach the crash
+/// reporter as core's own do.
+impl coven::task::BugSink for Diagnostics {
+    fn report(&self, bug: &Bug) {
+        self.report_bug(bug.operation, bug);
+    }
+}
+
 impl Diagnostics {
     /// Report `failed` when it is a panic, and hand it back for the caller's
     /// own error type. A runtime shutting down under the work is not a bug.

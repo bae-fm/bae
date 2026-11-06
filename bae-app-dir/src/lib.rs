@@ -112,16 +112,10 @@ impl AppDir {
     /// its own directory under the app directory, their keys and secrets in
     /// the OS keychain under bae's service. Built once at process start, so
     /// a keychain coven can't reach fails the start, and held while the
-    /// process runs.
-    pub fn coven(&self) -> Result<coven::Coven, coven::KeyError> {
-        // Sentinel: the bug sink commit passes bae's crash reporter. Until
-        // then coven's bugs in work nobody waits for are logged, as they
-        // were while bae named no sink.
-        coven::Coven::new(
-            self.path.clone(),
-            KEYRING_SERVICE,
-            std::sync::Arc::new(coven::task::LoggedBugs),
-        )
+    /// process runs. coven reports its bugs in work nobody waits for to
+    /// `bugs`, the app's crash reporter.
+    pub fn coven(&self, bugs: coven::task::BugSinkRef) -> Result<coven::Coven, coven::KeyError> {
+        coven::Coven::new(self.path.clone(), KEYRING_SERVICE, bugs)
     }
 
     /// The app directory coven keeps this device's stores under, which a

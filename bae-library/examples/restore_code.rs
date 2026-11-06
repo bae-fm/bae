@@ -18,7 +18,7 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let installation = match app_dir.coven() {
+    let installation = match app_dir.coven(std::sync::Arc::new(coven::task::LoggedBugs)) {
         Ok(installation) => installation,
         Err(error) => {
             eprintln!("open the keychain failed: {error}");

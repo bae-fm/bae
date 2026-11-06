@@ -4265,7 +4265,10 @@ each device and hands playback the channel or sink.
   A panic in work core runs apart from whoever asked for it — on a blocking
   thread, as a task or a thread of its own — is such a bug: it is reported,
   and what the work served ends with it, the operation that asked failing
-  with "Something went wrong", never left waiting.
+  with "Something went wrong", never left waiting. coven's own bugs in work
+  nobody waits for, such as a store's sync loop and upload worker, reach the
+  same crash reporter: bae hands coven its reporter when it builds the
+  device's libraries at launch.
 - **Logs stay in the platform's log.** Core's and each app's log lines go to
   the platform's own log on the device: the unified log on macOS and iOS,
   logcat on Android, ETW on Windows, the systemd journal on Linux. A
