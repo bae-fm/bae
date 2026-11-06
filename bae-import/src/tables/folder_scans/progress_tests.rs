@@ -157,3 +157,36 @@ async fn stored_scans_list_a_folder_no_scan_has_begun() {
         ]
     );
 }
+
+/// Reading the stored scans runs the same SQLite steps however many
+/// candidates the generation in flight holds, since every scan write wakes
+/// this read: counting them per read cost nine steps a candidate.
+#[tokio::test]
+async fn reading_the_stored_scans_costs_the_same_as_the_scan_grows() {
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let root = &crate::tables::watched_path::host_root("/music");
+    tables.add_watched_import_folder(root).await.unwrap();
+    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
+    let counter = db.track_work_for_test().await.unwrap();
+    let mut stored = 0;
+    let mut steps = Vec::new();
+    for size in [10, 1_000] {
+        while stored < size {
+            tables
+                .save_folder_scan_item(
+                    root,
+                    generation,
+                    &scan_candidate(root, &format!("a{stored}")),
+                )
+                .await
+                .unwrap();
+            stored += 1;
+        }
+        counter.take();
+        let scans = tables.load_stored_folder_scans().await.unwrap();
+        assert_eq!(only_outcome(scans), crate::StoredScanOutcome::Unfinished { found_count: size });
+        steps.push(counter.take().app_read_steps);
+    }
+    assert_eq!(steps[0], steps[1], "steps per read at 10 and at 1,000 candidates");
+}

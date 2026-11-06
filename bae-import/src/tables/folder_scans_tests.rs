@@ -550,6 +550,80 @@ async fn a_grouping_is_found_when_combined_only() {
     assert!(rebuilt.iter().all(|changes| changes.found.is_empty()));
 }
 
+/// The root's kept count of its current generation's folder candidates and
+/// the count its rows give, which the triggers keep the same.
+async fn found_counts(db: &Store) -> (i64, i64) {
+    db.read(|sql| {
+        Ok(sql.query_row(
+            "SELECT found_count, \
+                    (SELECT COUNT(*) FROM scan_candidate AS candidate \
+                     WHERE candidate.watched_folder_path = roots.watched_folder_path \
+                       AND candidate.generation = roots.generation \
+                       AND candidate.source_kind = 'folder') \
+             FROM folder_scan_roots AS roots",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )?)
+    })
+    .await
+    .unwrap()
+}
+
+/// The root's kept count says what its rows count after every kind of write
+/// a scan makes: a candidate inserted, written over, restamped by a new
+/// generation, a grouping's row beside the folders, and the rows another
+/// generation left, pruned as the scan ends.
+#[tokio::test]
+async fn the_found_count_matches_the_current_generations_folders() {
+    use crate::folder_scanner::ScanItem;
+
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let music = host_root("/music");
+    tables.add_watched_import_folder(&music).await.unwrap();
+    let first = tables.begin_folder_scan(&music, crate::VolumeKind::Local).await.unwrap();
+    assert_eq!(found_counts(&db).await, (0, 0));
+
+    let members: Vec<_> = ["Volume A", "Volume B", "Volume C"]
+        .into_iter()
+        .map(|name| candidate(&music, name))
+        .collect();
+    for (written, member) in members.iter().enumerate() {
+        write(&db, &music, first, &ScanItem::Valid(member.clone())).await;
+        assert_eq!(found_counts(&db).await, (written as i64 + 1, written as i64 + 1));
+    }
+    let mut renamed = members[0].clone();
+    renamed.name = "Volume A, renamed".into();
+    write(&db, &music, first, &ScanItem::Valid(renamed.clone())).await;
+    assert_eq!(found_counts(&db).await, (3, 3), "a row written over stays one");
+
+    tables.finish_folder_scan(&music, first, None).await.unwrap();
+    tables
+        .combine_releases(
+            crate::CandidateKey::grouping("picked"),
+            vec![renamed, members[1].clone()],
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    let (kept, counted) = found_counts(&db).await;
+    assert_eq!(kept, counted, "a grouping's row is no folder");
+
+    let second = tables.begin_folder_scan(&music, crate::VolumeKind::Local).await.unwrap();
+    assert_eq!(found_counts(&db).await, (0, 0), "a new generation starts with none");
+    write(&db, &music, second, &ScanItem::Valid(members[2].clone())).await;
+    write(&db, &music, second, &ScanItem::Valid(candidate(&music, "Volume D"))).await;
+    let (kept, counted) = found_counts(&db).await;
+    assert_eq!((kept, counted), (2, 2), "a restamped row and a new one count");
+
+    tables.finish_folder_scan(&music, second, None).await.unwrap();
+    assert_eq!(
+        found_counts(&db).await,
+        (2, 2),
+        "pruning the rows the second generation never saw leaves its own"
+    );
+}
+
 /// A tentative candidate at `name` below `root`.
 fn tentative_candidate(root: &std::path::Path, name: &str) -> crate::folder_scanner::ScanItem {
     match scanned_candidate(root, name) {

@@ -2,8 +2,9 @@
 //! watched folder, with its scan root once a scan has opened one.
 //!
 //! The found count moves with every folder a scan walks, so this read is kept
-//! to the roots and a count of their current generation's folders — nothing a
-//! scan's write wakes here costs a read of the queue. Whether a root is being
+//! to the roots and the count their triggers keep of the current generation's
+//! folders — nothing a scan's write wakes here costs a read of the queue or
+//! of the candidates. Whether a root is being
 //! read is the folder scan coordinator's to say, not the table's
 //! ([`crate::folder_scan_status`]).
 
@@ -17,10 +18,7 @@ use crate::folder_scan_status::{StoredRootScan, StoredScan, StoredScanOutcome};
 /// NULL on a root, so a NULL one is a folder with none.
 const FOLDER_SCAN_PROGRESS: &str = "SELECT watched.path, roots.status, \
             roots.error, roots.volume, \
-            (SELECT COUNT(*) FROM scan_candidate AS candidate \
-             WHERE candidate.watched_folder_path = roots.watched_folder_path \
-               AND candidate.generation = roots.generation \
-               AND candidate.source_kind = 'folder') \
+            COALESCE(roots.found_count, 0) \
      FROM watched_import_folders AS watched \
      LEFT JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.path \
      ORDER BY watched.position";

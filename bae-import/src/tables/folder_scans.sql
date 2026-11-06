@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS folder_scan_roots (
     -- The volume the folder was on when the scan began, asked once per scan so
     -- reading scan state never waits on a mount.
     volume              TEXT NOT NULL CHECK (volume IN ('local', 'network')),
+    -- How many folder candidates the current generation holds, kept by the
+    -- triggers below so reading the scan's progress never counts them.
+    found_count         INTEGER NOT NULL DEFAULT 0 CHECK (found_count >= 0),
     CHECK ((status IS 'failed') = (error IS NOT NULL)),
     FOREIGN KEY (watched_folder_path)
         REFERENCES watched_import_folders (path)
@@ -94,6 +97,49 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_path ON scan_candidate (path);
+
+-- `folder_scan_roots.found_count`: the folder candidates of the root's
+-- current generation. A candidate counts while it is a folder's and carries
+-- its root's generation; each trigger moves the count by what its write
+-- changed about that, and a root's new generation is counted once as it
+-- begins.
+CREATE TRIGGER IF NOT EXISTS scan_candidate_found_insert
+AFTER INSERT ON scan_candidate
+WHEN NEW.source_kind = 'folder'
+BEGIN
+    UPDATE folder_scan_roots SET found_count = found_count + 1
+    WHERE watched_folder_path = NEW.watched_folder_path AND generation = NEW.generation;
+END;
+
+CREATE TRIGGER IF NOT EXISTS scan_candidate_found_delete
+AFTER DELETE ON scan_candidate
+WHEN OLD.source_kind = 'folder'
+BEGIN
+    UPDATE folder_scan_roots SET found_count = found_count - 1
+    WHERE watched_folder_path = OLD.watched_folder_path AND generation = OLD.generation;
+END;
+
+CREATE TRIGGER IF NOT EXISTS scan_candidate_found_update
+AFTER UPDATE OF generation, source_kind ON scan_candidate
+BEGIN
+    UPDATE folder_scan_roots SET found_count = found_count - 1
+    WHERE OLD.source_kind = 'folder'
+      AND watched_folder_path = OLD.watched_folder_path AND generation = OLD.generation;
+    UPDATE folder_scan_roots SET found_count = found_count + 1
+    WHERE NEW.source_kind = 'folder'
+      AND watched_folder_path = NEW.watched_folder_path AND generation = NEW.generation;
+END;
+
+CREATE TRIGGER IF NOT EXISTS folder_scan_roots_found_generation
+AFTER UPDATE OF generation ON folder_scan_roots
+BEGIN
+    UPDATE folder_scan_roots SET found_count = (
+        SELECT COUNT(*) FROM scan_candidate AS candidate
+        WHERE candidate.watched_folder_path = NEW.watched_folder_path
+          AND candidate.generation = NEW.generation
+          AND candidate.source_kind = 'folder')
+    WHERE watched_folder_path = NEW.watched_folder_path;
+END;
 
 -- The release a grouping reads as one, which goes with the grouping.
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_grouping ON scan_candidate (grouping_key);
