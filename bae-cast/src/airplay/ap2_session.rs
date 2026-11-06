@@ -17,7 +17,7 @@ use std::net::{IpAddr, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use bae_playback::airplay_output::{PcmSource, PCM_CHANNELS, PCM_SAMPLE_RATE};
+use bae_playback::airplay_output::{PCM_CHANNELS, PCM_SAMPLE_RATE};
 use tracing::warn;
 
 use super::airplay2::{Ap2AudioCipher, PairVerify};
@@ -27,8 +27,8 @@ use super::pairing::{PairingError, TransientPairing};
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::stream::{
-    poisoned_connection, MonotonicClock, PayloadCrypto, RaopStream, RaopStreamControl, RtpAudio,
-    StreamEndpoints, StreamSockets, DEFAULT_LATENCY_FRAMES,
+    poisoned_connection, MonotonicClock, PayloadCrypto, PcmFeed, RaopStream, RaopStreamControl,
+    RtpAudio, StreamEndpoints, StreamSockets, DEFAULT_LATENCY_FRAMES,
 };
 
 const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
@@ -430,12 +430,12 @@ pub(crate) struct Ap2Session {
 impl Ap2Session {
     /// Connect to an AirPlay 2 receiver, run transient pair-setup then pair-verify,
     /// drive the encrypted SETUP/SETPEERS/SETRATEANCHORTIME/RECORD sequence, and
-    /// start streaming `source` as ChaCha-encrypted audio.
+    /// start streaming `feed` as ChaCha-encrypted audio.
     pub(crate) fn start(
         diagnostics: &bae_diagnostics::Diagnostics,
         receiver: IpAddr,
         airplay_port: u16,
-        source: Box<dyn PcmSource>,
+        feed: PcmFeed,
         timing: super::airplay2::TimingProtocol,
         clock: Arc<dyn MonotonicClock>,
     ) -> Result<Self, Ap2Error> {
@@ -494,7 +494,7 @@ impl Ap2Session {
         let stream_control = RaopStreamControl::new(latency);
         let stream = RaopStream::spawn(
             diagnostics,
-            source,
+            feed,
             PayloadCrypto::Ap2(cipher),
             endpoints,
             RtpAudio {

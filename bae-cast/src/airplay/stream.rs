@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use bae_diagnostics::{Diagnostics, ReportedThread};
-use bae_playback::airplay_output::{PcmSource, PCM_SAMPLE_RATE};
+use bae_playback::airplay_output::{PcmSource, PcmWake, PCM_SAMPLE_RATE};
 use bae_util::task_failure::Bug;
 use tracing::{debug, warn};
 
@@ -237,11 +237,27 @@ pub(super) fn poisoned_connection<T>(poisoned: std::sync::PoisonError<T>) -> std
     ))
 }
 
+/// Where the audio sender's frames come from, and what it waits on while the
+/// source has none.
+pub(crate) struct PcmFeed {
+    source: Box<dyn PcmSource>,
+    wake: PcmWake,
+}
+
+impl PcmFeed {
+    pub(crate) fn new(source: Box<dyn PcmSource>, wake: PcmWake) -> Self {
+        Self { source, wake }
+    }
+}
+
 /// The live push-audio stream shared by both dialects: the UDP audio flow, the
 /// timing responder, and — for RAOP — the periodic sync packets. Dropping it
 /// stops every thread. Created by a session after RECORD.
 pub(crate) struct RaopStream {
     stop: Arc<AtomicBool>,
+    /// What the audio sender waits on for frames: woken after `stop` is set,
+    /// so a waiting sender sees it.
+    wake: PcmWake,
     threads: Vec<ReportedThread>,
 }
 
@@ -333,7 +349,7 @@ impl RaopStream {
     /// `diagnostics` and fails the stream, which ends the session.
     pub(super) fn spawn(
         diagnostics: &Diagnostics,
-        source: Box<dyn PcmSource>,
+        feed: PcmFeed,
         crypto: PayloadCrypto,
         endpoints: StreamEndpoints,
         audio: RtpAudio,
@@ -347,11 +363,13 @@ impl RaopStream {
         let control_dst = SocketAddr::new(endpoints.receiver, endpoints.control_port);
 
         let stop = Arc::new(AtomicBool::new(false));
+        let PcmFeed { source, wake } = feed;
         let mut threads = vec![
             spawn_audio_thread(
                 diagnostics,
                 AudioThread {
                     source,
+                    wake: wake.clone(),
                     packetizer: Packetizer::new(
                         audio.ssrc,
                         crypto,
@@ -381,13 +399,14 @@ impl RaopStream {
             )?);
         }
 
-        Ok(RaopStream { stop, threads })
+        Ok(RaopStream { stop, wake, threads })
     }
 }
 
 impl Drop for RaopStream {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
+        self.wake.wake();
         for thread in self.threads.drain(..) {
             thread.join();
         }
@@ -397,6 +416,7 @@ impl Drop for RaopStream {
 /// The state one audio-sender thread owns.
 struct AudioThread {
     source: Box<dyn PcmSource>,
+    wake: PcmWake,
     packetizer: Packetizer,
     pacer: Pacer,
     sample_rate: u32,
@@ -409,8 +429,9 @@ struct AudioThread {
 
 /// Pull PCM one packet at a time, pace by the clock, and send. Persistent: a
 /// source with nothing to give (paused, starved, between tracks) yields no
-/// packet but the thread lives on — only [`RaopStream`] being dropped (the stop
-/// flag) ends it, so pause and gapless track swaps don't tear the stream down. A
+/// packet but the thread lives on, waiting on the feed's wake until the source
+/// may have frames again — only [`RaopStream`] being dropped (the stop flag)
+/// ends it, so pause and gapless track swaps don't tear the stream down. A
 /// re-anchor resets the pacing lead and clock and re-marks the next packet.
 fn spawn_audio_thread(
     diagnostics: &Diagnostics,
@@ -427,7 +448,13 @@ fn spawn_audio_thread(
             let mut buf = vec![0i16; FRAMES_PER_PACKET as usize * channels];
             let mut seen_reanchor = t.control.reanchor_epoch();
             let mut consecutive_failures = 0u32;
-            while !t.stop.load(Ordering::Acquire) {
+            loop {
+                // Read before the stop flag and the pulls, so a stop or new
+                // frames that land after this read end the wait below at once.
+                let seen = t.wake.changes();
+                if t.stop.load(Ordering::Acquire) {
+                    break;
+                }
                 let epoch = t.control.reanchor_epoch();
                 if epoch != seen_reanchor {
                     t.pacer = Pacer::new(t.sample_rate, t.control.latency_frames());
@@ -437,7 +464,7 @@ fn spawn_audio_thread(
                 }
 
                 let due = t.pacer.packets_due(t.clock.elapsed());
-                let mut sent_any = false;
+                let mut starved = false;
                 for _ in 0..due {
                     if t.stop.load(Ordering::Acquire) {
                         break;
@@ -445,6 +472,7 @@ fn spawn_audio_thread(
                     buf.iter_mut().for_each(|s| *s = 0);
                     if t.source.next_frames(&mut buf) == 0 {
                         // Nothing to send this packet; wait rather than end.
+                        starved = true;
                         break;
                     }
                     let packet = t.packetizer.packet(&buf);
@@ -464,9 +492,11 @@ fn spawn_audio_thread(
                     }
                     t.pacer.record_packet();
                     t.control.record_frames(u64::from(FRAMES_PER_PACKET));
-                    sent_any = true;
                 }
-                if due == 0 || !sent_any {
+                if starved {
+                    t.wake.wait_past(seen);
+                } else if due == 0 {
+                    // No packet is due yet: pace to the clock.
                     std::thread::sleep(Duration::from_millis(5));
                 }
             }

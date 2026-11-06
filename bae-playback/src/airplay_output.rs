@@ -44,6 +44,47 @@ pub trait PcmSource: Send {
     fn next_frames(&mut self, out: &mut [i16]) -> usize;
 }
 
+/// What the AirPlay sender waits on while its [`PcmSource`] has no frames.
+/// The player wakes it whenever the source may have frames again: a resume, a
+/// decoder's push, a track placed in the source. The sender's owner wakes it
+/// to stop. Read [`Self::changes`] before pulling, and when a pull yields
+/// nothing, [`Self::wait_past`] what was read: a change in between ends the
+/// wait at once.
+#[derive(Clone)]
+pub struct PcmWake {
+    controls: AudioOutputControls,
+}
+
+impl PcmWake {
+    /// The changes counted so far that could give the source frames.
+    pub fn changes(&self) -> u64 {
+        self.controls.drain_changes()
+    }
+
+    /// Wait until a change past `seen` could give the source frames.
+    pub fn wait_past(&self, seen: u64) {
+        self.controls.wait_for_drain_work(seen);
+    }
+
+    /// End a wait in progress: the sender is stopping.
+    pub fn wake(&self) {
+        self.controls.wake_drain();
+    }
+
+    /// Test-only: a wake no player notifies, for a sender test that feeds its
+    /// own source and wakes it itself.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn unattached() -> Self {
+        Self { controls: AudioOutputControls::new(crate::Volume::FULL) }
+    }
+
+    /// Test-only: wait until the sender is waiting for frames.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn wait_until_waiting(&self) {
+        self.controls.wait_until_drain_waits();
+    }
+}
+
 /// The transport controls the playback service drives a live AirPlay stream
 /// through: pause (FLUSH), resume/seek (re-anchor), whether the audio flow
 /// failed, and the receiver latency the stream runs at. Implemented by the RAOP
@@ -66,11 +107,13 @@ pub trait AirPlayStreamControl: Send + Sync {
 /// Starts pushing decoded PCM to an AirPlay receiver. bae-cast implements it
 /// over a RAOP or AirPlay 2 session; tests supply a fake.
 pub trait AirPlaySink: Send {
-    /// Begin streaming `source`. The returned session owns the receiver
-    /// connection and is retained by the output stream.
+    /// Begin streaming `source`, waiting on `wake` while it has no frames. The
+    /// returned session owns the receiver connection and is retained by the
+    /// output stream.
     fn start(
         &self,
         source: Box<dyn PcmSource>,
+        wake: PcmWake,
     ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError>;
 }
 
@@ -149,9 +192,10 @@ impl AudioOutput for AirPlayOutput {
         // per-change device round-trip.
         let drain =
             AudioDrain::new(controls.clone(), source, audio_events, position_update_interval_ms);
+        let wake = PcmWake { controls: controls.clone() };
         let pcm_source =
             Box::new(DrainSource::new(drain, controls, source_sample_rate, source_channels)?);
-        let session = self.sink.start(pcm_source)?;
+        let session = self.sink.start(pcm_source, wake)?;
         self.control.bind(&session);
         Ok(Box::new(AirPlayAudioStream { _session: session }))
     }

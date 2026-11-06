@@ -380,13 +380,14 @@ impl PlaybackService {
         self.renderer.play_remote();
         // On AirPlay, re-anchor the pacing after the FLUSH so the resumed stream
         // starts fresh rather than bursting to catch a clock that ran during the
-        // pause.
+        // pause. Asked before the state goes Playing: the sender wakes on that
+        // change and must find the re-anchor already there.
+        self.renderer.reanchor_airplay();
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             cur.phase = TrackPhase::Playing;
             self.sync_audio_state();
             self.emit_state();
         }
-        self.renderer.reanchor_airplay();
     }
 }
 

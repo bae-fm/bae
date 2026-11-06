@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use bae_diagnostics::Diagnostics;
-use bae_playback::airplay_output::{AirPlaySink, AirPlayStreamControl, PcmSource};
+use bae_playback::airplay_output::{AirPlaySink, AirPlayStreamControl, PcmSource, PcmWake};
 use bae_playback::AudioError;
 use tracing::warn;
 
@@ -19,7 +19,7 @@ use super::ap2_session::Ap2Session;
 use super::capabilities::RaopEncryption;
 use super::crypto::{apple_public_key, RaopCipher};
 use super::session::RaopSession;
-use super::stream::SystemClock;
+use super::stream::{PcmFeed, SystemClock};
 
 /// The parameters an [`AirPlaySink`] needs to open a RAOP session to a receiver.
 pub(crate) struct RaopSink {
@@ -49,6 +49,7 @@ impl AirPlaySink for RaopSink {
     fn start(
         &self,
         source: Box<dyn PcmSource>,
+        wake: PcmWake,
     ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
         let cipher = match self.encryption {
             RaopEncryption::None => RaopCipher::none(),
@@ -59,7 +60,7 @@ impl AirPlaySink for RaopSink {
             &self.diagnostics,
             self.receiver,
             self.rtsp_port,
-            source,
+            PcmFeed::new(source, wake),
             cipher,
             self.initial_volume,
             Arc::new(SystemClock::new()),
@@ -117,12 +118,13 @@ impl AirPlaySink for Ap2Sink {
     fn start(
         &self,
         source: Box<dyn PcmSource>,
+        wake: PcmWake,
     ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
         let session = Ap2Session::start(
             &self.diagnostics,
             self.receiver,
             self.airplay_port,
-            source,
+            PcmFeed::new(source, wake),
             self.timing,
             Arc::new(SystemClock::new()),
         )

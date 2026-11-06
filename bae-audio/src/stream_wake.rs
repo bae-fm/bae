@@ -72,7 +72,7 @@ impl StreamWake {
 
     /// Test-only: wait until a thread is waiting for a change. Panics if the
     /// hang guard passes first.
-    #[cfg(any(test, feature = "test-instrumentation"))]
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn wait_until_waiting(&self) {
         let (_counts, result) = self
             .shared

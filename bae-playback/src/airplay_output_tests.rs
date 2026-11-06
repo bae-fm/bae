@@ -52,6 +52,7 @@ impl AirPlaySink for FakeSink {
     fn start(
         &self,
         mut source: Box<dyn PcmSource>,
+        _wake: PcmWake,
     ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
         // Pull one packet synchronously to record the frame conversion.
         let mut buf = vec![0i16; 8]; // 4 stereo frames

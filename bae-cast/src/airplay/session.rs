@@ -14,15 +14,15 @@ use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use bae_playback::airplay_output::{PcmSource, PCM_CHANNELS, PCM_SAMPLE_RATE};
+use bae_playback::airplay_output::{PCM_CHANNELS, PCM_SAMPLE_RATE};
 use tracing::warn;
 
 use super::crypto::RaopCipher;
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::stream::{
-    poisoned_connection, MonotonicClock, PayloadCrypto, RaopStream, RaopStreamControl, RtpAudio,
-    StreamEndpoints, StreamSockets, DEFAULT_LATENCY_FRAMES, FRAMES_PER_PACKET,
+    poisoned_connection, MonotonicClock, PayloadCrypto, PcmFeed, RaopStream, RaopStreamControl,
+    RtpAudio, StreamEndpoints, StreamSockets, DEFAULT_LATENCY_FRAMES, FRAMES_PER_PACKET,
 };
 
 /// A failure setting up or running a RAOP session.
@@ -222,13 +222,13 @@ pub(crate) struct RaopSession {
 }
 
 impl RaopSession {
-    /// Connect to `receiver`, run the handshake, and start streaming `source`.
+    /// Connect to `receiver`, run the handshake, and start streaming `feed`.
     /// `cipher` is the negotiated encryption ([`RaopCipher::none`] for `et=0`).
     pub(crate) fn start(
         diagnostics: &bae_diagnostics::Diagnostics,
         receiver: IpAddr,
         rtsp_port: u16,
-        source: Box<dyn PcmSource>,
+        feed: PcmFeed,
         cipher: RaopCipher,
         volume: bae_playback::Volume,
         clock: Arc<dyn MonotonicClock>,
@@ -270,7 +270,7 @@ impl RaopSession {
         let stream_control = RaopStreamControl::new(latency);
         let stream = RaopStream::spawn(
             diagnostics,
-            source,
+            feed,
             PayloadCrypto::Raop(cipher),
             endpoints,
             RtpAudio {

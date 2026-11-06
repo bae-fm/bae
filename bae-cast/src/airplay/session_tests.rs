@@ -1,7 +1,7 @@
 use super::*;
 use crate::airplay::crypto::apple_public_key;
 use crate::airplay::rtsp::read_request;
-use bae_playback::airplay_output::AirPlayStreamControl;
+use bae_playback::airplay_output::{AirPlayStreamControl, PcmSource};
 use std::io::{BufReader, Write};
 use std::net::{TcpListener, UdpSocket};
 
@@ -171,7 +171,10 @@ fn playback_is_told_the_latency_the_receiver_reports() {
         &bae_diagnostics::Diagnostics::noop(),
         addr.ip(),
         addr.port(),
-        Box::new(SilentSource),
+        crate::airplay::stream::PcmFeed::new(
+            Box::new(SilentSource),
+            bae_playback::airplay_output::PcmWake::unattached(),
+        ),
         RaopCipher::none(),
         bae_playback::Volume::FULL,
         Arc::new(crate::airplay::stream::SystemClock::new()),

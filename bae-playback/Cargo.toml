@@ -97,7 +97,7 @@ default = []
 # manual playback clock, and the seams the playback tests of the crates above
 # read. Dev/test-only: a
 # production build never enables it.
-test-utils = ["bae-store/test-utils", "bae-people/test-utils", "bae-records/test-utils", "bae-util/test-utils"]
+test-utils = ["bae-store/test-utils", "bae-people/test-utils", "bae-records/test-utils", "bae-util/test-utils", "bae-audio/test-utils"]
 
 [lints]
 workspace = true

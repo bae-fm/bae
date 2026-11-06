@@ -61,21 +61,30 @@ fn pacer_leads_by_latency_then_tracks_the_clock() {
     assert_eq!(pacer.frames_sent(), 250 * u64::from(FRAMES_PER_PACKET));
 }
 
-/// A source that yields a fixed number of packets then reports nothing, and
-/// tells a test each time it is asked after that: the sender has sent every
-/// packet the source made by then.
+/// A source that yields the packets a test gives it, then reports nothing,
+/// and tells the test each time it is asked with none left: the sender has
+/// sent every packet the source had by then.
 struct FixedSource {
-    packets_left: usize,
+    packets_left: Arc<std::sync::atomic::AtomicUsize>,
     drained: std::sync::mpsc::Sender<()>,
+}
+impl FixedSource {
+    fn holding(
+        packets: usize,
+    ) -> (Self, Arc<std::sync::atomic::AtomicUsize>, std::sync::mpsc::Receiver<()>) {
+        let packets_left = Arc::new(std::sync::atomic::AtomicUsize::new(packets));
+        let (drained, drained_rx) = std::sync::mpsc::channel();
+        (Self { packets_left: packets_left.clone(), drained }, packets_left, drained_rx)
+    }
 }
 impl PcmSource for FixedSource {
     fn next_frames(&mut self, out: &mut [i16]) -> usize {
-        if self.packets_left == 0 {
+        if self.packets_left.load(Ordering::Acquire) == 0 {
             // A test that stopped listening needs no more.
             self.drained.send(()).ok();
             return 0;
         }
-        self.packets_left -= 1;
+        self.packets_left.fetch_sub(1, Ordering::AcqRel);
         out.fill(1);
         out.len() / 2
     }
@@ -94,12 +103,14 @@ fn audio_thread(
     diagnostics: &Diagnostics,
     source: Box<dyn PcmSource>,
     stop: Arc<AtomicBool>,
+    wake: PcmWake,
 ) -> (ReportedThread, RaopStreamControl) {
     let control = RaopStreamControl::new(88_200);
     let handle = spawn_audio_thread(
         diagnostics,
         AudioThread {
             source,
+            wake,
             packetizer: Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, 0, 0),
             pacer: Pacer::new(44_100, 88_200),
             sample_rate: 44_100,
@@ -130,8 +141,12 @@ impl PcmSource for PanickingSource {
 fn a_sender_that_panics_fails_the_stream_and_is_reported() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = Diagnostics::noop().reporting_bugs_to(bugs.clone());
-    let (handle, control) =
-        audio_thread(&diagnostics, Box::new(PanickingSource), Arc::new(AtomicBool::new(false)));
+    let (handle, control) = audio_thread(
+        &diagnostics,
+        Box::new(PanickingSource),
+        Arc::new(AtomicBool::new(false)),
+        PcmWake::unattached(),
+    );
 
     handle.join();
 
@@ -149,28 +164,55 @@ fn a_sender_that_panics_fails_the_stream_and_is_reported() {
 }
 
 /// A source that drains does NOT end the thread — the stream is persistent, so
-/// it keeps running (idle) until the stop flag is set, and it sent exactly the
-/// frames the source produced.
+/// it keeps running (waiting) until the stop flag is set and the wake rung,
+/// and it sent exactly the frames the source produced.
 #[test]
 fn audio_thread_is_persistent_across_a_drained_source() {
     let stop = Arc::new(AtomicBool::new(false));
-    let (drained, drained_rx) = std::sync::mpsc::channel();
-    let (handle, control) = audio_thread(
-        &Diagnostics::noop(),
-        Box::new(FixedSource { packets_left: 3, drained }),
-        stop.clone(),
-    );
+    let wake = PcmWake::unattached();
+    let (source, _packets, drained_rx) = FixedSource::holding(3);
+    let (handle, control) =
+        audio_thread(&Diagnostics::noop(), Box::new(source), stop.clone(), wake.clone());
 
     // The source is asked again once the three packets are sent; the thread
-    // stays alive after.
+    // waits for more after.
     drained_rx
         .recv_timeout(bae_util::test_channels::HANG_GUARD)
         .expect("the sender asks the drained source again");
+    wake.wait_until_waiting();
     assert!(!handle.is_finished(), "the thread persists past a drained source");
 
     stop.store(true, Ordering::Release);
+    wake.wake();
     handle.join();
     assert_eq!(control.frames_sent(), 3 * u64::from(FRAMES_PER_PACKET));
+}
+
+/// A sender waiting on a drained source sends what the source has once the
+/// wake says it may have frames. Sabotage: give the source packets without
+/// waking, and the sender waits forever.
+#[test]
+fn a_waiting_sender_sends_once_woken() {
+    let stop = Arc::new(AtomicBool::new(false));
+    let wake = PcmWake::unattached();
+    let (source, packets, drained_rx) = FixedSource::holding(0);
+    let (handle, control) =
+        audio_thread(&Diagnostics::noop(), Box::new(source), stop.clone(), wake.clone());
+    drained_rx
+        .recv_timeout(bae_util::test_channels::HANG_GUARD)
+        .expect("the sender asks the empty source");
+    wake.wait_until_waiting();
+
+    packets.store(2, Ordering::Release);
+    wake.wake();
+
+    drained_rx
+        .recv_timeout(bae_util::test_channels::HANG_GUARD)
+        .expect("the woken sender sends the packets and asks again");
+    assert_eq!(control.frames_sent(), 2 * u64::from(FRAMES_PER_PACKET));
+    stop.store(true, Ordering::Release);
+    wake.wake();
+    handle.join();
 }
 
 /// A re-anchor re-marks the stream: after it fires, a packet carries the RTP

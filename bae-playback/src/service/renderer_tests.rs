@@ -718,6 +718,7 @@ impl crate::airplay_output::AirPlaySink for NoopAirPlaySink {
     fn start(
         &self,
         _source: Box<dyn crate::airplay_output::PcmSource>,
+        _wake: crate::airplay_output::PcmWake,
     ) -> Result<Arc<dyn crate::airplay_output::AirPlayStreamControl>, AudioError> {
         Ok(Arc::new(FakeAirPlayControl {
             state: Arc::new(FakeAirPlayControlState::default()),

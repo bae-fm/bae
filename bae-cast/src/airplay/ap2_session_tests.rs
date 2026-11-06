@@ -439,7 +439,10 @@ fn run_full_ap2_session(
         &bae_diagnostics::Diagnostics::noop(),
         addr.ip(),
         addr.port(),
-        Box::new(FixedSource { packets_left: 5 }),
+        crate::airplay::stream::PcmFeed::new(
+            Box::new(FixedSource { packets_left: 5 }),
+            bae_playback::airplay_output::PcmWake::unattached(),
+        ),
         timing,
         Arc::new(crate::airplay::stream::SystemClock::new()),
     )

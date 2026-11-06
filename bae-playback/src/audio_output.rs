@@ -81,25 +81,22 @@ impl AudioOutputControls {
 
     /// The changes counted so far that could give this player's drain work.
     /// A drain on its own thread reads it before it looks for work.
-    #[cfg(any(target_os = "android", test, feature = "test-utils"))]
     pub(crate) fn drain_changes(&self) -> u64 {
         self.wake.changes()
     }
 
     /// Wait until a change past `seen` could give the drain work.
-    #[cfg(any(target_os = "android", test, feature = "test-utils"))]
     pub(crate) fn wait_for_drain_work(&self, seen: u64) {
         self.wake.wait_past(seen);
     }
 
     /// Wake a waiting drain: its owner stopped it.
-    #[cfg(any(target_os = "android", test, feature = "test-utils"))]
     pub(crate) fn wake_drain(&self) {
         self.wake.notify();
     }
 
     /// Test-only: wait until a drain is waiting for work.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn wait_until_drain_waits(&self) {
         self.wake.wait_until_waiting();
     }
