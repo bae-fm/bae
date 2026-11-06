@@ -352,7 +352,7 @@ async fn file_tags_uses_the_conventional_folder_cover() {
         .find(|entry| entry.file.relative_path == "cover.jpg")
         .expect("the fixture folder holds cover.jpg");
     assert_eq!(
-        cover.image(),
+        cover.into_image(),
         crate::cover_art::CoverImageSource::Local { file: scanned.file.version.clone() },
         "a folder image is drawn from disk at the version the scan read"
     );

@@ -456,37 +456,147 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
         .unwrap();
 
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
-    let row = rows(&projection).remove(0);
-    row.metadata_summary.expect("the row carries its file-metadata draft");
-    assert_eq!(
-        row.cover,
-        Some(crate::CoverImageSource::Embedded {
-            source: FileVersion {
-                path: root.join("Album").join("01.flac"),
-                size: 1_000,
-                modified_at_ns: 5,
-            },
-            data: bytes.clone(),
-        }),
-        "the bytes carry the version of the file the snapshot read them from"
-    );
-    let detail = tables
-        .load_import_candidate(&crate::CandidateKey::folder(&candidate.path))
-        .await
-        .unwrap()
-        .expect("the candidate reads back");
-    assert_eq!(
-        detail.draft().unwrap().cover.clone().map(|cover| cover.image()),
-        Some(crate::CoverImageSource::Embedded {
+    rows(&projection).remove(0).metadata_summary.expect("the row carries its file-metadata draft");
+    // The bytes carry the version of the file the snapshot read them from.
+    assert_pane_and_row_draw(
+        &tables,
+        &candidate,
+        crate::CoverChoice::Embedded {
+            source_file_id: "01.flac".to_string(),
             source: FileVersion {
                 path: root.join("Album").join("01.flac"),
                 size: 1_000,
                 modified_at_ns: 5,
             },
             data: bytes,
-        }),
-        "the pane draws the same image under the same identity"
+        },
+    )
+    .await;
+}
+
+/// The pane reads the candidate's cover as `expected`, and its list row draws
+/// the same image under the same identity.
+async fn assert_pane_and_row_draw(
+    tables: &crate::tables::ImportTables,
+    candidate: &FolderCandidate,
+    expected: crate::CoverChoice,
+) {
+    let detail = tables
+        .load_import_candidate(&candidate.key())
+        .await
+        .unwrap()
+        .expect("the candidate reads back");
+    assert_eq!(detail.draft().unwrap().cover, Some(expected.clone()), "the pane's cover");
+    let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
+    assert_eq!(rows(&projection).remove(0).cover, Some(expected.into_image()), "the row's cover");
+}
+
+/// A folder image chosen as the cover reads back as that image, at the
+/// version the scan read.
+#[tokio::test]
+async fn a_stored_folder_image_cover_reads_back_as_its_choice() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    tables.add_watched_import_folder(&root).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    let mut candidate = candidate(&root, "Album");
+    for (name, size) in [("cover.jpg", 500), ("back.jpg", 600)] {
+        candidate.files.files.push(CandidateFile {
+            file: ScannedFile::new(root.join("Album").join(name), name.to_string(), size, 1),
+            role: FileRole::Artwork,
+        });
+    }
+    tables
+        .save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
+        .await
+        .unwrap();
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
+
+    crate::tables::import_state::tests::PaneControls::of(&db, &candidate)
+        .choose_cover(
+            &candidate.files.content_hash(),
+            &crate::cover_art::PreparedCover::Local("back.jpg".to_string()),
+        )
+        .await
+        .unwrap();
+
+    assert_pane_and_row_draw(
+        &tables,
+        &candidate,
+        crate::CoverChoice::Local {
+            file_id: "back.jpg".to_string(),
+            file: FileVersion {
+                path: root.join("Album").join("back.jpg"),
+                size: 600,
+                modified_at_ns: 1,
+            },
+        },
+    )
+    .await;
+}
+
+/// A catalog's image chosen as the cover reads back with its catalog and
+/// every downscaled copy the catalog serves of it.
+#[tokio::test]
+async fn a_stored_catalog_cover_reads_back_as_its_choice() {
+    use bae_catalogs::remote_image::{DownscaledCopy, RemoteImage, RemoteImageSet};
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let candidate = scanned(&db, &root, "Album").await;
+    let image = RemoteImageSet::with_copies(
+        "https://example.invalid/front".to_string(),
+        vec![DownscaledCopy {
+            url: "https://example.invalid/front-250".to_string(),
+            max_edge: 250,
+        }],
     );
+
+    crate::tables::import_state::tests::PaneControls::of(&db, &candidate)
+        .choose_cover(
+            &candidate.files.content_hash(),
+            &crate::cover_art::PreparedCover::Remote {
+                image: image.clone(),
+                source: Catalog::Discogs,
+                fetched: RemoteImage {
+                    bytes: vec![1, 2, 3],
+                    content_type: bae_util::content_type::ContentType::Jpeg,
+                },
+            },
+        )
+        .await
+        .unwrap();
+
+    assert_pane_and_row_draw(
+        &tables,
+        &candidate,
+        crate::CoverChoice::Remote { image, source: Catalog::Discogs },
+    )
+    .await;
+}
+
+/// A cover is stored under the candidate's content hash, which fixes its
+/// files, so a cover naming a file the scan did not store is a damaged row:
+/// the pane and the row both fail reading it, and neither draws nothing in
+/// its place.
+#[tokio::test]
+async fn a_stored_cover_naming_a_file_the_scan_did_not_store_fails_both_reads() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let candidate = scanned(&db, &root, "Album").await;
+    crate::tables::import_state::tests::PaneControls::of(&db, &candidate)
+        .choose_cover(
+            &candidate.files.content_hash(),
+            &crate::cover_art::PreparedCover::Local("gone.jpg".to_string()),
+        )
+        .await
+        .unwrap();
+
+    let pane = tables.load_import_candidate(&candidate.key()).await.map(|_| ());
+    let row = tables.load_import_list_read(request(TriageTab::Pending).await).await.map(|_| ());
+    for (read, error) in [("pane", pane), ("row", row)] {
+        let error = error.expect_err(read).to_string();
+        assert!(error.contains("names missing file gone.jpg"), "{read}: {error}");
+    }
 }
 
 /// A row linked to a pressing is read from the tables: the list opens none of

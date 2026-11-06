@@ -287,10 +287,8 @@ pub(crate) fn require_current_candidate(
     to_u64(generation, "scan_candidate.generation")
 }
 
-/// The files of the entry joined as `candidate`, as a JSON array in their
-/// order: each with its sheet and the audio that sheet describes.
 /// The version of one of the candidate's files that its scan read.
-pub(crate) fn scanned_file_version(
+pub(super) fn scanned_file_version(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
@@ -315,6 +313,8 @@ pub(crate) fn scanned_file_version(
     })
 }
 
+/// The files of the entry joined as `candidate`, as a JSON array in their
+/// order: each with its sheet and the audio that sheet describes.
 fn files_json_sql() -> String {
     format!(
         "(SELECT json_group_array(json_object( \

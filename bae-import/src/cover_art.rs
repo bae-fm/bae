@@ -114,13 +114,11 @@ impl CoverChoice {
     }
 
     /// Where the choice's bytes are drawn from.
-    pub fn image(&self) -> CoverImageSource {
+    pub fn into_image(self) -> CoverImageSource {
         match self {
-            Self::Remote { image, .. } => CoverImageSource::Remote { image: image.clone() },
-            Self::Local { file, .. } => CoverImageSource::Local { file: file.clone() },
-            Self::Embedded { source, data, .. } => {
-                CoverImageSource::Embedded { source: source.clone(), data: data.clone() }
-            }
+            Self::Remote { image, .. } => CoverImageSource::Remote { image },
+            Self::Local { file, .. } => CoverImageSource::Local { file },
+            Self::Embedded { source, data, .. } => CoverImageSource::Embedded { source, data },
         }
     }
 }

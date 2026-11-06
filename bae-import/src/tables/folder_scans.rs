@@ -7,15 +7,17 @@
 //! [`write`] stores candidate rows, [`read`] loads them back, [`sidecar`]
 //! stores a folder's sidecar files, [`file_reads`] reads what they say was
 //! read of each file, [`tag_snapshot`] stores and reads back what a
-//! candidate's files' tags read, and [`file_decisions`] settles the rows a
-//! file decision reshapes. Their tables are `folder_scans.sql`, which every
-//! device's library holds.
+//! candidate's files' tags read, [`cover_choice`] reads the cover a stored
+//! selection names from what the scan stored, and [`file_decisions`] settles
+//! the rows a file decision reshapes. Their tables are `folder_scans.sql`,
+//! which every device's library holds.
 
 /// The folder scans' part of the library's schema.
 pub(super) const SCHEMA: bae_store::SchemaPart =
     bae_store::SchemaPart::new(&[include_str!("folder_scans.sql")]);
 
 pub(super) mod columns;
+mod cover_choice;
 mod dates;
 mod file_decisions;
 mod file_reads;
@@ -34,15 +36,14 @@ use bae_store::query::{QueryOne, QueryRows};
 use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
-pub(super) use self::read::{
-    load_item_by_key, require_current_candidate, scanned_file_version, RowSources,
-};
+pub(super) use self::cover_choice::stored_cover_choice;
+pub(super) use self::read::{load_item_by_key, require_current_candidate, RowSources};
 /// Named only by a test that commits a reading under a stamp it took.
 #[cfg(test)]
 pub(crate) use self::reading::FolderReadingStamp;
 pub(crate) use self::reading::{FolderReadingCommit, FolderReadingWrite};
+pub(super) use self::tag_snapshot::load_candidate_file_tag_snapshot;
 pub(crate) use self::tag_snapshot::DbCandidateFileTagSnapshot;
-pub(super) use self::tag_snapshot::{load_candidate_file_tag_snapshot, stored_embedded_cover};
 
 pub(super) use self::dates::forget_discovery_at_or_below;
 pub(super) use self::file_decisions::settle_candidate_files;

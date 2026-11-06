@@ -52,17 +52,11 @@ impl BridgeRemoteCover {
             // Core already chose which covers to offer by it.
             standing: _,
         } = c;
-        let image = BridgeRemoteImageSet::from_core(image);
         BridgeRemoteCover {
-            cover_choice: BridgeCoverChoice {
-                selection: BridgeCoverSelection::RemoteCover {
-                    selection: BridgeRemoteCoverSelection {
-                        image: image.clone(),
-                        source: BridgeCatalog::from_core(source),
-                    },
-                },
-                image: BridgeCoverImageSource::Remote { image },
-            },
+            cover_choice: BridgeCoverChoice::from_core(bae_import::CoverChoice::Remote {
+                image,
+                source,
+            }),
             label,
         }
     }
@@ -87,7 +81,7 @@ impl BridgeCoverChoice {
                     BridgeCoverSelection::EmbeddedCover { source_file_id }
                 }
             },
-            image: BridgeCoverImageSource::from_core(choice.image()),
+            image: BridgeCoverImageSource::from_core(choice.into_image()),
         }
     }
 }

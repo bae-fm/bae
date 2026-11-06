@@ -8,15 +8,15 @@ use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::*;
 use crate::candidate_detail::ImportCandidateDetailProjection;
 use crate::cover_art::CoverChoice;
-use crate::folder_scanner::{CategorizedFiles, FileVersion, FolderCandidate};
-use crate::tables::folder_scans::stored_embedded_cover;
+use crate::folder_scanner::FolderCandidate;
+use crate::tables::folder_scans::stored_cover_choice;
 use crate::tables::import_state::{
     load_album_pick_on, load_pane_rows_on, load_standing_on, load_states_on,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
 use crate::tables::source_releases::load_source_release_on;
-use crate::{CoverSelection, ImportedRelease, ReleaseLink};
 use crate::{DraftProjection, ProjectedStage};
+use crate::{ImportedRelease, ReleaseLink};
 use bae_identify::PressingLink;
 use bae_identify::VerdictSummary;
 use bae_records::records::release_records::{album_records_name_on, check_releases_in_library_on};
@@ -50,7 +50,9 @@ struct DraftRows {
     records: Vec<bae_catalogs::records::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
     album: crate::DraftAlbum,
-    embedded_cover: Option<(FileVersion, Vec<u8>)>,
+    /// The cover the candidate commits with: its stored selection, with the
+    /// image its scan stored for it.
+    cover: Option<CoverChoice>,
 }
 
 /// One candidate, whole, with its standing and where the list places it.
@@ -162,15 +164,13 @@ fn draft_rows_on(
         None => None,
     };
     let album = candidate_album_on(sql, content_hash, &records)?;
-    let embedded_cover = match pane_rows.cover.as_ref() {
-        Some(CoverSelection::Embedded(source_file_id)) => Some(stored_embedded_cover(
-            sql,
-            &candidate.watched_folder_path,
-            &candidate.key(),
-            source_file_id,
-        )?),
-        _ => None,
-    };
+    let cover = pane_rows
+        .cover
+        .as_ref()
+        .map(|selection| {
+            stored_cover_choice(sql, &candidate.watched_folder_path, &candidate.key(), selection)
+        })
+        .transpose()?;
     Ok(DraftRows {
         pane_rows,
         cover_options,
@@ -178,7 +178,7 @@ fn draft_rows_on(
         records,
         picked_library_status,
         album,
-        embedded_cover,
+        cover,
     })
 }
 
@@ -242,7 +242,7 @@ impl CandidateDetailRows {
                     records,
                     picked_library_status,
                     album,
-                    embedded_cover,
+                    cover,
                 } = *draft;
                 let durations = crate::probe::source_durations(&candidate.files)
                     .map_err(|error| DbError::Message(error.to_string()))?;
@@ -253,8 +253,6 @@ impl CandidateDetailRows {
                             candidate.key()
                         ))
                     })?;
-                let cover =
-                    chosen_cover(&candidate.files, pane_rows.cover.as_ref(), embedded_cover);
                 ProjectedStage::Drafting(Box::new(DraftProjection {
                     metadata_provenance: current
                         .as_ref()
@@ -346,38 +344,6 @@ fn offered_covers(
             bae_catalogs::source_release::pick_covers(primary, partners)
         }
         _ => Vec::new(),
-    }
-}
-
-/// The cover the candidate commits with: its stored selection, read as it
-/// stands. A selection naming an image the folder no longer holds describes
-/// the candidate no longer, and no other image stands in for it.
-fn chosen_cover(
-    files: &CategorizedFiles,
-    chosen: Option<&CoverSelection>,
-    embedded_cover: Option<(FileVersion, Vec<u8>)>,
-) -> Option<CoverChoice> {
-    match chosen {
-        None => None,
-        Some(CoverSelection::Local(file_id)) => {
-            let image = files.artwork().find(|image| &image.relative_path == file_id);
-            if image.is_none() {
-                tracing::warn!(
-                    file_id,
-                    "the selected cover is no longer among the candidate's images"
-                );
-            }
-            image.map(|image| CoverChoice::Local {
-                file_id: file_id.clone(),
-                file: image.version.clone(),
-            })
-        }
-        Some(CoverSelection::Embedded(source_file_id)) => embedded_cover.map(|(source, data)| {
-            CoverChoice::Embedded { source_file_id: source_file_id.clone(), source, data }
-        }),
-        Some(CoverSelection::Remote(image, source)) => {
-            Some(CoverChoice::Remote { image: image.clone(), source: *source })
-        }
     }
 }
 

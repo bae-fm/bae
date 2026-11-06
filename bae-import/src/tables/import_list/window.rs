@@ -34,7 +34,7 @@ use bae_records::records::files::cover_version_sql;
 use bae_records::records::queued_uploads::release_upload_on;
 use bae_records::records::read::get_release_records_on;
 use bae_records::UploadProgress;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// The items `keys` name, in their order, loaded whole for the list `list`,
 /// each release with the position of the header `header_positions` lists it
@@ -512,39 +512,16 @@ fn row_cover(
         _ => release.cover.as_ref(),
     };
     cover
-        .map(|cover| row_cover_source(sql, &release.watched_folder_path, &release.key, cover))
+        .map(|cover| {
+            folder_scans::stored_cover_choice(
+                sql,
+                &release.watched_folder_path,
+                &release.key,
+                cover,
+            )
+            .map(crate::CoverChoice::into_image)
+        })
         .transpose()
-}
-
-/// The image the row of the candidate at `candidate_path` draws for `cover`.
-fn row_cover_source(
-    sql: &SqlReadContext<'_>,
-    watched_folder_path: &Path,
-    candidate_path: &CandidateKey,
-    cover: &CoverSelection,
-) -> Result<crate::CoverImageSource, DbError> {
-    match cover {
-        CoverSelection::Remote(image, _) => {
-            Ok(crate::CoverImageSource::Remote { image: image.clone() })
-        }
-        CoverSelection::Local(file_id) => Ok(crate::CoverImageSource::Local {
-            file: folder_scans::scanned_file_version(
-                sql,
-                watched_folder_path,
-                candidate_path,
-                file_id,
-            )?,
-        }),
-        CoverSelection::Embedded(source_file_id) => {
-            let (source, data) = folder_scans::stored_embedded_cover(
-                sql,
-                watched_folder_path,
-                candidate_path,
-                source_file_id,
-            )?;
-            Ok(crate::CoverImageSource::Embedded { source, data })
-        }
-    }
 }
 
 /// The records of every stored release a linked pressing claims, the

@@ -391,7 +391,7 @@ pub(super) fn load_root_file_tags(
 /// The embedded cover the candidate selects from `source_file_id`: the bytes
 /// its file-tag snapshot stored, and the version of the source file the
 /// snapshot read them from.
-pub(crate) fn stored_embedded_cover(
+pub(super) fn stored_embedded_cover(
     sql: &SqlReadContext<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
