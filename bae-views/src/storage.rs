@@ -151,7 +151,7 @@ impl LibraryViews {
                                 rows: process_storage_rows(rows)?,
                             })
                         })
-                        .collect::<Result<Vec<_>, CovenError>>()?;
+                        .collect::<Result<Vec<_>, DbError>>()?;
                     Ok(StorageBrowseProjection {
                         sort: request.sort,
                         filter: request.filter,

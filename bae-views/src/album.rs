@@ -189,7 +189,7 @@ impl LibraryViews {
                                 .collect::<Result<_, _>>()?,
                         })
                     })
-                    .collect::<Result<_, CovenError>>()?;
+                    .collect::<Result<_, DbError>>()?;
                 Ok(AlbumBrowseProjection { windows, total_count, row_count, sections })
             })
     }

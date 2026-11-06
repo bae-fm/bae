@@ -88,12 +88,6 @@ impl DbError {
 impl From<coven::CovenError> for DbError {
     fn from(error: coven::CovenError) -> Self {
         match error {
-            coven::CovenError::Database(coven::DbError::Sqlite(
-                rusqlite::Error::UserFunctionError(error),
-            )) => match error.downcast::<Self>() {
-                Ok(error) => *error,
-                Err(error) => Self::Sqlite(rusqlite::Error::UserFunctionError(error)),
-            },
             coven::CovenError::Database(coven::DbError::Sqlite(error)) => Self::Sqlite(error),
             error => Self::Coven(Box::new(error)),
         }
@@ -121,16 +115,6 @@ impl From<coven::SyncError> for DbError {
 impl From<coven::DbError> for DbError {
     fn from(error: coven::DbError) -> Self {
         coven::CovenError::from(error).into()
-    }
-}
-
-impl From<DbError> for coven::CovenError {
-    fn from(error: DbError) -> Self {
-        match error {
-            DbError::Sqlite(error) => error.into(),
-            DbError::Coven(error) => *error,
-            error => rusqlite::Error::UserFunctionError(Box::new(error)).into(),
-        }
     }
 }
 

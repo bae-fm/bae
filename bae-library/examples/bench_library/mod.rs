@@ -120,9 +120,7 @@ impl BenchLibrary {
         let track_ids = bae_records::test_fixtures::chunked_tracks::track_ids(tracks);
         self.handle
             .write(move |sql| {
-                Ok::<_, coven::CovenError>(
-                    bae_records::test_fixtures::chunked_tracks::seed_release(&sql, &track_ids)?,
-                )
+                bae_records::test_fixtures::chunked_tracks::seed_release(&sql, &track_ids)
             })
             .await
             .map_err(|error| format!("writing the library's tracks failed: {error}"))?;
