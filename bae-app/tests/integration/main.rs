@@ -9,6 +9,7 @@ mod test_bootstrap_fixture;
 mod test_bootstrap_pointer;
 mod test_close_open_files;
 mod test_import_live_query_reruns;
+mod test_import_pane;
 mod test_import_selection;
 mod test_live_reads;
 mod test_open_progress;

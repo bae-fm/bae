@@ -16,7 +16,7 @@ use tempfile::TempDir;
 
 /// A library at `dir` with automatic identification off, so nothing but the
 /// test acts on the candidates.
-async fn open(dir: &Path) -> AppServices {
+pub(crate) async fn open(dir: &Path) -> AppServices {
     let library = bae_library::test_libraries::open_test_library(dir).await;
     library.set_identify_automatically(false).await.unwrap();
     bae_app::test_services::start_services(&library)
@@ -26,7 +26,7 @@ async fn open(dir: &Path) -> AppServices {
 
 /// `count` one-track albums under `collection`, watched and scanned. Each
 /// track has its own name, so no two albums are the same files.
-async fn scan_albums(services: &AppServices, collection: &Path, count: usize) {
+pub(crate) async fn scan_albums(services: &AppServices, collection: &Path, count: usize) {
     let flac = std::fs::read(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"))
         .expect("FLAC fixture");
     for n in 0..count {
