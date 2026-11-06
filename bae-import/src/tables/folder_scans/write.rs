@@ -190,6 +190,18 @@ fn insert_candidate(
     Ok(())
 }
 
+/// The statement writing a candidate's `scan_candidate` row over the one
+/// stored under its key.
+fn candidate_row_insert() -> String {
+    format!(
+        "INSERT INTO scan_candidate \
+             (watched_folder_path, path, generation, kind, name, relative_folder, folder, \
+              file_root, scope, content_hash, file_edit_revision, grouping_key, \
+              source_kind) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) {OVER_STORED_ROW}"
+    )
+}
+
 /// Write one candidate's `scan_candidate` row, over the one stored under its
 /// key, and its parts. `source_kind` is `folder` for a scan's row, `grouping`
 /// for a grouping's.
@@ -203,13 +215,7 @@ pub(crate) fn insert_candidate_row(
 ) -> Result<(), DbError> {
     let path = candidate.key();
     sql.execute(
-        &format!(
-            "INSERT INTO scan_candidate \
-                 (watched_folder_path, path, generation, kind, name, relative_folder, folder, \
-                  file_root, scope, content_hash, file_edit_revision, grouping_key, \
-                  source_kind) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) {OVER_STORED_ROW}"
-        ),
+        &candidate_row_insert(),
         params![
             coven::path_bytes(watched_folder_path),
             path,
@@ -482,3 +488,47 @@ fn insert_cue_sheet(
 #[cfg(test)]
 #[path = "write_tests.rs"]
 mod tests;
+
+impl ImportTables {
+    /// The SQLite steps writing the scan row of `candidate`, a release the
+    /// open pass of its watched folder at `generation` reads, runs, its
+    /// triggers' with it: what a test of those triggers' cost measures.
+    // Sentinel: coven counts only the steps of statements that return rows,
+    // so this runs the row's insert with `RETURNING`. Removed once coven
+    // counts the steps of the app's writes, when the test measures the
+    // pass's own write of the row.
+    #[cfg(test)]
+    pub(crate) async fn scan_row_write_steps_for_test(
+        &self,
+        generation: u64,
+        candidate: &FolderCandidate,
+    ) -> usize {
+        use rusqlite::types::Value;
+        let blob = |path: &Path| Value::Blob(coven::path_bytes(path));
+        let values = vec![
+            blob(&candidate.watched_folder_path),
+            Value::Blob(candidate.key().as_bytes().to_vec()),
+            Value::Integer(i64::try_from(generation).unwrap()),
+            Value::Text("valid".to_string()),
+            Value::Text(candidate.name.clone()),
+            Value::Blob(candidate.relative_folder.as_bytes().to_vec()),
+            blob(&candidate.path),
+            blob(&candidate.file_root),
+            Value::Text(scope_text(candidate.scope).to_string()),
+            Value::Text(candidate.files.content_hash()),
+            Value::Integer(i64::try_from(candidate.file_edit_revision).unwrap()),
+            Value::Null,
+            Value::Text("folder".to_string()),
+        ];
+        let statement = format!("{} RETURNING path", candidate_row_insert());
+        let counter = self.store.track_work_for_test().await.unwrap();
+        self.store
+            .call(move |sql| {
+                sql.query_row(&statement, rusqlite::params_from_iter(values), |_| Ok(()))?;
+                Ok(())
+            })
+            .await
+            .unwrap();
+        counter.take().app_read_steps
+    }
+}

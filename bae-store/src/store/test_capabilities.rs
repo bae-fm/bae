@@ -23,24 +23,12 @@ impl Store {
         .await
     }
 
-    /// How many SQLite steps `statement` runs, its triggers' with it, in a
-    /// write of its own: what a test of a trigger's cost measures. coven
-    /// counts the steps of statements that return rows, so `statement` ends
-    /// in `RETURNING`.
-    pub async fn write_steps_for_test(
-        &self,
-        statement: &str,
-        params: Vec<rusqlite::types::Value>,
-    ) -> Result<usize, DbError> {
+    /// Count the work this store's connections run from here on into the
+    /// counter returned: what a test of a write's or a read's cost measures.
+    pub async fn track_work_for_test(&self) -> Result<coven::WorkCounter, DbError> {
         let counter = coven::WorkCounter::new();
         self.inner.handle.test_track_work(counter.clone()).await.map_err(DbError::from)?;
-        let statement = statement.to_string();
-        self.call_sql(move |sql| {
-            sql.query_row(&statement, rusqlite::params_from_iter(params), |_| Ok(()))?;
-            Ok(())
-        })
-        .await?;
-        Ok(counter.take().app_read_steps)
+        Ok(counter)
     }
 
     /// How many rows of `table` have `column` equal to `value`.

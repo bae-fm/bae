@@ -118,8 +118,8 @@ async fn a_moved_release_changes_group() {
 /// own steps for the write of the release's scan row, its triggers' included.
 ///
 /// The group, and when each folder was found, come from the scans' own writes;
-/// only the measured scan row is written as SQL, since the store counts a
-/// statement's steps and a scan's write is many statements.
+/// the measured scan row alone is written apart from its pass, by the folder
+/// scans' statement for it.
 #[tokio::test]
 async fn a_member_costs_the_same_however_large_its_group() {
     let lib = Library::new().await;
@@ -138,28 +138,11 @@ async fn a_member_costs_the_same_however_large_its_group() {
             + lib.begin_pass(),
     )
     .await;
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
     let place = async |n: usize| -> usize {
-        use rusqlite::types::Value;
-        let display_path = display_path(n);
-        let candidate = lib.candidate(&display_path);
-        lib.db
-            .write_steps_for_test(
-                "INSERT INTO scan_candidate
-                     (watched_folder_path, path, generation, kind, name, relative_folder,
-                      folder, file_root, scope, content_hash)
-                 VALUES (?1, ?2, ?3, 'valid', ?4, ?5, ?2, ?2, 'direct', ?6)
-                 RETURNING path",
-                vec![
-                    Value::Blob(coven::path_bytes(&lib.root)),
-                    Value::Blob(coven::path_bytes(&candidate.path)),
-                    Value::Integer(i64::try_from(lib.generation().await).unwrap()),
-                    Value::Text(candidate.name.clone()),
-                    Value::Blob(candidate.relative_folder.as_bytes().to_vec()),
-                    Value::Text(lib.hash(&display_path)),
-                ],
-            )
+        tables
+            .scan_row_write_steps_for_test(lib.generation().await, &lib.candidate(&display_path(n)))
             .await
-            .unwrap()
     };
     let early = place(19).await;
     lib.run(lib.scan_batch(dated(19..1_999)) + lib.finish_pass() + lib.begin_pass()).await;
