@@ -279,12 +279,12 @@ async fn merge_label(store: &Store, survivor: &str, absorbed: &str) -> Result<()
 async fn the_surviving_label_takes_the_absorbed_ones_id_and_its_releases_read_the_survivor() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
-    add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
-    add_label(&db, "by-musicbrainz", "Label Name Records", Some("mb-label"), None).await;
+    let by_discogs = add_label(&db, "Label Name", None, Some("7190")).await;
+    let by_musicbrainz = add_label(&db, "Other Label Name", Some("mb-label"), None).await;
     crate::test_fixtures::labels::write(
         &db,
         vec![crate::test_fixtures::labels::with_ids(
-            label(Some("Label Name Records"), None),
+            label(Some("Other Label Name"), None),
             Some("mb-label"),
             None,
         )],
@@ -292,45 +292,38 @@ async fn the_surviving_label_takes_the_absorbed_ones_id_and_its_releases_read_th
     .await
     .unwrap();
 
-    merge_label(&db, "by-discogs", "by-musicbrainz").await.unwrap();
+    merge_label(&db, &by_discogs, &by_musicbrainz).await.unwrap();
 
-    let survivor = stored_label(&db, "by-discogs").await;
+    let survivor = stored_label(&db, &by_discogs).await;
     assert_eq!(survivor.musicbrainz_label_id.as_deref(), Some("mb-label"));
     assert_eq!(survivor.discogs_label_id.as_deref(), Some("7190"));
-    assert_eq!(stored_label(&db, "by-musicbrainz").await.id, "by-musicbrainz");
-    assert_eq!(
-        merges(&db, "label_merges").await,
-        [("by-musicbrainz".to_string(), "by-discogs".to_string())]
-    );
-    assert_eq!(placed(&db).await[0].0.as_deref(), Some("by-musicbrainz"), "stays as written");
+    assert_eq!(stored_label(&db, &by_musicbrainz).await.id, by_musicbrainz);
+    assert_eq!(merges(&db, "label_merges").await, [(by_musicbrainz.clone(), by_discogs.clone())]);
+    assert_eq!(placed(&db).await[0].0, Some(by_musicbrainz), "stays as written");
     assert_eq!(read_labels(&records).await, vec![label(Some("Label Name"), None)]);
 }
 
 #[tokio::test]
 async fn a_label_merge_chain_ending_at_the_absorbed_label_ends_at_the_survivor() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
-    add_label(&db, "earlier", "Label Name", None, None).await;
-    add_label(&db, "by-musicbrainz", "Label Name", Some("mb-label"), None).await;
-    add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
-    merge_label(&db, "by-musicbrainz", "earlier").await.unwrap();
+    let earlier = add_label(&db, "Label Name First", None, None).await;
+    let by_musicbrainz = add_label(&db, "Label Name Second", Some("mb-label"), None).await;
+    let by_discogs = add_label(&db, "Label Name Third", None, Some("7190")).await;
+    merge_label(&db, &by_musicbrainz, &earlier).await.unwrap();
 
-    merge_label(&db, "by-discogs", "by-musicbrainz").await.unwrap();
+    merge_label(&db, &by_discogs, &by_musicbrainz).await.unwrap();
 
-    assert_eq!(
-        merges(&db, "label_merges").await,
-        [
-            ("by-musicbrainz".to_string(), "by-discogs".to_string()),
-            ("earlier".to_string(), "by-discogs".to_string()),
-        ]
-    );
+    let mut expected = vec![(by_musicbrainz, by_discogs.clone()), (earlier, by_discogs)];
+    expected.sort();
+    assert_eq!(merges(&db, "label_merges").await, expected);
 }
 
 #[tokio::test]
 async fn a_label_merge_into_a_missing_survivor_is_refused() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
-    add_label(&db, "by-musicbrainz", "Label Name", Some("mb-label"), None).await;
+    let by_musicbrainz = add_label(&db, "Label Name", Some("mb-label"), None).await;
 
-    let refused = merge_label(&db, "missing", "by-musicbrainz").await.unwrap_err();
+    let refused = merge_label(&db, "missing", &by_musicbrainz).await.unwrap_err();
 
     assert!(refused.to_string().contains("expected exactly one"), "{refused}");
     assert_eq!(row_count(&db, "label_merges").await, 0);

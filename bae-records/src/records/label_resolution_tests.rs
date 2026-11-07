@@ -15,7 +15,7 @@ async fn label_count(store: &Store) -> i64 {
 async fn a_label_is_the_library_label_holding_its_catalog_id() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
-    add_label(&db, "held", "Warner Strategic Marketing", None, Some("7190")).await;
+    let held = add_label(&db, "Warner Strategic Marketing", None, Some("7190")).await;
 
     write(
         &db,
@@ -28,9 +28,9 @@ async fn a_label_is_the_library_label_holding_its_catalog_id() {
     .unwrap();
 
     let rows = placed(&db).await;
-    assert_eq!(ids_of(&rows), [Some("held"), None]);
+    assert_eq!(ids_of(&rows), [Some(held.as_str()), None]);
     assert_eq!(rows[1].1.as_deref(), Some("XY 3"));
-    let held = stored_label(&db, "held").await;
+    let held = stored_label(&db, &held).await;
     assert_eq!(held.name, "Warner Strategic Marketing");
     assert_eq!(held.musicbrainz_label_id.as_deref(), Some("mb-rhino"));
     assert_eq!(label_count(&db).await, 1);
@@ -46,10 +46,13 @@ async fn a_label_is_the_library_label_holding_its_catalog_id() {
 #[tokio::test]
 async fn a_label_without_ids_is_the_one_library_label_of_its_name_key() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
-    add_label(&db, "rhino", "Rhino Records", None, None).await;
-    add_label(&db, "columbia-1", "Columbia", None, Some("1866")).await;
-    add_label(&db, "columbia-2", "Columbia Records", None, Some("5320")).await;
-    add_label(&db, "harbor", "Harbor", None, Some("10")).await;
+    let rhino = add_label(&db, "Rhino Records", None, None).await;
+    let held = [
+        rhino.clone(),
+        add_label(&db, "Columbia", None, Some("1866")).await,
+        add_label(&db, "Columbia Records", None, Some("5320")).await,
+        add_label(&db, "Harbor", None, Some("10")).await,
+    ];
 
     write(
         &db,
@@ -63,10 +66,9 @@ async fn a_label_without_ids_is_the_one_library_label_of_its_name_key() {
     .unwrap();
 
     let rows = placed(&db).await;
-    assert_eq!(rows[0].0.as_deref(), Some("rhino"));
+    assert_eq!(rows[0].0.as_deref(), Some(rhino.as_str()));
     for new in [&rows[1].0, &rows[2].0] {
-        let new = new.as_deref().unwrap();
-        assert!(!["rhino", "columbia-1", "columbia-2", "harbor"].contains(&new));
+        assert!(!held.contains(new.as_ref().unwrap()));
     }
     assert_eq!(
         rows[2].0,
@@ -104,11 +106,13 @@ async fn one_write_makes_one_new_label_of_two_places_naming_it() {
 #[tokio::test]
 async fn an_edit_keeps_the_label_the_release_names_by_its_name() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
-    add_label(&db, "columbia-1", "Columbia", None, Some("1866")).await;
-    add_label(&db, "columbia-2", "Columbia", None, Some("5320")).await;
+    let held = [
+        add_label(&db, "Columbia", None, Some("1866")).await,
+        add_label(&db, "Columbia", None, Some("5320")).await,
+    ];
     write(&db, vec![label(Some("Columbia"), Some("C 1"))]).await.unwrap();
     let made = placed(&db).await[0].0.clone().unwrap();
-    assert!(!["columbia-1", "columbia-2"].contains(&made.as_str()));
+    assert!(!held.contains(&made));
 
     write(&db, vec![label(Some("Columbia"), Some("C 2"))]).await.unwrap();
 
@@ -121,16 +125,16 @@ async fn an_edit_keeps_the_label_the_release_names_by_its_name() {
 #[tokio::test]
 async fn two_labels_holding_the_labels_two_ids_leave_the_musicbrainz_one() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
-    add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
-    add_label(&db, "by-musicbrainz", "Label Name", Some("mb-label"), None).await;
+    let by_discogs = add_label(&db, "Label Name", None, Some("7190")).await;
+    let by_musicbrainz = add_label(&db, "Other Label Name", Some("mb-label"), None).await;
 
     write(&db, vec![with_ids(label(Some("Label Name"), None), Some("mb-label"), Some("7190"))])
         .await
         .unwrap();
 
-    assert_eq!(ids_of(&placed(&db).await), [Some("by-musicbrainz")]);
-    assert_eq!(stored_label(&db, "by-musicbrainz").await.discogs_label_id, None);
-    assert_eq!(stored_label(&db, "by-discogs").await.musicbrainz_label_id, None);
+    assert_eq!(ids_of(&placed(&db).await), [Some(by_musicbrainz.as_str())]);
+    assert_eq!(stored_label(&db, &by_musicbrainz).await.discogs_label_id, None);
+    assert_eq!(stored_label(&db, &by_discogs).await.musicbrainz_label_id, None);
     assert_eq!(label_count(&db).await, 2);
 }
 
@@ -139,14 +143,14 @@ async fn two_labels_holding_the_labels_two_ids_leave_the_musicbrainz_one() {
 #[tokio::test]
 async fn a_musicbrainz_label_holding_another_discogs_id_is_the_label() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
-    add_label(&db, "held", "Label Name", Some("mb-label"), Some("9999")).await;
+    let held = add_label(&db, "Label Name", Some("mb-label"), Some("9999")).await;
 
     write(&db, vec![with_ids(label(Some("Label Name"), None), Some("mb-label"), Some("7190"))])
         .await
         .unwrap();
 
-    assert_eq!(ids_of(&placed(&db).await), [Some("held")]);
-    assert_eq!(stored_label(&db, "held").await.discogs_label_id.as_deref(), Some("9999"));
+    assert_eq!(ids_of(&placed(&db).await), [Some(held.as_str())]);
+    assert_eq!(stored_label(&db, &held).await.discogs_label_id.as_deref(), Some("9999"));
     assert_eq!(label_count(&db).await, 1);
 }
 
@@ -156,7 +160,7 @@ async fn a_musicbrainz_label_holding_another_discogs_id_is_the_label() {
 #[tokio::test]
 async fn a_discogs_label_holding_another_musicbrainz_id_leaves_the_label_its_musicbrainz_id() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
-    add_label(&db, "held", "Label Name", Some("mb-other"), Some("7190")).await;
+    add_label(&db, "Label Name", Some("mb-other"), Some("7190")).await;
 
     write(&db, vec![with_ids(label(Some("Label Name"), None), Some("mb-label"), Some("7190"))])
         .await
@@ -171,25 +175,11 @@ async fn a_discogs_label_holding_another_musicbrainz_id_leaves_the_label_its_mus
     );
 }
 
-/// Fill in `discogs` on the label `id` on `db`, as a device does once a
-/// catalog names it.
-async fn give_discogs_id(store: &Store, id: &'static str, discogs: &'static str) {
-    store
-        .call(move |sql| {
-            sql.execute(
-                "UPDATE labels SET discogs_label_id = ? WHERE id = ?",
-                params![discogs, id],
-            )?;
-            Ok(())
-        })
-        .await
-        .unwrap();
-}
-
-/// Two devices apart each give one Discogs id to a different label of one
-/// name. Once each has the other's write, the next write naming that id
-/// merges the two into the smaller id and names it, and the other device
-/// reads the release's label as that one.
+/// Two devices apart each give one Discogs id to a different label, each by
+/// importing a release naming its label with that id. Once each has the
+/// other's write, the next write naming that id merges the two into the
+/// smaller id and names it, and the other device reads the release's label
+/// as that one.
 #[test]
 fn a_catalog_id_two_devices_gave_two_labels_merges_them() {
     bae_store::test_devices::run_two_store_test(
@@ -205,15 +195,15 @@ async fn check_two_devices_give_one_label_id(devices: &bae_store::test_devices::
         .insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])
         .await
         .unwrap();
-    add_label(devices.a(), "label-a", "Label Name", None, None).await;
-    add_label(devices.a(), "label-b", "Label Name", None, None).await;
+    let first = add_label(devices.a(), "Label Name A", None, None).await;
+    let second = add_label(devices.a(), "Label Name B", None, None).await;
     let labels = "SELECT id || ':' || COALESCE(discogs_label_id, '') FROM labels \
                   UNION ALL SELECT 'release:' || id FROM releases";
     devices.converge(labels).await;
 
     devices.pause().await;
-    give_discogs_id(devices.a(), "label-a", "7190").await;
-    give_discogs_id(devices.b(), "label-b", "7190").await;
+    assert_eq!(add_label(devices.a(), "Label Name A", None, Some("7190")).await, first);
+    assert_eq!(add_label(devices.b(), "Label Name B", None, Some("7190")).await, second);
     devices.resume().await;
     devices.converge(labels).await;
 
@@ -227,11 +217,13 @@ async fn check_two_devices_give_one_label_id(devices: &bae_store::test_devices::
         )
         .await;
 
+    let (survivor, name) =
+        if first < second { (&first, "Label Name A") } else { (&second, "Label Name B") };
     for device in [devices.a(), devices.b()] {
-        assert_eq!(ids_of(&placed(device).await), [Some("label-a")]);
+        assert_eq!(ids_of(&placed(device).await), [Some(survivor.as_str())]);
         assert_eq!(
             read_labels(&crate::test_fixtures::test_records(device)).await,
-            vec![label(Some("Label Name"), Some("LN 1"))]
+            vec![label(Some(name), Some("LN 1"))]
         );
     }
 }

@@ -478,8 +478,8 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
         records.insert_artist(artist).await.unwrap();
     }
     use bae_records::test_fixtures::labels::{add_label, label, with_ids};
-    add_label(&db, "label-by-discogs", "Label Name", None, Some("7190")).await;
-    add_label(&db, "label-by-musicbrainz", "Label Name", Some("mb-label"), None).await;
+    add_label(&db, "Label Name", None, Some("7190")).await;
+    let label_by_musicbrainz = add_label(&db, "Other Label Name", Some("mb-label"), None).await;
 
     let incoming = DbArtist {
         discogs_artist_id: Some("discogs-1".to_string()),
@@ -538,12 +538,12 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
         .read(|sql| {
             Ok(sql.query(
                 "SELECT l.discogs_label_id, r.label_id FROM release_labels r \
-                 JOIN labels l ON l.id = r.label_id ORDER BY r.position",
-                [],
+                 JOIN labels l ON l.id = r.label_id WHERE r.release_id = ? ORDER BY r.position",
+                [RELEASE_A],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )?)
         })
         .await
         .unwrap();
-    assert_eq!(placed, [(None, Some("label-by-musicbrainz".to_string()))]);
+    assert_eq!(placed, [(None, Some(label_by_musicbrainz))]);
 }

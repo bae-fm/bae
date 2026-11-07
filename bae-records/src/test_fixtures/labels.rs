@@ -5,7 +5,6 @@ use crate::records::label_resolution::{label_write, write_release_labels_on, Lab
 use crate::{DbAlbum, DbRelease, IdentityWriteError, LabelParts, Records};
 use bae_store::Store;
 use bae_types::pressing::ReleaseLabel;
-use rusqlite::params;
 
 pub const RELEASE: &str = "5d1c2c9e-4f0b-4a43-9a51-0e6c1d3b7a10";
 
@@ -33,26 +32,31 @@ pub fn with_ids(
     label.with_ids(musicbrainz.map(str::to_string), discogs.map(str::to_string))
 }
 
+/// Import a release of its own naming the label `name`, with the catalog ids
+/// given, as an import makes a label, and return the library label it names.
 pub async fn add_label(
     db: &Store,
-    id: &str,
     name: &str,
     musicbrainz: Option<&str>,
     discogs: Option<&str>,
-) {
-    let (id, name) = (id.to_string(), name.to_string());
-    let (musicbrainz, discogs) = (musicbrainz.map(str::to_string), discogs.map(str::to_string));
-    db.call(move |sql| {
-        sql.execute(
-            "INSERT INTO labels \
-                 (id, name, name_key, musicbrainz_label_id, discogs_label_id, created_at) \
-             VALUES (?, ?, ?, ?, ?, '2026-01-01T00:00:00Z')",
-            params![id, name, bae_types::text_match::label_name_key(&name), musicbrainz, discogs],
-        )?;
-        Ok(())
+) -> String {
+    let album = DbAlbum::new_test("Album Title");
+    let mut release = DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
+    release.pressing.labels = vec![with_ids(label(Some(name), None), musicbrainz, discogs)];
+    super::test_records(db)
+        .insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])
+        .await
+        .unwrap();
+    let release_id = release.id;
+    db.read(move |sql| {
+        Ok(sql.query_row(
+            "SELECT label_id FROM release_labels WHERE release_id = ?",
+            [release_id],
+            |row| row.get(0),
+        )?)
     })
     .await
-    .unwrap();
+    .unwrap()
 }
 
 /// Write `RELEASE`'s labels as an edit would.
