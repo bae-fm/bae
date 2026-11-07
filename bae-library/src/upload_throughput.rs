@@ -9,6 +9,8 @@ const WINDOW: Duration = Duration::from_secs(10);
 
 struct Measurement {
     samples: VecDeque<(Duration, u64)>,
+    /// Sum of `samples`' bytes, kept as samples enter and leave the window.
+    window_bytes: u64,
     started: Duration,
     transferred: u64,
     total: u64,
@@ -47,17 +49,25 @@ impl UploadThroughput {
     fn record(&mut self, id: FileId, transferred: u64, total: u64, now: Duration) {
         let measurement = self.files.entry(id).or_insert_with(|| Measurement {
             samples: VecDeque::new(),
+            window_bytes: 0,
             started: now,
             transferred,
             total,
         });
         if transferred < measurement.transferred || total != measurement.total {
-            *measurement =
-                Measurement { samples: VecDeque::new(), started: now, transferred, total };
+            *measurement = Measurement {
+                samples: VecDeque::new(),
+                window_bytes: 0,
+                started: now,
+                transferred,
+                total,
+            };
         }
         let delta = transferred - measurement.transferred;
         if delta > 0 {
             measurement.samples.push_back((now, delta));
+            measurement.window_bytes =
+                measurement.window_bytes.checked_add(delta).expect("upload bytes overflow");
         }
         measurement.transferred = transferred;
     }
@@ -68,17 +78,14 @@ impl UploadThroughput {
                 while measurement.samples.front().is_some_and(|(time, _)| {
                     now.checked_sub(*time).expect("upload clock regressed") > WINDOW
                 }) {
-                    measurement.samples.pop_front();
+                    let (_, bytes) = measurement.samples.pop_front().expect("front checked");
+                    measurement.window_bytes -= bytes;
                 }
                 let elapsed = now
                     .checked_sub(measurement.started)
                     .expect("upload clock regressed")
                     .min(WINDOW);
-                let bytes = measurement
-                    .samples
-                    .iter()
-                    .try_fold(0u64, |total, (_, bytes)| total.checked_add(*bytes))
-                    .expect("upload bytes overflow");
+                let bytes = measurement.window_bytes;
                 let rate = if elapsed.is_zero() {
                     0
                 } else {

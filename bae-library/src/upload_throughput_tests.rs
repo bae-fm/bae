@@ -170,3 +170,19 @@ fn the_files_being_sent_are_measured_from_the_watch_until_they_stop_or_pause() {
     tracker.observe(&sending(&[], false), &BTreeMap::new(), secs(4));
     assert!(tracker.rates(secs(4)).is_empty(), "a file sent has no rate");
 }
+
+#[test]
+fn the_running_window_sum_equals_the_samples_as_they_leave() {
+    let id = file(1);
+    let mut tracker = UploadThroughput::default();
+    tracker.record(id, 0, 1_000_000, Duration::ZERO);
+    for second in 1..=15u64 {
+        tracker.record(id, second * 1000, 1_000_000, secs(second));
+        tracker.rates(secs(second));
+        let measurement = &tracker.files[&id];
+        let summed: u64 = measurement.samples.iter().map(|(_, bytes)| bytes).sum();
+        assert_eq!(measurement.window_bytes, summed, "at {second} s");
+    }
+    assert_eq!(tracker.files[&id].samples.len(), 11, "a sample exactly the window old stays");
+    assert_eq!(tracker.files[&id].window_bytes, 11_000);
+}
