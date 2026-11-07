@@ -261,6 +261,7 @@ pub(crate) fn subject_message(subject: bae_sync_status::PendingSubjectName) -> B
             O::ReloadFromSnapshot => "core.pending.operation.reload_from_snapshot",
             O::RequiredReload => "core.pending.operation.required_reload",
             O::RotateKey => "core.pending.operation.rotate_key",
+            O::SendKeyCopy => "core.pending.operation.send_key_copy",
             O::CreateCircle => "core.pending.operation.create_circle",
             O::AddCircleMember => "core.pending.operation.add_circle_member",
             O::DeleteCircle => "core.pending.operation.delete_circle",

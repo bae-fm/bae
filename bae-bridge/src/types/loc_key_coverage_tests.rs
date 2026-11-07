@@ -555,6 +555,7 @@ fn pending_subject_messages() -> Vec<BridgeMessage> {
         O::ReloadFromSnapshot,
         O::RequiredReload,
         O::RotateKey,
+        O::SendKeyCopy,
         O::CreateCircle,
         O::AddCircleMember,
         O::DeleteCircle,
