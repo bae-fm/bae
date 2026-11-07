@@ -32,7 +32,7 @@ pub use folder_scans::{FinishedScan, FolderRereadRefusal, ScanItemWrite};
 pub(crate) use folder_scans::{
     FolderEntryToWrite, FolderReadingCommit, FolderReadingWrite, ScanItemSeed, ScanItemToWrite,
 };
-pub use import_list::SelectionWrite;
+pub use import_list::{ImportListError, SelectionWrite};
 pub(crate) use import_state::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, CommittingCandidate, ImportClaim, ImportCommitGuard, ImportRows,

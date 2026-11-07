@@ -41,13 +41,16 @@ struct ListPlaces {
 
 /// One read of the list for `request`, each window read from an item beside
 /// it when this read or, while the list stands as it stood then, the last
-/// read through `places` found one (`list_windows`).
+/// read through `places` found one (`list_windows`); `None` once the list is
+/// closed.
 fn load_import_list_on(
     sql: &SqlReadContext<'_>,
     request: &ImportListRequest,
     places: &KnownPlaces<Standing, ListPlaces>,
-) -> Result<ImportListRows, DbError> {
-    let list = list_row(sql, request.list)?;
+) -> Result<Option<ImportListRows>, DbError> {
+    let Some(list) = list_row(sql, request.list)? else {
+        return Ok(None);
+    };
     let versions = list_versions_on(sql, "import_list_versions", LIST_SOURCES)?;
     let standing = (list.id, list.view_revision, versions);
     let mut known = places.under(&standing);
@@ -70,7 +73,7 @@ fn load_import_list_on(
     places.keep(standing, found);
     let watched_folders = super::watched_folders::watched_folders_on(sql)?;
     let selection = selection::selection(sql, list.id)?;
-    Ok(ImportListRows {
+    Ok(Some(ImportListRows {
         windows,
         total_count: listed.total,
         summary: ImportQueueSummary {
@@ -89,7 +92,7 @@ fn load_import_list_on(
         selection,
         view_revision: list.view_revision,
         selection_revision: list.selection_revision,
-    })
+    }))
 }
 
 impl ImportListRows {
@@ -127,24 +130,26 @@ impl ImportTables {
     pub(crate) fn subscribe_import_list(
         &self,
         initial: ImportListRequest,
-    ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection, bae_store::DbError>
+    ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection, ImportListError>
     {
         let places = KnownPlaces::new();
         self.store
             .subscribe_reconfigurable(initial, move |request, sql| {
-                load_import_list_on(&sql, request, &places)
+                load_import_list_on(&sql, request, &places)?
+                    .ok_or(ImportListError::Closed(request.list))
             })
-            .process(|rows| rows.process())
+            .process(|rows| Ok(rows.process()?))
     }
 
     /// One read of the list, for a caller with no subscription.
     pub async fn load_import_list(
         &self,
         request: ImportListRequest,
-    ) -> Result<ImportListProjection, DbError> {
+    ) -> Result<ImportListProjection, ImportListError> {
+        let list = request.list;
         self.store
             .read(move |sql| load_import_list_on(&sql, &request, &KnownPlaces::new()))
-            .process(ImportListRows::process)
+            .process(move |rows| Ok(rows.ok_or(ImportListError::Closed(list))?.process()?))
             .await
     }
 }

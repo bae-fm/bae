@@ -597,7 +597,7 @@ impl ImportTables {
     pub(crate) async fn load_import_list_read(
         &self,
         read: ListRead,
-    ) -> Result<crate::ImportListProjection, DbError> {
+    ) -> Result<crate::ImportListProjection, ImportListError> {
         let list = self.open_import_list(read.view).await?;
         if !read.selected.is_empty() {
             self.change_import_list_selection(
@@ -623,7 +623,7 @@ impl ImportTables {
     ) -> Result<Option<(Vec<String>, Vec<String>)>, DbError> {
         self.store
             .read(move |sql| {
-                let row = list_row(&sql, list)?;
+                let row = list_row(&sql, list)?.expect("the test's list is open");
                 let everything = bae_store::LibraryPageWindow { offset: 0, limit: u64::MAX };
                 let keys = |shown| -> Result<Vec<String>, DbError> {
                     Ok(row

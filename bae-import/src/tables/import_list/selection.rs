@@ -65,12 +65,14 @@ pub(super) fn selection(
     Ok(SelectionSummary { count, single, offers: selection_offers(&parts) })
 }
 
-/// The selected rows of the list, in its order.
+/// The selected rows of the list, in its order; `None` once it is closed.
 pub(super) fn selected(
     sql: &impl coven::SqlRead,
     list: ImportListId,
-) -> Result<SelectedRows, DbError> {
-    let row = super::list_row(sql, list)?;
+) -> Result<Option<SelectedRows>, DbError> {
+    let Some(row) = super::list_row(sql, list)? else {
+        return Ok(None);
+    };
     let rows = sql.query(
         &format!(
             "WITH {uploading} \
@@ -111,7 +113,7 @@ pub(super) fn selected(
             Item::Invalid | Item::Group => selected.invalid.push(key),
         }
     }
-    Ok(selected)
+    Ok(Some(selected))
 }
 
 impl ImportTables {
@@ -120,8 +122,8 @@ impl ImportTables {
     pub async fn load_import_list_selected(
         &self,
         list: ImportListId,
-    ) -> Result<crate::selection::SelectedRows, DbError> {
-        self.store.read(move |sql| selected(&sql, list)).await
+    ) -> Result<crate::selection::SelectedRows, ImportListError> {
+        self.store.read(move |sql| selected(&sql, list)).await?.ok_or(ImportListError::Closed(list))
     }
 
     /// Apply a change a person made by pointing at rows of `list`. A row the
@@ -130,9 +132,12 @@ impl ImportTables {
         &self,
         list: ImportListId,
         change: SelectionChange,
-    ) -> Result<SelectionWrite, DbError> {
+    ) -> Result<SelectionWrite, ImportListError> {
         self.store
             .call(move |sql| {
+                let Some(row) = list_row(sql, list)? else {
+                    return Ok(None);
+                };
                 match change {
                     SelectionChange::Replace { keys } => {
                         sql.execute(
@@ -151,12 +156,11 @@ impl ImportTables {
                         select_shown(sql, list, &add)?;
                     }
                     SelectionChange::Extend { from, to } => {
-                        let row = list_row(sql, list)?;
                         let items = row.items(Shown::View);
                         let (Some(from), Some(to)) =
                             (items.position_of(sql, &from)?, items.position_of(sql, &to)?)
                         else {
-                            return Ok(SelectionWrite::RunNotShown);
+                            return Ok(Some(SelectionWrite::RunNotShown));
                         };
                         items.select_window(
                             sql,
@@ -167,9 +171,10 @@ impl ImportTables {
                         )?;
                     }
                 }
-                Ok(SelectionWrite::Changed { revision: selection_revision(sql, list)? })
+                Ok(Some(SelectionWrite::Changed { revision: selection_revision(sql, list)? }))
             })
-            .await
+            .await?
+            .ok_or(ImportListError::Closed(list))
     }
 
     /// Select every row `list` shows, and answer with the selection revision
@@ -177,18 +182,22 @@ impl ImportTables {
     pub(crate) async fn select_all_in_import_list(
         &self,
         list: ImportListId,
-    ) -> Result<u64, DbError> {
+    ) -> Result<u64, ImportListError> {
         self.store
             .call(move |sql| {
+                if list_row(sql, list)?.is_none() {
+                    return Ok(None);
+                }
                 sql.execute(
                     "INSERT INTO import_list_selection (list_id, key) \
                  SELECT list_id, key FROM import_list_shown WHERE list_id = ? \
                  ON CONFLICT (list_id, key) DO NOTHING",
                     [list.0],
                 )?;
-                selection_revision(sql, list)
+                Ok(Some(selection_revision(sql, list)?))
             })
-            .await
+            .await?
+            .ok_or(ImportListError::Closed(list))
     }
 }
 
@@ -202,13 +211,13 @@ pub enum SelectionWrite {
     RunNotShown,
 }
 
+/// The selection revision of `list`, which the write found open.
 fn selection_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
-    let revision = sql
-        .query_row("SELECT selection_revision FROM import_list WHERE id = ?", [list.0], |row| {
-            row.get::<_, i64>(0)
-        })
-        .optional()?
-        .ok_or_else(|| DbError::Message(format!("import list {} is not open", list.0)))?;
+    let revision = sql.query_row(
+        "SELECT selection_revision FROM import_list WHERE id = ?",
+        [list.0],
+        |row| row.get::<_, i64>(0),
+    )?;
     to_u64(revision, "a list's selection revision")
 }
 

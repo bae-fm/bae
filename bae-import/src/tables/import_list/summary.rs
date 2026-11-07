@@ -185,13 +185,17 @@ pub(super) fn listed(
     Ok(Listed { total: total(items)?, narrowed, reads: Reads::Order })
 }
 
-/// Where the candidate at `key` sits in `list` once revealed.
+/// Where the candidate at `key` sits in `list` once revealed: `None` for a
+/// candidate the list lists nowhere, and `None` around it all once the list
+/// is closed.
 pub(super) fn locate(
     sql: &SqlReadContext<'_>,
     list: ImportListId,
     key: &CandidateKey,
-) -> Result<Option<ImportCandidateListLocation>, DbError> {
-    let row = super::list_row(sql, list)?;
+) -> Result<Option<Option<ImportCandidateListLocation>>, DbError> {
+    let Some(row) = super::list_row(sql, list)? else {
+        return Ok(None);
+    };
     let Some((root, tab, group_folder)) = sql
         .query_row(
             "SELECT watched_folder_path, tab, group_folder FROM import_list_placement \
@@ -207,7 +211,7 @@ pub(super) fn locate(
         )
         .optional()?
     else {
-        return Ok(None);
+        return Ok(Some(None));
     };
     let tab = tab_of(&tab)?;
     let group = group_folder.map(|folder| crate::FolderReleaseDecisionKey {
@@ -217,23 +221,26 @@ pub(super) fn locate(
     let position =
         Items::new(list, tab, row.view.order, Shown::Revealing { opened: group.as_ref() })
             .position_of(sql, key)?;
-    Ok(position.map(|position| ImportCandidateListLocation {
+    Ok(Some(position.map(|position| ImportCandidateListLocation {
         stable_key: crate::list::candidate_stable_key(key),
         tab,
         group_key: group,
         visible_position: position,
-    }))
+    })))
 }
 
 /// The first candidate being identified in `list`'s order, every tab's rows
-/// unfiltered, Found's first.
+/// unfiltered, Found's first: `None` for none, and `None` around it all once
+/// the list is closed.
 pub(super) fn first_identifying(
     sql: &SqlReadContext<'_>,
     list: ImportListId,
-) -> Result<Option<CandidateKey>, DbError> {
-    let row = super::list_row(sql, list)?;
-    Ok(sql
-        .query_row(
+) -> Result<Option<Option<CandidateKey>>, DbError> {
+    let Some(row) = super::list_row(sql, list)? else {
+        return Ok(None);
+    };
+    Ok(Some(
+        sql.query_row(
             &format!(
                 "WITH {uploading} \
                  SELECT p.key FROM import_candidate_standing AS st \
@@ -252,7 +259,8 @@ pub(super) fn first_identifying(
             [],
             |row| row.get::<_, CandidateKey>(0),
         )
-        .optional()?)
+        .optional()?,
+    ))
 }
 
 impl ImportTables {
@@ -264,9 +272,12 @@ impl ImportTables {
         &self,
         list: ImportListId,
         candidate_key: &crate::CandidateKey,
-    ) -> Result<Option<crate::ImportCandidateListLocation>, DbError> {
+    ) -> Result<Option<crate::ImportCandidateListLocation>, ImportListError> {
         let candidate_key = candidate_key.clone();
-        self.store.read(move |sql| locate(&sql, list, &candidate_key)).await
+        self.store
+            .read(move |sql| locate(&sql, list, &candidate_key))
+            .await?
+            .ok_or(ImportListError::Closed(list))
     }
 
     /// The first candidate in the list's order, every tab's rows unfiltered,
@@ -275,8 +286,11 @@ impl ImportTables {
     pub(crate) async fn first_identifying_import_candidate(
         &self,
         list: ImportListId,
-    ) -> Result<Option<crate::CandidateKey>, DbError> {
-        self.store.read(move |sql| first_identifying(&sql, list)).await
+    ) -> Result<Option<crate::CandidateKey>, ImportListError> {
+        self.store
+            .read(move |sql| first_identifying(&sql, list))
+            .await?
+            .ok_or(ImportListError::Closed(list))
     }
 }
 

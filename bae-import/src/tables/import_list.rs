@@ -49,6 +49,33 @@ use order::{Items, Shown};
 
 pub use selection::SelectionWrite;
 
+/// Why a read or a write of one open list failed.
+#[derive(Debug, thiserror::Error)]
+pub enum ImportListError {
+    /// The list is no longer open: the surface that opened it closed it.
+    #[error("import list {0:?} is not open")]
+    Closed(ImportListId),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+/// A store failure the list's live query met is the store's failure.
+impl From<coven::DbError> for ImportListError {
+    fn from(error: coven::DbError) -> Self {
+        Self::Database(error.into())
+    }
+}
+
+/// A bug a run of the list's live query carries back: the store's.
+impl coven::task::CarriesBug for ImportListError {
+    fn bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Closed(_) => None,
+            Self::Database(error) => error.bug(),
+        }
+    }
+}
+
 /// The import list's part of the library's schema. Each file runs after the
 /// ones creating the tables its triggers fire on: the placement first, the
 /// lists a surface has open before the triggers that follow other domains'
@@ -128,14 +155,15 @@ fn pending_filter_of(column: &str) -> Result<PendingFilter, DbError> {
     }
 }
 
-/// The list `id`'s row. A list is read only while it is open, so a missing
-/// row is a list closed under its own read.
-fn list_row(sql: &impl coven::SqlRead, id: ImportListId) -> Result<ListRow, DbError> {
-    let (
+/// The list `id`'s row; `None` once the list is closed. A write reads it
+/// before anything else, so a fold or a selection never names a list that is
+/// gone.
+fn list_row(sql: &impl coven::SqlRead, id: ImportListId) -> Result<Option<ListRow>, DbError> {
+    let Some((
         (tab, pending_filter, filter_text, order),
         (view_revision, selection_revision, opened_at),
         (narrows, filters_text, keeps_all),
-    ) = sql
+    )) = sql
         .query_row(
             "SELECT tab, pending_filter, filter_text, list_order, view_revision, \
                     selection_revision, opened_at, narrows, pattern IS NOT NULL, keeps_all \
@@ -155,8 +183,10 @@ fn list_row(sql: &impl coven::SqlRead, id: ImportListId) -> Result<ListRow, DbEr
             },
         )
         .optional()?
-        .ok_or_else(|| DbError::Message(format!("import list {} is not open", id.0)))?;
-    Ok(ListRow {
+    else {
+        return Ok(None);
+    };
+    Ok(Some(ListRow {
         id,
         view: ImportListView {
             tab: order::tab_of(&tab)?,
@@ -170,7 +200,7 @@ fn list_row(sql: &impl coven::SqlRead, id: ImportListId) -> Result<ListRow, DbEr
         narrows,
         filters_text,
         keeps_all,
-    })
+    }))
 }
 
 #[cfg(test)]

@@ -442,7 +442,7 @@ impl ImportTables {
     ) -> Result<Vec<Vec<Vec<String>>>, DbError> {
         self.store
             .read(move |sql| {
-                let row = list_row(&sql, list)?;
+                let row = list_row(&sql, list)?.expect("the test's list is open");
                 row.items(Shown::View).window_plans(&sql)
             })
             .await
@@ -457,7 +457,7 @@ impl ImportTables {
     ) -> Result<Vec<Vec<String>>, DbError> {
         self.store
             .read(move |sql| {
-                let row = list_row(&sql, list)?;
+                let row = list_row(&sql, list)?.expect("the test's list is open");
                 let counts = sql.query(
                     &format!("EXPLAIN QUERY PLAN {}", summary::SEARCH_COUNTS),
                     named_params! { ":list": list.0 },

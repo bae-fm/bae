@@ -142,6 +142,12 @@ pub enum ImportError {
     #[error(transparent)]
     FolderReread(#[from] crate::tables::FolderRereadRefusal),
 
+    /// A list opened for one read was found closed under it, though only
+    /// the read that opened it closes it.
+    #[cfg(desktop)]
+    #[error("import list {0:?} closed under the read that opened it")]
+    ListClosed(crate::ImportListId),
+
     /// Releases picked to be read as one could not be combined.
     #[cfg(desktop)]
     #[error(transparent)]
@@ -430,6 +436,18 @@ impl From<bae_util::worker_thread::WorkerEnd> for ImportError {
     }
 }
 
+/// A list found closed under the read that opened it is bae's own fault; its
+/// store failure is the library's store failure.
+#[cfg(desktop)]
+impl From<crate::tables::ImportListError> for ImportError {
+    fn from(error: crate::tables::ImportListError) -> Self {
+        match error {
+            crate::tables::ImportListError::Closed(list) => Self::ListClosed(list),
+            crate::tables::ImportListError::Database(error) => Self::Database(error),
+        }
+    }
+}
+
 /// A store failure an import's read or write met is the library's store
 /// failure.
 #[cfg(desktop)]
@@ -550,6 +568,8 @@ impl ImportError {
             Self::Internal { .. } => C::Internal,
             #[cfg(desktop)]
             Self::Stopped | Self::WorkerFailed(_) | Self::Provenance { .. } => C::Internal,
+            #[cfg(desktop)]
+            Self::ListClosed(_) => C::Internal,
             // A candidate that left, was imported, or changed under the
             // save is the person's to work on as it now stands; a save
             // handed what no caller builds is bae's own fault.

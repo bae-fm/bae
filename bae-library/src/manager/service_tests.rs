@@ -365,7 +365,7 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
 }
 
 /// Cancelling settles a pending read and closes the list: its row goes, and a
-/// later change to it is refused.
+/// later change to it answers that the subscription was cancelled.
 #[tokio::test]
 async fn cancelling_closes_the_list() {
     let (test, _temp_dir) = setup_test_manager().await;
@@ -389,7 +389,7 @@ async fn cancelling_closes_the_list() {
         .is_empty());
     assert!(matches!(
         subscription.set_view(bae_import::ImportListView::default()).await,
-        Err(bae_import::LiveImportListError::Database(_))
+        Err(bae_import::LiveImportListError::Cancelled)
     ));
     assert!(matches!(subscription.next().await, Err(bae_import::LiveImportListError::Cancelled)));
 }

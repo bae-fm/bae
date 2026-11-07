@@ -8,13 +8,14 @@ use std::collections::BTreeSet;
 /// move alone caused that run. Every commit since the query's last value is
 /// read into the same run, so one touching anything the query reads makes the
 /// cause `RequestAndDatabaseChanged`.
-pub async fn next_run_is_only_the_request<Request, Value>(
-    live: &mut coven::ReconfigurableLiveQuery<Request, Value, crate::DbError>,
+pub async fn next_run_is_only_the_request<Request, Value, E>(
+    live: &mut coven::ReconfigurableLiveQuery<Request, Value, E>,
     request: Request,
-) -> coven::ReconfigurableLiveQueryEvent<Request, Value, crate::DbError>
+) -> coven::ReconfigurableLiveQueryEvent<Request, Value, E>
 where
     Request: Clone + PartialEq + Send + Sync + 'static,
     Value: Clone + PartialEq + Send + 'static,
+    E: From<coven::DbError> + coven::task::CarriesBug + Send + 'static,
 {
     let revision = live.requests().set(request).expect("the subscription is open");
     let event = tokio::time::timeout(HANG_GUARD, live.next())

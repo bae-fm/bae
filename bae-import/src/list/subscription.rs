@@ -17,7 +17,7 @@ use super::{
     ImportListSnapshot, ImportListView,
 };
 use crate::selection::{SelectedRows, SelectionChange};
-use crate::tables::{ImportTables, SelectionWrite};
+use crate::tables::{ImportListError, ImportTables, SelectionWrite};
 use crate::FolderReleaseDecisionKey;
 use bae_store::live_query::CancellableLiveQuery;
 use bae_store::DbError;
@@ -36,6 +36,17 @@ pub enum LiveImportListError {
     Database(#[from] DbError),
 }
 
+/// A list found closed was closed by this subscription's own cancel, the one
+/// write that closes a list a surface holds open.
+impl From<ImportListError> for LiveImportListError {
+    fn from(error: ImportListError) -> Self {
+        match error {
+            ImportListError::Closed(_) => Self::Cancelled,
+            ImportListError::Database(error) => Self::Database(error),
+        }
+    }
+}
+
 /// The live query ending is this subscription's cancellation.
 impl From<bae_store::live_query::LiveQueryCancelled> for LiveImportListError {
     fn from(_: bae_store::live_query::LiveQueryCancelled) -> Self {
@@ -50,7 +61,7 @@ impl From<bae_store::live_query::LiveQueryCancelled> for LiveImportListError {
 pub struct LiveImportList {
     list: ImportListId,
     tables: ImportTables,
-    query: CancellableLiveQuery<ImportListRequest, ImportListProjection>,
+    query: CancellableLiveQuery<ImportListRequest, ImportListProjection, ImportListError>,
 }
 
 impl LiveImportList {

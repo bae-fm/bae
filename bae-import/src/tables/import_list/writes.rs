@@ -7,13 +7,12 @@ use super::order::{order_column, tab_column, Shown};
 use super::*;
 use crate::FolderReleaseDecisionKey;
 
+/// The view revision of `list`, which the write found open.
 fn view_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
-    let revision = sql
-        .query_row("SELECT view_revision FROM import_list WHERE id = ?", [list.0], |row| {
+    let revision =
+        sql.query_row("SELECT view_revision FROM import_list WHERE id = ?", [list.0], |row| {
             row.get::<_, i64>(0)
-        })
-        .optional()?
-        .ok_or_else(|| DbError::Message(format!("import list {} is not open", list.0)))?;
+        })?;
     to_u64(revision, "a list's view revision")
 }
 
@@ -24,9 +23,10 @@ fn view_moved(sql: &CovenWrite<'_>, list: ImportListId) -> Result<(), DbError> {
 }
 
 /// Where the list's view opens: the position of its first selected row,
-/// reading the items before it, or its top with no selected row shown.
+/// reading the items before it, or its top with no selected row shown. The
+/// write found the list open.
 fn opened_at(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
-    let row = list_row(sql, list)?;
+    let row = list_row(sql, list)?.expect("the write found the list open");
     Ok(row
         .items(Shown::View)
         .position_where(
@@ -87,9 +87,12 @@ impl ImportTables {
         &self,
         list: ImportListId,
         view: ImportListView,
-    ) -> Result<u64, DbError> {
+    ) -> Result<u64, ImportListError> {
         self.store
             .call(move |sql| {
+                if list_row(sql, list)?.is_none() {
+                    return Ok(None);
+                }
                 let changed = sql.execute(
                     "UPDATE import_list \
                  SET tab = :tab, pending_filter = :filter, filter_text = :text, \
@@ -113,9 +116,10 @@ impl ImportTables {
                         params![opened_at, list.0],
                     )?;
                 }
-                view_revision(sql, list)
+                Ok(Some(view_revision(sql, list)?))
             })
-            .await
+            .await?
+            .ok_or(ImportListError::Closed(list))
     }
 
     /// Fold the group `group` shut in `list`, or open it, and answer with the
@@ -127,8 +131,11 @@ impl ImportTables {
         list: ImportListId,
         group: FolderReleaseDecisionKey,
         folded: bool,
-    ) -> Result<u64, DbError> {
+    ) -> Result<u64, ImportListError> {
         self.store.call(move |sql| {
+            if list_row(sql, list)?.is_none() {
+                return Ok(None);
+            }
             let changed = match folded {
                 true => sql.execute(
                     "INSERT INTO import_list_collapsed (list_id, watched_folder_path, group_folder) \
@@ -154,9 +161,10 @@ impl ImportTables {
             if changed > 0 {
                 view_moved(sql, list)?;
             }
-            view_revision(sql, list)
+            Ok(Some(view_revision(sql, list)?))
         })
-        .await
+        .await?
+        .ok_or(ImportListError::Closed(list))
     }
 
     /// Fold every group of `list` shut, or open them all, in one write, and
@@ -165,8 +173,11 @@ impl ImportTables {
         &self,
         list: ImportListId,
         folded: bool,
-    ) -> Result<u64, DbError> {
+    ) -> Result<u64, ImportListError> {
         self.store.call(move |sql| {
+            if list_row(sql, list)?.is_none() {
+                return Ok(None);
+            }
             let changed = match folded {
                 true => sql.execute(
                     "INSERT INTO import_list_collapsed (list_id, watched_folder_path, group_folder) \
@@ -183,9 +194,10 @@ impl ImportTables {
             if changed > 0 {
                 view_moved(sql, list)?;
             }
-            view_revision(sql, list)
+            Ok(Some(view_revision(sql, list)?))
         })
-        .await
+        .await?
+        .ok_or(ImportListError::Closed(list))
     }
 }
 
