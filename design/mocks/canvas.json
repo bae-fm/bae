@@ -3117,16 +3117,16 @@
   }
  },
  "createdOnFiles": {
-  "at": "2026-11-05T23:35:00Z",
-  "v": 1
+  "v": 1,
+  "at": "2026-11-07T03:22:02Z"
  },
  "designSystems": [
   {
-   "artifact": "https://claude.ai/artifact/VQavFBTofLVMKF7kng8iLL",
-   "copiedAt": "2026-11-05T23:35:00Z",
-   "namespace": "bae",
    "title": "bae",
-   "version": "1793930549-d60e"
+   "namespace": "bae",
+   "artifact": "https://claude.ai/artifact/Y6uUYPzJuqVmmjZPT4kdZA",
+   "version": "1794021705-ea3f",
+   "copiedAt": "2026-11-07T03:22:02Z"
   }
  ],
  "launch": {
@@ -3485,7 +3485,7 @@
    "text": "Album actions: macOS",
    "kind": "title1",
    "w": 240,
-   "maxW": 14580
+   "maxW": 8000
   },
   "row-album-states-android": {
    "kind": "title1",
@@ -3584,7 +3584,7 @@
    "text": "Errors: macOS",
    "kind": "title1",
    "w": 240,
-   "maxW": 8180
+   "maxW": 8000
   },
   "row-errors-mac-note": {
    "fill": "blue",
