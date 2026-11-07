@@ -188,6 +188,10 @@ pub enum LibraryError {
     /// operation is no such setup, or the store failed.
     #[error(transparent)]
     SetupDismiss(bae_sync_status::SetupDismissError),
+    /// A dismissal of a finished admin change did not commit: the operation
+    /// is no admin change of this device's, or the store failed.
+    #[error(transparent)]
+    AdminChangeDismiss(bae_people::admin_change::AdminChangeDismissError),
     /// Making a release local again failed; coven removed what the call
     /// made, so the release stays in the cloud.
     #[error("make release local: {0}")]
@@ -335,6 +339,7 @@ impl bae_util::task_failure::ReportedBug for LibraryError {
             LibraryError::MakeLocal(error) => error.reported_bug(),
             LibraryError::StorageTransition(error) => error.reported_bug(),
             LibraryError::SetupDismiss(error) => error.reported_bug(),
+            LibraryError::AdminChangeDismiss(error) => error.reported_bug(),
             LibraryError::Deletion(error) => error.reported_bug(),
             LibraryError::ImageWrite(error) => error.reported_bug(),
             LibraryError::Sync(error) | LibraryError::InviteJoining(error) => error.reported_bug(),
@@ -390,6 +395,7 @@ impl LibraryError {
             LibraryError::MakeLocal(error) => device_only_category(error),
             LibraryError::StorageTransition(error) => storage_transition_category(error),
             LibraryError::SetupDismiss(error) => setup_dismiss_category(error),
+            LibraryError::AdminChangeDismiss(error) => admin_change_dismiss_category(error),
             LibraryError::Deletion(error) => deletion_category(error),
             LibraryError::ImageWrite(error) => image_write_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
@@ -515,6 +521,31 @@ impl From<bae_sync_status::SetupDismissError> for LibraryError {
         match error {
             bae_sync_status::SetupDismissError::Database(error) => Self::Database(error),
             error => Self::SetupDismiss(error),
+        }
+    }
+}
+
+/// The class a surface words a refused dismissal of an admin change in: the
+/// list offers only this device's admin changes, so another is bae's own
+/// fault.
+fn admin_change_dismiss_category(
+    error: &bae_people::admin_change::AdminChangeDismissError,
+) -> bae_diagnostics::UiErrorCategory {
+    use bae_people::admin_change::AdminChangeDismissError as E;
+    match error {
+        E::Database(error) => bae_diagnostics::database_category(error),
+        E::NotAdminChange(_) => bae_diagnostics::UiErrorCategory::Internal,
+    }
+}
+
+/// A dismissal that failed in the store is the library's store failure.
+impl From<bae_people::admin_change::AdminChangeDismissError> for LibraryError {
+    fn from(error: bae_people::admin_change::AdminChangeDismissError) -> Self {
+        match error {
+            bae_people::admin_change::AdminChangeDismissError::Database(error) => {
+                Self::Database(error)
+            }
+            error => Self::AdminChangeDismiss(error),
         }
     }
 }

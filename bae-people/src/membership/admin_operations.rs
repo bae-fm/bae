@@ -4,7 +4,9 @@
 //! acknowledges a change's outcome deletes its row.
 
 use super::*;
-use crate::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
+use crate::admin_change::{
+    AdminChange, AdminChangeDismissError, AdminChangeKind, AdminChangeState,
+};
 
 /// What an admin change changes, as its `admin_operations` row holds it.
 pub(super) enum AdminTarget {
@@ -171,24 +173,28 @@ impl Membership {
 
     /// Acknowledge a finished admin change's outcome, so it leaves the list:
     /// coven's operation and its row go in one write. One still running is
-    /// refused with coven's `OperationRunning`.
+    /// refused with coven's `OperationRunning`, and an operation that is no
+    /// admin change of this device's as `NotAdminChange`.
     pub async fn acknowledge_admin_change(
         &self,
         operation: coven::OperationId,
-    ) -> Result<(), DbError> {
-        self.store
+    ) -> Result<(), AdminChangeDismissError> {
+        let acknowledged = self
+            .store
             .call(move |sql| {
-                sql.acknowledge_operation(operation)?;
                 let deleted = sql
                     .execute("DELETE FROM admin_operations WHERE operation = ?1", [operation.0])?;
-                if deleted != 1 {
-                    return Err(DbError::Message(format!(
-                        "operation {operation:?} is no admin change of this device's"
-                    )));
+                if deleted == 0 {
+                    return Ok(false);
                 }
-                Ok(())
+                sql.acknowledge_operation(operation)?;
+                Ok(true)
             })
-            .await
+            .await?;
+        match acknowledged {
+            true => Ok(()),
+            false => Err(AdminChangeDismissError::NotAdminChange(operation)),
+        }
     }
 }
 

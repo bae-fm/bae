@@ -1096,6 +1096,7 @@ dependencies = [
  "bae-diagnostics",
  "bae-records",
  "bae-store",
+ "bae-util",
  "chrono",
  "coven",
  "regex",

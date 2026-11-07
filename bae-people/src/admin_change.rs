@@ -55,3 +55,25 @@ pub enum AdminChangeState {
     /// it.
     Stopped(coven::DeviceStop),
 }
+
+/// Why the person's dismissal of an admin change was refused.
+#[derive(Debug, thiserror::Error)]
+pub enum AdminChangeDismissError {
+    /// The operation is no admin change this device asked for, or one
+    /// dismissed already. Nothing was acknowledged.
+    #[error("operation {0:?} is no admin change of this device's")]
+    NotAdminChange(coven::OperationId),
+    #[error(transparent)]
+    Database(#[from] bae_store::DbError),
+}
+
+/// A bug the store's write carried back, which the store reported as it
+/// returned; a refusal holds none.
+impl bae_util::task_failure::ReportedBug for AdminChangeDismissError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Database(error) => error.reported_bug(),
+            Self::NotAdminChange(_) => None,
+        }
+    }
+}

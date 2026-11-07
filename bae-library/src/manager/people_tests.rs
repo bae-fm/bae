@@ -121,7 +121,8 @@ fn the_watch_reports_a_device_that_joined_before_its_first_look() {
 /// Robin renames the library on her laptop while it is offline. The rename
 /// is listed as waiting, and the name stays; once the laptop syncs it is
 /// done and the library has the name. Dismissing it before then is refused;
-/// after, it leaves the list and coven's list of operations with it.
+/// after, it leaves the list and coven's list of operations with it, and
+/// dismissing it again is refused as no admin change of the laptop's.
 #[test]
 fn a_rename_is_listed_waiting_then_done_until_dismissed() {
     run_two_device_test(async |devices| {
@@ -162,6 +163,16 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
             .await
             .unwrap();
         assert!(listed.is_empty(), "{listed:?}");
+        let again = manager.acknowledge_admin_change(operation).await;
+        assert!(
+            matches!(
+                again,
+                Err(crate::manager::LibraryError::AdminChangeDismiss(
+                    bae_people::admin_change::AdminChangeDismissError::NotAdminChange(again)
+                )) if again == operation
+            ),
+            "{again:?}"
+        );
     });
 }
 
