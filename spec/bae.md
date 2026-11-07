@@ -2434,7 +2434,7 @@ the app's writes started (`coven_operations`): the new name, the person and
 the role, the person, the device, or for an approval the person it lets in
 and the name the invite gave them. Coven's list says what kind of change it
 is and how it ended, so the row holds neither. Each change shows, under
-**Changes from this Mac** in Library settings on a Mac and **Changes from this
+**Changes from this Mac** under People and devices in Library settings on a Mac and **Changes from this
 device** in Settings and People on Android, as what it asks ("Remove Ben",
 "Rename the library to “Home”", "Let Dan in"), named from the person's profile or the
 device's name as they stand ("Remove a device" for one this device hasn't
@@ -2681,7 +2681,7 @@ says the new device was added within seconds of it joining. A quiet sync is two
 requests to the storage, about 24 a minute, only while the sheet is open
 ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
 Settings keeps
-the code under **Restore code**, for the day she loses every device. It is
+the code under **Restore code**, on a Mac on Library settings' **Restore code** page, for the day she loses every device. It is
 made when Settings opens, one local read of her keys that the section names
 while it runs, never a bare spinner: the sheet says it is making a code for her
 new device, and the section that it is making her restore code. It shows
@@ -2829,7 +2829,7 @@ records the location as it ends. A setup's call hears how it ended, and
 acknowledges it in coven's list of operations; one that finished or was
 cancelled with nobody to hear it is acknowledged as the library opens. One
 that ended undone with nobody to hear it, such as one bae was stopped partway
-through, shows in Settings' sync section, why with *Dismiss*, until the person
+through, shows on Settings' Sync page, why with *Dismiss*, until the person
 dismisses it. Starting a setup while another runs, a call still under way or
 one from before that sync finishes, is refused, saying to try again once it
 has. A cancel counts from the moment the setup's call starts.
@@ -2874,7 +2874,7 @@ an app folder can't be shared, so a household couldn't be invited to it.
 OneDrive folder reads the folder's name and web address as the signed-in
 account names them, and coven records them with the location
 ([coven §20.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#202-the-providers-and-signing-in)).
-Settings' sync section shows that name as *Folder*, under the account, with
+Settings' Sync page shows that name as *Folder*, under the account, with
 *Open in browser*, which opens the folder's page at the provider; when no app
 on the device opens it, the section says so. S3 and iCloud show neither, and
 nor does Dropbox's App folder, which has no label. Settings reads the
@@ -3296,7 +3296,7 @@ fail, saying the laptop left the library and its files are still on it.
   device" on Android) and says "The library will remain in storage and on your
   other devices." Delete asks "Delete library?" and says the library isn't
   synced, so it will be deleted for good, and that the audio files stay in their
-  folders. A Mac's first screen and Library settings ask this way, and so do
+  folders. A Mac's first screen asks this way, and so do
   Android's first screen and Settings. A row whose library doesn't sync
   says "Not synced" and offers *Delete* in place of *Remove*. Neither platform
   asks the person to unlock the device first: the confirmation is the only step.
@@ -4192,6 +4192,17 @@ its avatar and history setting, rate, and make and edit playlists.
 This device's settings for the library are the `preferences` row. Each
 change edits the stored row in one write, and a UI follows it with no restart
 through the row's live query. Appendix C lists the settings.
+
+On a Mac, Library settings starts with two rows. **Name** shows the library's name,
+with *Rename…* for an admin, or for anyone when the library isn't synced, and
+**Library folder** has *Show in Finder*. For a library with storage, three
+rows follow, **Sync**, **People and devices** and **Restore code**, each
+opening its page, and the first two show where they stand: Sync the state of the sync,
+green for Synced and red for Failed, People and devices "2 people · 3
+devices". A library with no storage has one row in place of those three,
+**Sync** saying "Not synced" with *Set up sync…* and a note that the library
+is only on this Mac. Removing the library is not in Settings; it is on the
+first screen's list (§6.4).
 
 ### 9.7 Errors
 

@@ -6,10 +6,8 @@ import SwiftUI
 extension ShotScene {
     /// Settings panes: Playback with pausing between sides on, so its
     /// countdown shows under the switch; Casting on, with the receivers it
-    /// found and still looking for the first; and the Library tab on a
-    /// Dropbox shared folder, naming the folder coven recorded with Open in
-    /// browser, its people reaching it by their accounts, and on an S3
-    /// bucket, its people reaching it by their keys.
+    /// found and still looking for the first; and the Library tab of a synced
+    /// library, one whose sync failed, and one only on this Mac.
     static let settingsScenes: [ShotScene] = [
         ShotScene(
             id: "settings-playback",
@@ -54,12 +52,18 @@ extension ShotScene {
             uploadsPaused: true
         ),
         librarySettings(
-            "settings-sync-dropbox",
-            storage: PreviewData.previewDropboxStorage
+            "settings-library",
+            storage: PreviewData.previewStorage
         ),
         librarySettings(
-            "settings-sync-s3",
-            storage: PreviewData.previewStorage
+            "settings-library-problem",
+            storage: PreviewData.previewStorage,
+            indicator: .failed
+        ),
+        librarySettings(
+            "settings-library-not-synced",
+            storage: nil,
+            indicator: nil
         ),
     ]
 
@@ -104,15 +108,18 @@ extension ShotScene {
         }
     }
 
-    /// The Library tab over a library whose storage is `storage`, once its
-    /// name and people have answered.
+    /// The Library tab over a library whose storage is `storage`, or none,
+    /// with its sync at `indicator`, once its name and people have answered.
     private static func librarySettings(
         _ id: String,
-        storage: BridgeStorageLocation
+        storage: BridgeStorageLocation?,
+        indicator: BridgeSyncIndicator? = .synced
     ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: 500, height: 640)) {
+        ShotScene(id: id, size: CGSize(width: 500, height: 600)) {
             let fixture = LibrarySettingsTabPreviewFixture(storage: storage)
-            return ShotStage(librarySettingsTabPreview(fixture)) {
+            return ShotStage(
+                librarySettingsTabPreview(fixture, indicator: indicator)
+            ) {
                 fixture.answered
             }
         }

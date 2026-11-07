@@ -196,8 +196,7 @@ open class AppService: @unchecked Sendable, Observable {
     /// shut the core's runtime down, off the main actor, writing each step to
     /// `closing` when the app shows the close. The library is closed whether
     /// or not this throws: a failure says
-    /// what went wrong while closing it. Removing a library instead calls
-    /// `removeLibrary` while this service owns the store.
+    /// what went wrong while closing it.
     public func close(showing closing: LibraryClosingSteps?) async throws {
         let bridgeClosing = closing?.closing
         try await DetachedWork.run { [appHandle] in
@@ -213,28 +212,6 @@ open class AppService: @unchecked Sendable, Observable {
         to name: String
     ) async throws {
         try await sync.renameLibrary(name)
-    }
-
-    /// What removing this library would lose, for the person to confirm
-    /// first. The library keeps running.
-    public func unsentBeforeRemoval() async throws -> BridgeUnsentWork {
-        try await appHandle.unsentBeforeRemoval()
-    }
-
-    /// Remove this library from this device, discarding what it hasn't
-    /// uploaded, writing each step to `removal`, whose steps the app shows.
-    public func removeLibrary(showing removal: LibraryClosingSteps) async throws
-        -> BridgeLibraryRemoval
-    {
-        let removed = try await appHandle.removeLibrary(
-            closing: removal.closing
-        )
-        // The store is gone. Ending the session ends the core's runtime off
-        // the main actor, so releasing the handle has nothing left to wait for.
-        try await DetachedWork.run { [appHandle] in
-            try appHandle.closeLibrary(closing: nil)
-        }
-        return removed
     }
 
     #if os(macOS)

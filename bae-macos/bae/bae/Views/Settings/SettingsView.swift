@@ -80,10 +80,9 @@ private struct PausedBadge: View {
 /// stays reachable in every language however many there come to be.
 struct SettingsView: View {
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
-    let unsentBeforeRemoval: () async throws -> BridgeUnsentWork
-    let onForgetLibrary: () -> Void
     let onResetDevice: () -> Void
     let onRestoreFromCode: () -> Void
+    let onRenameLibrary: () -> Void
 
     @Environment(SettingsNavigation.self)
     private var navigation
@@ -133,13 +132,12 @@ struct SettingsView: View {
             AppearanceSettingsTab()
         case .library:
             LibrarySettingsTab(
-                unsentBeforeRemoval: unsentBeforeRemoval,
-                onForgetLibrary: onForgetLibrary,
                 onResetDevice: onResetDevice,
                 onRestoreFromCode: onRestoreFromCode,
                 onCheckForUpdates: {
                     checkForUpdatesViewModel.checkForUpdates()
-                }
+                },
+                onRenameLibrary: onRenameLibrary
             )
         case .playback:
             PlaybackSettingsTab()

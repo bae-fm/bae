@@ -62,7 +62,6 @@ enum AppScreen {
         case settingUp
         case opening
         case closing
-        case removing
         /// Resetting this device's copy of a library.
         case resetting
 
@@ -92,12 +91,6 @@ enum AppScreen {
                     "Closing the library…",
                     comment:
                         "Loading screen while the open library closes, before the close reports its first step."
-                )
-            case .removing:
-                LocalizedStringResource(
-                    "Removing the library…",
-                    comment:
-                        "Loading screen while the open library is removed from this Mac, before the removal reports its first step."
                 )
             case .resetting:
                 LocalizedStringResource(

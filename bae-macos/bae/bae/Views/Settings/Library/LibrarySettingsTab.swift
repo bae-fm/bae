@@ -5,10 +5,6 @@ import os.log
 private let logger = Logger.bae("LibrarySettings")
 
 struct LibrarySettingsTab: View {
-    /// What removing the active library would lose, read before asking.
-    let unsentBeforeRemoval: () async throws -> BridgeUnsentWork
-    /// Removes the active library from this device.
-    let onForgetLibrary: () -> Void
     /// Shows the device-reset warning for the active library.
     let onResetDevice: () -> Void
     /// Closes the active library and asks for the person's restore code to
@@ -16,6 +12,8 @@ struct LibrarySettingsTab: View {
     let onRestoreFromCode: () -> Void
     /// Asks Sparkle for a newer version of the app.
     let onCheckForUpdates: () -> Void
+    /// Opens Rename Library on the active library's name.
+    let onRenameLibrary: () -> Void
 
     @Environment(ConfigStore.self)
     var configStore
@@ -30,43 +28,196 @@ struct LibrarySettingsTab: View {
 
     @State
     private var showSyncSetup = false
-    /// What removal would lose while the person is asked to confirm it.
-    @State
-    private var removalUnsent: BridgeUnsentWork?
-    /// Why what removal would lose couldn't be read.
-    @State
-    private var removalError: DisplayError?
-    /// The restore code section's reveal, closed whenever this tab goes away.
+    /// The restore code section's reveal, closed whenever this pane goes away.
     @State
     private var restoreCode = RestoreCodeReveal()
-    /// Why the library's location couldn't be read as this tab opened.
+    /// Why the library's location couldn't be read as this pane opened.
     @State
     private var storageReadError: DisplayError?
+
+    /// The pages the Library pane opens.
+    private enum Page: Hashable {
+        case sync, people, restoreCode
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    LabeledContent("Name") {
+                        HStack {
+                            Text(libraryName.name ?? "")
+                                .foregroundStyle(.secondary)
+                            if canRename {
+                                Button("Rename…", action: onRenameLibrary)
+                            }
+                        }
+                    }
+                    LabeledContent("Library folder") {
+                        Button("Show in Finder") {
+                            SystemActions.revealInFinder(
+                                path: configStore.config.libraryPath
+                            )
+                        }
+                    }
+                }
+
+                Section {
+                    syncRow
+                    if configStore.syncs {
+                        NavigationLink(value: Page.people) {
+                            LabeledContent("People and devices") {
+                                if let count = peopleAndDevices {
+                                    Text(count)
+                                }
+                            }
+                        }
+                        NavigationLink(value: Page.restoreCode) {
+                            Text("Restore code")
+                        }
+                    }
+                } footer: {
+                    if !configStore.syncs, !setupRunning {
+                        Text("This library is only on this Mac.")
+                    }
+                }
+            }
+            .formStyle(.grouped)
+            .navigationDestination(for: Page.self) { page in
+                switch page {
+                case .sync:
+                    SyncSettingsPage(
+                        storageReadError: storageReadError,
+                        onResetDevice: onResetDevice,
+                        onRestoreFromCode: onRestoreFromCode,
+                        onCheckForUpdates: onCheckForUpdates
+                    )
+                case .people:
+                    PeopleSettingsPage()
+                case .restoreCode:
+                    RestoreCodeSettingsPage(reveal: restoreCode)
+                }
+            }
+        }
+        // The name and the people are read while this pane shows, which
+        // includes the pages it opens: the stack, not a page, owns that.
+        .task { await libraryName.follow() }
+        .task { await readStorage() }
+        .onAppear { membership.show() }
+        // The restore code is made while this pane shows a library that
+        // syncs, and dropped when it stops.
+        .onChange(of: configStore.syncs, initial: true) { _, has in
+            if has {
+                restoreCode.open(sync.generateRestoreCode)
+            }
+            else {
+                restoreCode.close()
+            }
+        }
+        .onDisappear {
+            restoreCode.close()
+            membership.hide()
+        }
+        .sheet(isPresented: $showSyncSetup) {
+            SyncSetupWizard(onDone: { showSyncSetup = false })
+        }
+    }
+
+    /// Whether a storage setup runs that bae finishes on its own, such as one
+    /// it was stopped partway through.
+    private var setupRunning: Bool {
+        syncStatus.snapshot?.setupRunning == true
+    }
+
+    /// An admin renames a synced library; a library only on this Mac is its
+    /// person's to rename.
+    private var canRename: Bool {
+        !configStore.syncs || membership.selfIsAdmin
+    }
+
+    /// The Sync row: the state of the sync, opening its page; without
+    /// storage, Set up sync….
+    @ViewBuilder
+    private var syncRow: some View {
+        if configStore.syncs || setupRunning {
+            NavigationLink(value: Page.sync) {
+                LabeledContent("Sync") {
+                    if let text = syncStatus.statusText {
+                        Text(text)
+                            .foregroundStyle(syncTone.color)
+                    }
+                }
+            }
+        }
+        else {
+            LabeledContent("Sync") {
+                HStack {
+                    Text("Not synced")
+                        .foregroundStyle(.secondary)
+                    Button("Set up sync…") {
+                        showSyncSetup = true
+                    }
+                }
+            }
+        }
+    }
+
+    private var syncTone: StatusTone {
+        guard case .read(let indicator) = syncStatus.line else {
+            return .neutral
+        }
+        switch indicator {
+        case .synced: return .success
+        case .failed: return .danger
+        case .settingUpStorage, .stopped, .syncing, .offline, .waiting:
+            return .neutral
+        }
+    }
+
+    /// "2 people · 3 devices", once the people have been read.
+    private var peopleAndDevices: String? {
+        guard let members = membership.members else { return nil }
+        let devices = members.reduce(0) {
+            $0 + $1.membership.activeDevices.count
+        }
+        let people = String(localized: "\(members.count) people")
+        let deviceCount = String(localized: "\(devices) devices")
+        return "\(people) · \(deviceCount)"
+    }
+
+    /// Read the library's location again as the pane opens: coven records
+    /// a Dropbox or OneDrive folder's name at every connection, so one
+    /// renamed at the provider shows from the first read after.
+    private func readStorage() async {
+        storageReadError = nil
+        do {
+            configStore.applyStorage(try await sync.storageLocation())
+        }
+        catch {
+            logger.error(
+                "Couldn't read the library's location: \(String(reflecting: error))"
+            )
+            storageReadError = DisplayError(error)
+        }
+    }
+}
+
+/// The Sync page: where the library is stored and how its sync stands, until
+/// the redesigned page replaces it.
+private struct SyncSettingsPage: View {
+    let storageReadError: DisplayError?
+    let onResetDevice: () -> Void
+    let onRestoreFromCode: () -> Void
+    let onCheckForUpdates: () -> Void
+
+    @Environment(ConfigStore.self)
+    private var configStore
+    @Environment(SyncStatusStore.self)
+    private var syncStatus
 
     var body: some View {
         Form {
             Section {
-                LabeledContent("Name", value: libraryName.name ?? "")
-                LabeledContent("Path") {
-                    HStack {
-                        Text(configStore.config.libraryPath)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .foregroundStyle(.secondary)
-                        Button {
-                            SystemActions.revealInFinder(
-                                path: configStore.config.libraryPath
-                            )
-                        } label: {
-                            Image(systemName: "folder")
-                        }
-                        .buttonStyle(.borderless)
-                        .help("Reveal in Finder")
-                    }
-                }
-            }
-
-            Section("Sync") {
                 UndoneSetupLine()
                 if let storageReadError {
                     ErrorDetailDisclosure(error: storageReadError)
@@ -86,151 +237,54 @@ struct LibrarySettingsTab: View {
                         )
                     }
                 }
-                else if syncStatus.snapshot?.setupRunning == true {
-                    // A setup bae finishes on its own, such as one it was
-                    // stopped partway through, records the location as it
-                    // ends.
+                else {
                     if let statusText = syncStatus.statusText {
                         Text(statusText)
                     }
                     SyncFailureLines(onResetDevice: onResetDevice)
                 }
-                else {
-                    Button("Set up sync…") {
-                        showSyncSetup = true
-                    }
-                }
-            }
-
-            if configStore.syncs {
-                MembersSection()
-                AdminChangesSection()
-                HistorySharingSection()
-                RestoreCodeSection(
-                    reveal: restoreCode,
-                    onPrint: { code in
-                        RestoreCodePrinting.print(
-                            code: code,
-                            location: configStore.storage?.accountLine ?? ""
-                        )
-                    }
-                )
-            }
-
-            Section("Remove") {
-                Text(removeFooter)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                Button(removeButtonTitle, role: .destructive) {
-                    askToRemove()
-                }
-                if let removalError {
-                    ErrorDetailDisclosure(error: removalError)
-                }
             }
         }
         .formStyle(.grouped)
-        // The name, the people, invites and admin changes are read while
-        // this tab shows.
-        .task { await libraryName.follow() }
-        .task { await readStorage() }
-        .onAppear { membership.show() }
-        // The restore code is made while this tab shows a library that
-        // syncs, and dropped when it stops.
-        .onChange(of: configStore.syncs, initial: true) { _, has in
-            if has {
-                restoreCode.open(sync.generateRestoreCode)
-            }
-            else {
-                restoreCode.close()
-            }
+        .navigationTitle("Sync")
+    }
+}
+
+/// The People and devices page: the people, the changes this Mac asked of
+/// them, and sharing history, until the redesigned page replaces it.
+private struct PeopleSettingsPage: View {
+    var body: some View {
+        Form {
+            MembersSection()
+            AdminChangesSection()
+            HistorySharingSection()
         }
-        .onDisappear {
-            restoreCode.close()
-            membership.hide()
-        }
-        .sheet(isPresented: $showSyncSetup) {
-            SyncSetupWizard(onDone: { showSyncSetup = false })
-        }
-        .alert(
-            ending.title,
-            isPresented: Binding(
-                get: { removalUnsent != nil },
-                set: { if !$0 { removalUnsent = nil } }
-            ),
-            presenting: removalUnsent
-        ) { _ in
-            Button(ending.action, role: .destructive) {
-                onForgetLibrary()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: { unsent in
-            Text(
-                unsent.confirmation(
-                    consequence: LibraryRemovalConfirmation.consequence,
-                    message: LibraryRemovalConfirmation.message(
-                        syncs: configStore.syncs
+        .formStyle(.grouped)
+        .navigationTitle("People and devices")
+    }
+}
+
+/// The Restore code page: the person's restore code, masked until shown.
+private struct RestoreCodeSettingsPage: View {
+    let reveal: RestoreCodeReveal
+
+    @Environment(ConfigStore.self)
+    private var configStore
+
+    var body: some View {
+        Form {
+            RestoreCodeSection(
+                reveal: reveal,
+                onPrint: { code in
+                    RestoreCodePrinting.print(
+                        code: code,
+                        location: configStore.storage?.accountLine ?? ""
                     )
-                )
+                }
             )
         }
-    }
-
-    /// Read the library's location again as the tab opens: coven records
-    /// a Dropbox or OneDrive folder's name at every connection, so one
-    /// renamed at the provider shows from the first read after.
-    private func readStorage() async {
-        storageReadError = nil
-        do {
-            configStore.applyStorage(try await sync.storageLocation())
-        }
-        catch {
-            logger.error(
-                "Couldn't read the library's location: \(String(reflecting: error))"
-            )
-            storageReadError = DisplayError(error)
-        }
-    }
-
-    /// Read what removal would lose, then ask. The library keeps running.
-    private func askToRemove() {
-        removalError = nil
-        Task {
-            do {
-                removalUnsent = try await unsentBeforeRemoval()
-            }
-            catch {
-                logger.error(
-                    "Couldn't read what removing the library loses: \(String(reflecting: error))"
-                )
-                removalError = DisplayError(error)
-            }
-        }
-    }
-
-    /// Whether the active library is removed or, never synced, deleted.
-    private var ending: LibraryRemovalConfirmation.Ending {
-        LibraryRemovalConfirmation.Ending(
-            syncs: configStore.syncs
-        )
-    }
-
-    private var removeButtonTitle: String {
-        switch ending {
-        case .remove: String(localized: "Remove this library from this Mac…")
-        case .delete: String(localized: "Delete this library…")
-        }
-    }
-
-    /// The remove section's footer, which depends on whether the library syncs.
-    private var removeFooter: String {
-        if configStore.syncs {
-            return String(
-                localized:
-                    "Removes this Mac from the library's members, then deletes the library and its downloaded files from this Mac. The library will remain in storage and on your other devices. Removing needs a connection to your storage."
-            )
-        }
-        return LibraryRemovalConfirmation.message(syncs: false)
+        .formStyle(.grouped)
+        .navigationTitle("Restore code")
     }
 }
 
@@ -272,11 +326,10 @@ struct LibrarySettingsTab: View {
         indicator: BridgeSyncIndicator? = .synced
     ) -> some View {
         LibrarySettingsTab(
-            unsentBeforeRemoval: { BridgeUnsentWork(writes: 0, files: 0) },
-            onForgetLibrary: {},
             onResetDevice: {},
             onRestoreFromCode: {},
-            onCheckForUpdates: {}
+            onCheckForUpdates: {},
+            onRenameLibrary: {}
         )
         .frame(width: 500, height: 640)
         .environment(

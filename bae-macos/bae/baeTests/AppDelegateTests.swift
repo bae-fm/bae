@@ -82,19 +82,6 @@ struct AppDelegateTests {
         #expect(application.requestedPolicies == [.regular])
     }
 
-    @Test("forgetActiveLibrary with no open library is a no-op")
-    func forgetWithoutLibraryIsNoOp() {
-        let delegate = AppDelegate()
-        #expect(delegate.appService == nil)
-
-        delegate.forgetActiveLibrary()
-
-        guard case .loading = delegate.screen else {
-            Issue.record("screen should stay .loading with no library open")
-            return
-        }
-    }
-
     /// An open that stopped on a reset or restore left partway lands on the
     /// one call that finishes it, never the other.
     @Test("an unfinished replacement opens the call that finishes it")

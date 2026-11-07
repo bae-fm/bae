@@ -151,8 +151,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let reloadSlot = CancellableTaskSlot()
     /// In-flight rename, cancelled on library close.
     private let renameSlot = CancellableTaskSlot()
-    /// In-flight forget, cancelled on library close.
-    private let forgetSlot = CancellableTaskSlot()
     /// In-flight device reset.
     private let resetSlot = CancellableTaskSlot()
     /// The one graceful shutdown that Close and Quit share.
@@ -601,7 +599,6 @@ extension AppDelegate {
         // An open still in flight must not replace this session.
         opener.cancel()
         renameSlot.cancel()
-        forgetSlot.cancel()
     }
 
     /// Close the library another one replaced, off the main actor: releasing
@@ -693,63 +690,5 @@ extension AppDelegate {
                 self.renameLibrarySheet?.error = DisplayError($0)
             }
         )
-    }
-}
-
-extension AppDelegate {
-    /// Remove the open library from this Mac, once the person confirmed what
-    /// it loses: this Mac leaves the store, then its local copy is deleted,
-    /// discarding what this Mac hasn't sent. The person's restore code stays
-    /// in iCloud Keychain, so the welcome offers restoring the library again.
-    /// A failed removal opens the library again.
-    func forgetActiveLibrary() {
-        guard let service = appService else {
-            baeAppLogger.warning(
-                "Ignoring remove-library request: no library is open."
-            )
-            return
-        }
-        prepareForLibraryShutdown()
-        screen = .loading(.removing)
-        let removals = requiredApplicationServices.libraryRemovals
-        let steps = LibraryClosingSteps(host: requiredApplicationServices.host)
-        closingSteps = steps
-        forgetSlot.replace {
-            defer {
-                if self.closingSteps === steps { self.closingSteps = nil }
-            }
-            do {
-                let removal = try await service.removeLibrary(showing: steps)
-                self.releaseLibrarySession(service)
-                removals.record(removal)
-                self.reloadLibraries()
-            }
-            catch {
-                baeAppLogger.error(
-                    "Failed to remove library: \(String(reflecting: error))"
-                )
-                await self.reopen(service, error: DisplayError(error))
-            }
-        }
-    }
-
-    /// Removal stopped the library's services before leaving the store; close
-    /// what is left and open it again, showing why it stayed.
-    private func reopen(_ service: AppService, error: DisplayError?) async {
-        let libraryId = service.libraryId
-        let steps = LibraryClosingSteps(host: requiredApplicationServices.host)
-        closingSteps = steps
-        defer { closingSteps = nil }
-        do {
-            try await service.close(showing: steps)
-        }
-        catch let closeError {
-            baeAppLogger.error(
-                "Failed to close the library after its removal stopped: \(String(reflecting: closeError))"
-            )
-        }
-        releaseLibrarySession(service)
-        openLocalLibrary(id: libraryId)
-        loadError = error.map { LoadError(.removal, $0) }
     }
 }

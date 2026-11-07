@@ -20,8 +20,6 @@ struct LoadError: Equatable {
         case deviceReset
         /// Closing the open library.
         case shutdown
-        /// Removing the open library from this Mac.
-        case removal
         #if BAE_DEV_RESET
             /// The debug app's `--dev-reset` launch.
             case devReset
@@ -42,8 +40,6 @@ struct LoadError: Equatable {
                 localizedCoreString("ui.load_error.device_reset.title")
             case .shutdown:
                 localizedCoreString("ui.load_error.shutdown.title")
-            case .removal:
-                localizedCoreString("ui.load_error.removal.title")
             #if BAE_DEV_RESET
                 case .devReset:
                     String(localized: "Dev reset failed")
@@ -70,8 +66,6 @@ struct LoadError: Equatable {
                 localizedCoreString("ui.load_error.device_reset.advice")
             case .shutdown:
                 localizedCoreString("ui.load_error.shutdown.advice")
-            case .removal:
-                localizedCoreString("ui.load_error.removal.advice")
             #if BAE_DEV_RESET
                 case .devReset:
                     String(

@@ -11,10 +11,6 @@ struct SettingsWindowRoot: View {
             appService.installEnvironment(
                 SettingsView(
                     checkForUpdatesViewModel: checkForUpdatesViewModel,
-                    unsentBeforeRemoval: {
-                        try await appService.unsentBeforeRemoval()
-                    },
-                    onForgetLibrary: { appDelegate.forgetActiveLibrary() },
                     onResetDevice: {
                         appDelegate.presentDeviceReset(
                             libraryId: appService.libraryId
@@ -24,7 +20,8 @@ struct SettingsWindowRoot: View {
                         appDelegate.presentDeviceRestore(
                             libraryId: appService.libraryId
                         )
-                    }
+                    },
+                    onRenameLibrary: { appDelegate.presentRenameLibrary() }
                 )
                 .errorAlert(appDelegate.uiStore)
                 .onAppear { appService.reportScreen(.settings) }
