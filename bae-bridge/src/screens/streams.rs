@@ -176,6 +176,55 @@ pub(crate) fn pin_file_shares(
     })
 }
 
+/// What a download watch's changes say to a stream of one kind of download:
+/// the releases doing that kind, and a release that stops doing it, whether
+/// it ended or turned to the other kind, as removed.
+fn download_changes<Progress>(
+    changes: Vec<bae_transfers::ReleaseTransferChange<bae_transfers::DownloadTransfer>>,
+    kind: impl Fn(bae_transfers::DownloadTransfer) -> Option<Progress>,
+) -> Vec<bae_transfers::ReleaseTransferChange<Progress>> {
+    use bae_transfers::ReleaseTransferChange;
+    changes
+        .into_iter()
+        .map(|change| match change {
+            ReleaseTransferChange::Updated { release_id, progress } => match kind(progress) {
+                Some(progress) => ReleaseTransferChange::Updated { release_id, progress },
+                None => ReleaseTransferChange::Removed { release_id },
+            },
+            ReleaseTransferChange::Removed { release_id } => {
+                ReleaseTransferChange::Removed { release_id }
+            }
+            ReleaseTransferChange::Reset(all) => ReleaseTransferChange::Reset(
+                all.into_iter()
+                    .filter_map(|(release_id, progress)| {
+                        kind(progress).map(|progress| (release_id, progress))
+                    })
+                    .collect(),
+            ),
+        })
+        .collect()
+}
+
+/// The pin of a download, if that is what it is.
+fn pin_progress(
+    transfer: bae_transfers::DownloadTransfer,
+) -> Option<bae_transfers::DownloadTransferProgress> {
+    match transfer {
+        bae_transfers::DownloadTransfer::Pin(progress) => Some(progress),
+        bae_transfers::DownloadTransfer::MakeLocal(_) => None,
+    }
+}
+
+/// The make-local of a download, if that is what it is.
+fn make_local_progress(
+    transfer: bae_transfers::DownloadTransfer,
+) -> Option<bae_transfers::MakeLocalTransferProgress> {
+    match transfer {
+        bae_transfers::DownloadTransfer::MakeLocal(progress) => Some(progress),
+        bae_transfers::DownloadTransfer::Pin(_) => None,
+    }
+}
+
 /// The stream [`AppHandle::feed_download_transfers`](crate::AppHandle::feed_download_transfers) hands out.
 pub(crate) fn download_transfers(
     runtime: OperationRuntime,
@@ -185,16 +234,34 @@ pub(crate) fn download_transfers(
         let mut transfers = services.watch_download_transfers();
         async move {
             while let Some(changes) = transfers.next().await {
-                write_release_changes(&writer, changes, |progress| match progress {
-                    bae_transfers::DownloadTransfer::Pin(progress) => BridgeFastValue::Download {
+                write_release_changes(
+                    &writer,
+                    download_changes(changes, pin_progress),
+                    |progress| BridgeFastValue::Download {
                         progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
                     },
-                    bae_transfers::DownloadTransfer::MakeLocal(progress) => {
-                        BridgeFastValue::MakeLocal {
-                            progress: crate::types::BridgeMakeLocalProgress::from_core(progress),
-                        }
-                    }
-                });
+                );
+            }
+        }
+    })
+}
+
+/// The stream [`AppHandle::feed_make_local_transfers`](crate::AppHandle::feed_make_local_transfers) hands out.
+pub(crate) fn make_local_transfers(
+    runtime: OperationRuntime,
+    run: impl RunFeed,
+) -> Arc<KeyedValueStream> {
+    feed(runtime, run, move |services, writer| {
+        let mut transfers = services.watch_download_transfers();
+        async move {
+            while let Some(changes) = transfers.next().await {
+                write_release_changes(
+                    &writer,
+                    download_changes(changes, make_local_progress),
+                    |progress| BridgeFastValue::MakeLocal {
+                        progress: crate::types::BridgeMakeLocalProgress::from_core(progress),
+                    },
+                );
             }
         }
     })

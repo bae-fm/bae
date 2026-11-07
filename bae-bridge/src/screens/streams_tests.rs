@@ -50,3 +50,52 @@ fn a_storage_wait_is_held_under_its_track() {
     );
     assert!(track_storage_wait(None).is_empty());
 }
+
+/// A stream of one kind of download names only the releases doing that
+/// kind: a release that turns to the other kind leaves it, and a reset
+/// names only its own.
+#[test]
+fn a_download_stream_holds_only_its_own_kind_of_download() {
+    use bae_transfers::{DownloadTransfer, MakeLocalTransferProgress, ReleaseTransferChange};
+    let pin = DownloadTransfer::Pin(
+        bae_transfers::DownloadTransferProgress::new("pinning", 10, 40).unwrap(),
+    );
+    let local = DownloadTransfer::MakeLocal(MakeLocalTransferProgress::begin(40));
+    let reset = || {
+        ReleaseTransferChange::Reset(
+            [("pinning".to_string(), pin.clone()), ("local".to_string(), local.clone())].into(),
+        )
+    };
+    let moved = |release: &str, transfer: &DownloadTransfer| ReleaseTransferChange::Updated {
+        release_id: release.to_string(),
+        progress: transfer.clone(),
+    };
+
+    let pins = download_changes(vec![reset(), moved("local", &local)], pin_progress);
+    let DownloadTransfer::Pin(pin_progress) = pin.clone() else { unreachable!() };
+    assert_eq!(
+        pins,
+        vec![
+            ReleaseTransferChange::Reset([("pinning".to_string(), pin_progress)].into()),
+            ReleaseTransferChange::Removed { release_id: "local".to_string() },
+        ]
+    );
+
+    let locals = download_changes(
+        vec![
+            reset(),
+            moved("pinning", &pin),
+            ReleaseTransferChange::Removed { release_id: "local".to_string() },
+        ],
+        make_local_progress,
+    );
+    let DownloadTransfer::MakeLocal(local_progress) = local else { unreachable!() };
+    assert_eq!(
+        locals,
+        vec![
+            ReleaseTransferChange::Reset([("local".to_string(), local_progress)].into()),
+            ReleaseTransferChange::Removed { release_id: "pinning".to_string() },
+            ReleaseTransferChange::Removed { release_id: "local".to_string() },
+        ]
+    );
+}

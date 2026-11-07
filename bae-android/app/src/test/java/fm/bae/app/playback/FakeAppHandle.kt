@@ -174,6 +174,8 @@ internal open class FakeAppHandle(
 
     override fun feedDownloadTransfers(): KeyedValueStream = FakeKeyedValueStream()
 
+    override fun feedMakeLocalTransfers(): KeyedValueStream = FakeKeyedValueStream()
+
     override fun subscribeUploadsPaused(): UploadsPausedSubscription = FakeUploadsPausedSubscription()
 
     override fun subscribeUnmeteredOnly(): UnmeteredOnlySubscription = FakeUnmeteredOnlySubscription()
