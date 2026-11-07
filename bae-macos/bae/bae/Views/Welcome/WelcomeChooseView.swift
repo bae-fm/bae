@@ -79,14 +79,19 @@ struct WelcomeChooseView: View {
         .task { await listings.load(from: setup) }
         .onDisappear { createTask?.cancel() }
         .alert(
-            "Remove this library from this Mac?",
+            pendingRemoval.map {
+                LibraryRemovalConfirmation.Ending(of: $0.library).title
+            } ?? "",
             isPresented: Binding(
                 get: { pendingRemoval != nil },
                 set: { if !$0 { pendingRemoval = nil } }
             ),
             presenting: pendingRemoval
         ) { pending in
-            Button("Remove", role: .destructive) {
+            Button(
+                LibraryRemovalConfirmation.Ending(of: pending.library).action,
+                role: .destructive
+            ) {
                 Task {
                     await listings.remove(
                         closedLibrary: pending.library.id,

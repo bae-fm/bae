@@ -265,6 +265,30 @@ struct LibraryRemovalsClosedLibraryTests {
 
 @Suite("LibraryRemovalConfirmation")
 struct LibraryRemovalConfirmationTests {
+    @Test("a library that syncs is removed, one that doesn't is deleted")
+    func ending() {
+        let synced = library(
+            .openable(
+                storage: .s3(
+                    bucket: "music-library",
+                    region: "us-east-1",
+                    endpoint: nil,
+                    profile: nil
+                )
+            )
+        )
+        #expect(LibraryRemovalConfirmation.Ending(of: synced) == .remove)
+        #expect(LibraryRemovalConfirmation.Ending(of: openable) == .delete)
+    }
+
+    @Test(
+        "a library that can't open is removed, never deleted",
+        arguments: unopenable
+    )
+    func unopenableEnding(library: BridgeLibrary) {
+        #expect(LibraryRemovalConfirmation.Ending(of: library) == .remove)
+    }
+
     @Test("a counted loss lists the changes, then the consequence")
     func countedLoss() {
         let text = LibraryRemovalConfirmation.text(

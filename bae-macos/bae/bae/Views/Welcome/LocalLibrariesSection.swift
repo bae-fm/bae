@@ -45,7 +45,8 @@ struct LocalLibrariesSection: View {
 /// home, Open and Remove. A library whose settings can't be read says why,
 /// and doesn't open. One whose reset or restore stopped partway says which,
 /// and offers to finish it in place of Open; one whose removal stopped
-/// partway says so, and offers to finish removing it. While counting or removing it
+/// partway says so, and offers to finish removing it. A library that doesn't
+/// sync says it isn't synced and offers Delete in place of Remove. While counting or removing it
 /// opens the library, a step the open runs shows in place of the detail line,
 /// and then a step the removal runs; a library that can't open shows the
 /// removal's steps alone.
@@ -68,7 +69,7 @@ private struct LibraryRow: View {
                 // Every row keeps the detail line so rows share one height.
                 StepProgressLine(steps: removalSteps) {
                     StepProgressLine(steps: openSteps) {
-                        Text(library.detailLine)
+                        Text(detailLine)
                             .themeText(.detail)
                             .foregroundStyle(
                                 library.isOpenable
@@ -82,7 +83,11 @@ private struct LibraryRow: View {
             Button(primaryTitle, action: primaryAction)
                 .buttonStyle(.bordered)
                 .disabled(!canAct)
-            Button("Remove", systemImage: "trash", role: .destructive) {
+            Button(
+                LibraryRemovalConfirmation.Ending(of: library).action,
+                systemImage: "trash",
+                role: .destructive
+            ) {
                 onRemove(library)
             }
             .buttonStyle(.bordered)
@@ -94,6 +99,15 @@ private struct LibraryRow: View {
         .background(Color.secondary.opacity(ThemeOpacity.tint))
         .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
         .disabled(disabled)
+    }
+
+    /// The line under the name; a library that doesn't sync says it isn't
+    /// synced.
+    private var detailLine: String {
+        if case .openable(nil) = library.state {
+            return String(localized: "Not synced")
+        }
+        return library.detailLine
     }
 
     private var primaryTitle: LocalizedStringKey {

@@ -25,6 +25,7 @@ struct ShotScene {
         [
             importMetadataDraft,
             importSearchResults,
+            welcomeLibraries,
             ShotScene(id: "appearance", size: CGSize(width: 650, height: 400)) {
                 ShotStage(AppearanceSettingsTab())
             },
@@ -281,6 +282,13 @@ extension ShotScene {
             .importPreviewEnvironment(images: images),
             images: images
         )
+    }
+
+    private static let welcomeLibraries = ShotScene(
+        id: "welcome-libraries",
+        size: CGSize(width: 460, height: 190)
+    ) {
+        ShotStage(PreviewScenes.welcomeLibraries())
     }
 
     private static let importSearchResults = ShotScene(

@@ -26,6 +26,25 @@
             .environment(PreviewData.welcomeRemovals())
         }
 
+        /// The first screen's list of this Mac's libraries, one with a cloud
+        /// home and one with none, which offers Delete in place of Remove and
+        /// says it isn't synced.
+        static func welcomeLibraries() -> some View {
+            LocalLibrariesSection(
+                libraries: Array(PreviewData.welcomeLibraries.prefix(2)),
+                disabled: false,
+                canDeleteActiveLibrary: true,
+                removing: nil,
+                opening: nil,
+                onOpen: { _ in },
+                onFinish: { _, _ in },
+                onFinishRemoving: { _ in },
+                onRemove: { _ in }
+            )
+            .padding()
+            .windowBackground()
+        }
+
         /// The album grid backed by the fixture albums, wired with the same live
         /// stores and stub services the app injects at the main window root.
         static func libraryGrid() -> some View {

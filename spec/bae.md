@@ -3258,12 +3258,20 @@ Household from it first removes the laptop from the library, then deletes its
 directory and the secrets the laptop keeps for it; the library stays in storage. Leaving
 is an admin entry, so it needs storage. Offline, removal says so and waits
 rather than deleting the local copy and leaving a device listed that will
-never come back. A library with no storage has no members to leave, and is
-deleted at once. If the laptop has left but closing its copy then fails,
-coven discards the closed copy without opening it, and the removal goes on
-to delete bae's files for it. Only if that discard fails too does the removal
+never come back. A library that doesn't sync was never synced: it has no
+members to leave and exists only on this device, so it is deleted at once, and
+the Mac calls that **Delete**, never Remove. If the laptop has left but closing
+its copy then fails, coven discards the closed copy without opening it, and the
+removal goes on to delete bae's files for it. Only if that discard fails too does the removal
 fail, saying the laptop left the library and its files are still on it.
 
+- **The confirmation.** Remove asks "Remove library from this Mac?" and says
+  "The library will remain in storage and on your other devices." Delete asks
+  "Delete library?" and says the library isn't synced, so it will be deleted for
+  good, and that the audio files stay in their folders. The first screen's list and Library settings both ask this way; a
+  row whose library doesn't sync says "Not synced" and offers *Delete* in
+  place of *Remove*. Neither asks the person to unlock the Mac first: the
+  confirmation is the only step.
 - **Unsent edits.** Dan's laptop still holds edits it hasn't sent. Before
   removing, bae asks coven what this device hasn't sent, and the confirmation
   counts it: the edits, and the files that haven't finished uploading, then

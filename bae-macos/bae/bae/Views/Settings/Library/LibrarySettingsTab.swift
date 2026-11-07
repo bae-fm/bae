@@ -113,10 +113,7 @@ struct LibrarySettingsTab: View {
                 Text(removeFooter)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
-                Button(
-                    "Remove this library from this Mac…",
-                    role: .destructive
-                ) {
+                Button(removeButtonTitle, role: .destructive) {
                     askToRemove()
                 }
                 if let removalError {
@@ -138,14 +135,14 @@ struct LibrarySettingsTab: View {
             SyncSetupWizard(onDone: { showSyncSetup = false })
         }
         .alert(
-            "Remove this library from this Mac?",
+            ending.title,
             isPresented: Binding(
                 get: { removalUnsent != nil },
                 set: { if !$0 { removalUnsent = nil } }
             ),
             presenting: removalUnsent
         ) { _ in
-            Button("Remove", role: .destructive) {
+            Button(ending.action, role: .destructive) {
                 onForgetLibrary()
             }
             Button("Cancel", role: .cancel) {}
@@ -193,6 +190,20 @@ struct LibrarySettingsTab: View {
         }
     }
 
+    /// Whether the active library is removed or, never synced, deleted.
+    private var ending: LibraryRemovalConfirmation.Ending {
+        LibraryRemovalConfirmation.Ending(
+            syncs: configStore.syncs
+        )
+    }
+
+    private var removeButtonTitle: String {
+        switch ending {
+        case .remove: String(localized: "Remove this library from this Mac…")
+        case .delete: String(localized: "Delete this library…")
+        }
+    }
+
     /// The remove section's footer, which depends on whether the library syncs.
     private var removeFooter: String {
         if configStore.syncs {
@@ -201,10 +212,7 @@ struct LibrarySettingsTab: View {
                     "Removes this Mac from the library's members, then deletes the library and its downloaded files from this Mac. The library will remain in storage and on your other devices. Removing needs a connection to your storage."
             )
         }
-        return String(
-            localized:
-                "This library isn't synced. Removing it permanently deletes its catalog: albums, metadata edits, and play history. Audio files in your folders aren't deleted."
-        )
+        return LibraryRemovalConfirmation.message(syncs: false)
     }
 }
 
