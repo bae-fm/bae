@@ -388,6 +388,28 @@ async fn renaming_or_removing_a_credit_name_reaches_every_credit_printing_it() {
     assert!(detail.credit_names.is_empty());
 }
 
+/// Giving a printed name to an artist the library no longer holds is
+/// refused, and its line says what it acted on changed meanwhile.
+#[tokio::test]
+async fn a_printed_name_for_an_artist_gone_meanwhile_is_refused() {
+    let library = credited_library().await;
+    let refused = library
+        .manager
+        .library
+        .manager()
+        .add_artist_credit_name("6d1f3a20-8b4c-4e2a-9f1d-2c3b4a5d6eff", "A Pseudonym")
+        .await
+        .expect_err("an artist the library doesn't hold takes no printed name");
+    assert!(
+        matches!(
+            &refused,
+            LibraryError::CreditName(bae_records::CreditNameError::ArtistMissing(_))
+        ),
+        "{refused:?}"
+    );
+    assert_eq!(refused.category(), bae_diagnostics::UiErrorCategory::ChangedMeanwhile);
+}
+
 /// A typed credit that is one of an artist's other names is that artist,
 /// printed by that name.
 #[tokio::test]

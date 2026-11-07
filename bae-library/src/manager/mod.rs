@@ -137,7 +137,8 @@ pub enum LibraryError {
     Refused(String),
     /// A release an operation names is not in the library: it was deleted,
     /// here or on another device, before the operation read it. `work` is
-    /// what asked for it, whose line the refusal shows under.
+    /// what asked for it, whose line the refusal shows under: an edit's
+    /// says what it acted on changed meanwhile.
     #[error("release {release_id} is not in the library")]
     ReleaseMissing { release_id: String, work: ReleaseWork },
     /// A verbatim release export (reproducing the imported file set) failed.
@@ -392,7 +393,7 @@ impl LibraryError {
             #[cfg(desktop)]
             LibraryError::Edit(_) => C::Import,
             LibraryError::ReleaseMissing { work, .. } => match work {
-                ReleaseWork::Edit => C::Import,
+                ReleaseWork::Edit => C::ChangedMeanwhile,
                 ReleaseWork::Export => C::Export,
                 ReleaseWork::Save => C::Save,
                 // A transfer has no line of its own, so its refusal shows
@@ -440,9 +441,9 @@ impl From<bae_import::CatalogSessionError> for LibraryError {
     }
 }
 
-/// The class a surface words an image replacement's failure in: one another
-/// write of the image beat is the person's to make again, over the image
-/// that landed.
+/// The class a surface words an image replacement's failure in: when another
+/// write of the image beat it, the image changed meanwhile, and the
+/// replacement is the person's to make again, over the image that landed.
 fn image_write_category(error: &bae_records::ImageWriteError) -> bae_diagnostics::UiErrorCategory {
     use bae_records::ImageWriteError as E;
     match error {
@@ -450,7 +451,7 @@ fn image_write_category(error: &bae_records::ImageWriteError) -> bae_diagnostics
         E::Rollback { operation: failed, .. } | E::FileCleanup { write: failed, .. } => {
             image_write_category(failed)
         }
-        E::Superseded { .. } => bae_diagnostics::UiErrorCategory::Import,
+        E::Superseded { .. } => bae_diagnostics::UiErrorCategory::ChangedMeanwhile,
     }
 }
 
@@ -465,8 +466,8 @@ impl From<bae_records::ImageWriteError> for LibraryError {
 }
 
 /// The class a surface words a deletion's failure in: one refused because
-/// what it deletes changed is the person's to ask for again, as an edit of
-/// a release that is gone is.
+/// what it deletes changed meanwhile is the person's to ask for again, as an
+/// edit of a release that is gone is.
 fn deletion_category(error: &bae_records::DeletionError) -> bae_diagnostics::UiErrorCategory {
     use bae_records::DeletionError as E;
     match error {
@@ -474,7 +475,7 @@ fn deletion_category(error: &bae_records::DeletionError) -> bae_diagnostics::UiE
         E::Rollback { operation: failed, .. } | E::FileCleanup { write: failed, .. } => {
             deletion_category(failed)
         }
-        E::PlanChanged(_) => bae_diagnostics::UiErrorCategory::Import,
+        E::PlanChanged(_) => bae_diagnostics::UiErrorCategory::ChangedMeanwhile,
     }
 }
 
@@ -572,7 +573,7 @@ fn primary_release_category(
     use bae_records::PrimaryReleaseError as E;
     match error {
         E::Database(error) => bae_diagnostics::database_category(error),
-        E::NotAlbumRelease { .. } => bae_diagnostics::UiErrorCategory::Import,
+        E::NotAlbumRelease { .. } => bae_diagnostics::UiErrorCategory::ChangedMeanwhile,
     }
 }
 
@@ -594,7 +595,7 @@ fn credit_name_category(error: &bae_records::CreditNameError) -> bae_diagnostics
     use bae_records::CreditNameError as E;
     match error {
         E::Database(error) => bae_diagnostics::database_category(error),
-        E::ArtistMissing(_) => bae_diagnostics::UiErrorCategory::Import,
+        E::ArtistMissing(_) => bae_diagnostics::UiErrorCategory::ChangedMeanwhile,
     }
 }
 

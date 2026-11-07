@@ -143,6 +143,10 @@ pub enum BridgeErrorCategory {
     /// A release edit session's save found the release changed since the
     /// session opened on it, and wrote nothing.
     ReleaseChangedSinceOpened,
+    /// A change to the library acted on something that changed between its
+    /// read and its write, and wrote nothing; asking again acts on what now
+    /// stands.
+    ChangedMeanwhile,
     /// A queue reorder named an entry, or an entry to go before, that the
     /// queue no longer holds there, and moved nothing.
     QueueChanged,
@@ -361,6 +365,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::ReleaseChangedSinceOpened => {
             "core.release_edit.error.changed_since_opened"
         }
+        BridgeErrorCategory::ChangedMeanwhile => "core.error.changed_meanwhile",
         BridgeErrorCategory::QueueChanged => "core.queue.error.changed",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
@@ -518,6 +523,7 @@ impl BridgeErrorCategory {
             Self::MetadataTrackCount { .. } => K::MetadataTrackCount,
             Self::TiedMediums { .. } => K::TiedMediums,
             Self::ReleaseChangedSinceOpened => K::ReleaseChangedSinceOpened,
+            Self::ChangedMeanwhile => K::ChangedMeanwhile,
             Self::GroupingBlocked { .. } => K::GroupingBlocked,
             Self::Export => K::Export,
             Self::Save => K::Save,
@@ -628,6 +634,7 @@ mirror_enum! {
         MetadataTrackCount { folder_tracks, release_tracks },
         TiedMediums { mediums },
         ReleaseChangedSinceOpened,
+        ChangedMeanwhile,
         GroupingBlocked(reason: (BridgeGroupingBlock)),
         Export,
         Save,

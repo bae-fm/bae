@@ -19,6 +19,10 @@ pub enum UiErrorCategory {
     /// This device, or its person, was removed from the library; syncing has
     /// stopped for good and nothing on this device registers it again.
     DeviceRemoved,
+    /// An import couldn't finish: a catalog or a source couldn't answer or
+    /// be read, or what it was prepared against changed before its write.
+    /// Also another change to the library refused for the reason its detail
+    /// gives, such as a blank name.
     Import,
     /// Source metadata or artwork could not be parsed or decoded.
     ImportData,
@@ -43,6 +47,12 @@ pub enum UiErrorCategory {
     /// session opened on it — another editor saved it, or another device's
     /// edit arrived — and wrote nothing.
     ReleaseChangedSinceOpened,
+    /// A change to the library acted on something that changed between its
+    /// read and its write: a release or album it names went, a cover or
+    /// artist image it replaces was replaced again, a release picked as its
+    /// album's primary moved, an artist given a printed name was deleted or
+    /// merged. Nothing was written; asking again acts on what now stands.
+    ChangedMeanwhile,
     /// A release read from several folders cannot be worked on as it stands,
     /// or cannot be made, for a reason the person can act on.
     GroupingBlocked(GroupingBlockReason),

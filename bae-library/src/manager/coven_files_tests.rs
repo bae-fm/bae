@@ -258,6 +258,10 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
         "{error:?}"
     );
     assert_eq!(
+        LibraryError::from(error).category(),
+        bae_diagnostics::UiErrorCategory::ChangedMeanwhile
+    );
+    assert_eq!(
         manager.library.manager().read_cover_image_bytes(&release.id).await.unwrap(),
         Some(b"between cover".to_vec()),
         "the replacement that landed first stands"

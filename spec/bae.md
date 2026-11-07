@@ -4981,7 +4981,8 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device, after its warning (§6.4) |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library |
-| `Import`, `ImportData` | reads the detail: the source couldn't be read, or what the operation was prepared against changed before it was written (an import's candidate or the library's artists, a deleted release or album, a replaced cover or artist image, a release picked as its album's primary, an artist given a printed name, the watched folders), and asking again works on what now stands |
+| `Import`, `ImportData` | reads the detail: an import couldn't finish, because a catalog or a source couldn't answer or be read, or its candidate, the library's artists or the watched folders changed before its write, and importing again works on what now stands; or another change to the library was refused for the reason the detail gives, such as a blank name |
+| `ChangedMeanwhile` | asks again, on what now stands: what a change to the library acted on changed before it was written, and nothing was written (a release deleted before an edit or a deletion of it, an album or release a deletion was planned against, a cover or artist image replaced again, a release picked as its album's primary that moved to another album, an artist given a printed name that was deleted or merged) |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |
@@ -5015,11 +5016,12 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 `DeviceRemoved`, `CandidateImportInProgress`, `CandidateBeingIdentified`,
 `FilesAlreadyImported`, `MetadataTrackCount`, `TiedMediums`,
-`ReleaseChangedSinceOpened`, `StorageLocationChangeUnsupported`,
-`KeychainEntitlementMissing`, `SavedRestoreCodesFull`,
-`SavedRestoreCodeTooLarge`, `StoreOwnerAccount`, `QueueChanged`,
-`ReplacementUnfinished`, `RestoreRegistered`, `MemberKeysReplaced`,
-`StorageSetupFinishing`, `DeletionUnfinished` and `DeletionSignInRequired`.
+`ReleaseChangedSinceOpened`, `ChangedMeanwhile`,
+`StorageLocationChangeUnsupported`, `KeychainEntitlementMissing`,
+`SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge`, `StoreOwnerAccount`,
+`QueueChanged`, `ReplacementUnfinished`, `RestoreRegistered`,
+`MemberKeysReplaced`, `StorageSetupFinishing`, `DeletionUnfinished` and
+`DeletionSignInRequired`.
 Every other category shows its detail under its line.
 
 ### G.2 Why a found release isn't picked

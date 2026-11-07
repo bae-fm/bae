@@ -21,6 +21,7 @@ pub enum UiErrorClass {
     MetadataTrackCount,
     TiedMediums,
     ReleaseChangedSinceOpened,
+    ChangedMeanwhile,
     GroupingBlocked,
     Export,
     Save,
@@ -54,7 +55,7 @@ pub enum UiErrorClass {
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 43] = [
+    const ALL: [Self; 44] = [
         Self::Database,
         Self::Config,
         Self::Internal,
@@ -69,6 +70,7 @@ impl UiErrorClass {
         Self::MetadataTrackCount,
         Self::TiedMediums,
         Self::ReleaseChangedSinceOpened,
+        Self::ChangedMeanwhile,
         Self::GroupingBlocked,
         Self::Export,
         Self::Save,
@@ -117,6 +119,7 @@ impl UiErrorClass {
             Self::MetadataTrackCount => "metadata_track_count",
             Self::TiedMediums => "tied_mediums",
             Self::ReleaseChangedSinceOpened => "release_changed_since_opened",
+            Self::ChangedMeanwhile => "changed_meanwhile",
             Self::GroupingBlocked => "grouping_blocked",
             Self::Export => "export",
             Self::Save => "save",
@@ -212,6 +215,7 @@ impl UiErrorClass {
             | Self::MetadataTrackCount
             | Self::TiedMediums
             | Self::ReleaseChangedSinceOpened
+            | Self::ChangedMeanwhile
             | Self::StorageLocationChangeUnsupported
             | Self::KeychainEntitlementMissing
             | Self::SavedRestoreCodesFull
@@ -247,6 +251,7 @@ impl UiErrorCategory {
             Self::MetadataTrackCount { .. } => K::MetadataTrackCount,
             Self::TiedMediums { .. } => K::TiedMediums,
             Self::ReleaseChangedSinceOpened => K::ReleaseChangedSinceOpened,
+            Self::ChangedMeanwhile => K::ChangedMeanwhile,
             Self::GroupingBlocked(_) => K::GroupingBlocked,
             Self::Export => K::Export,
             Self::Save => K::Save,
@@ -296,6 +301,7 @@ impl UiErrorCategory {
             K::CandidateBeingIdentified => Self::CandidateBeingIdentified,
             K::FilesAlreadyImported => Self::FilesAlreadyImported,
             K::ReleaseChangedSinceOpened => Self::ReleaseChangedSinceOpened,
+            K::ChangedMeanwhile => Self::ChangedMeanwhile,
             K::Export => Self::Export,
             K::Save => Self::Save,
             K::StorageLocationChangeUnsupported => Self::StorageLocationChangeUnsupported,

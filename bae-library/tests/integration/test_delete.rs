@@ -252,5 +252,6 @@ async fn test_a_release_of_another_album_cannot_be_made_primary() {
         ),
         "another album's release is not this album's to make primary: {refused:?}"
     );
+    assert_eq!(refused.unwrap_err().category(), bae_diagnostics::UiErrorCategory::ChangedMeanwhile);
     assert_eq!(primary_release_of(&db, &album.id).await, release.id);
 }

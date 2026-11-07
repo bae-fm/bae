@@ -84,7 +84,8 @@ async fn test_delete_release_with_single_release_empties_album() {
 }
 
 /// A release the library doesn't hold is refused, as an album it doesn't hold
-/// is: the request names nothing to delete.
+/// is: the request names nothing to delete. Its line says what it acted on
+/// changed meanwhile.
 #[tokio::test]
 async fn delete_release_refuses_a_release_the_library_does_not_hold() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
@@ -95,6 +96,11 @@ async fn delete_release_refuses_a_release_the_library_does_not_hold() {
         assert!(
             matches!(error, LibraryError::ReleaseMissing { work: ReleaseWork::Edit, .. }),
             "{release_id}: {error}"
+        );
+        assert_eq!(
+            error.category(),
+            bae_diagnostics::UiErrorCategory::ChangedMeanwhile,
+            "{release_id}"
         );
     }
 }
@@ -240,6 +246,10 @@ async fn delete_release_refuses_a_plan_whose_cover_changed() {
     assert!(
         matches!(&error, bae_records::DeletionError::PlanChanged(bae_records::Deleted::Release(id)) if *id == release.id),
         "{error:?}"
+    );
+    assert_eq!(
+        LibraryError::from(error).category(),
+        bae_diagnostics::UiErrorCategory::ChangedMeanwhile
     );
     assert!(find_release(manager.library.manager(), &release.id).await.is_some());
 }

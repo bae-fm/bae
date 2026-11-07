@@ -21,6 +21,7 @@ fn every_failure_class_reads_back_as_itself() {
         C::MetadataTrackCount { folder_tracks: 12, release_tracks: 10 },
         C::TiedMediums { mediums: vec![2, 4] },
         C::ReleaseChangedSinceOpened,
+        C::ChangedMeanwhile,
         C::GroupingBlocked(B::SourceChanged),
         C::GroupingBlocked(B::SourceGone),
         C::GroupingBlocked(B::FolderFilesTaken),

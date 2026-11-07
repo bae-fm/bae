@@ -81,6 +81,7 @@ impl FailureColumns {
             | K::MetadataTrackCount
             | K::TiedMediums
             | K::ReleaseChangedSinceOpened
+            | K::ChangedMeanwhile
             | K::GroupingBlocked
             | K::Export
             | K::Save

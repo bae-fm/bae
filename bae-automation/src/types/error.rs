@@ -126,6 +126,7 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::MetadataTrackCount { .. }
             | UiErrorCategory::TiedMediums { .. }
             | UiErrorCategory::ReleaseChangedSinceOpened
+            | UiErrorCategory::ChangedMeanwhile
             | UiErrorCategory::GroupingBlocked(_) => Self::Import(detail),
             UiErrorCategory::Config => Self::Validation(detail),
             UiErrorCategory::Internal => Self::Internal(detail),
