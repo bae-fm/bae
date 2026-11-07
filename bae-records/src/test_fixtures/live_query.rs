@@ -1,8 +1,8 @@
 //! A library of one artist, album and release, the ids live-query tests
 //! add rows under, and how a test checks what moved a live query.
 
+use super::library::RecordsFixture;
 use crate::{DbLibraryImage, LibraryImageType, Records};
-use bae_store::test_fixtures::exec_batch;
 use bae_store::Store;
 use bae_util::content_type::ContentType;
 
@@ -24,16 +24,12 @@ pub const INSERTED_COMPOSER_LINK_ID: &str = "9168d755-3ed6-446c-a0ec-5f4039e18a6
 
 pub async fn live_db(schema: bae_store::Schema) -> (Store, tempfile::TempDir) {
     let (db, temp) = bae_store::test_fixtures::temp_db(schema).await;
-    exec_batch(
-        &db,
-        &format!(
-            "INSERT INTO artists (id, name, name_key, created_at) VALUES ('{ARTIST_ID}', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
-             INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{ALBUM_ID}', 'Album Title', 0, '2026-01-01T00:00:00Z');
-            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('22586998-2ee2-4c3d-a50d-696cc9c39b4e', '{ALBUM_ID}', '{ARTIST_ID}', 0, '2026-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z', 0);"
-        ),
-    )
-    .await;
+    RecordsFixture::new()
+        .artist(ARTIST_ID, "Artist Name")
+        .album(ALBUM_ID, "Album Title", None, &[ARTIST_ID])
+        .release(ALBUM_ID, RELEASE_ID)
+        .write(&super::test_records(&db))
+        .await;
     (db, temp)
 }
 
