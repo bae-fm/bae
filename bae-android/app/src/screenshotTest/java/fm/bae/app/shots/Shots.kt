@@ -34,6 +34,7 @@ import fm.bae.app.ui.playback.MiniPlayerScene
 import fm.bae.app.ui.playback.PlayerSceneState
 import fm.bae.app.ui.settings.AppearanceSection
 import fm.bae.app.ui.settings.CastingPage
+import fm.bae.app.ui.settings.FolderChoiceScene
 import fm.bae.app.ui.settings.RestoreCodeScene
 import fm.bae.app.ui.settings.S3SetupFormScene
 import fm.bae.app.ui.settings.TransfersContent
@@ -221,6 +222,25 @@ private fun AppearanceScene(
                 AppearanceSection()
             }
         }
+    }
+}
+
+/** Set up sync's Dropbox folder choice, a folder chosen and one setup found holding other files. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun FolderChoiceDropbox() {
+    // The choice's coroutine scope reports bugs; a scene has nothing to report to.
+    CompositionLocalProvider(LocalBugReports provides BugReports()) {
+        FolderChoiceScene(dropbox = true)
+    }
+}
+
+/** Set up sync's OneDrive folder choice, where the person is and a folder chosen. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun FolderChoiceOneDrive() {
+    CompositionLocalProvider(LocalBugReports provides BugReports()) {
+        FolderChoiceScene(dropbox = false)
     }
 }
 

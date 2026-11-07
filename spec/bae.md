@@ -2857,10 +2857,11 @@ and checks it first: a folder holding anything returns to the list, saying
 the folder isn't empty and to choose an empty one or make a new one
 (coven's `OwnLocationRequired`), and that folder isn't set up until another is
 chosen. The picker moves into a folder only once its folders have loaded; a
-listing that fails leaves it where it was, with the failure, and a top that
-fails to list shows only that. The macOS app has this picker; Android keeps
-its two lists until it does too. coven holds the sign-in; bae never sees its
-tokens. bae's Dropbox app has access to the whole Dropbox, not an app folder:
+listing that fails leaves it where it was, with the failure (and Retry, on
+Android), and a top that fails to list shows only that. macOS and Android both
+have this picker; on Android *New folder* asks for the name in a dialog, and the
+chosen folder is marked by its row's background. coven holds the sign-in; bae
+never sees its tokens. bae's Dropbox app has access to the whole Dropbox, not an app folder:
 an app folder can't be shared, so a household couldn't be invited to it.
 
 **The folder in Settings.** Every connection to a Dropbox shared folder or a

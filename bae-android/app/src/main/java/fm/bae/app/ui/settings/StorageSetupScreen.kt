@@ -232,9 +232,12 @@ private fun ColumnScope.SetupStepContent(
         }
 
         SetupStep.DropboxFolders -> {
-            DropboxFolderChoice(
+            val providers = checkNotNull(oauthProviders) { "Dropbox setup signed in without sign-in" }
+            FolderChoice(
                 session = session,
-                providers = checkNotNull(oauthProviders) { "Dropbox setup signed in without sign-in" },
+                providers = providers,
+                calls = FolderCalls.dropbox(session.appHandle, providers),
+                words = DROPBOX_WORDS,
                 setup = runner,
                 onError = callbacks.onError,
                 onCancel = callbacks.onCancel,
@@ -242,9 +245,12 @@ private fun ColumnScope.SetupStepContent(
         }
 
         SetupStep.OneDriveFolders -> {
-            OneDriveFolderChoice(
+            val providers = checkNotNull(oauthProviders) { "OneDrive setup signed in without sign-in" }
+            FolderChoice(
                 session = session,
-                providers = checkNotNull(oauthProviders) { "OneDrive setup signed in without sign-in" },
+                providers = providers,
+                calls = FolderCalls.oneDrive(session.appHandle, providers),
+                words = ONEDRIVE_WORDS,
                 setup = runner,
                 onError = callbacks.onError,
                 onCancel = callbacks.onCancel,

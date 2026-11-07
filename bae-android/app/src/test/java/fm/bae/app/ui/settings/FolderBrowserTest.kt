@@ -9,8 +9,10 @@ import fm.bae.app.playback.FakeAppHandle
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
@@ -23,18 +25,20 @@ import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
+import uniffi.bae_bridge.BridgeStorageFailure
 import uniffi.bae_bridge.BridgeStorageFolder
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 
 /**
- * The OneDrive picker moves into a folder only once its listing loads: a
- * failed move keeps the folder shown, with the failure and Retry.
+ * The folder choice moves into a folder only once its listing loads: a failed move keeps the
+ * folder shown, with the failure and Retry. A made folder joins the list and is chosen, and a
+ * folder setup found holding other files is not set up again.
  */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
-class OneDriveBrowserTest {
+class FolderBrowserTest {
     private val root = folder("OneDrive")
     private val music = folder("Music")
     private val albums = folder("Albums")
@@ -62,8 +66,8 @@ class OneDriveBrowserTest {
                         music to listOf(offline(), Result.success(listOf(albums))),
                     ),
                 )
-            val browser = OneDriveBrowser(FakeAppHandle(), drive, Errors)
-            browser.openRoot()
+            val browser = browser(drive)
+            browser.openTop()
             val atRoot = checkNotNull(browser.shown)
 
             browser.open(atRoot, music)
@@ -75,7 +79,7 @@ class OneDriveBrowserTest {
             failure.retry()
 
             assertEquals(listOf(root, music), browser.shown?.path)
-            assertEquals(listOf(albums), browser.shown?.children)
+            assertEquals(listOf(albums), browser.shown?.folders)
             assertNull(browser.failure)
         }
 
@@ -83,9 +87,9 @@ class OneDriveBrowserTest {
     fun aFailedFirstListingShowsOnlyTheFailureUntilRetryLoadsIt() =
         runBlocking {
             val drive = Drive(mapOf(root to listOf(offline(), Result.success(listOf(music)))))
-            val browser = OneDriveBrowser(FakeAppHandle(), drive, Errors)
+            val browser = browser(drive)
 
-            browser.openRoot()
+            browser.openTop()
 
             assertNull(browser.shown)
             val failure = checkNotNull(browser.failure)
@@ -93,7 +97,7 @@ class OneDriveBrowserTest {
             failure.retry()
 
             assertEquals(listOf(root), browser.shown?.path)
-            assertEquals(listOf(music), browser.shown?.children)
+            assertEquals(listOf(music), browser.shown?.folders)
         }
 
     @Test
@@ -106,8 +110,8 @@ class OneDriveBrowserTest {
                         music to listOf(Result.success(listOf(albums))),
                     ),
                 )
-            val browser = OneDriveBrowser(FakeAppHandle(), drive, Errors)
-            browser.openRoot()
+            val browser = browser(drive)
+            browser.openTop()
             browser.open(checkNotNull(browser.shown), music)
             val inMusic = checkNotNull(browser.shown)
 
@@ -117,30 +121,62 @@ class OneDriveBrowserTest {
             assertNotNull(browser.failure)
         }
 
-    /** The folder exists once made, so Retry lists it again instead of making a second one. */
     @Test
-    fun aMadeFolderWhoseListingFailsIsListedAgainOnRetry() =
+    fun aMadeFolderJoinsTheListAndIsChosen() =
         runBlocking {
-            val drive =
-                Drive(
-                    mapOf(
-                        root to listOf(Result.success(emptyList())),
-                        albums to listOf(offline(), Result.success(emptyList())),
-                    ),
-                    created = albums,
-                )
-            val browser = OneDriveBrowser(FakeAppHandle(), drive, Errors)
-            browser.openRoot()
+            val drive = Drive(mapOf(root to listOf(Result.success(listOf(music)))), created = albums)
+            val browser = browser(drive)
+            browser.openTop()
             val atRoot = checkNotNull(browser.shown)
 
             browser.create(atRoot, "Albums")
 
-            assertEquals(atRoot, browser.shown)
-            checkNotNull(browser.failure).retry()
-
-            assertEquals(listOf(root, albums), browser.shown?.path)
+            assertEquals(listOf(root), browser.shown?.path)
+            assertEquals(listOf(music, albums), browser.shown?.folders)
+            assertEquals(albums, browser.target)
             assertEquals(1, drive.creates)
         }
+
+    @Test
+    fun aNameAlreadyTakenLeavesTheListAndNamesIt() =
+        runBlocking {
+            val taken =
+                Result.failure<BridgeStorageFolder>(
+                    BridgeException.Diagnostic(BridgeErrorCategory.Storage(BridgeStorageFailure.AlreadyExists), "taken"),
+                )
+            val drive = Drive(mapOf(root to listOf(Result.success(listOf(music)))), createResult = taken)
+            val browser = browser(drive)
+            browser.openTop()
+            val atRoot = checkNotNull(browser.shown)
+
+            browser.create(atRoot, "Music")
+
+            assertEquals("Music", browser.takenName)
+            assertNull(browser.failure)
+            assertEquals(atRoot, browser.shown)
+            assertNull(browser.selected)
+        }
+
+    @Test
+    fun aFolderSetupFoundHoldingOtherFilesIsNamedAndNotSetUpAgain() =
+        runBlocking {
+            val drive = Drive(mapOf(root to listOf(Result.success(listOf(music, albums)))))
+            val browser = browser(drive)
+            browser.openTop()
+            browser.select(music)
+
+            assertTrue(browser.place(storage(BridgeStorageFailure.OwnLocationRequired)))
+            assertEquals(music, browser.notEmpty)
+            assertNull(browser.target)
+
+            browser.select(albums)
+            assertEquals(albums, browser.target)
+            assertFalse(browser.place(BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")))
+        }
+
+    private fun storage(failure: BridgeStorageFailure) = BridgeException.Diagnostic(BridgeErrorCategory.Storage(failure), "")
+
+    private fun browser(drive: Drive) = FolderBrowser(FolderCalls.oneDrive(FakeAppHandle(), drive), Errors, "OneDrive")
 
     private fun folder(name: String) = BridgeStorageFolder(name, BridgeStorageLocation.OneDrive("drive", name, null, null))
 
@@ -161,6 +197,7 @@ class OneDriveBrowserTest {
     private inner class Drive(
         listings: Map<BridgeStorageFolder, List<Result<List<BridgeStorageFolder>>>>,
         private val created: BridgeStorageFolder? = null,
+        private val createResult: Result<BridgeStorageFolder>? = null,
     ) : OAuthProviders {
         private val answers = listings.mapKeys { it.key.location }.mapValues { it.value.toMutableList() }
         var creates = 0
@@ -179,7 +216,7 @@ class OneDriveBrowserTest {
             name: String,
         ): BridgeStorageFolder {
             creates++
-            return checkNotNull(created)
+            return (createResult ?: Result.success(checkNotNull(created))).getOrThrow()
         }
 
         override fun register(host: BridgeHost) = error("not used")
