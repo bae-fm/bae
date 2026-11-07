@@ -10,7 +10,7 @@
 #   macos-run       bae-macos/run.sh: signed with the person's identity and
 #                   provisioning, bundle id fm.bae.desktop, a plist that makes
 #                   the app a Dock app. Holds the app the person launches, and
-#                   what bae-avalonia/run.sh and scripts/test-app.sh read from
+#                   what bae-avalonia/run.sh and `builds test-app` read from
 #                   it.
 #   macos-unsigned  every other build of the app: scripts/check.sh,
 #                   bae-macos/test.sh, the screenshot scenes, and CI and the

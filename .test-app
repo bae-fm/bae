@@ -1,0 +1,3 @@
+build ./bae-macos/run.sh --no-open
+app bae-macos/bae/.build/runApp/Build/Products/Debug/bae.app
+bundle fm.bae.desktop
