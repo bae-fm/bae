@@ -136,7 +136,7 @@ internal fun SettingsScreen(
         SettingsPlaybackSections(session = session, config = config, ioDispatcher = ioDispatcher, onPush = onPush)
         SectionDivider()
         SettingsTransfersEntry(onOpen = { onPush(LibraryDestination.Transfers) })
-        // People, devices and the recovery code live in the library's store, which only storage has.
+        // People, devices and the restore code live in the library's store, which only storage has.
         (model.storage as? Storage.At)?.let { home ->
             SettingsStoreSections(session = session, home = home, adminChanges = model.adminChanges, onPush = onPush)
         }
@@ -145,7 +145,7 @@ internal fun SettingsScreen(
     }
 }
 
-/** What lives in the library's store: its people and the changes this phone asked of them, and the recovery code. */
+/** What lives in the library's store: its people and the changes this phone asked of them, and the restore code. */
 @Composable
 private fun SettingsStoreSections(
     session: OpenLibrary,
@@ -164,7 +164,7 @@ private fun SettingsStoreSections(
         onManagePeople = { onPush(LibraryDestination.Members) },
     )
     SectionDivider()
-    RecoveryCodeSection(
+    RestoreCodeSection(
         needsS3Key = home.location is BridgeStorageLocation.S3,
         location = storageLocationLabel(home.location),
         generate = { session.appHandle.generateRestoreCode().code },

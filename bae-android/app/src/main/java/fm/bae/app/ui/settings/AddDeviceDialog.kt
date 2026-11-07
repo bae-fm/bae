@@ -52,7 +52,7 @@ import uniffi.bae_bridge.BridgeRestoreCodeShare
 private val logger = BaeLogger("bae.AddDeviceDialog")
 
 /**
- * Adds another of this person's devices: their recovery code, generated on
+ * Adds another of this person's devices: their restore code, generated on
  * demand, as a QR the new device scans and as text to type there instead.
  * While it shows the code, it runs the watch that came with it, and once a new
  * device joins it says so in place of the code.

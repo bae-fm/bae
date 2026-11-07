@@ -56,9 +56,11 @@ class SavedCodesSectionTest {
 
         compose.onNodeWithText("Home Library").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Dropbox: ana@example.com").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Recovery code can’t be used").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Saved in a format bae can’t read").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(UNREADABLE_LIBRARY).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Restore code can’t be used").performScrollTo().assertIsDisplayed()
+        compose
+            .onNodeWithText("Saved in a format bae can’t read · $UNREADABLE_LIBRARY")
+            .performScrollTo()
+            .assertIsDisplayed()
         compose.onNodeWithText("Scan a code").performScrollTo().assertIsDisplayed()
     }
 
@@ -67,7 +69,7 @@ class SavedCodesSectionTest {
         showWelcome(SavedCodesHost(emptyList()))
 
         compose.onNodeWithText("Scan a code").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("SAVED ON THIS PHONE").assertDoesNotExist()
+        compose.onNodeWithText("SAVED ON THIS DEVICE").assertDoesNotExist()
     }
 
     @Test
@@ -85,7 +87,7 @@ class SavedCodesSectionTest {
     }
 
     @Test
-    fun deleteAsksFirstSayingTheCodeGoesFromThisPhoneOnlyThenRemovesIt() {
+    fun deleteAsksFirstSayingTheCodeGoesFromThisDeviceOnlyThenRemovesIt() {
         val host = SavedCodesHost(listOf(dropboxCode))
         showWelcome(host)
 
@@ -93,12 +95,12 @@ class SavedCodesSectionTest {
 
         compose
             .onNodeWithText(
-                "This removes the recovery code for “Home Library” from this phone only. " +
+                "This removes the restore code for “Home Library” from this device only. " +
                     "It doesn’t delete the library, or anything in your storage.",
             ).assertIsDisplayed()
         assertEquals(emptyList<String>(), host.forgotten)
 
-        compose.onNodeWithText("Delete this recovery code?").assertIsDisplayed()
+        compose.onNodeWithText("Delete this restore code?").assertIsDisplayed()
         compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
 
         compose.onNodeWithText("Home Library").assertDoesNotExist()

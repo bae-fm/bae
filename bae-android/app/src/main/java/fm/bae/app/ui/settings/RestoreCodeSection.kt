@@ -41,28 +41,28 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 
-private val logger = BaeLogger("bae.RecoveryCodeSection")
+private val logger = BaeLogger("bae.RestoreCodeSection")
 
 /** Where the restore code's reveal stands. */
-internal sealed interface RecoveryCodeState {
+internal sealed interface RestoreCodeState {
     /** The screen isn't open: no code is held. */
-    data object Closed : RecoveryCodeState
+    data object Closed : RestoreCodeState
 
-    data object Loading : RecoveryCodeState
+    data object Loading : RestoreCodeState
 
     /** The code in groups of four, held for Copy and Print and shown only as its first groups. */
     data class Masked(
         val code: String,
-    ) : RecoveryCodeState
+    ) : RestoreCodeState
 
     /** The code in groups of four, as core formats it. */
     data class Shown(
         val code: String,
-    ) : RecoveryCodeState
+    ) : RestoreCodeState
 
     data class Failed(
         val error: DisplayError,
-    ) : RecoveryCodeState
+    ) : RestoreCodeState
 }
 
 /**
@@ -71,24 +71,24 @@ internal sealed interface RecoveryCodeState {
  * it and Hide masks it again. Closing drops it and cancels a generation still
  * running, so a late result never shows a code for a screen already closed.
  */
-internal class RecoveryCodeReveal(
+internal class RestoreCodeReveal(
     private val scope: CoroutineScope,
     private val generate: suspend () -> String,
     private val errorDisplay: (BridgeException) -> DisplayError?,
 ) {
-    var state by mutableStateOf<RecoveryCodeState>(RecoveryCodeState.Closed)
+    var state by mutableStateOf<RestoreCodeState>(RestoreCodeState.Closed)
         private set
     private var generating: Job? = null
 
     /** Make the code and hold it masked; a generation already running is replaced. */
     fun open() {
         generating?.cancel()
-        state = RecoveryCodeState.Loading
+        state = RestoreCodeState.Loading
         generating =
             scope.launch {
                 val next =
                     try {
-                        RecoveryCodeState.Masked(generate())
+                        RestoreCodeState.Masked(generate())
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: BridgeException) {
@@ -96,7 +96,7 @@ internal class RecoveryCodeReveal(
                         ensureActive()
                         logger.error("Failed to generate the restore code", e)
                         // A failure with nothing to show is a cancellation from core; the screen can open again.
-                        errorDisplay(e)?.let(RecoveryCodeState::Failed) ?: RecoveryCodeState.Closed
+                        errorDisplay(e)?.let(RestoreCodeState::Failed) ?: RestoreCodeState.Closed
                     }
                 ensureActive()
                 state = next
@@ -104,17 +104,17 @@ internal class RecoveryCodeReveal(
     }
 
     fun show() {
-        (state as? RecoveryCodeState.Masked)?.let { state = RecoveryCodeState.Shown(it.code) }
+        (state as? RestoreCodeState.Masked)?.let { state = RestoreCodeState.Shown(it.code) }
     }
 
     fun hide() {
-        (state as? RecoveryCodeState.Shown)?.let { state = RecoveryCodeState.Masked(it.code) }
+        (state as? RestoreCodeState.Shown)?.let { state = RestoreCodeState.Masked(it.code) }
     }
 
     fun close() {
         generating?.cancel()
         generating = null
-        state = RecoveryCodeState.Closed
+        state = RestoreCodeState.Closed
     }
 }
 
@@ -126,19 +126,19 @@ internal class RecoveryCodeReveal(
  * hides it. [location] is where the library is stored, for the printed page.
  */
 @Composable
-internal fun RecoveryCodeSection(
+internal fun RestoreCodeSection(
     needsS3Key: Boolean,
     location: String,
     generate: suspend () -> String,
 ) {
     val context = LocalContext.current
     val scope = rememberScreenScope()
-    val reveal = remember { RecoveryCodeReveal(scope, generate) { context.displayError(it) } }
+    val reveal = remember { RestoreCodeReveal(scope, generate) { context.displayError(it) } }
     DisposableEffect(reveal) {
         reveal.open()
         onDispose { reveal.close() }
     }
-    RecoveryCodeSectionContent(
+    RestoreCodeSectionContent(
         needsS3Key = needsS3Key,
         state = reveal.state,
         onShow = reveal::show,
@@ -148,9 +148,9 @@ internal fun RecoveryCodeSection(
 }
 
 @Composable
-private fun RecoveryCodeSectionContent(
+private fun RestoreCodeSectionContent(
     needsS3Key: Boolean,
-    state: RecoveryCodeState,
+    state: RestoreCodeState,
     onShow: () -> Unit,
     onHide: () -> Unit,
     onPrint: (String) -> Unit,
@@ -161,25 +161,25 @@ private fun RecoveryCodeSectionContent(
     ) {
         Eyebrow(text = stringResource(R.string.restore_code_title))
         when (state) {
-            RecoveryCodeState.Closed -> {
+            RestoreCodeState.Closed -> {
                 Unit
             }
 
-            RecoveryCodeState.Loading -> {
+            RestoreCodeState.Loading -> {
                 WaitingIndicator(text = stringResource(R.string.restore_code_making))
             }
 
-            is RecoveryCodeState.Masked -> {
+            is RestoreCodeState.Masked -> {
                 Caption(needsS3Key)
                 CodeBox(code = state.code, shown = false, onToggle = onShow, onPrint = onPrint)
             }
 
-            is RecoveryCodeState.Shown -> {
+            is RestoreCodeState.Shown -> {
                 Caption(needsS3Key)
                 CodeBox(code = state.code, shown = true, onToggle = onHide, onPrint = onPrint)
             }
 
-            is RecoveryCodeState.Failed -> {
+            is RestoreCodeState.Failed -> {
                 ErrorDetailDisclosure(state.error)
             }
         }
@@ -270,9 +270,9 @@ private const val PREVIEW_CODE =
 /** The section on a Dropbox library with a fixture code, masked or shown, for the screenshot gallery. */
 @Composable
 internal fun RestoreCodeScene(shown: Boolean) {
-    RecoveryCodeSectionContent(
+    RestoreCodeSectionContent(
         needsS3Key = false,
-        state = if (shown) RecoveryCodeState.Shown(PREVIEW_CODE) else RecoveryCodeState.Masked(PREVIEW_CODE),
+        state = if (shown) RestoreCodeState.Shown(PREVIEW_CODE) else RestoreCodeState.Masked(PREVIEW_CODE),
         onShow = {},
         onHide = {},
         onPrint = {},
@@ -281,11 +281,11 @@ internal fun RestoreCodeScene(shown: Boolean) {
 
 @Preview(showBackground = true)
 @Composable
-private fun RecoveryCodeSectionMaskedPreview() {
+private fun RestoreCodeSectionMaskedPreview() {
     BaeTheme {
-        RecoveryCodeSectionContent(
+        RestoreCodeSectionContent(
             needsS3Key = true,
-            state = RecoveryCodeState.Masked(PREVIEW_CODE),
+            state = RestoreCodeState.Masked(PREVIEW_CODE),
             onShow = {},
             onHide = {},
             onPrint = {},
@@ -295,11 +295,11 @@ private fun RecoveryCodeSectionMaskedPreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun RecoveryCodeSectionLoadingPreview() {
+private fun RestoreCodeSectionLoadingPreview() {
     BaeTheme {
-        RecoveryCodeSectionContent(
+        RestoreCodeSectionContent(
             needsS3Key = false,
-            state = RecoveryCodeState.Loading,
+            state = RestoreCodeState.Loading,
             onShow = {},
             onHide = {},
             onPrint = {},
@@ -309,11 +309,11 @@ private fun RecoveryCodeSectionLoadingPreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun RecoveryCodeSectionShownPreview() {
+private fun RestoreCodeSectionShownPreview() {
     BaeTheme {
-        RecoveryCodeSectionContent(
+        RestoreCodeSectionContent(
             needsS3Key = true,
-            state = RecoveryCodeState.Shown(PREVIEW_CODE),
+            state = RestoreCodeState.Shown(PREVIEW_CODE),
             onShow = {},
             onHide = {},
             onPrint = {},
@@ -323,12 +323,12 @@ private fun RecoveryCodeSectionShownPreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun RecoveryCodeSectionFailedPreview() {
+private fun RestoreCodeSectionFailedPreview() {
     BaeTheme {
-        RecoveryCodeSectionContent(
+        RestoreCodeSectionContent(
             needsS3Key = false,
             state =
-                RecoveryCodeState.Failed(
+                RestoreCodeState.Failed(
                     DisplayError("Couldn’t reach your storage.", "S3: Network: dispatch failure"),
                 ),
             onShow = {},

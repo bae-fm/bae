@@ -61,7 +61,7 @@ class OnboardingStepsTest {
 
         compose.onNodeWithText("Enter a code").performScrollTo().performClick()
 
-        compose.onNodeWithText("Recovery code or invite").assertIsDisplayed()
+        compose.onNodeWithText("Restore code or invite").assertIsDisplayed()
     }
 
     @Test

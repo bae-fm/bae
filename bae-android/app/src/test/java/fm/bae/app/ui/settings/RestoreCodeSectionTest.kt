@@ -30,7 +30,7 @@ import uniffi.bae_bridge.BridgeRestoreCodeShare
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 @OptIn(ExperimentalCoroutinesApi::class)
-class RecoveryCodeSectionTest {
+class RestoreCodeSectionTest {
     @get:Rule
     val compose = createComposeRule()
 
@@ -39,7 +39,7 @@ class RecoveryCodeSectionTest {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RecoveryCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
+                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
                 }
             }
         }
@@ -61,7 +61,7 @@ class RecoveryCodeSectionTest {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RecoveryCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
+                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
                 }
             }
         }
@@ -78,7 +78,7 @@ class RecoveryCodeSectionTest {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RecoveryCodeSection(needsS3Key = true, location = "S3", generate = { CODE })
+                    RestoreCodeSection(needsS3Key = true, location = "S3", generate = { CODE })
                 }
             }
         }
@@ -91,7 +91,7 @@ class RecoveryCodeSectionTest {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RecoveryCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
+                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
                 }
             }
         }
@@ -109,30 +109,30 @@ class RecoveryCodeSectionTest {
     fun aCodeGeneratedAfterClosingStaysDropped() =
         runTest {
             val pending = CompletableDeferred<String>()
-            val reveal = RecoveryCodeReveal(this, generate = { pending.await() }, errorDisplay = { null })
+            val reveal = RestoreCodeReveal(this, generate = { pending.await() }, errorDisplay = { null })
             reveal.open()
             advanceUntilIdle()
-            assertEquals(RecoveryCodeState.Loading, reveal.state)
+            assertEquals(RestoreCodeState.Loading, reveal.state)
 
             reveal.close()
             pending.complete(CODE)
             advanceUntilIdle()
 
-            assertEquals(RecoveryCodeState.Closed, reveal.state)
+            assertEquals(RestoreCodeState.Closed, reveal.state)
         }
 
     @Test
     fun showRevealsTheHeldCodeAndHideMasksItAgain() =
         runTest {
-            val reveal = RecoveryCodeReveal(this, generate = { CODE }, errorDisplay = { null })
+            val reveal = RestoreCodeReveal(this, generate = { CODE }, errorDisplay = { null })
             reveal.open()
             advanceUntilIdle()
-            assertEquals(RecoveryCodeState.Masked(CODE), reveal.state)
+            assertEquals(RestoreCodeState.Masked(CODE), reveal.state)
 
             reveal.show()
-            assertEquals(RecoveryCodeState.Shown(CODE), reveal.state)
+            assertEquals(RestoreCodeState.Shown(CODE), reveal.state)
             reveal.hide()
-            assertEquals(RecoveryCodeState.Masked(CODE), reveal.state)
+            assertEquals(RestoreCodeState.Masked(CODE), reveal.state)
         }
 
     @Test
@@ -141,7 +141,7 @@ class RecoveryCodeSectionTest {
             val first = CompletableDeferred<String>()
             var calls = 0
             val reveal =
-                RecoveryCodeReveal(
+                RestoreCodeReveal(
                     this,
                     generate = { if (calls++ == 0) first.await() else "CVR1 NEWER" },
                     errorDisplay = { null },
@@ -153,14 +153,14 @@ class RecoveryCodeSectionTest {
             first.complete(CODE)
             advanceUntilIdle()
 
-            assertEquals(RecoveryCodeState.Masked("CVR1 NEWER"), reveal.state)
+            assertEquals(RestoreCodeState.Masked("CVR1 NEWER"), reveal.state)
         }
 
     @Test
     fun aFailureWithALineShowsIt() =
         runTest {
             val reveal =
-                RecoveryCodeReveal(
+                RestoreCodeReveal(
                     this,
                     generate = { throw BridgeException.Diagnostic(BridgeErrorCategory.Config, "storage unreachable") },
                     errorDisplay = { DisplayError("Couldn’t reach your storage.", it.diagnosticDetail) },
@@ -169,7 +169,7 @@ class RecoveryCodeSectionTest {
             advanceUntilIdle()
 
             assertEquals(
-                RecoveryCodeState.Failed(DisplayError("Couldn’t reach your storage.", "storage unreachable")),
+                RestoreCodeState.Failed(DisplayError("Couldn’t reach your storage.", "storage unreachable")),
                 reveal.state,
             )
         }
@@ -178,11 +178,11 @@ class RecoveryCodeSectionTest {
     fun aCancellationFromCoreLeavesTheSectionClosed() =
         runTest {
             val reveal =
-                RecoveryCodeReveal(this, generate = { throw BridgeException.Cancelled() }, errorDisplay = { null })
+                RestoreCodeReveal(this, generate = { throw BridgeException.Cancelled() }, errorDisplay = { null })
             reveal.open()
             advanceUntilIdle()
 
-            assertEquals(RecoveryCodeState.Closed, reveal.state)
+            assertEquals(RestoreCodeState.Closed, reveal.state)
         }
 
     @Test
