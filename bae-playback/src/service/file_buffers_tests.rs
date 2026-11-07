@@ -4,10 +4,14 @@ use crate::service::tests::*;
 /// A track whose audio reads from two files — its pregap at the end of the
 /// file before — fetches from both as the playing track, so a preload yields
 /// to it in either.
-#[test]
-fn every_file_the_playing_track_reads_fetches_as_the_playing_one() {
+#[tokio::test]
+async fn every_file_the_playing_track_reads_fetches_as_the_playing_one() {
     let arbiter = FetchArbiter::new();
-    let buffers = FileBuffers::new(arbiter.clone(), tokio::sync::watch::channel(None).0);
+    let buffers = FileBuffers::new(
+        tokio::runtime::Handle::current(),
+        arbiter.clone(),
+        tokio::sync::watch::channel(None).0,
+    );
     let pregap = create_sparse_buffer(1_024);
     let main = create_sparse_buffer(1_024);
     let mut prepared = test_prepared_track_with_file("track", "main-file", main.clone());

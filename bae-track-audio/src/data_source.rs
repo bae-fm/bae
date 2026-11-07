@@ -278,6 +278,8 @@ async fn read_error_for_file_read(
 /// identity when the stream opens, so no reader branches on locality and every
 /// window after that costs only its own bytes.
 pub struct CovenFileReader {
+    /// The runtime the fill's window prefetches run on.
+    runtime: tokio::runtime::Handle,
     records: bae_records::Records,
     file_id: String,
     /// How playback reads the file, for a reader playback started; `None`
@@ -308,14 +310,20 @@ struct PlaybackRead {
 impl CovenFileReader {
     /// A reader of `file_id` start to finish, for work nobody listens to
     /// while it reads — a save, a transcode, a decode for import.
-    pub fn new(records: bae_records::Records, file_id: String, diagnostics: Diagnostics) -> Self {
-        Self { records, file_id, playback: None, diagnostics }
+    pub fn new(
+        runtime: tokio::runtime::Handle,
+        records: bae_records::Records,
+        file_id: String,
+        diagnostics: Diagnostics,
+    ) -> Self {
+        Self { runtime, records, file_id, playback: None, diagnostics }
     }
 
     /// A reader of `file_id` for playback: its fetches gated by `arbiter`,
     /// with the window at `prefetch_byte` and, when `prefetch_file_end`, the
     /// file's last window fetched up front.
     pub fn for_playback(
+        runtime: tokio::runtime::Handle,
         records: bae_records::Records,
         file_id: String,
         arbiter: Arc<FetchArbiter>,
@@ -324,7 +332,7 @@ impl CovenFileReader {
         diagnostics: Diagnostics,
     ) -> Self {
         let playback = PlaybackRead { arbiter, prefetch_byte, prefetch_file_end };
-        Self { records, file_id, playback: Some(playback), diagnostics }
+        Self { runtime, records, file_id, playback: Some(playback), diagnostics }
     }
 }
 
@@ -357,7 +365,8 @@ impl AudioDataReader for CovenFileReader {
         buffer: SharedSparseBuffer,
         on_error: FillErrorHandler,
     ) -> FillTask {
-        let CovenFileReader { records, file_id, playback, diagnostics } = *self;
+        let CovenFileReader { runtime: prefetch_runtime, records, file_id, playback, diagnostics } =
+            *self;
         let buffer_id = buffer.id();
         let fill_buffer = buffer.clone();
         let prefetch_diagnostics = diagnostics.clone();
@@ -379,6 +388,7 @@ impl AudioDataReader for CovenFileReader {
             if let Some(playback) = &playback {
                 let prefetch = |start: u64, what: &'static str| {
                     spawn_window_prefetch(
+                        &prefetch_runtime,
                         &prefetch_diagnostics,
                         stream.clone(),
                         playback.arbiter.clone(),
@@ -478,6 +488,7 @@ const CLOUD_STREAM_READ_SIZE: u64 = FILL_WINDOW_SIZE;
 /// panicked, which is reported. `what` labels the window (decode-start /
 /// file-end) in the log.
 fn spawn_window_prefetch(
+    runtime: &tokio::runtime::Handle,
     diagnostics: &Diagnostics,
     stream: Arc<bae_store::FileStream>,
     arbiter: Arc<FetchArbiter>,
@@ -491,7 +502,7 @@ fn spawn_window_prefetch(
     let window = CLOUD_STREAM_READ_SIZE.min(source_size - off);
     let started = Instant::now();
     diagnostics.spawn_reported(
-        &tokio::runtime::Handle::current(),
+        runtime,
         "prefetch a playback buffer window",
         async move {
             let foreground = arbiter.is_foreground(buffer_id);

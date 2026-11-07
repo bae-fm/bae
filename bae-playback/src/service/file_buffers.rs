@@ -17,6 +17,8 @@ use super::*;
 use bae_track_audio::data_source::AudioDataReader;
 
 pub(super) struct FileBuffers {
+    /// The runtime the service runs on, which every fill runs on.
+    runtime: tokio::runtime::Handle,
     /// Full-file buffers keyed by release file id.
     cached: HashMap<String, SharedSparseBuffer>,
     /// Tracks removed from the live slot whose buffers remain available until
@@ -40,10 +42,12 @@ impl FileBuffers {
     /// Buffers whose readers `arbiter` prioritizes, telling `playing` the
     /// current track's bytes.
     pub(super) fn new(
+        runtime: tokio::runtime::Handle,
         arbiter: Arc<FetchArbiter>,
         playing: tokio::sync::watch::Sender<Option<PlayingBytes>>,
     ) -> Self {
         Self {
+            runtime,
             cached: HashMap::new(),
             retired: Vec::new(),
             arbiter,
@@ -202,6 +206,7 @@ pub(super) async fn prepare_track_for_playback(
     let is_ape = resolved.content_type == bae_util::content_type::ContentType::Ape;
     for (file_id, buffer) in fresh {
         let reader = Box::new(bae_track_audio::data_source::CovenFileReader::for_playback(
+            file_buffers.runtime.clone(),
             records.clone(),
             file_id,
             file_buffers.arbiter.clone(),

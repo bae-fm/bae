@@ -293,7 +293,11 @@ pub(super) fn playback_service_and_commands_over(
         volume: OutputVolume::new(),
         preview,
         position_update_interval_ms: 50,
-        file_buffers: FileBuffers::new(FetchArbiter::new(), tokio::sync::watch::channel(None).0),
+        file_buffers: FileBuffers::new(
+            tokio::runtime::Handle::current(),
+            FetchArbiter::new(),
+            tokio::sync::watch::channel(None).0,
+        ),
         starvation_episode: None,
         persisted_position: None,
         first_audio_pending: None,

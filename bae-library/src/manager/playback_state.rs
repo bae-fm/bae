@@ -11,6 +11,7 @@ impl LibraryManager {
         file_id: &str,
     ) -> Box<dyn bae_track_audio::data_source::AudioDataReader> {
         Box::new(bae_track_audio::data_source::CovenFileReader::new(
+            self.runtime_handle.clone(),
             self.records.clone(),
             file_id.to_string(),
             self.diagnostics.clone(),
