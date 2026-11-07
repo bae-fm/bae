@@ -209,7 +209,7 @@ async fn failed_storage_setup_keeps_the_library_unconfigured() {
         .await
         .expect_err("offline storage cannot be set up");
     assert!(!manager.is_sync_configured().await.unwrap());
-    assert_eq!(manager.library_name().await.unwrap(), "Test Library");
+    assert_eq!(manager.store.store_name().await.unwrap(), "Test Library");
 }
 
 #[tokio::test]

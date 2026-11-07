@@ -10,14 +10,6 @@ impl LibraryManager {
         Ok(())
     }
 
-    pub async fn library_name(&self) -> Result<String, LibraryError> {
-        Ok(self.store.store_name().await?)
-    }
-
-    pub fn subscribe_library_name(&self) -> coven::LiveQuery<String, coven::CovenError> {
-        self.store.subscribe_store_name()
-    }
-
     /// What removing this library from this device would lose, for the
     /// person to confirm before [`Self::remove_library`].
     pub async fn unsent_before_removal(&self) -> Result<coven::UnsentWork, LibraryError> {

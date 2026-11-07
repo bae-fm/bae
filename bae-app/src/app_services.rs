@@ -720,8 +720,10 @@ impl AppServices {
     }
 
     delegate_store!(pending => pending() -> Vec<coven::PendingRecord>);
-    delegate_async!(manager, library_name => library_name() -> Result<String, bae_library::LibraryError>);
-    delegate_values!(subscribe_library_name => subscribe_library_name() -> String);
+    delegate_store!(library_name => store_name() -> String);
+    pub fn subscribe_library_name(&self) -> bae_store::live_query::LiveValues<String> {
+        self.inner.manager.values_until_closed(self.inner.store.subscribe_store_name())
+    }
 
     /// Whether the person paused uploads: the first value at once, then one
     /// after each change.

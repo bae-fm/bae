@@ -145,7 +145,7 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         };
         assert_eq!(name, "Home");
         let operation = *operation;
-        assert_eq!(manager.library_name().await.unwrap(), "Two Devices");
+        assert_eq!(manager.store.store_name().await.unwrap(), "Two Devices");
         assert!(manager.acknowledge_admin_change(operation).await.is_err());
 
         laptop.store().start_sync().await.unwrap();
@@ -153,7 +153,7 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
             changes.len() == 1 && changes[0].state == AdminChangeState::Done
         })
         .await;
-        assert_eq!(manager.library_name().await.unwrap(), "Home");
+        assert_eq!(manager.store.store_name().await.unwrap(), "Home");
 
         manager.acknowledge_admin_change(operation).await.unwrap();
         crate::followed::value_matching(&mut changes, Vec::is_empty).await;
