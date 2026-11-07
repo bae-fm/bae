@@ -18,7 +18,7 @@ impl LibraryManager {
     pub async fn delete_album(&self, album_id: &str) -> Result<(), LibraryError> {
         let releases = self.get_releases_for_album(album_id).await?;
         if releases.is_empty() {
-            return Err(LibraryError::Refused(format!("Album not found: {album_id}")));
+            return Err(LibraryError::AlbumMissing { album_id: album_id.to_string() });
         }
 
         // The queue's rows leave in the delete's own transaction, and the

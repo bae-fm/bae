@@ -150,9 +150,11 @@ impl LibraryManager {
             .await?
             .ok_or_else(|| LibraryError::release_missing(release_id, super::ReleaseWork::Edit))?;
         let release = &detail.release;
-        let album = self.records.find_album_by_id(&release.album_id).await?.ok_or_else(|| {
-            LibraryError::Refused(format!("Album '{}' not found", release.album_id))
-        })?;
+        let album = self
+            .records
+            .find_album_by_id(&release.album_id)
+            .await?
+            .ok_or_else(|| LibraryError::AlbumMissing { album_id: release.album_id.clone() })?;
         let display = bae_import::ReleaseEditDisplayContext::from_raw(&detail, edit_tracks)?;
         let cover = bae_records::cover_ref(release_id, detail.cover_version.clone());
 
@@ -252,7 +254,7 @@ impl LibraryManager {
         let work = {
             let mut work = session.work.lock().await;
             if !work.form.set_track(track) {
-                return Err(LibraryError::Refused(format!("release edit has no track row '{id}'")));
+                return Err(LibraryError::EditRowMissing(id));
             }
             work.clone()
         };
@@ -363,7 +365,7 @@ impl LibraryManager {
             self.records
                 .find_album_by_id(album_id)
                 .await?
-                .ok_or_else(|| LibraryError::Refused(format!("Album '{album_id}' not found")))?;
+                .ok_or_else(|| LibraryError::AlbumMissing { album_id: album_id.clone() })?;
         }
         let work = {
             let mut work = session.work.lock().await;
@@ -388,10 +390,11 @@ impl LibraryManager {
         current: bae_import::DraftAlbum,
     ) -> Result<bae_import::DraftAlbum, LibraryError> {
         let title = |album_id: String| async move {
-            let album =
-                self.records.find_album_by_id(&album_id).await?.ok_or_else(|| {
-                    LibraryError::Refused(format!("Album '{album_id}' not found"))
-                })?;
+            let album = self
+                .records
+                .find_album_by_id(&album_id)
+                .await?
+                .ok_or_else(|| LibraryError::AlbumMissing { album_id: album_id.clone() })?;
             Ok::<_, LibraryError>((album_id, album.title))
         };
         if let Some(picked) = &work.picked_album {
@@ -500,7 +503,7 @@ impl LibraryManager {
                     current_album
                 } else {
                     self.records.find_album_by_id(&target_album_id).await?.ok_or_else(|| {
-                        LibraryError::Refused(format!("Album '{target_album_id}' not found"))
+                        LibraryError::AlbumMissing { album_id: target_album_id.clone() }
                     })?
                 };
                 bae_records::ReleaseEditWrite::Fields(self.release_metadata_rows(

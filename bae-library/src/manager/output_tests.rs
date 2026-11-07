@@ -276,7 +276,14 @@ async fn export_refuses_an_absolute_original_filename() {
         .await
         .expect_err("an absolute original_filename is refused");
 
-    assert!(error.to_string().contains("names no file"), "unexpected error: {error}");
+    assert!(
+        matches!(
+            &error,
+            LibraryError::Database(bae_store::DbError::Unreadable { stored, .. })
+                if stored.contains("/absolute-escape.flac")
+        ),
+        "a name that names no file is a damaged row: {error}"
+    );
     assert!(!target.join("Album Title").exists());
 }
 

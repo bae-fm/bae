@@ -32,9 +32,10 @@ impl LibraryManager {
         file_id: &str,
     ) -> Result<Vec<u8>, LibraryError> {
         let file = self.records.find_release_file(release_id, file_id).await?.ok_or_else(|| {
-            LibraryError::Refused(format!(
-                "Image file {file_id} is not part of release {release_id}"
-            ))
+            LibraryError::FileMissing {
+                release_id: release_id.to_string(),
+                file_id: file_id.to_string(),
+            }
         })?;
         self.read_release_file(&file).await
     }
@@ -61,10 +62,12 @@ impl LibraryManager {
         // JPEG below, so only the bytes carry through.
         let bytes = match selection {
             CoverSelection::ReleaseImage { file_id } => {
-                let file = self
-                    .get_file_by_id(&file_id)
-                    .await?
-                    .ok_or_else(|| LibraryError::Refused(format!("File '{file_id}' not found")))?;
+                let file = self.get_file_by_id(&file_id).await?.ok_or_else(|| {
+                    LibraryError::FileMissing {
+                        release_id: release_id.to_string(),
+                        file_id: file_id.clone(),
+                    }
+                })?;
 
                 // Read the chosen release image file through coven's locality-aware
                 // read (the user's own file when Local, the cache/cloud when Remote).

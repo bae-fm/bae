@@ -69,8 +69,13 @@ impl From<LibraryError> for AutomationError {
             LibraryError::Io(e) => Self::Unavailable(e.to_string()),
             // An import step's failure crosses as any import error does.
             LibraryError::Import(error) => Self::from(*error),
-            LibraryError::Refused(e) => Self::Import(e),
-            error @ LibraryError::ReleaseMissing { .. } => Self::NotFound(error.to_string()),
+            error @ (LibraryError::ReleaseMissing { .. }
+            | LibraryError::AlbumMissing { .. }
+            | LibraryError::FileMissing { .. }
+            | LibraryError::EditRowMissing(_)) => Self::NotFound(error.to_string()),
+            // An edit of another number of tracks than the release holds is
+            // the caller's to compose again.
+            error @ LibraryError::TrackCountChanged { .. } => Self::Validation(error.to_string()),
             LibraryError::Export(e) | LibraryError::Save(e) => Self::Unavailable(e),
             // A rejected metadata edit is the caller's bad input, not an import
             // failure — MCP sees it as `validation`, the kind it can act on.

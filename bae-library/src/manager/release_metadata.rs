@@ -23,7 +23,7 @@ impl LibraryManager {
             .records
             .find_album_by_id(&album_id)
             .await?
-            .ok_or_else(|| LibraryError::Refused(format!("Album '{album_id}' not found")))?;
+            .ok_or_else(|| LibraryError::AlbumMissing { album_id: album_id.clone() })?;
         let existing_tracks = self.records.get_tracks_for_release(release_id).await?;
         Ok((album_id, release, album, existing_tracks))
     }
@@ -87,11 +87,10 @@ impl LibraryManager {
         use bae_records::{DbAlbumArtist, DbTrackArtist};
 
         if existing_tracks.len() != edit.tracks.len() {
-            return Err(LibraryError::Refused(format!(
-                "Track count mismatch: release has {} tracks, edit supplies {}",
-                existing_tracks.len(),
-                edit.tracks.len()
-            )));
+            return Err(LibraryError::TrackCountChanged {
+                release_tracks: existing_tracks.len(),
+                edit_tracks: edit.tracks.len(),
+            });
         }
 
         let now = bae_store::utc_now(self.clock.as_ref());

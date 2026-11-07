@@ -197,6 +197,11 @@ async fn delete_album_refuses_an_album_the_library_does_not_hold() {
 
     for album_id in [album.id.as_str(), "not-an-album"] {
         let error = manager.library.manager().delete_album(album_id).await.unwrap_err();
-        assert!(matches!(error, LibraryError::Refused(_)), "{album_id}: {error}");
+        assert!(matches!(error, LibraryError::AlbumMissing { .. }), "{album_id}: {error}");
+        assert_eq!(
+            error.category(),
+            bae_diagnostics::UiErrorCategory::ChangedMeanwhile,
+            "as a stale deletion plan's is: {album_id}"
+        );
     }
 }

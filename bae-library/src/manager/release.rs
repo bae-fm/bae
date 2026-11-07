@@ -87,7 +87,9 @@ impl LibraryManager {
             .await
             .map_err(|error| match error {
                 ReleaseIdentityError::Database(error) => LibraryError::Database(error),
-                ReleaseIdentityError::NotFound { .. } => LibraryError::Refused(error.to_string()),
+                ReleaseIdentityError::NotFound { release_id } => {
+                    LibraryError::release_missing(&release_id, super::ReleaseWork::Edit)
+                }
                 ReleaseIdentityError::Panicked(failed) => LibraryError::from(failed),
             })?
             .read_audio()

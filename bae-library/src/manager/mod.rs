@@ -129,12 +129,22 @@ pub enum LibraryError {
     #[error(transparent)]
     #[cfg(desktop)]
     Import(Box<bae_import::ImportError>),
-    /// An operation on a release, an album, an artist or an import
-    /// candidate could not go ahead as asked — what it names is not in the
-    /// library, the candidate moved under it, an input is blank — with why
-    /// as text. Shown as the generic import line.
-    #[error("{0}")]
-    Refused(String),
+    /// An album an operation names is not in the library: it was deleted,
+    /// here or on another device, or holds no release, before the operation
+    /// read it.
+    #[error("album {album_id} is not in the library")]
+    AlbumMissing { album_id: String },
+    /// A file an operation names is not one of the release's: it left the
+    /// release before the operation read it.
+    #[error("file {file_id} is not part of release {release_id}")]
+    FileMissing { release_id: String, file_id: String },
+    /// An edit lays out another number of tracks than the release holds:
+    /// tracks came or went after the edit was composed.
+    #[error("the release has {release_tracks} tracks, the edit supplies {edit_tracks}")]
+    TrackCountChanged { release_tracks: usize, edit_tracks: usize },
+    /// An edit session's editor named a track row its session doesn't hold.
+    #[error("release edit has no track row '{0}'")]
+    EditRowMissing(String),
     /// A release an operation names is not in the library: it was deleted,
     /// here or on another device, before the operation read it. `work` is
     /// what asked for it, whose line the refusal shows under: an edit's
@@ -327,11 +337,12 @@ pub enum UploadReleasesOutcome {
     Partial { receipt: Option<UploadReceipt>, failure: UploadBatchFailure },
 }
 
-/// A stored name that names no file refuses the write it was for: the row it
-/// came from is unusable, and the copy does not run.
+/// A stored name that names no file is a row no writer here produces, and
+/// what needed it does not run.
 impl From<bae_records::stored_name::StoredNameError> for LibraryError {
     fn from(error: bae_records::stored_name::StoredNameError) -> Self {
-        LibraryError::Refused(error.to_string())
+        let what = format!("release {} {}", error.release_id, error.label);
+        Self::Database(bae_store::DbError::unreadable(what, error.value))
     }
 }
 
@@ -391,7 +402,10 @@ impl LibraryError {
             LibraryError::RetryBlockedOperation(_) => C::Membership,
             #[cfg(desktop)]
             LibraryError::Import(error) => error.category(),
-            LibraryError::Refused(_) => C::Import,
+            LibraryError::AlbumMissing { .. }
+            | LibraryError::FileMissing { .. }
+            | LibraryError::TrackCountChanged { .. } => C::ChangedMeanwhile,
+            LibraryError::EditRowMissing(_) => C::Internal,
             LibraryError::Edit(reason) => C::InvalidEdit(*reason),
             LibraryError::ReleaseMissing { work, .. } => match work {
                 ReleaseWork::Edit => C::ChangedMeanwhile,

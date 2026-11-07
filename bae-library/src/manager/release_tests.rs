@@ -772,7 +772,8 @@ async fn a_gallery_read_refuses_another_releases_file() {
         )
         .await
         .expect_err("the file is another release's");
-    assert!(matches!(error, LibraryError::Refused(_)), "{error}");
+    assert!(matches!(error, LibraryError::FileMissing { .. }), "{error}");
+    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::ChangedMeanwhile);
 }
 
 /// Deleting a release deletes the coven file of each of its files: its upload

@@ -574,7 +574,7 @@ mod release_album {
             )
             .await
             .expect_err("an album the library does not hold cannot be picked");
-        assert_eq!(refused.kind(), "import");
+        assert_eq!(refused.kind(), "not_found");
     }
 }
 
