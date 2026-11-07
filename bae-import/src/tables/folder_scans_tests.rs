@@ -239,13 +239,8 @@ async fn a_scan_write_of_an_entry_under_another_root_is_a_bug() {
         .await
         .unwrap_err();
 
-    let reported = heard.take();
-    assert_eq!(reported.len(), 1, "{reported:?}");
-    assert_eq!(coven::task::CarriesBug::bug(&failed), Some(&reported[0]));
-    assert!(
-        reported[0].message.contains(&format!("under {}", coven::path_text(&other))),
-        "{reported:?}"
-    );
+    let bug = the_reported_bug(&heard, &failed);
+    assert!(bug.contains(&format!("under {}", coven::path_text(&other))), "{bug}");
 }
 
 /// A folder holding a track is a release, so a scan's write of a sidecar
@@ -266,10 +261,8 @@ async fn a_scan_write_of_a_sidecar_holding_a_track_is_a_bug() {
 
     let failed = tables.save_folder_sidecar(&root, generation, &sidecar).await.unwrap_err();
 
-    let reported = heard.take();
-    assert_eq!(reported.len(), 1, "{reported:?}");
-    assert_eq!(coven::task::CarriesBug::bug(&failed), Some(&reported[0]));
-    assert!(reported[0].message.contains("read as a track or a sheet"), "{reported:?}");
+    let bug = the_reported_bug(&heard, &failed);
+    assert!(bug.contains("read as a track or a sheet"), "{bug}");
 }
 
 /// An entry whose generation is ahead of its root's was written by nothing

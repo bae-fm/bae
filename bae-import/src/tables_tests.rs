@@ -107,6 +107,18 @@ pub(crate) async fn scan_key(
     crate::CandidateFiles { content_hash: candidate.files.content_hash(), file_edit_revision: 0 }
 }
 
+/// The message of the one bug `heard` was reported, which `failed` carries
+/// back from the panic that failed its write.
+pub(crate) fn the_reported_bug(
+    heard: &coven::task::HeardBugs,
+    failed: &impl coven::task::CarriesBug,
+) -> String {
+    let reported = heard.take();
+    assert_eq!(reported.len(), 1, "{reported:?}");
+    assert_eq!(failed.bug(), Some(&reported[0]));
+    reported[0].message.clone()
+}
+
 /// `empty_db` plus a watched-folder root that exists on disk.
 pub(crate) async fn watched_root() -> (Store, tempfile::TempDir, std::path::PathBuf) {
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;

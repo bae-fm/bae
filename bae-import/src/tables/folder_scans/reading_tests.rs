@@ -230,20 +230,25 @@ async fn a_folder_reading_that_fails_partway_rolls_back_whole() {
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     let generation = scanned_box_and_sibling(&db, root).await;
-    let ScanItem::Valid(mut foreign) = combined_candidate(root, "Box") else {
+    let ScanItem::Valid(mut unstorable) = combined_candidate(root, "Box") else {
         panic!("the fixture is a valid candidate");
     };
-    foreign.watched_folder_path = host_root("/other/library");
+    unstorable.files.files[0].file.version.size = u64::MAX;
 
-    assert!(commit_reading(
+    let failed = commit_reading(
         &db,
         root,
         "Box",
         FolderReleaseDecision::CombineAsOneRelease,
-        vec![ScanItem::Valid(foreign)],
+        vec![ScanItem::Valid(unstorable)],
     )
     .await
-    .is_err());
+    .err()
+    .expect("a file size SQLite cannot hold fails the write partway");
+    assert!(
+        matches!(failed, crate::ImportError::Database(bae_store::DbError::OutOfRange { .. })),
+        "{failed:?}"
+    );
     assert!(tables
         .load_folder_release_decisions(root)
         .await

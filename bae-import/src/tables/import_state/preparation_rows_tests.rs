@@ -100,10 +100,15 @@ async fn preparation_reshape_stores_complete_tags_after_their_file_rows() {
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
 }
 
+/// A file-tag reading is taken from the audio its stamp names, so one that
+/// misses a file of it, or names a cover outside it, is a bug of bae's own:
+/// the save fails with the bug the store reports.
 #[tokio::test]
-async fn preparation_save_rejects_incomplete_or_unowned_tag_readings_atomically() {
-    for invalid_cover in [false, true] {
-        let (db, _tmp, root) = watched_root().await;
+async fn a_save_of_a_tag_reading_outside_its_audio_is_a_bug() {
+    for (invalid_cover, said) in [(false, "does not cover"), (true, "an embedded cover outside")] {
+        let (db, _tmp, heard) =
+            bae_store::test_fixtures::temp_db_hearing_bugs(crate::TEST_SCHEMA).await;
+        let root = crate::tables::watched_path::host_root("/music");
         let tables = crate::tables::ImportTables::new(db.clone());
         let (candidate, generation) = scanned_tagged_candidate(&db, &root).await;
         let key = crate::CandidateKey::folder(&candidate.path);
@@ -121,25 +126,21 @@ async fn preparation_save_rejects_incomplete_or_unowned_tag_readings_atomically(
         } else {
             invalid.files.pop();
         }
-        assert!(tables
+
+        let failed = tables
             .save_candidate_preparation(
                 prep,
                 expected,
                 crate::tables::CandidateSaveExtras {
                     file_tag_snapshot: Some(invalid),
                     ..Default::default()
-                }
+                },
             )
             .await
-            .is_err());
-        assert_eq!(
-            tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap(),
-            before
-        );
-        assert_eq!(
-            tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap().snapshot,
-            Some(original)
-        );
+            .unwrap_err();
+
+        let bug = the_reported_bug(&heard, &failed);
+        assert!(bug.contains(said), "{bug}");
     }
 }
 

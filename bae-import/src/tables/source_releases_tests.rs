@@ -425,10 +425,8 @@ async fn a_release_whose_derived_facts_disagree_is_a_bug() {
 
         let failed = tables.save_source_release(&release).await.unwrap_err();
 
-        let reported = heard.take();
-        assert_eq!(reported.len(), 1, "{reported:?}");
-        assert_eq!(coven::task::CarriesBug::bug(&failed), Some(&reported[0]));
-        assert!(reported[0].message.contains(said), "{reported:?}");
+        let bug = crate::tables::tests::the_reported_bug(&heard, &failed);
+        assert!(bug.contains(said), "{bug}");
     }
 }
 
