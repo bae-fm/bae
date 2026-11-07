@@ -55,8 +55,19 @@ macro_rules! delegate_view {
     };
 }
 
+/// A call to the library's store, its failure told as a library error.
+macro_rules! delegate_store {
+    ($name:ident => $target:ident($($arg:ident: $ty:ty),* $(,)?) -> $ok:ty) => {
+        pub async fn $name(&self, $($arg: $ty),*) -> Result<$ok, bae_library::LibraryError> {
+            Ok(self.inner.store.$target($($arg),*).await?)
+        }
+    };
+}
+
 struct AppServicesInner {
     manager: LibraryManager,
+    /// The library's store, which the calls bae adds nothing to go to.
+    store: bae_store::Store,
     /// The library's views, for the reads a screen shows as they are.
     views: bae_views::LibraryViews,
     playback: PlaybackHandle,
@@ -118,6 +129,7 @@ impl std::fmt::Debug for AppServices {
 impl AppServices {
     pub fn new(
         manager: LibraryManager,
+        store: bae_store::Store,
         views: bae_views::LibraryViews,
         playback: PlaybackHandle,
         cast_picker: bae_playback::renderer::CastPicker,
@@ -127,6 +139,7 @@ impl AppServices {
         AppServices {
             inner: Arc::new(AppServicesInner {
                 manager,
+                store,
                 views,
                 playback,
                 cast_picker,
@@ -443,11 +456,11 @@ impl AppServices {
     delegate_async!(manager, rename_library => rename_library(name: &bae_store::EnteredName) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, forget_encryption_key => forget_encryption_key() -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, unlock_store_key => unlock_store_key() -> Result<(), bae_library::LibraryError>);
-    delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
-    delegate_async!(manager, release_memory => release_memory() -> Result<(), bae_library::LibraryError>);
+    delegate_sync!(store, trigger_sync => sync_now() -> ());
+    delegate_store!(release_memory => release_memory() -> ());
     delegate_async!(manager, retry_now => retry_now() -> Result<impl std::future::Future<Output = bae_sync_status::SyncRetryOutcome> + Send + 'static, bae_library::LibraryError>);
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), bae_library::LibraryError>);
-    delegate_sync!(manager, cancel_storage_setup => cancel_storage_setup() -> coven::SetupCancellation);
+    delegate_sync!(store, cancel_storage_setup => cancel_storage_setup() -> coven::SetupCancellation);
     delegate_async!(manager, dismiss_undone_storage_setup => dismiss_undone_storage_setup(operation: coven::OperationId) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, cancel_download => cancel_download(release_id: &str) -> Result<(), bae_library::LibraryError>);
@@ -682,12 +695,7 @@ impl AppServices {
     // The sync status, each value read from its tables in one go.
     delegate_values!(subscribe_sync_status => subscribe_sync_status() -> bae_sync_status::SyncStatusSnapshot);
 
-    pub async fn retry_pending_operation(
-        &self,
-        id: coven::OperationId,
-    ) -> Result<(), bae_library::LibraryError> {
-        self.inner.manager.retry_pending_operation(id).await
-    }
+    delegate_store!(retry_pending_operation => retry_pending_operation(id: coven::OperationId) -> ());
 
     /// End a release's failed move to the cloud, `id`, as its pending
     /// record offers: the release stays on this device only, as it was.
@@ -706,7 +714,7 @@ impl AppServices {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_sync_activity())
     }
 
-    delegate_async!(manager, pending => pending() -> Result<Vec<coven::PendingRecord>, bae_library::LibraryError>);
+    delegate_store!(pending => pending() -> Vec<coven::PendingRecord>);
     delegate_async!(manager, library_name => library_name() -> Result<String, bae_library::LibraryError>);
     delegate_values!(subscribe_library_name => subscribe_library_name() -> String);
 

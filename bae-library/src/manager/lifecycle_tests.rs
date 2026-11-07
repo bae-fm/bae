@@ -11,7 +11,7 @@ async fn release_memory_keeps_the_library_readable_and_writable() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
     assert!(find_release(manager.library.manager(), &release.id).await.is_some());
 
-    manager.library.manager().release_memory().await.unwrap();
+    manager.library.manager().store.release_memory().await.unwrap();
 
     assert_eq!(find_album(manager.library.manager(), &album.id).await.unwrap().id, album.id);
     let second = create_test_release(&album.id);

@@ -62,25 +62,9 @@ impl LibraryManager {
             .await?)
     }
 
-    pub async fn pending(&self) -> Result<Vec<coven::PendingRecord>, LibraryError> {
-        Ok(self.store.pending().await?)
-    }
-
-    pub async fn retry_pending_operation(
-        &self,
-        id: coven::OperationId,
-    ) -> Result<(), LibraryError> {
-        self.store.retry_pending_operation(id).await?;
-        Ok(())
-    }
-
     /// Stop the sync loop: returns once no pass runs.
     pub async fn stop_sync(&self) -> Result<(), LibraryError> {
         Ok(self.store.stop_sync().await?)
-    }
-
-    pub fn trigger_sync(&self) {
-        self.store.sync_now();
     }
 
     /// The person asked to retry everything now, such as by pulling to
@@ -248,13 +232,6 @@ impl LibraryManager {
             warn!("acknowledging the storage setups a call ended failed: {error}");
         }
         Ok(result?)
-    }
-
-    /// Cancel the storage setup running on this library: before its point
-    /// of no return it is undone and its call fails as cancelled; past it,
-    /// it finishes, and the answer says so.
-    pub fn cancel_storage_setup(&self) -> coven::SetupCancellation {
-        self.store.cancel_storage_setup()
     }
 
     /// Whether a storage setup runs on this device. As the library opens,

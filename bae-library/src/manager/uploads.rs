@@ -136,7 +136,7 @@ impl LibraryManager {
             ));
         }
         let outcome = self.store.retry_uploads_now().await?;
-        self.trigger_sync();
+        self.store.sync_now();
         match outcome {
             coven::DrainOutcome::Paused => Err(LibraryError::Storage(
                 "cloud upload pipeline paused after the retry began".to_string(),

@@ -112,10 +112,10 @@ pub async fn start_library_services(
         // Queue-wide identification runs whether or not anyone has the Import
         // section open: opening a view is not what starts it.
         let identification = import.start_identification_queue();
-        Ok(AppServices::new(manager, views, playback, cast_picker, import, identification))
+        Ok(AppServices::new(manager, store, views, playback, cast_picker, import, identification))
     }
     #[cfg(not(desktop))]
-    Ok(AppServices::new(manager, views, playback, cast_picker))
+    Ok(AppServices::new(manager, store, views, playback, cast_picker))
 }
 
 /// Why the library's services did not start.

@@ -444,13 +444,13 @@ async fn a_missing_upload_source_is_pending_until_its_move_is_cancelled() {
     );
     std::fs::remove_file(temp.path().join("queued/a.flac")).unwrap();
     assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
-    assert!(!manager.library.manager().pending().await.unwrap().is_empty());
+    assert!(!manager.library.store().pending().await.unwrap().is_empty());
     manager.library.manager().cancel_release_upload(&release.id).await.unwrap();
     assert!(
         !manager.library.manager().records.find_file_by_id(&file_id).await.unwrap().unwrap().stored
     );
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
-    assert!(manager.library.manager().pending().await.unwrap().is_empty());
+    assert!(manager.library.store().pending().await.unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -466,7 +466,7 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
     manager.library.manager().cancel_all_release_uploads().await.unwrap();
     // Cancelling retires each move, so its uploads leave the queue.
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
-    assert!(manager.library.manager().pending().await.unwrap().is_empty());
+    assert!(manager.library.store().pending().await.unwrap().is_empty());
     for release in [first, second] {
         for file in release_files(manager.library.manager(), &release.id).await {
             assert!(!file.stored);
@@ -501,7 +501,7 @@ async fn an_upload_whose_release_is_deleted_leaves_the_queue() {
     let (manager, _temp, release, _file_id) = queued_upload_fixture("changed").await;
     manager.library.manager().delete_release(&release.id).await.unwrap();
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
-    assert!(manager.library.manager().pending().await.unwrap().is_empty());
+    assert!(manager.library.store().pending().await.unwrap().is_empty());
 }
 
 /// An original that changes before its upload fails its release's move: the
@@ -781,7 +781,7 @@ async fn retry_outbox_surfaces_a_provider_failure_and_can_be_retried() {
     manager.storage.set_online(false);
     manager.library.manager().set_sync_paused(false).await.unwrap();
     manager.library.manager().retry_outbox_now().await.unwrap();
-    assert!(!manager.library.manager().pending().await.unwrap().is_empty());
+    assert!(!manager.library.store().pending().await.unwrap().is_empty());
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 1);
     manager.storage.set_online(true);
     manager.library.manager().retry_outbox_now().await.unwrap();

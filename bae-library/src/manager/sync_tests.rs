@@ -478,7 +478,7 @@ async fn fail_a_pass(
 ) -> bae_sync_status::SyncStatusSnapshot {
     let mut values = manager.library.manager().subscribe_sync_status();
     manager.storage.set_faults(faults).await;
-    manager.library.manager().trigger_sync();
+    manager.library.manager().store.sync_now();
     let failed = crate::followed::value_matching(&mut values, |value| {
         value
             .pending
@@ -784,7 +784,7 @@ async fn a_finishing_step_is_past_the_point_of_no_return() {
     manager
         .save_s3_config(memory_s3_config(&test), "Test Device", &|progress| {
             let finishing = crate::storage_setup_finishing(&progress.step);
-            let answer = finishing.then(|| manager.cancel_storage_setup());
+            let answer = finishing.then(|| manager.store.cancel_storage_setup());
             told.lock().unwrap().push((progress.step, answer));
         })
         .await

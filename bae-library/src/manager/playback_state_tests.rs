@@ -80,6 +80,7 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
     let reason = playback_error_reason_for_file(manager, file).await;
     assert!(matches!(reason, PlaybackErrorReason::OriginalMissing), "got {reason:?}");
     assert!(manager
+        .store
         .pending()
         .await
         .unwrap()

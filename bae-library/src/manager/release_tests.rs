@@ -783,7 +783,7 @@ async fn deleting_a_release_retires_its_queued_uploads() {
     let (manager, temp, release, _) = queued_upload_fixture("queued").await;
     manager.library.manager().delete_release(&release.id).await.unwrap();
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
-    assert!(manager.library.manager().pending().await.unwrap().is_empty());
+    assert!(manager.library.store().pending().await.unwrap().is_empty());
     assert_eq!(std::fs::read(temp.path().join("queued/a.flac")).unwrap().len(), 1000);
 }
 
