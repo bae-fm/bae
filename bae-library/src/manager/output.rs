@@ -72,9 +72,10 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Pause or resume the export queue. While paused the worker parks instead of
-    /// starting the next release; the in-flight one runs to completion. Resuming
-    /// wakes the worker.
+    /// Pause or resume the export queue. Pausing stops the running export at once
+    /// and leaves its entry queued; while paused the worker parks instead of
+    /// starting the next release. Resuming wakes the worker, which starts the
+    /// stopped export again from the beginning.
     pub async fn set_outputs_paused(&self, paused: bool) -> Result<(), LibraryError> {
         Ok(self.outputs.set_paused(paused).await?)
     }

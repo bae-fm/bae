@@ -340,3 +340,43 @@ async fn a_paused_queue_starts_nothing_until_it_resumes() {
     task.abort();
     assert!(phases(&queue).await.is_empty());
 }
+
+/// Pausing while a task runs stops it at once, without waiting for it to
+/// finish; its entry stays queued and is no failure, and resuming runs it
+/// again.
+#[tokio::test]
+async fn a_pause_while_running_stops_the_work_and_a_resume_runs_it_again() {
+    let (queue, _tmp) = queue().await;
+    queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
+    let starts = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counted = starts.clone();
+    let (task, done) = worker(&queue, move |_entry| {
+        // The first run never finishes by itself; the second does.
+        let first = counted.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0;
+        async move {
+            let work = if first {
+                tokio::spawn(std::future::pending::<()>())
+            } else {
+                tokio::spawn(async {})
+            };
+            Ok((7, spawned(work)))
+        }
+    });
+    let mut transfers = queue.watch_transfers();
+    transfers.until(|transfers| transfers.get(RELEASE_A) == Some(&7)).await.unwrap();
+
+    queue.set_paused(true).await.unwrap();
+    transfers.until(|transfers| transfers.is_empty()).await.unwrap();
+    // The worker saw the stopped task end and parked on the paused queue.
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, queue.parked(1))
+        .await
+        .expect("the worker parks once the work is stopped");
+    assert_eq!(phases(&queue).await, vec![(RELEASE_A.to_string(), ReleaseQueueState::Queued)]);
+    assert!(done.is_empty(), "a pause is not an outcome");
+
+    queue.set_paused(false).await.unwrap();
+    assert_eq!(reported(&done, 1).await, vec![(RELEASE_A.to_string(), Ok(()))]);
+    task.abort();
+    assert_eq!(starts.load(std::sync::atomic::Ordering::SeqCst), 2);
+    assert!(phases(&queue).await.is_empty());
+}

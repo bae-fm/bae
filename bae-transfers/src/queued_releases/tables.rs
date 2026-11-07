@@ -401,17 +401,19 @@ pub(crate) fn next_queued_release_on<P: QueuedPayload>(
 }
 
 /// Start `release_id`'s entry; `false` when it is not queued, having
-/// been cancelled or never queued.
+/// been cancelled or never queued, or when the queue is paused, a pause having
+/// landed after the worker picked the entry.
 pub(crate) fn activate_queued_release_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
     release_id: &str,
 ) -> Result<bool, DbError> {
     Ok(sql.execute(
         &format!(
-            "UPDATE {} SET state = 'active' WHERE release_id = ? AND state = 'queued'",
+            "UPDATE {} SET state = 'active' WHERE release_id = ?1 AND state = 'queued' \
+               AND NOT (SELECT paused FROM release_queues WHERE queue = ?2)",
             P::TABLE
         ),
-        [release_id],
+        params![release_id, P::QUEUE],
     )? > 0)
 }
 
@@ -444,6 +446,23 @@ pub(crate) fn fail_queued_release_on<P: QueuedPayload>(
     )? > 0)
 }
 
+/// The running work of `release_id`'s entry failed: it stays listed with
+/// `error` until retried. `false` when the entry is no longer active, having
+/// left the queue or gone back to queued when a pause stopped its work.
+pub(crate) fn fail_active_release_on<P: QueuedPayload>(
+    sql: &CovenWrite<'_>,
+    release_id: &str,
+    error: &str,
+) -> Result<bool, DbError> {
+    Ok(sql.execute(
+        &format!(
+            "UPDATE {} SET state = 'failed', error = ?2 WHERE release_id = ?1 AND state = 'active'",
+            P::TABLE
+        ),
+        params![release_id, error],
+    )? > 0)
+}
+
 /// Queue every failed entry again, in its place; `true` when any had
 /// failed.
 pub(crate) fn retry_failed_releases_on<P: QueuedPayload>(
@@ -455,7 +474,9 @@ pub(crate) fn retry_failed_releases_on<P: QueuedPayload>(
     )? > 0)
 }
 
-/// Pause or resume the queue, saying whether it was paused.
+/// Pause or resume the queue, saying whether it was paused. Pausing puts the
+/// active entry back to queued, in its place, since its work is stopped with
+/// the pause: resuming starts it again.
 pub(crate) fn set_release_queue_paused_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
     paused: bool,
@@ -468,6 +489,12 @@ pub(crate) fn set_release_queue_paused_on<P: QueuedPayload>(
         "UPDATE release_queues SET paused = ?2 WHERE queue = ?1",
         params![P::QUEUE, paused],
     )?;
+    if paused {
+        sql.execute(
+            &format!("UPDATE {} SET state = 'queued' WHERE state = 'active'", P::TABLE),
+            [],
+        )?;
+    }
     Ok(was)
 }
 

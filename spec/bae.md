@@ -2058,7 +2058,11 @@ Shown large, in the lightbox on the Mac or the gallery on Android, an image
 the app is still loading is named under its spinner.
 
 Pins download one release at a time from a queue that can be paused,
-cancelled and retried. A pin that fails stays in the queue with its error,
+cancelled and retried. Pausing stops the download that is running at once
+rather than after its file, and its release stays queued in its place; resuming
+starts it again from the beginning, since a stopped download does not yet
+continue from the bytes it fetched, and its files' pins are put back as they
+were, as a cancel's are. A pin that fails stays in the queue with its error,
 its files' pins put back as they were; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. Retrying
 queues every failed pin again, each in its place, so a release's own
@@ -2187,7 +2191,9 @@ Two ways put a release back on disk, from desktop:
   is. FLAC and MP3 presets come built in (Appendix C).
 
 Both run from a queue that can be paused and cancelled, kept and emptied as
-the pin queue is (§4.3), but running again after a restart; a failed one
+the pin queue is (§4.3), but running again after a restart; pausing stops the
+running export or save at once, leaving no output at the final path, and
+resuming runs it again from the beginning; a failed one
 stays in it, with its error, until it is cancelled. One that breaks on a bug fails the same way, reported as one, and
 the queue goes on to the next. A save keeps the preset it was queued
 with, so editing the preset changes nothing already queued. Either reads files

@@ -32,9 +32,10 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Pause or resume the download queue. While paused the worker parks instead
-    /// of starting the next release; the in-flight one runs to completion.
-    /// Resuming wakes the worker.
+    /// Pause or resume the download queue. Pausing stops the running download at
+    /// once and leaves its entry queued; while paused the worker parks instead of
+    /// starting the next release. Resuming wakes the worker, which starts the
+    /// stopped download again from the beginning.
     pub async fn set_downloads_paused(&self, paused: bool) -> Result<(), LibraryError> {
         Ok(self.downloads.set_paused(paused).await?)
     }

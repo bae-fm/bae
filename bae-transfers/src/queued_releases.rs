@@ -129,15 +129,18 @@ where
         self.shared.wake.notify_one();
     }
 
-    /// Pause or resume. While paused the worker parks instead of starting
-    /// the next release; the in-flight one runs to completion. Resuming
-    /// wakes the worker.
+    /// Pause or resume. Pausing stops the running task at once, as a cancel
+    /// does, but leaves its entry queued; while paused the worker parks
+    /// instead of starting the next release. Resuming wakes the worker, which
+    /// starts the stopped entry again from the beginning.
     pub async fn set_paused(&self, paused: bool) -> Result<(), DbError> {
         let was_paused = self
             .store
             .call(move |sql| tables::set_release_queue_paused_on::<Extra>(sql, paused))
             .await?;
-        if was_paused && !paused {
+        if paused {
+            self.stop(|_| true);
+        } else if was_paused {
             self.shared.wake.notify_one();
         }
         Ok(())
@@ -162,7 +165,7 @@ where
     }
 
     /// Abort the running task when `cancelled` names its release, whose entry
-    /// the table no longer holds.
+    /// the table no longer holds as active.
     fn stop(&self, cancelled: impl Fn(&str) -> bool) {
         let mut running = self.shared.running.lock().unwrap();
         let Some(stopped) = running.take_if(|running| cancelled(&running.release_id)) else {
@@ -314,6 +317,11 @@ where
     /// - A cancel during the work takes the entry out and aborts the task, so
     ///   the table refusing the finish or the failure is what tells a cancel
     ///   from either. A cancelled release is neither re-added nor marked failed.
+    /// - A pause during the work puts the entry back to queued and aborts the
+    ///   task, so the table refusing the failure tells a pause from a failure;
+    ///   the entry stays queued for the resume. A pause landing between the
+    ///   pick and the start makes the table refuse the start, and the work
+    ///   just started is aborted the same way.
     /// - Success takes the entry out; failure marks it failed and leaves it for
     ///   retry. A `start` that fails marks it failed the same way — nothing was
     ///   spawned.
@@ -421,7 +429,7 @@ where
                     let message = error.to_string();
                     store
                         .call(move |sql| {
-                            tables::fail_queued_release_on::<Extra>(sql, &left_id, &message)
+                            tables::fail_active_release_on::<Extra>(sql, &left_id, &message)
                         })
                         .await
                 }
