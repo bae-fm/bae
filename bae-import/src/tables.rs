@@ -40,7 +40,8 @@ pub(crate) use import_state::{
 };
 pub use import_state::{
     CandidateStateRefusal, DbCandidateIdentifyResult, DbCandidatePaneRows, DbImportCandidateState,
-    ImportCommitError, NewImportCandidateVerdict, PreparationRefusal, VerdictPick,
+    ImportCommitError, ImportCommitRefusal, NewImportCandidateVerdict, PreparationRefusal,
+    VerdictPick,
 };
 pub(crate) use release_groupings::GroupingFacts;
 pub use release_groupings::{FolderReadingRefusal, GroupingChanges, SeparationRefusal};

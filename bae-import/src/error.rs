@@ -394,12 +394,16 @@ impl From<bae_records::IdentityWriteError> for ImportError {
 #[cfg(desktop)]
 impl From<crate::tables::ImportCommitError> for ImportError {
     fn from(error: crate::tables::ImportCommitError) -> Self {
-        use crate::tables::ImportCommitError as E;
+        use crate::tables::ImportCommitRefusal as R;
+        use bae_store::WriteError as E;
         match error {
-            E::Write(error) => error.into(),
-            E::LibraryChanged => Self::LibraryChanged,
-            E::FilesAlreadyImported { release_id } => Self::FilesAlreadyImported { release_id },
-            E::CandidateMoved(moved) => Self::CandidateMoved(moved),
+            E::Refused(R::Write(refusal)) => E::Refused(refusal).into(),
+            E::Refused(R::LibraryChanged) => Self::LibraryChanged,
+            E::Refused(R::FilesAlreadyImported { release_id }) => {
+                Self::FilesAlreadyImported { release_id }
+            }
+            E::Refused(R::CandidateMoved(moved)) => Self::CandidateMoved(moved),
+            E::Database(error) => Self::Database(error),
             E::Rollback { operation, rollback } => {
                 Self::Rollback { operation: Box::new((*operation).into()), rollback }
             }

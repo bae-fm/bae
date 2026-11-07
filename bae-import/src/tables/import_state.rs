@@ -94,10 +94,10 @@ pub(super) use cover_rows::{cover_read_columns, read_cover};
 use failure_rows::{delete_failure_on, load_failure_on};
 pub(super) use file_decision_rows::load_candidate_file_edits_on;
 use file_decision_rows::{delete_file_edits, insert_file_edits, settle_scanned_candidates};
-pub use import_commit::ImportCommitError;
 pub(crate) use import_commit::{
     CommittingCandidate, ImportCommitGuard, ImportRows, NewArtistImages,
 };
+pub use import_commit::{ImportCommitError, ImportCommitRefusal};
 pub(super) use pane_rows::load_pane_rows_on;
 pub use pane_rows::DbCandidatePaneRows;
 pub(super) use pane_rows::{read_provenance, PROVENANCE_COLUMNS};

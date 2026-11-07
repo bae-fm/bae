@@ -16,14 +16,14 @@ use bae_records::records::write::{
 };
 use std::collections::BTreeSet;
 
-/// Why an import's commit did not land. Nothing of it was written; the
-/// person may ask for the import again.
+/// Why an import's commit was refused. Nothing of it was written; the person
+/// may ask for the import again.
 #[derive(Debug, thiserror::Error)]
-pub enum ImportCommitError {
-    /// Writing the release's rows failed as any write that decides which
-    /// library artists and labels it names fails.
+pub enum ImportCommitRefusal {
+    /// Writing the release's rows was refused as any write that decides which
+    /// library artists and labels it names is.
     #[error(transparent)]
-    Write(#[from] IdentityWriteError),
+    Write(#[from] IdentityWriteRefusal),
     /// The library's artists changed between preparing the commit and
     /// writing it in a way that makes what was prepared for them wrong: the
     /// import fetched pictures for artists that are no longer new, or not for
@@ -39,69 +39,21 @@ pub enum ImportCommitError {
     /// The candidate is not the one the import was prepared from.
     #[error(transparent)]
     CandidateMoved(#[from] crate::service::CandidateMoved),
-    /// The commit was refused, and rolling it back failed too.
-    #[error("{operation}; rollback failed: {rollback}")]
-    Rollback {
-        operation: Box<ImportCommitError>,
-        #[source]
-        rollback: rusqlite::Error,
-    },
-    /// The commit was refused, and removing the bytes it staged failed too,
-    /// each failure kept.
-    #[error("file cleanup failed: {failures:?}; write: {write}")]
-    FileCleanup { write: Box<ImportCommitError>, failures: Vec<coven::DbError> },
 }
 
-impl From<rusqlite::Error> for ImportCommitError {
-    fn from(error: rusqlite::Error) -> Self {
-        Self::Write(error.into())
+/// Why an import's commit did not land.
+pub type ImportCommitError = WriteError<ImportCommitRefusal>;
+
+impl From<crate::service::CandidateMoved> for ImportCommitError {
+    fn from(moved: crate::service::CandidateMoved) -> Self {
+        Self::Refused(moved.into())
     }
 }
 
-impl From<DbError> for ImportCommitError {
-    fn from(error: DbError) -> Self {
-        Self::Write(error.into())
-    }
-}
-
-impl From<coven::DbError> for ImportCommitError {
-    fn from(error: coven::DbError) -> Self {
-        Self::Write(error.into())
-    }
-}
-
-impl coven::task::CarriesBug for ImportCommitError {
-    fn bug(&self) -> Option<&coven::task::Bug> {
-        match self {
-            Self::Write(error) => error.bug(),
-            Self::Rollback { operation, .. } => operation.bug(),
-            Self::FileCleanup { write, failures } => {
-                write.bug().or_else(|| failures.iter().find_map(coven::task::CarriesBug::bug))
-            }
-            Self::LibraryChanged | Self::FilesAlreadyImported { .. } | Self::CandidateMoved(_) => {
-                None
-            }
-        }
-    }
-}
-
-/// A failed rollback or byte removal is kept beside the failure it followed:
-/// the write's own error keeps it as that error does, a refusal stays the
-/// refusal it is.
-impl coven::WriteFailure for ImportCommitError {
-    fn with_rollback(self, rollback: rusqlite::Error) -> Self {
-        match self {
-            Self::Write(error) => Self::Write(error.with_rollback(rollback)),
-            operation => Self::Rollback { operation: Box::new(operation), rollback },
-        }
-    }
-
-    fn with_cleanup(write: Self, failures: Vec<coven::DbError>) -> Self {
-        match write {
-            Self::Write(error) => Self::Write(IdentityWriteError::with_cleanup(error, failures)),
-            write => Self::FileCleanup { write: Box::new(write), failures },
-        }
-    }
+/// A write of the release's rows that decides which library artists and
+/// labels it names, ended as the commit ends.
+fn commit_error(error: IdentityWriteError) -> ImportCommitError {
+    error.map_refusal(ImportCommitRefusal::Write)
 }
 
 /// Refuse the import unless the candidate is still exactly what the import
@@ -147,7 +99,7 @@ fn end_import_attempt_of_commit(
 /// moved. One hash is one release on this device. The import was refused when
 /// asked for if this device already held the hash; an import of the same files
 /// that landed in between leaves the hash taken, and the unique hash refuses
-/// this commit whole as [`ImportCommitError::FilesAlreadyImported`].
+/// this commit whole as [`ImportCommitRefusal::FilesAlreadyImported`].
 fn record_import_origin_on(
     sql: &CovenWrite<'_>,
     guard: &ImportCommitGuard,
@@ -156,12 +108,12 @@ fn record_import_origin_on(
     match guard {
         ImportCommitGuard::Candidate { expectation, .. } => {
             use crate::tables::import_origin::{record_on, OriginRecord};
-            match record_on(sql, release_id, &expectation.candidate.content_hash)
-                .map_err(|error| ImportCommitError::Write(error.into()))?
-            {
+            match record_on(sql, release_id, &expectation.candidate.content_hash)? {
                 OriginRecord::Recorded => Ok(()),
                 OriginRecord::Taken { release_id } => {
-                    Err(ImportCommitError::FilesAlreadyImported { release_id })
+                    Err(WriteError::Refused(ImportCommitRefusal::FilesAlreadyImported {
+                        release_id,
+                    }))
                 }
             }
         }
@@ -395,11 +347,11 @@ impl ImportTables {
                     // before the links below point at them.
                     let credits =
                         ArtistCredits { credits: &artist_credits, picked: &picked_artists };
-                    let resolved = credits.resolve_on(tx)?;
+                    let resolved = credits.resolve_on(tx).map_err(commit_error)?;
                     let inserted: BTreeSet<String> =
                         resolved.inserts.iter().map(|artist| artist.id.clone()).collect();
                     if inserted != expected_new_artists {
-                        return Err(ImportCommitError::LibraryChanged);
+                        return Err(WriteError::Refused(ImportCommitRefusal::LibraryChanged));
                     }
                     resolved.write_on(tx)?;
                     let artist_ids = resolved.id_map(&artist_credits);
@@ -425,7 +377,8 @@ impl ImportTables {
                         replace_album_artists(tx, &album.id, &album_artists, &now)?;
                     }
 
-                    insert_release_row(tx, &release, &label_write(&labels))?;
+                    insert_release_row(tx, &release, &label_write(&labels))
+                        .map_err(commit_error)?;
                     record_import_origin_on(tx, &guard, &release.id)?;
                     // The credits are resolved above, so the artist decisions
                     // this deletes have been read.
@@ -478,7 +431,7 @@ impl ImportTables {
                     }
 
                     for (row, file) in rows_to_insert.iter().zip(original_file_ids) {
-                        insert_release_file_row(tx, row, file)?;
+                        insert_release_file_row(tx, row, file).map_err(commit_error)?;
                     }
 
                     for af in &audio_formats {

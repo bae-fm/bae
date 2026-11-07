@@ -244,9 +244,9 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     assert!(
         matches!(
             error,
-            crate::tables::ImportCommitError::CandidateMoved(
+            bae_store::WriteError::Refused(crate::tables::ImportCommitRefusal::CandidateMoved(
                 crate::service::CandidateMoved::MetadataChanged(_)
-            )
+            ))
         ),
         "{error:?}"
     );
