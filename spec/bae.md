@@ -1869,10 +1869,13 @@ release reads as local everywhere, and nothing about it reads as uploading.
 Waiting files draw no progress bar; a bar appears only while a file's bytes
 are moving.
 
-**Moving to storage.** Moving a release to storage records one move of
-all its files in one write, reading none of them
+**Moving to storage.** Moving a selection of releases to storage records
+one move of all the files of each release, every release's in one write,
+reading none of the files
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
-No row of bae's changes. coven uploads each file, checking every chunk it
+A release that can't move is named and the rest move. No row of bae's
+changes, so no release shows a transition on the way, and none of the
+selection waits to be reached. coven uploads each file, checking every chunk it
 sends against the hashes the import's read recorded, and once the last is
 stored one write of coven's switches them all to storage. So other devices
 see the release local until its last file lands, and never half uploaded.
@@ -1997,13 +2000,11 @@ rate for each release, its files being sent together, and for every file
 being sent together; no screen shows one file's rate, so none is sent. A
 file that only waits has no rate, and a pause ends every measurement. While its files wait, or a transfer runs,
 the release offers no storage action but cancelling, which would race it
-otherwise; moving a release to storage shows that transfer until its files
-are queued. Which transition a release is in is a device-local row: written
-in the write that admits a move to storage, an unpin or making the release
-local, which a release already in one refuses, and deleted as the transition
-ends, however it ends: a move's in the write that queues its files, an
-unpin's in the write that releases its pins, a make-local's in the write that
-switches its files, so the row and coven's change commit together and the
+otherwise. Which transition a release is in is a device-local row: written
+in the write that admits an unpin or making the release local, which a
+release already in one refuses, and deleted as the transition ends, however
+it ends: an unpin's in the write that releases its pins, a make-local's in
+the write that switches its files, so the row and coven's change commit together and the
 release never shows a transition its files have finished; one whose work
 fails ends in a write of its own. That write refuses a release not in the
 transition it ends, and then changes no file. A pin in flight is
@@ -4941,7 +4942,7 @@ write commits, so the release and the row naming it land in either order.
 | `release_queues` | whether the pin queue and the export and save queue are paused |
 | `release_queue_versions` | queue table (`download_queue`, `output_queue`): how many writes have added, removed or moved its entries, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `download_queue` | release queued to pin, in the order queued: queued, downloading, or failed with its error (§4.3) |
-| `release_storage_action` | release in a storage transition this process runs while its files rest where they are: a move to storage being admitted, an unpin, or making it local (§4.2) |
+| `release_storage_action` | release in a storage transition this process runs while its files rest where they are: an unpin or making it local (§4.2) |
 | `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |
 
 The download queue keeps its entries and its pause across restarts; the export

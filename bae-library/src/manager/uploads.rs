@@ -2,42 +2,31 @@
 //! move ended, and the upload queue the moves wait in.
 
 use super::*;
+use bae_diagnostics::{LocalId, TelemetryEvent};
+use bae_transfers::release_storage_action::MoveRefusal;
+use tracing::{error, info};
+
+/// What a release's refusal to move to the cloud tells the person.
+fn move_refusal_error(release_id: &str, refusal: MoveRefusal) -> LibraryError {
+    match refusal {
+        MoveRefusal::Missing => LibraryError::release_missing(release_id, ReleaseWork::Transfer),
+        MoveRefusal::NoFiles => LibraryError::Storage("Release has no files".to_string()),
+        MoveRefusal::NotMovable => LibraryError::Storage(
+            "Release is not on this device alone, or is moving to the cloud already".to_string(),
+        ),
+    }
+}
 
 impl LibraryManager {
-    /// Move every file of a release on this device only to the cloud, as one
-    /// move; `pin` keeps each file whole on this device too once stored. The
-    /// release shows the move as a transition from the write that admits it
-    /// until the write that queues its files, which ends it; a failure ends
-    /// it in a write of its own. Refused while the release is in another.
-    pub async fn upload_release(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
-        let manager = self.clone();
-        let release_id = release_id.to_string();
-        // The admission runs to its end on a task of its own, so a dismissed
-        // view leaves neither the move half made nor its transition behind;
-        // coven keeps the files here once stored when `pin` asks it to.
-        self.run_file_operation("attach release", move |_closing| async move {
-            manager
-                .run_storage_action(&release_id, bae_transfers::StoredTransition::Upload, async {
-                    Ok(bae_transfers::release_storage_action::attach_release_files(
-                        &manager.store,
-                        &release_id,
-                        pin,
-                    )
-                    .await?)
-                })
-                .await
-        })
-        .await
-    }
-
-    /// Move Local releases to Cloud. Each release is admitted independently so
-    /// coven can start draining one release while later releases are still being
-    /// checked and admitted. Empty and duplicate selections are invalid commands;
-    /// release-specific refusals are returned beside the durable receipt for the
-    /// releases that were admitted. The stored import storage choice says
-    /// whether coven keeps the files whole here once stored (offline) or only
-    /// in the evictable cache. Once the move finishes, coven no longer reads
-    /// the user's original; the source file itself remains untouched.
+    /// Move Local releases to Cloud, every one of the selection in one write,
+    /// each as one move of its own: no release shows a transition on the way,
+    /// and none waits to be reached. Empty and duplicate selections are
+    /// invalid commands; a release that cannot move is returned beside the
+    /// durable receipt for the releases that did. The stored import storage
+    /// choice says whether coven keeps the files whole here once stored
+    /// (offline) or only in the evictable cache. Once a move finishes, coven
+    /// no longer reads the user's original; the source file itself remains
+    /// untouched.
     pub async fn upload_releases(
         &self,
         release_ids: &[String],
@@ -56,34 +45,49 @@ impl LibraryManager {
         }
 
         let pin = self.preferences().await?.import_storage.pinned;
-        let mut admitted_release_ids = Vec::with_capacity(release_ids.len());
-        let mut failures = Vec::new();
-        for release_id in release_ids {
-            // This release's transfer, from its precondition check to whichever
-            // terminal state it reaches. coven's outbox reports its progress, so
-            // there is no channel to announce a start on.
-            let transfer = crate::storage::transfer::ReleaseTransfer::new(
-                self.clone(),
-                release_id.clone(),
-                ReleaseStorageAction::Upload,
-            );
-            let admission = async {
-                let file_count = transfer.start().await?;
-                self.upload_release(release_id, pin).await?;
-                Ok::<_, LibraryError>(file_count)
+        let moved = match self.move_releases(release_ids, pin).await {
+            Ok(moved) => moved,
+            // Without storage nothing moved, and every release of the
+            // selection is told so.
+            Err(error @ LibraryError::Sync(coven::SyncError::NoStorage)) => {
+                let failures = release_ids
+                    .iter()
+                    .map(|release_id| {
+                        error!(%release_id, failure = %error, "release move to the cloud refused");
+                        self.record_telemetry(TelemetryEvent::StorageTransferFailed {
+                            action: ReleaseStorageAction::Upload,
+                            release_id: LocalId(release_id.clone()),
+                        });
+                        (release_id.clone(), LibraryError::Sync(coven::SyncError::NoStorage))
+                    })
+                    .collect();
+                return Ok(UploadReleasesOutcome::Partial {
+                    receipt: None,
+                    failure: UploadBatchFailure::from_errors(failures),
+                });
             }
-            .await;
+            Err(error) => return Err(error),
+        };
 
-            match admission {
-                Ok(file_count) => {
-                    transfer.complete(file_count);
-                    admitted_release_ids.push(release_id.clone());
-                }
-                Err(error) => {
-                    transfer.fail(&error);
-                    failures.push((release_id.clone(), error));
-                }
-            }
+        let mut failures = Vec::new();
+        for (release_id, refusal) in moved.refused {
+            let error = move_refusal_error(&release_id, refusal);
+            error!(%release_id, failure = %error, "release move to the cloud refused");
+            self.record_telemetry(TelemetryEvent::StorageTransferFailed {
+                action: ReleaseStorageAction::Upload,
+                release_id: LocalId(release_id.clone()),
+            });
+            failures.push((release_id, error));
+        }
+        let mut admitted_release_ids = Vec::with_capacity(moved.moved.len());
+        for (release_id, file_count) in moved.moved {
+            info!(%release_id, "release move to the cloud queued");
+            self.record_telemetry(TelemetryEvent::StorageTransferCompleted {
+                action: ReleaseStorageAction::Upload,
+                release_id: LocalId(release_id.clone()),
+                file_count,
+            });
+            admitted_release_ids.push(release_id);
         }
 
         let receipt = (!admitted_release_ids.is_empty())
@@ -99,20 +103,45 @@ impl LibraryManager {
         })
     }
 
+    /// The write that moves `release_ids`, run to its end on a task of its
+    /// own, so a dismissed view leaves no move half made; coven keeps the
+    /// files here once stored when `pin` asks it to.
+    async fn move_releases(
+        &self,
+        release_ids: &[String],
+        pin: bool,
+    ) -> Result<bae_transfers::release_storage_action::MovedToCloud, LibraryError> {
+        let store = self.store.clone();
+        let release_ids = release_ids.to_vec();
+        self.run_file_operation("move releases to the cloud", move |_closing| async move {
+            bae_transfers::release_storage_action::move_releases_to_cloud(&store, release_ids, pin)
+                .await
+                .map_err(|error| match error {
+                    bae_store::WriteError::Refused(
+                        bae_transfers::StorageTransitionRefusal::NoStorage,
+                    ) => coven::SyncError::NoStorage.into(),
+                    error => error.into(),
+                })
+        })
+        .await
+    }
+
+    /// Move one release's files to the cloud, as a selection of one, for a
+    /// test that sets one up and states `pin` itself.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn upload_release(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
+        let moved = self.move_releases(std::slice::from_ref(&release_id.to_string()), pin).await?;
+        match moved.refused.into_iter().next() {
+            Some((release_id, refusal)) => Err(move_refusal_error(&release_id, refusal)),
+            None => Ok(()),
+        }
+    }
+
     /// End a release's failed move to the cloud, `id`, as its pending
     /// record offers: coven retires the move, and the release stays on this
     /// device only, playing from its originals.
     pub async fn cancel_failed_release_move(&self, id: coven::MoveId) -> Result<(), LibraryError> {
         Ok(self.records.cancel_failed_release_move(id).await?)
-    }
-
-    /// Whether any of the release's files still waits to upload from this
-    /// device.
-    pub(crate) async fn has_pending_uploads_for_release(
-        &self,
-        release_id: &str,
-    ) -> Result<bool, LibraryError> {
-        Ok(self.records.has_pending_uploads_for_release(release_id).await?)
     }
 
     /// Test-only observability: how many upload entries a release's files still have

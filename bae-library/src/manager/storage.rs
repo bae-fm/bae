@@ -12,11 +12,6 @@ impl LibraryManager {
     pub async fn file_local_path(&self, file_id: &str) -> Result<Option<PathBuf>, LibraryError> {
         Ok(self.records.external_file(file_id).await?.map(|ext| ext.path))
     }
-
-    /// This device's id in the store.
-    pub(crate) fn device_id(&self) -> coven::DeviceId {
-        self.store.device_id()
-    }
 }
 
 #[cfg(test)]

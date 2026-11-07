@@ -65,17 +65,23 @@ async fn cancelling_every_upload_beside_a_new_cover_preserves_completed_audio_an
     cover_file(manager.library.manager(), &release.id).await;
 }
 
-/// Attaching files requires a configured provider; absence is a setup issue.
+/// Moving files to the cloud requires a configured provider; absence is a
+/// setup issue told for every release of the selection, and nothing moves.
 #[tokio::test]
 async fn making_a_release_remote_without_storage_requires_configuration() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    let transfer = crate::storage::transfer::ReleaseTransfer::new(
-        manager.library.manager().clone(),
-        release.id,
-        ReleaseStorageAction::Upload,
-    );
-    let error = transfer.start().await.expect_err("storage must be configured");
-    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Config, "{error}");
+    let outcome = manager
+        .library
+        .manager()
+        .upload_releases(std::slice::from_ref(&release.id))
+        .await
+        .expect("the refusal is returned as a batch outcome");
+    let UploadReleasesOutcome::Partial { receipt: None, failure } = outcome else {
+        panic!("without storage no release moves");
+    };
+    assert_eq!(failure.release_ids, vec![release.id.clone()]);
+    let bae_diagnostics::UiError::Diagnostic { category, .. } = failure.error;
+    assert_eq!(category, bae_diagnostics::UiErrorCategory::Config);
 }
 
 /// Uploading reads this device's originals, so every surface that offers it —
@@ -650,8 +656,82 @@ async fn an_upload_queues_each_release_before_returning() {
     }
 }
 
+/// Moving a selection queues every movable release in one write, each under
+/// a move of its own, and names the one that can't move: it is in storage
+/// already. No release shows a transition in between, because no row of one is
+/// written.
 #[tokio::test]
-async fn an_active_target_does_not_block_sibling_cloud_admissions() {
+async fn moving_a_selection_queues_every_movable_release_in_one_write() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    let mut ids = Vec::new();
+    for name in ["a", "b", "c", "d", "e"] {
+        let release = insert_local_release_with_files(
+            manager,
+            &temp_dir.path().join(name),
+            &format!("Album {name}"),
+            &[("track.flac", name.as_bytes())],
+        )
+        .await;
+        ids.push(release.id);
+    }
+    manager.upload_release(&ids[4], false).await.unwrap();
+
+    let rows = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let mut transitions = manager.store.subscribe(|sql| {
+        Ok(sql.query_row("SELECT COUNT(*) FROM release_storage_action", [], |row| {
+            row.get::<_, i64>(0)
+        })?)
+    });
+    let seen = rows.clone();
+    let collector = tokio::spawn(async move {
+        while let Some(Ok(count)) = transitions.next().await {
+            seen.lock().unwrap().push(count);
+        }
+    });
+
+    let outcome = manager.upload_releases(&ids).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    collector.abort();
+
+    let UploadReleasesOutcome::Partial { receipt: Some(receipt), failure } = outcome else {
+        panic!("four releases must move around the one in storage");
+    };
+    assert_eq!(receipt.release_ids, ids[..4].to_vec());
+    assert_eq!(failure.release_ids, vec![ids[4].clone()]);
+    let moves: i64 = manager
+        .store
+        .read({
+            let ids = ids[..4].to_vec();
+            move |sql| {
+                let mut moves = 0;
+                for id in &ids {
+                    moves += sql.query_row(
+                        "SELECT COUNT(DISTINCT u.move) FROM coven_uploads AS u \
+                         JOIN release_files AS f ON f.file = u.file WHERE f.release_id = ?1",
+                        [id],
+                        |row| row.get::<_, i64>(0),
+                    )?;
+                }
+                Ok(moves)
+            }
+        })
+        .await
+        .unwrap();
+    assert_eq!(moves, 4, "each release's files move under a move of its own");
+    for id in &ids[..4] {
+        assert!(has_pending_uploads(manager, id).await);
+    }
+    assert!(
+        rows.lock().unwrap().iter().all(|count| *count == 0),
+        "no release shows a transition: {:?}",
+        rows.lock().unwrap()
+    );
+}
+
+#[tokio::test]
+async fn a_release_in_storage_already_does_not_block_sibling_cloud_admissions() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
@@ -662,7 +742,7 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
         &[("first.flac", b"first-bytes")],
     )
     .await;
-    let active_release = insert_local_release_with_files(
+    let moving_release = insert_local_release_with_files(
         manager,
         &temp_dir.path().join("active-target"),
         "Second Album",
@@ -676,21 +756,12 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
         &[("third.flac", b"third-bytes")],
     )
     .await;
-    assert!(
-        bae_transfers::release_storage_action::begin_release_storage_action(
-            &manager.store,
-            &active_release.id,
-            bae_transfers::StoredTransition::Unpin
-        )
-        .await
-        .unwrap(),
-        "hold the target in another transition"
-    );
+    manager.upload_release(&moving_release.id, false).await.unwrap();
 
     let outcome = manager
         .upload_releases(&[
             first_new_release.id.clone(),
-            active_release.id.clone(),
+            moving_release.id.clone(),
             last_new_release.id.clone(),
         ])
         .await
@@ -702,10 +773,7 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
         receipt.release_ids,
         vec![first_new_release.id.clone(), last_new_release.id.clone()]
     );
-    assert_eq!(failure.release_ids, vec![active_release.id.clone()]);
-    let bae_diagnostics::UiError::Diagnostic { category, detail } = failure.error;
-    assert_eq!(category, bae_diagnostics::UiErrorCategory::Internal);
-    assert!(detail.contains(&active_release.id));
+    assert_eq!(failure.release_ids, vec![moving_release.id.clone()]);
 
     for release in [first_new_release, last_new_release] {
         assert_eq!(moving_file_count(manager, &release.id).await, 1);

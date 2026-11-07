@@ -311,7 +311,7 @@ struct ReleaseSummaryTests {
     @Test("a release mid-transition carries its transfer")
     func carriesTransfer() {
         let summary = ReleaseSummary(
-            from: makeBridgeRelease(transferAction: .upload)
+            from: makeBridgeRelease(transferAction: .unpin)
         )
 
         #expect(summary.transfer != nil)

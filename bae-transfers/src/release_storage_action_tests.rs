@@ -33,10 +33,10 @@ async fn a_release_is_in_one_transition_at_a_time() {
 
     end_release_storage_action(&db, RELEASE_A).await.unwrap();
     assert_eq!(release_transfer_action(&db, RELEASE_A).await.unwrap(), None);
-    assert!(begin_release_storage_action(&db, RELEASE_A, StoredTransition::Upload).await.unwrap());
+    assert!(begin_release_storage_action(&db, RELEASE_A, StoredTransition::Unpin).await.unwrap());
     assert_eq!(
         release_transfer_action(&db, RELEASE_A).await.unwrap(),
-        Some(ReleaseStorageAction::Upload)
+        Some(ReleaseStorageAction::Unpin)
     );
 }
 

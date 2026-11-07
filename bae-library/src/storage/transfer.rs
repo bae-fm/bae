@@ -144,9 +144,7 @@ impl LibraryManager {
 /// entry; this owns what one transfer checks, logs, and reports.
 ///
 /// A pin, unpin, or audio detachment is handed to [`spawn_transfer`], which drives it
-/// on its own task and reports on a progress channel. A upload has no
-/// channel of its own — coven's outbox reports it — so its caller drives it and
-/// calls [`Self::start`], [`Self::complete`], and [`Self::fail`] directly.
+/// on its own task and reports on a progress channel.
 pub(crate) struct ReleaseTransfer {
     library_manager: LibraryManager,
     release_id: String,
@@ -168,42 +166,16 @@ impl ReleaseTransfer {
         self.library_manager.get_release_by_id(&self.release_id).await?.ok_or_else(|| {
             LibraryError::release_missing(&self.release_id, crate::manager::ReleaseWork::Transfer)
         })?;
-        if matches!(self.action, ReleaseStorageAction::Upload)
-            && !self.library_manager.is_sync_configured().await?
-        {
-            return Err(coven::SyncError::NoStorage.into());
-        }
-
         let files = self.library_manager.get_files_for_release(&self.release_id).await?;
         if files.is_empty() {
             return Err(LibraryError::Storage("Release has no files".to_string()));
         }
 
-        // An upload moves files on this device only, none of them moving
-        // already; pin, unpin and detach act on files stored in the cloud.
-        let here = self.library_manager.device_id();
-        let mut ready = match self.action {
-            ReleaseStorageAction::Upload => {
-                !self.library_manager.has_pending_uploads_for_release(&self.release_id).await?
-            }
-            ReleaseStorageAction::Pin
-            | ReleaseStorageAction::Unpin
-            | ReleaseStorageAction::DetachAudio => true,
-        };
+        // Pin, unpin and detach act on files stored in the cloud.
+        let mut ready = true;
         for file in &files {
             let file = self.library_manager.release_file_ref(&file.id).await?;
-            ready &= match (self.action, file.place()) {
-                (ReleaseStorageAction::Upload, coven::FilePlace::DeviceOnly { device }) => {
-                    device == here
-                }
-                (ReleaseStorageAction::Upload, coven::FilePlace::Cloud { .. }) => false,
-                (
-                    ReleaseStorageAction::Pin
-                    | ReleaseStorageAction::Unpin
-                    | ReleaseStorageAction::DetachAudio,
-                    place,
-                ) => matches!(place, coven::FilePlace::Cloud { .. }),
-            };
+            ready &= matches!(file.place(), coven::FilePlace::Cloud { .. });
         }
         if !ready {
             return Err(LibraryError::Storage(wrong_state_error(self.action).to_string()));
@@ -290,7 +262,7 @@ fn transfer_operation(action: ReleaseStorageAction) -> &'static str {
     match action {
         ReleaseStorageAction::Pin => "pin a release",
         ReleaseStorageAction::Unpin => "unpin a release",
-        ReleaseStorageAction::Upload => "upload a release",
+        ReleaseStorageAction::Upload => unreachable!("a move to the cloud is no spawned transfer"),
         ReleaseStorageAction::DetachAudio => "make a release local",
     }
 }
@@ -299,9 +271,7 @@ fn wrong_state_error(action: ReleaseStorageAction) -> &'static str {
     match action {
         ReleaseStorageAction::Pin => "Cannot pin a local release",
         ReleaseStorageAction::Unpin => "Cannot unpin a local release",
-        ReleaseStorageAction::Upload => {
-            "Release is not on this device alone, or is moving to the cloud already"
-        }
+        ReleaseStorageAction::Upload => unreachable!("a move to the cloud is no spawned transfer"),
         ReleaseStorageAction::DetachAudio => "Release is already local",
     }
 }

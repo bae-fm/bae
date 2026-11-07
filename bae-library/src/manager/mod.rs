@@ -193,9 +193,9 @@ pub enum LibraryError {
     /// planned, or the store failed.
     #[error(transparent)]
     Deletion(bae_records::DeletionError),
-    /// A write ending a release's storage transition did not commit: the
-    /// release was in no such transition, it held no files to move, or the
-    /// store failed.
+    /// A write ending a release's storage transition, or moving releases to
+    /// the cloud, did not commit: the release was in no such transition, no
+    /// storage is set up, or the store failed.
     #[error(transparent)]
     StorageTransition(bae_transfers::StorageTransitionError),
     /// A dismissal of a storage setup that ended undone did not commit: the
@@ -531,15 +531,18 @@ impl From<bae_records::DeletionError> for LibraryError {
 }
 
 /// The class a surface words a storage transition's refused write in. Its
-/// work runs only for a transition the library admitted, on a release with
-/// files, so either refusal is the library breaking its own guarantee.
+/// work runs only for a transition the library admitted, so that refusal is
+/// the library breaking its own guarantee; a move needs storage, which is for
+/// the person to set up.
 fn storage_transition_refusal_category(
     refusal: &bae_transfers::StorageTransitionRefusal,
 ) -> bae_diagnostics::UiErrorCategory {
     match refusal {
-        bae_transfers::StorageTransitionRefusal::NotInTransition { .. }
-        | bae_transfers::StorageTransitionRefusal::NoFiles { .. } => {
+        bae_transfers::StorageTransitionRefusal::NotInTransition { .. } => {
             bae_diagnostics::UiErrorCategory::Internal
+        }
+        bae_transfers::StorageTransitionRefusal::NoStorage => {
+            bae_diagnostics::UiErrorCategory::Config
         }
     }
 }

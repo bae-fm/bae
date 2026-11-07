@@ -3,6 +3,7 @@ use bae_diagnostics::{
     AppDiagnosticMetadata, DatadogDiagnosticsConfig, DiagnosticEvent, Diagnostics,
     RecordingTransport,
 };
+use coven::Storage;
 use std::sync::Arc;
 use tempfile::TempDir;
 
@@ -10,11 +11,39 @@ use tempfile::TempDir;
 /// recording transport, so an emitted event can be read back off the wire.
 async fn manager_with_recording_transport(
 ) -> (LibraryManager, Diagnostics, Arc<RecordingTransport>, TempDir) {
+    let (manager, diagnostics, transport, home, _storage, _store) =
+        manager_with_recording_transport_over_storage().await;
+    (manager, diagnostics, transport, home)
+}
+
+/// [`manager_with_recording_transport`], with the memory storage its store
+/// can be set up on.
+async fn manager_with_recording_transport_over_storage() -> (
+    LibraryManager,
+    Diagnostics,
+    Arc<RecordingTransport>,
+    TempDir,
+    Arc<coven::MemoryStorage>,
+    bae_store::Store,
+) {
     let home = TempDir::new().unwrap();
-    let database =
-        bae_store::Store::new_test(crate::SCHEMA, home.path(), Arc::new(coven::SystemClock))
-            .await
-            .unwrap();
+    let storage = Arc::new(
+        coven::MemoryStorage::builder()
+            .clock(Arc::new(coven::SystemClock))
+            .build()
+            .expect("memory storage builds"),
+    );
+    let installation = coven::Coven::in_memory(
+        bae_app_dir::AppDir::under_home(home.path()).unwrap().coven_app_dir(),
+    );
+    let handle = bae_store::configure_store(installation.builder(), crate::SCHEMA)
+        .clock(Arc::new(coven::SystemClock))
+        .storage_connector(storage.clone())
+        .create_store("Test Library")
+        .await
+        .unwrap();
+    let database = bae_store::test_devices::device_store(handle);
+    let store = database.clone();
 
     let transport = Arc::new(RecordingTransport::new(vec![]));
     let config = DatadogDiagnosticsConfig {
@@ -48,7 +77,7 @@ async fn manager_with_recording_transport(
     )
     .await;
     let manager = LibraryManager::clone(library.manager());
-    (manager, diagnostics, transport, home)
+    (manager, diagnostics, transport, home, storage, store)
 }
 
 async fn shipped_events(
@@ -89,7 +118,18 @@ async fn a_failed_transfer_ships_storage_transfer_failed() {
 
 #[tokio::test]
 async fn a_failed_upload_batch_ships_storage_transfer_failed() {
-    let (manager, diagnostics, transport, _home) = manager_with_recording_transport().await;
+    let (manager, diagnostics, transport, _home, storage, store) =
+        manager_with_recording_transport_over_storage().await;
+    store
+        .setup_s3_storage(
+            storage.config(),
+            "Test Device",
+            "test-key".into(),
+            coven::SecretText::new("test-secret".into()),
+            &|_| (),
+        )
+        .await
+        .unwrap();
 
     let outcome = manager
         .upload_releases(&["missing-release".to_string()])

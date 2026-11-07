@@ -25,9 +25,9 @@ pub enum StorageTransitionRefusal {
     /// finish a transition nobody admitted.
     #[error("release {release_id} is not in the {transition:?} transition its write ends")]
     NotInTransition { release_id: String, transition: StoredTransition },
-    /// The release holds no files to move to the cloud.
-    #[error("release {release_id} has no files")]
-    NoFiles { release_id: String },
+    /// A move to the cloud needs storage set up on this device, and none is.
+    #[error("no storage is set up to move releases to")]
+    NoStorage,
 }
 
 /// Why a write that ends a release's storage transition did not commit.
@@ -90,7 +90,6 @@ pub fn transfer_action_column(
 /// pin, which is the download queue's active entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoredTransition {
-    Upload,
     Unpin,
     DetachAudio,
 }
@@ -98,7 +97,6 @@ pub enum StoredTransition {
 impl StoredTransition {
     fn column(self) -> &'static str {
         match self {
-            Self::Upload => ReleaseStorageAction::Upload,
             Self::Unpin => ReleaseStorageAction::Unpin,
             Self::DetachAudio => ReleaseStorageAction::DetachAudio,
         }
@@ -161,39 +159,95 @@ pub async fn release_transfer_action(
     store.read(move |sql| release_transfer_action_on(&sql, &release_id)).await
 }
 
-/// Move every file of a release on this device only to the cloud, as one
-/// move: coven reads no original now, since each upload checks the bytes it
-/// sends against the hashes the import's read recorded, and switches every
-/// file to the cloud together once all are stored, changing no row.
-/// `keep_here` keeps each file whole on this device too once stored. Until
-/// then each file is read from its original here. The write that queues the
-/// files ends the release's storage transition, the move's admission.
-pub async fn attach_release_files(
+/// Why a release of a selection did not move to the cloud.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MoveRefusal {
+    /// No such release is in the library.
+    Missing,
+    /// The release holds no files.
+    NoFiles,
+    /// A file of the release is not on this device only, or is moving
+    /// already.
+    NotMovable,
+}
+
+/// What one write moving a selection to the cloud did.
+#[derive(Debug, PartialEq, Eq)]
+pub struct MovedToCloud {
+    /// Each release whose files now wait in the upload queue, in the
+    /// selection's order, with how many files it moved.
+    pub moved: Vec<(String, u32)>,
+    /// Each release that could not move, with why. It changed nothing.
+    pub refused: Vec<(String, MoveRefusal)>,
+}
+
+/// One release's files, each with whether this device alone holds it and
+/// whether its upload is queued.
+const RELEASE_MOVE_FILES: &str = "SELECT f.file, \
+            COALESCE(d.is_self, 0), \
+            EXISTS (SELECT 1 FROM coven_uploads AS u WHERE u.file = f.file) \
+     FROM release_files AS f \
+     JOIN coven_files AS c ON c.id = f.file \
+     LEFT JOIN coven_devices AS d ON d.device = coven_file_device(c.coordinates) \
+     WHERE f.release_id = ?1 ORDER BY f.id";
+
+/// Move the files of every release of `release_ids` that is on this device
+/// only to the cloud, in one write, each release as one move of its own:
+/// coven reads no original now, since each upload checks the bytes it sends
+/// against the hashes the import's read recorded, and switches a release's
+/// files to the cloud together once all are stored, changing no row.
+/// `keep_here` keeps each file whole on this device too once stored. A
+/// release that cannot move is named with why and changes nothing; the rest
+/// move. Without storage set up the write moves nothing and is refused.
+pub async fn move_releases_to_cloud(
     store: &Store,
-    release_id: &str,
+    release_ids: Vec<String>,
     keep_here: bool,
-) -> Result<(), StorageTransitionError> {
-    let release_id = release_id.to_string();
-    let files = store
-        .read({
-            let release_id = release_id.clone();
-            move |sql| bae_records::records::read::get_files_for_release_on(&sql, &release_id)
-        })
-        .await?;
-    if files.is_empty() {
-        return Err(WriteError::Refused(StorageTransitionRefusal::NoFiles { release_id }));
-    }
-    let moving: Vec<coven::MoveFile> = files
-        .into_iter()
-        .map(|file| match keep_here {
-            true => coven::MoveFile::UserKeptHere(file.file),
-            false => coven::MoveFile::User(file.file),
-        })
-        .collect();
+) -> Result<MovedToCloud, StorageTransitionError> {
     store
         .write(move |sql| {
-            sql.move_to_cloud(moving)?;
-            end_transition_on(&sql, &release_id, StoredTransition::Upload)
+            let storage: bool =
+                sql.query_row("SELECT storage = 'connected' FROM coven_sync_status", [], |row| {
+                    row.get(0)
+                })?;
+            if !storage {
+                return Err(WriteError::Refused(StorageTransitionRefusal::NoStorage));
+            }
+            let mut outcome = MovedToCloud { moved: Vec::new(), refused: Vec::new() };
+            for release_id in release_ids {
+                let exists: bool = sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM releases WHERE id = ?1)",
+                    [&release_id],
+                    |row| row.get(0),
+                )?;
+                if !exists {
+                    outcome.refused.push((release_id, MoveRefusal::Missing));
+                    continue;
+                }
+                let files: Vec<(coven::FileId, bool, bool)> =
+                    sql.query(RELEASE_MOVE_FILES, [&release_id], |row| {
+                        Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+                    })?;
+                if files.is_empty() {
+                    outcome.refused.push((release_id, MoveRefusal::NoFiles));
+                    continue;
+                }
+                if files.iter().any(|(_, here, queued)| !here || *queued) {
+                    outcome.refused.push((release_id, MoveRefusal::NotMovable));
+                    continue;
+                }
+                let count = u32::try_from(files.len()).expect("a release's files fit a u32");
+                let moving = files
+                    .into_iter()
+                    .map(|(file, _, _)| match keep_here {
+                        true => coven::MoveFile::UserKeptHere(file),
+                        false => coven::MoveFile::User(file),
+                    })
+                    .collect();
+                sql.move_to_cloud(moving)?;
+                outcome.moved.push((release_id, count));
+            }
+            Ok(outcome)
         })
         .await
 }
