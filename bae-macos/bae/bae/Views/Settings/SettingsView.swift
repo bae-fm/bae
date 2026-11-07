@@ -2,11 +2,11 @@ import BaeKit
 import SwiftUI
 
 /// The panes, in the order the sidebar lists them (`allCases`): what the app
-/// looks like, then the library it holds, then playing from it, then getting
-/// releases in and out, then the servers and automation around it, then the
-/// app itself.
+/// looks like, then the library it holds, then playing from it, then the
+/// files that move to and from storage, then getting releases in and out, then
+/// the servers and automation around it, then the app itself.
 enum SettingsTab: Hashable, CaseIterable {
-    case appearance, library, playback, importing, formats, transfers, casting,
+    case appearance, library, playback, transfers, importing, formats, casting,
         subsonic, automation, about
 
     var title: LocalizedStringKey {

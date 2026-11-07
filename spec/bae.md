@@ -1921,7 +1921,8 @@ Other devices go on showing the release without playing it.
   and they go on at the next unmetered one. It is off by default, lasts across
   restarts, and doesn't hold playing a track that isn't pinned, which still
   streams.
-- **Transfers on the Mac.** Settings' Transfers pane holds Pause uploads and
+- **Transfers on the Mac.** Settings lists Transfers after Playback in its
+  sidebar, and its pane holds Pause uploads and
   Pause downloads, then how many files upload and download at once. Either
   pause lasts across restarts, and while either holds, the sidebar says Paused
   beside Transfers with ↑ for uploads, ↓ for downloads or ⇅ for both. A paused

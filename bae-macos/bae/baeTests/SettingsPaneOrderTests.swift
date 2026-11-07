@@ -5,7 +5,8 @@ import Testing
 
 /// The sidebar lists the panes in `allCases` order, so the order the cases are
 /// declared in is the order a person reads down the window: what the app looks
-/// like, the library it holds, playing from it, getting releases in and out,
+/// like, the library it holds, playing from it, the files that move to and
+/// from storage, getting releases in and out,
 /// the servers and automation around it, then the app itself.
 @MainActor
 @Suite("The settings panes")
@@ -17,9 +18,9 @@ struct SettingsPaneOrderTests {
                 .appearance,
                 .library,
                 .playback,
+                .transfers,
                 .importing,
                 .formats,
-                .transfers,
                 .casting,
                 .subsonic,
                 .automation,
