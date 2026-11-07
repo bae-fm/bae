@@ -55,7 +55,7 @@ export interface MacSwitchProps { on?: boolean; label: string; off?: boolean }
 export declare function MacSwitch(props: MacSwitchProps): React.ReactElement;
 
 /** The eight accent swatches in the order the appearance settings offer them; selected names the chosen one. */
-export interface MacAccentPickerProps { selected?: 'blue' | 'indigo' | 'purple' | 'pink' | 'red' | 'amber' | 'green' | 'teal'; label?: string }
+export interface MacAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink' | 'coral' | 'gold' | 'lime' | 'mint' | 'sky'; label?: string }
 export declare function MacAccentPicker(props: MacAccentPickerProps): React.ReactElement;
 
 /** A menu as it shows when open: MacMenuItems in a panel. */
@@ -123,7 +123,7 @@ export interface AndroidSwitchProps { on?: boolean; label: string }
 export declare function AndroidSwitch(props: AndroidSwitchProps): React.ReactElement;
 
 /** The eight accent swatches in the order the appearance settings offer them; selected names the chosen one. */
-export interface AndroidAccentPickerProps { selected?: 'blue' | 'indigo' | 'purple' | 'pink' | 'red' | 'amber' | 'green' | 'teal'; label?: string }
+export interface AndroidAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink' | 'coral' | 'gold' | 'lime' | 'mint' | 'sky'; label?: string }
 export declare function AndroidAccentPicker(props: AndroidAccentPickerProps): React.ReactElement;
 
 /** An outlined text field with its label on the border. helper is a grey line under it; error a red one, shown when state is error. */

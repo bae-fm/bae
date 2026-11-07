@@ -14,8 +14,13 @@ Everything here is drawn at each platform's regular size, the one the apps use b
 
 ## Color
 
-The apps offer six tones (neutral, slate, plum, midnight, forest, sand), eight accents and light and dark modes. This system holds the midnight tone and the pink accent, in Dark (first) and Light. Each color's use is beside it under Colors.
+The apps offer six tones (neutral, slate, plum, midnight, forest, sand), eight accents and light and dark modes. This system holds the midnight tone and the pink accent, the ones a new installation starts with, in Dark (first) and Light. Each color's use is beside it under Colors.
 
+- The accents are measured in OKLCH, a color space where equal steps in the numbers look equal. Each fill has the sheep's pink lightness, 0.75, and its saturation, 0.17, or the most the screen can show at that hue. The hues start at the sheep's pink (353°), and the other seven sit where each is the same visible distance from its neighbours: blue 268°, orchid 313°, pink 353°, coral 36°, gold 81°, lime 123°, mint 166°, sky 213°.
+- Text on an accent fill is the same hue at lightness 0.28 and saturation 0.09.
+- An accent as text and glyphs (`accent-blue` and the like) is the hue at lightness 0.78 and saturation 0.11 in Dark, and at lightness 0.53 and saturation 0.16 in Light, made darker where needed to reach 4.5:1 on background, surface and elevated. A selected row is the Light text color in both modes, with white text, quieter than the button.
+- How the color names read: a bare name (`accent`, `accent-blue`, `danger`, `info`) is text and glyphs on background, surface and elevated. `-fill` is a filled shape, and `on-…-fill` is what sits on it. `-selection` is a selected row, and `-tint` a faint wash behind something chosen.
+- `accent`, `accent-fill`, `on-accent-fill` and `accent-selection` are the chosen accent; the boards show pink. Each accent's own set is beside it under Colors.
 - Each status carries a word, never color alone.
 
 ## Type

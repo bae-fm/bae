@@ -78,7 +78,7 @@
 .bae-m-btn-small { height: 18px; padding: 0 var(--space-related); font-size: 11px; line-height: 18px; }
 .bae-m-btn-large { height: 28px; padding: 0 14px; line-height: 28px; }
 .bae-m-btn-secondary { background: var(--tile); color: var(--text-primary); }
-.bae-m-btn-primary { background: var(--accent-fill); color: var(--on-fill); }
+.bae-m-btn-primary { background: var(--accent-fill); color: var(--on-accent-fill); }
 .bae-m-btn-borderless { padding: 0 var(--space-inline); background: none; color: var(--text-primary); }
 .bae-m-btn-destructive { color: var(--danger); }
 .bae-m-btn-icon { width: var(--size-control); height: var(--size-control); padding: 0; background: none; color: var(--text-secondary); border-radius: var(--radius-chip); display: inline-flex; align-items: center; justify-content: center; vertical-align: -3px; }
@@ -155,7 +155,7 @@
 
 .bae-a-btn { height: 40px; padding: 0 var(--space-section); border-radius: 20px; border: 0; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
 .bae-a-btn-large { height: 48px; border-radius: 24px; font-size: 15px; }
-.bae-a-btn-filled { background: var(--accent-fill); color: var(--on-fill); }
+.bae-a-btn-filled { background: var(--accent-fill); color: var(--on-accent-fill); }
 .bae-a-btn-filled.bae-a-btn-destructive { background: var(--danger); color: var(--background); }
 .bae-a-btn-outlined { background: none; color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-secondary); }
 .bae-a-btn-text { height: auto; padding: 10px 12px; background: none; color: var(--accent); border-radius: 20px; }
@@ -217,7 +217,7 @@
 .bae-a-accents .bae-swatch-on { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--text-primary); }
 .bae-m-menu { display: flex; flex-direction: column; min-width: 190px; padding: 5px; border-radius: var(--radius-control); background: var(--tile); box-shadow: 0 8px 24px var(--shadow); font: 400 13px var(--font-sans); color: var(--text-primary); }
 .bae-m-menu-item { display: flex; align-items: center; gap: var(--space-compact); padding: 3px var(--space-related); border-radius: 4px; }
-.bae-m-menu-item-on { background: var(--accent-fill); color: var(--on-fill); }
+.bae-m-menu-item-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-menu-check { width: 11px; display: flex; }
 
 /* Scan code: what to do, the QR code, its buttons, then when it ends. */
@@ -428,7 +428,7 @@
 .bae-m-sortpill .bae-muted { display: inline-flex; fill: currentColor; }
 .bae-m-sortadd { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); background: var(--placeholder); color: var(--text-secondary); fill: currentColor; }
 .bae-m-checkbox { display: inline-flex; align-items: center; gap: 6px; font: 400 13px var(--font-sans); white-space: nowrap; }
-.bae-m-checkbox-box { width: 14px; height: 14px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 3px; background: var(--field); box-shadow: inset 0 0 0 1px var(--hairline-strong); color: var(--on-fill); }
+.bae-m-checkbox-box { width: 14px; height: 14px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 3px; background: var(--field); box-shadow: inset 0 0 0 1px var(--hairline-strong); color: var(--on-accent-fill); }
 .bae-m-checkbox-on { background: var(--accent-fill); box-shadow: none; }
 .bae-m-checkbox-box svg { width: 10px; height: 10px; }
 .bae-m-groupheading { grid-column: 1 / -1; padding: 0 6px; margin-bottom: -16px; font: 500 13px var(--font-sans); }
@@ -556,7 +556,7 @@
 .bae-m-table-tr { border-radius: 5px; }
 .bae-m-table-alt { background: var(--hover); }
 .bae-m-table-row { height: 28px; border-radius: 5px; }
-.bae-m-table-selected { background: var(--accent-fill); color: var(--on-fill); }
+.bae-m-table-selected { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-table-td { padding: 0 4px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; }
 .bae-m-table-empty { position: absolute; inset: 28px 0 0; display: flex; align-items: center; justify-content: center; }
 .bae-m-relcell { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -573,7 +573,7 @@
 .bae-m-readout-line { display: flex; justify-content: space-between; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-track { height: 4px; border-radius: 2px; background: var(--hairline); overflow: hidden; }
 .bae-m-filerow { display: flex; align-items: center; gap: 10px; padding: 8px 16px; font: 400 13px var(--font-sans); }
-.bae-m-filerow-selected { background: var(--accent-fill); color: var(--on-fill); }
+.bae-m-filerow-selected { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-filerow-selected .bae-muted { color: var(--on-fill-secondary); }
 .bae-m-filedet { margin-top: auto; background: var(--elevated); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--hairline); }
 .bae-m-filedet-head { display: flex; justify-content: space-between; gap: 8px; font: 600 15px var(--font-sans); }
@@ -618,7 +618,7 @@
 
 /* Formats pane: button-style toggles, the token field */
 .bae-m-togglebtn { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 5px; background: var(--tile); font: 400 11.5px var(--font-sans); }
-.bae-m-togglebtn-on { background: var(--accent-fill); color: var(--on-fill); }
+.bae-m-togglebtn-on { background: var(--accent-fill); color: var(--on-accent-fill); }
 .bae-m-togglebtn-off { opacity: 0.45; }
 .bae-m-tokenfield { min-height: 24px; padding: 6px; border-radius: 7px; background: var(--field); box-shadow: inset 0 0 0 1px var(--hairline-strong); display: flex; gap: 6px; flex-wrap: wrap; }
 .bae-m-tokenadd { padding: 1px 6px; border-radius: 5px; border: 1px dashed var(--hairline-strong); color: var(--text-primary); }
@@ -654,7 +654,7 @@
 .bae-m-irow { position: relative; display: flex; align-items: center; gap: 8px; padding: 6px 12px; }
 .bae-m-irow-grouped { padding-left: 30px; }
 .bae-m-irow-rail { position: absolute; left: 16px; top: 0; bottom: 0; width: 1px; background: var(--hairline); }
-.bae-m-irow-selected { background: var(--accent-fill); color: var(--on-fill); }
+.bae-m-irow-selected { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-irow-selected .bae-muted, .bae-m-irow-selected .bae-m-irow-sub, .bae-m-irow-selected .bae-m-irow-step { color: var(--on-fill-secondary); }
 .bae-m-irow-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .bae-m-irow-t { display: flex; align-items: center; gap: 4px; font: 500 13px var(--font-sans); min-width: 0; }
@@ -734,7 +734,7 @@
 /* ==== part: explore ==== */.bae-stars { display: inline-flex; align-items: center; gap: 2px; }
 .bae-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; background: var(--accent-tint-strong); color: var(--accent); font-weight: 600; font-family: var(--font-sans); }
 .bae-m-lrow { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; font: 400 13px var(--font-sans); }
-.bae-m-lrow-selected { background: var(--accent-fill); color: var(--on-fill); }
+.bae-m-lrow-selected { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-lrow-selected .bae-muted { color: var(--on-fill-secondary); }
 .bae-a-lrow { display: flex; align-items: center; gap: 12px; padding: 8px 16px; font-family: var(--font-android); }
 .bae-a-lrow-selected { background: var(--accent-tint); }

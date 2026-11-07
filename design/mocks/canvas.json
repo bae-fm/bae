@@ -3282,6 +3282,54 @@
    "w": 412,
    "x": 2460,
    "y": 1200
+  },
+  "AccentsNeutral.dc.html": {
+   "h": 480,
+   "page": "logo",
+   "title": "Accents: Neutral",
+   "w": 1460,
+   "x": 0,
+   "y": 2160
+  },
+  "AccentsSlate.dc.html": {
+   "h": 480,
+   "page": "logo",
+   "title": "Accents: Slate",
+   "w": 1460,
+   "x": 0,
+   "y": 2720
+  },
+  "AccentsPlum.dc.html": {
+   "h": 480,
+   "page": "logo",
+   "title": "Accents: Plum",
+   "w": 1460,
+   "x": 0,
+   "y": 3280
+  },
+  "AccentsForest.dc.html": {
+   "h": 480,
+   "page": "logo",
+   "title": "Accents: Forest",
+   "w": 1460,
+   "x": 0,
+   "y": 4400
+  },
+  "AccentsSand.dc.html": {
+   "h": 480,
+   "page": "logo",
+   "title": "Accents: Sand",
+   "w": 1460,
+   "x": 0,
+   "y": 4960
+  },
+  "AccentsMidnight.dc.html": {
+   "h": 480,
+   "page": "logo",
+   "title": "Accents: Midnight",
+   "w": 1460,
+   "x": 0,
+   "y": 3840
   }
  },
  "createdOnFiles": {
@@ -3435,6 +3483,7 @@
   "canvas-key-logo",
   "row-logo-forms",
   "row-logo-icons",
+  "row-logo-accents",
   "code-logo"
  ],
  "notes": {
@@ -4624,10 +4673,19 @@
   "code-logo": {
    "page": "logo",
    "size": 24,
-   "text": "What the code needs for these boards:\n- App icons for iOS, Windows and Linux. Today only macOS and Android have one.\n- The sheep on Welcome on macOS, and on About on both. Android’s Welcome has it, from an old PNG (drawable-xxhdpi/sheep_icon.png) that still shows the line under the player.\n- The small sheep as the website’s favicon. Today it’s app-icon.png.\n- One logo view on each platform, the sheep over the word, used wherever they appear together. The word is bae-word.svg, in place of the wordmark text style in design/theme.toml.",
+   "text": "What the code needs for these boards:\n- App icons for iOS, Windows and Linux. Today only macOS and Android have one.\n- The sheep on Welcome on macOS, and on About on both. Android’s Welcome has it, from an old PNG (drawable-xxhdpi/sheep_icon.png) that still shows the line under the player.\n- The small sheep as the website’s favicon. Today it’s app-icon.png.\n- One logo view on each platform, the sheep over the word, used wherever they appear together. The word is bae-word.svg, in place of the wordmark text style in design/theme.toml.\n- The eight accents on the Accents boards in place of today's, with their new names: each one's fill, the text on it, its text color and its selected row. Today all eight are darker, with white text.\n- A new installation starts on midnight and pink. Today design/theme.toml starts it on plum.",
    "w": 420,
    "x": 2952,
    "y": 1200
+  },
+  "row-logo-accents": {
+   "kind": "title1",
+   "maxW": 1460,
+   "page": "logo",
+   "w": 240,
+   "x": 0,
+   "y": 1920,
+   "text": "Accents"
   }
  },
  "order": [
@@ -5039,7 +5097,13 @@
   "IconAndroid.dc.html",
   "IconWindows.dc.html",
   "IconLinux.dc.html",
-  "IconWeb.dc.html"
+  "IconWeb.dc.html",
+  "AccentsNeutral.dc.html",
+  "AccentsSlate.dc.html",
+  "AccentsPlum.dc.html",
+  "AccentsMidnight.dc.html",
+  "AccentsForest.dc.html",
+  "AccentsSand.dc.html"
  ],
  "pages": [
   {
