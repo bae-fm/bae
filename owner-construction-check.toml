@@ -211,6 +211,8 @@ non_owner_types = [
     "FakeState",
     # A server controller's state, plain data behind its lock.
     "ServerState",
+    # The hold on one image path, kept in the test image host's map.
+    "HeldPath",
 ]
 
 # Values an owner makes for its caller's one operation, view or read and
@@ -325,6 +327,10 @@ task_types = [
     "TrackSink",
     "StreamingState",
     "ReadyReceiver",
+    # One walk of a release's linked documents, and one waiter's place in a rate
+    # limiter's queue.
+    "FetchDocuments",
+    "Ticket",
 ]
 
 # Handles (Appendix F.3): what an owner makes from its own state to hand out.
