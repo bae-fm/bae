@@ -319,6 +319,12 @@ task_types = [
     # announce.
     "FileReads",
     "RemovalOutcome",
+    # One encode, and one track's sink and stream with their shared state and
+    # ready signal.
+    "StreamingEncoder",
+    "TrackSink",
+    "StreamingState",
+    "ReadyReceiver",
 ]
 
 # Handles (Appendix F.3): what an owner makes from its own state to hand out.
