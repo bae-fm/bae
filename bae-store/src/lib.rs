@@ -10,7 +10,7 @@ pub use device_state::FormerDeviceState;
 mod entered_name;
 pub use entered_name::{BlankName, EnteredName};
 mod error;
-pub use error::DbError;
+pub use error::{DbError, WriteError};
 mod file_stream;
 pub use file_stream::FileStream;
 mod file_version;

@@ -172,3 +172,111 @@ impl coven::WriteFailure for DbError {
         }
     }
 }
+
+/// What a store write ended in: the domain's refusal, the store's failure, or
+/// either with a failed rollback or file cleanup kept beside it. A refusal
+/// carries no bug of its own.
+#[derive(Debug, thiserror::Error)]
+pub enum WriteError<R> {
+    #[error(transparent)]
+    Refused(R),
+    #[error(transparent)]
+    Database(DbError),
+    /// The write was refused, and rolling it back failed too.
+    #[error("{operation}; rollback failed: {rollback}")]
+    Rollback {
+        operation: Box<WriteError<R>>,
+        #[source]
+        rollback: rusqlite::Error,
+    },
+    /// The write was refused, and removing the bytes it staged or released
+    /// failed too, each failure kept.
+    #[error("file cleanup failed: {failures:?}; write: {write}")]
+    FileCleanup { write: Box<WriteError<R>>, failures: Vec<coven::DbError> },
+}
+
+impl<R> WriteError<R> {
+    /// The same write ending, its refusal (wherever a kept rollback or file
+    /// cleanup sits around it) read as `f` reads it.
+    pub fn map_refusal<S>(self, f: impl FnOnce(R) -> S) -> WriteError<S> {
+        match self {
+            Self::Refused(refusal) => WriteError::Refused(f(refusal)),
+            Self::Database(error) => WriteError::Database(error),
+            Self::Rollback { operation, rollback } => {
+                WriteError::Rollback { operation: Box::new(operation.map_refusal(f)), rollback }
+            }
+            Self::FileCleanup { write, failures } => {
+                WriteError::FileCleanup { write: Box::new(write.map_refusal(f)), failures }
+            }
+        }
+    }
+}
+
+impl<R> From<DbError> for WriteError<R> {
+    fn from(error: DbError) -> Self {
+        Self::Database(error)
+    }
+}
+
+impl<R> From<rusqlite::Error> for WriteError<R> {
+    fn from(error: rusqlite::Error) -> Self {
+        Self::Database(error.into())
+    }
+}
+
+impl<R> From<coven::DbError> for WriteError<R> {
+    fn from(error: coven::DbError) -> Self {
+        Self::Database(error.into())
+    }
+}
+
+impl<R> coven::task::CarriesBug for WriteError<R> {
+    fn bug(&self) -> Option<&coven::task::Bug> {
+        use coven::task::CarriesBug;
+        match self {
+            Self::Database(error) => error.bug(),
+            Self::Rollback { operation, .. } => operation.bug(),
+            Self::FileCleanup { write, failures } => {
+                write.bug().or_else(|| failures.iter().find_map(CarriesBug::bug))
+            }
+            Self::Refused(_) => None,
+        }
+    }
+}
+
+/// A bug a coven call carried back, which the store reported as it returned.
+impl<R> bae_util::task_failure::ReportedBug for WriteError<R> {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        use bae_util::task_failure::ReportedBug;
+        match self {
+            Self::Database(error) => error.reported_bug(),
+            Self::Rollback { operation, .. } => operation.reported_bug(),
+            Self::FileCleanup { write, failures } => {
+                write.reported_bug().or_else(|| failures.iter().find_map(ReportedBug::reported_bug))
+            }
+            Self::Refused(_) => None,
+        }
+    }
+}
+
+/// A failed rollback or byte removal is kept beside the failure it followed:
+/// a store failure keeps it in its own, a refusal stays the refusal it is.
+impl<R> coven::WriteFailure for WriteError<R> {
+    fn with_rollback(self, rollback: rusqlite::Error) -> Self {
+        match self {
+            Self::Database(error) => {
+                Self::Database(coven::WriteFailure::with_rollback(error, rollback))
+            }
+            operation => Self::Rollback { operation: Box::new(operation), rollback },
+        }
+    }
+
+    fn with_cleanup(write: Self, failures: Vec<coven::DbError>) -> Self {
+        match write {
+            Self::Database(error) => {
+                Self::Database(coven::WriteFailure::with_cleanup(error, failures))
+            }
+            write => Self::FileCleanup { write: Box::new(write), failures },
+        }
+    }
+}
