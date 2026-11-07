@@ -143,7 +143,7 @@ impl People {
     /// outcome. A circle refused, or stopped by this device's stop for
     /// good, waits for the person, who acknowledges it by asking again
     /// (§5.4).
-    pub async fn finish_profile_requests(&self) -> Result<(), DbError> {
+    pub async fn finish_profile_requests(&self) -> Result<(), ProfileRequestError> {
         let mut requests = self.subscribe_profile_request();
         while let Some(request) = requests.next().await {
             if let Some(request) = request? {
@@ -152,25 +152,24 @@ impl People {
                 }
             }
         }
-        Err(DbError::from(coven::CovenError::Database(coven::DbError::StoreClosed)))
+        Err(DbError::from(coven::CovenError::Database(coven::DbError::StoreClosed)).into())
     }
 
     /// The write that creates the profile `request` asked for, from its
     /// landed circle. A profile the person made on another of their devices
     /// meanwhile takes this device's plays instead; the circle made here
     /// stays theirs alone.
-    async fn finish_profile(&self, request: ProfileRequest) -> Result<(), DbError> {
+    async fn finish_profile(&self, request: ProfileRequest) -> Result<(), ProfileRequestError> {
         let _creation = self.inner.profile_creation.lock().await;
         let _registration = self.inner.history_registration.lock().await;
-        self.inner
+        let operation = request.operation;
+        let written = self
+            .inner
             .store
             .call(move |sql| {
                 // Only this write ends a request whose circle has landed.
                 if profile_request_on(sql)?.as_ref() != Some(&request) {
-                    return Err(DbError::Message(format!(
-                    "the profile request for operation {:?} changed before its profile was written",
-                    request.operation
-                )));
+                    return Ok(false);
                 }
                 let member: coven::MemberId = sql.query_row(
                     "SELECT member FROM coven_members WHERE is_self AND NOT removed",
@@ -186,10 +185,13 @@ impl People {
                         insert_profile(sql, &new_profile(member, request.name, request.circle))?
                     }
                 }
-                Ok(())
+                Ok(true)
             })
             .await?;
-        Ok(())
+        match written {
+            true => Ok(()),
+            false => Err(ProfileRequestError::Changed(operation)),
+        }
     }
 
     pub async fn rename_profile(&self, name: &str) -> Result<(), ProfileError> {
@@ -437,3 +439,7 @@ fn update_profile(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "profiles_tests.rs"]
+mod tests;

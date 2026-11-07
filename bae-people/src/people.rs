@@ -158,6 +158,29 @@ pub enum ProfileError {
     Sync(#[from] coven::SyncError),
 }
 
+/// Why following the person's profile request stopped.
+#[derive(Debug, thiserror::Error)]
+pub enum ProfileRequestError {
+    /// The request whose circle landed was no longer the one stored when
+    /// its profile was to be written, though only that write ends it: a bug
+    /// of bae's. Nothing was written.
+    #[error("the profile request for operation {0:?} changed before its profile was written")]
+    Changed(coven::OperationId),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+/// A bug the store carried back, which the store reported as it returned;
+/// a changed request holds none.
+impl bae_util::task_failure::ReportedBug for ProfileRequestError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Database(error) => error.reported_bug(),
+            Self::Changed(_) => None,
+        }
+    }
+}
+
 impl From<coven::CovenError> for ProfileError {
     fn from(error: coven::CovenError) -> Self {
         Self::Database(error.into())
