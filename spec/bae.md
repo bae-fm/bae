@@ -4055,6 +4055,30 @@ storage. A seek the person
 drops is held in front of the track's position until core has applied it, so every view drawing that track — the seek bar,
 the queue's strip — shows where they dropped it meanwhile.
 
+Playback's thread outlives the service it runs. A service that ends on a bug
+of its own, or because the audio output won't open as it starts, is told once:
+playback stops with why, on this device, with no preview, and a bug goes to the
+crash reporter. A fresh service starts for the next command the handle sends,
+which it then serves, so the next press works, and nothing else starts one: a
+device that can't open is tried once for each command, never in a loop, and
+each failed try is told once, as an end of its own. That command ends with the
+service when it can't be served: a call waiting on its answer fails with
+"Something went wrong", and the end's report is what tells of any other.
+Commands sent while a service ends or the next starts wait in the thread's
+channel and are served in order. What a service sent itself reaches no later
+one. Saving state with no service running has nothing to save and starts none,
+and a shutdown ends the thread.
+
+A fresh service holds what outlives a service, whether or not it restores on
+launch: the queue's tables with their repeat mode, the volume and mute of
+`playback_now`, and the resume row's entry, loaded paused at its position
+(§7.8), which is never more than a second of playing behind. Nothing plays until
+a command plays it, and a next or previous from the loaded track stays paused.
+Only the ended service held the rest, and it is gone: a session on a receiver, a
+preview, a preloaded next track, a side-pause countdown, and the side-end reason
+of a pause, which comes back as a plain pause. A play under way keeps what was
+last saved of it.
+
 ### 9.5 Storage and sync
 
 Through `AppServices`: move releases to storage and make them local again,
@@ -4419,12 +4443,13 @@ each device and hands playback the channel or sink.
   thread, as a task or a thread of its own — is such a bug: it is reported,
   and what the work served ends with it, the operation that asked failing
   with "Something went wrong", never left waiting. A service's own thread
-  that such a panic ends, playback's, the import worker's or the folder
-  scan coordinator's, ends its service with it: playback stops with
-  "Something went wrong" for whoever follows it, and a later call that
-  waits on the service's answer fails with "Something went wrong",
-  carrying the thread's bug, which is not reported again; a call made once
-  the service was shut down fails as stopped. Work on a blocking thread
+  that such a panic ends, the import worker's or the folder scan
+  coordinator's, ends its service with it: a later call that waits on the
+  service's answer fails with "Something went wrong", carrying the thread's
+  bug, which is not reported again; a call made once the service was shut
+  down fails as stopped. Such a panic in playback's service stops playback
+  with "Something went wrong" for whoever follows it, and the next command
+  starts a fresh service (§9.4). Work on a blocking thread
   runs to its end even once whoever asked for it stops waiting, and a panic
   in it is reported all the same. coven's own bugs in work
   nobody waits for, such as a store's sync loop and upload worker, reach the

@@ -72,31 +72,9 @@ async fn the_end_is_heard_by_whoever_waits_for_it() {
         panic!("the queue is gone")
     });
     let (heard, _bugs) = channel();
-    let returned =
-        WorkerThread::<()>::spawn("test worker", Arc::new(SentBugs(heard)), |_, _| Ok(()));
+    let returned = WorkerThread::<()>::spawn("test worker", Arc::new(SentBugs(heard)), |_, _| {});
 
     assert_eq!(panicked.ended().await, WorkerEnd::Panicked(queue_gone()));
     assert_eq!(returned.ended().await, WorkerEnd::Returned);
     assert_eq!(returned.send(()).expect_err("the thread has ended").end, WorkerEnd::Returned);
-}
-
-/// A body that ends on a failure records it as the thread's end, which a
-/// send after it and whoever waits for the end hear; a failure is not a bug,
-/// so nothing is reported.
-#[tokio::test]
-async fn a_body_that_fails_ends_with_its_failure() {
-    let (heard, bugs) = channel();
-    let worker = WorkerThread::<(), &'static str>::spawn(
-        "test worker",
-        Arc::new(SentBugs(heard)),
-        |_, _| Err("the device is gone"),
-    );
-
-    assert_eq!(worker.ended().await, WorkerEnd::Failed("the device is gone"));
-    assert_eq!(
-        worker.send(()).expect_err("the thread has ended").end,
-        WorkerEnd::Failed("the device is gone")
-    );
-    drop(worker);
-    assert_eq!(bugs.recv().ok(), None, "nothing is reported");
 }

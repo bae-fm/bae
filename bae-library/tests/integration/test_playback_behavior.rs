@@ -13,5 +13,6 @@ mod non_utf8_names;
 mod now_playing_edits;
 mod queue_and_pregap;
 mod remote_sparse_buffer;
+mod service_restart;
 mod side_and_navigation;
 mod side_pause_countdown;

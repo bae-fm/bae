@@ -438,8 +438,8 @@ ImageHold = "RemoteImageHost"
 "bae-playback/src/service/runtime.rs" = [
     "PlaybackService::start",
     "PlaybackService::start_with_audio_device",
-    "PlaybackService::start_inner",
 ]
+"bae-playback/src/service/thread.rs" = ["PlaybackService::start_inner"]
 # Starts the import service's worker and watcher threads and builds the parts
 # its handle holds; its handle stops them.
 "bae-import/src/service/worker.rs" = [

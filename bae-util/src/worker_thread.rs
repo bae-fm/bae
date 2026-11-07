@@ -1,6 +1,5 @@
 //! A worker thread and the channel that feeds it, owned together.
 
-use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
 
 use coven::task::{blocking_completing, caught_sync, report, Bug, BugSinkRef, TaskFailed};
@@ -16,10 +15,7 @@ use crate::task_failure::panic_message;
 /// carried together by every clone of the handle that owns them, so whichever
 /// clone runs teardown has both the way to stop the thread and the way to wait
 /// for it.
-///
-/// `F` is the failure the body can end on, besides a panic: the reason a
-/// worker can't go on that its owner tells whoever it serves.
-pub struct WorkerThread<M, F = Infallible> {
+pub struct WorkerThread<M> {
     /// Names the worker's thread, the warning a dropped message logs, and the
     /// bug a panic in the thread is reported as.
     name: &'static str,
@@ -30,7 +26,7 @@ pub struct WorkerThread<M, F = Infallible> {
     /// How the thread ended, once it has. The thread records it in the same
     /// step that closes the channel, so a send finds either the channel open
     /// or the end.
-    end: watch::Receiver<Option<WorkerEnd<F>>>,
+    end: watch::Receiver<Option<WorkerEnd>>,
     /// Taken by whichever clone joins; a later `stop_and_join` finds `None` and
     /// returns, so stopping twice is not an error.
     thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
@@ -38,14 +34,10 @@ pub struct WorkerThread<M, F = Infallible> {
 
 /// How a worker's thread ended.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
-pub enum WorkerEnd<F = Infallible> {
+pub enum WorkerEnd {
     /// Its body returned.
     #[error("the worker's thread had returned")]
     Returned,
-    /// Its body ended on this failure, which its owner tells whoever it
-    /// serves.
-    #[error("the worker's thread ended on a failure")]
-    Failed(#[source] F),
     /// Its body panicked with this bug, which reached the worker's bug sink as
     /// it happened.
     #[error("the worker's thread panicked")]
@@ -55,14 +47,13 @@ pub enum WorkerEnd<F = Infallible> {
 /// A message sent after the worker's thread ended, given back with how the
 /// thread ended.
 #[derive(Debug)]
-pub struct WorkerEnded<M, F = Infallible> {
+pub struct WorkerEnded<M> {
     pub message: M,
-    pub end: WorkerEnd<F>,
+    pub end: WorkerEnd,
 }
 
-impl<M, F> Clone for WorkerThread<M, F> {
-    // Derived `Clone` would demand `M: Clone` and `F: Clone`, which no half
-    // needs.
+impl<M> Clone for WorkerThread<M> {
+    // Derived `Clone` would demand `M: Clone`, which no half needs.
     fn clone(&self) -> Self {
         Self {
             name: self.name,
@@ -74,23 +65,20 @@ impl<M, F> Clone for WorkerThread<M, F> {
     }
 }
 
-impl<M: Send + 'static, F: Send + Sync + 'static> WorkerThread<M, F> {
+impl<M: Send + 'static> WorkerThread<M> {
     /// Open the channel and start the thread named `name`, which runs `body`
     /// to drain it. The body gets a sender paired with its own receiver — for
     /// a worker whose loop sends itself messages, or hands a sender to what it
     /// drives — and borrows the receiver, which the thread keeps: the channel
-    /// closes only once the thread has recorded how the body ended: returned,
-    /// failed with what it returned, or panicked. A panic in `body` goes to
-    /// `bugs` as it happens, on the thread, which then ends; the join does not
-    /// report it again.
+    /// closes only once the thread has recorded how the body ended: returned
+    /// or panicked. A panic in `body` goes to `bugs` as it happens, on the
+    /// thread, which then ends; the join does not report it again.
     ///
     /// Panics if the system refuses the thread, as `std::thread::spawn` does.
     pub fn spawn(
         name: &'static str,
         bugs: BugSinkRef,
-        body: impl FnOnce(mpsc::UnboundedSender<M>, &mut mpsc::UnboundedReceiver<M>) -> Result<(), F>
-            + Send
-            + 'static,
+        body: impl FnOnce(mpsc::UnboundedSender<M>, &mut mpsc::UnboundedReceiver<M>) + Send + 'static,
     ) -> Self {
         let (tx, mut rx) = mpsc::unbounded_channel();
         let body_tx = tx.clone();
@@ -100,8 +88,7 @@ impl<M: Send + 'static, F: Send + Sync + 'static> WorkerThread<M, F> {
             .name(name.to_string())
             .spawn(move || {
                 let (recorded, panicked) = match caught_sync(name, || body(body_tx, &mut rx)) {
-                    Ok(Ok(())) => (WorkerEnd::Returned, None),
-                    Ok(Err(failure)) => (WorkerEnd::Failed(failure), None),
+                    Ok(()) => (WorkerEnd::Returned, None),
                     Err(bug) => (WorkerEnd::Panicked(bug.clone()), Some(bug)),
                 };
                 ended.send_modify(move |end| {
@@ -117,10 +104,10 @@ impl<M: Send + 'static, F: Send + Sync + 'static> WorkerThread<M, F> {
     }
 }
 
-impl<M, F: Clone> WorkerThread<M, F> {
+impl<M> WorkerThread<M> {
     /// Hand `message` to the thread, or give it back with how the thread
     /// ended.
-    pub fn send(&self, message: M) -> Result<(), WorkerEnded<M, F>> {
+    pub fn send(&self, message: M) -> Result<(), WorkerEnded<M>> {
         // Held across the send, so the thread can't close the channel
         // meanwhile.
         let end = self.end.borrow();
@@ -134,7 +121,7 @@ impl<M, F: Clone> WorkerThread<M, F> {
     }
 
     /// How the thread ended, once it has.
-    pub async fn ended(&self) -> WorkerEnd<F> {
+    pub async fn ended(&self) -> WorkerEnd {
         let mut end = self.end.clone();
         let ended = match end.wait_for(Option::is_some).await.as_deref() {
             Ok(Some(end)) => end.clone(),
@@ -149,15 +136,12 @@ impl<M, F: Clone> WorkerThread<M, F> {
     pub fn dispatch(&self, message: M)
     where
         M: std::fmt::Debug,
-        F: std::fmt::Debug,
     {
         if let Err(ended) = self.send(message) {
             tracing::warn!("{} ended ({:?}); dropped {:?}", self.name, ended.end, ended.message);
         }
     }
-}
 
-impl<M, F> WorkerThread<M, F> {
     /// Ask the thread to stop, then wait for it to exit.
     ///
     /// `stop` says how this particular worker is told to finish — the message it

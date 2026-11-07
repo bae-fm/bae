@@ -174,7 +174,8 @@ impl PlaybackValues {
             | PlaybackProgress::Seeked { .. }
             | PlaybackProgress::PreviewPositionUpdate { .. }
             | PlaybackProgress::TrackCompleted { .. }
-            | PlaybackProgress::DecodeStats { .. } => None,
+            | PlaybackProgress::DecodeStats { .. }
+            | PlaybackProgress::ServiceEnded => None,
         }
     }
 }
@@ -252,7 +253,8 @@ impl PlaybackPositions {
             | PlaybackProgress::RemoteStatusChanged { .. }
             | PlaybackProgress::PlaybackError { .. }
             | PlaybackProgress::TrackCompleted { .. }
-            | PlaybackProgress::DecodeStats { .. } => return None,
+            | PlaybackProgress::DecodeStats { .. }
+            | PlaybackProgress::ServiceEnded => return None,
         }
         Some(next)
     }
@@ -355,6 +357,9 @@ pub enum PlaybackProgress {
         position_ms: u64,
         progress: f64,
     },
+    /// A service ended and its end has been told: nothing of it follows, and
+    /// whatever comes next is another service's.
+    ServiceEnded,
 }
 
 impl PlaybackProgress {

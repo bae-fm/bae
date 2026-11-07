@@ -39,13 +39,15 @@ pub enum PlayOutcome {
 pub enum PlayError {
     #[error("couldn't fill the queue: {0}")]
     Queue(#[source] bae_store::DbError),
+    /// The service that held the play ended, or the fresh one the play
+    /// started did, before answering; that end was told to whoever follows
+    /// playback.
     #[error("the playback service stopped before it answered the play")]
     Stopped(#[source] oneshot::error::RecvError),
     /// The service's thread had ended before the play was sent: shut down,
-    /// ended because the audio output wouldn't open, or ended on a bug
-    /// reported as it happened.
+    /// or ended on a bug reported as it happened.
     #[error("the playback service had ended")]
-    Ended(#[source] WorkerEnd<crate::AudioError>),
+    Ended(#[source] WorkerEnd),
 }
 
 /// Where a play command's answer goes.
@@ -61,13 +63,15 @@ pub enum QueueEditError {
     QueueChanged,
     #[error("couldn't change the queue: {0}")]
     Queue(#[source] bae_store::DbError),
+    /// The service that held the command ended, or the fresh one the command
+    /// started did, before answering; that end was told to whoever follows
+    /// playback.
     #[error("the playback service stopped before it answered the queue command")]
     Stopped(#[source] oneshot::error::RecvError),
     /// The service's thread had ended before the command was sent: shut
-    /// down, ended because the audio output wouldn't open, or ended on a bug
-    /// reported as it happened.
+    /// down, or ended on a bug reported as it happened.
     #[error("the playback service had ended")]
-    Ended(#[source] WorkerEnd<crate::AudioError>),
+    Ended(#[source] WorkerEnd),
 }
 
 impl QueueEditError {
@@ -313,14 +317,13 @@ impl PlaybackState {
     }
 }
 
-/// Send a command to the playback service, warning if the service has shut
-/// down.
-pub(crate) fn dispatch_command(
-    tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
-    cmd: PlaybackCommand,
+/// Ask `thread` to shut down, warning if it already has.
+fn ask_to_shut_down(
+    thread: &tokio_mpsc::UnboundedSender<PlaybackMessage>,
+    reply: oneshot::Sender<()>,
 ) {
-    if let Err(err) = tx.send(cmd) {
-        warn!("playback command channel closed; dropped {:?}", err.0);
+    if let Err(unsent) = thread.send(PlaybackMessage::Asked(PlaybackCommand::Shutdown(reply))) {
+        warn!("playback command channel closed; dropped {:?}", unsent.0);
     }
 }
 
@@ -335,11 +338,11 @@ async fn await_shutdown_ack(rx: oneshot::Receiver<()>) {
 /// Handle for sending commands to the playback service.
 #[derive(Clone)]
 pub struct PlaybackHandle {
-    /// The service thread and its command channel. Teardown joins the thread so
-    /// its `Database`, and with it the store's exclusive lock, is released
-    /// before teardown returns; the service holds its own sender, so only
-    /// `Shutdown` ends it. Clones share one take-once join handle.
-    worker: WorkerThread<PlaybackCommand, crate::AudioError>,
+    /// The playback thread and its channel. Teardown joins the thread so its
+    /// `Database`, and with it the store's exclusive lock, is released before
+    /// teardown returns; the thread holds its own sender, so only `Shutdown`
+    /// ends it. Clones share one take-once join handle.
+    worker: WorkerThread<PlaybackMessage>,
     progress_handle: PlaybackProgressHandle,
     /// The arbiter the service's reads run under, which hears whether the
     /// playing track's load waits on storage.
@@ -348,7 +351,7 @@ pub struct PlaybackHandle {
 }
 impl PlaybackHandle {
     pub(super) fn new(
-        worker: WorkerThread<PlaybackCommand, crate::AudioError>,
+        worker: WorkerThread<PlaybackMessage>,
         progress_handle: PlaybackProgressHandle,
         arbiter: std::sync::Arc<bae_track_audio::data_source::FetchArbiter>,
         playing_bytes: tokio::sync::watch::Receiver<Option<crate::track_buffered::PlayingBytes>>,
@@ -370,7 +373,12 @@ impl PlaybackHandle {
 
     /// Fire-and-forget; the service runs commands in order on its own thread.
     fn dispatch(&self, command: PlaybackCommand) {
-        self.worker.dispatch(command);
+        self.worker.dispatch(PlaybackMessage::Asked(command));
+    }
+
+    /// Send `command`, or say how the thread ended.
+    fn send(&self, command: PlaybackCommand) -> Result<(), WorkerEnd> {
+        self.worker.send(PlaybackMessage::Asked(command)).map_err(|ended| ended.end)
     }
 
     pub fn play(&self, track_id: String) {
@@ -383,7 +391,7 @@ impl PlaybackHandle {
         command: impl FnOnce(PlayReply) -> PlaybackCommand,
     ) -> Result<PlayOutcome, PlayError> {
         let (reply, answer) = oneshot::channel();
-        self.worker.send(command(reply)).map_err(|ended| PlayError::Ended(ended.end))?;
+        self.send(command(reply)).map_err(PlayError::Ended)?;
         answer.await.map_err(PlayError::Stopped)?
     }
     /// Play a release from `start_track_id`, or from its first track, or
@@ -602,7 +610,7 @@ impl PlaybackHandle {
         command: PlaybackCommand,
         answer: oneshot::Receiver<Result<T, QueueEditError>>,
     ) -> impl std::future::Future<Output = Result<T, QueueEditError>> + Send + 'static {
-        let sent = self.worker.send(command).map_err(|ended| QueueEditError::Ended(ended.end));
+        let sent = self.send(command).map_err(QueueEditError::Ended);
         async move {
             sent?;
             answer.await.map_err(QueueEditError::Stopped)?
@@ -622,9 +630,9 @@ impl PlaybackHandle {
     /// second teardown does nothing.
     pub async fn shutdown(&self) {
         self.worker
-            .stop_and_join_async(|command_tx| {
+            .stop_and_join_async(|thread| {
                 let (tx, rx) = oneshot::channel();
-                dispatch_command(command_tx, PlaybackCommand::Shutdown(tx));
+                ask_to_shut_down(thread, tx);
                 await_shutdown_ack(rx)
             })
             .await;
@@ -633,9 +641,9 @@ impl PlaybackHandle {
     /// Teardown for `Drop`, needing no async runtime: stop the service and join
     /// its thread, which saves state before it exits and releases the store lock.
     pub fn stop_and_join(&self) {
-        self.worker.stop_and_join(|command_tx| {
+        self.worker.stop_and_join(|thread| {
             let (tx, _rx) = oneshot::channel();
-            dispatch_command(command_tx, PlaybackCommand::Shutdown(tx));
+            ask_to_shut_down(thread, tx);
         });
     }
 

@@ -4,6 +4,7 @@ use crate::audio_output::{
 };
 use crate::service::tests::*;
 use bae_audio::track_stream::create_track_stream_pair;
+use bae_util::task_failure::Bug;
 use bae_util::test_channels::HANG_GUARD;
 
 #[tokio::test]
@@ -281,7 +282,7 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
     );
     let (shutdown_tx, _shutdown_rx) = tokio::sync::oneshot::channel::<()>();
     dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
-    service.run(&mut command_rx).await;
+    service.run(None, &mut command_rx).await;
 
     diagnostics.flush().await.expect("flush succeeds");
     let names = transport.event_names();
@@ -387,7 +388,7 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     dispatch_command(&command_tx, PlaybackCommand::SaveState(saved_tx));
     dispatch_command(&command_tx, PlaybackCommand::Shutdown(shutdown_tx));
 
-    service.run(&mut command_rx).await;
+    service.run(None, &mut command_rx).await;
 
     saved_rx.await.expect("the next command is served");
     shutdown_rx.await.expect("the service shuts down when asked");
@@ -439,7 +440,7 @@ async fn a_playing_track_deleted_by_sync_stops_playback() {
         dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
         stopped
     };
-    let ((), stopped) = tokio::join!(service.run(&mut command_rx), delete_then_watch);
+    let ((), stopped) = tokio::join!(service.run(None, &mut command_rx), delete_then_watch);
 
     assert!(stopped.is_ok(), "deleting the playing track's row stops playback");
 }
@@ -492,7 +493,7 @@ async fn the_loop_completes_an_airplay_track_when_its_last_audio_is_heard() {
         dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
         completed
     };
-    let ((), completed) = tokio::join!(service.run(&mut command_rx), hear_the_tail);
+    let ((), completed) = tokio::join!(service.run(None, &mut command_rx), hear_the_tail);
 
     assert!(completed.is_ok(), "the track completes once its last audio is heard");
 }
@@ -533,30 +534,68 @@ async fn the_loop_drains_an_event_the_moment_the_output_pushes_it() {
         dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
         completed
     };
-    let ((), completed) = tokio::join!(service.run(&mut command_rx), push_the_completion);
+    let ((), completed) = tokio::join!(service.run(None, &mut command_rx), push_the_completion);
 
     assert!(completed.is_ok(), "the pushed completion is handled");
 }
 
-/// An audio device whose opening waits for the test, then panics: a bug in
-/// the playback thread outside any command, which ends the thread.
-struct OpenPanicsDevice(std::sync::mpsc::Receiver<()>);
+/// How one opening of a [`ScriptedDevice`] goes.
+enum Opening {
+    Panics,
+    Fails,
+    Opens,
+}
 
-impl crate::audio_output::AudioOutputDevice for OpenPanicsDevice {
-    fn open_output(&self) -> Result<Box<dyn crate::audio_output::AudioOutput>, AudioError> {
-        self.0.recv().expect("the test lets the device open");
-        panic!("the device would not open")
+/// An audio device whose openings go as the test scripted them, each waiting
+/// for the test's word first, and that counts them.
+struct ScriptedDevice {
+    script: Mutex<std::collections::VecDeque<Opening>>,
+    openings: Arc<std::sync::atomic::AtomicUsize>,
+    allowed: Mutex<std::sync::mpsc::Receiver<()>>,
+}
+
+/// The test's side of a [`ScriptedDevice`]: its word to each opening, and how
+/// many have happened.
+struct DeviceScript {
+    allow: std::sync::mpsc::Sender<()>,
+    openings: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl DeviceScript {
+    fn allow(&self, openings: usize) {
+        for _ in 0..openings {
+            self.allow.send(()).expect("the device waits for the test");
+        }
+    }
+
+    fn openings(&self) -> usize {
+        self.openings.load(std::sync::atomic::Ordering::SeqCst)
     }
 }
 
-/// An audio device whose opening waits for the test, then fails: the device
-/// is unavailable.
-struct OpenFailsDevice(std::sync::mpsc::Receiver<()>);
+fn scripted_device(
+    script: impl IntoIterator<Item = Opening>,
+) -> (Box<dyn crate::audio_output::AudioOutputDevice>, DeviceScript) {
+    let (allow, allowed) = std::sync::mpsc::channel();
+    let openings = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let device = ScriptedDevice {
+        script: Mutex::new(script.into_iter().collect()),
+        openings: openings.clone(),
+        allowed: Mutex::new(allowed),
+    };
+    (Box::new(device), DeviceScript { allow, openings })
+}
 
-impl crate::audio_output::AudioOutputDevice for OpenFailsDevice {
+impl crate::audio_output::AudioOutputDevice for ScriptedDevice {
     fn open_output(&self) -> Result<Box<dyn crate::audio_output::AudioOutput>, AudioError> {
-        self.0.recv().expect("the test lets the device open");
-        Err(AudioError::DeviceUnavailable)
+        self.allowed.lock().unwrap().recv().expect("the test lets the device open");
+        self.openings.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let opening = self.script.lock().unwrap().pop_front();
+        match opening.expect("an opening the test scripted") {
+            Opening::Panics => panic!("the device would not open"),
+            Opening::Fails => Err(AudioError::DeviceUnavailable),
+            Opening::Opens => Ok(Box::new(crate::audio_output::FailingAudioOutput)),
+        }
     }
 }
 
@@ -603,19 +642,30 @@ async fn heard_until_stopped(progress: &mut crate::PlaybackProgressFeed) -> Vec<
     .expect("the player's followers hear it stopped")
 }
 
-/// A panic that ends the playback thread ends the player with it: whoever
-/// follows playback hears it stopped with an error, a play sent after it
-/// fails with the thread's bug, and the bug is reported once. Sabotage: leave
-/// the thread's end unheard by its handle, and the followers hear nothing.
+/// Every failure `progress` has heard so far, leaving it empty.
+fn failures_heard(progress: &mut crate::PlaybackProgressFeed) -> Vec<crate::PlaybackErrorReason> {
+    let mut failures = Vec::new();
+    while let Ok(event) = progress.try_recv() {
+        if let PlaybackProgress::PlaybackError { reason } = event {
+            failures.push(reason);
+        }
+    }
+    failures
+}
+
+/// A panic that ends a playback service ends what it played: whoever follows
+/// playback hears it stopped with an error, once, the bug is reported once,
+/// and the next press reaches a fresh service, which reports nothing of the
+/// one that ended. Sabotage: start no fresh service, and the play fails.
 #[tokio::test]
-async fn a_panic_that_ends_the_playback_thread_ends_the_player() {
+async fn the_press_after_a_panic_ended_the_service_reaches_a_fresh_one() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let store = seeded_store(&[]).await;
-    let (open, opening) = std::sync::mpsc::channel();
-    let playback = start_playback_on(&store, diagnostics, Box::new(OpenPanicsDevice(opening)));
+    let (device, script) = scripted_device([Opening::Panics, Opening::Opens]);
+    let playback = start_playback_on(&store, diagnostics, device);
     let mut progress = playback.subscribe_progress();
-    open.send(()).unwrap();
+    script.allow(2);
 
     let heard = heard_until_stopped(&mut progress).await;
     let bug = Bug {
@@ -633,13 +683,8 @@ async fn a_panic_that_ends_the_playback_thread_ends_the_player() {
         "{heard:?}"
     );
     let played = playback.play_library_shuffled().await;
-    assert!(
-        matches!(
-            &played,
-            Err(PlayError::Ended(bae_util::worker_thread::WorkerEnd::Panicked(heard))) if heard == &bug
-        ),
-        "{played:?}"
-    );
+    assert!(matches!(played, Ok(PlayOutcome::NothingToPlay)), "{played:?}");
+    assert_eq!(failures_heard(&mut progress), Vec::new());
     assert_eq!(
         bugs.reports(),
         vec![(
@@ -649,20 +694,20 @@ async fn a_panic_that_ends_the_playback_thread_ends_the_player() {
     );
 }
 
-/// An audio device that won't open as playback starts ends the player: whoever
-/// follows playback hears it stopped because the device isn't available, a
-/// play sent after it fails with the device's failure, and nothing is reported
-/// as a bug, since the device's failure isn't bae's. Sabotage: let the thread
-/// return without its failure, and the followers hear nothing.
+/// An audio device that won't open as playback starts ends that service:
+/// whoever follows playback hears it stopped because the device isn't
+/// available, nothing is reported as a bug, since the device's failure isn't
+/// bae's, and a press once the device is back reaches a fresh service.
+/// Sabotage: start no fresh service, and the volume is never heard.
 #[tokio::test]
-async fn an_audio_device_that_will_not_open_ends_the_player() {
+async fn the_press_after_the_device_failed_reaches_a_fresh_service() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let store = seeded_store(&[]).await;
-    let (open, opening) = std::sync::mpsc::channel();
-    let playback = start_playback_on(&store, diagnostics, Box::new(OpenFailsDevice(opening)));
+    let (device, script) = scripted_device([Opening::Fails, Opening::Opens]);
+    let playback = start_playback_on(&store, diagnostics, device);
     let mut progress = playback.subscribe_progress();
-    open.send(()).unwrap();
+    script.allow(2);
 
     let heard = heard_until_stopped(&mut progress).await;
     assert!(
@@ -679,15 +724,93 @@ async fn an_audio_device_that_will_not_open_ends_the_player() {
         ),
         "{heard:?}"
     );
-    let played = playback.play_library_shuffled().await;
-    assert!(
-        matches!(
-            &played,
-            Err(PlayError::Ended(bae_util::worker_thread::WorkerEnd::Failed(
-                AudioError::DeviceUnavailable
-            )))
-        ),
-        "{played:?}"
-    );
+    playback.set_volume(0.5);
+    let volume = bae_util::test_channels::next_matching(&mut progress, HANG_GUARD, |event| {
+        matches!(event, PlaybackProgress::VolumeChanged { volume } if volume == 0.5).then_some(())
+    })
+    .await;
+    assert_eq!(volume, Some(()));
     assert_eq!(bugs.reports(), Vec::new());
+}
+
+/// With nothing pressed after a service ended, no fresh one starts: a device
+/// that can't open is tried once. Sabotage: start the fresh service straight
+/// after the report, and the shutdown finds the device opened twice.
+#[tokio::test]
+async fn no_fresh_service_starts_until_a_press() {
+    let store = seeded_store(&[]).await;
+    let (device, script) = scripted_device([Opening::Fails, Opening::Fails]);
+    let playback = start_playback_on(&store, bae_diagnostics::Diagnostics::noop(), device);
+    let mut progress = playback.subscribe_progress();
+    script.allow(2);
+    heard_until_stopped(&mut progress).await;
+
+    playback.shutdown().await;
+
+    assert_eq!(script.openings(), 1);
+}
+
+/// A device that can't open is tried once for each press, and each death is
+/// reported once: the play fails, visibly, and nothing tries again by itself.
+/// Sabotage: restart whenever a service ends, and the device opens on and on.
+#[tokio::test]
+async fn a_service_that_dies_on_every_start_is_started_once_per_press() {
+    let store = seeded_store(&[]).await;
+    let (device, script) = scripted_device([Opening::Fails, Opening::Fails, Opening::Fails]);
+    let playback = start_playback_on(&store, bae_diagnostics::Diagnostics::noop(), device);
+    let mut progress = playback.subscribe_progress();
+    script.allow(3);
+    heard_until_stopped(&mut progress).await;
+
+    let played = playback.play_library_shuffled().await;
+    assert!(matches!(played, Err(PlayError::Stopped(_))), "{played:?}");
+    let heard = heard_until_stopped(&mut progress).await;
+    let failures = heard.iter().filter(|e| matches!(e, PlaybackProgress::PlaybackError { .. }));
+    assert_eq!(failures.count(), 1, "{heard:?}");
+
+    playback.shutdown().await;
+    assert_eq!(script.openings(), 2);
+}
+
+/// Commands sent while a service is dying wait for the next one: the first
+/// starts it, and the rest reach it in order, none lost. Sabotage: drop what
+/// the ended service left unread, and the play never answers.
+#[tokio::test]
+async fn commands_sent_while_the_service_dies_reach_the_next_one() {
+    let store = seeded_store(&[]).await;
+    let (device, script) = scripted_device([Opening::Fails, Opening::Opens]);
+    let playback = start_playback_on(&store, bae_diagnostics::Diagnostics::noop(), device);
+    let mut progress = playback.subscribe_progress();
+
+    playback.set_volume(0.25);
+    let played = playback.play_library_shuffled();
+    let (played, ()) =
+        tokio::time::timeout(HANG_GUARD, async { tokio::join!(played, async { script.allow(2) }) })
+            .await
+            .expect("the play is answered");
+
+    assert!(matches!(played, Ok(PlayOutcome::NothingToPlay)), "{played:?}");
+    let volume = bae_util::test_channels::next_matching(&mut progress, HANG_GUARD, |event| {
+        matches!(event, PlaybackProgress::VolumeChanged { volume } if volume == 0.25).then_some(())
+    })
+    .await;
+    assert_eq!(volume, Some(()));
+}
+
+/// Saving state with no service running has nothing to save and starts none:
+/// an app going to the background is no press. Sabotage: let it start a
+/// service, and the shutdown finds the device opened twice.
+#[tokio::test]
+async fn saving_state_starts_no_fresh_service() {
+    let store = seeded_store(&[]).await;
+    let (device, script) = scripted_device([Opening::Fails, Opening::Opens]);
+    let playback = start_playback_on(&store, bae_diagnostics::Diagnostics::noop(), device);
+    let mut progress = playback.subscribe_progress();
+    script.allow(2);
+    heard_until_stopped(&mut progress).await;
+
+    tokio::time::timeout(HANG_GUARD, playback.save_state()).await.expect("the save is answered");
+    playback.shutdown().await;
+
+    assert_eq!(script.openings(), 1);
 }

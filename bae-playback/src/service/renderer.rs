@@ -270,9 +270,7 @@ impl std::fmt::Debug for RemoteConnect {
 /// The event callback the session reports through: it dispatches each session
 /// event back onto the service's command loop as a `RemoteEvent` command, so
 /// event handling stays serial with every other command.
-pub(super) fn event_callback(
-    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
-) -> crate::renderer::EventCallback {
+pub(super) fn event_callback(command_tx: OwnCommands) -> crate::renderer::EventCallback {
     Arc::new(move |event: RendererSessionEvent| {
         dispatch_command(&command_tx, PlaybackCommand::RemoteEvent(event));
     })

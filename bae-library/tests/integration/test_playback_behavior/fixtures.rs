@@ -263,6 +263,26 @@ impl SidePauseTestFixture {
         pause_between_sides: bool,
         countdown: SidePauseCountdown,
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_settings_on(format, positions, pause_between_sides, countdown, |clock| clock)
+            .await
+    }
+
+    /// [`Self::with_countdown`] with the service timing the countdown on the
+    /// clock `service_clock` makes of the fixture's.
+    pub(super) async fn with_countdown_on(
+        countdown: SidePauseCountdown,
+        service_clock: impl FnOnce(bae_playback::PlaybackClockRef) -> bae_playback::PlaybackClockRef,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_settings_on("Vinyl", ["A1", "A2", "B1"], true, countdown, service_clock).await
+    }
+
+    async fn with_settings_on(
+        format: &str,
+        positions: [&str; 3],
+        pause_between_sides: bool,
+        countdown: SidePauseCountdown,
+        service_clock: impl FnOnce(bae_playback::PlaybackClockRef) -> bae_playback::PlaybackClockRef,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let import_ids = SequentialIds::new();
         let import_id = import_ids.new_id().to_string();
         let (library, imported) = imported_release_setup(
@@ -282,8 +302,11 @@ impl SidePauseTestFixture {
 
         let clock = Arc::new(bae_playback::ManualPlaybackClock::new(side_pause_clock_start()));
         let (playback_handle, capture_stream_rx, audio_clock) =
-            bae_library::test_libraries::start_manual_playback_with_clock(&library, clock.clone())
-                .await;
+            bae_library::test_libraries::start_manual_playback_with_clock(
+                &library,
+                service_clock(clock.clone()),
+            )
+            .await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,

@@ -1,6 +1,8 @@
 //! # Playback Service
 //!
-//! Runs on its own thread and drives playback from a command channel.
+//! Runs on its own thread and drives playback from a command channel. The
+//! thread (`thread.rs`) starts a fresh service for the next command after one
+//! ends.
 //!
 //! ## Audio state
 //!
@@ -83,6 +85,7 @@ mod sides;
 mod slot;
 mod starvation;
 mod state;
+mod thread;
 mod volume;
 
 use crate::stream_pipeline::{
@@ -90,7 +93,7 @@ use crate::stream_pipeline::{
     DecodeFailureReport, DecoderSetup,
 };
 use api::PlayReply;
-pub(crate) use api::{dispatch_command, PlaybackCommand};
+pub(crate) use api::PlaybackCommand;
 pub use api::{
     LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseReason, PlaybackState,
     QueueEditError,
@@ -107,6 +110,7 @@ pub use sides::{
 };
 use slot::{LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase};
 use starvation::StarvationEpisode;
+pub(crate) use thread::{dispatch_command, OwnCommands, PlaybackMessage};
 use volume::OutputVolume;
 
 #[cfg(test)]
@@ -465,7 +469,7 @@ pub struct PlaybackService {
     /// Where the service, its decoders, its fills and its watchers report a
     /// panic as the bug it is.
     diagnostics: Diagnostics,
-    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    command_tx: OwnCommands,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
     /// The queue: its tables, which the queue screens read, and the entry
     /// playing.
@@ -476,7 +480,7 @@ pub struct PlaybackService {
     /// The device both players open their outputs from: `audio_output` at
     /// startup, the preview's on its first play. Held so a preview uses the
     /// device the service started with (in tests, one with no hardware).
-    audio_device: Box<dyn AudioOutputDevice>,
+    audio_device: Arc<dyn AudioOutputDevice>,
     /// The main player's output. AirPlay swaps this for the receiver sink and
     /// puts the local one back when it ends.
     audio_output: PlayerOutput,
@@ -582,22 +586,6 @@ impl AudioOutputDevice for SystemAudioOutputDevice {
     fn open_output(&self) -> Result<Box<dyn AudioOutput>, crate::audio_output::AudioError> {
         Ok(Box::new(crate::aaudio_output::AAudioOutput))
     }
-}
-
-/// Open the main player's output from the caller's device, or the system's,
-/// which tells `report` when a stream's device reports the stream can't go
-/// on, at full volume until playback restores the level the person set; or
-/// why the device wouldn't open, which ends the service thread.
-fn open_audio_device_and_output(
-    custom_device: Option<Box<dyn AudioOutputDevice>>,
-    report: crate::audio_output::InvalidationReport,
-) -> Result<(Box<dyn AudioOutputDevice>, PlayerOutput), crate::AudioError> {
-    let audio_device: Box<dyn AudioOutputDevice> = match custom_device {
-        Some(device) => device,
-        None => Box::new(SystemAudioOutputDevice::new(report)),
-    };
-    let output = audio_device.open_output()?;
-    Ok((audio_device, PlayerOutput::new(output, AudioOutputControls::new(crate::Volume::FULL))))
 }
 
 /// Map a command to its telemetry kind, or `None` for one not recorded:

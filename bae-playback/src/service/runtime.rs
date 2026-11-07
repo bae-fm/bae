@@ -1,9 +1,5 @@
 use super::*;
 
-use bae_util::task_failure::{caught, caught_sync, Bug};
-use bae_util::worker_thread::{WorkerEnd, WorkerThread};
-use std::ops::ControlFlow;
-
 impl PlaybackService {
     /// Hand the current track's reader fetch priority over a preload's. Called
     /// wherever a track becomes the current one.
@@ -657,7 +653,7 @@ impl PlaybackService {
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
-            None,
+            Box::new(|report| Arc::new(SystemAudioOutputDevice::new(report))),
             clock,
             audio_focus,
         )
@@ -682,6 +678,7 @@ impl PlaybackService {
         audio_device: Box<dyn AudioOutputDevice>,
         clock: crate::PlaybackClockRef,
     ) -> PlaybackHandle {
+        let audio_device: Arc<dyn AudioOutputDevice> = Arc::from(audio_device);
         Self::start_inner(
             store,
             records,
@@ -694,301 +691,12 @@ impl PlaybackService {
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
-            Some(audio_device),
+            Box::new(move |_report| audio_device.clone()),
             clock,
             // These tests play on the desktop, where nothing shares the speaker.
             crate::AudioFocus::Unshared,
         )
     }
-
-    pub(super) fn start_inner(
-        store: bae_store::Store,
-        records: bae_records::Records,
-        people: bae_people::People,
-        ids: coven::IdSourceRef,
-        queue_tables: crate::tables::PlaybackQueueTables,
-        now_row: crate::tables::PlaybackNowRow,
-        timeline_row: crate::tables::PlaybackTimelineRow,
-        diagnostics: Diagnostics,
-        runtime_handle: tokio::runtime::Handle,
-        position_update_interval_ms: u32,
-        restore_playback: bool,
-        custom_device: Option<Box<dyn AudioOutputDevice>>,
-        clock: crate::PlaybackClockRef,
-        audio_focus: crate::AudioFocus,
-    ) -> PlaybackHandle {
-        let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-        let arbiter = FetchArbiter::new();
-        let (playing_bytes, playing_bytes_rx) = tokio::sync::watch::channel(None);
-        let progress_handle = PlaybackProgressHandle::new(
-            progress_rx,
-            runtime_handle.clone(),
-            clock.clone(),
-            now_row,
-            timeline_row,
-            diagnostics.clone(),
-        );
-        let playback_queue = PlaybackQueue::new(queue_tables);
-        let progress_handle_for_completion = progress_handle.clone();
-        let progress_tx_for_end = progress_tx.clone();
-        let runtime_handle_for_end = runtime_handle.clone();
-        let diagnostics_for_end = diagnostics.clone();
-        let service_arbiter = arbiter.clone();
-        let worker = WorkerThread::spawn(
-            "playback service thread",
-            diagnostics.bug_sink(),
-            move |command_tx, command_rx| {
-                let command_tx_for_completion = command_tx.clone();
-                let follower_diagnostics = diagnostics.clone();
-                runtime_handle.spawn(async move {
-                    let mut progress_rx = progress_handle_for_completion.subscribe_all();
-                    while let Some(progress) = progress_rx.recv().await {
-                        // One event at a time: a panic turning one into a
-                        // command is reported, and the next is served.
-                        let followed = caught_sync("follow a playback event", || {
-                            follow_progress(&command_tx_for_completion, progress)
-                        });
-                        if let Err(bug) = followed {
-                            follower_diagnostics.panicked(bug);
-                        }
-                    }
-                });
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("Failed to create runtime");
-                rt.block_on(async move {
-                    let (audio_device, audio_output) =
-                        open_audio_device_and_output(custom_device, {
-                            let command_tx = command_tx.clone();
-                            crate::audio_output::InvalidationReport::new(move || {
-                                dispatch_command(&command_tx, PlaybackCommand::OutputInvalidated)
-                            })
-                        })?;
-                    let preview = PreviewPlayer::new(
-                        progress_tx.clone(),
-                        command_tx.clone(),
-                        position_update_interval_ms,
-                        diagnostics.clone(),
-                    );
-                    let staged_sides = advance::track_infos_follow(
-                        &store,
-                        "the staged crossing's sides",
-                        &diagnostics,
-                    );
-                    let held_tracks = advance::track_infos_follow(
-                        &store,
-                        "the tracks playback holds",
-                        &diagnostics,
-                    );
-                    let mut service = PlaybackService {
-                        store,
-                        records,
-                        people,
-                        ids,
-                        diagnostics,
-                        command_tx: command_tx.clone(),
-                        progress_tx,
-                        playback_queue,
-                        audio_focus,
-                        audio_device,
-                        audio_output,
-                        output: None,
-                        slot: PlaybackSlot::Stopped,
-                        listening: None,
-                        buffered_listening: Vec::new(),
-                        audible_completion: None,
-                        load_generation_counter: 0,
-                        preloaded_next: None,
-                        volume: OutputVolume::new(),
-                        preview,
-                        position_update_interval_ms,
-                        file_buffers: FileBuffers::new(service_arbiter, playing_bytes),
-                        starvation_episode: None,
-                        persisted_position: None,
-                        first_audio_pending: None,
-                        renderer: Renderer::Local,
-                        clock,
-                        staged_sides,
-                        held_tracks,
-                    };
-                    // "Restore on launch" off starts with nothing in playback;
-                    // opening the library emptied the queue for it.
-                    if restore_playback {
-                        let restored =
-                            caught("restore playback", service.restore_from_cache()).await;
-                        if let Err(failed) = restored {
-                            service.recover_from_panic(failed).await;
-                        }
-                    } else {
-                        debug!("restore on launch is off; starting with nothing in playback");
-                    }
-                    service.run(command_rx).await;
-                    Ok(())
-                })
-            },
-        );
-        follow_the_thread_s_end(
-            &worker,
-            progress_tx_for_end,
-            diagnostics_for_end,
-            &runtime_handle_for_end,
-        );
-        PlaybackHandle::new(worker, progress_handle, arbiter, playing_bytes_rx)
-    }
-
-    /// Serve `commands`, and what else wakes the loop, until a shutdown has
-    /// been served.
-    pub(super) async fn run(
-        &mut self,
-        commands: &mut tokio_mpsc::UnboundedReceiver<PlaybackCommand>,
-    ) {
-        info!("PlaybackService started");
-        let mut countdown = deadline_wait::DeadlineWait::new();
-        let mut audible = deadline_wait::DeadlineWait::new();
-        loop {
-            let follows =
-                caught_sync("follow the deadlines, the staged sides and the held tracks", || {
-                    countdown.follow(self.side_pause_countdown_deadline(), self.clock.as_ref());
-                    audible.follow(self.audible_deadline(), self.clock.as_ref());
-                    self.follow_staged_sides();
-                    self.follow_held_tracks();
-                });
-            if let Err(failed) = follows {
-                self.recover_from_panic(failed).await;
-                continue;
-            }
-            let wake = tokio::select! {
-                (_, sides) = self.staged_sides.next() => Wake::StagedSides(sides),
-                () = audio_events_ready(&self.output) => Wake::AudioEvents,
-                deadline = countdown.elapsed(), if countdown.is_armed() => Wake::CountdownElapsed(deadline),
-                _ = audible.elapsed(), if audible.is_armed() => Wake::AudibleDeadline,
-                Some(command) = commands.recv() => Wake::Command(command),
-                (held, infos) = self.held_tracks.next() => Wake::HeldTracks { held, infos },
-                else => break,
-            };
-            // One wake at a time under one boundary: a panic in it is reported
-            // and stops playback with an error, and the loop serves the next.
-            match caught("serve playback", self.serve(wake)).await {
-                Ok(ControlFlow::Continue(())) => {}
-                Ok(ControlFlow::Break(())) => break,
-                Err(failed) => self.recover_from_panic(failed).await,
-            }
-        }
-        info!("PlaybackService stopped");
-    }
-
-    /// Act on what woke the loop. `Break` once a shutdown has been served.
-    async fn serve(&mut self, wake: Wake) -> ControlFlow<()> {
-        match wake {
-            Wake::StagedSides(sides) => self.handle_staged_crossing_sides(sides).await,
-            Wake::AudioEvents => {
-                self.drain_current_audio_events().await;
-                self.checkpoint_listening().await;
-            }
-            Wake::AudibleDeadline => {
-                self.checkpoint_listening().await;
-                self.publish_audible_completion();
-            }
-            Wake::CountdownElapsed(deadline) => self.side_pause_countdown_elapsed(deadline).await,
-            Wake::Command(command) => return self.handle_command(command).await,
-            Wake::HeldTracks { held, infos } => self.handle_held_tracks(held, infos).await,
-        }
-        ControlFlow::Continue(())
-    }
-
-    /// A panic stopped what the loop was serving: report it, and stop
-    /// playback with an error. The pipeline it left can't be trusted, so its
-    /// output goes first, before the stop reads anything from it.
-    async fn recover_from_panic(&mut self, bug: Bug) {
-        let failed = self.diagnostics.panicked(bug);
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::PlaybackError {
-                reason: crate::PlaybackErrorReason::internal(&failed),
-            },
-        );
-        self.discard_output();
-        if let Err(again) = caught("stop playback after a panic", self.stop()).await {
-            self.diagnostics.panicked(again);
-        }
-    }
-}
-
-/// When the service thread ends on a panic, or because the audio output
-/// won't open, playback ends with it: whoever follows playback hears it
-/// stopped with why, as a failure or a panic the loop caught stops it. A
-/// thread that returned was shut down, and says nothing more.
-fn follow_the_thread_s_end(
-    worker: &WorkerThread<PlaybackCommand, crate::AudioError>,
-    progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-    diagnostics: Diagnostics,
-    runtime_handle: &tokio::runtime::Handle,
-) {
-    let worker = worker.clone();
-    runtime_handle.spawn(async move {
-        let reason = match worker.ended().await {
-            WorkerEnd::Returned => return,
-            WorkerEnd::Failed(error) => super::output::output_start_failed(
-                &diagnostics,
-                "open the audio output",
-                &PlaybackError::AudioOutput(error),
-            ),
-            WorkerEnd::Panicked(bug) => crate::PlaybackErrorReason::internal(&bug),
-        };
-        emit_progress(&progress_tx, PlaybackProgress::PlaybackError { reason });
-        emit_progress(
-            &progress_tx,
-            PlaybackProgress::StateChanged { state: PlaybackState::Stopped },
-        );
-    });
-}
-
-/// Turn a progress event into the command it asks of the service loop: a
-/// completed track advances the queue, and a mid-flight failure halts playback.
-fn follow_progress(
-    command_tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
-    progress: PlaybackProgress,
-) {
-    match progress {
-        PlaybackProgress::TrackCompleted { track_id } => {
-            info!("Auto-advance: Track completed, sending AutoAdvance command: {track_id}");
-            dispatch_command(command_tx, PlaybackCommand::AutoAdvance { track_id });
-        }
-        // A mid-flight read failure fails the buffer and the decoder exits
-        // without a TrackCompleted, so without this the UI would sit in
-        // Playing forever.
-        PlaybackProgress::PlaybackError { .. } => {
-            dispatch_command(command_tx, PlaybackCommand::HaltOnError);
-        }
-        _ => {}
-    }
-}
-
-/// Complete once the output, while there is one, pushed audio events.
-async fn audio_events_ready(output: &Option<OutputStream>) {
-    match output {
-        Some(output) => output.audio_events.ready().await,
-        None => std::future::pending().await,
-    }
-}
-
-/// What woke the service loop.
-enum Wake {
-    StagedSides(Vec<PlaybackTrackInfo>),
-    /// The output pushed audio events: drain them.
-    AudioEvents,
-    CountdownElapsed(chrono::DateTime<chrono::Utc>),
-    /// Audio still in the AirPlay receiver has been heard, or a play in it
-    /// came to count as played (`audible_deadline`).
-    AudibleDeadline,
-    Command(PlaybackCommand),
-    /// The library's facts of the tracks playback holds, `held`, which
-    /// leave out each one it no longer holds.
-    HeldTracks {
-        held: Vec<String>,
-        infos: Vec<PlaybackTrackInfo>,
-    },
 }
 
 #[cfg(test)]

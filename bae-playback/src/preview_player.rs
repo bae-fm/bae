@@ -20,7 +20,7 @@ use crate::audio_output::{
     PlayerOutput,
 };
 use crate::progress::{emit_progress, PlaybackProgress, PreviewState};
-use crate::service::{dispatch_command, PlaybackCommand};
+use crate::service::{dispatch_command, OwnCommands, PlaybackCommand};
 use crate::source::TrackFmt;
 use crate::stream_pipeline::{
     log_stream_diagnostic, report_dropped_audio_events, start_stream_pipeline, DecodeFailureReport,
@@ -88,7 +88,7 @@ pub(crate) struct PreviewPlayer {
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
     /// Command sink, used by the event listener to post `PreviewCompleted`
     /// back to the service's command loop.
-    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    command_tx: OwnCommands,
     /// How often (ms) the audio callback emits position updates to the UI.
     position_update_interval_ms: u32,
     /// Separate audio output for preview, opened from the service's audio device
@@ -146,7 +146,7 @@ struct ActivePreview {
 impl PreviewPlayer {
     pub(crate) fn new(
         progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-        command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+        command_tx: OwnCommands,
         position_update_interval_ms: u32,
         diagnostics: Diagnostics,
     ) -> Self {
@@ -541,7 +541,7 @@ impl PreviewPlayer {
 fn spawn_preview_listener(
     diagnostics: &Diagnostics,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    command_tx: OwnCommands,
     audio_events: AudioEventReceiver,
 ) -> ReportedTask {
     let on_panic_progress = progress_tx.clone();
@@ -567,7 +567,7 @@ fn spawn_preview_listener(
 async fn listen_to_preview(
     diagnostics: Diagnostics,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    command_tx: OwnCommands,
     mut audio_events: AudioEventReceiver,
 ) {
     loop {

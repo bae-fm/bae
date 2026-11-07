@@ -5,6 +5,7 @@ use crate::audio_output::{
 use crate::capture_output::{
     AudioClock, CaptureAudioDevice, ManualCaptureAudioOutput, ManualCaptureDevice,
 };
+use crate::service::PlaybackMessage;
 use bae_audio::test_samples::{filled_sparse_buffer, samples_as_f32};
 use std::sync::Arc;
 
@@ -26,7 +27,7 @@ async fn preview_play_rejects_unprobeable_file() {
     let path = temp_dir.path().join("not-audio.bin");
     std::fs::write(&path, b"not audio").unwrap();
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-    let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = OwnCommands::channel();
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
@@ -46,7 +47,7 @@ async fn preview_play_rejects_unprobeable_file() {
 #[tokio::test]
 async fn switching_previews_keeps_the_main_player_resume() {
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-    let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = OwnCommands::channel();
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
@@ -77,7 +78,7 @@ async fn preview_plays_only_the_requested_sample_window() {
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
 
     let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
-    let (command_tx, mut command_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, mut command_rx) = OwnCommands::channel();
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
     let (captured, mut capture_rx) = tokio_mpsc::unbounded_channel();
@@ -102,7 +103,10 @@ async fn preview_plays_only_the_requested_sample_window() {
         .await
         .expect("the bounded preview completes")
         .expect("bounded preview sends its completion command");
-    assert!(matches!(completed, PlaybackCommand::PreviewCompleted));
+    assert!(matches!(
+        completed,
+        PlaybackMessage::Own { command: PlaybackCommand::PreviewCompleted, .. }
+    ));
     let captured = captured.samples();
     assert_eq!(
         captured.len(),
@@ -135,7 +139,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-    let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = OwnCommands::channel();
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
     let (captured, mut capture_rx) = tokio_mpsc::unbounded_channel();
@@ -227,7 +231,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-    let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = OwnCommands::channel();
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
     let (captured, mut capture_rx) = tokio_mpsc::unbounded_channel();
@@ -292,7 +296,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
 #[tokio::test]
 async fn failed_preview_stream_start_leaves_no_active_preview() {
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-    let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = OwnCommands::channel();
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
     let buffer = create_sparse_buffer(0);
@@ -306,7 +310,7 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
     assert!(buffer.is_cancelled());
 
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-    let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = OwnCommands::channel();
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
@@ -325,7 +329,7 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
 #[tokio::test]
 async fn preview_listener_maps_completion_to_preview_completed() {
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-    let (command_tx, mut command_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, mut command_rx) = OwnCommands::channel();
     let player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
 
@@ -347,7 +351,7 @@ async fn preview_listener_maps_completion_to_preview_completed() {
         .await
         .expect("the listener dispatches")
         .expect("a command is sent");
-    assert!(matches!(cmd, PlaybackCommand::PreviewCompleted));
+    assert!(matches!(cmd, PlaybackMessage::Own { command: PlaybackCommand::PreviewCompleted, .. }));
     handle.abort();
 }
 
@@ -356,7 +360,7 @@ async fn preview_listener_maps_completion_to_preview_completed() {
 #[tokio::test]
 async fn failed_preview_seek_surfaces_idle() {
     let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
-    let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = OwnCommands::channel();
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
 
@@ -439,7 +443,7 @@ async fn ending_a_preview_closes_its_file() {
     std::fs::copy(fixture.join("Test Album.flac"), &first).unwrap();
     std::fs::copy(fixture.join("Test Album.flac"), &second).unwrap();
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-    let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = OwnCommands::channel();
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();

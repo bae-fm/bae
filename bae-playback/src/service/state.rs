@@ -204,18 +204,27 @@ impl PlaybackService {
         matches!(self.slot, PlaybackSlot::Active(_))
     }
 
-    /// Resume playback from the device-local resume row over the queue the
-    /// tables hold: the repeat mode, the volume `playback_now` kept, and the
-    /// entry playing, loaded paused at its saved position. A deleted track
-    /// left no entry to resume. A failed read of the queue resumes nothing;
-    /// a failed read of the volume resumes at full volume.
-    pub(super) async fn restore(&mut self, state: PlaybackResumeRow) {
-        info!("Restoring playback state: entry={:?}", state.current);
-        if let Err(e) = self.playback_queue.restore(state.current).await {
-            warn!("couldn't read the queue to resume: {e}; resuming nothing");
-            return;
+    /// Take up what the tables and rows hold after another service ended:
+    /// what [`Self::restore`] resumes when the resume row holds an entry, and
+    /// otherwise the repeat mode and the volume, which outlive a stop.
+    /// "Restore on launch" has no say: the queue is the one in use.
+    pub(super) async fn restore_after_an_end(&mut self) {
+        match crate::tables::load_playback_state(&self.store).await {
+            Ok(Some(state)) => self.restore(state).await,
+            Ok(None) => {
+                self.take_up_queue_and_level(None).await;
+            }
+            Err(e) => {
+                warn!("couldn't load the saved playback state: {e}; resuming nothing");
+                self.take_up_queue_and_level(None).await;
+            }
         }
+    }
 
+    /// Take up the queue the tables hold, playing `current`, and the volume
+    /// and mute `playback_now` kept. A failed read of the volume resumes at
+    /// full volume; whether the queue's read worked.
+    async fn take_up_queue_and_level(&mut self, current: Option<crate::QueueEntry>) -> bool {
         let (volume, is_muted) = match crate::tables::playback_level(&self.store).await {
             Ok(level) => level,
             Err(e) => {
@@ -230,6 +239,23 @@ impl PlaybackService {
         emit_progress(&self.progress_tx, PlaybackProgress::VolumeChanged { volume: volume.get() });
         if is_muted {
             emit_progress(&self.progress_tx, PlaybackProgress::MuteChanged { is_muted: true });
+        }
+
+        if let Err(e) = self.playback_queue.restore(current).await {
+            warn!("couldn't read the queue to resume: {e}; resuming nothing");
+            return false;
+        }
+        true
+    }
+
+    /// Resume playback from the device-local resume row over the queue the
+    /// tables hold: the repeat mode, the volume `playback_now` kept, and the
+    /// entry playing, loaded paused at its saved position. A deleted track
+    /// left no entry to resume. A failed read of the queue resumes nothing.
+    pub(super) async fn restore(&mut self, state: PlaybackResumeRow) {
+        info!("Restoring playback state: entry={:?}", state.current);
+        if !self.take_up_queue_and_level(state.current).await {
+            return;
         }
 
         // Start the current track paused at the saved position, or at its start

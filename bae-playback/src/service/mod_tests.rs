@@ -253,10 +253,10 @@ pub(super) fn playback_service_and_commands_over(
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (
     PlaybackService,
-    tokio_mpsc::UnboundedReceiver<PlaybackCommand>,
+    tokio_mpsc::UnboundedReceiver<PlaybackMessage>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
-    let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, command_rx) = OwnCommands::channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let preview =
         PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50, diagnostics.clone());
@@ -276,7 +276,7 @@ pub(super) fn playback_service_and_commands_over(
         audio_focus: crate::AudioFocus::Unshared,
         // These tests drive the handlers directly; a preview that starts a
         // stream gets an output from this device that can't build one.
-        audio_device: Box::new(crate::audio_output::FailingAudioDevice),
+        audio_device: Arc::new(crate::audio_output::FailingAudioDevice),
         audio_output: test_player_output(TestAudioOutput::new()),
         output: None,
         slot: PlaybackSlot::Stopped,

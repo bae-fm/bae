@@ -160,7 +160,7 @@ pub(super) async fn prepare_track_for_playback(
     track_id: &str,
     start: TrackStart,
     file_buffers: &mut FileBuffers,
-    command_tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    command_tx: &OwnCommands,
 ) -> Result<(PlaybackPreparedTrack, StreamDecodeParams), PlaybackError> {
     let resolved = ResolvedTrackAudio::resolve(records, track_id).await?;
     // Read the replay-gain mode once, here, and pass it down — rather than a
@@ -227,7 +227,7 @@ pub(super) async fn prepare_track_for_playback(
 /// next, which is what decides whether the failure halts playback. (The fill
 /// has already failed the buffer with the same error, unblocking the decoder.)
 fn playback_fill_error_handler(
-    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    command_tx: OwnCommands,
     buffer_id: u64,
 ) -> bae_track_audio::data_source::FillErrorHandler {
     Box::new(move |error| {

@@ -667,7 +667,7 @@ impl PlayerOutput {
 /// In production this is the system's default output device; a test substitutes
 /// a device whose outputs capture samples or refuse to build, so no test reaches
 /// for real audio hardware on either player.
-pub trait AudioOutputDevice: Send {
+pub trait AudioOutputDevice: Send + Sync {
     fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError>;
 }
 // -- Outputs that fail, for tests --
