@@ -1,29 +1,6 @@
 //! The library's lists and values the app pulls, each from a live query.
 
-use bae_util::test_channels::HANG_GUARD;
-
-/// Pull `next` until `wanted` takes a value, failing the test if none ever
-/// does.
-fn pull_until<T>(
-    handle: &super::AppHandle,
-    next: impl Fn() -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<T, crate::types::BridgeError>> + Send>,
-    >,
-    wanted: impl Fn(&T) -> bool,
-) -> T {
-    handle.runtime.block_on(async {
-        tokio::time::timeout(HANG_GUARD, async {
-            loop {
-                let value = next().await.expect("the pull reads");
-                if wanted(&value) {
-                    return value;
-                }
-            }
-        })
-        .await
-        .expect("the values get there")
-    })
-}
+use super::super::tests::pull_until;
 
 /// Each answers the library as it stands at once, and the profiles follow
 /// the one made.

@@ -113,6 +113,30 @@ fn queue_entry_precomputes_duration_clock() {
     assert_eq!((clock.minutes, clock.seconds), (3, 7));
 }
 
+/// Pull `next` until `wanted` takes a value, failing the test if none ever
+/// does.
+pub(super) fn pull_until<T, F>(
+    handle: &super::AppHandle,
+    next: impl Fn() -> F,
+    wanted: impl Fn(&T) -> bool,
+) -> T
+where
+    F: std::future::Future<Output = Result<T, crate::types::BridgeError>>,
+{
+    handle.runtime.block_on(async {
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+            loop {
+                let value = next().await.expect("the pull reads");
+                if wanted(&value) {
+                    return value;
+                }
+            }
+        })
+        .await
+        .expect("the values get there")
+    })
+}
+
 /// A handle over a fresh, empty library, built the way the app builds one.
 pub(super) fn fresh_bridge_handle(test_name: &str) -> TestHandle {
     let (runtime, library, root) = fresh_test_library(test_name);
@@ -673,35 +697,16 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
 #[cfg(desktop)]
 mod candidate_runtime {
     use super::*;
-    use bae_util::test_channels::HANG_GUARD;
-
-    /// Pull from `subscription` until a value satisfies `wanted`; only a
-    /// value that never comes fails.
-    fn pull_until(
-        handle: &Arc<super::super::AppHandle>,
-        subscription: &Arc<crate::CandidateRuntimeSubscription>,
-        wanted: impl Fn(&Option<crate::types::BridgeCandidateRuntimeSnapshot>) -> bool,
-    ) -> Option<crate::types::BridgeCandidateRuntimeSnapshot> {
-        handle.runtime.block_on(async {
-            tokio::time::timeout(HANG_GUARD, async {
-                loop {
-                    let value = subscription.clone().next().await.expect("the pull reads");
-                    if wanted(&value) {
-                        return value;
-                    }
-                }
-            })
-            .await
-            .expect("the subscription gets there")
-        })
-    }
 
     #[test]
     fn a_claimed_import_crosses_as_in_flight_and_leaves_when_it_fails() {
         let handle = fresh_bridge_handle("candidate-runtime-claim");
         let key = b"/watch/Album Title".to_vec();
         let watching = handle.handle().subscribe_candidate_runtime(key.clone());
-        assert!(pull_until(handle.handle(), &watching, |_| true).is_none(), "nothing runs yet");
+        assert!(
+            pull_until(handle.handle(), || watching.clone().next(), |_| true).is_none(),
+            "nothing runs yet"
+        );
 
         handle.handle().runtime.block_on(
             handle
@@ -710,7 +715,7 @@ mod candidate_runtime {
                 .claim_candidate_for_import_for_test(&key.clone().into(), "import-1"),
         );
 
-        let claimed = pull_until(handle.handle(), &watching, Option::is_some)
+        let claimed = pull_until(handle.handle(), || watching.clone().next(), Option::is_some)
             .expect("a claimed candidate is in flight");
         let import = claimed.import.clone().expect("a claimed candidate has an import in flight");
         assert!(
@@ -722,7 +727,7 @@ mod candidate_runtime {
         // A subscriber opening mid-import reads what is running.
         let joining = handle.handle().subscribe_candidate_runtime(key.clone());
         assert!(
-            pull_until(handle.handle(), &joining, |_| true)
+            pull_until(handle.handle(), || joining.clone().next(), |_| true)
                 .and_then(|runtime| runtime.import)
                 .is_some(),
             "a late subscriber reads the running import"
@@ -736,7 +741,7 @@ mod candidate_runtime {
 
         // A failed import is a row by the time it is announced, so the key
         // simply stops being in flight.
-        pull_until(handle.handle(), &watching, Option::is_none);
+        pull_until(handle.handle(), || watching.clone().next(), Option::is_none);
 
         // Cancelling ends the pulls: a pull after it answers that it was
         // cancelled.
