@@ -74,6 +74,10 @@ struct SyncSetupWizard: View {
     #if DEBUG
         /// The S3 form's fields, when a preview or a shot stages them.
         private var stagedS3: S3SetupFields?
+        #if BAE_OAUTH_PROVIDERS
+            /// The folder picker, when a preview or a shot stages it.
+            private var stagedBrowser: StorageFolderBrowser?
+        #endif
     #endif
 
     init(onDone: @escaping () -> Void) {
@@ -199,7 +203,7 @@ struct SyncSetupWizard: View {
         case .dropbox:
             #if BAE_OAUTH_PROVIDERS
                 OAuthFolderSetup(
-                    browser: cloudSyncSetup.folderBrowser(.dropbox),
+                    browser: folderBrowser(.dropbox),
                     leave: leave,
                     onConnected: connected
                 )
@@ -209,7 +213,7 @@ struct SyncSetupWizard: View {
         case .oneDrive:
             #if BAE_OAUTH_PROVIDERS
                 OAuthFolderSetup(
-                    browser: cloudSyncSetup.folderBrowser(.oneDrive),
+                    browser: folderBrowser(.oneDrive),
                     leave: leave,
                     onConnected: connected
                 )
@@ -224,6 +228,17 @@ struct SyncSetupWizard: View {
             #endif
         }
     }
+
+    #if BAE_OAUTH_PROVIDERS
+        private func folderBrowser(
+            _ provider: StorageFolderBrowser.Provider
+        ) -> StorageFolderBrowser {
+            #if DEBUG
+                if let stagedBrowser { return stagedBrowser }
+            #endif
+            return cloudSyncSetup.folderBrowser(provider)
+        }
+    #endif
 
     private var s3Form: S3SetupForm {
         #if DEBUG
@@ -316,12 +331,34 @@ private struct RestoreCodeStep: View {
     }
 }
 
+extension SetupStep where Leading == EmptyView {
+    init(
+        ready: Bool,
+        operation:
+            @escaping (BridgeLibrarySetup) async throws -> BridgeStorageSetup,
+        leave: @escaping () -> Void,
+        onConnected: @escaping (BridgeStorageSetup) -> Void,
+        claim: @escaping (any Error) -> Bool = { _ in false },
+        @ViewBuilder fields: () -> Fields
+    ) {
+        self.init(
+            ready: ready,
+            operation: operation,
+            leave: leave,
+            onConnected: onConnected,
+            claim: claim,
+            leading: { EmptyView() },
+            fields: fields
+        )
+    }
+}
+
 /// A setup step's fields above its footer: Cancel, which goes back one screen
 /// and, while the connection is set up, stops it, and the one action. The
 /// error stays below the fields while they scroll. While the connection is set
 /// up, the step it runs shows over its bar in place of the fields, with only
 /// Cancel under it, and a cancel under way shows there in its place.
-struct SetupStep<Fields: View>: View {
+struct SetupStep<Fields: View, Leading: View>: View {
     let ready: Bool
     /// Set the storage up, writing each step into the setup's stream.
     let operation: (BridgeLibrarySetup) async throws -> BridgeStorageSetup
@@ -329,10 +366,30 @@ struct SetupStep<Fields: View>: View {
     let leave: () -> Void
     let onConnected: (BridgeStorageSetup) -> Void
     /// Offered a failed setup before the step shows it at the top: true when
-    /// a field shows it instead.
-    var claim: (any Error) -> Bool = { _ in false }
-    @ViewBuilder
+    /// the fields show it instead.
+    let claim: (any Error) -> Bool
+    /// What sits at the left of the footer, opposite the actions.
+    let leading: Leading
     let fields: Fields
+
+    init(
+        ready: Bool,
+        operation:
+            @escaping (BridgeLibrarySetup) async throws -> BridgeStorageSetup,
+        leave: @escaping () -> Void,
+        onConnected: @escaping (BridgeStorageSetup) -> Void,
+        claim: @escaping (any Error) -> Bool = { _ in false },
+        @ViewBuilder leading: () -> Leading,
+        @ViewBuilder fields: () -> Fields
+    ) {
+        self.ready = ready
+        self.operation = operation
+        self.leave = leave
+        self.onConnected = onConnected
+        self.claim = claim
+        self.leading = leading()
+        self.fields = fields()
+    }
 
     @Environment(Sync.self)
     private var sync
@@ -361,20 +418,23 @@ struct SetupStep<Fields: View>: View {
                         .padding(.bottom, ThemeSpace.related)
                 }
             }
-            MacSheetFooter {
-                if let cancel {
-                    Button("Cancel") { cancel() }
-                        .disabled(run.isCancelling)
-                }
-                if !run.isRunning {
-                    Button("Set up") {
-                        connect()
+            MacSheetFooter(
+                lead: { if !run.isRunning { leading } },
+                trailing: {
+                    if let cancel {
+                        Button("Cancel") { cancel() }
+                            .disabled(run.isCancelling)
                     }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!ready)
+                    if !run.isRunning {
+                        Button("Set up") {
+                            connect()
+                        }
+                        .buttonStyle(PrimaryButtonStyle())
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(!ready)
+                    }
                 }
-            }
+            )
             .padding(.horizontal)
             .padding(.bottom, ThemeSpace.section)
         }
@@ -473,6 +533,26 @@ struct SetupStep<Fields: View>: View {
                     .environment(CloudSyncSetup())
                 #endif
         }
+
+        #if BAE_OAUTH_PROVIDERS
+            /// The wizard on `browser`'s folder picker, as it stands.
+            static func stagedPicker(_ browser: StorageFolderBrowser)
+                -> some View
+            {
+                let sync = Sync(cancelStorageSetup: { .undoing })
+                var wizard = SyncSetupWizard(
+                    provider: browser.provider.cloudProvider,
+                    run: StorageSetupRun(onCancelled: {}),
+                    onDone: {}
+                )
+                wizard.stagedBrowser = browser
+                return
+                    wizard
+                    .environment(PreviewData.configStore())
+                    .environment(sync)
+                    .environment(CloudSyncSetup())
+            }
+        #endif
 
         private init(
             provider: BridgeCloudProvider,

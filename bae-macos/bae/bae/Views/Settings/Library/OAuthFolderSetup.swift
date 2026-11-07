@@ -3,9 +3,8 @@
     import SwiftUI
 
     /// Dropbox or OneDrive setup: sign in through the browser, opened as the
-    /// screen opens, then choose the
-    /// folder the library lives in — a Dropbox shared folder, so the household
-    /// can be invited, or any OneDrive folder; either can be made here.
+    /// screen opens, then choose the empty folder the library lives in, or make
+    /// one, in the one folder picker both providers share.
     struct OAuthFolderSetup: View {
         let leave: () -> Void
         let onConnected: (BridgeStorageSetup) -> Void
@@ -28,8 +27,8 @@
 
         var body: some View {
             Group {
-                if let listing = browser.listing {
-                    folderChoice(listing)
+                if browser.listing != nil {
+                    folderChoice()
                 }
                 else {
                     signIn
@@ -82,11 +81,9 @@
             }
         }
 
-        private func folderChoice(
-            _ listing: StorageFolderBrowser.Listing
-        ) -> some View {
+        private func folderChoice() -> some View {
             SetupStep(
-                ready: browser.target != nil,
+                ready: browser.target != nil && !browser.isNaming,
                 operation: { [cloudSyncSetup, browser] setup in
                     guard let target = browser.target else {
                         preconditionFailure("Set up needs a chosen folder")
@@ -98,8 +95,13 @@
                 },
                 leave: leave,
                 onConnected: onConnected,
+                claim: { browser.place($0) },
+                leading: {
+                    Button("New folder…") { browser.startNaming() }
+                        .disabled(browser.isNaming || browser.isWorking)
+                },
                 fields: {
-                    folders(listing)
+                    FolderPicker(browser: browser)
                     if let work = browser.working {
                         Section {
                             FolderBrowserWorkLine(
@@ -115,71 +117,6 @@
                     }
                 }
             )
-        }
-
-        @ViewBuilder
-        private func folders(
-            _ listing: StorageFolderBrowser.Listing
-        ) -> some View {
-            @Bindable
-            var browser = browser
-            switch browser.provider {
-            case .dropbox:
-                Section {
-                    if listing.folders.isEmpty {
-                        Text(
-                            "No shared folders. Share a folder in Dropbox, then look again."
-                        )
-                        .themeText(.body)
-                        .foregroundStyle(.secondary)
-                    }
-                    Picker("Shared folder", selection: $browser.selected) {
-                        ForEach(listing.folders, id: \.location) { folder in
-                            Text(folder.name).tag(Optional(folder))
-                        }
-                    }
-                    .pickerStyle(.inline)
-                    Button("Look again") { browser.lookAgain() }
-                        .disabled(browser.isWorking)
-                }
-                Section {
-                    HStack {
-                        TextField("New folder", text: $browser.newFolderName)
-                        Button("Create") { browser.createDropboxFolder() }
-                            .disabled(!browser.canCreateFolder)
-                    }
-                    if let taken = browser.takenName {
-                        Text(
-                            "A folder named “\(taken)” is already in your Dropbox. Choose another name."
-                        )
-                        .themeText(.body)
-                        .foregroundStyle(.secondary)
-                    }
-                }
-            case .oneDrive:
-                Section {
-                    LabeledContent(
-                        "Folder",
-                        value: listing.path.last?.name ?? ""
-                    )
-                    if browser.canOpenParent {
-                        Button("Up") { browser.openParent() }
-                            .disabled(browser.isWorking)
-                    }
-                }
-                Section("Folders") {
-                    ForEach(listing.folders, id: \.location) { folder in
-                        Button(folder.name) { browser.open(folder) }
-                            .buttonStyle(.borderless)
-                            .disabled(browser.isWorking)
-                    }
-                    HStack {
-                        TextField("New folder", text: $browser.newFolderName)
-                        Button("Create") { browser.createFolder() }
-                            .disabled(!browser.canCreateFolder)
-                    }
-                }
-            }
         }
     }
 

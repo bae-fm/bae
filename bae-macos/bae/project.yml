@@ -218,6 +218,11 @@ targets:
   baeShots:
     type: bundle.unit-test
     platform: macOS
+    # The same feature conditions as the app and baeTests, for the scenes of
+    # views only the full edition has.
+    configFiles:
+      Debug: Features.xcconfig
+      Release: Features.xcconfig
     sources:
       - baeShots
       - baeTestSupport

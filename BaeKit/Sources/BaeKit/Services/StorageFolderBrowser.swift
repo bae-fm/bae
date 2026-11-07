@@ -4,10 +4,11 @@ import os.log
 
 private let logger = Logger.bae("StorageFolderBrowser")
 
-/// Dropbox or OneDrive setup's state: sign in, then choose the folder the
-/// library lives in — a Dropbox shared folder, so the household can be
-/// invited, or any OneDrive folder; either can be made here. The provider calls
-/// are the app's, since only an edition with OAuth providers has them.
+/// Dropbox or OneDrive setup's state: sign in, then choose the empty folder
+/// the library lives in, or make one. The two providers share it: a provider
+/// is its facts (`Provider`) and its calls (`Operations`), and the view draws
+/// both the same. The provider calls are the app's, since only an edition with
+/// OAuth providers has them.
 @MainActor
 @Observable
 public final class StorageFolderBrowser {
@@ -26,50 +27,53 @@ public final class StorageFolderBrowser {
     /// The signed-in provider calls folder choice runs on.
     public struct Operations: Sendable {
         let signIn: @Sendable (BridgeCloudProvider) async throws -> Void
-        let dropboxSharedFolders:
-            @Sendable () async throws -> [BridgeStorageFolder]
-        let createDropboxSharedFolder:
-            @Sendable (String) async throws -> BridgeStorageFolder
-        let oneDriveRoot: @Sendable () async throws -> BridgeStorageFolder
-        let oneDriveFolders:
-            @Sendable (BridgeStorageLocation) async throws ->
-                [BridgeStorageFolder]
-        let createOneDriveFolder:
-            @Sendable (BridgeStorageLocation, String) async throws ->
+        /// The first folders to choose from, with the path to them.
+        let top: @Sendable () async throws -> Listing
+        /// The folders inside one; nil for a provider whose folders are one
+        /// flat list.
+        let inside:
+            (
+                @Sendable (BridgeStorageFolder) async throws ->
+                    [BridgeStorageFolder]
+            )?
+        /// Make a folder named so in the folder shown, or at the top when
+        /// the provider's folders are flat, and return it.
+        let make:
+            @Sendable (BridgeStorageFolder?, String) async throws ->
                 BridgeStorageFolder
 
         public init(
             signIn:
                 @escaping @Sendable (BridgeCloudProvider) async throws -> Void,
-            dropboxSharedFolders:
-                @escaping @Sendable () async throws -> [BridgeStorageFolder],
-            createDropboxSharedFolder:
-                @escaping @Sendable (String) async throws -> BridgeStorageFolder,
-            oneDriveRoot:
-                @escaping @Sendable () async throws -> BridgeStorageFolder,
-            oneDriveFolders:
-                @escaping @Sendable (BridgeStorageLocation) async throws ->
-                [BridgeStorageFolder],
-            createOneDriveFolder:
-                @escaping @Sendable (BridgeStorageLocation, String) async throws
+            top: @escaping @Sendable () async throws -> Listing,
+            inside:
+                (
+                    @Sendable (BridgeStorageFolder) async throws ->
+                        [BridgeStorageFolder]
+                )?,
+            make:
+                @escaping @Sendable (BridgeStorageFolder?, String) async throws
                 -> BridgeStorageFolder
         ) {
             self.signIn = signIn
-            self.dropboxSharedFolders = dropboxSharedFolders
-            self.createDropboxSharedFolder = createDropboxSharedFolder
-            self.oneDriveRoot = oneDriveRoot
-            self.oneDriveFolders = oneDriveFolders
-            self.createOneDriveFolder = createOneDriveFolder
+            self.top = top
+            self.inside = inside
+            self.make = make
         }
     }
 
-    /// The folders signed in so far: Dropbox's shared folders, or the OneDrive
-    /// folders inside the one shown.
-    public struct Listing {
-        /// OneDrive's path from the root to the folder shown; empty for
-        /// Dropbox, whose shared folders are one flat list.
+    /// The folders signed in so far, and where they are.
+    public struct Listing: Sendable {
+        /// The path from the root to the folder shown, for a provider whose
+        /// folders nest; empty for a flat list.
         public let path: [BridgeStorageFolder]
         public let folders: [BridgeStorageFolder]
+
+        public init(path: [BridgeStorageFolder], folders: [BridgeStorageFolder])
+        {
+            self.path = path
+            self.folders = folders
+        }
     }
 
     /// The provider call running, which the step names while it runs.
@@ -85,12 +89,17 @@ public final class StorageFolderBrowser {
     public let provider: Provider
     /// Nil until sign-in lists the first folders.
     public private(set) var listing: Listing?
-    /// The Dropbox shared folder chosen from the list.
-    public var selected: BridgeStorageFolder?
+    /// The folder chosen from the list; Set up uses it.
+    public private(set) var selected: BridgeStorageFolder?
+    /// Whether the name field for a new folder shows.
+    public private(set) var isNaming = false
     public var newFolderName = ""
-    /// The name Dropbox refused because a folder of that name is already at
-    /// the top of the person's Dropbox; nil until it refuses one.
+    /// The name the provider refused because a folder of that name is already
+    /// there; nil until it refuses one.
     public private(set) var takenName: String?
+    /// The folder setup found holding other files, which the person
+    /// replaces by choosing another or making one.
+    public private(set) var notEmpty: BridgeStorageFolder?
     /// The call running; nil while none is.
     public private(set) var working: Work?
     public private(set) var error: DisplayError?
@@ -105,12 +114,54 @@ public final class StorageFolderBrowser {
         self.operations = operations
     }
 
-    /// The folder Connect uses: the selected one, or on OneDrive the one being
-    /// shown.
+    #if DEBUG
+        /// A browser already signed in and showing `listing`, for a preview or
+        /// a shot; its calls all fail.
+        public init(
+            staged provider: Provider,
+            listing: Listing,
+            nests: Bool,
+            selected: BridgeStorageFolder? = nil,
+            isNaming: Bool = false,
+            newFolderName: String = "",
+            notEmpty: BridgeStorageFolder? = nil
+        ) {
+            self.provider = provider
+            let inside:
+                (
+                    @Sendable (BridgeStorageFolder) async throws ->
+                        [BridgeStorageFolder]
+                )?
+            if nests {
+                inside = { _ in throw CancellationError() }
+            }
+            else {
+                inside = nil
+            }
+            self.operations = Operations(
+                signIn: { _ in throw CancellationError() },
+                top: { throw CancellationError() },
+                inside: inside,
+                make: { _, _ in throw CancellationError() }
+            )
+            self.listing = listing
+            self.selected = selected
+            self.isNaming = isNaming
+            self.newFolderName = newFolderName
+            self.notEmpty = notEmpty
+        }
+    #endif
+
+    /// The folder Set up uses: the one chosen, unless setup just found it
+    /// holding other files.
     public var target: BridgeStorageFolder? {
-        if let selected { return selected }
-        return listing?.path.last
+        guard let selected, selected != notEmpty else { return nil }
+        return selected
     }
+
+    /// Whether a folder opens into the folders inside it, so the list shows
+    /// where the person is.
+    public var nests: Bool { operations.inside != nil }
 
     public var isWorking: Bool { working != nil }
 
@@ -121,6 +172,13 @@ public final class StorageFolderBrowser {
             && !newFolderName.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    /// The path to the folder shown, by the names the provider gives.
+    public var pathNames: [String] { listing?.path.map(\.name) ?? [] }
+
+    public func select(_ folder: BridgeStorageFolder) {
+        selected = folder
+    }
+
     /// Sign in through the bridge's presenter, then list the first folders.
     public func signIn() {
         let operations = operations
@@ -128,44 +186,28 @@ public final class StorageFolderBrowser {
         run(.signingIn) {
             try await operations.signIn(provider.cloudProvider)
             self.working = .listing
-            switch provider {
-            case .dropbox:
-                return Listing(
-                    path: [],
-                    folders: try await operations.dropboxSharedFolders()
-                )
-            case .oneDrive:
-                let root = try await operations.oneDriveRoot()
-                return Listing(
-                    path: [root],
-                    folders: try await operations.oneDriveFolders(root.location)
-                )
-            }
+            return try await operations.top()
         }
     }
 
-    /// List Dropbox's shared folders again, after the person shared one.
+    /// List the folders at the top again, after the person made or shared
+    /// one elsewhere.
     public func lookAgain() {
         let operations = operations
         selected = nil
-        run(.listing) {
-            Listing(
-                path: [],
-                folders: try await operations.dropboxSharedFolders()
-            )
-        }
+        run(.listing) { try await operations.top() }
     }
 
     public func open(_ folder: BridgeStorageFolder) {
         guard let path = listing?.path else {
             preconditionFailure("folders show only after sign-in")
         }
-        let operations = operations
+        guard let inside = operations.inside else {
+            preconditionFailure("only a nesting provider opens a folder")
+        }
+        selected = nil
         run(.listing) {
-            Listing(
-                path: path + [folder],
-                folders: try await operations.oneDriveFolders(folder.location)
-            )
+            Listing(path: path + [folder], folders: try await inside(folder))
         }
     }
 
@@ -177,19 +219,29 @@ public final class StorageFolderBrowser {
         guard let parent = parentPath.last else {
             preconditionFailure("a path below the root has a parent")
         }
-        let operations = operations
+        guard let inside = operations.inside else {
+            preconditionFailure("only a nesting provider has a parent")
+        }
+        selected = nil
         run(.listing) {
-            Listing(
-                path: parentPath,
-                folders: try await operations.oneDriveFolders(parent.location)
-            )
+            Listing(path: parentPath, folders: try await inside(parent))
         }
     }
 
-    /// Make a Dropbox folder named `newFolderName`, shared, and select it. A
-    /// name already taken is not a failure of the call: the listing stays as
-    /// it was and `takenName` names it.
-    public func createDropboxFolder() {
+    /// Show the name field for a new folder.
+    public func startNaming() {
+        isNaming = true
+    }
+
+    public func stopNaming() {
+        isNaming = false
+        newFolderName = ""
+    }
+
+    /// Make a folder named `newFolderName` in the folder shown, add it to the
+    /// list and choose it. A name already taken is not a failure of the call:
+    /// the list stays as it was and `takenName` names it.
+    public func createFolder() {
         guard let listing else {
             preconditionFailure("folders are made only after sign-in")
         }
@@ -198,13 +250,12 @@ public final class StorageFolderBrowser {
         takenName = nil
         run(.makingFolder(name: name)) {
             do {
-                let created = try await operations.createDropboxSharedFolder(
-                    name
-                )
+                let created = try await operations.make(listing.path.last, name)
+                self.isNaming = false
                 self.newFolderName = ""
                 self.selected = created
                 return Listing(
-                    path: [],
+                    path: listing.path,
                     folders: listing.folders + [created]
                 )
             }
@@ -218,25 +269,17 @@ public final class StorageFolderBrowser {
         }
     }
 
-    /// Make a folder inside the OneDrive folder shown, and show it.
-    public func createFolder() {
-        guard let path = listing?.path, let parent = path.last else {
-            preconditionFailure("folders are made only inside a folder")
-        }
-        let name = newFolderName.trimmingCharacters(in: .whitespaces)
-        let operations = operations
-        run(.makingFolder(name: name)) {
-            let created = try await operations.createOneDriveFolder(
-                parent.location,
-                name
-            )
-            self.newFolderName = ""
-            self.working = .listing
-            return Listing(
-                path: path + [created],
-                folders: try await operations.oneDriveFolders(created.location)
-            )
-        }
+    /// Offered a failed setup before the step shows it: a folder holding
+    /// other files is named in the list, which the person chooses again
+    /// from.
+    public func place(_ error: any Error) -> Bool {
+        guard
+            case .Diagnostic(.storage(.ownLocationRequired), _) = error
+                as? BridgeError,
+            let selected
+        else { return false }
+        notEmpty = selected
+        return true
     }
 
     public func cancel() {
@@ -250,6 +293,7 @@ public final class StorageFolderBrowser {
         _ operation: @escaping @MainActor () async throws -> Listing
     ) {
         error = nil
+        notEmpty = nil
         working = work
         task = Task {
             defer {

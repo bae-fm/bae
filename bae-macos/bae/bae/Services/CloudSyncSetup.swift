@@ -75,16 +75,56 @@
         func folderBrowser(
             _ provider: StorageFolderBrowser.Provider
         ) -> StorageFolderBrowser {
-            StorageFolderBrowser(
+            let dropboxSharedFolders = dropboxSharedFolders
+            let createDropboxSharedFolder = createDropboxSharedFolder
+            let oneDriveRoot = oneDriveRoot
+            let oneDriveFolders = oneDriveFolders
+            let createOneDriveFolder = createOneDriveFolder
+            let operations: StorageFolderBrowser.Operations =
+                switch provider {
+                case .dropbox:
+                    StorageFolderBrowser.Operations(
+                        signIn: signIn,
+                        top: {
+                            StorageFolderBrowser.Listing(
+                                path: [],
+                                folders: try await dropboxSharedFolders()
+                            )
+                        },
+                        inside: nil,
+                        make: { _, name in
+                            try await createDropboxSharedFolder(name)
+                        }
+                    )
+                case .oneDrive:
+                    StorageFolderBrowser.Operations(
+                        signIn: signIn,
+                        top: {
+                            let root = try await oneDriveRoot()
+                            return StorageFolderBrowser.Listing(
+                                path: [root],
+                                folders: try await oneDriveFolders(
+                                    root.location
+                                )
+                            )
+                        },
+                        inside: { try await oneDriveFolders($0.location) },
+                        make: { parent, name in
+                            guard let parent else {
+                                preconditionFailure(
+                                    "OneDrive folders are made inside one"
+                                )
+                            }
+                            return try await createOneDriveFolder(
+                                parent.location,
+                                name
+                            )
+                        }
+                    )
+                }
+            return StorageFolderBrowser(
                 provider: provider,
-                operations: StorageFolderBrowser.Operations(
-                    signIn: signIn,
-                    dropboxSharedFolders: dropboxSharedFolders,
-                    createDropboxSharedFolder: createDropboxSharedFolder,
-                    oneDriveRoot: oneDriveRoot,
-                    oneDriveFolders: oneDriveFolders,
-                    createOneDriveFolder: createOneDriveFolder
-                )
+                operations: operations
             )
         }
 
