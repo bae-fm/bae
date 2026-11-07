@@ -445,6 +445,13 @@ task_types = [
     "BridgeLibraryClosing",
     "BridgeCatalogApply",
     "AbortOnDrop",
+    # A guard that stops one save or one setup call's work when its call is
+    # dropped, one saved image's track, and one pin or detach transfer.
+    "CancelSaveOnDrop",
+    "CancelSetupOnDrop",
+    "ImageTrack",
+    "ReleaseTransfer",
+    "Running",
 ]
 
 # Handles (Appendix F.3): what an owner makes from its own state to hand out.
@@ -594,6 +601,27 @@ ImageHold = "RemoteImageHost"
 # An owner's constructor builds the owner and the parts it holds that nothing
 # else shares.
 "bae-import/src/watching/folder_watcher.rs" = ["FolderWatcher::new"]
+# Opens the library manager over the store, building its transfer queues and
+# cancellation once.
+"bae-library/src/assembly.rs" = ["open_library_manager"]
+# An owner's constructor builds the owner and the parts it holds that nothing
+# else shares.
+"bae-library/src/detach_cancels.rs" = ["DetachCancels::new"]
+# The UI-test fixture seeds the library through the tables of the store it was
+# opened on. It exists only in debug and test builds, like the test fixtures
+# listed here.
+"bae-library/src/manager/fixture/import_list.rs" = [
+    "LibraryManager::write_fixture_watched_folders",
+    "LibraryManager::write_fixture_candidate_state",
+    "LibraryManager::store_fixture_verdict",
+]
+"bae-library/src/manager/fixture/playing.rs" = ["LibraryManager::write_resume_point"]
+"bae-library/src/test_libraries/playback.rs" = [
+    "start_capture_playback",
+    "start_manual_playback",
+    "start_manual_playback_with_clock",
+]
+"bae-library/src/test_libraries/storage.rs" = ["storage_library"]
 # The follow of the tracks a service holds, made for the service when it is
 # built.
 "bae-playback/src/service/advance.rs" = ["track_infos_follow"]
@@ -660,6 +688,15 @@ ImageHold = "RemoteImageHost"
     "DeviceLibrary::new",
     "RunningLibrary::new",
     "TwoDevices::new",
+    "run_library_test",
+    "run_two_device_test",
+    "TwoDevices::close",
+    "TwoDevices::pause",
+    "TwoDevices::resume",
+    "TwoDevices::settle",
+    "TwoDevices::converge",
+    "TestDevice::reopen_with",
+    "device",
 ]
 # A test's library: it opens the library as the app's opening step does, and
 # hands the test, the final owner of what it built, the manager, the parts the
@@ -685,6 +722,16 @@ ImageHold = "RemoteImageHost"
     "TestLibrary::start_playback_on",
     "TestLibrary::open",
     "TestLibrary::open_with",
+    "TestLibrary::start_playback_reporting",
+    "open_test_library",
+    "open_test_library_with",
+    "test_library_from_handle",
+    "setup_test_library",
+    "setup_test_library_with",
+    "setup_test_library_with_album_dir",
+    "setup_fresh_library",
+    "imported_release_setup",
+    "imported_release_setup_with",
 ]
 # An owner's constructor builds the owner and the parts it holds that nothing
 # else shares.
@@ -876,11 +923,20 @@ ImageHold = "RemoteImageHost"
     "run_watcher_with_starter",
 ]
 "bae-import/src/watching/root_removal.rs" = ["ServiceRootRemovalBackend::new"]
-"bae-library/examples/bench_library/mod.rs" = ["BenchLibrary::create"]
+"bae-library/examples/bench_library/mod.rs" = [
+    "BenchLibrary::create",
+    "run",
+]
 "bae-library/src/bootstrap.rs" = [
     "JoinControl::new",
+    "join_with_invite",
+    "resume_join",
+    "with_profile",
 ]
-"bae-library/src/manager/service.rs" = ["BackgroundTasks::new"]
+"bae-library/src/manager/service.rs" = [
+    "BackgroundTasks::new",
+    "LibraryManager::open",
+]
 "bae-library/src/storage/transfer.rs" = ["ReleaseTransfer::new"]
 "bae-mcp/src/lib.rs" = [
     "BaeMcpServer::new",
@@ -975,6 +1031,7 @@ homes = [
     "bae-playback/src/renderer/picker.rs",
     "bae-import/src/tables.rs",
     "bae-import/src/tables/",
+    "bae-transfers/src/download_entry.rs",
     "bae-transfers/src/queued_releases/",
     "bae-transfers/src/release_storage_action.rs",
     "bae-views/src/",
