@@ -253,7 +253,10 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
         .await
         .expect_err("a replacement planned against a superseded cover is refused");
 
-    assert!(error.to_string().contains("changed after planning"));
+    assert!(
+        matches!(&error, bae_records::ImageWriteError::Superseded { subject_id, .. } if *subject_id == release.id),
+        "{error:?}"
+    );
     assert_eq!(
         manager.library.manager().read_cover_image_bytes(&release.id).await.unwrap(),
         Some(b"between cover".to_vec()),

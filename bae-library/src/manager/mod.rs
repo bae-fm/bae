@@ -171,6 +171,10 @@ pub enum LibraryError {
         #[source]
         error: Box<coven::FileReadError>,
     },
+    /// An image's replacement did not commit: another write of the image
+    /// landed after it was planned, or the store failed.
+    #[error(transparent)]
+    ImageWrite(bae_records::ImageWriteError),
     /// A deletion did not commit: what it deletes changed after it was
     /// planned, or the store failed.
     #[error(transparent)]
@@ -327,6 +331,7 @@ impl bae_util::task_failure::ReportedBug for LibraryError {
             LibraryError::MakeLocal(error) => error.reported_bug(),
             LibraryError::StorageTransition(error) => error.reported_bug(),
             LibraryError::Deletion(error) => error.reported_bug(),
+            LibraryError::ImageWrite(error) => error.reported_bug(),
             LibraryError::Sync(error) | LibraryError::InviteJoining(error) => error.reported_bug(),
             LibraryError::Keyring(error) => error.bug(),
             LibraryError::AppDir(error) => error.bug(),
@@ -380,6 +385,7 @@ impl LibraryError {
             LibraryError::MakeLocal(error) => device_only_category(error),
             LibraryError::StorageTransition(error) => storage_transition_category(error),
             LibraryError::Deletion(error) => deletion_category(error),
+            LibraryError::ImageWrite(error) => image_write_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
             #[cfg(desktop)]
             LibraryError::ReleaseEditLoad(_) => C::Internal,
@@ -405,6 +411,30 @@ impl From<bae_import::CatalogSessionError> for LibraryError {
         match error {
             bae_import::CatalogSessionError::Preferences(error) => Self::Database(error),
             bae_import::CatalogSessionError::Keyring(error) => Self::Keyring(error),
+        }
+    }
+}
+
+/// The class a surface words an image replacement's failure in: one another
+/// write of the image beat is the person's to make again, over the image
+/// that landed.
+fn image_write_category(error: &bae_records::ImageWriteError) -> bae_diagnostics::UiErrorCategory {
+    use bae_records::ImageWriteError as E;
+    match error {
+        E::Database(error) => bae_diagnostics::database_category(error),
+        E::Rollback { operation: failed, .. } | E::FileCleanup { write: failed, .. } => {
+            image_write_category(failed)
+        }
+        E::Superseded { .. } => bae_diagnostics::UiErrorCategory::Import,
+    }
+}
+
+/// An image write that failed in the store is the library's store failure.
+impl From<bae_records::ImageWriteError> for LibraryError {
+    fn from(error: bae_records::ImageWriteError) -> Self {
+        match error {
+            bae_records::ImageWriteError::Database(error) => Self::Database(error),
+            error => Self::ImageWrite(error),
         }
     }
 }
