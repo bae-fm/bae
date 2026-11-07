@@ -444,6 +444,27 @@ ImageHold = "RemoteImageHost"
     "FakeCatalogs::offline",
     "FakeCatalogs::over",
 ]
+# The fixtures below build records over a test store and hand them to their
+# test.
+"bae-records/src/test_fixtures.rs" = [
+    "test_records",
+    "seed_artist_album_release",
+]
+"bae-records/src/test_fixtures/aggregate_ordering.rs" = [
+    "aggregate_db",
+    "queue_db",
+    "release_detail_db",
+    "insert_file",
+]
+"bae-records/src/test_fixtures/album_listing.rs" = ["listed_db"]
+"bae-records/src/test_fixtures/artists_apart.rs" = ["merge_apart"]
+"bae-records/src/test_fixtures/composed_work.rs" = ["composed_work_db"]
+"bae-records/src/test_fixtures/labels.rs" = [
+    "library",
+    "add_label",
+]
+"bae-records/src/test_fixtures/live_query.rs" = ["live_db"]
+"bae-records/src/test_fixtures/storage_listing.rs" = ["insert_file"]
 # The test fixtures below own what they hand their test, and their getters give
 # the test what the fixture holds: no production code reaches them, so they are
 # listed rather than reshaped.
