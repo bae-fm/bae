@@ -57,9 +57,9 @@ struct SavePresetEditor: View {
                 .presetEditorRowInsets()
             }
             .formStyle(.grouped)
-            HStack {
-                Spacer()
+            MacSheetFooter {
                 Button("Done") { dismiss() }
+                    .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
                     .disabled(!nameValid || !bitrateValid)
             }

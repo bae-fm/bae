@@ -263,6 +263,7 @@ struct ShotScene {
         + libraryScenes + importRowScenes + coverPickerScenes + releaseScenes
         + settingsScenes
         + syncSetupScenes
+        + sheetFooterScenes
 }
 
 extension ShotScene {

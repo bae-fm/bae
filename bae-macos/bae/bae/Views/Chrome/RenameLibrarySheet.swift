@@ -46,8 +46,7 @@ struct RenameLibrarySheet: View {
             .formStyle(.grouped)
             .scrollDisabled(true)
 
-            HStack(spacing: ThemeSpace.group) {
-                Spacer()
+            MacSheetFooter {
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
                 Button("Rename") { onCommit(state.newName) }
@@ -61,7 +60,7 @@ struct RenameLibrarySheet: View {
                             .isEmpty
                     )
             }
-            .padding()
+            .padding([.horizontal, .bottom])
         }
         // Grows to fit an error and its details.
         .frame(width: 420)

@@ -241,8 +241,7 @@ private struct RestoreFileSheet: View {
             if let error {
                 ErrorDetailDisclosure(error: error)
             }
-            HStack {
-                Spacer()
+            MacSheetFooter {
                 Button("Cancel", action: onDismiss)
                     .keyboardShortcut(.cancelAction)
                 Button("Retry") { retry() }
@@ -289,9 +288,9 @@ private struct PendingReviewSheet: View {
                 cause in
                 reason(cause)
             }
-            HStack {
-                Spacer()
+            MacSheetFooter {
                 Button("Done", action: onDismiss)
+                    .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
             }
         }
@@ -358,8 +357,7 @@ struct S3KeySheet: View {
                 ErrorDetailDisclosure(error: error)
                     .padding(.horizontal)
             }
-            HStack {
-                Spacer()
+            MacSheetFooter {
                 if !run.isRunning || run.cancelOffered {
                     Button("Cancel", action: cancel)
                         .keyboardShortcut(.cancelAction)
@@ -372,7 +370,7 @@ struct S3KeySheet: View {
                             || secretKey.isEmpty
                     )
             }
-            .padding()
+            .padding([.horizontal, .bottom])
         }
         .frame(width: 440)
         .onDisappear { run.leave() }

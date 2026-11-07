@@ -19,11 +19,11 @@ struct MoveToCloudConfirmSheet: View {
             Text("Move to storage")
                 .themeText(.heading)
             Toggle("Pinned", isOn: pinned)
-            HStack {
-                Spacer()
+            MacSheetFooter {
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
                 Button("Move to storage") { onConfirm() }
+                    .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
             }
         }

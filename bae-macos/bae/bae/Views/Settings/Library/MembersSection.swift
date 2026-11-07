@@ -486,16 +486,19 @@ private struct JoinRequestSheet: View {
             if let error {
                 ErrorDetailDisclosure(error: error)
             }
-            HStack(spacing: ThemeSpace.group) {
-                Button("Close", action: onClose)
-                    .keyboardShortcut(.cancelAction)
-                Spacer()
-                Button("Decline", role: .destructive, action: onDecline)
-                    .disabled(busy)
-                Button("Approve", action: onApprove)
-                    .buttonStyle(PrimaryButtonStyle())
-                    .disabled(busy)
-            }
+            MacSheetFooter(
+                lead: {
+                    Button("Close", action: onClose)
+                        .keyboardShortcut(.cancelAction)
+                },
+                trailing: {
+                    Button("Decline", role: .destructive, action: onDecline)
+                        .disabled(busy)
+                    Button("Approve", action: onApprove)
+                        .buttonStyle(PrimaryButtonStyle())
+                        .disabled(busy)
+                }
+            )
         }
         .padding()
         .frame(width: 320)

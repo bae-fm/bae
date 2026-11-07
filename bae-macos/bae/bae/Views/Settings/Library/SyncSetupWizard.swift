@@ -275,8 +275,7 @@ struct SetupStep<Fields: View>: View {
                     .padding(.horizontal)
                     .padding(.bottom, ThemeSpace.related)
             }
-            HStack(spacing: ThemeSpace.related) {
-                Spacer()
+            MacSheetFooter {
                 Button(actionLabel) {
                     connect()
                 }

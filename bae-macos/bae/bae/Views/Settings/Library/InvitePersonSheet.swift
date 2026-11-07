@@ -105,14 +105,13 @@ struct InvitePersonSheet: View {
                 ErrorDetailDisclosure(error: error)
                     .padding(.horizontal)
             }
-            HStack {
-                Spacer()
+            MacSheetFooter {
                 Button("Create invitation") { create() }
                     .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
                     .disabled(!ready)
             }
-            .padding()
+            .padding([.horizontal, .bottom])
         }
     }
 
