@@ -65,7 +65,7 @@ import uniffi.bae_bridge.availableCloudProviders
 
 private val logger = BaeLogger("bae.StorageSetupScreen")
 
-/** Where setting up a cloud home stands. */
+/** Where setting up storage stands. */
 private sealed interface SetupStep {
     data object Choose : SetupStep
 
@@ -87,7 +87,7 @@ private sealed interface SetupStep {
 }
 
 /**
- * Give a library that lives on this device only a cloud home: an S3-compatible
+ * Give a library that lives on this device only storage: an S3-compatible
  * bucket, or a folder in Dropbox or OneDrive after signing in. Once set up,
  * the person's recovery code is shown for them to keep.
  */
@@ -144,7 +144,7 @@ internal fun StorageSetupScreen(
     }
 }
 
-/** Where setting up a cloud home stands, and the sign-in an account provider needs first. */
+/** Where setting up storage stands, and the sign-in an account provider needs first. */
 private class StorageSetupFlow(
     private val session: OpenLibrary,
     private val oauthProviders: OAuthProviders?,

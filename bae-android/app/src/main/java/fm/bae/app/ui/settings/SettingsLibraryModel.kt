@@ -49,7 +49,7 @@ internal sealed interface LibraryNameRead {
 }
 
 /**
- * What Settings reads from the open library beyond its config: its cloud home,
+ * What Settings reads from the open library beyond its config: its storage,
  * its name, and this device's person — their profile and whether they are an
  * admin. A failed read is kept as such, so Settings shows it where the rows it
  * decides would be; a cancelled one shows nothing and leaves the read as it
@@ -60,7 +60,7 @@ internal class SettingsLibraryModel(
     private val errors: ErrorDisplays,
     private val scope: CoroutineScope,
 ) {
-    var cloudHome by mutableStateOf<CloudHome>(CloudHome.Loading)
+    var storage by mutableStateOf<Storage>(Storage.Loading)
         private set
 
     var self by mutableStateOf<SelfRead>(SelfRead.Loading)
@@ -87,19 +87,19 @@ internal class SettingsLibraryModel(
     private var nameGeneration = 0
 
     suspend fun load() {
-        loadCloudHome()
+        loadStorage()
         loadSelf()
     }
 
-    /** Read the cloud home: as Settings opens, and again once a storage setup stops running, which records it. */
-    suspend fun loadCloudHome() {
+    /** Read the storage: as Settings opens, and again once a storage setup stops running, which records it. */
+    suspend fun loadStorage() {
         try {
-            cloudHome = appHandle.storageLocation()?.let(CloudHome::At) ?: CloudHome.None
+            storage = appHandle.storageLocation()?.let(Storage::At) ?: Storage.None
         } catch (e: CancellationException) {
             throw e
         } catch (e: BridgeException) {
-            logger.error("reading the library's cloud home failed", e)
-            errors.display(e)?.let { cloudHome = CloudHome.Failed(it) }
+            logger.error("reading the library's storage failed", e)
+            errors.display(e)?.let { storage = Storage.Failed(it) }
         }
     }
 

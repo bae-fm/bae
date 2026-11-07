@@ -295,7 +295,7 @@ private fun LibrarySwitcherPreview() {
 
 /**
  * The line under a library's name: its provider and account when it has a
- * cloud home, nothing when it doesn't, or why it doesn't open: its settings
+ * storage, nothing when it doesn't, or why it doesn't open: its settings
  * can't be read, a reset or restore of this device's copy stopped partway, or
  * removing it from this device stopped partway.
  */

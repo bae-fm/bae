@@ -127,6 +127,6 @@ internal enum class OneDriveWork {
     /** Making a new folder. */
     CREATING,
 
-    /** Setting the folder shown up as the library's cloud home. */
+    /** Setting the folder shown up as the library's storage. */
     SETTING_UP,
 }

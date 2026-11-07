@@ -46,7 +46,7 @@ private val logger = BaeLogger("bae.ProviderFolderChoice")
 
 /**
  * The Dropbox folders shared with the signed-in account, and a new one the person can name
- * here; choosing one makes it the library's cloud home, where the household's members can
+ * here; choosing one makes it the library's storage, where the household's members can
  * reach it.
  * [setup] runs the setup, which the person can stop with Cancel, calling
  * [onCancel].
@@ -165,7 +165,7 @@ private val BridgeException.Diagnostic.isNameTaken: Boolean
 
 /**
  * The signed-in OneDrive, browsed from its top: open a folder to go inside,
- * make a new one, and use the folder shown as the library's cloud home. A
+ * make a new one, and use the folder shown as the library's storage. A
  * listing that fails shows its failure and Retry here, where the person is.
  * [setup] runs the setup, which the person can stop with Cancel, calling
  * [onCancel].

@@ -57,8 +57,8 @@ class SettingsSyncSectionTest {
                     SettingsSyncSection(
                         onResetDevice = {},
                         session = session,
-                        cloudHome =
-                            CloudHome.At(
+                        storage =
+                            Storage.At(
                                 BridgeStorageLocation.S3(
                                     bucket = "music-library",
                                     region = "us-east-1",

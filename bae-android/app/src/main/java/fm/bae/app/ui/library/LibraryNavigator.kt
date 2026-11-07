@@ -48,7 +48,7 @@ internal sealed interface LibraryDestination {
     /** What sync waits on, each with its action. */
     data object SyncPending : Setting
 
-    /** Choosing and setting up a cloud home for a library without one. */
+    /** Choosing and setting up storage for a library without one. */
     data object StorageSetup : Setting
 
     data object Downloads : LibraryDestination

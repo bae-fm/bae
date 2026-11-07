@@ -70,7 +70,7 @@ interface OAuthProviders {
         name: String,
     ): BridgeStorageFolder
 
-    /** Make [location] the open library's cloud home, each step written into [setup]'s stream. */
+    /** Make [location] the open library's storage, each step written into [setup]'s stream. */
     suspend fun setUpStorage(
         handle: AppHandleInterface,
         location: BridgeStorageLocation,

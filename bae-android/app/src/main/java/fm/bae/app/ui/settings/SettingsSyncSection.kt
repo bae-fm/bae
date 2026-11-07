@@ -48,17 +48,17 @@ import uniffi.bae_bridge.BridgeStorageLocation
 private val logger = BaeLogger("bae.SettingsSyncSection")
 
 /**
- * Where the library is stored and how its sync stands: the cloud home's
+ * Where the library is stored and how its sync stands: the storage's
  * details, the one status line and upload pause — or, when this device no
  * longer holds its credentials for that storage, signing in to it again; or,
- * without a cloud home, the way to set one up. Under either, the last sync
+ * without storage, the way to set one up. Under either, the last sync
  * failure, such as a start that failed on a locked keychain.
  */
 @Composable
 internal fun SettingsSyncSection(
     onResetDevice: (BridgeDeviceReset) -> Unit,
     session: OpenLibrary,
-    cloudHome: CloudHome,
+    storage: Storage,
     oauthProviders: OAuthProviders?,
     onPush: (LibraryDestination) -> Unit,
 ) {
@@ -70,16 +70,16 @@ internal fun SettingsSyncSection(
     ) {
         Eyebrow(text = stringResource(R.string.settings_sync))
         UndoneSetupNotice(session)
-        when (cloudHome) {
-            CloudHome.Loading -> {
+        when (storage) {
+            Storage.Loading -> {
                 Unit
             }
 
-            is CloudHome.Failed -> {
-                ErrorDetailDisclosure(cloudHome.error)
+            is Storage.Failed -> {
+                ErrorDetailDisclosure(storage.error)
             }
 
-            CloudHome.None -> {
+            Storage.None -> {
                 if (setupRunning) {
                     // A setup bae finishes on its own, such as one it was stopped partway through, records the location
                     // as it ends.
@@ -98,10 +98,10 @@ internal fun SettingsSyncSection(
                 }
             }
 
-            is CloudHome.At -> {
-                CloudHomeRows(cloudHome.location)
+            is Storage.At -> {
+                StorageRows(storage.location)
                 if (line == SyncLine.NoStorage) {
-                    StorageSignIn(session = session, location = cloudHome.location, oauthProviders = oauthProviders)
+                    StorageSignIn(session = session, location = storage.location, oauthProviders = oauthProviders)
                     SyncFailureOffers(session = session, onResetDevice = onResetDevice)
                 } else {
                     SyncStatusLine(line = line, onOpenPending = { onPush(LibraryDestination.SyncPending) })
@@ -170,11 +170,11 @@ private fun SyncFailureOffers(
 }
 
 /**
- * The cloud home's provider and, for S3, the bucket it names; Dropbox and
+ * The storage's provider and, for S3, the bucket it names; Dropbox and
  * OneDrive show the signed-in account and the folder coven recorded.
  */
 @Composable
-private fun CloudHomeRows(location: BridgeStorageLocation) {
+private fun StorageRows(location: BridgeStorageLocation) {
     LabeledValueRow(stringResource(R.string.settings_provider), cloudProviderLabel(storageProvider(location)))
     when (location) {
         is BridgeStorageLocation.S3 -> {
@@ -230,10 +230,10 @@ private fun openInBrowser(
 
 @Preview(showBackground = true)
 @Composable
-private fun CloudHomeRowsDropboxPreview() {
+private fun StorageRowsDropboxPreview() {
     BaeTheme {
         Column {
-            CloudHomeRows(
+            StorageRows(
                 BridgeStorageLocation.Dropbox(
                     location = BridgeDropboxLocation.SharedFolder(namespaceId = "1234567890"),
                     accountLabel = "name@example.com",
@@ -246,10 +246,10 @@ private fun CloudHomeRowsDropboxPreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun CloudHomeRowsPreview() {
+private fun StorageRowsPreview() {
     BaeTheme {
         Column {
-            CloudHomeRows(
+            StorageRows(
                 BridgeStorageLocation.S3(
                     bucket = "household-music",
                     region = "us-east-1",

@@ -134,7 +134,7 @@ class ImageStore(
     /** Bytes of a curated library image, or null when no such image exists. */
     private val fetchLibraryImageBytes: suspend (image: BridgeImageRef) -> ByteArray? = { null },
     /** Bytes of one of a release's image-strip slots, downloaded from the
-     *  release's cloud home (and decrypted) when it isn't on disk here. */
+     *  release's storage (and decrypted) when it isn't on disk here. */
     private val fetchReleaseImageBytes:
         suspend (releaseId: String, source: BridgeGallerySource) -> ByteArray =
         { _, _ -> throw ImageStoreUnavailable() },

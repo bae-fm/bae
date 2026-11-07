@@ -135,7 +135,7 @@ internal class MembersModel(
     }
 
     suspend fun loadStorage() {
-        performBridgeAction(logger, "read the library's cloud home", errors, { error = it }) {
+        performBridgeAction(logger, "read the library's storage", errors, { error = it }) {
             storage = appHandle.storageLocation()
         }
     }

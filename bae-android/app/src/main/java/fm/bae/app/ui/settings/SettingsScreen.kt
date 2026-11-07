@@ -56,19 +56,19 @@ import uniffi.bae_bridge.BridgeTelemetryEvent
 import uniffi.bae_bridge.BridgeUnsentWork
 
 /** Where the open library is stored, as Settings knows it. */
-internal sealed interface CloudHome {
-    data object Loading : CloudHome
+internal sealed interface Storage {
+    data object Loading : Storage
 
-    /** The library has no cloud home and lives on this device only. */
-    data object None : CloudHome
+    /** The library has no storage and lives on this device only. */
+    data object None : Storage
 
     data class At(
         val location: BridgeStorageLocation,
-    ) : CloudHome
+    ) : Storage
 
     data class Failed(
         val error: DisplayError,
-    ) : CloudHome
+    ) : Storage
 }
 
 /** Per-device settings, reached from the gear in the library top bar. */
@@ -99,7 +99,7 @@ internal fun SettingsScreen(
     val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
     var setupWasRunning by remember { mutableStateOf(setupRunning) }
     LaunchedEffect(setupRunning) {
-        if (setupWasRunning && !setupRunning) model.loadCloudHome()
+        if (setupWasRunning && !setupRunning) model.loadStorage()
         setupWasRunning = setupRunning
     }
 
@@ -122,7 +122,7 @@ internal fun SettingsScreen(
         SettingsSyncSection(
             onResetDevice = actions.resetDevice,
             session = session,
-            cloudHome = model.cloudHome,
+            storage = model.storage,
             oauthProviders = actions.oauthProviders,
             onPush = onPush,
         )
@@ -133,8 +133,8 @@ internal fun SettingsScreen(
             onReloadSelf = { scope.launch { model.loadSelf() } },
         )
         SettingsPlaybackSections(session = session, config = config, ioDispatcher = ioDispatcher, onPush = onPush)
-        // People, devices and the recovery code live in the library's store, which only a cloud home has.
-        (model.cloudHome as? CloudHome.At)?.let { home ->
+        // People, devices and the recovery code live in the library's store, which only storage has.
+        (model.storage as? Storage.At)?.let { home ->
             SettingsStoreSections(session = session, home = home, adminChanges = model.adminChanges, onPush = onPush)
         }
         SettingsClosingSections(session = session, onRemove = actions.removeLibrary)
@@ -145,7 +145,7 @@ internal fun SettingsScreen(
 @Composable
 private fun SettingsStoreSections(
     session: OpenLibrary,
-    home: CloudHome.At,
+    home: Storage.At,
     adminChanges: List<BridgeAdminChange>,
     onPush: (LibraryDestination) -> Unit,
 ) {
