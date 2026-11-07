@@ -331,6 +331,8 @@ task_types = [
     # limiter's queue.
     "FetchDocuments",
     "Ticket",
+    # A live read's resolver, built with the read.
+    "Resolving",
 ]
 
 # Handles (Appendix F.3): what an owner makes from its own state to hand out.
@@ -455,6 +457,7 @@ ImageHold = "RemoteImageHost"
     "StoreDevice::new",
     "SyncCycles::follow",
     "TwoStores::new",
+    "run_two_store_test",
 ]
 # One person's devices of a test library, syncing over shared memory storage:
 # it creates the first device and restores more from its code, and hands the
