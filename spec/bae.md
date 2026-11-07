@@ -2659,7 +2659,8 @@ her recovery code with that key inside it, so scanning it is enough
 ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
 The code to type holds no key, and asks for it separately.
 
-**Where the code shows.** The recovery code is coven's *restore code*.
+**Where the code shows.** What this spec elsewhere calls the recovery code is
+coven's *restore code*, which is what the apps name it.
 Carol adds a device from **Add device…** under her own row in People, shown
 only for a library with storage. Its sheet tells her to choose **Add
 device** on the new device, then scan its QR code or type the code it shows;
@@ -2674,12 +2675,21 @@ says the new device was added within seconds of it joining. A quiet sync is two
 requests to the storage, about 24 a minute, only while the sheet is open
 ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
 Settings keeps
-the code under **Your recovery code**, for the day she loses every device:
-hidden until she asks, then shown in place as coven formats it, to copy or
-hide, and hidden again when Settings closes. On S3 that section also says she will need her access
-key and secret. Making either code is one local read of her keys, which the
-app names while it runs, never a bare spinner: the sheet says it is making a
-code for her new device, and the section that it is making her recovery code.
+the code under **Restore code**, for the day she loses every device. It is
+made when Settings opens, one local read of her keys that the section names
+while it runs, never a bare spinner: the sheet says it is making a code for her
+new device, and the section that it is making her restore code. It shows
+masked: on a Mac its first two groups and its last, the groups between as dots;
+on Android its first two groups and dots after them. **Show** reveals it in
+groups of four and **Hide** masks it again; **Copy** copies the whole code,
+shown or not; **Print…** on a Mac and **Print** on Android print one page: the
+QR code, the code in groups of four, where the library is stored, the date, and
+how to use and keep the code. The page names no library and holds no S3 key,
+and its QR code holds the code to type. Closing Settings drops the code. A
+caption under it says to print it or keep it in a password manager, then on
+Apple devices that it is also in her iCloud Keychain, and on Android that a
+phone she sets up from this one gets it too; on S3 the section also says she
+will need her access key and secret.
 
 **Removing a device.** Ben's old phone is lost. He removes it from his laptop.
 Had he lost every device, Ana, an admin, could remove it for him: admins can
@@ -2762,11 +2772,11 @@ stays under it. Setting up is the form's one action, *Set up*. A build that
 offers one provider, as baeium offers S3, has no list: the sheet opens on that
 provider's screen, and *Cancel* closes it.
 
-Setup ends on the library's recovery code, for every provider, because bae
+Setup ends on the library's restore code, for every provider, because bae
 can't tell whether the Mac's keychain carries the code anywhere else, and
 losing the Mac could otherwise lose the library. Once the storage is connected
-the sheet shows the code, hidden until the person asks, as Settings does, with
-*Done*, which closes the sheet onto Library settings, where the code can be
+the sheet shows the code masked, as Settings does, with Show, Copy and Print…
+and *Done*, which closes the sheet onto Library settings, where the code can be
 shown again.
 
 **What setup shows while it runs.** Setting storage up, or reconnecting

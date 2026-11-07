@@ -36,7 +36,7 @@ struct LibrarySettingsTab: View {
     /// Why what removal would lose couldn't be read.
     @State
     private var removalError: DisplayError?
-    /// The recovery code section's reveal, hidden whenever this tab goes away.
+    /// The restore code section's reveal, closed whenever this tab goes away.
     @State
     private var recoveryCode = RecoveryCodeReveal()
     /// Why the library's location couldn't be read as this tab opened.
@@ -106,7 +106,15 @@ struct LibrarySettingsTab: View {
                 MembersSection()
                 AdminChangesSection()
                 HistorySharingSection()
-                RecoveryCodeSection(reveal: recoveryCode)
+                RecoveryCodeSection(
+                    reveal: recoveryCode,
+                    onPrint: { code in
+                        RestoreCodePrinting.print(
+                            code: code,
+                            location: configStore.storage?.accountLine ?? ""
+                        )
+                    }
+                )
             }
 
             Section("Remove") {
@@ -127,8 +135,18 @@ struct LibrarySettingsTab: View {
         .task { await libraryName.follow() }
         .task { await readStorage() }
         .onAppear { membership.show() }
+        // The restore code is made while this tab shows a library that
+        // syncs, and dropped when it stops.
+        .onChange(of: configStore.syncs, initial: true) { _, has in
+            if has {
+                recoveryCode.open(sync.generateRestoreCode)
+            }
+            else {
+                recoveryCode.close()
+            }
+        }
         .onDisappear {
-            recoveryCode.hide()
+            recoveryCode.close()
             membership.hide()
         }
         .sheet(isPresented: $showSyncSetup) {
@@ -332,7 +350,10 @@ struct LibrarySettingsTab: View {
         _ state: RecoveryCodeReveal.State
     ) -> some View {
         Form {
-            RecoveryCodeSection(reveal: RecoveryCodeReveal(previewState: state))
+            RecoveryCodeSection(
+                reveal: RecoveryCodeReveal(previewState: state),
+                onPrint: { _ in }
+            )
         }
         .formStyle(.grouped)
         .frame(width: 500, height: 300)
@@ -346,15 +367,21 @@ struct LibrarySettingsTab: View {
         )
     }
 
-    #Preview("Recovery code loading") {
+    #Preview("Restore code loading") {
         recoveryCodeSectionPreview(.loading)
     }
 
-    #Preview("Recovery code shown") {
-        recoveryCodeSectionPreview(.shown(code: PreviewData.recoveryCode))
+    #Preview("Restore code masked") {
+        recoveryCodeSectionPreview(
+            .masked(code: PreviewData.restoreCodeGrouped)
+        )
     }
 
-    #Preview("Recovery code failed") {
+    #Preview("Restore code shown") {
+        recoveryCodeSectionPreview(.shown(code: PreviewData.restoreCodeGrouped))
+    }
+
+    #Preview("Restore code failed") {
         recoveryCodeSectionPreview(
             .failed(DisplayError(line: "Couldn't reach your storage."))
         )

@@ -165,7 +165,7 @@ struct AddDeviceSheet: View {
         AddDeviceSheetPreview(
             result: AddDeviceSheetPreview.adding(
                 BridgeRestoreCodeShare(
-                    code: PreviewData.recoveryCode,
+                    code: PreviewData.restoreCodeGrouped,
                     qrText: PreviewData.recoveryCode,
                     qrCarriesS3Key: false
                 )
@@ -178,7 +178,7 @@ struct AddDeviceSheet: View {
         AddDeviceSheetPreview(
             result: AddDeviceSheetPreview.adding(
                 BridgeRestoreCodeShare(
-                    code: PreviewData.recoveryCode,
+                    code: PreviewData.restoreCodeGrouped,
                     qrText: "\(PreviewData.recoveryCode).s3-key-preview",
                     qrCarriesS3Key: true
                 )
@@ -191,7 +191,7 @@ struct AddDeviceSheet: View {
         AddDeviceSheetPreview(
             result: AddDeviceSheetPreview.adding(
                 BridgeRestoreCodeShare(
-                    code: PreviewData.recoveryCode,
+                    code: PreviewData.restoreCodeGrouped,
                     qrText: PreviewData.recoveryCode,
                     qrCarriesS3Key: false
                 )

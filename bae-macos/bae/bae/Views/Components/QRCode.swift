@@ -13,8 +13,10 @@ private let logger = Logger.bae("QRCode")
 /// standard requires.
 struct QRCode: View {
     let text: String
+    /// How wide it is drawn, in points.
+    var side: CGFloat = QRCode.defaultSide
 
-    static let side: CGFloat = 360
+    static let defaultSide: CGFloat = 360
 
     var body: some View {
         if let image = Self.image(for: text) {
@@ -23,7 +25,7 @@ struct QRCode: View {
             Image(nsImage: image)
                 .interpolation(.none)
                 .resizable()
-                .frame(width: Self.side, height: Self.side)
+                .frame(width: side, height: side)
         }
     }
 

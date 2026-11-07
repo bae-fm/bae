@@ -265,6 +265,7 @@ struct ShotScene {
         + settingsScenes
         + syncSetupScenes
         + sheetFooterScenes
+        + restoreCodeScenes
 }
 
 extension ShotScene {

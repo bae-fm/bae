@@ -4,9 +4,9 @@ import Testing
 
 @testable import bae
 
-/// Covers `RecoveryCodeReveal`, the Settings recovery code's hidden → loading
-/// → shown cycle, against stubbed generation — no live core. The load-bearing
-/// invariants are that a code generated after the person hid it, or after a
+/// Covers `RecoveryCodeReveal`, the Settings restore code's closed → loading
+/// → masked → shown cycle, against stubbed generation — no live core. The load-bearing
+/// invariants are that a code generated after the screen closed, or after a
 /// newer request replaced the run, never shows.
 @MainActor
 @Suite("RecoveryCodeReveal", .timeLimit(.minutes(1)))
@@ -51,15 +51,27 @@ struct RecoveryCodeRevealTests {
         BridgeRestoreCodeShare(code: code, qrText: code, qrCarriesS3Key: false)
     }
 
-    @Test("starts hidden and shows the code once it is generated")
-    func showsTheGeneratedCode() async throws {
+    @Test("starts closed, holds the code masked once it is generated")
+    func holdsTheGeneratedCodeMasked() async throws {
         let reveal = RecoveryCodeReveal()
-        #expect(reveal.state == .hidden)
+        #expect(reveal.state == .closed)
 
-        reveal.show { Self.share("CVR1-SHOWN") }
+        reveal.open { Self.share("CVR1 SHOWN") }
         #expect(reveal.state == .loading)
 
-        try await Wait.until { reveal.state == .shown(code: "CVR1-SHOWN") }
+        try await Wait.until { reveal.state == .masked(code: "CVR1 SHOWN") }
+    }
+
+    @Test("show reveals the held code and hide masks it again")
+    func showAndHide() async throws {
+        let reveal = RecoveryCodeReveal()
+        reveal.open { Self.share("CVR1 HELD") }
+        try await Wait.until { reveal.state == .masked(code: "CVR1 HELD") }
+
+        reveal.show()
+        #expect(reveal.state == .shown(code: "CVR1 HELD"))
+        reveal.hide()
+        #expect(reveal.state == .masked(code: "CVR1 HELD"))
     }
 
     @Test("a failure core gave a line shows that line")
@@ -70,52 +82,78 @@ struct RecoveryCodeRevealTests {
             detail: "storage unreachable"
         )
         let shown = try #require(DisplayError(failure))
-        reveal.show { throw failure }
+        reveal.open { throw failure }
 
         try await Wait.until { reveal.state == .failed(shown) }
     }
 
-    @Test("a cancellation from core leaves the code hidden")
-    func coreCancellationHides() async throws {
+    @Test("a cancellation from core leaves the section closed")
+    func coreCancellationCloses() async throws {
         let reveal = RecoveryCodeReveal()
-        reveal.show { throw BridgeError.Cancelled }
+        reveal.open { throw BridgeError.Cancelled }
 
-        try await Wait.until { reveal.state == .hidden }
+        try await Wait.until { reveal.state == .closed }
     }
 
-    @Test("a code generated after the person hid it stays hidden")
-    func hiddenWhileGeneratingStaysHidden() async throws {
+    @Test("a code generated after the screen closed stays dropped")
+    func closedWhileGeneratingStaysClosed() async throws {
         let reveal = RecoveryCodeReveal()
         let gate = Gate()
-        reveal.show {
+        reveal.open {
             await gate.pass()
-            return Self.share("CVR1-LATE")
+            return Self.share("CVR1 LATE")
         }
         try await Wait.until { gate.entered }
 
-        reveal.hide()
-        #expect(reveal.state == .hidden)
+        reveal.close()
+        #expect(reveal.state == .closed)
 
         gate.open()
         await reveal.generationsEnded()
-        #expect(reveal.state == .hidden)
+        #expect(reveal.state == .closed)
     }
 
     @Test("a newer request replaces a run still generating")
     func newerRequestWins() async throws {
         let reveal = RecoveryCodeReveal()
         let gate = Gate()
-        reveal.show {
+        reveal.open {
             await gate.pass()
-            return Self.share("CVR1-OLD")
+            return Self.share("CVR1 OLD")
         }
         try await Wait.until { gate.entered }
 
-        reveal.show { Self.share("CVR1-NEW") }
-        try await Wait.until { reveal.state == .shown(code: "CVR1-NEW") }
+        reveal.open { Self.share("CVR1 NEW") }
+        try await Wait.until { reveal.state == .masked(code: "CVR1 NEW") }
 
         gate.open()
         await reveal.generationsEnded()
-        #expect(reveal.state == .shown(code: "CVR1-NEW"))
+        #expect(reveal.state == .masked(code: "CVR1 NEW"))
+    }
+}
+
+/// How a restore code shows while it is masked.
+@Suite("RestoreCodeMask")
+struct RestoreCodeMaskTests {
+    @Test("keeps the first two groups and the last, eliding the rest")
+    func masksTheMiddle() {
+        #expect(
+            RestoreCodeMask.masked("CVR1 UJZD EGXD NCF3 2EPF 3DHO")
+                == RestoreCodeMask.Parts(
+                    leading: "CVR1 UJZD •••• •••• ••••",
+                    trailing: "3DHO"
+                )
+        )
+    }
+
+    @Test("a code too short to elide hides every group")
+    func shortCodeIsAllBullets() {
+        #expect(
+            RestoreCodeMask.masked("CVR1 UJZD EGXD")
+                == RestoreCodeMask.Parts(
+                    leading: "•••• •••• ••••",
+                    trailing: ""
+                )
+        )
     }
 }

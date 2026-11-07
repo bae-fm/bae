@@ -90,7 +90,7 @@ extension ShotScene {
     private static var addingCode: Result<BridgeAddDevice, Error> {
         AddDeviceSheetPreview.adding(
             BridgeRestoreCodeShare(
-                code: PreviewData.recoveryCode,
+                code: PreviewData.restoreCodeGrouped,
                 qrText: PreviewData.recoveryCode,
                 qrCarriesS3Key: false
             )

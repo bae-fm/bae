@@ -4,18 +4,21 @@ import os.log
 
 private let logger = Logger.bae("RecoveryCodeReveal")
 
-/// Whether the person's recovery code shows in Settings. The code stays hidden
-/// until the person asks for it, is generated on that request, and is hidden
-/// again on request or when the screen goes away. Hiding cancels a generation
-/// still running, so a late result never shows a code the person already put
-/// away.
+/// The person's restore code in Settings, from the screen opening to its
+/// closing. The code is made when the screen opens and held masked, so Copy
+/// and Print work at once; Show reveals it and Hide masks it again. Closing
+/// the screen drops it, and cancels a generation still running, so a late
+/// result never shows a code for a screen already closed.
 @MainActor
 @Observable
 public final class RecoveryCodeReveal {
     public enum State: Equatable {
-        case hidden
+        /// The screen isn't open: no code is held.
+        case closed
         case loading
-        /// The code exactly as coven formats it.
+        /// The code, held for Copy and Print, shown only as its first groups.
+        case masked(code: String)
+        /// The code in groups of four, as core formats it.
         case shown(code: String)
         case failed(DisplayError)
     }
@@ -33,7 +36,7 @@ public final class RecoveryCodeReveal {
     #endif
 
     public init() {
-        state = .hidden
+        state = .closed
     }
 
     #if DEBUG
@@ -44,9 +47,9 @@ public final class RecoveryCodeReveal {
         }
     #endif
 
-    /// Generate the code and show it; a generation already running is
+    /// Make the code and hold it masked; a generation already running is
     /// replaced.
-    public func show(
+    public func open(
         _ generate:
             @escaping @Sendable () async throws -> BridgeRestoreCodeShare
     ) {
@@ -57,24 +60,24 @@ public final class RecoveryCodeReveal {
                 // Cancelling this task also cancels the Rust call.
                 let share = try await generate()
                 try Task.checkCancellation()
-                state = .shown(code: share.code)
+                state = .masked(code: share.code)
             }
             catch is CancellationError {
-                logger.debug("recovery code generation cancelled")
+                logger.debug("restore code generation cancelled")
             }
             catch {
-                // A run this reveal replaced or hid owns no state any more,
+                // A run this reveal replaced or closed owns no state any more,
                 // whatever core reported for it.
                 guard !Task.isCancelled else {
-                    logger.debug("recovery code generation cancelled")
+                    logger.debug("restore code generation cancelled")
                     return
                 }
                 logger.error(
-                    "Failed to generate the recovery code: \(String(reflecting: error))"
+                    "Failed to generate the restore code: \(String(reflecting: error))"
                 )
                 // A failure with no line is a cancellation from core; the
-                // person can ask again.
-                state = DisplayError(error).map(State.failed) ?? .hidden
+                // screen can open again.
+                state = DisplayError(error).map(State.failed) ?? .closed
             }
         }
         task = run
@@ -93,10 +96,21 @@ public final class RecoveryCodeReveal {
         }
     #endif
 
-    /// Hide the code, cancelling a generation still running.
+    /// Show the held code.
+    public func show() {
+        if case .masked(let code) = state { state = .shown(code: code) }
+    }
+
+    /// Mask the shown code again.
     public func hide() {
+        if case .shown(let code) = state { state = .masked(code: code) }
+    }
+
+    /// The screen closed: drop the code, cancelling a generation still
+    /// running.
+    public func close() {
         task?.cancel()
         task = nil
-        state = .hidden
+        state = .closed
     }
 }

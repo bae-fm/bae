@@ -175,6 +175,16 @@
             "CVR1-"
             + String(repeating: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567", count: 6)
 
+        /// That code in groups of four, as the restore code shows.
+        static let restoreCodeGrouped: String = {
+            let body = Array(recoveryCode.dropFirst("CVR1-".count))
+            let groups = stride(from: 0, to: body.count, by: 4)
+                .map {
+                    String(body[$0..<min($0 + 4, body.count)])
+                }
+            return (["CVR1"] + groups).joined(separator: " ")
+        }()
+
         /// A `Sync` whose reads serve preview values, so the library-settings
         /// previews never touch cloud storage. It reads the library's
         /// location as `storage`.
@@ -185,7 +195,7 @@
                 },
                 generateRestoreCode: {
                     BridgeRestoreCodeShare(
-                        code: recoveryCode,
+                        code: restoreCodeGrouped,
                         qrText: recoveryCode,
                         qrCarriesS3Key: false
                     )
@@ -193,7 +203,7 @@
                 addDevice: {
                     BridgeAddDevice(
                         share: BridgeRestoreCodeShare(
-                            code: recoveryCode,
+                            code: restoreCodeGrouped,
                             qrText: recoveryCode,
                             qrCarriesS3Key: false
                         ),

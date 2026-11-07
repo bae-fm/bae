@@ -287,6 +287,9 @@ private struct RestoreCodeStep: View {
     let onDone: () -> Void
     let reveal: RecoveryCodeReveal
 
+    @Environment(Sync.self)
+    private var sync
+
     var body: some View {
         VStack(spacing: 0) {
             Form {
@@ -302,7 +305,14 @@ private struct RestoreCodeStep: View {
             .padding(.horizontal)
             .padding(.bottom, ThemeSpace.section)
         }
-        .onDisappear { reveal.hide() }
+        // The code is made as this screen opens, unless a preview or a shot
+        // already holds one.
+        .onAppear {
+            if reveal.state == .closed {
+                reveal.open(sync.generateRestoreCode)
+            }
+        }
+        .onDisappear { reveal.close() }
     }
 }
 
@@ -542,7 +552,7 @@ struct SetupStep<Fields: View>: View {
     #Preview("Restore code") {
         SyncSetupWizard.finished(
             on: .s3,
-            holding: .shown(code: PreviewData.recoveryCode)
+            holding: .shown(code: PreviewData.restoreCodeGrouped)
         )
     }
 
