@@ -164,10 +164,18 @@ async fn a_release_is_taken_into_one_grouping_at_most() {
         .combine_releases(crate::CandidateKey::grouping("first"), members[..2].to_vec())
         .await
         .unwrap();
-    assert!(tables
+    let error = tables
         .combine_releases(crate::CandidateKey::grouping("second"), members[1..].to_vec())
         .await
-        .is_err());
+        .expect_err("a release in one grouping is not taken into another");
+    assert!(
+        matches!(
+            &error,
+            crate::ImportError::Combine(crate::grouping::CombineRefusal::MemberTaken(name))
+                if *name == members[1].name
+        ),
+        "{error:?}"
+    );
 }
 
 /// Folders that cannot be read as one release refuse the combination as the

@@ -19,6 +19,29 @@ use super::{CandidateKey, ImportError};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+/// Why a combination of releases picked together was refused. Nothing of
+/// it was written.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum CombineRefusal {
+    /// Fewer than two releases were picked.
+    #[error("combining a release requires at least two folders")]
+    TooFewFolders,
+    /// The release the picked folders make up is already in the queue or
+    /// the library.
+    #[error("this combined release is already present in the queue or library")]
+    AlreadyPresent,
+    /// A picked release changed after it was picked.
+    #[error("{0} changed while the folders were being combined")]
+    MemberChanged(String),
+    /// A picked release is in another grouping already, or was imported.
+    #[error("{0} is already combined or imported")]
+    MemberTaken(String),
+    /// The folders, read together, made no release, and the grouping states
+    /// no block saying why.
+    #[error("{0} built no release from the folders it takes in")]
+    BuiltNothing(CandidateKey),
+}
+
 /// Why a grouping's release cannot be worked on as it stands. The release
 /// keeps what it was last built from until this is fixed or the grouping is
 /// undone. Each reason is typed so every surface says it in the person's own

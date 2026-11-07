@@ -121,6 +121,11 @@ pub enum ImportError {
     #[error("{reason}")]
     GroupingBlocked { reason: crate::grouping::GroupingBlock },
 
+    /// Releases picked to be read as one could not be combined.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    Combine(#[from] crate::grouping::CombineRefusal),
+
     /// The cover chosen names a file or tag artwork the candidate's scan did
     /// not store.
     #[cfg(desktop)]
@@ -499,6 +504,18 @@ impl ImportError {
             Self::Internal { .. } => C::Internal,
             #[cfg(desktop)]
             Self::Stopped | Self::Provenance { .. } => C::Internal,
+            // The import pane combines only what it lists, at least two, so
+            // a short pick or one that made nothing is bae's own fault; a
+            // release that moved or was taken meanwhile is the person's to
+            // pick again.
+            #[cfg(desktop)]
+            Self::Combine(refusal) => match refusal {
+                crate::grouping::CombineRefusal::TooFewFolders
+                | crate::grouping::CombineRefusal::BuiltNothing(_) => C::Internal,
+                crate::grouping::CombineRefusal::AlreadyPresent
+                | crate::grouping::CombineRefusal::MemberChanged(_)
+                | crate::grouping::CombineRefusal::MemberTaken(_) => C::Import,
+            },
             #[cfg(desktop)]
             Self::DiscogsKey(error) => match **error {
                 crate::DiscogsKeyError::Keyring(_) | crate::DiscogsKeyError::Preferences(_) => {

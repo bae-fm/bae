@@ -22,7 +22,7 @@ use crate::folder_scanner::{
     AudioDamage, CandidateFile, FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey,
     InvalidCandidate, ProposedRole, ScanItem, SidecarFiles, SkippedFile,
 };
-use crate::grouping::GroupingBlock;
+use crate::grouping::{CombineRefusal, GroupingBlock};
 use crate::CandidateKey;
 pub(super) use folder_readings::{store_folder_reading, validate_decision_key_ownership};
 use std::path::{Path, PathBuf};
@@ -668,10 +668,7 @@ impl ImportTables {
         members: Vec<FolderCandidate>,
     ) -> Result<GroupingChanges, crate::ImportError> {
         if members.len() < 2 {
-            return Err(DbError::Message(
-                "combining a release requires at least two folders".into(),
-            )
-            .into());
+            return Err(CombineRefusal::TooFewFolders.into());
         }
         let root_for_compose = members[0].watched_folder_path.clone();
         let key_for_compose = key.clone();
@@ -709,11 +706,7 @@ impl ImportTables {
                         |row| row.get(0),
                     )?;
                     if in_use {
-                        return Err(DbError::Message(
-                            "this combined release is already present in the queue or library"
-                                .into(),
-                        )
-                        .into());
+                        return Err(CombineRefusal::AlreadyPresent.into());
                     }
                     super::import_state::restart_state_on(sql, &content_hash, &key, &inherited)?;
                 }
@@ -723,11 +716,7 @@ impl ImportTables {
                         .map(|(_, stored)| stored.item)
                         != Some(ScanItem::Valid(member.clone()))
                     {
-                        return Err(DbError::Message(format!(
-                            "{} changed while the folders were being combined",
-                            member.name
-                        ))
-                        .into());
+                        return Err(CombineRefusal::MemberChanged(member.name.clone()).into());
                     }
                     let unavailable = sql.query_row(
                     "SELECT EXISTS(SELECT 1 FROM release_grouping_member WHERE member_key = ?1) \
@@ -736,11 +725,7 @@ impl ImportTables {
                     |row| row.get::<_, bool>(0),
                 )?;
                     if unavailable {
-                        return Err(DbError::Message(format!(
-                            "{} is already combined or imported",
-                            member.name
-                        ))
-                        .into());
+                        return Err(CombineRefusal::MemberTaken(member.name.clone()).into());
                     }
                 }
                 sql.execute(
@@ -780,10 +765,7 @@ impl ImportTables {
                     // Nothing of it is kept: the whole write rolls back.
                     return Err(match load_block_on(sql, &key)? {
                         Some(reason) => crate::ImportError::GroupingBlocked { reason },
-                        None => DbError::Message(format!(
-                            "{key} built no release from the folders it takes in"
-                        ))
-                        .into(),
+                        None => CombineRefusal::BuiltNothing(key.clone()).into(),
                     });
                 }
                 Ok(changes)
