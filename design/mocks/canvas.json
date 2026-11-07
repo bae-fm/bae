@@ -3231,7 +3231,7 @@
    "h": 640,
    "page": "logo",
    "title": "The logo",
-   "w": 1100,
+   "w": 1460,
    "x": 0,
    "y": 240
   },
@@ -4624,7 +4624,7 @@
   "code-logo": {
    "page": "logo",
    "size": 24,
-   "text": "What the code needs for these boards:\n- App icons for iOS, Windows and Linux. Today only macOS and Android have one.\n- The sheep on Welcome on macOS, and on About on both. Android’s Welcome has it, from an old PNG (drawable-xxhdpi/sheep_icon.png) that still shows the line under the player.\n- The small sheep as the website’s favicon. Today it’s app-icon.png.",
+   "text": "What the code needs for these boards:\n- App icons for iOS, Windows and Linux. Today only macOS and Android have one.\n- The sheep on Welcome on macOS, and on About on both. Android’s Welcome has it, from an old PNG (drawable-xxhdpi/sheep_icon.png) that still shows the line under the player.\n- The small sheep as the website’s favicon. Today it’s app-icon.png.\n- One logo view on each platform, the sheep over the word, used wherever they appear together. The word is bae-word.svg, in place of the wordmark text style in design/theme.toml.",
    "w": 420,
    "x": 2952,
    "y": 1200

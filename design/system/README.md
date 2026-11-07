@@ -22,7 +22,7 @@ The apps offer six tones (neutral, slate, plum, midnight, forest, sand), eight a
 
 The text styles are macOS points. iOS follows Dynamic Type, and the Android components set Android's sizes. No font files ship: each platform uses its own face.
 
-- `title`, `hero` and `display` are for pages and the welcome screen, not settings. `wordmark` is for the word beside the sheep (see Logo).
+- `title`, `hero` and `display` are for pages and the welcome screen, not settings.
 
 ## Screens
 
@@ -41,10 +41,12 @@ Icons appear only when they are the control (copy, a chevron, a disclosure mark)
 
 The sheep is bae's logo: `assets/Logos/bae-sheep.svg`, with no background of its own. It's the product's own artwork, so Iconography's rule doesn't apply to it.
 
-- **Sheep and "bae" together:** where bae introduces itself: Welcome, About and this system's cover. The sheep on top, both centered, the word in the `wordmark` style.
+- **Sheep and "bae" together:** where bae introduces itself: Welcome, About and this system's cover. The sheep on top, both centered, the word `assets/Logos/bae-word.svg` at 0.52 of the sheep's width. The word is Fredoka SemiBold turned into a drawing, so it's the same on every platform and no app needs the font. Fredoka is for the logo only.
+- **Sheep and "bae" in a line:** where there's width but little height, such as a header. The sheep comes first: on the left, or on the right in a right-to-left language. The word is 0.8 of the sheep's width.
 - **Sheep alone:** where the system or the space already says the name: app icons and favicons. On an app icon it sits on a pale pink tile, `#FFD6E7`.
 - **Small sheep:** at 32px and under, the full drawing loses its detail, so favicons and small icons use `bae-favicon-16.svg` and `bae-favicon-32.svg`, drawn pixel by pixel for those sizes. Show them at exactly those sizes.
-- **"bae" alone:** in sentences, titles and menus, as plain text in the style around it.
+- **"bae" alone:** the drawn word, `assets/Logos/bae-word.svg`, where a logo belongs but the sheep doesn't fit.
+- **"bae" in text:** in sentences, titles and menus the name is plain text in whatever font is around it, never the drawn word.
 
 `Logo` draws these forms. `AppIcon` draws each platform's icon: the sheep on the pale pink tile on macOS, iOS and Android, and with no tile on Windows and Linux.
 
