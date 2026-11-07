@@ -2,16 +2,13 @@ import BaeKit
 import SwiftUI
 import os.log
 
-private let logger = Logger.bae("SyncStatusLine")
+private let logger = Logger.bae("SyncPendingList")
 
-/// The one line Settings shows for sync — what it is doing, or "Waiting: 3 items" —
-/// and, opened, each thing coven is waiting on with its action where the
-/// person can act; under it the last failure (`SyncFailureLines`).
-struct SyncStatusLine: View {
+/// What coven is waiting on, one row per pending record, each with its action
+/// where the person can act. It shows only while something waits.
+struct SyncPendingList: View {
     /// The library's storage, whose S3 access key the key sheet replaces.
     let location: BridgeStorageLocation
-    /// Offered when sync found another copy of this device.
-    let onResetDevice: () -> Void
     let onRestoreFromCode: () -> Void
     let onCheckForUpdates: () -> Void
 
@@ -24,8 +21,6 @@ struct SyncStatusLine: View {
         private var cloudSyncSetup
     #endif
 
-    @State
-    private var expanded = false
     /// The pending record whose action needs more than one step.
     @State
     private var sheet: PendingActionSheet?
@@ -34,27 +29,21 @@ struct SyncStatusLine: View {
     private var signInSteps: StorageSetupFollowing?
 
     var body: some View {
-        DisclosureGroup(isExpanded: $expanded) {
-            // What is waiting is a local read; nothing shows until it lands.
-            if let pending = status.pending {
+        if let pending = status.pending, !pending.isEmpty {
+            Section("Pending") {
                 PendingRecordsView(records: pending, perform: perform)
+                if let signInSteps {
+                    StepProgressLine(steps: signInSteps.steps) { EmptyView() }
+                }
             }
-        } label: {
-            if let statusText = status.statusText {
-                Text(statusText)
+            .sheet(item: $sheet) { sheet in
+                PendingActionSheetView(
+                    sheet: sheet,
+                    location: location,
+                    onDismiss: { self.sheet = nil }
+                )
             }
         }
-        .sheet(item: $sheet) { sheet in
-            PendingActionSheetView(
-                sheet: sheet,
-                location: location,
-                onDismiss: { self.sheet = nil }
-            )
-        }
-        if let signInSteps {
-            StepProgressLine(steps: signInSteps.steps) { EmptyView() }
-        }
-        SyncFailureLines(onResetDevice: onResetDevice)
     }
 
     private func perform(_ record: BridgePendingRecord) async throws {
@@ -101,55 +90,6 @@ struct SyncStatusLine: View {
             #endif
         case .systemAccount:
             try await sync.reconnectSync()
-        }
-    }
-}
-
-/// The last sync failure, under the status line or under Sign In where this
-/// device has no storage set up: Reconnect where a start failed with storage
-/// set up, and Reset device where sync found another copy of this device.
-struct SyncFailureLines: View {
-    /// Offered when sync found another copy of this device.
-    let onResetDevice: () -> Void
-
-    @Environment(SyncStatusStore.self)
-    private var status
-    @Environment(Sync.self)
-    private var sync
-
-    /// The Reconnect running after a failed start; nil while none runs.
-    @State
-    private var reconnectTask: Task<Void, Never>?
-
-    var body: some View {
-        if let error = status.error {
-            ErrorDetailDisclosure(error: error)
-        }
-        if status.offersReconnect {
-            Button(localizedCoreString("core.pending.action.reconnect")) {
-                reconnect()
-            }
-            .disabled(reconnectTask != nil)
-        }
-        if status.offersDeviceReset {
-            Button(
-                localizedCoreString("core.sync.reset_device.confirm"),
-                role: .destructive,
-                action: onResetDevice
-            )
-        }
-    }
-
-    /// Start sync again after a failed start. A start that fails again is
-    /// recorded as the status's failure, which shows in place of the last
-    /// one.
-    private func reconnect() {
-        reconnectTask = Task {
-            defer { reconnectTask = nil }
-            do { try await sync.reconnectSync() }
-            catch {
-                logger.error("Reconnect failed: \(String(reflecting: error))")
-            }
         }
     }
 }

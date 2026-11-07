@@ -297,7 +297,7 @@ struct SyncSetupWizard: View {
 /// Setup's last screen, for every provider: the library's restore code, which
 /// gets the person back in if they lose every device. bae can't tell whether
 /// the Mac's keychain carries it anywhere else, so setup ends here, and Done
-/// lands on the Library settings, which hold the code too.
+/// lands on the Sync page; Settings holds the code too.
 private struct RestoreCodeStep: View {
     let onDone: () -> Void
     let reveal: RestoreCodeReveal

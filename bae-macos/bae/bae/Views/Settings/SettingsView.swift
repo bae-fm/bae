@@ -83,6 +83,7 @@ struct SettingsView: View {
     let onResetDevice: () -> Void
     let onRestoreFromCode: () -> Void
     let onRenameLibrary: () -> Void
+    let onRemoveLibrary: () -> Void
 
     @Environment(SettingsNavigation.self)
     private var navigation
@@ -137,7 +138,8 @@ struct SettingsView: View {
                 onCheckForUpdates: {
                     checkForUpdatesViewModel.checkForUpdates()
                 },
-                onRenameLibrary: onRenameLibrary
+                onRenameLibrary: onRenameLibrary,
+                onRemoveLibrary: onRemoveLibrary
             )
         case .playback:
             PlaybackSettingsTab()

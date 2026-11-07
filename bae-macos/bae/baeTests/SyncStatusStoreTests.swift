@@ -1,73 +1,67 @@
 import BaeKit
+import Foundation
 import Testing
 
 @Suite("SyncStatusStore")
 struct SyncStatusStoreTests {
     @MainActor
-    @Test("config values cannot overwrite the status line")
-    func configValuesDoNotPublishTheLine() {
+    @Test("config values cannot overwrite the sync state")
+    func configValuesDoNotPublishTheState() {
         let config = ConfigStore(
             config: Config(bridge: bridgeConfig()),
             storage: nil
         )
         let sync = SyncStatusStore()
 
-        sync.apply(status(indicator: .synced))
+        sync.apply(status(.previewSynced))
         config.applyConfigSnapshot(bridgeConfig())
-        #expect(sync.line == .read(.synced))
+        #expect(sync.shown?.status == .synced)
 
-        sync.apply(status(indicator: nil))
-        #expect(sync.line == .noStorage)
+        sync.apply(status(.previewNotSynced))
+        #expect(sync.shown?.status == .notSynced)
     }
 
-    /// With no storage set up on this device there is no sync to describe:
-    /// no line, where Settings offers signing in to the recorded storage.
+    /// Before the status is first read the page shows nothing in its block,
+    /// never that the library is synced, and the list waits.
     @MainActor
-    @Test("no storage on this device has no line")
-    func noStorageHasNoLine() {
+    @Test("the state is absent until the status is read")
+    func theStateIsAbsentUntilTheStatusIsRead() {
         let sync = SyncStatusStore()
-        sync.apply(status(indicator: nil))
-        #expect(sync.line == .noStorage)
-        #expect(sync.statusText == nil)
+        #expect(sync.shown == nil)
+        #expect(!sync.unreadable)
+        #expect(sync.pending == nil)
+        sync.apply(status(.previewSynced))
+        #expect(sync.shown?.status == .synced)
+        #expect(sync.pending == [])
     }
 
-    /// The hour-losing case: a cycle fails, core records the fault, and every
-    /// surface renders the category line — "Something went wrong." — which names
-    /// no fault at all. The store hands the concrete text on with it, so a
-    /// surface has both to show.
+    /// A read that fails withdraws the state with the snapshot it came from,
+    /// and says it couldn't be read until a read succeeds.
     @MainActor
-    @Test("a failed cycle surfaces its fault, not just its category line")
-    func failedCycleSurfacesItsFault() throws {
-        let fault =
-            "sync cycle: pull Store commits: database: retained Merge replay has an unresolved foreign-key dependency"
+    @Test("a failed read withdraws the state until a read succeeds")
+    func aFailedReadWithdrawsTheState() {
         let sync = SyncStatusStore()
+        sync.apply(status(.previewSynced))
 
-        sync.apply(
-            BridgeSyncStatusSnapshot(
-                error: .Diagnostic(category: .internal, detail: fault),
-                pending: [],
-                indicator: nil,
-                reconnectOffered: false,
-                setupRunning: false,
-                undoneSetup: nil
+        sync.fail(
+            BridgeError.Diagnostic(
+                category: .database,
+                detail: "the read failed"
             )
         )
+        #expect(sync.shown == nil)
+        #expect(sync.unreadable)
 
-        let error = try #require(sync.error)
-        #expect(error.line == BridgeErrorCategory.internal.localizedLine)
-        #expect(error.detail == fault, "the copy button keeps the whole chain")
-        #expect(
-            error.detailSummary == fault,
-            "and a surface can render it inline"
-        )
+        sync.apply(status(.previewSynced))
+        #expect(sync.shown?.status == .synced)
+        #expect(!sync.unreadable)
     }
 
-    /// A connected library with something coven waits on is not "Synced" —
-    /// core decides that and says so on the snapshot, so no surface re-derives
-    /// it — and the record reaches the list that offers its action.
+    /// A connected library with something coven waits on reaches the list
+    /// that offers its action, whatever state the page names.
     @MainActor
-    @Test("a pending record makes the line wait and reaches the list")
-    func pendingRecordMakesTheLineWait() throws {
+    @Test("a pending record reaches the list")
+    func pendingRecordReachesTheList() throws {
         let record = BridgePendingRecord(
             subject: BridgeMessage(
                 key: "core.pending.operation.invite",
@@ -85,105 +79,54 @@ struct SyncStatusStoreTests {
 
         sync.apply(
             BridgeSyncStatusSnapshot(
-                error: nil,
+                shown: .previewSynced,
                 pending: [record],
-                indicator: .waiting(items: 1),
-                reconnectOffered: false,
                 setupRunning: false,
                 undoneSetup: nil
             )
         )
 
-        #expect(sync.line == .read(.waiting(items: 1)))
         let first = try #require(sync.pending?.first)
         #expect(first.action == .retryOperation(id: 7))
     }
 
-    /// Before the status is first read the line says it is checking, never
-    /// that the library is synced, and the list waits.
+    /// The state's words, cause and last sync are core's, in the person's
+    /// language: a provider's wait names it and when sync resumes.
     @MainActor
-    @Test("the line checks until the status is read")
-    func theLineChecksUntilTheStatusIsRead() {
-        let sync = SyncStatusStore()
-        #expect(sync.line == .checking)
-        #expect(sync.pending == nil)
-        sync.apply(status(indicator: .synced))
-        #expect(sync.line == .read(.synced))
-        #expect(sync.pending == [])
-    }
-
-    @MainActor
-    @Test("a healthy sync has no error to render")
-    func healthySyncHasNoError() {
-        let sync = SyncStatusStore()
-        sync.apply(status(indicator: .synced))
-        #expect(sync.error == nil)
-    }
-
-    /// A start that failed with storage set up offers Reconnect beside why,
-    /// as core says; a read that fails withdraws it with the snapshot.
-    @MainActor
-    @Test("a failed start offers Reconnect while its status stands")
-    func failedStartOffersReconnect() {
-        let sync = SyncStatusStore()
-        sync.apply(status(indicator: .synced))
-        #expect(!sync.offersReconnect)
-
-        sync.apply(
-            BridgeSyncStatusSnapshot(
-                error: .Diagnostic(
-                    category: .membership,
-                    detail: "the store key is missing"
+    @Test("a state is worded from core's keys and arguments")
+    func aStateIsWordedFromCoresKeys() throws {
+        let resumes = Date(timeIntervalSince1970: 1_000_000)
+        let shown = BridgeSyncShown(
+            status: .waitingToSync,
+            tone: .warning,
+            cause: BridgeSyncCause(
+                message: BridgeMessage(
+                    key: "core.sync.cause.provider_wait",
+                    args: [BridgeMessageArg(name: "provider", value: "Dropbox")]
                 ),
-                pending: [],
-                indicator: .failed,
-                reconnectOffered: true,
-                setupRunning: false,
-                undoneSetup: nil
-            )
+                resumesAt: resumes
+            ),
+            fix: nil,
+            lastSynced: Date(timeIntervalSinceNow: -7_200)
         )
-        #expect(sync.offersReconnect)
-
-        sync.fail(
-            BridgeError.Diagnostic(
-                category: .database,
-                detail: "the read failed"
-            )
-        )
-        #expect(!sync.offersReconnect)
-    }
-
-    @MainActor
-    @Test("a required app update renders its line")
-    func requiredUpdateRendersItsLine() throws {
-        let sync = SyncStatusStore()
-        sync.apply(
-            BridgeSyncStatusSnapshot(
-                error: .Diagnostic(
-                    category: .syncUpdateRequired,
-                    detail: "schema 17 required"
-                ),
-                pending: [],
-                indicator: .synced,
-                reconnectOffered: false,
-                setupRunning: false,
-                undoneSetup: nil
-            )
+        #expect(shown.statusLine == "Waiting to sync")
+        let cause = try #require(shown.causeLine)
+        #expect(
+            cause.hasPrefix("Dropbox asked bae to wait. Syncing resumes at ")
         )
         #expect(
-            try #require(sync.error).line
-                == BridgeErrorCategory.syncUpdateRequired.localizedLine
+            cause.hasSuffix(
+                resumes.formatted(date: .omitted, time: .shortened) + "."
+            )
         )
+        #expect(shown.lastSyncedLine == "2 hours ago")
+        #expect(shown.statusTone.color == StatusTone.warning.color)
     }
 
-    private func status(
-        indicator: BridgeSyncIndicator?
-    ) -> BridgeSyncStatusSnapshot {
+    private func status(_ shown: BridgeSyncShown) -> BridgeSyncStatusSnapshot {
         BridgeSyncStatusSnapshot(
-            error: nil,
+            shown: shown,
             pending: [],
-            indicator: indicator,
-            reconnectOffered: false,
             setupRunning: false,
             undoneSetup: nil
         )

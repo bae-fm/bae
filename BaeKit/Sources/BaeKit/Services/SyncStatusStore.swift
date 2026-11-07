@@ -1,19 +1,5 @@
 import SwiftUI
 
-/// What the sync status line shows: checking before the sync status is first
-/// read, unreadable after a read failed, no storage while this device has none
-/// set up, or the indicator of the status read.
-public enum SyncLine: Equatable, Sendable {
-    case checking
-    case unreadable
-    /// This device has no storage set up, so there is no sync to describe.
-    /// Under a recorded location it means this device no longer holds its
-    /// credentials for it, and Settings offers signing in to it again in
-    /// place of the line.
-    case noStorage
-    case read(BridgeSyncIndicator)
-}
-
 @Observable
 public final class SyncStatusStore {
     public private(set) var snapshot: BridgeSyncStatusSnapshot?
@@ -22,56 +8,16 @@ public final class SyncStatusStore {
     public init(snapshot: BridgeSyncStatusSnapshot? = nil) {
         self.snapshot = snapshot
     }
-    /// What the status line shows: checking until the status is first read,
-    /// unreadable after a read failed until the next succeeds, otherwise the
-    /// indicator of the status as read, or no storage.
-    public var line: SyncLine {
-        if readError != nil { return .unreadable }
-        guard let snapshot else { return .checking }
-        guard let indicator = snapshot.indicator else { return .noStorage }
-        return .read(indicator)
+    /// What the Sync page's top block shows: nothing until the status is
+    /// first read, and nothing after a read failed, which the page says in
+    /// its own words.
+    public var shown: BridgeSyncShown? {
+        readError == nil ? snapshot?.shown : nil
     }
+    /// Whether the status couldn't be read, until a read succeeds.
+    public var unreadable: Bool { readError != nil }
     /// What coven is waiting on; nil until the status is first read.
     public var pending: [BridgePendingRecord]? { snapshot?.pending }
-    public var error: DisplayError? {
-        readError ?? snapshot?.error.flatMap { DisplayError($0) }
-    }
-    /// Whether sync stopped because another copy of this device is syncing,
-    /// which only resetting this device answers.
-    public var offersDeviceReset: Bool {
-        if case BridgeError.Diagnostic(.deviceResetRequired, _)? = snapshot?
-            .error
-        {
-            return true
-        }
-        return false
-    }
-    /// Whether Reconnect is offered beside the failure: core says a start
-    /// failed and left sync not running with storage set up on this device.
-    /// Not after a read failed, whose snapshot may no longer stand.
-    public var offersReconnect: Bool {
-        readError == nil && snapshot?.reconnectOffered == true
-    }
-    /// The one line sync shows: what sync is doing, or "Waiting: 3 items";
-    /// none with no storage set up on this device, which has no sync to
-    /// describe.
-    public var statusText: String? {
-        let indicator: BridgeSyncIndicator
-        switch line {
-        case .checking: return String(localized: "Checking sync…")
-        case .unreadable: return String(localized: "Couldn't read sync status")
-        case .noStorage: return nil
-        case .read(let read): indicator = read
-        }
-        let key = bridgeSyncIndicatorKey(indicator: indicator)
-        if case .waiting(let items) = indicator {
-            return String.localizedStringWithFormat(
-                localizedCoreString(key),
-                Int(items)
-            )
-        }
-        return localizedCoreString(key)
-    }
     public func apply(_ snapshot: BridgeSyncStatusSnapshot) {
         self.snapshot = snapshot
         readError = nil
@@ -80,3 +26,34 @@ public final class SyncStatusStore {
         readError = DisplayError(error)
     }
 }
+
+#if DEBUG
+    extension BridgeSyncShown {
+        /// A library in sync.
+        public static let previewSynced = BridgeSyncShown(
+            status: .synced,
+            tone: .success,
+            cause: nil,
+            fix: nil,
+            lastSynced: nil
+        )
+
+        /// A library with no storage set up.
+        public static let previewNotSynced = BridgeSyncShown(
+            status: .notSynced,
+            tone: .neutral,
+            cause: nil,
+            fix: nil,
+            lastSynced: nil
+        )
+
+        /// A Dropbox library this device is signed out of.
+        public static let previewSignedOut = BridgeSyncShown(
+            status: .signedOutOfDropbox,
+            tone: .warning,
+            cause: nil,
+            fix: .signIn(provider: .dropbox),
+            lastSynced: Date(timeIntervalSinceNow: -3 * 24 * 3_600)
+        )
+    }
+#endif

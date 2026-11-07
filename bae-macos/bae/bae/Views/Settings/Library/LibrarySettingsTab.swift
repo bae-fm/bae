@@ -14,6 +14,9 @@ struct LibrarySettingsTab: View {
     let onCheckForUpdates: () -> Void
     /// Opens Rename Library on the active library's name.
     let onRenameLibrary: () -> Void
+    /// Closes the active library for the welcome list, where it is removed
+    /// from this Mac.
+    let onRemoveLibrary: () -> Void
 
     @Environment(ConfigStore.self)
     var configStore
@@ -90,7 +93,8 @@ struct LibrarySettingsTab: View {
                         storageReadError: storageReadError,
                         onResetDevice: onResetDevice,
                         onRestoreFromCode: onRestoreFromCode,
-                        onCheckForUpdates: onCheckForUpdates
+                        onCheckForUpdates: onCheckForUpdates,
+                        onRemoveLibrary: onRemoveLibrary
                     )
                 case .people:
                     PeopleSettingsPage()
@@ -142,9 +146,9 @@ struct LibrarySettingsTab: View {
         if configStore.syncs || setupRunning {
             NavigationLink(value: Page.sync) {
                 LabeledContent("Sync") {
-                    if let text = syncStatus.statusText {
-                        Text(text)
-                            .foregroundStyle(syncTone.color)
+                    if let shown = syncStatus.shown {
+                        Text(shown.statusLine)
+                            .foregroundStyle(shown.statusTone.color)
                     }
                 }
             }
@@ -159,18 +163,6 @@ struct LibrarySettingsTab: View {
                     }
                 }
             }
-        }
-    }
-
-    private var syncTone: StatusTone {
-        guard case .read(let indicator) = syncStatus.line else {
-            return .neutral
-        }
-        switch indicator {
-        case .synced: return .success
-        case .failed: return .danger
-        case .settingUpStorage, .stopped, .syncing, .offline, .waiting:
-            return .neutral
         }
     }
 
@@ -202,18 +194,17 @@ struct LibrarySettingsTab: View {
     }
 }
 
-/// The Sync page: where the library is stored and how its sync stands, until
-/// the redesigned page replaces it.
+/// The Sync page: the state sync is in, with its cause, its fix and when it
+/// last finished, then where the library is stored and what sync waits on.
 private struct SyncSettingsPage: View {
     let storageReadError: DisplayError?
     let onResetDevice: () -> Void
     let onRestoreFromCode: () -> Void
     let onCheckForUpdates: () -> Void
+    let onRemoveLibrary: () -> Void
 
     @Environment(ConfigStore.self)
     private var configStore
-    @Environment(SyncStatusStore.self)
-    private var syncStatus
 
     var body: some View {
         Form {
@@ -222,27 +213,24 @@ private struct SyncSettingsPage: View {
                 if let storageReadError {
                     ErrorDetailDisclosure(error: storageReadError)
                 }
-                if let location = configStore.storage {
+                SyncStatusBlock(
+                    location: configStore.storage,
+                    actions: SyncFixActions(
+                        onResetDevice: onResetDevice,
+                        onCheckForUpdates: onCheckForUpdates,
+                        onRemoveLibrary: onRemoveLibrary
+                    )
+                )
+            }
+            if let location = configStore.storage {
+                Section("Storage") {
                     CloudProviderConnectedSection(location: location)
-                    if syncStatus.line == .noStorage {
-                        StorageSignIn(location: location)
-                        SyncFailureLines(onResetDevice: onResetDevice)
-                    }
-                    else {
-                        SyncStatusLine(
-                            location: location,
-                            onResetDevice: onResetDevice,
-                            onRestoreFromCode: onRestoreFromCode,
-                            onCheckForUpdates: onCheckForUpdates
-                        )
-                    }
                 }
-                else {
-                    if let statusText = syncStatus.statusText {
-                        Text(statusText)
-                    }
-                    SyncFailureLines(onResetDevice: onResetDevice)
-                }
+                SyncPendingList(
+                    location: location,
+                    onRestoreFromCode: onRestoreFromCode,
+                    onCheckForUpdates: onCheckForUpdates
+                )
             }
         }
         .formStyle(.grouped)
@@ -319,17 +307,18 @@ private struct RestoreCodeSettingsPage: View {
         }
     }
 
-    /// The Library tab over `fixture`'s library, its sync at `indicator`.
+    /// The Library tab over `fixture`'s library, its sync as `shown` says.
     @MainActor
     func librarySettingsTabPreview(
         _ fixture: LibrarySettingsTabPreviewFixture,
-        indicator: BridgeSyncIndicator? = .synced
+        shown: BridgeSyncShown = .previewSynced
     ) -> some View {
         LibrarySettingsTab(
             onResetDevice: {},
             onRestoreFromCode: {},
             onCheckForUpdates: {},
-            onRenameLibrary: {}
+            onRenameLibrary: {},
+            onRemoveLibrary: {}
         )
         .frame(width: 500, height: 640)
         .environment(
@@ -342,10 +331,8 @@ private struct RestoreCodeSettingsPage: View {
         .environment(
             SyncStatusStore(
                 snapshot: BridgeSyncStatusSnapshot(
-                    error: nil,
+                    shown: shown,
                     pending: [],
-                    indicator: indicator,
-                    reconnectOffered: false,
                     setupRunning: false,
                     undoneSetup: nil
                 )
@@ -360,7 +347,7 @@ private struct RestoreCodeSettingsPage: View {
     #Preview("No storage") {
         librarySettingsTabPreview(
             LibrarySettingsTabPreviewFixture(storage: nil),
-            indicator: nil
+            shown: .previewNotSynced
         )
     }
 
@@ -393,7 +380,7 @@ private struct RestoreCodeSettingsPage: View {
             LibrarySettingsTabPreviewFixture(
                 storage: PreviewData.previewStorage
             ),
-            indicator: nil
+            shown: .previewSignedOut
         )
     }
 

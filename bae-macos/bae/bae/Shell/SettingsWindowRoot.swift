@@ -21,7 +21,8 @@ struct SettingsWindowRoot: View {
                             libraryId: appService.libraryId
                         )
                     },
-                    onRenameLibrary: { appDelegate.presentRenameLibrary() }
+                    onRenameLibrary: { appDelegate.presentRenameLibrary() },
+                    onRemoveLibrary: { appDelegate.closeLibrary() }
                 )
                 .errorAlert(appDelegate.uiStore)
                 .onAppear { appService.reportScreen(.settings) }

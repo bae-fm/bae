@@ -15,11 +15,11 @@ public struct CloudProviderConnectedSection: View {
         LabeledContent("Provider", value: location.displayName)
         switch location {
         case .s3(let bucket, let region, let endpoint, _):
-            LabeledContent("Bucket", value: bucket)
-            LabeledContent("Region", value: region)
             if let endpoint {
                 LabeledContent("Endpoint", value: endpoint)
             }
+            LabeledContent("Region", value: region)
+            LabeledContent("Bucket", value: bucket)
         case .dropbox, .oneDrive:
             if let account = location.accountLabel {
                 LabeledContent("Account", value: account)
@@ -27,8 +27,8 @@ public struct CloudProviderConnectedSection: View {
             if let folder = location.folderLabel {
                 FolderRows(folder: folder)
             }
-        case .cloudKit(let container, _, _):
-            LabeledContent("Container", value: container)
+        case .cloudKit:
+            EmptyView()
         }
     }
 }

@@ -82,26 +82,24 @@ struct SyncStatusSubscriptionTests {
         let appService = makeAppService(handle: handle)
         let store = appService.syncStatusStoreForTesting
         appService.startCommonSubscriptions()
-        #expect(store.line == .checking)
+        #expect(store.shown == nil && !store.unreadable)
 
         let synced = BridgeSyncStatusSnapshot(
-            error: nil,
+            shown: .previewSynced,
             pending: [],
-            indicator: .synced,
-            reconnectOffered: false,
             setupRunning: false,
             undoneSetup: nil
         )
         handle.deliverSyncStatus(synced)
-        try await Wait.until { store.line == .read(.synced) }
+        try await Wait.until { store.shown?.status == .synced }
 
         handle.failSyncStatusRead(
             .Diagnostic(category: .database, detail: "the read failed")
         )
-        try await Wait.until { store.line == .unreadable }
+        try await Wait.until { store.unreadable }
 
         handle.deliverSyncStatus(synced)
-        try await Wait.until { store.line == .read(.synced) }
+        try await Wait.until { store.shown?.status == .synced }
     }
 }
 
@@ -123,10 +121,15 @@ struct StorageSetupSubscriptionTests {
         )
         let status = { (running: Bool) in
             BridgeSyncStatusSnapshot(
-                error: nil,
+                shown: running
+                    ? BridgeSyncShown(
+                        status: .settingUpStorage,
+                        tone: .neutral,
+                        cause: nil,
+                        fix: nil,
+                        lastSynced: nil
+                    ) : .previewSynced,
                 pending: [],
-                indicator: running ? .settingUpStorage : .synced,
-                reconnectOffered: false,
                 setupRunning: running,
                 undoneSetup: nil
             )
@@ -134,8 +137,8 @@ struct StorageSetupSubscriptionTests {
 
         handle.deliverSyncStatus(status(true))
         try await Wait.until {
-            appService.syncStatusStoreForTesting.line
-                == .read(.settingUpStorage)
+            appService.syncStatusStoreForTesting.shown?.status
+                == .settingUpStorage
         }
         handle.location = location
         handle.deliverSyncStatus(status(false))

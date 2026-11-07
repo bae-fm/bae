@@ -2785,8 +2785,9 @@ Setup ends on the library's restore code, for every provider, because bae
 can't tell whether the Mac's keychain carries the code anywhere else, and
 losing the Mac could otherwise lose the library. Once the storage is connected
 the sheet shows the code masked, as Settings does, with Show, Copy and Print…
-and *Done*, which closes the sheet onto Library settings, where the code can be
-shown again.
+and *Done*, which lands on the Sync page; the code can be shown again from
+Settings. On Android, setup is a screen, and *Done* leaves it for the Sync page
+too.
 
 **What setup shows while it runs.** Setting storage up, or reconnecting
 it after signing in again or with a new S3 key, waits on the provider, at
