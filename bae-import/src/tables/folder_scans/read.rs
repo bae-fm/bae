@@ -264,7 +264,7 @@ pub(crate) fn require_current_candidate(
     candidate_path: &CandidateKey,
     content_hash: &str,
     expected_file_edit_revision: u64,
-) -> Result<u64, DbError> {
+) -> Result<u64, crate::ImportError> {
     let current: Option<(String, i64, i64)> = sql
         .query_row(
             "SELECT content_hash, generation, file_edit_revision \
@@ -275,17 +275,16 @@ pub(crate) fn require_current_candidate(
         .optional()?;
     let expected_file_edit_revision =
         to_i64(expected_file_edit_revision, "candidate file revision")?;
-    let Some((current_hash, generation, current_file_edit_revision)) = current else {
-        return Err(DbError::Message(format!(
-            "candidate changed before metadata was stored: {candidate_path} is no longer valid"
-        )));
-    };
-    if current_hash != content_hash || current_file_edit_revision != expected_file_edit_revision {
-        return Err(DbError::Message(format!(
-            "candidate changed before metadata was stored: {candidate_path} no longer names the prepared files"
-        )));
+    // Gone, read as no release, or holding other files than the save was
+    // prepared against.
+    match current {
+        Some((hash, generation, revision))
+            if hash == content_hash && revision == expected_file_edit_revision =>
+        {
+            Ok(to_u64(generation, "scan_candidate.generation")?)
+        }
+        _ => Err(crate::tables::PreparationRefusal::Changed(candidate_path.clone()).into()),
     }
-    to_u64(generation, "scan_candidate.generation")
 }
 
 /// The version of one of the candidate's files that its scan read.

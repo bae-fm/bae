@@ -419,7 +419,14 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
         )
         .await
         .expect_err("the candidate key no longer names the prepared files");
-    assert!(error.to_string().contains("candidate changed"), "{error}");
+    assert!(
+        matches!(
+            &error,
+            crate::ImportError::Preparation(crate::tables::PreparationRefusal::Changed(key))
+                if *key == pane_candidate_key()
+        ),
+        "{error:?}"
+    );
 }
 
 /// Applying or clearing metadata replaces the whole draft and removes artist

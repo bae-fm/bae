@@ -552,7 +552,8 @@ impl ImportError {
             Self::Preparation(refusal) => match refusal {
                 crate::tables::PreparationRefusal::NoState(_)
                 | crate::tables::PreparationRefusal::Imported(_)
-                | crate::tables::PreparationRefusal::TagsChanged(_) => C::Import,
+                | crate::tables::PreparationRefusal::TagsChanged(_)
+                | crate::tables::PreparationRefusal::Changed(_) => C::Import,
                 crate::tables::PreparationRefusal::DuplicateScanKeys
                 | crate::tables::PreparationRefusal::DraftNotOverAudio(_)
                 | crate::tables::PreparationRefusal::SnapshotOfUnscanned => C::Internal,

@@ -36,7 +36,7 @@ impl ScannedCandidateKey {
         sql: &CovenWrite<'_>,
         content_hash: &str,
         file_revision: u64,
-    ) -> Result<u64, DbError> {
+    ) -> Result<u64, crate::ImportError> {
         folder_scans::require_current_candidate(
             sql,
             &self.watched_folder_path,
@@ -192,6 +192,10 @@ pub enum PreparationRefusal {
     /// The candidate changed after its file tags were read.
     #[error("candidate {0} changed before its file tags were stored")]
     TagsChanged(crate::CandidateKey),
+    /// A release the scan holds reading the candidate's files changed, left
+    /// or came, after the save was prepared against them.
+    #[error("candidate {0} changed before its save was stored")]
+    Changed(crate::CandidateKey),
 }
 
 /// Write `prep` over what is stored, provided the stored revisions still

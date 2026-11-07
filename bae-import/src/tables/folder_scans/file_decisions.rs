@@ -3,19 +3,21 @@
 //! shape, stamped with the decision's revision.
 
 use super::*;
+use crate::tables::PreparationRefusal;
 use std::collections::HashMap;
 
 /// Give every scanned release reading `content_hash` its files from
 /// `settled_by_key`, stamped `next_revision`, and return their keys in key
-/// order. Every row must still be at `expected_revision`, and every settled
-/// key must be one of them.
+/// order. Refused as [`PreparationRefusal::Changed`] unless the scan still
+/// holds exactly the releases `settled_by_key` names reading those files,
+/// each at `expected_revision`.
 pub(crate) fn settle_candidate_files(
     sql: &CovenWrite<'_>,
     content_hash: &str,
     expected_revision: i64,
     next_revision: i64,
     settled_by_key: &HashMap<CandidateKey, crate::folder_scanner::CategorizedFiles>,
-) -> Result<Vec<CandidateKey>, DbError> {
+) -> Result<Vec<CandidateKey>, crate::ImportError> {
     let scanned = sql.query(
         "SELECT watched_folder_path, path, source_kind, file_edit_revision FROM scan_candidate \
          WHERE content_hash = ? ORDER BY watched_folder_path, path",
@@ -32,17 +34,15 @@ pub(crate) fn settle_candidate_files(
     let mut settled = Vec::with_capacity(scanned.len());
     for (watched_folder_path, path, source_kind, revision) in scanned {
         if revision != expected_revision {
-            return Err(DbError::Message(format!(
-                "candidate {path} changed before its source decisions were stored"
-            )));
+            return Err(PreparationRefusal::Changed(path).into());
         }
         match source_kind.as_str() {
             "folder" | "grouping" => {
-                let files = settled_by_key.get(&path).ok_or_else(|| {
-                    DbError::Message(format!(
-                        "persisted candidate {path} was missing from the settled file edit"
-                    ))
-                })?;
+                // A release that came reading these files since the save
+                // was prepared.
+                let Some(files) = settled_by_key.get(&path) else {
+                    return Err(PreparationRefusal::Changed(path).into());
+                };
                 // Deleting the file rows deletes the file-tag reading with
                 // them; the files themselves did not change, so it is put
                 // back as it was, at the revision it was taken at.
@@ -62,36 +62,19 @@ pub(crate) fn settle_candidate_files(
                     )?;
                 }
             }
-            other => return Err(DbError::unreadable("scan_candidate.source_kind", other)),
+            other => return Err(DbError::unreadable("scan_candidate.source_kind", other).into()),
         }
-        let changed = sql.execute(
+        sql.execute(
             "UPDATE scan_candidate SET file_edit_revision = ? \
-             WHERE watched_folder_path = ? AND path = ? AND file_edit_revision = ?",
-            params![
-                next_revision,
-                coven::path_bytes(&watched_folder_path),
-                path,
-                expected_revision
-            ],
+             WHERE watched_folder_path = ? AND path = ?",
+            params![next_revision, coven::path_bytes(&watched_folder_path), path],
         )?;
-        if changed != 1 {
-            return Err(DbError::Message(format!(
-                "candidate file decision changed {changed} persisted scan entries for {path}; \
-                 expected exactly one"
-            )));
-        }
         settled.push(path);
     }
-    let missing: Vec<_> = settled_by_key
-        .keys()
-        .filter(|key| !settled.contains(key))
-        .map(CandidateKey::to_string)
-        .collect();
-    if !missing.is_empty() {
-        return Err(DbError::Message(format!(
-            "candidate file decision could not update persisted scan entries: {}",
-            missing.join(", ")
-        )));
+    // A release the save was prepared with that left, or reads other files
+    // now.
+    if let Some(gone) = settled_by_key.keys().filter(|key| !settled.contains(key)).min() {
+        return Err(PreparationRefusal::Changed(gone.clone()).into());
     }
     Ok(settled)
 }

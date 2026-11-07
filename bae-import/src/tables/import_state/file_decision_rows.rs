@@ -173,7 +173,7 @@ pub(super) fn settle_scanned_candidates(
     expected_revision: i64,
     next_revision: i64,
     settled_by_key: &HashMap<CandidateKey, crate::folder_scanner::CategorizedFiles>,
-) -> Result<Vec<crate::folder_scanner::FolderCandidate>, DbError> {
+) -> Result<Vec<crate::folder_scanner::FolderCandidate>, crate::ImportError> {
     let settled = folder_scans::settle_candidate_files(
         sql,
         content_hash,
@@ -190,11 +190,9 @@ pub(super) fn settle_scanned_candidates(
         // The decision makes the candidate other files than its
         // identification was of, which ends with it.
         end_file_work_unless_of_on(sql, path, Some(&decided))?;
-        let stored = super::release_groupings::load_candidate_on(sql, path)?.ok_or_else(|| {
-            DbError::Message(format!(
-                "candidate {path} disappeared while its source decisions were stored"
-            ))
-        })?;
+        // Settled above, in this write, as a release reading the files.
+        let stored = super::release_groupings::load_candidate_on(sql, path)?
+            .unwrap_or_else(|| panic!("{path}, settled in this write, reads as no release"));
         updated_candidates.push(stored.candidate);
     }
     let regrouped = super::release_groupings::rebuild_groupings(sql, &settled, &[])?;
