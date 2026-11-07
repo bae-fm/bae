@@ -19,10 +19,10 @@ fn stated(name: &str) -> Option<String> {
 /// trails and however they are punctuated.
 #[test]
 fn a_name_keeps_only_what_names_the_label() {
-    assert_eq!(stated("Warner Bros. Records").as_deref(), Some("warnerbros"));
-    assert_eq!(stated("Sony Music Entertainment").as_deref(), Some("sony"));
-    assert_eq!(stated("Nonesuch Record Co.").as_deref(), Some("nonesuch"));
-    assert_eq!(stated("Ninja Tune").as_deref(), Some("ninjatune"));
+    assert_eq!(stated("Label Name Bros. Records").as_deref(), Some("labelnamebros"));
+    assert_eq!(stated("Label Name Music Entertainment").as_deref(), Some("labelname"));
+    assert_eq!(stated("Label Name Record Co.").as_deref(), Some("labelname"));
+    assert_eq!(stated("Label Name Tune").as_deref(), Some("labelnametune"));
 }
 
 /// Trade words alone name no label.
@@ -52,9 +52,9 @@ fn two_names_name_one_label() {
 /// their own, and trade words alone are no key.
 #[test]
 fn a_label_key_is_its_words_without_trade_words() {
-    assert_eq!(label_name_key("Rhino Records"), "rhino");
-    assert_eq!(label_name_key("RHINO"), "rhino");
-    assert_eq!(label_name_key("Warner Bros. Records Inc."), "warnerbros");
+    assert_eq!(label_name_key("Label Name Records"), "labelname");
+    assert_eq!(label_name_key("LABEL NAME"), "labelname");
+    assert_eq!(label_name_key("Label Name Bros. Records Inc."), "labelnamebros");
     assert_eq!(label_name_key("DFC"), "dfc");
     assert_ne!(label_name_key("DFC"), label_name_key("Dance Floor Corporation"));
     assert_eq!(label_name_key("Records"), "");

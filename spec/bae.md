@@ -419,7 +419,7 @@ import's or an edit's save:
 3. Otherwise it is the one library label whose name key matches and whose
    ids don't contradict the label's. The key is the name's words run
    together without the trade words it ends on ("Records", "Recordings",
-   "Music", "Ltd" and the like), so *Rhino Records* and *Rhino* are one
+   "Music", "Ltd" and the like), so *Label Name Records* and *Label Name* are one
    label; a name of trade words alone matches none. Initials are their own
    key: *DFC* is not *Dance Floor Corporation*.
 4. Several such labels, or none, make a new label.

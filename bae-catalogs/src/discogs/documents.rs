@@ -145,7 +145,7 @@ struct LabelResponse {
 }
 
 /// A Discogs name without the " (n)" Discogs appends to tell apart two
-/// entities of one name ("Rhino Records (2)"): the name the entity goes by.
+/// entities of one name ("Label Name Records (2)"): the name the entity goes by.
 pub(crate) fn without_suffix(name: &str) -> String {
     let trimmed = name.trim_end();
     if let Some(open) = trimmed.strip_suffix(')').and_then(|rest| rest.rfind(" (")) {

@@ -245,7 +245,7 @@ impl CandidateText {
     }
 
     /// Whether the text states `value` as a label name, without the trade
-    /// word it may trail: "Warner Bros." states "Warner Bros. Records". A
+    /// word it may trail: "Label Name" states "Label Name Records". A
     /// label written as its initials states the name they are the initials
     /// of, either way round: "DFC" and "Dance Floor Corporation".
     pub fn states_label(&self, value: &str) -> bool {

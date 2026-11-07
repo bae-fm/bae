@@ -1,6 +1,6 @@
 //! Which label a label's name names, without the trade word it trails.
 //!
-//! A folder writes "Warner Bros."; the sources write "Warner Bros. Records".
+//! A folder writes "Label Name"; the sources write "Label Name Records".
 //! That is one label. The word a company appends to its name — Records,
 //! Recordings, Music, Ltd — says what kind of business it is and nothing about
 //! which one it is, so ranking drops it before asking whether the candidate's
@@ -97,8 +97,8 @@ pub fn same_label_name(a: &str, b: &str) -> bool {
 }
 
 /// A label's name as a library label is found by it: its words with the
-/// trade words it ends on dropped, run together ("Rhino Records" and "Rhino"
-/// are one key). Empty for a name that is nothing but trade words, which
+/// trade words it ends on dropped, run together ("Label Name Records" and "Label
+/// Name" are one key). Empty for a name that is nothing but trade words, which
 /// finds no label. Two initials and the name they abbreviate are two keys:
 /// a key is one name's own, and two labels with one key are the same label
 /// by name.

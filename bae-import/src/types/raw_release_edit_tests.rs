@@ -145,10 +145,10 @@ fn a_label_row_keeps_its_ids_while_it_keeps_its_name() {
         ..Default::default()
     };
     let stated = vec![
-        RawLabelEdit { discogs_label_id: Some("7190".to_string()), ..row("Rhino", "R2 1") },
+        RawLabelEdit { discogs_label_id: Some("7190".to_string()), ..row("Label Name", "R2 1") },
         RawLabelEdit { musicbrainz_label_id: Some("mb-harbor".to_string()), ..row("Harbor", "") },
     ];
-    let sent = vec![row("Harbor", "H 2"), row("Rhino Records", "R2 1"), row("New", "")];
+    let sent = vec![row("Harbor", "H 2"), row("Label Name Records", "R2 1"), row("New", "")];
     let kept = RawLabelEdit::kept_ids(sent, &stated);
     assert_eq!(
         kept.iter()

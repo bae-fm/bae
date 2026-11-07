@@ -301,8 +301,8 @@ fn label_rows_converge_on_both_devices() {
 
 async fn check_labels(devices: &bae_store::test_devices::TwoStores) {
     use bae_types::pressing::ReleaseLabel;
-    let rhino = |number: &str| {
-        ReleaseLabel::new(Some("Rhino".to_string()), Some(number.to_string()))
+    let label_name = |number: &str| {
+        ReleaseLabel::new(Some("Label Name".to_string()), Some(number.to_string()))
             .unwrap()
             .with_ids(None, Some("7190".to_string()))
     };
@@ -310,17 +310,17 @@ async fn check_labels(devices: &bae_store::test_devices::TwoStores) {
     devices.converge(LABEL_ROWS).await;
 
     devices.pause().await;
-    set_labels(devices.a(), vec![rhino("R2 1")]).await;
+    set_labels(devices.a(), vec![label_name("R2 1")]).await;
     set_labels(
         devices.b(),
-        vec![rhino("R2 1"), ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap()],
+        vec![label_name("R2 1"), ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap()],
     )
     .await;
     devices.resume().await;
     devices.converge(LABEL_ROWS).await;
 
     let both = vec![
-        ReleaseLabel::new(Some("Rhino".to_string()), Some("R2 1".to_string())).unwrap(),
+        ReleaseLabel::new(Some("Label Name".to_string()), Some("R2 1".to_string())).unwrap(),
         ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap(),
     ];
     assert_eq!(labels_on(&crate::test_fixtures::test_records(devices.a())).await, both);
