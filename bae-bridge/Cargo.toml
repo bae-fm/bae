@@ -53,7 +53,6 @@ tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 thiserror = { workspace = true }
-serde_json = { workspace = true }
 libsqlite3-sys = { workspace = true, features = ["session", "bundled"] }
 
 # What only the desktop apps use: the servers, the identify views and verdicts
@@ -97,6 +96,8 @@ bae-import = { workspace = true, features = ["test-utils"] }
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
 bae-util = { workspace = true, features = ["test-utils"] }
 tempfile = { workspace = true }
+# The diagnostics test reads the fields of an event it was handed.
+serde_json = { workspace = true }
 # Builds the native keychain refusal coven wraps in `KeychainError`, for the
 # tests of how a missing keychain entitlement is reported.
 keyring-core = { workspace = true }
