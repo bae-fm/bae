@@ -6,7 +6,13 @@
 
 // The sync substrate lives in coven; these resolve `crate::sync::<item>`
 // unchanged. Cloud file operations use the exact stored file reference.
-pub use coven::{decode_code_info, restore_from_code};
+pub use coven::restore_from_code;
+
+/// What a code a person entered holds: typed in the groups it shows in or
+/// pasted, as [`restore_code::entered`] reads it.
+pub fn decode_code_info(text: &str) -> Result<coven::CodeInfo, coven::CodeError> {
+    coven::decode_code_info(&restore_code::entered(text))
+}
 
 pub mod membership;
 pub mod restore_code;

@@ -2605,7 +2605,9 @@ tablet gets the code one of these ways:
   a new phone received when Carol set it up from her old one, directly or
   from the old phone's cloud backup. Tapping one restores it
   ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code));
-- **typing** it in.
+- **typing** it in, or pasting it, as it shows: in groups of four with spaces
+  between them, or the same characters run together. The spaces drop before
+  the code decodes.
 
 The saved-code list shows each code under its library's name as Carol's
 devices last saw it (§5.1), over where the library is stored: the provider and

@@ -761,6 +761,43 @@ async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
     phone.close().await.unwrap();
 }
 
+/// The code a device shows, in the groups it shows it in, restores a library
+/// as typed or pasted: the spaces drop before it decodes.
+#[tokio::test]
+async fn a_restore_code_in_the_groups_it_is_shown_in_restores_the_library() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path()).unwrap();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let (store, _, code) = connected_library(&installation, &storage, "Household").await;
+    let shown = crate::sync::restore_code::grouped(&code);
+    assert!(shown.contains(' '));
+    assert!(matches!(
+        crate::sync::decode_code_info(&shown).unwrap(),
+        coven::CodeInfo::Restore(metadata) if metadata.store_id == store
+    ));
+    let phone_dir = tempfile::TempDir::new().unwrap();
+    let phone_app_dir = AppDir::at(phone_dir.path()).unwrap();
+    let (_sender, cancel) = watch::channel(false);
+
+    let phone = restore_from_code(
+        installation
+            .another_device(phone_app_dir.coven_app_dir())
+            .builder()
+            .storage_connector(std::sync::Arc::new(storage.for_device())),
+        &shown,
+        Some(owner_key()),
+        "Phone",
+        |_| {},
+        &cancel,
+        &bae_diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(phone.store_id(), store);
+    phone.close().await.unwrap();
+}
+
 /// Change this device's settings in its closed copy of `store`: more
 /// uploads at once, album loudness and a renamed save preset, none of them
 /// a new library's.

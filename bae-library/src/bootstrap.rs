@@ -94,6 +94,7 @@ pub async fn restore_from_code(
     cancel: &watch::Receiver<bool>,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
+    let code = &crate::sync::restore_code::entered(code);
     let metadata = auth::code_metadata(code)?;
     auth::authenticate(&mut builder, metadata.oauth_access, cancel, diagnostics).await?;
     coven::restore_from_code(
@@ -194,6 +195,7 @@ pub async fn join_with_invite(
     control: &JoinControl,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
+    let code = &crate::sync::restore_code::entered(code);
     let invite = invite_info(code)?;
     if clock.now() >= invite.expires_at
         && !unfinished_joins(&builder, diagnostics)
@@ -408,6 +410,7 @@ pub async fn restore_replacing_device(
     // Coven refuses an invite or another library's code too, but only after
     // the provider sign-in below; refusing it first asks for no sign-in the
     // restore would never use.
+    let code = &crate::sync::restore_code::entered(code);
     let refused = |error| restore_error(coven::BootstrapError::Code(error));
     let access = match coven::decode_code_info(code).map_err(refused)? {
         coven::CodeInfo::Restore(metadata) if metadata.store_id == store => metadata.oauth_access,
