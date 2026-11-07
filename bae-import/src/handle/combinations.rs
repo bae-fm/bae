@@ -36,11 +36,6 @@ impl ImportServiceHandle {
     ) -> Result<CandidateKey, ImportError> {
         keys.sort();
         keys.dedup();
-        if keys.len() < 2 {
-            return Err(ImportError::Internal {
-                detail: "combining a release requires at least two folders".into(),
-            });
-        }
         let mut members = Vec::with_capacity(keys.len());
         {
             let _commit = self.services.folder_state_commit.lock("check folders to combine").await;
@@ -81,11 +76,15 @@ impl ImportServiceHandle {
     }
 
     /// The deepest folder under their shared watched folder holding exactly
-    /// `members`, if there is one.
+    /// `members`, if there is one. Fewer than two members are no combination
+    /// for a folder to hold: `combine_releases` refuses them.
     async fn folder_holding_exactly(
         &self,
         members: &[crate::FolderCandidate],
     ) -> Result<Option<FolderReleaseDecisionKey>, ImportError> {
+        if members.len() < 2 {
+            return Ok(None);
+        }
         let root = &members[0].watched_folder_path;
         if members.iter().any(|member| &member.watched_folder_path != root) {
             return Ok(None);

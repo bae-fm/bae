@@ -195,6 +195,29 @@ async fn a_combination_that_does_not_compose_is_refused_as_its_reason() {
     assert!(stored(&db, &key).await.is_none());
 }
 
+/// Fewer than two folders are no combination: `combine_releases` refuses them
+/// as too few, and writes nothing.
+#[tokio::test]
+async fn fewer_than_two_folders_are_refused_as_too_few() {
+    let (db, _temp, members) = scanned(&["Volume A"]).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    for (key, picked) in [("none", vec![]), ("one", members.clone())] {
+        let key = crate::CandidateKey::grouping(key);
+        let error = tables
+            .combine_releases(key.clone(), picked)
+            .await
+            .expect_err("fewer than two folders are not combined");
+        assert!(
+            matches!(
+                error,
+                crate::ImportError::Combine(crate::grouping::CombineRefusal::TooFewFolders)
+            ),
+            "{error:?}"
+        );
+        assert!(stored(&db, &key).await.is_none());
+    }
+}
+
 /// One grouping table family holds every reading of folders as releases:
 /// the two it replaced are gone from the schema.
 #[tokio::test]

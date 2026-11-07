@@ -277,6 +277,26 @@ async fn a_folder_that_is_a_release_keeps_its_cover() {
     shut_down(handle).await;
 }
 
+/// Picking one folder, none, or one twice reaches `combine_releases`, whose
+/// refusal comes back as it is.
+#[tokio::test(flavor = "multi_thread")]
+async fn fewer_than_two_picked_folders_come_back_as_the_refusal() {
+    let (parts, db, _library) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
+    let tmp = TempDir::new().unwrap();
+    let (handle, album) = album_of_discs(&parts, &tables, &tmp, &["Disc 1", "Disc 2"], true).await;
+
+    for keys in [vec![], vec![key_of(&album.join("Disc 1"))], vec![key_of(&album); 2]] {
+        let error = handle.combine_candidates(keys.clone()).await.expect_err("too few folders");
+        let too_few = matches!(
+            error,
+            crate::ImportError::Combine(crate::grouping::CombineRefusal::TooFewFolders)
+        );
+        assert!(too_few, "{keys:?}: {error:?}");
+    }
+    shut_down(handle).await;
+}
+
 /// Two releases under `folder`, each with a file of its own, scanned with the
 /// setting off and read as one release by the person. Returns the parts and
 /// the combined release's key.
