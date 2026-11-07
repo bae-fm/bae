@@ -4776,6 +4776,30 @@
  ],
  "pages": [
   {
+   "id": "welcome",
+   "name": "Welcome"
+  },
+  {
+   "id": "home",
+   "name": "Library"
+  },
+  {
+   "id": "loading",
+   "name": "Playback"
+  },
+  {
+   "id": "search",
+   "name": "Search"
+  },
+  {
+   "id": "import",
+   "name": "Import"
+  },
+  {
+   "id": "storage",
+   "name": "Storage"
+  },
+  {
    "id": "settings",
    "name": "Settings"
   },
@@ -4786,30 +4810,6 @@
   {
    "id": "shared",
    "name": "Shared"
-  },
-  {
-   "id": "welcome",
-   "name": "Welcome"
-  },
-  {
-   "id": "home",
-   "name": "Library"
-  },
-  {
-   "id": "search",
-   "name": "Search"
-  },
-  {
-   "id": "loading",
-   "name": "Playback"
-  },
-  {
-   "id": "storage",
-   "name": "Storage"
-  },
-  {
-   "id": "import",
-   "name": "Import"
   },
   {
    "id": "explore",
