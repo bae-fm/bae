@@ -252,10 +252,11 @@ async fn an_output_keeps_its_target_and_preset() {
     assert!(downloads(&db).await.is_empty(), "an output is not a download");
 }
 
-/// The library opens with both queues empty and running: no transfer
-/// outlives the process that ran it.
+/// The library opens with both queues empty, the export and save queue
+/// running, and the pin queue paused as the person left it: no transfer
+/// outlives the process that ran it, but a pause is the person's setting.
 #[tokio::test]
-async fn opening_leaves_the_queues_empty_and_running() {
+async fn opening_empties_the_queues_and_keeps_the_pin_pause() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
     set_release_queue_paused::<()>(&db, true).await.unwrap();
@@ -265,7 +266,7 @@ async fn opening_leaves_the_queues_empty_and_running() {
 
     let queue = release_queue::<()>(&db).await.unwrap();
     assert!(queue.rows.is_empty());
-    assert!(!queue.paused);
+    assert!(queue.paused);
     assert!(!release_queue::<OutputRequest>(&db).await.unwrap().paused);
 }
 

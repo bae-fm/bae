@@ -253,6 +253,7 @@ task_types = [
     "StorageSetupFinishingSubscription",
     "SyncActivitySubscription",
     "SyncStatusSubscription",
+    "UnmeteredOnlySubscription",
     "UploadsPausedSubscription",
     "WorkDetailSubscription",
     # One fast-changing value feed a screen pulls from while it is open.

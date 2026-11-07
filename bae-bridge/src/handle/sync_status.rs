@@ -23,6 +23,15 @@ impl AppHandle {
             self.runtime.clone(),
         )
     }
+
+    /// Whether files move only on unmetered networks now, then each time
+    /// that changes.
+    pub fn subscribe_unmetered_only(&self) -> std::sync::Arc<crate::UnmeteredOnlySubscription> {
+        crate::screens::unmetered_only(
+            self.services.subscribe_unmetered_only(),
+            self.runtime.clone(),
+        )
+    }
 }
 
 forward! { sync this => {
@@ -102,6 +111,11 @@ forward! { async this => {
         Ok(this.services.is_sync_paused().await?)
     }
 
+    /// Whether files move only on unmetered networks, as it stands now.
+    fn get_unmetered_only() -> bool {
+        Ok(this.services.is_unmetered_only().await?)
+    }
+
     /// Retry failed uploads now: drain coven's upload queue immediately instead
     /// of waiting for the next sync cycle.
     fn retry_outbox() -> () {
@@ -126,6 +140,13 @@ forward! { async this => {
     /// while paused; metadata sync continues.
     fn set_sync_paused(paused: bool) -> () {
         this.services.set_sync_paused(paused).await?;
+        Ok(())
+    }
+
+    /// Have uploads and downloads of release files wait on a metered network,
+    /// or move on any. Saved by coven, so it lasts across restarts.
+    fn set_unmetered_only(unmetered_only: bool) -> () {
+        this.services.set_unmetered_only(unmetered_only).await?;
         Ok(())
     }
 } }

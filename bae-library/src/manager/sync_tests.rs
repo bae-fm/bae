@@ -678,6 +678,20 @@ async fn the_upload_pause_follows_each_change_with_an_empty_queue() {
     assert!(!paused.next().await.unwrap().unwrap());
 }
 
+/// Whether files move only on unmetered networks reads from coven's setting
+/// and follows each change.
+#[tokio::test]
+async fn the_unmetered_only_setting_follows_each_change() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let mut unmetered_only = views(manager).subscribe_unmetered_only();
+    assert!(!unmetered_only.next().await.unwrap().unwrap());
+    manager.set_unmetered_only(true).await.unwrap();
+    assert!(unmetered_only.next().await.unwrap().unwrap());
+    manager.set_unmetered_only(false).await.unwrap();
+    assert!(!unmetered_only.next().await.unwrap().unwrap());
+}
+
 /// The settings that set S3 storage up on the manager's memory storage.
 fn memory_s3_config(manager: &TestManager) -> crate::sync::S3ConfigData {
     let coven::StorageConfig::S3 { bucket, region, endpoint, profile } = manager.storage.config()

@@ -488,14 +488,15 @@ pub(crate) fn end_download_entry_on(sql: &CovenWrite<'_>, release_id: &str) -> R
     Ok(())
 }
 
-/// Empty both queues and let them run, and end every storage transition:
-/// what the library opens with, since no transfer outlives the process
-/// that ran it.
+/// Empty both queues, let the export and save queue run, and end every storage
+/// transition: what the library opens with, since no transfer outlives the
+/// process that ran it. The pin queue stays as the person paused it, as
+/// coven's upload pause does.
 pub fn clear_transfers_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
     sql.execute("DELETE FROM download_queue", [])?;
     sql.execute("DELETE FROM output_queue", [])?;
     sql.execute("DELETE FROM release_storage_action", [])?;
-    sql.execute("UPDATE release_queues SET paused = 0", [])?;
+    sql.execute("UPDATE release_queues SET paused = 0 WHERE queue = 'output'", [])?;
     Ok(())
 }
 

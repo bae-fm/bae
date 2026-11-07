@@ -328,6 +328,13 @@ pulled_read! {
 }
 
 pulled_read! {
+    /// Whether files move only on unmetered networks.
+    UnmeteredOnlySubscription: LiveValues<bool> => bool,
+    converted by |unmetered_only: bool| unmetered_only,
+    built by unmetered_only
+}
+
+pulled_read! {
     /// The store's members and their devices.
     MembersSubscription:
         LiveValues<bae_people::membership::Members> => crate::types::BridgeMembership,

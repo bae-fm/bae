@@ -64,6 +64,11 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     assert!(snapshot.manual.is_empty() && !snapshot.has_next);
     let paused = handle.subscribe_uploads_paused();
     pull_until(&handle, || Box::pin(paused.clone().next()), |_| true);
+    let unmetered_only = handle.subscribe_unmetered_only();
+    assert!(!pull_until(&handle, || Box::pin(unmetered_only.clone().next()), |_| true));
+    handle.runtime.block_on(handle.clone().set_unmetered_only(true)).unwrap();
+    assert!(pull_until(&handle, || Box::pin(unmetered_only.clone().next()), |on| *on));
+    assert!(handle.runtime.block_on(handle.clone().get_unmetered_only()).unwrap());
     let counts = handle.subscribe_download_counts();
     pull_until(&handle, || Box::pin(counts.clone().next()), |_| true);
     let activity = handle.subscribe_sync_activity();

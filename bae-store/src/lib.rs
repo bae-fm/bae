@@ -27,7 +27,9 @@ pub use schema::{
     NATURAL_ORDER, SEARCH_PATTERN,
 };
 mod store;
-pub use store::{syncs_on, utc_now, StorageSetupSteps, Store, UPLOADS_PAUSED};
+pub use store::{
+    syncs_on, utc_now, StorageSetupSteps, Store, UNMETERED_ONLY, UPLOADS_PAUSED,
+};
 mod store_read;
 pub use store_read::StoreRead;
 #[cfg(any(test, feature = "test-utils"))]

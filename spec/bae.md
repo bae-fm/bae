@@ -1915,6 +1915,12 @@ Other devices go on showing the release without playing it.
   paused upload keeps its place. The pause holds release files only: a cover,
   artist image or avatar is part of sending a write, and goes on uploading,
   up to the same number at a time, counted apart from the release files.
+- **Moving files only on unmetered networks.** While the person has it on,
+  coven holds uploads and downloads of release files on a metered network
+  ([coven §17.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#179-uploads)),
+  and they go on at the next unmetered one. It is off by default, lasts across
+  restarts, and doesn't hold playing a track that isn't pinned, which still
+  streams.
 
 **The Storage manager** lists every release with its album's title and
 credits, its media, its files' count and total size, whether it is uploaded,
@@ -2053,9 +2059,9 @@ release's pin again; nothing retries it on its own. A read that fails, as a
 track plays, leaves no record: its failure goes to whatever read it. A release
 becomes pinned only once every file lands. The
 queue is kept on the device and emptied as the library opens: after a restart
-it is empty and running, and a release that wasn't fully pinned stays as it
-was. coven downloads each file whole first and pins nothing until then; one
-write pins every file of the release once the last is whole
+it is empty, and paused if the person paused it, and a release that wasn't
+fully pinned stays as it was. coven downloads each file whole first and pins
+nothing until then; one write pins every file of the release once the last is whole
 ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)),
 so a failed or cancelled pin leaves no file of it pinned. How far the release
 downloading has got is not kept, nor how fast it goes. Its bytes are the sizes
@@ -2172,8 +2178,8 @@ Two ways put a release back on disk, from desktop:
   is. FLAC and MP3 presets come built in (Appendix C).
 
 Both run from a queue that can be paused and cancelled, kept and emptied as
-the pin queue is (§4.3); a failed one stays in it, with its error, until it is
-cancelled. One that breaks on a bug fails the same way, reported as one, and
+the pin queue is (§4.3), but running again after a restart; a failed one
+stays in it, with its error, until it is cancelled. One that breaks on a bug fails the same way, reported as one, and
 the queue goes on to the next. A save keeps the preset it was queued
 with, so editing the preset changes nothing already queued. Either reads files
 from wherever they are: the person's own path, the cache, or storage.
@@ -4285,8 +4291,8 @@ release's or track's id as UTF-8, or a candidate's key.
   macOS every pulled subscription below goes through it too, and nothing
   else in the app calls a subscription's `next()`. What
   playback is doing is one (§9.4); so are the settings, the sync status and
-  activity, the queue, the download counts, whether uploads are paused, the
-  members, this device's open invites, the device that joins from Add
+  activity, the queue, the download counts, whether uploads are paused, whether
+  files move only on unmetered networks, the members, this device's open invites, the device that joins from Add
   Device's code, the profiles, ratings, playlists and a playlist's entries,
   the library's name, the watched folders' scans, and an import pane's
   library membership, which moves its checks in place.

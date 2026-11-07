@@ -6,6 +6,10 @@ use std::sync::Arc;
 /// Whether the person paused uploads, as coven's one row says.
 pub const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 
+/// Whether the person has files move only on unmetered networks, as coven's
+/// network row says.
+pub const UNMETERED_ONLY: &str = "SELECT unmetered_only FROM coven_network";
+
 /// Whether storage is set up on this device, as coven's sync status says:
 /// what a release's storage choices and markers are read against, beside the
 /// library's own rows.
@@ -368,6 +372,12 @@ impl Store {
             .await
     }
 
+    /// Whether files move only on unmetered networks now.
+    pub async fn unmetered_only(&self) -> Result<bool, DbError> {
+        self.read(|sql| sql.query_row(UNMETERED_ONLY, [], |row| row.get(0)).map_err(DbError::from))
+            .await
+    }
+
     /// How far each file this process is sending has got, by file, from
     /// coven's upload watch.
     pub fn subscribe_upload_transfers(&self) -> coven::TransferWatch {
@@ -381,6 +391,12 @@ impl Store {
 
     pub async fn set_uploads_paused(&self, paused: bool) -> Result<(), DbError> {
         self.reported(self.inner.handle.set_uploads_paused(paused).await).map_err(DbError::from)
+    }
+
+    /// Move files only on unmetered networks, or on any.
+    pub async fn set_unmetered_only(&self, unmetered_only: bool) -> Result<(), DbError> {
+        self.reported(self.inner.handle.set_unmetered_only(unmetered_only).await)
+            .map_err(DbError::from)
     }
 
     pub async fn retry_uploads_now(&self) -> Result<coven::DrainOutcome, coven::SyncError> {

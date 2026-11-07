@@ -29,6 +29,18 @@ impl LibraryManager {
         Ok(())
     }
 
+    /// Have files move only on unmetered networks, or on any: uploads and
+    /// downloads of a release wait on a metered one while set.
+    pub async fn set_unmetered_only(&self, unmetered_only: bool) -> Result<(), LibraryError> {
+        self.store.set_unmetered_only(unmetered_only).await?;
+        Ok(())
+    }
+
+    /// Whether files move only on unmetered networks, as it stands now.
+    pub async fn is_unmetered_only(&self) -> Result<bool, LibraryError> {
+        Ok(self.store.unmetered_only().await?)
+    }
+
     pub async fn is_sync_paused(&self) -> Result<bool, LibraryError> {
         Ok(self.store.uploads_paused().await?)
     }

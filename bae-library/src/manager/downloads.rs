@@ -5,7 +5,8 @@
 //! user can pause/cancel/retry. The queue is the `download_queue` table, which
 //! the library empties as it opens: after a restart it is empty, and any
 //! release that wasn't fully pinned stays cloud-only, since a pin flips a
-//! release to pinned only once every file lands.
+//! release to pinned only once every file lands. A pause lasts across the
+//! restart.
 
 use super::*;
 

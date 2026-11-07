@@ -11,7 +11,8 @@ use coven::MemoryStorage;
 use tempfile::TempDir;
 
 /// No transfer outlives the process that ran it: a library opened over a
-/// store whose queues still hold entries opens with both empty and running.
+/// store whose queues still hold entries opens with both empty, and the pin
+/// queue paused as the person left it.
 #[tokio::test]
 async fn opening_a_library_empties_its_transfer_queues() {
     let temp_dir = TempDir::new().unwrap();
@@ -48,7 +49,7 @@ async fn opening_a_library_empties_its_transfer_queues() {
 
     let queue = manager.manager().download_snapshot().await.unwrap();
     assert!(queue.rows.is_empty(), "{queue:?}");
-    assert!(!queue.paused);
+    assert!(queue.paused);
 }
 
 // The import list a surface opens through the manager: its Done tab read
