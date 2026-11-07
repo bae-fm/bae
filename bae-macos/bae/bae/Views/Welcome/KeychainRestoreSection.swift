@@ -23,7 +23,7 @@ struct KeychainRestoreSection: View {
                 title: "Restore from iCloud Keychain",
                 infoTip: InfoTip(
                     text:
-                        "Recovery codes saved by your other devices signed in to this Apple Account."
+                        "Restore codes saved by your other devices signed in to this Apple Account."
                 )
             )
             ForEach(codes.list.value ?? [], id: \.libraryId) { entry in
@@ -37,7 +37,7 @@ struct KeychainRestoreSection: View {
         .frame(maxWidth: WelcomeLayout.columnWidth)
         .disabled(disabled || codes.deletingLibraryId != nil)
         .alert(
-            "Delete this recovery code?",
+            "Delete this restore code?",
             isPresented: Binding(
                 get: { codes.pendingDelete != nil },
                 set: { if !$0 { codes.dismissDelete() } }
@@ -54,11 +54,11 @@ struct KeychainRestoreSection: View {
             switch pending {
             case .readable(let saved):
                 Text(
-                    "This removes the recovery code for “\(saved.info.name)” from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in your storage."
+                    "This removes the restore code for “\(saved.info.name)” from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in your storage."
                 )
             case .unreadable:
                 Text(
-                    "This removes the recovery code from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in your storage."
+                    "This removes the restore code from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in your storage."
                 )
             }
         }
@@ -93,7 +93,7 @@ private struct SavedCodeRow: View {
                     .buttonStyle(.bordered)
             case .unreadable(let libraryId, let reason):
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                    Text("Recovery code can't be used")
+                    Text("Restore code can't be used")
                         .themeText(.rowTitle)
                         .lineLimit(1)
                     Text(reason.label)

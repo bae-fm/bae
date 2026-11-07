@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// Adds another of this person's devices: the QR code the new device scans,
-/// and the person's recovery code to type there instead. `result` is nil while
+/// and the person's restore code to type there instead. `result` is nil while
 /// the presenter generates them. While it shows the code, it runs the watch
 /// that came with it, and once a new device joins it says so in place of the
 /// code.
@@ -83,7 +83,7 @@ struct AddDeviceSheet: View {
     private func shareContent(_ share: BridgeRestoreCodeShare) -> some View {
         VStack(spacing: ThemeSpace.edge) {
             QRCode(text: share.qrText)
-                .accessibilityLabel("Your recovery code")
+                .accessibilityLabel("Your restore code")
 
             Text(
                 "On the new device, choose “Add device”, then scan this or type:"
@@ -166,7 +166,7 @@ struct AddDeviceSheet: View {
             result: AddDeviceSheetPreview.adding(
                 BridgeRestoreCodeShare(
                     code: PreviewData.restoreCodeGrouped,
-                    qrText: PreviewData.recoveryCode,
+                    qrText: PreviewData.restoreCode,
                     qrCarriesS3Key: false
                 )
             )
@@ -179,7 +179,7 @@ struct AddDeviceSheet: View {
             result: AddDeviceSheetPreview.adding(
                 BridgeRestoreCodeShare(
                     code: PreviewData.restoreCodeGrouped,
-                    qrText: "\(PreviewData.recoveryCode).s3-key-preview",
+                    qrText: "\(PreviewData.restoreCode).s3-key-preview",
                     qrCarriesS3Key: true
                 )
             )
@@ -192,7 +192,7 @@ struct AddDeviceSheet: View {
             result: AddDeviceSheetPreview.adding(
                 BridgeRestoreCodeShare(
                     code: PreviewData.restoreCodeGrouped,
-                    qrText: PreviewData.recoveryCode,
+                    qrText: PreviewData.restoreCode,
                     qrCarriesS3Key: false
                 )
             )
@@ -217,7 +217,7 @@ struct AddDeviceSheet: View {
                     code: 1,
                     userInfo: [
                         NSLocalizedDescriptionKey:
-                            "Couldn't generate a recovery code."
+                            "Couldn't generate a restore code."
                     ],
                 )
             )

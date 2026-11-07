@@ -17,7 +17,7 @@ extension ShotScene {
                 ShotStage(
                     SyncSetupWizard.finished(
                         on: .s3,
-                        holding: .shown(code: PreviewData.recoveryCode)
+                        holding: .shown(code: PreviewData.restoreCode)
                     )
                 )
             },

@@ -63,7 +63,7 @@ struct SyncSetupWizard: View {
     private var step: WizardStep = .selectProvider
     /// The restore code the last screen shows, made once setup is done.
     @State
-    private var restoreCode = RecoveryCodeReveal()
+    private var restoreCode = RestoreCodeReveal()
     /// The provider the list has selected, which Continue opens.
     @State
     private var choice: BridgeCloudProvider = providerOptions.first ?? .s3
@@ -300,7 +300,7 @@ struct SyncSetupWizard: View {
 /// lands on the Library settings, which hold the code too.
 private struct RestoreCodeStep: View {
     let onDone: () -> Void
-    let reveal: RecoveryCodeReveal
+    let reveal: RestoreCodeReveal
 
     @Environment(Sync.self)
     private var sync
@@ -308,7 +308,7 @@ private struct RestoreCodeStep: View {
     var body: some View {
         VStack(spacing: 0) {
             Form {
-                RecoveryCodeSection(reveal: reveal)
+                RestoreCodeSection(reveal: reveal)
             }
             .formStyle(.grouped)
 
@@ -565,7 +565,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
         }
 
         private init(
-            restoreCode: RecoveryCodeReveal,
+            restoreCode: RestoreCodeReveal,
             provider: BridgeCloudProvider,
             onDone: @escaping () -> Void
         ) {
@@ -602,10 +602,10 @@ struct SetupStep<Fields: View, Leading: View>: View {
         /// a preview or a shot, never a real one.
         static func finished(
             on provider: BridgeCloudProvider,
-            holding state: RecoveryCodeReveal.State
+            holding state: RestoreCodeReveal.State
         ) -> some View {
             SyncSetupWizard(
-                restoreCode: RecoveryCodeReveal(previewState: state),
+                restoreCode: RestoreCodeReveal(previewState: state),
                 provider: provider,
                 onDone: {}
             )

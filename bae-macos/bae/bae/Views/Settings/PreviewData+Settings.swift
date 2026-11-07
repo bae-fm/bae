@@ -170,14 +170,14 @@
             ),
         ]
 
-        /// A recovery code shaped like coven's: `CVR1-` and uppercase base32.
-        static let recoveryCode =
+        /// A restore code shaped like coven's: `CVR1-` and uppercase base32.
+        static let restoreCode =
             "CVR1-"
             + String(repeating: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567", count: 6)
 
         /// That code in groups of four, as the restore code shows.
         static let restoreCodeGrouped: String = {
-            let body = Array(recoveryCode.dropFirst("CVR1-".count))
+            let body = Array(restoreCode.dropFirst("CVR1-".count))
             let groups = stride(from: 0, to: body.count, by: 4)
                 .map {
                     String(body[$0..<min($0 + 4, body.count)])
@@ -196,7 +196,7 @@
                 generateRestoreCode: {
                     BridgeRestoreCodeShare(
                         code: restoreCodeGrouped,
-                        qrText: recoveryCode,
+                        qrText: restoreCode,
                         qrCarriesS3Key: false
                     )
                 },
@@ -204,7 +204,7 @@
                     BridgeAddDevice(
                         share: BridgeRestoreCodeShare(
                             code: restoreCodeGrouped,
-                            qrText: recoveryCode,
+                            qrText: restoreCode,
                             qrCarriesS3Key: false
                         ),
                         watch: BridgeAddedDeviceWatch(

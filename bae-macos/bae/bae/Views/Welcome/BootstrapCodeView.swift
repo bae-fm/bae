@@ -124,7 +124,7 @@ struct BootstrapCodeView: View {
             Text("Restore with the code saved in iCloud Keychain.")
         case .restore(nil), .resumeRestore:
             Text(
-                "Scan or paste the code shown by Add device… on one of your devices. If you've lost every device, use your recovery code."
+                "Scan or paste the code shown by Add device… on one of your devices. If you've lost every device, use your restore code."
             )
         case .join, .resume:
             Text(
@@ -157,7 +157,7 @@ struct BootstrapCodeView: View {
         @Bindable
         var form = form
         if let saved = form.saved {
-            Section("Saved recovery code") {
+            Section("Saved restore code") {
                 LabeledContent("Library", value: saved.info.name)
                 LabeledContent(
                     "Stored in",

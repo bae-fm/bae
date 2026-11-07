@@ -1,7 +1,7 @@
 import Foundation
 
 extension BridgeUnreadableSavedCode {
-    /// Why a saved recovery code can't be used, as its row in the saved-code
+    /// Why a saved restore code can't be used, as its row in the saved-code
     /// list says it.
     public var label: String {
         switch self {

@@ -86,12 +86,12 @@ extension ShotScene {
         },
     ]
 
-    /// The recovery code the add-device sheet shows.
+    /// The restore code the add-device sheet shows.
     private static var addingCode: Result<BridgeAddDevice, Error> {
         AddDeviceSheetPreview.adding(
             BridgeRestoreCodeShare(
                 code: PreviewData.restoreCodeGrouped,
-                qrText: PreviewData.recoveryCode,
+                qrText: PreviewData.restoreCode,
                 qrCarriesS3Key: false
             )
         )

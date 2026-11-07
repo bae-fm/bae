@@ -4,13 +4,13 @@ import Testing
 
 @testable import bae
 
-/// Covers `RecoveryCodeReveal`, the Settings restore code's closed → loading
+/// Covers `RestoreCodeReveal`, the Settings restore code's closed → loading
 /// → masked → shown cycle, against stubbed generation — no live core. The load-bearing
 /// invariants are that a code generated after the screen closed, or after a
 /// newer request replaced the run, never shows.
 @MainActor
-@Suite("RecoveryCodeReveal", .timeLimit(.minutes(1)))
-struct RecoveryCodeRevealTests {
+@Suite("RestoreCodeReveal", .timeLimit(.minutes(1)))
+struct RestoreCodeRevealTests {
     /// Holds a generation until the test opens it, without observing
     /// cancellation, so a run can finish after it was cancelled.
     private final class Gate: @unchecked Sendable {
@@ -53,7 +53,7 @@ struct RecoveryCodeRevealTests {
 
     @Test("starts closed, holds the code masked once it is generated")
     func holdsTheGeneratedCodeMasked() async throws {
-        let reveal = RecoveryCodeReveal()
+        let reveal = RestoreCodeReveal()
         #expect(reveal.state == .closed)
 
         reveal.open { Self.share("CVR1 SHOWN") }
@@ -64,7 +64,7 @@ struct RecoveryCodeRevealTests {
 
     @Test("show reveals the held code and hide masks it again")
     func showAndHide() async throws {
-        let reveal = RecoveryCodeReveal()
+        let reveal = RestoreCodeReveal()
         reveal.open { Self.share("CVR1 HELD") }
         try await Wait.until { reveal.state == .masked(code: "CVR1 HELD") }
 
@@ -76,7 +76,7 @@ struct RecoveryCodeRevealTests {
 
     @Test("a failure core gave a line shows that line")
     func failureShowsItsLine() async throws {
-        let reveal = RecoveryCodeReveal()
+        let reveal = RestoreCodeReveal()
         let failure = BridgeError.Diagnostic(
             category: .config,
             detail: "storage unreachable"
@@ -89,7 +89,7 @@ struct RecoveryCodeRevealTests {
 
     @Test("a cancellation from core leaves the section closed")
     func coreCancellationCloses() async throws {
-        let reveal = RecoveryCodeReveal()
+        let reveal = RestoreCodeReveal()
         reveal.open { throw BridgeError.Cancelled }
 
         try await Wait.until { reveal.state == .closed }
@@ -97,7 +97,7 @@ struct RecoveryCodeRevealTests {
 
     @Test("a code generated after the screen closed stays dropped")
     func closedWhileGeneratingStaysClosed() async throws {
-        let reveal = RecoveryCodeReveal()
+        let reveal = RestoreCodeReveal()
         let gate = Gate()
         reveal.open {
             await gate.pass()
@@ -115,7 +115,7 @@ struct RecoveryCodeRevealTests {
 
     @Test("a newer request replaces a run still generating")
     func newerRequestWins() async throws {
-        let reveal = RecoveryCodeReveal()
+        let reveal = RestoreCodeReveal()
         let gate = Gate()
         reveal.open {
             await gate.pass()

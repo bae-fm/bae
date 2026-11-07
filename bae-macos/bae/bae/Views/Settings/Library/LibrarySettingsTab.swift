@@ -38,7 +38,7 @@ struct LibrarySettingsTab: View {
     private var removalError: DisplayError?
     /// The restore code section's reveal, closed whenever this tab goes away.
     @State
-    private var recoveryCode = RecoveryCodeReveal()
+    private var restoreCode = RestoreCodeReveal()
     /// Why the library's location couldn't be read as this tab opened.
     @State
     private var storageReadError: DisplayError?
@@ -106,8 +106,8 @@ struct LibrarySettingsTab: View {
                 MembersSection()
                 AdminChangesSection()
                 HistorySharingSection()
-                RecoveryCodeSection(
-                    reveal: recoveryCode,
+                RestoreCodeSection(
+                    reveal: restoreCode,
                     onPrint: { code in
                         RestoreCodePrinting.print(
                             code: code,
@@ -139,14 +139,14 @@ struct LibrarySettingsTab: View {
         // syncs, and dropped when it stops.
         .onChange(of: configStore.syncs, initial: true) { _, has in
             if has {
-                recoveryCode.open(sync.generateRestoreCode)
+                restoreCode.open(sync.generateRestoreCode)
             }
             else {
-                recoveryCode.close()
+                restoreCode.close()
             }
         }
         .onDisappear {
-            recoveryCode.close()
+            restoreCode.close()
             membership.hide()
         }
         .sheet(isPresented: $showSyncSetup) {
@@ -344,14 +344,14 @@ struct LibrarySettingsTab: View {
         )
     }
 
-    /// The recovery code section with its reveal at `state`, in an S3 library.
+    /// The restore code section with its reveal at `state`, in an S3 library.
     @MainActor
-    private func recoveryCodeSectionPreview(
-        _ state: RecoveryCodeReveal.State
+    private func restoreCodeSectionPreview(
+        _ state: RestoreCodeReveal.State
     ) -> some View {
         Form {
-            RecoveryCodeSection(
-                reveal: RecoveryCodeReveal(previewState: state),
+            RestoreCodeSection(
+                reveal: RestoreCodeReveal(previewState: state),
                 onPrint: { _ in }
             )
         }
@@ -368,21 +368,21 @@ struct LibrarySettingsTab: View {
     }
 
     #Preview("Restore code loading") {
-        recoveryCodeSectionPreview(.loading)
+        restoreCodeSectionPreview(.loading)
     }
 
     #Preview("Restore code masked") {
-        recoveryCodeSectionPreview(
+        restoreCodeSectionPreview(
             .masked(code: PreviewData.restoreCodeGrouped)
         )
     }
 
     #Preview("Restore code shown") {
-        recoveryCodeSectionPreview(.shown(code: PreviewData.restoreCodeGrouped))
+        restoreCodeSectionPreview(.shown(code: PreviewData.restoreCodeGrouped))
     }
 
     #Preview("Restore code failed") {
-        recoveryCodeSectionPreview(
+        restoreCodeSectionPreview(
             .failed(DisplayError(line: "Couldn't reach your storage."))
         )
     }

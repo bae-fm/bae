@@ -27,13 +27,13 @@ extension ShotScene {
 
     private static func restoreCodeSection(
         _ id: String,
-        _ state: RecoveryCodeReveal.State
+        _ state: RestoreCodeReveal.State
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 500, height: 200)) {
             ShotStage(
                 Form {
-                    RecoveryCodeSection(
-                        reveal: RecoveryCodeReveal(previewState: state),
+                    RestoreCodeSection(
+                        reveal: RestoreCodeReveal(previewState: state),
                         onPrint: { _ in }
                     )
                 }

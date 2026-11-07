@@ -37,7 +37,7 @@ struct MembersSection: View {
     private var closedRequests: Set<String> = []
     @State
     private var showAddDevice = false
-    /// The QR code and recovery code the Add Device sheet shows, with the
+    /// The QR code and restore code the Add Device sheet shows, with the
     /// watch for the device that joins from them; nil while they generate.
     @State
     private var addDeviceShare: Result<BridgeAddDevice, Error>?

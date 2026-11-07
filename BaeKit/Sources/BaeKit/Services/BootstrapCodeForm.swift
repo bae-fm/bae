@@ -69,7 +69,7 @@ public final class BootstrapCodeForm {
         case finishRestore(libraryId: String)
         /// A restore onto this device that stopped after it recorded itself,
         /// finished at once from what core kept, with no code. The person's
-        /// recovery code finishes it too.
+        /// restore code finishes it too.
         case resumeRestore(BridgeUnfinishedRestore)
     }
 
@@ -382,7 +382,7 @@ extension BootstrapCodeForm {
             error = DisplayError(
                 line: String(
                     localized:
-                        "This recovery code is no longer saved in iCloud Keychain."
+                        "This restore code is no longer saved in iCloud Keychain."
                 )
             )
         }

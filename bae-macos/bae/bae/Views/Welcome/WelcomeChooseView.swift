@@ -172,7 +172,7 @@ struct WelcomeChooseView: View {
             if let failure = listings.savedCodes.list.failure {
                 WelcomeLoadErrorCallout(
                     title: Text(
-                        "Couldn't read recovery codes from your keychain"
+                        "Couldn't read restore codes from your keychain"
                     ),
                     error: failure
                 )
@@ -180,7 +180,7 @@ struct WelcomeChooseView: View {
             else if listings.savedCodes.list.value?.isEmpty == false {
                 if let deleteError = listings.savedCodes.deleteError {
                     WelcomeLoadErrorCallout(
-                        title: Text("Couldn't delete the recovery code"),
+                        title: Text("Couldn't delete the restore code"),
                         error: deleteError
                     )
                 }

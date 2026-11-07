@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import os.log
 
-private let logger = Logger.bae("RecoveryCodeReveal")
+private let logger = Logger.bae("RestoreCodeReveal")
 
 /// The person's restore code in Settings, from the screen opening to its
 /// closing. The code is made when the screen opens and held masked, so Copy
@@ -11,7 +11,7 @@ private let logger = Logger.bae("RecoveryCodeReveal")
 /// result never shows a code for a screen already closed.
 @MainActor
 @Observable
-public final class RecoveryCodeReveal {
+public final class RestoreCodeReveal {
     public enum State: Equatable {
         /// The screen isn't open: no code is held.
         case closed

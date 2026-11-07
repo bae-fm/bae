@@ -9,8 +9,8 @@ import SwiftUI
 /// opens and closes it when the screen goes away: a row of a lazy list leaves
 /// and returns as it scrolls, so the section can't tell that apart from the
 /// screen closing.
-public struct RecoveryCodeSection: View {
-    let reveal: RecoveryCodeReveal
+public struct RestoreCodeSection: View {
+    let reveal: RestoreCodeReveal
     /// Prints the code, given in groups of four; nil where the app can't.
     let onPrint: ((String) -> Void)?
 
@@ -21,7 +21,7 @@ public struct RecoveryCodeSection: View {
     private var copied = false
 
     public init(
-        reveal: RecoveryCodeReveal,
+        reveal: RestoreCodeReveal,
         onPrint: ((String) -> Void)? = nil
     ) {
         self.reveal = reveal
