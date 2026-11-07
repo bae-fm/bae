@@ -6,7 +6,7 @@ use super::*;
 use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use crate::tables::ImportTables;
-use bae_store::test_fixtures::empty_db;
+use bae_store::test_fixtures::{empty_db, temp_db_hearing_bugs};
 use bae_store::Store;
 use rusqlite::params;
 
@@ -220,6 +220,56 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
         tables.save_folder_scan_item(root, generation - 1, &first).await.unwrap().is_none(),
         "a superseded generation cannot overwrite the stored snapshot"
     );
+}
+
+/// A scan's write of an entry under another watched folder is a bug of
+/// bae's own, since the walk keys each entry under the watched folder it
+/// walks: the write fails with the bug the store reports.
+#[tokio::test]
+async fn a_scan_write_of_an_entry_under_another_root_is_a_bug() {
+    let (db, _tmp, heard) = temp_db_hearing_bugs(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let root = &host_root("/mounted/library");
+    tables.add_watched_import_folder(root).await.unwrap();
+    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
+    let other = host_root("/other/library");
+
+    let failed = tables
+        .save_folder_scan_item(root, generation, &scanned_candidate(&other, "Injected"))
+        .await
+        .unwrap_err();
+
+    let reported = heard.take();
+    assert_eq!(reported.len(), 1, "{reported:?}");
+    assert_eq!(coven::task::CarriesBug::bug(&failed), Some(&reported[0]));
+    assert!(
+        reported[0].message.contains(&format!("under {}", coven::path_text(&other))),
+        "{reported:?}"
+    );
+}
+
+/// A folder holding a track is a release, so a scan's write of a sidecar
+/// holding one is a bug of bae's own: the write fails with the bug the store
+/// reports.
+#[tokio::test]
+async fn a_scan_write_of_a_sidecar_holding_a_track_is_a_bug() {
+    let (db, _tmp, heard) = temp_db_hearing_bugs(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let root = host_root("/music");
+    tables.add_watched_import_folder(&root).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    let mut sidecar = crate::tables::release_groupings::tests::sidecar_of("Box", &["01.flac"]);
+    let crate::folder_scanner::SidecarFiles::Valid(files) = &mut sidecar.files else {
+        unreachable!("the fixture holds valid files");
+    };
+    files[0].role = crate::folder_scanner::FileRole::Audio;
+
+    let failed = tables.save_folder_sidecar(&root, generation, &sidecar).await.unwrap_err();
+
+    let reported = heard.take();
+    assert_eq!(reported.len(), 1, "{reported:?}");
+    assert_eq!(coven::task::CarriesBug::bug(&failed), Some(&reported[0]));
+    assert!(reported[0].message.contains("read as a track or a sheet"), "{reported:?}");
 }
 
 /// An entry whose generation is ahead of its root's was written by nothing
