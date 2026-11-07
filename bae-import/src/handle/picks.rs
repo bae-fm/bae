@@ -208,10 +208,7 @@ impl ImportServiceHandle {
             let stored_generation = self
                 .services
                 .tables
-                .load_candidate_file_tag_snapshot(
-                    &read.candidate.watched_folder_path,
-                    &candidate_key,
-                )
+                .load_candidate_file_tag_snapshot(&candidate_key)
                 .await?
                 .map(|stored| stored.scan_generation);
             if stored_generation != Some(seed.snapshot.scan_generation) {

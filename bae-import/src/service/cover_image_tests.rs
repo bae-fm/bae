@@ -116,13 +116,8 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             )
             .await
             .unwrap();
-        let snapshot = tables
-            .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
-            .await
-            .unwrap()
-            .unwrap()
-            .snapshot
-            .unwrap();
+        let snapshot =
+            tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap().snapshot.unwrap();
         assert_eq!(
             snapshot.embedded_cover.as_ref().unwrap().content_type,
             bae_util::content_type::ContentType::Bmp

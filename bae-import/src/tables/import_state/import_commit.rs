@@ -234,12 +234,9 @@ fn load_committing_candidate(
             ))
         })
         .transpose()?;
-    let file_tag_snapshot = super::folder_scans::load_candidate_file_tag_snapshot(
-        sql,
-        &candidate.watched_folder_path,
-        candidate_key,
-    )?
-    .and_then(|stored| stored.snapshot);
+    let file_tag_snapshot =
+        super::folder_scans::load_candidate_file_tag_snapshot(sql, candidate_key)?
+            .and_then(|stored| stored.snapshot);
     Ok(Some(CommittingCandidate {
         actionable: stored.actionable,
         source: candidate.source(),

@@ -194,11 +194,8 @@ impl ImportServiceHandle {
                     Some(crate::cover_art::PreparedCover::Embedded(_))
                 );
         let file_tag_snapshot = if needs_file_tag_snapshot {
-            let Some(stored) = self
-                .services
-                .tables
-                .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, candidate_key)
-                .await?
+            let Some(stored) =
+                self.services.tables.load_candidate_file_tag_snapshot(candidate_key).await?
             else {
                 return Err(crate::ImportError::Internal {
                     detail: format!("{candidate_key} is not an actionable folder candidate"),
@@ -421,10 +418,7 @@ impl ImportServiceHandle {
             let snapshot = self
                 .services
                 .tables
-                .load_candidate_file_tag_snapshot(
-                    &candidate.watched_folder_path,
-                    &command.candidate_key,
-                )
+                .load_candidate_file_tag_snapshot(&command.candidate_key)
                 .await?
                 .and_then(|stored| stored.snapshot)
                 .ok_or_else(|| crate::ImportError::FileTags {

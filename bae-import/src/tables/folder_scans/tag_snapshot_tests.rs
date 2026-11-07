@@ -142,7 +142,7 @@ async fn file_tag_snapshot_round_trips_with_current_candidate_stamp() {
     let (candidate, generation) = scanned_tagged_candidate(&db, &root).await;
     let key = crate::CandidateKey::folder(&candidate.path);
 
-    let empty = tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
+    let empty = tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap();
     assert_eq!(empty.scan_generation, generation);
     assert_eq!(empty.candidate.file_edit_revision, 0);
     assert_eq!(empty.snapshot, None);
@@ -150,7 +150,7 @@ async fn file_tag_snapshot_round_trips_with_current_candidate_stamp() {
     let expected = tag_snapshot(generation, 0);
     assert!(tables.replace_candidate_file_tag_snapshot(&root, &key, &expected).await.unwrap());
 
-    let loaded = tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
+    let loaded = tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap();
     assert_eq!(loaded.scan_generation, generation);
     assert_eq!(loaded.candidate, candidate);
     assert_eq!(loaded.snapshot, Some(expected));
@@ -212,7 +212,7 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
     };
     assert!(tables.replace_candidate_file_tag_snapshot(&root, &key, &replacement).await.unwrap());
 
-    let loaded = tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
+    let loaded = tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap();
     assert_eq!(loaded.snapshot, Some(replacement));
 }
 
@@ -236,7 +236,7 @@ async fn a_rescan_carries_the_reading_forward_and_refuses_an_older_stamp() {
         .unwrap();
     tables.finish_folder_scan(&root, current_generation, None).await.unwrap();
 
-    let loaded = tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
+    let loaded = tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap();
     assert_eq!(loaded.scan_generation, current_generation);
     assert_eq!(loaded.candidate.file_edit_revision, 0);
     let carried = loaded.snapshot.clone().expect("the reading is still stored");
@@ -245,7 +245,7 @@ async fn a_rescan_carries_the_reading_forward_and_refuses_an_older_stamp() {
 
     assert!(!tables.replace_candidate_file_tag_snapshot(&root, &key, &stored).await.unwrap());
     assert_eq!(
-        tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap().snapshot,
+        tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap().snapshot,
         Some(carried)
     );
 }
@@ -272,7 +272,7 @@ async fn stale_file_edit_revision_cannot_replace_snapshot() {
     .await
     .unwrap();
 
-    let loaded = tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
+    let loaded = tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap();
     assert_eq!(loaded.candidate.file_edit_revision, 1);
     assert_eq!(loaded.snapshot, Some(stored.clone()));
     assert!(!tables.replace_candidate_file_tag_snapshot(&root, &key, &stored).await.unwrap());
@@ -292,7 +292,7 @@ async fn failed_whole_replacement_preserves_the_previous_snapshot() {
     assert!(tables.replace_candidate_file_tag_snapshot(&root, &key, &invalid).await.is_err());
 
     assert_eq!(
-        tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap().snapshot,
+        tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap().snapshot,
         Some(stored)
     );
 }

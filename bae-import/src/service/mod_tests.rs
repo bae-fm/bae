@@ -246,7 +246,7 @@ pub(crate) async fn store_scanned_candidate(
     )
     .await;
     let file_tag_snapshot = tables
-        .load_candidate_file_tag_snapshot(folder, &candidate_key)
+        .load_candidate_file_tag_snapshot(&candidate_key)
         .await
         .unwrap()
         .expect("the candidate is stored")

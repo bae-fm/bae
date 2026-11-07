@@ -63,7 +63,7 @@ async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
         before
     );
     assert_eq!(
-        tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap().snapshot,
+        tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap().snapshot,
         Some(reading)
     );
 }
@@ -94,7 +94,7 @@ async fn preparation_reshape_stores_complete_tags_after_their_file_rows() {
         .await
         .unwrap();
     assert!(matches!(result, crate::tables::CandidateSaved::Landed(_)));
-    let stored = tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
+    let stored = tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap();
     assert_eq!(stored.candidate.file_edit_revision, 1);
     assert_eq!(stored.snapshot, Some(reading));
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
@@ -137,7 +137,7 @@ async fn preparation_save_rejects_incomplete_or_unowned_tag_readings_atomically(
             before
         );
         assert_eq!(
-            tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap().snapshot,
+            tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap().snapshot,
             Some(original)
         );
     }

@@ -159,7 +159,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
         "the broken folder is stored as one that can't be imported: {stored:?}"
     );
     let reading = tables
-        .load_candidate_file_tag_snapshot(&root_key, &crate::CandidateKey::folder(&files.album))
+        .load_candidate_file_tag_snapshot(&crate::CandidateKey::folder(&files.album))
         .await
         .unwrap()
         .unwrap()
@@ -175,7 +175,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
         "the rescan stores what the scan before it stored"
     );
     let reread = tables
-        .load_candidate_file_tag_snapshot(&root_key, &crate::CandidateKey::folder(&files.album))
+        .load_candidate_file_tag_snapshot(&crate::CandidateKey::folder(&files.album))
         .await
         .unwrap()
         .unwrap()
@@ -360,7 +360,7 @@ async fn a_track_whose_tags_do_not_parse_leaves_the_others_to_seed_the_draft() {
         ["Track Two (White Noise)", "03 Test Artist - Track Three (Brown Noise)"]
     );
     let reading = tables
-        .load_candidate_file_tag_snapshot(&root, &key)
+        .load_candidate_file_tag_snapshot(&key)
         .await
         .unwrap()
         .unwrap()
@@ -438,7 +438,7 @@ async fn a_track_that_cannot_be_read_fails_the_pass_and_is_read_again() {
     assert_eq!(tags.counted.reads_of(&faulting), before + 1, "the next pass reads it again");
     let reading = test
         .tables()
-        .load_candidate_file_tag_snapshot(&root, &crate::CandidateKey::folder(&root.join("Album")))
+        .load_candidate_file_tag_snapshot(&crate::CandidateKey::folder(&root.join("Album")))
         .await
         .unwrap()
         .unwrap()
@@ -457,19 +457,16 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
     let tags = Arc::new(CountingTagReader::default());
     let (scan, _) =
         test.scan_with(tags.clone(), Arc::new(crate::folder_scanner::OsDirectoryReader));
-    let root_key = files.root.to_path_buf();
     let album_key = crate::CandidateKey::folder(&files.album);
     scan.rescan(&files.root).await.unwrap();
-    let reading =
-        tables.load_candidate_file_tag_snapshot(&root_key, &album_key).await.unwrap().unwrap();
+    let reading = tables.load_candidate_file_tag_snapshot(&album_key).await.unwrap().unwrap();
     std::fs::write(files.album.join("notes.txt"), "Rip notes").unwrap();
     let before = files.reads(&tags);
 
     scan.rescan(&files.root).await.unwrap();
 
     assert_eq!(files.reads(&tags), before, "no file is read again");
-    let stored =
-        tables.load_candidate_file_tag_snapshot(&root_key, &album_key).await.unwrap().unwrap();
+    let stored = tables.load_candidate_file_tag_snapshot(&album_key).await.unwrap().unwrap();
     assert_ne!(
         stored.candidate.files.content_hash(),
         reading.candidate.files.content_hash(),
@@ -517,10 +514,7 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
     let mut hashes = Vec::new();
     for folder in ["First", "Second"] {
         let stored = tables
-            .load_candidate_file_tag_snapshot(
-                &root_key,
-                &crate::CandidateKey::folder(&root.join(folder)),
-            )
+            .load_candidate_file_tag_snapshot(&crate::CandidateKey::folder(&root.join(folder)))
             .await
             .unwrap()
             .unwrap();
@@ -603,7 +597,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
         .expect("the discs read as one release");
     assert_eq!(release.files.audio().count(), 4);
     let reading = tables
-        .load_candidate_file_tag_snapshot(std::path::Path::new(&root_key), &release.key())
+        .load_candidate_file_tag_snapshot(&release.key())
         .await
         .unwrap()
         .unwrap()
@@ -726,7 +720,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
         vec!["Track Two (White Noise)".to_string(), "Track Three (Brown Noise)".to_string(),]
     );
     let snapshot = tables
-        .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
+        .load_candidate_file_tag_snapshot(&key)
         .await
         .unwrap()
         .expect("the candidate has a snapshot")
@@ -739,7 +733,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     scan.rescan(&root).await.expect("the folder is read again");
     assert_eq!(reader.reads(), TAGGED_FLAC_FIXTURES.len() as u64);
     assert!(tables
-        .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
+        .load_candidate_file_tag_snapshot(&key)
         .await
         .unwrap()
         .expect("the candidate is still stored")

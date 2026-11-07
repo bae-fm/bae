@@ -46,26 +46,26 @@ pub(crate) fn replace_candidate_file_tag_snapshot_on(
         params![coven::path_bytes(watched_folder_path), candidate_path],
         |row| Ok((row.get(0)?, row.get(1)?)),
     )?;
-    if audio_files.len() != snapshot.files.len()
-        || audio_files.iter().zip(&snapshot.files).any(|((relative_path, size), fact)| {
-            relative_path != &fact.observation.relative_path
-                || u64::try_from(*size).ok() != Some(fact.observation.size)
-        })
-    {
-        return Err(DbError::Message(format!(
-            "file-tag snapshot for {candidate_path} does not cover its current audio files"
-        )));
-    }
-    if snapshot.embedded_cover.as_ref().is_some_and(|cover| {
-        !snapshot
-            .files
-            .iter()
-            .any(|fact| fact.observation.relative_path == cover.source_relative_path)
-    }) {
-        return Err(DbError::Message(format!(
-            "file-tag snapshot for {candidate_path} names an embedded cover outside its audio files"
-        )));
-    }
+    // The reading was taken from the audio the candidate held at this
+    // generation and revision, which the match above confirmed it still
+    // holds.
+    assert!(
+        audio_files.len() == snapshot.files.len()
+            && audio_files.iter().zip(&snapshot.files).all(|((relative_path, size), fact)| {
+                relative_path == &fact.observation.relative_path
+                    && u64::try_from(*size).ok() == Some(fact.observation.size)
+            }),
+        "file-tag snapshot for {candidate_path} does not cover its current audio files"
+    );
+    assert!(
+        snapshot.embedded_cover.as_ref().is_none_or(|cover| {
+            snapshot
+                .files
+                .iter()
+                .any(|fact| fact.observation.relative_path == cover.source_relative_path)
+        }),
+        "file-tag snapshot for {candidate_path} names an embedded cover outside its audio files"
+    );
 
     replace_candidate_file_tag_snapshot(sql, watched_folder_path, candidate_path, snapshot)?;
     Ok(true)
@@ -214,16 +214,10 @@ impl ImportTables {
     /// candidate never read from one whose reading is out of date.
     pub(crate) async fn load_candidate_file_tag_snapshot(
         &self,
-        watched_folder_path: &Path,
         candidate_path: &CandidateKey,
     ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
-        let watched_folder_path = watched_folder_path.to_path_buf();
         let candidate_path = candidate_path.clone();
-        self.store
-            .read(move |sql| {
-                load_candidate_file_tag_snapshot(&sql, &watched_folder_path, &candidate_path)
-            })
-            .await
+        self.store.read(move |sql| load_candidate_file_tag_snapshot(&sql, &candidate_path)).await
     }
 
     /// [`replace_candidate_file_tag_snapshot_on`] in a transaction of its own.
@@ -268,7 +262,6 @@ struct StoredEmbeddedCoverColumns {
 /// decision.
 pub(crate) fn load_candidate_file_tag_snapshot(
     sql: &impl coven::SqlRead,
-    watched_folder_path: &Path,
     candidate_path: &CandidateKey,
 ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
     let Some(stored_candidate) =
@@ -279,14 +272,7 @@ pub(crate) fn load_candidate_file_tag_snapshot(
     // A blocked candidate still displays its stored artwork and metadata.
     // Operations enforce actionability before reading or changing source files.
     let candidate = stored_candidate.candidate;
-    if candidate.watched_folder_path.as_os_str() != watched_folder_path.as_os_str() {
-        return Err(DbError::Message(format!(
-            "candidate {candidate_path} does not belong to {}",
-            coven::path_text(watched_folder_path)
-        )));
-    }
-
-    let snapshot = load_file_tag_snapshot(sql, watched_folder_path, candidate_path)?;
+    let snapshot = load_file_tag_snapshot(sql, &candidate.watched_folder_path, candidate_path)?;
 
     Ok(Some(DbCandidateFileTagSnapshot {
         scan_generation: stored_candidate.generation,

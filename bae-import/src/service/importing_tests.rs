@@ -611,13 +611,7 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
     )
     .await;
     let reading = async || {
-        tables
-            .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
-            .await
-            .unwrap()
-            .unwrap()
-            .snapshot
-            .unwrap()
+        tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap().snapshot.unwrap()
     };
     let queued = reading().await;
 

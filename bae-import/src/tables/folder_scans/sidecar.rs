@@ -168,16 +168,15 @@ pub(super) fn write_sidecar(
     sidecar: &FolderSidecar,
 ) -> Result<ScanItemWrite, DbError> {
     let root = watched_folder_path;
-    if sidecar.watched_folder_path.as_os_str() != watched_folder_path.as_os_str()
-        || sidecar.folder == root
-        || !sidecar.folder.starts_with(root)
-    {
-        return Err(DbError::Message(format!(
-            "the sidecar of {} does not belong below watched folder {}",
-            coven::path_text(&sidecar.folder),
-            coven::path_text(watched_folder_path)
-        )));
-    }
+    // The walk finds a sidecar in a folder below the watched folder it walks.
+    assert!(
+        sidecar.watched_folder_path.as_os_str() == watched_folder_path.as_os_str()
+            && sidecar.folder != root
+            && sidecar.folder.starts_with(root),
+        "the sidecar of {} does not belong below watched folder {}",
+        coven::path_text(&sidecar.folder),
+        coven::path_text(watched_folder_path)
+    );
     let folder_text = coven::path_bytes(&sidecar.folder);
     if load_sidecar(sql, &sidecar.folder)?.as_ref() == Some(sidecar) {
         sql.execute(
@@ -190,51 +189,47 @@ pub(super) fn write_sidecar(
     // stored under. A sidecar holding a damaged track, or two files showing
     // one name, holds every one of its files as the scan read them, and they
     // replace a release holding them as the valid ones do.
+    // A folder holding a track or a sheet is a release, never a sidecar.
     let files: Vec<StoredSidecarFile<'_>> = match &sidecar.files {
         SidecarFiles::Valid(files) => files
             .iter()
-            .map(|entry| {
-                Ok(StoredSidecarFile {
-                    relative_path: &entry.file.relative_path,
-                    path: &entry.file.version.path,
-                    size: entry.file.version.size,
-                    modified_at_ns: entry.file.version.modified_at_ns,
-                    role: match entry.role {
-                        FileRole::Artwork => "artwork",
-                        FileRole::DamagedImage => "damaged_image",
-                        FileRole::Document => "document",
-                        FileRole::Other => "other",
-                        FileRole::Audio | FileRole::TrackSheet { .. } => {
-                            return Err(DbError::Message(format!(
-                                "{} is a sidecar file read as a track or a sheet",
-                                coven::path_text(&entry.file.version.path)
-                            )))
-                        }
-                    },
-                    damage: None,
-                })
+            .map(|entry| StoredSidecarFile {
+                relative_path: &entry.file.relative_path,
+                path: &entry.file.version.path,
+                size: entry.file.version.size,
+                modified_at_ns: entry.file.version.modified_at_ns,
+                role: match entry.role {
+                    FileRole::Artwork => "artwork",
+                    FileRole::DamagedImage => "damaged_image",
+                    FileRole::Document => "document",
+                    FileRole::Other => "other",
+                    FileRole::Audio | FileRole::TrackSheet { .. } => panic!(
+                        "{} is a sidecar file read as a track or a sheet",
+                        coven::path_text(&entry.file.version.path)
+                    ),
+                },
+                damage: None,
             })
-            .collect::<Result<_, DbError>>()?,
+            .collect(),
         SidecarFiles::Invalid(files) => files
             .iter()
             .map(|file| {
                 let (role, damage) = proposed_role_columns(file.role);
-                if matches!(file.role, ProposedRole::Audio | ProposedRole::Cue) {
-                    return Err(DbError::Message(format!(
-                        "{} is a sidecar file read as a track or a sheet",
-                        coven::path_text(&file.file.path)
-                    )));
-                }
-                Ok(StoredSidecarFile {
+                assert!(
+                    !matches!(file.role, ProposedRole::Audio | ProposedRole::Cue),
+                    "{} is a sidecar file read as a track or a sheet",
+                    coven::path_text(&file.file.path)
+                );
+                StoredSidecarFile {
                     relative_path: &file.relative_path,
                     path: &file.file.path,
                     size: file.file.size,
                     modified_at_ns: file.file.modified_at_ns,
                     role,
                     damage,
-                })
+                }
             })
-            .collect::<Result<_, DbError>>()?,
+            .collect(),
         SidecarFiles::Downloading => Vec::new(),
     };
     let paths = path_column::hex_list(files.iter().map(|entry| entry.path));

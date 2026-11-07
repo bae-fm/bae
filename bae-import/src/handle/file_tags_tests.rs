@@ -20,12 +20,11 @@ async fn pick_file_tags(
 /// The file-tag reading stored for the candidate at `key`.
 async fn stored_tags(
     handle: &ImportServiceHandle,
-    candidate: &crate::folder_scanner::FolderCandidate,
     key: &crate::CandidateKey,
 ) -> Option<crate::file_tag_snapshot::FileTagSnapshot> {
     let tables = handle.services.tables.clone();
     tables
-        .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, key)
+        .load_candidate_file_tag_snapshot(key)
         .await
         .unwrap()
         .expect("the candidate remains stored")
@@ -34,14 +33,13 @@ async fn stored_tags(
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_file_that_cannot_be_read_stores_no_partial_tag_snapshot() {
-    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
-        unread_stored_candidate().await;
+    let StoredCandidate { mut handle, key, tmp: _tmp, .. } = unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::failing(1));
 
     let error = pick_file_tags(&mut handle, &key, reader.clone())
         .await
         .expect_err("the second audio file, which could not be read, rejects the reading");
-    let stored = stored_tags(&handle, &candidate, &key).await;
+    let stored = stored_tags(&handle, &key).await;
     shut_down(handle).await;
 
     assert!(error.to_string().contains("fixture tag read 1 failed"));
@@ -62,7 +60,7 @@ async fn a_file_whose_tags_do_not_parse_leaves_the_others_to_make_the_draft() {
         .await
         .expect("the folder's tags are applied though one file's do not parse");
     let draft = stored_draft(&handle, &candidate.files.content_hash()).await;
-    let stored = stored_tags(&handle, &candidate, &key).await;
+    let stored = stored_tags(&handle, &key).await;
     shut_down(handle).await;
 
     assert_eq!(draft.album_title, "Album Title");
@@ -82,15 +80,14 @@ async fn a_file_whose_tags_do_not_parse_leaves_the_others_to_make_the_draft() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
-    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
-        unread_stored_candidate().await;
+    let StoredCandidate { mut handle, key, tmp: _tmp, .. } = unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
 
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
     assert_eq!(reader.read_count(), 2);
     let read = handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap();
 
-    assert_eq!(Some(read.snapshot), stored_tags(&handle, &candidate, &key).await);
+    assert_eq!(Some(read.snapshot), stored_tags(&handle, &key).await);
     assert_eq!(
         reader.read_count(),
         2,
@@ -250,7 +247,7 @@ async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
     let stored = handle
         .services
         .tables
-        .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
+        .load_candidate_file_tag_snapshot(&key)
         .await
         .unwrap()
         .expect("the candidate remains stored");

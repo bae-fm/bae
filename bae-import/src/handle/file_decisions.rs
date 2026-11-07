@@ -264,10 +264,7 @@ impl ImportServiceHandle {
             let stored = self
                 .services
                 .tables
-                .load_candidate_file_tag_snapshot(
-                    &current_candidate.watched_folder_path,
-                    candidate_key,
-                )
+                .load_candidate_file_tag_snapshot(candidate_key)
                 .await?
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: format!("{candidate_key} has no scanned tag snapshot identity"),

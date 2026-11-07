@@ -347,9 +347,8 @@ async fn import_worker_refuses_a_prepared_but_invalid_metadata_draft() {
 async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
     let (handle, tmp, key, _hash) = pane_fixture().await;
     let tables = handle.services.tables.clone();
-    let root = tmp.path().join("watched");
     let before = tables
-        .load_candidate_file_tag_snapshot(&root, &key)
+        .load_candidate_file_tag_snapshot(&key)
         .await
         .unwrap()
         .expect("the candidate remains stored")
@@ -375,7 +374,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
         .await
         .expect_err("the changed audio cannot import");
     let after = tables
-        .load_candidate_file_tag_snapshot(&root, &key)
+        .load_candidate_file_tag_snapshot(&key)
         .await
         .unwrap()
         .expect("the candidate remains stored")
