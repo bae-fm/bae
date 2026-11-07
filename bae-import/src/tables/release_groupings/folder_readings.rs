@@ -260,11 +260,7 @@ impl ImportTables {
                     let author = match author.as_str() {
                         "user" => FolderReleaseDecisionAuthor::User,
                         "heuristic" => FolderReleaseDecisionAuthor::Heuristic,
-                        other => {
-                            return Err(DbError::Message(format!(
-                                "unknown folder release decision author {other:?}"
-                            )))
-                        }
+                        other => return Err(DbError::unreadable("release_grouping.author", other)),
                     };
                     readings.insert(
                         path,

@@ -75,8 +75,9 @@ pub(super) fn load_candidate_detail_on(
     else {
         return Ok(None);
     };
-    let stored = load_candidate_on(sql, key)?
-        .ok_or_else(|| DbError::Message(format!("the list lists {key}, which no scan stored")))?;
+    let stored = load_candidate_on(sql, key)?.ok_or_else(|| {
+        DbError::unreadable(format!("the scan_candidate rows of listed {key}"), 0)
+    })?;
     let actionable = stored.actionable;
     let source_error = stored.error;
     let candidate = stored.candidate;
@@ -303,11 +304,10 @@ fn claimed_releases_on(
     link.claimed()
         .map(|release| {
             load_source_release_on(sql, release)?.ok_or_else(|| {
-                DbError::Message(format!(
-                    "{} is claimed for {} but is not stored",
-                    release.key,
-                    candidate.key()
-                ))
+                DbError::unreadable(
+                    format!("the source release {} claimed for {}", release.key, candidate.key()),
+                    None::<String>,
+                )
             })
         })
         .collect()

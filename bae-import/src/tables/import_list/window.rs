@@ -53,11 +53,11 @@ pub(super) fn materialise(
         .zip(header_positions)
         .map(|((position, key), &header_position)| {
             let missing = || {
-                DbError::Message(format!(
-                    "the list's {:?} at {} vanished while its window was read",
-                    key.item,
-                    key.shown()
-                ))
+                // The window's keys and rows are read in one snapshot.
+                DbError::unreadable(
+                    format!("the rows of the list's {:?} at {}", key.item, key.shown()),
+                    0,
+                )
             };
             if key.item == Item::Group {
                 let (_, header) = headers.next_if(|(at, _)| *at == position).ok_or_else(missing)?;
@@ -324,11 +324,11 @@ fn invalid_item(sql: &SqlReadContext<'_>, release: ReleaseRows) -> Result<Window
     let stored = folder_scans::load_item_by_key(sql, &release.key, folder_scans::RowSources::Any)?;
     let candidate = match stored.map(|(_, stored)| stored.item) {
         Some(ScanItem::Invalid(candidate)) => candidate,
-        _ => {
-            return Err(DbError::Message(format!(
-                "the folder {} that failed validation vanished while its row was read",
-                release.key
-            )))
+        stored => {
+            return Err(DbError::unreadable(
+                format!("the scan item of {}, listed as failing validation", release.key),
+                stored.map(|item| matches!(item, ScanItem::Invalid(_))),
+            ))
         }
     };
     Ok(WindowItemRows::Ready(ImportListItem::Invalid { candidate, selected: release.selected }))
@@ -498,10 +498,10 @@ fn row_cover(
         (true, false) => {
             blank = load_candidate_on(sql, &release.key)?
                 .ok_or_else(|| {
-                    DbError::Message(format!(
-                        "the list lists {}, which no scan stored",
-                        release.key
-                    ))
+                    DbError::unreadable(
+                        format!("the scan_candidate rows of listed {}", release.key),
+                        0,
+                    )
                 })?
                 .candidate
                 .blank_cover()
@@ -533,11 +533,14 @@ fn claimed_records(
     link.claimed()
         .map(|release| {
             load_release_records_on(sql, release)?.ok_or_else(|| {
-                DbError::Message(format!(
-                    "{} release {} is linked but nothing stored it",
-                    release.catalog.as_str(),
-                    release.key
-                ))
+                DbError::unreadable(
+                    format!(
+                        "the records of linked {} release {}",
+                        release.catalog.as_str(),
+                        release.key
+                    ),
+                    None::<String>,
+                )
             })
         })
         .collect()

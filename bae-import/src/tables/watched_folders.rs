@@ -103,11 +103,10 @@ fn watched_folders_of(roots: Vec<PathBuf>) -> Result<Vec<crate::WatchedFolder>, 
             .iter()
             .find(|other| crate::watched_folder::paths_overlap(root, other))
         {
-            return Err(DbError::Message(format!(
-                "watched folders cannot overlap: {} conflicts with {}",
-                coven::path_text(root),
-                coven::path_text(conflict)
-            )));
+            return Err(DbError::unreadable(
+                "two overlapping stored watched folders",
+                (coven::path_text(root), coven::path_text(conflict)),
+            ));
         }
     }
     Ok(roots.into_iter().map(crate::WatchedFolder::from_path).collect())

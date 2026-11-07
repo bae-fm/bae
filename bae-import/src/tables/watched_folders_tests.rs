@@ -190,5 +190,5 @@ async fn overlapping_stored_roots_fail_to_load() {
     .await
     .unwrap();
     let error = tables.load_watched_import_folders().await.unwrap_err();
-    assert!(error.to_string().contains("cannot overlap"), "{error}");
+    assert!(matches!(error, bae_store::DbError::Unreadable { .. }), "{error}");
 }

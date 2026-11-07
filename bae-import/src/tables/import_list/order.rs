@@ -744,11 +744,13 @@ impl<'a> Items<'a> {
                         &[(":root", &root), (":group", &group)],
                     )?
                     .ok_or_else(|| {
-                        DbError::Message(format!(
-                            "the header of the group {} listing {} is not in the list",
+                        DbError::unreadable(
+                            format!(
+                                "the import_list_placement header of the group listing {}",
+                                key.shown()
+                            ),
                             hex::encode(group),
-                            key.shown()
-                        ))
+                        )
                     })?,
             };
             headers.insert(group_key, header);

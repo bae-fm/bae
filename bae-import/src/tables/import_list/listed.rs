@@ -59,8 +59,12 @@ impl BasisColumns {
     /// row the checks let through, which is refused here as broken.
     pub(super) fn basis(&self, key: &crate::CandidateKey) -> Result<CandidateActionBasis, DbError> {
         let column = |column: Option<bool>| {
-            column
-                .ok_or_else(|| DbError::Message(format!("the placement of {key} is no release's")))
+            column.ok_or_else(|| {
+                DbError::unreadable(
+                    format!("the release columns of import_list_placement of {key}"),
+                    None::<bool>,
+                )
+            })
         };
         let placement = match (tab_of(&self.tab)?, column(self.import_failed)?) {
             (TriageTab::Pending, false) => TriagePlacement::Pending,
@@ -113,7 +117,8 @@ impl ListedColumns {
     /// every column a state needs, so one missing is a row the checks let
     /// through, which is refused here as broken.
     pub(super) fn listed(self, key: &crate::CandidateKey) -> Result<ListedRelease, DbError> {
-        let broken = |what: &str| DbError::Message(format!("the placement of {key} {what}"));
+        let broken =
+            |what: &str| DbError::unreadable(format!("import_list_placement of {key}"), what);
         let pressings = || {
             self.reason_pressings
                 .map(|count| to_u32(count, "a reason's pressing count"))

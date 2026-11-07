@@ -140,7 +140,9 @@ pub(super) fn skipped_on(
                 row.get(0)
             })
             .optional()?
-            .ok_or_else(|| DbError::Message(format!("release {grouping} has no grouping"))),
+            .ok_or_else(|| {
+                DbError::unreadable(format!("the release_grouping row of {grouping}"), None::<bool>)
+            }),
         None => Ok(sql.query_row(
             "SELECT EXISTS(SELECT 1 FROM skipped_import_candidates WHERE candidate_path = ?)",
             [coven::path_bytes(&candidate.path)],
@@ -209,10 +211,10 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
         }
     }
     // Its release is listed under the watched folder its first member is.
-    let root = members
-        .first()
-        .map(|member| member.watched_folder_path.clone())
-        .ok_or_else(|| DbError::Message(format!("grouping {key} takes in no release")))?;
+    let root =
+        members.first().map(|member| member.watched_folder_path.clone()).ok_or_else(|| {
+            DbError::unreadable(format!("the release_grouping_member rows of {key}"), 0)
+        })?;
     // Record where the grouping sits before anything can block it, so other
     // groupings in that folder find it; leaving a folder rebuilds the ones
     // blocked there.
@@ -527,7 +529,10 @@ pub(super) fn block_of(
         return Ok(None);
     };
     let subject = subject.ok_or_else(|| {
-        DbError::Message(format!("grouping block {kind} names no folder or detail"))
+        DbError::unreadable(
+            format!("release_grouping.blocked_subject of a {kind} block"),
+            None::<String>,
+        )
     })?;
     Ok(Some(match (kind.as_str(), holder) {
         ("source_changed", None) => GroupingBlock::SourceChanged { folder: subject },
@@ -540,10 +545,11 @@ pub(super) fn block_of(
             GroupingBlock::FolderFilesDownloading { folder: subject }
         }
         ("unbuildable", None) => GroupingBlock::Unbuildable { detail: subject },
-        (other, _) => {
-            return Err(DbError::Message(format!(
-                "release_grouping.blocked holds {other:?} with a holder it does not name"
-            )))
+        (other, holder) => {
+            return Err(DbError::unreadable(
+                "release_grouping.blocked and blocked_holder",
+                (other, holder),
+            ))
         }
     }))
 }
