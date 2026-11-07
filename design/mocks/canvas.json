@@ -3146,6 +3146,14 @@
    "w": 1100,
    "x": 9820,
    "y": 1380
+  },
+  "AlbMacStorageStates.dc.html": {
+   "h": 770,
+   "page": "home",
+   "title": "macOS: Storage…: every state",
+   "w": 1452,
+   "x": 14080,
+   "y": 15812
   }
  },
  "createdOnFiles": {
@@ -3517,7 +3525,7 @@
    "text": "Album actions: macOS",
    "kind": "title1",
    "w": 240,
-   "maxW": 8000
+   "maxW": 15532
   },
   "row-album-states-android": {
    "kind": "title1",
@@ -4738,6 +4746,7 @@
   "AlbMacLightbox.dc.html",
   "AlbMacLightboxFailed.dc.html",
   "AlbMacSaveAs.dc.html",
+  "AlbMacStorageStates.dc.html",
   "ErrAndroidSnackRetry.dc.html",
   "ErrAndroidSnackPlay.dc.html",
   "ErrAndroidSnackBug.dc.html",

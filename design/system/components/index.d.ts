@@ -315,7 +315,7 @@ export declare function MacModal(props: { width?: number; height?: number; child
 export declare function MacModalHeader(props: { title: string; subtitle?: string; large?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacCoverGallery(props: { title?: string; selected?: string; source?: string; current?: string; remote?: 'unlinked'; remoteNames?: string; files?: string }): React.ReactElement;
 export declare function MacLightbox(props: { title?: string; label?: string; source?: string; browse?: boolean; state?: 'loading' | 'failed' }): React.ReactElement;
-export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading'; why?: string; actions?: string }): React.ReactElement;
+export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'waiting'; wait?: string; ahead?: number; download?: 'queued' | 'downloading' | 'failed' | 'copying'; makeLocal?: 'queued' | 'making' | 'failed'; bytes?: string; fileBytes?: string; progress?: number; error?: string; why?: string; actions?: string }): React.ReactElement;
 export declare function Stars(props: { value?: number; size?: number; who?: string }): React.ReactElement;
 export declare function Avatar(props: { name: string; image?: string; size?: number }): React.ReactElement;
 export declare function MacListRow(props: { lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; selected?: boolean }): React.ReactElement;

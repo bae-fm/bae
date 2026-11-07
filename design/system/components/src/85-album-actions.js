@@ -30,12 +30,31 @@
       h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { style: { opacity: 0.7, fontSize: 11.5 } }, props.source || 'Release Files')),
       h('div', { className: 'bae-m-lb-strip' }, ['Low Tide Hours', 'Low Tide Hours back', 'Low Tide Hours disc', 'Low Tide Hours booklet'].map(function (t, i) { return h('span', { key: i, className: cx('bae-m-lb-thumb', i === 0 && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 56, radius: 6 })); })));
   }
-  // The release's Storage sheet: Storage and Done, the status band, the Files table.
+  // The release's Storage sheet, as StorageStatusBand draws it, in its order: the state line (Local, Pinned, In storage, or an upload's phase with its bar, or the phase of files only `waiting` to upload, then the `wait` chip); the download line (`download`: queued, downloading, failed, copying, with `ahead`, `wait` and `error`); why this Mac can't play it; the make-local line (`makeLocal`: queued, making, failed, with `ahead`, `wait`, `bytes`, `fileBytes`, `progress` and `error`); then the storage actions. Files waiting or moving, a download in flight and a make-local show no actions.
   function MacStorageBand(props) {
     var s = props.state || 'cloud';
+    var chip = function (tone, label, icon) { return h(StatusChip, { tone: tone }, icon ? h(Sym, { name: icon, size: 10 }) : null, label); };
+    var chips = function (parts) { return h('span', { className: 'bae-m-chips' }, parts.filter(Boolean).map(function (x, i) { return h(React.Fragment, { key: i }, x); })); };
+    var wait = props.wait ? chip('warning', props.wait) : null;
+    var ahead = Number(props.ahead || 0) > 0 ? chip('neutral', props.ahead + ' ahead') : null;
+    var err = function (text) { return h('div', { className: 'bae-tone-danger', style: { color: 'var(--danger)' } }, text); };
+    var d = props.download, m = props.makeLocal;
+    var state = s === 'uploading' ? h('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } }, chip('activity', 'Uploading', 'up'), h('div', { className: 'bae-m-track', style: { flex: 1 } }, h('div', { className: 'bae-accent-bg', style: { width: '40%' } })), h('span', { className: 'bae-muted bae-num' }, '96 MB of 221.2 MB'))
+      : s === 'waiting' ? chips([chip('neutral', 'Queued', 'clock'), wait])
+      : h('div', { className: 'bae-muted', style: { display: 'flex', gap: 6, alignItems: 'center' } }, h(Sym, { name: { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s], size: 14 }), { local: 'Local', pinned: 'Pinned', cloud: 'In storage' }[s]);
+    var download = d === 'queued' ? chips([chip('activity', 'Queued'), ahead, wait])
+      : d === 'downloading' ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } }, h('div', { className: 'bae-muted', style: { display: 'flex', gap: 8, alignItems: 'center' } }, h('span', null, 'Pinning for offline'), h('div', { className: 'bae-m-track', style: { flex: 1 } }, h('div', { className: 'bae-pinning-bg', style: { width: '30%', marginLeft: '25%' } }))), wait ? h('div', null, wait) : null)
+      : d === 'failed' ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 2 } }, h('div', null, chip('danger', 'Download failed')), err(props.error || 'The network connection was lost'))
+      : d === 'copying' ? h('div', null, chip('activity', 'Copying here')) : null;
+    var makeLocal = m === 'queued' ? chips([chip('activity', 'Queued to make local'), ahead, wait])
+      : m === 'making' ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } }, h('div', { className: 'bae-muted', style: { display: 'flex', gap: 4, alignItems: 'center' } }, h('span', null, 'Making local…'), wait), h(MacTransferReadout, { kind: 'pin', bytes: props.bytes || '120 MB of 356 MB', rate: 'Current file: ' + (props.fileBytes || '12 MB of 34.1 MB'), progress: props.progress || 0.34 }))
+      : m === 'failed' ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 2 } }, h('div', null, chip('danger', 'Couldn’t make local')), err(props.error || 'The disk is full'))
+      : null;
+    var still = s === 'uploading' || s === 'waiting' || d === 'downloading' || m;
     return h('div', { className: 'bae-m-sband' },
-      s === 'uploading' ? [h('div', { key: 'c' }, h(StatusChip, { tone: 'activity' }, h(Sym, { name: 'up', size: 10 }), 'Uploading')), h('div', { key: 'b', style: { display: 'flex', gap: 8, alignItems: 'center' } }, h('div', { className: 'bae-m-track', style: { flex: 1 } }, h('div', { className: 'bae-accent-bg', style: { width: '40%' } })), h('span', { className: 'bae-muted bae-num' }, '96 MB of 221.2 MB'))]
-        : h('div', { className: 'bae-muted', style: { display: 'flex', gap: 6, alignItems: 'center' } }, h(Sym, { name: { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s], size: 14 }), { local: 'Local', pinned: 'Pinned', cloud: 'In storage' }[s]),
+      state,
+      download,
       props.why ? h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, props.why) : null,
-      s === 'uploading' ? null : h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, list(props.actions || 'Pin,Make local…,Export…,Save as…').map(function (a) { return h(MacButton, { key: a }, a); })));
+      makeLocal,
+      still ? null : h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, list(props.actions || 'Pin,Make local…,Export…,Save as…').map(function (a) { return h(MacButton, { key: a }, a); })));
   }
