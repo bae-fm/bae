@@ -216,6 +216,14 @@ non_owner_types = [
     # What a play-on command carries to start remote playback.
     "RemoteConnect",
     "AirPlayConnect",
+    # What the identification queue holds for a job, and what the folder watcher
+    # holds for a root: data under the lock of the owner that holds it.
+    "Job",
+    "JobState",
+    "RootActivity",
+    "RootScanSchedule",
+    "RootRemovalSchedule",
+    "RootWatch",
 ]
 
 # Values an owner makes for its caller's one operation, view or read and
@@ -383,6 +391,28 @@ task_types = [
     "RemoteRenderer",
     "AirPlayRenderer",
     "AirPlayControl",
+    # One scan pass: the walk, the root it reads, what stops it and the task
+    # running it.
+    "ScanCancellation",
+    "RootScanTask",
+    "Walk",
+    "ScanRoot",
+    # One extraction in flight, what it consumes and the release it reads; one
+    # identification run's driver; one import's artist rows and registration; one
+    # loudness pass and its track streams; a test's hold on a sender.
+    "RunningExtraction",
+    "ExtractionInputs",
+    "ExtractionRelease",
+    "Artwork",
+    "Driver",
+    "ArtistRows",
+    "RegisteredImport",
+    "LoudnessProgressSink",
+    "LoudnessProgress",
+    "SourceStream",
+    "SendHold",
+    # The folder scans' live read, built for each screen that shows them.
+    "FolderScansLive",
 ]
 
 # Handles (Appendix F.3): what an owner makes from its own state to hand out.
@@ -494,6 +524,18 @@ ImageHold = "RemoteImageHost"
     "FakeCatalogs::offline",
     "FakeCatalogs::over",
 ]
+# A test's candidate runtime opens its own tables.
+"bae-import/src/candidate_runtime.rs" = ["CandidateRuntime::for_test"]
+# x
+"bae-import/src/folder_state_commit.rs" = ["FolderStateCommit::new"]
+# Starts the identification queue with the services it runs on; its handle
+# stops it.
+"bae-import/src/identification.rs" = ["start"]
+# x
+"bae-import/src/import_cancel.rs" = ["ImportCancels::new"]
+# An owner's constructor builds the owner and the parts it holds that nothing
+# else shares.
+"bae-import/src/watching/folder_watcher.rs" = ["FolderWatcher::new"]
 # The follow of the tracks a service holds, made for the service when it is
 # built.
 "bae-playback/src/service/advance.rs" = ["track_infos_follow"]
@@ -763,7 +805,11 @@ ImageHold = "RemoteImageHost"
 ]
 "bae-import/src/tables.rs" = ["ImportTables::new"]
 "bae-import/src/watching/active_roots.rs" = ["ActiveRoots::new"]
-"bae-import/src/watching/coordinator.rs" = ["Coordinator::new"]
+"bae-import/src/watching/coordinator.rs" = [
+    "Coordinator::new",
+    "run_watcher",
+    "run_watcher_with_starter",
+]
 "bae-import/src/watching/root_removal.rs" = ["ServiceRootRemovalBackend::new"]
 "bae-library/examples/bench_library/mod.rs" = ["BenchLibrary::create"]
 "bae-library/src/bootstrap.rs" = [
