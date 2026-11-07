@@ -117,6 +117,9 @@ use volume::OutputVolume;
 #[path = "mod_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+mod command_kind_tests;
+
 mod runtime;
 
 struct TrackDecoder {
@@ -456,6 +459,9 @@ struct OutputStream {
 }
 
 pub struct PlaybackService {
+    /// The runtime the service runs on, which its watchers and listeners run
+    /// on.
+    runtime: tokio::runtime::Handle,
     /// The library's store: the tracks playback reads, the resume row and
     /// listening history it writes, the preferences it plays by, and the
     /// files it streams.

@@ -215,7 +215,8 @@ impl PlaybackThread {
             // At full volume until playback restores the level the person set.
             let audio_output =
                 PlayerOutput::new(output, AudioOutputControls::new(crate::Volume::FULL));
-            let mut service = self.service(commands, audio_device, audio_output);
+            let mut service =
+                self.service(rt.handle().clone(), commands, audio_device, audio_output);
             let (taken_up, starter) = match start {
                 ServiceStart::Launch { restore_playback: true } => {
                     (caught("restore playback", service.restore_from_cache()).await, None)
@@ -242,11 +243,13 @@ impl PlaybackThread {
     /// A service with nothing playing, over this thread's parts.
     fn service(
         &self,
+        runtime: tokio::runtime::Handle,
         commands: &OwnCommands,
         audio_device: Arc<dyn AudioOutputDevice>,
         audio_output: PlayerOutput,
     ) -> PlaybackService {
         PlaybackService {
+            runtime: runtime.clone(),
             store: self.store.clone(),
             records: self.records.clone(),
             people: self.people.clone(),
@@ -267,6 +270,7 @@ impl PlaybackThread {
             preloaded_next: None,
             volume: OutputVolume::new(),
             preview: PreviewPlayer::new(
+                runtime,
                 self.progress_tx.clone(),
                 commands.clone(),
                 self.position_update_interval_ms,

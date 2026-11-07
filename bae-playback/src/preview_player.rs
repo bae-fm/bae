@@ -83,6 +83,8 @@ pub(crate) enum AfterPreview {
 /// state; the main player coordinates pause/resume around it but never reaches
 /// into these fields.
 pub(crate) struct PreviewPlayer {
+    /// The runtime the service runs on, which the event listener runs on.
+    runtime: tokio::runtime::Handle,
     /// Progress sink, cloned from the service so preview emits the same
     /// `PlaybackProgress` stream the UI already subscribes to.
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
@@ -145,12 +147,14 @@ struct ActivePreview {
 
 impl PreviewPlayer {
     pub(crate) fn new(
+        runtime: tokio::runtime::Handle,
         progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
         command_tx: OwnCommands,
         position_update_interval_ms: u32,
         diagnostics: Diagnostics,
     ) -> Self {
         Self {
+            runtime,
             progress_tx,
             command_tx,
             position_update_interval_ms,
@@ -489,6 +493,7 @@ impl PreviewPlayer {
             DecodeFailureReport::LogOnly,
         );
         let diagnostics = self.diagnostics.clone();
+        let runtime = self.runtime.clone();
         let active = match start_stream_pipeline(
             &self.diagnostics,
             self.audio_output.as_mut().unwrap(),
@@ -498,6 +503,7 @@ impl PreviewPlayer {
             move |pipeline, audio_events| ActivePreview {
                 source,
                 listener_handle: spawn_preview_listener(
+                    &runtime,
                     &diagnostics,
                     progress_tx,
                     command_tx,
@@ -539,6 +545,7 @@ impl PreviewPlayer {
 /// A listener that panics is reported, and the preview ends with an error
 /// rather than sit at its last position.
 fn spawn_preview_listener(
+    runtime: &tokio::runtime::Handle,
     diagnostics: &Diagnostics,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
     command_tx: OwnCommands,
@@ -547,7 +554,7 @@ fn spawn_preview_listener(
     let on_panic_progress = progress_tx.clone();
     let on_panic_command = command_tx.clone();
     diagnostics.spawn_reported(
-        &tokio::runtime::Handle::current(),
+        runtime,
         "follow the preview's audio events",
         listen_to_preview(diagnostics.clone(), progress_tx, command_tx, audio_events),
         move |failed| {

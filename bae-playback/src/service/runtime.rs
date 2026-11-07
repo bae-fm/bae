@@ -133,7 +133,7 @@ impl PlaybackService {
         let command_tx = self.command_tx.clone();
         let progress_tx = self.progress_tx.clone();
         self.diagnostics.spawn_reported(
-            &tokio::runtime::Handle::current(),
+            &self.runtime,
             "wait for the track's first samples",
             async move {
                 match ready.await {

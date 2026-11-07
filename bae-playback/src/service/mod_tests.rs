@@ -1,7 +1,6 @@
 //! The service's test fixtures: a service over a seeded store with a stub
 //! output, the slot, track and decoder stand-ins its handlers are driven
-//! with, and the fakes remote and AirPlay playback run on. Also the tests of
-//! how commands are classified.
+//! with, and the fakes remote and AirPlay playback run on.
 
 use super::*;
 use crate::audio_output::{
@@ -258,12 +257,18 @@ pub(super) fn playback_service_and_commands_over(
 ) {
     let (command_tx, command_rx) = OwnCommands::channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-    let preview =
-        PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50, diagnostics.clone());
+    let preview = PreviewPlayer::new(
+        tokio::runtime::Handle::current(),
+        progress_tx.clone(),
+        command_tx.clone(),
+        50,
+        diagnostics.clone(),
+    );
     let playback_queue = PlaybackQueue::new(crate::tables::PlaybackQueueTables::new(db.clone()));
     let staged_sides = advance::track_infos_follow(db, "the staged crossing's sides", &diagnostics);
     let held_tracks = advance::track_infos_follow(db, "the tracks playback holds", &diagnostics);
     let service = PlaybackService {
+        runtime: tokio::runtime::Handle::current(),
         store: db.clone(),
         records: bae_records::test_fixtures::test_records(db),
         people: bae_people::People::new(db.clone()),
@@ -779,61 +784,6 @@ pub(super) fn install_airplay(
     service.renderer =
         Renderer::AirPlay(renderer::AirPlayRenderer::new(test_device(), control, saved));
     InstalledAirPlay { state, _session: session, saved_output }
-}
-
-/// A user-intent command maps to its telemetry kind; internal/system commands,
-/// queries, and continuous inputs map to `None` and ship nothing.
-#[test]
-fn playback_command_kind_maps_user_intent_only() {
-    use super::playback_command_kind;
-    assert!(matches!(
-        playback_command_kind(&PlaybackCommand::Play(
-            "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()
-        )),
-        Some(PlaybackCommandKind::Play)
-    ));
-    assert!(matches!(
-        playback_command_kind(&PlaybackCommand::SetRepeatMode(RepeatMode::Off)),
-        Some(PlaybackCommandKind::SetRepeat)
-    ));
-    // A continuous input and an internal command ship nothing.
-    assert!(playback_command_kind(&PlaybackCommand::SetVolume(crate::Volume::new(0.5).unwrap()))
-        .is_none());
-    assert!(playback_command_kind(&PlaybackCommand::AutoAdvance {
-        track_id: "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()
-    })
-    .is_none());
-}
-
-#[test]
-fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
-    let stops = [
-        PlaybackCommand::Pause,
-        PlaybackCommand::Stop,
-        PlaybackCommand::Next,
-        PlaybackCommand::Previous,
-        PlaybackCommand::Seek(TrackTime::START),
-        PlaybackCommand::SeekByRatio(0.5),
-        PlaybackCommand::Play("track".to_string()),
-        PlaybackCommand::PlayLibraryShuffled(oneshot::channel().0),
-        PlaybackCommand::AddToQueue(vec!["track".to_string()]),
-        PlaybackCommand::ClearUpNext(oneshot::channel().0),
-        PlaybackCommand::SetShuffle(true),
-        PlaybackCommand::StopRemote,
-    ];
-    for command in &stops {
-        assert!(cancels_side_pause_countdown(command), "{command:?} stops the countdown");
-    }
-    let leaves = [
-        PlaybackCommand::Resume,
-        PlaybackCommand::SetVolume(crate::Volume::new(0.5).unwrap()),
-        PlaybackCommand::SetMuted(true),
-        PlaybackCommand::SetRepeatMode(RepeatMode::Context),
-        PlaybackCommand::AutoAdvance { track_id: "track".to_string() },
-    ];
-    for command in &leaves {
-        assert!(!cancels_side_pause_countdown(command), "{command:?} leaves the countdown running");
-    }
 }
 
 fn test_resolved_track_audio(track_id: &str) -> ResolvedTrackAudio {
