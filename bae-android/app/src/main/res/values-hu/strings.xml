@@ -267,6 +267,7 @@
     <string name="storage_onedrive_folder_name">Mappa neve</string>
     <string name="storage_onedrive_create">Létrehozás</string>
     <string name="storage_onedrive_use_folder">Ennek a mappának a használata</string>
+    <string name="storage_setup_cancelling">Megszakítás…</string>
     <string name="storage_setup_done">A szinkronizálás be van állítva. Őrizd a helyreállítási kódodat privát helyen: ha az összes eszközödet elveszíted, ezzel kapod vissza a könyvtáradat.</string>
     <string name="done">Kész</string>
     <string name="recovery_code_title">A helyreállítási kódod</string>

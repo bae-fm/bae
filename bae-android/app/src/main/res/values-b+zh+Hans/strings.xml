@@ -265,6 +265,7 @@
     <string name="storage_onedrive_folder_name">文件夹名称</string>
     <string name="storage_onedrive_create">创建</string>
     <string name="storage_onedrive_use_folder">使用此文件夹</string>
+    <string name="storage_setup_cancelling">正在取消…</string>
     <string name="storage_setup_done">同步已设置。请将你的恢复码保存在私密的地方：如果你丢失了所有设备，可以用它找回你的库。</string>
     <string name="done">完成</string>
     <string name="recovery_code_title">你的恢复码</string>

@@ -2,9 +2,6 @@
 
 import BaeKit
 import SwiftUI
-import os.log
-
-private let logger = Logger.bae("SyncSetupWizard")
 
 // MARK: - Wizard Steps
 
@@ -48,21 +45,6 @@ private struct ProviderRow: View {
     }
 }
 
-// MARK: - Setup Run
-
-/// Whether the wizard's storage setup runs, and whether Cancel still undoes
-/// it: past its point of no return the setup finishes, so Cancel goes.
-@Observable
-final class StorageSetupRun {
-    enum State {
-        case idle
-        case cancellable
-        case finishing
-    }
-
-    var state: State = .idle
-}
-
 // MARK: - SyncSetupWizard
 
 /// Sets up the library's cloud home: pick a provider, then its short form or
@@ -81,8 +63,15 @@ struct SyncSetupWizard: View {
 
     @State
     private var step: WizardStep = .selectProvider
+    /// The setup a step runs; a cancelled one closes the wizard once its
+    /// call ends.
     @State
-    private var run = StorageSetupRun()
+    private var run: StorageSetupRun
+
+    init(onDone: @escaping () -> Void) {
+        self.onDone = onDone
+        _run = State(initialValue: StorageSetupRun(onCancelled: onDone))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -108,7 +97,7 @@ struct SyncSetupWizard: View {
 
     private var header: some View {
         HStack {
-            if case .configure = step, run.state == .idle {
+            if case .configure = step, !run.isRunning {
                 Button {
                     withAnimation(.easeInOut(duration: 0.15)) {
                         step = .selectProvider
@@ -124,7 +113,7 @@ struct SyncSetupWizard: View {
 
             Spacer()
 
-            if run.state != .finishing {
+            if !run.isRunning || run.cancelOffered {
                 Button("Cancel") {
                     cancel()
                 }
@@ -134,17 +123,13 @@ struct SyncSetupWizard: View {
         .padding()
     }
 
-    /// Close the wizard, undoing a running setup first. One past its point
-    /// of no return finishes, so the wizard stays to show it.
+    /// Close the wizard. A running setup is cancelled first, and the wizard
+    /// closes once coven has undone it.
     private func cancel() {
-        guard run.state == .cancellable else {
-            onDone()
-            return
+        if run.isRunning {
+            run.cancel(sync)
         }
-        switch sync.cancelStorageSetup() {
-        case .finishing:
-            run.state = .finishing
-        case .undoing, .noSetup:
+        else {
             onDone()
         }
     }
@@ -253,7 +238,8 @@ struct SyncSetupWizard: View {
 
 /// A setup step's fields above its one action: the error and the button stay
 /// below the fields while they scroll. While the connection is set up, the
-/// step it runs shows over its bar above the button.
+/// step it runs shows over its bar above the button, and a cancel under way
+/// shows there in its place.
 struct SetupStep<Fields: View>: View {
     let actionTitle: LocalizedStringKey
     let ready: Bool
@@ -268,11 +254,6 @@ struct SetupStep<Fields: View>: View {
     @Environment(StorageSetupRun.self)
     private var run
     @State
-    private var task: Task<Void, Never>?
-    /// The running setup's steps; nil while none runs.
-    @State
-    private var steps: StorageSetupSteps?
-    @State
     private var error: DisplayError?
 
     var body: some View {
@@ -281,7 +262,7 @@ struct SetupStep<Fields: View>: View {
                 fields
             }
             .formStyle(.grouped)
-            .disabled(task != nil)
+            .disabled(run.isRunning)
 
             if let error {
                 ErrorDetailDisclosure(error: error)
@@ -289,53 +270,96 @@ struct SetupStep<Fields: View>: View {
                     .padding(.bottom, ThemeSpace.related)
             }
 
-            if let steps {
-                StepProgressLine(steps: steps.steps) { EmptyView() }
+            if run.isRunning {
+                StorageSetupRunLine(run: run)
                     .padding(.horizontal)
                     .padding(.bottom, ThemeSpace.related)
             }
             HStack(spacing: ThemeSpace.related) {
                 Spacer()
-                Button(task != nil ? "Connecting…" : actionTitle) {
+                Button(run.isRunning ? "Connecting…" : actionTitle) {
                     connect()
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
-                .disabled(task != nil || !ready)
+                .disabled(run.isRunning || !ready)
             }
             .padding(.horizontal)
             .padding(.bottom, ThemeSpace.section)
         }
-        .onDisappear { task?.cancel() }
+        .onDisappear { run.leave() }
     }
 
     private func connect() {
         error = nil
-        let running = sync.storageSetupSteps()
-        steps = running
-        run.state = .cancellable
-        task = Task {
-            defer {
-                task = nil
-                steps = nil
-                run.state = .idle
-            }
-            do {
-                onConnected(try await operation(running.setup))
-            }
-            catch is CancellationError {
-                logger.debug("Connect attempt cancelled")
-            }
-            catch {
-                logger.error("Connect failed: \(String(reflecting: error))")
-                self.error = DisplayError(error)
-            }
-        }
+        run.start(
+            sync.followStorageSetup(),
+            operation: operation,
+            onConnected: onConnected,
+            onFailed: { error = $0 }
+        )
     }
 }
 
 #if DEBUG
     // MARK: - Previews
+
+    extension SyncSetupWizard {
+        /// Where a preview or a shot stages the wizard's S3 setup.
+        enum SetupStaging {
+            /// Running `step`, before its point of no return.
+            case running(BridgeStorageSetupStep)
+            /// Running `step`, past its point of no return.
+            case finishing(BridgeStorageSetupStep)
+            /// The person cancelled it while it connected.
+            case cancelling
+        }
+
+        /// The wizard on the S3 form, its setup staged at `staging` in
+        /// place of core's.
+        static func staged(_ staging: SetupStaging) -> some View {
+            let sync = Sync(cancelStorageSetup: { .undoing })
+            let (step, finishing): (BridgeStorageSetupStep, Bool) =
+                switch staging {
+                case .running(let step): (step, false)
+                case .finishing(let step): (step, true)
+                case .cancelling: (.connecting, false)
+                }
+            let run = StorageSetupRun(onCancelled: {})
+            run.start(
+                StorageSetupFollowing(
+                    staging: BridgeStorageSetupProgress(
+                        step: step,
+                        done: 0,
+                        total: 1
+                    ),
+                    finishing: finishing
+                ),
+                operation: { _ in try await Task.neverAnswers() },
+                onConnected: { _ in },
+                onFailed: { _ in }
+            )
+            if case .cancelling = staging {
+                run.cancel(sync)
+            }
+            return SyncSetupWizard(provider: .s3, run: run, onDone: {})
+                .environment(PreviewData.configStore())
+                .environment(sync)
+                #if BAE_OAUTH_PROVIDERS
+                    .environment(CloudSyncSetup())
+                #endif
+        }
+
+        private init(
+            provider: BridgeCloudProvider,
+            run: StorageSetupRun,
+            onDone: @escaping () -> Void
+        ) {
+            self.onDone = onDone
+            _step = State(initialValue: .configure(provider))
+            _run = State(initialValue: run)
+        }
+    }
 
     #Preview("Provider Selection") {
         SyncSetupWizard(onDone: {})
@@ -344,5 +368,17 @@ struct SetupStep<Fields: View>: View {
             #if BAE_OAUTH_PROVIDERS
                 .environment(CloudSyncSetup())
             #endif
+    }
+
+    #Preview("Connecting") {
+        SyncSetupWizard.staged(.running(.connecting))
+    }
+
+    #Preview("Creating the library") {
+        SyncSetupWizard.staged(.finishing(.creatingStore))
+    }
+
+    #Preview("Cancelling") {
+        SyncSetupWizard.staged(.cancelling)
     }
 #endif

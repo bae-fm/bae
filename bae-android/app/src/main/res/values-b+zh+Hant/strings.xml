@@ -265,6 +265,7 @@
     <string name="storage_onedrive_folder_name">資料夾名稱</string>
     <string name="storage_onedrive_create">建立</string>
     <string name="storage_onedrive_use_folder">使用此資料夾</string>
+    <string name="storage_setup_cancelling">正在取消…</string>
     <string name="storage_setup_done">同步已設定。請將你的復原碼保存在私密的地方：如果你遺失了所有裝置，可以用它找回你的資料庫。</string>
     <string name="done">完成</string>
     <string name="recovery_code_title">你的復原碼</string>

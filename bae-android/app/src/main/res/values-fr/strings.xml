@@ -270,6 +270,7 @@
     <string name="storage_onedrive_folder_name">Nom du dossier</string>
     <string name="storage_onedrive_create">Créer</string>
     <string name="storage_onedrive_use_folder">Utiliser ce dossier</string>
+    <string name="storage_setup_cancelling">Annulation…</string>
     <string name="storage_setup_done">La synchronisation est configurée. Conservez votre code de récupération dans un endroit privé : si vous perdez tous vos appareils, il vous permet de récupérer votre bibliothèque.</string>
     <string name="done">Terminé</string>
     <string name="recovery_code_title">Votre code de récupération</string>

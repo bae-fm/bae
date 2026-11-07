@@ -273,6 +273,7 @@
     <string name="storage_onedrive_folder_name">Názov priečinka</string>
     <string name="storage_onedrive_create">Vytvoriť</string>
     <string name="storage_onedrive_use_folder">Použiť tento priečinok</string>
+    <string name="storage_setup_cancelling">Ruší sa…</string>
     <string name="storage_setup_done">Synchronizácia je nastavená. Uchovávaj kód na obnovenie na súkromnom mieste: ak prídeš o všetky svoje zariadenia, získaš s ním knižnicu späť.</string>
     <string name="done">Hotovo</string>
     <string name="recovery_code_title">Tvoj kód na obnovenie</string>

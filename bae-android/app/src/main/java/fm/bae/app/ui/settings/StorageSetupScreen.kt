@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,12 +50,17 @@ import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRCodeImage
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeLibrarySetup
+import uniffi.bae_bridge.BridgeSetupCancellation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeStorageSetupProgress
 import uniffi.bae_bridge.availableCloudProviders
@@ -96,11 +102,28 @@ internal fun StorageSetupScreen(
     val context = LocalContext.current
     val scope = rememberScreenScope()
     val flow = remember(session) { StorageSetupFlow(session, oauthProviders, context, scope) }
-    val back = { flow.back(onBack) }
+    val runner = rememberStorageSetupRunner(session, onError = { flow.error = it }, onSetUp = flow::setUp)
+    // Cancel takes the person back once coven has undone the setup.
+    val cancel = { runner.cancel { flow.back(onBack) } }
+    // While a setup runs, Back is its Cancel, and does nothing once Cancel
+    // isn't offered: the screen stays until the setup's call ends.
+    val back = {
+        when {
+            runner.cancelOffered -> {
+                cancel()
+            }
+
+            runner.running -> {}
+
+            else -> {
+                flow.back(onBack)
+            }
+        }
+    }
     BackHandler(onBack = back)
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SetupTopBar(onBack = back)
+        SetupTopBar(onBack = back, backEnabled = !runner.running || runner.cancelOffered)
         Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
@@ -110,11 +133,12 @@ internal fun StorageSetupScreen(
                 step = flow.step,
                 session = session,
                 oauthProviders = oauthProviders,
+                runner = runner,
                 callbacks =
                     SetupCallbacks(
                         onChoose = flow::choose,
                         onError = { flow.error = it },
-                        onSetUp = flow::setUp,
+                        onCancel = cancel,
                         onDone = onBack,
                     ),
             )
@@ -178,16 +202,17 @@ private class StorageSetupFlow(
 private class SetupCallbacks(
     val onChoose: (BridgeCloudProvider) -> Unit,
     val onError: (DisplayError?) -> Unit,
-    val onSetUp: (BridgeStorageSetup) -> Unit,
+    val onCancel: () -> Unit,
     val onDone: () -> Unit,
 )
 
-/** What the setup shows at [step]. */
+/** What the setup shows at [step], its setup calls run by [runner]. */
 @Composable
 private fun ColumnScope.SetupStepContent(
     step: SetupStep,
     session: OpenLibrary,
     oauthProviders: OAuthProviders?,
+    runner: StorageSetupRunner,
     callbacks: SetupCallbacks,
 ) {
     when (step) {
@@ -196,7 +221,12 @@ private fun ColumnScope.SetupStepContent(
         }
 
         SetupStep.S3 -> {
-            S3SetupForm(session = session, onError = callbacks.onError, onSetUp = callbacks.onSetUp)
+            S3SetupForm(
+                session = session,
+                setup = runner,
+                onError = callbacks.onError,
+                onCancel = callbacks.onCancel,
+            )
         }
 
         is SetupStep.SigningIn -> {
@@ -213,8 +243,9 @@ private fun ColumnScope.SetupStepContent(
             DropboxFolderChoice(
                 session = session,
                 providers = checkNotNull(oauthProviders) { "Dropbox setup signed in without sign-in" },
+                setup = runner,
                 onError = callbacks.onError,
-                onSetUp = callbacks.onSetUp,
+                onCancel = callbacks.onCancel,
             )
         }
 
@@ -222,8 +253,9 @@ private fun ColumnScope.SetupStepContent(
             OneDriveFolderChoice(
                 session = session,
                 providers = checkNotNull(oauthProviders) { "OneDrive setup signed in without sign-in" },
+                setup = runner,
                 onError = callbacks.onError,
-                onSetUp = callbacks.onSetUp,
+                onCancel = callbacks.onCancel,
             )
         }
 
@@ -234,13 +266,16 @@ private fun ColumnScope.SetupStepContent(
 }
 
 @Composable
-private fun SetupTopBar(onBack: () -> Unit) {
+private fun SetupTopBar(
+    onBack: () -> Unit,
+    backEnabled: Boolean,
+) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(onClick = onBack, enabled = backEnabled) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
             }
             Text(text = stringResource(R.string.storage_setup_title), style = ThemeText.title.style)
@@ -279,7 +314,9 @@ private fun ColumnScope.SetupDone(
 /**
  * Runs a screen's storage setup calls: each one's steps are [steps] while it
  * runs, pulled in [scope]; its failure goes to [onError] and the setup it
- * ends in to [onSetUp].
+ * ends in to [onSetUp]. Before its point of no return the person can
+ * [cancel] it, which coven does between setup's steps rather than in the
+ * middle of a request, so the cancel shows under way until the call ends.
  */
 internal class StorageSetupRunner(
     private val context: Context,
@@ -292,6 +329,31 @@ internal class StorageSetupRunner(
     var steps by mutableStateOf<LatestSource<BridgeStorageSetupProgress>?>(null)
         private set
 
+    /**
+     * Whether the running setup is past its point of no return, creating the
+     * library in storage or recording changed access: coven finishes it
+     * rather than undoing it, so Cancel isn't offered.
+     */
+    var finishing by mutableStateOf(false)
+        private set
+
+    /** What follows the person's cancel once the setup's call ends; null while nobody cancelled. */
+    private var afterCancel by mutableStateOf<(() -> Unit)?>(null)
+
+    /** The coroutine the running setup's call runs in; null while none runs. */
+    private var call: Job? = null
+
+    val running: Boolean
+        get() = steps != null
+
+    /** Whether the person cancelled the running setup, which coven undoes before its call ends. */
+    val cancelling: Boolean
+        get() = afterCancel != null
+
+    /** Whether Cancel can still stop the running setup. */
+    val cancelOffered: Boolean
+        get() = running && !finishing && !cancelling
+
     /** Run [setUp], named [operation] in the log, under this device's name. */
     suspend fun run(
         operation: String,
@@ -300,15 +362,48 @@ internal class StorageSetupRunner(
         var result: BridgeStorageSetup? = null
         StorageSetupProgress((context.applicationContext as BaeApp).host, scope, session.bugs).use { progress ->
             steps = progress.steps
+            call = currentCoroutineContext().job
+            val following = scope.launch { progress.followFinishing { finishing = it } }
             try {
                 performBridgeAction(logger, operation, session.errors, onError) {
                     result = setUp(deviceName(context), progress.setup)
                 }
             } finally {
+                following.cancel()
+                call = null
                 steps = null
+                finishing = false
+                // The cancelled setup's call has ended: coven undid it.
+                afterCancel?.let { after ->
+                    afterCancel = null
+                    after()
+                }
             }
         }
         result?.let(onSetUp)
+    }
+
+    /**
+     * The person cancelled the running setup: before its point of no return
+     * coven undoes it and its call ends cancelled, and then [after] runs. A
+     * setup coven isn't running yet is dropped with its call, which cancels
+     * it. Past the point the setup finishes, and Cancel goes as it says so.
+     */
+    fun cancel(after: () -> Unit) {
+        when (session.appHandle.cancelStorageSetup()) {
+            BridgeSetupCancellation.UNDOING -> {
+                afterCancel = after
+            }
+
+            BridgeSetupCancellation.NO_SETUP -> {
+                afterCancel = after
+                call?.cancel()
+            }
+
+            BridgeSetupCancellation.FINISHING -> {
+                logger.info("Cancel came past storage setup's point of no return")
+            }
+        }
     }
 }
 
@@ -325,5 +420,25 @@ internal fun rememberStorageSetupRunner(
     val latestSetUp by rememberUpdatedState(onSetUp)
     return remember(session) {
         StorageSetupRunner(context, session, scope, { latestError(it) }, { latestSetUp(it) })
+    }
+}
+
+/**
+ * What [runner]'s setup shows while it runs: the step over its bar, with
+ * Cancel, calling [onCancel], while it can still stop the setup, or the
+ * person's cancel under way.
+ */
+@Composable
+internal fun StorageSetupRunLine(
+    runner: StorageSetupRunner,
+    onCancel: () -> Unit,
+) {
+    if (runner.cancelling) {
+        WaitingIndicator(text = stringResource(R.string.storage_setup_cancelling))
+        return
+    }
+    runner.steps?.let { StorageSetupLine(it) }
+    if (runner.cancelOffered) {
+        TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
     }
 }

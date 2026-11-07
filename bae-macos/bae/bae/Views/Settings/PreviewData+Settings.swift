@@ -180,8 +180,8 @@
         /// location as `storage`.
         static func previewSync(storage: BridgeStorageLocation?) -> Sync {
             Sync(
-                storageSetupSteps: {
-                    StorageSetupSteps(host: BaeHost.preview())
+                followStorageSetup: {
+                    StorageSetupFollowing(host: BaeHost.preview())
                 },
                 generateRestoreCode: {
                     BridgeRestoreCodeShare(

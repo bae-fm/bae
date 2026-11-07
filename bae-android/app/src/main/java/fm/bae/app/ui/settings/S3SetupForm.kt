@@ -43,7 +43,6 @@ import uniffi.bae_bridge.BridgeS3ProfileName
 import uniffi.bae_bridge.BridgeS3Versioning
 import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.bridgeErrorCategoryKey
 
 private val logger = BaeLogger("bae.S3SetupForm")
@@ -99,19 +98,20 @@ private class S3FormInput {
  * The S3 form: the bucket, its region and endpoint, and the access key. coven
  * knows a service by its endpoint and fills in how to talk to it; Advanced
  * holds a profile for a service coven doesn't know and a check of what coven
- * detects in the bucket. The library takes the whole bucket.
+ * detects in the bucket. The library takes the whole bucket. [setup] runs
+ * the setup, which the person can stop with Cancel, calling [onCancel].
  */
 @Composable
 internal fun S3SetupForm(
     session: OpenLibrary,
+    setup: StorageSetupRunner,
     onError: (DisplayError?) -> Unit,
-    onSetUp: (BridgeStorageSetup) -> Unit,
+    onCancel: () -> Unit,
 ) {
     val scope = rememberScreenScope()
     val input = remember { S3FormInput() }
     var showAdvanced by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
-    val setup = rememberStorageSetupRunner(session, onError, onSetUp)
 
     TextInput(input.bucket, R.string.settings_bucket) { input.bucket = it.trim() }
     TextInput(input.region, R.string.settings_region) { input.region = it.trim() }
@@ -128,7 +128,7 @@ internal fun S3SetupForm(
     if (showAdvanced) {
         S3Advanced(session = session, input = input, onError = onError)
     }
-    setup.steps?.let { StorageSetupLine(it) }
+    StorageSetupRunLine(setup, onCancel)
     PrimaryButton(
         enabled = input.complete && !busy,
         onClick = {

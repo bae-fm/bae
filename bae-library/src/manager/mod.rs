@@ -83,6 +83,7 @@ use bae_diagnostics::{
     cloud_home_category, cloud_setup_category, cloud_unlock_category, device_only_category,
     file_read_category, key_category, sync_category,
 };
+pub use sync::storage_setup_finishing;
 mod track;
 mod uploads;
 

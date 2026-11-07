@@ -270,6 +270,7 @@
     <string name="storage_onedrive_folder_name">Numele dosarului</string>
     <string name="storage_onedrive_create">Creează</string>
     <string name="storage_onedrive_use_folder">Folosește acest dosar</string>
+    <string name="storage_setup_cancelling">Se anulează…</string>
     <string name="storage_setup_done">Sincronizarea este configurată. Păstrează codul de recuperare într-un loc privat: dacă pierzi toate dispozitivele, cu el îți recuperezi biblioteca.</string>
     <string name="done">Gata</string>
     <string name="recovery_code_title">Codul tău de recuperare</string>

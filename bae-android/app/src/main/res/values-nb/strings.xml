@@ -267,6 +267,7 @@
     <string name="storage_onedrive_folder_name">Mappenavn</string>
     <string name="storage_onedrive_create">Opprett</string>
     <string name="storage_onedrive_use_folder">Bruk denne mappen</string>
+    <string name="storage_setup_cancelling">Avbryter…</string>
     <string name="storage_setup_done">Synkroniseringen er konfigurert. Oppbevar gjenopprettingskoden din et privat sted: Hvis du mister alle enhetene dine, får du biblioteket tilbake med den.</string>
     <string name="done">Ferdig</string>
     <string name="recovery_code_title">Gjenopprettingskoden din</string>

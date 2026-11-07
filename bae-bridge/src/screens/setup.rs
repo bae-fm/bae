@@ -1,7 +1,8 @@
 //! A library's open and each setup call (a restore, a join, a creation, a
 //! first storage connect, a dev reset), as the app follows them: the stream
 //! the call reports its steps in, which the call writes, and, for a restore,
-//! a join or a reset, where it stands, which the app pulls as it pulls every
+//! a join or a reset, where it stands, and for a storage setup, whether it
+//! is past its point of no return, which the app pulls as it pulls every
 //! screen value. The app makes the object (its constructor is the host's,
 //! whose runtime the stream and the states are pulled on), starts reading
 //! its steps, then hands it to the call.
@@ -66,7 +67,9 @@ pub struct BridgeLibrarySetup {
     /// [`Self::feed_setup_steps`] last handed out.
     steps: ProgressStream,
     /// Where a restore, a join or a reset says where it stands.
-    states: SetupStateWatch,
+    states: SetupStateWatch<BridgeBootstrapState>,
+    /// Where a storage setup says whether it is past its point of no return.
+    storage_finishing: SetupStateWatch<bool>,
     /// Every value a call wrote, and `None` where its writing ended, so a
     /// test reads steps that come and go faster than it could look.
     #[cfg(test)]
@@ -77,7 +80,8 @@ pub struct BridgeLibrarySetup {
 pub(crate) fn library_setup(runtime: OperationRuntime) -> Arc<BridgeLibrarySetup> {
     Arc::new(BridgeLibrarySetup {
         steps: ProgressStream::new(runtime.clone()),
-        states: SetupStateWatch::new(runtime),
+        states: SetupStateWatch::new(runtime.clone()),
+        storage_finishing: SetupStateWatch::new(runtime),
         #[cfg(test)]
         written: Arc::default(),
     })
@@ -97,52 +101,57 @@ impl BridgeLibrarySetup {
     /// A step's counts are in the steps' stream instead, so they change
     /// nothing here.
     pub fn subscribe_states(&self) -> Arc<SetupStatesSubscription> {
-        self.states.subscribe()
+        setup_states(self.states.read(), self.states.runtime.clone())
+    }
+
+    /// Whether a storage setup is past its point of no return, creating the
+    /// library in storage or recording changed access, where it finishes
+    /// rather than undoing and its screen offers no Cancel: the latest once
+    /// the call has reported a step, then each change.
+    pub fn subscribe_storage_finishing(&self) -> Arc<StorageSetupFinishingSubscription> {
+        storage_setup_finishing(
+            self.storage_finishing.read(),
+            self.storage_finishing.runtime.clone(),
+        )
     }
 }
 
-/// Where a restore, a join or a reset stands, as its call says it and its
-/// screens pull it: `None` until the call says.
-struct SetupStateWatch {
-    states: Arc<watch::Sender<Option<BridgeBootstrapState>>>,
+/// Where a call stands, as it says it and its screens pull it: `None` until
+/// the call says.
+struct SetupStateWatch<S> {
+    states: Arc<watch::Sender<Option<S>>>,
     /// Where the states are pulled.
     runtime: OperationRuntime,
 }
 
-impl SetupStateWatch {
+impl<S> SetupStateWatch<S> {
     fn new(runtime: OperationRuntime) -> Self {
         Self { states: Arc::new(watch::channel(None).0), runtime }
     }
 
-    /// A subscription answering with the latest state once the call has
-    /// said one, then each change.
-    fn subscribe(&self) -> Arc<SetupStatesSubscription> {
+    /// A read answering with the latest state once the call has said one,
+    /// then each change.
+    fn read(&self) -> SetupStates<S> {
         let mut states = self.states.subscribe();
         states.mark_changed();
-        setup_states(
-            SetupStates {
-                states: tokio::sync::Mutex::new(states),
-                cancelled: CancellationToken::new(),
-            },
-            self.runtime.clone(),
-        )
+        SetupStates { states: tokio::sync::Mutex::new(states), cancelled: CancellationToken::new() }
     }
 
     /// Where one call says where it stands.
-    fn writer(&self) -> SetupStateWriter {
+    fn writer(&self) -> SetupStateWriter<S> {
         SetupStateWriter { states: self.states.clone() }
     }
 }
 
 /// One call's saying where it stands.
-struct SetupStateWriter {
-    states: Arc<watch::Sender<Option<BridgeBootstrapState>>>,
+struct SetupStateWriter<S> {
+    states: Arc<watch::Sender<Option<S>>>,
 }
 
-impl SetupStateWriter {
+impl<S: PartialEq> SetupStateWriter<S> {
     /// The call stands at `state`; a state that changed wakes the
     /// subscriptions, one that didn't wakes nothing.
-    fn say(&self, state: BridgeBootstrapState) {
+    fn say(&self, state: S) {
         self.states.send_if_modified(|current| {
             let changed = current.as_ref() != Some(&state);
             if changed {
@@ -154,15 +163,15 @@ impl SetupStateWriter {
 }
 
 /// The states one subscription pulls: each that it has not answered with.
-pub(crate) struct SetupStates {
-    states: tokio::sync::Mutex<watch::Receiver<Option<BridgeBootstrapState>>>,
+pub(crate) struct SetupStates<S> {
+    states: tokio::sync::Mutex<watch::Receiver<Option<S>>>,
     cancelled: CancellationToken,
 }
 
-impl crate::screens::PulledRead for SetupStates {
-    type Value = BridgeBootstrapState;
+impl<S: Clone + Send + Sync + 'static> crate::screens::PulledRead for SetupStates<S> {
+    type Value = S;
 
-    async fn next(&self) -> Result<BridgeBootstrapState, BridgeError> {
+    async fn next(&self) -> Result<S, BridgeError> {
         tokio::select! {
             biased;
             () = self.cancelled.cancelled() => Err(BridgeError::Cancelled),
@@ -190,9 +199,17 @@ impl crate::screens::PulledRead for SetupStates {
 
 pulled_read! {
     /// Where a restore, a join or a reset stands, as its screen shows it.
-    SetupStatesSubscription: SetupStates => BridgeBootstrapState,
+    SetupStatesSubscription: SetupStates<BridgeBootstrapState> => BridgeBootstrapState,
     converted by |state: BridgeBootstrapState| state,
     built by setup_states
+}
+
+pulled_read! {
+    /// Whether a storage setup is past its point of no return, as its
+    /// screen shows Cancel or not.
+    StorageSetupFinishingSubscription: SetupStates<bool> => bool,
+    converted by |finishing: bool| finishing,
+    built by storage_setup_finishing
 }
 
 impl BridgeLibrarySetup {
@@ -202,6 +219,7 @@ impl BridgeLibrarySetup {
         SetupSteps {
             writer: self.steps.writer(),
             states: Some(self.states.writer()),
+            storage_finishing: Some(self.storage_finishing.writer()),
             #[cfg(test)]
             written: self.written.clone(),
         }
@@ -219,7 +237,10 @@ pub(crate) struct SetupSteps {
     writer: ProgressWriter,
     /// Where the call says where it stands; `None` when the app doesn't show
     /// the call.
-    states: Option<SetupStateWriter>,
+    states: Option<SetupStateWriter<BridgeBootstrapState>>,
+    /// Where a storage setup says whether it is past its point of no return;
+    /// `None` when the app doesn't show the call.
+    storage_finishing: Option<SetupStateWriter<bool>>,
     #[cfg(test)]
     written: Arc<Mutex<Vec<Option<BridgeFastValue>>>>,
 }
@@ -233,6 +254,7 @@ impl SetupSteps {
             None => Self {
                 writer: ProgressWriter::unread(),
                 states: None,
+                storage_finishing: None,
                 #[cfg(test)]
                 written: Arc::default(),
             },
@@ -252,8 +274,13 @@ impl SetupSteps {
         self.step(step, 0, 0);
     }
 
-    /// How far a storage setup has come, as coven reports it.
+    /// How far a storage setup has come, as coven reports it, and whether
+    /// the step it runs is past its point of no return: a change of that
+    /// wakes its subscriptions, and each step's counts go to the stream.
     pub(crate) fn storage(&self, progress: coven::Progress<coven::StorageSetupStep>) {
+        if let Some(finishing) = &self.storage_finishing {
+            finishing.say(bae_library::storage_setup_finishing(&progress.step));
+        }
         self.set(BridgeFastValue::StorageSetupProgress {
             progress: crate::types::BridgeStorageSetupProgress::from_core(progress),
         });

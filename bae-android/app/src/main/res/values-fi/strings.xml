@@ -267,6 +267,7 @@
     <string name="storage_onedrive_folder_name">Kansion nimi</string>
     <string name="storage_onedrive_create">Luo</string>
     <string name="storage_onedrive_use_folder">Käytä tätä kansiota</string>
+    <string name="storage_setup_cancelling">Peruutetaan…</string>
     <string name="storage_setup_done">Synkronointi on otettu käyttöön. Säilytä palautuskoodisi yksityisessä paikassa: jos menetät kaikki laitteesi, saat sillä kirjastosi takaisin.</string>
     <string name="done">Valmis</string>
     <string name="recovery_code_title">Palautuskoodisi</string>

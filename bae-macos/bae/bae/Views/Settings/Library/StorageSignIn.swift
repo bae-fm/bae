@@ -22,9 +22,9 @@ struct StorageSignIn: View {
     private var askingForKey = false
     @State
     private var task: Task<Void, Never>?
-    /// The running reconnect's steps; nil while none runs.
+    /// The running reconnect; nil while none runs.
     @State
-    private var steps: StorageSetupSteps?
+    private var steps: StorageSetupFollowing?
     @State
     private var error: DisplayError?
 
@@ -74,7 +74,7 @@ struct StorageSignIn: View {
             BridgeStorageSetup
     ) {
         error = nil
-        let running = sync.storageSetupSteps()
+        let running = sync.followStorageSetup()
         steps = running
         task = Task {
             defer {

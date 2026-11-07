@@ -29,9 +29,9 @@ struct SyncStatusLine: View {
     /// The pending record whose action needs more than one step.
     @State
     private var sheet: PendingActionSheet?
-    /// The steps of the reconnect a sign-in runs; nil while none runs.
+    /// The reconnect a sign-in runs; nil while none runs.
     @State
-    private var signInSteps: StorageSetupSteps?
+    private var signInSteps: StorageSetupFollowing?
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
@@ -94,7 +94,7 @@ struct SyncStatusLine: View {
             sheet = .s3Key
         case .accountSignIn:
             #if BAE_OAUTH_PROVIDERS
-                let steps = sync.storageSetupSteps()
+                let steps = sync.followStorageSetup()
                 signInSteps = steps
                 defer { signInSteps = nil }
                 _ = try await cloudSyncSetup.signInAgain(steps.setup)
@@ -327,17 +327,17 @@ struct S3KeySheet: View {
     private var accessKey = ""
     @State
     private var secretKey = ""
+    /// The reconnect; a cancelled one closes the sheet once its call ends.
     @State
-    private var task: Task<Void, Never>?
-    /// The running reconnect's steps; nil while none runs.
-    @State
-    private var steps: StorageSetupSteps?
-    /// The reconnect is past its point of no return, so Cancel no longer
-    /// undoes it and the sheet stays until it finishes.
-    @State
-    private var finishing = false
+    private var run: StorageSetupRun
     @State
     private var error: DisplayError?
+
+    init(location: BridgeStorageLocation, onDismiss: @escaping () -> Void) {
+        self.location = location
+        self.onDismiss = onDismiss
+        _run = State(initialValue: StorageSetupRun(onCancelled: onDismiss))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -350,8 +350,8 @@ struct S3KeySheet: View {
                 }
             }
             .formStyle(.grouped)
-            if let steps {
-                StepProgressLine(steps: steps.steps) { EmptyView() }
+            if run.isRunning {
+                StorageSetupRunLine(run: run)
                     .padding(.horizontal)
             }
             if let error {
@@ -360,7 +360,7 @@ struct S3KeySheet: View {
             }
             HStack {
                 Spacer()
-                if !finishing {
+                if !run.isRunning || run.cancelOffered {
                     Button("Cancel", action: cancel)
                         .keyboardShortcut(.cancelAction)
                 }
@@ -368,26 +368,23 @@ struct S3KeySheet: View {
                     .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
                     .disabled(
-                        task != nil || accessKey.isEmpty || secretKey.isEmpty
+                        run.isRunning || accessKey.isEmpty
+                            || secretKey.isEmpty
                     )
             }
             .padding()
         }
         .frame(width: 440)
-        .onDisappear { task?.cancel() }
+        .onDisappear { run.leave() }
     }
 
-    /// Close the sheet, undoing a running reconnect first. One past its
-    /// point of no return finishes, so the sheet stays to show it.
+    /// Close the sheet. A running reconnect is cancelled first, and the
+    /// sheet closes once coven has undone it.
     private func cancel() {
-        guard task != nil else {
-            onDismiss()
-            return
+        if run.isRunning {
+            run.cancel(sync)
         }
-        switch sync.cancelStorageSetup() {
-        case .finishing:
-            finishing = true
-        case .undoing, .noSetup:
+        else {
             onDismiss()
         }
     }
@@ -398,24 +395,13 @@ struct S3KeySheet: View {
             secretKey: secretKey
         )
         error = nil
-        let running = sync.storageSetupSteps()
-        steps = running
-        task = Task {
-            defer {
-                task = nil
-                steps = nil
-                finishing = false
-            }
-            do {
-                _ = try await sync.saveSyncConfig(config, running.setup)
-                onDismiss()
-            }
-            catch is CancellationError {
-                logger.debug("S3 key replacement cancelled")
-            }
-            catch {
-                self.error = DisplayError(error)
-            }
-        }
+        run.start(
+            sync.followStorageSetup(),
+            operation: { [sync] setup in
+                try await sync.saveSyncConfig(config, setup)
+            },
+            onConnected: { _ in onDismiss() },
+            onFailed: { error = $0 }
+        )
     }
 }

@@ -280,6 +280,7 @@
     <string name="storage_onedrive_folder_name">اسم المجلد</string>
     <string name="storage_onedrive_create">إنشاء</string>
     <string name="storage_onedrive_use_folder">استخدام هذا المجلد</string>
+    <string name="storage_setup_cancelling">جارٍ الإلغاء…</string>
     <string name="storage_setup_done">تم إعداد المزامنة. احتفظ برمز الاسترداد في مكان خاص: إذا فقدت جميع أجهزتك، فهو يعيد إليك مكتبتك.</string>
     <string name="done">تم</string>
     <string name="recovery_code_title">رمز الاسترداد الخاص بك</string>

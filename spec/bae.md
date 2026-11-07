@@ -2741,12 +2741,17 @@ each setup before its first write to storage, and from its point of no return,
 creating the library in storage or recording changed access, a setup finishes
 rather than undoing ([coven
 §11.6](https://github.com/bae-fm/coven/blob/main/spec/coven.md#116-every-call-that-writes-to-storage-in-steps)).
-Cancel on a setup sheet asks core to cancel the setup: before that point coven
-undoes it and the call ends as cancelled, which shows nothing; past it the
-setup finishes, and the sheet stays to show it, with Cancel gone. A setup call
-that is dropped, as closing its screen or leaving it on Android drops it,
-cancels its setup the same way: coven would otherwise run it to its end with
-nobody waiting. A setup bae was stopped partway through is undone as the
+A setup sheet offers Cancel while a setup runs until it reaches that point:
+core tells the sheet, beside the setup's steps, whether the setup is past it,
+and from then the sheet hides Cancel and stays to show the setup finishing.
+Cancel asks core to cancel the setup. coven undoes it between setup's steps,
+not in the middle of a request, so the sheet says "Cancelling…" in place of
+the step until the call ends as cancelled, which shows nothing; then the macOS
+sheet closes and Android goes back to choosing a provider. On Android, Back
+while a setup runs is its Cancel, and does nothing once Cancel isn't offered.
+A setup call that is dropped, as closing its screen drops it, cancels its
+setup the same way: coven would otherwise run it to its end with nobody
+waiting. A setup bae was stopped partway through is undone as the
 library opens if it hadn't reached that point, and otherwise finishes once
 sync starts, which the library does at launch for it as for a library with
 storage set up. While a setup runs, the status line says "Setting up storage…"

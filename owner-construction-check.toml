@@ -250,6 +250,7 @@ task_types = [
     "SetupStatesSubscription",
     "StorageBrowseSubscription",
     "StorageInspectorSubscription",
+    "StorageSetupFinishingSubscription",
     "SyncActivitySubscription",
     "SyncStatusSubscription",
     "UploadsPausedSubscription",

@@ -268,6 +268,7 @@
     <string name="storage_onedrive_folder_name">Ordnername</string>
     <string name="storage_onedrive_create">Erstellen</string>
     <string name="storage_onedrive_use_folder">Diesen Ordner verwenden</string>
+    <string name="storage_setup_cancelling">Wird abgebrochen…</string>
     <string name="storage_setup_done">Sync ist eingerichtet. Bewahre deinen Wiederherstellungscode an einem privaten Ort auf: Wenn du alle deine Geräte verlierst, bekommst du damit deine Bibliothek zurück.</string>
     <string name="done">Fertig</string>
     <string name="recovery_code_title">Dein Wiederherstellungscode</string>

@@ -271,6 +271,7 @@
     <string name="storage_onedrive_folder_name">Naziv mape</string>
     <string name="storage_onedrive_create">Stvori</string>
     <string name="storage_onedrive_use_folder">Koristi ovu mapu</string>
+    <string name="storage_setup_cancelling">Otkazivanje…</string>
     <string name="storage_setup_done">Sinkronizacija je postavljena. Čuvajte svoj kod za oporavak na privatnom mjestu: ako izgubite sve svoje uređaje, njime vraćate svoju fonoteku.</string>
     <string name="done">Gotovo</string>
     <string name="recovery_code_title">Vaš kod za oporavak</string>

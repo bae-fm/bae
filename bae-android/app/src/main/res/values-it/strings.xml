@@ -270,6 +270,7 @@
     <string name="storage_onedrive_folder_name">Nome della cartella</string>
     <string name="storage_onedrive_create">Crea</string>
     <string name="storage_onedrive_use_folder">Usa questa cartella</string>
+    <string name="storage_setup_cancelling">Annullamento…</string>
     <string name="storage_setup_done">La sincronizzazione è configurata. Conserva il tuo codice di recupero in un posto privato: se perdi tutti i tuoi dispositivi, con quello riavrai la tua libreria.</string>
     <string name="done">Fine</string>
     <string name="recovery_code_title">Il tuo codice di recupero</string>

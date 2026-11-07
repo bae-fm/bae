@@ -126,3 +126,37 @@ fn a_restore_s_states_are_pulled_and_its_counts_are_streamed() {
         "the count that moved woke no pull: the next is the next state"
     );
 }
+
+/// Whether a storage setup is past its point of no return reaches its
+/// subscription as it changes: not while it connects or loads, whose counts
+/// go to the stream alone, then once it creates the library in storage.
+#[test]
+fn a_storage_setup_s_finishing_is_pulled_as_it_changes() {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let setup = library_setup(OperationRuntime::new(
+        runtime.handle().clone(),
+        bae_diagnostics::Diagnostics::noop(),
+    ));
+    let finishing = setup.subscribe_storage_finishing();
+    let steps = setup.writer();
+    let next = || {
+        runtime.block_on(async {
+            tokio::time::timeout(HANG_GUARD, finishing.clone().next())
+                .await
+                .expect("a changed finishing is pulled")
+        })
+    };
+    let step = |step, done, total| coven::Progress { step, done, total };
+
+    steps.storage(step(coven::StorageSetupStep::Connecting, 0, 1));
+    assert_eq!(next(), Ok(false));
+
+    let watched = setup.storage_finishing.states.subscribe();
+    let loading = || coven::StorageSetupStep::Loading(coven::LoadStep::Reading);
+    steps.storage(step(loading(), 2, 8));
+    steps.storage(step(loading(), 3, 8));
+    assert!(!watched.has_changed().unwrap(), "loading is not past the point of no return");
+
+    steps.storage(step(coven::StorageSetupStep::CreatingStore, 0, 1));
+    assert_eq!(next(), Ok(true));
+}

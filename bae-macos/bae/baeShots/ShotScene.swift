@@ -262,6 +262,7 @@ struct ShotScene {
         ] + storageManagerScenes + waitScenes + findOnlineScenes
         + libraryScenes + importRowScenes + coverPickerScenes + releaseScenes
         + settingsScenes
+        + syncSetupScenes
 }
 
 extension ShotScene {

@@ -270,6 +270,7 @@
     <string name="storage_onedrive_folder_name">Nome da pasta</string>
     <string name="storage_onedrive_create">Criar</string>
     <string name="storage_onedrive_use_folder">Usar esta pasta</string>
+    <string name="storage_setup_cancelling">Cancelando…</string>
     <string name="storage_setup_done">A sincronização está configurada. Guarde seu código de recuperação em um lugar privado: se você perder todos os seus dispositivos, é com ele que recupera sua biblioteca.</string>
     <string name="done">Concluído</string>
     <string name="recovery_code_title">Seu código de recuperação</string>

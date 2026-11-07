@@ -2,6 +2,17 @@
 //! pipeline, and pause state.
 
 use super::*;
+
+/// Whether a storage setup running `step` is past its point of no return:
+/// creating the library in storage, or recording changed access. From there
+/// coven finishes it rather than undoing it, so its screen offers no Cancel.
+pub fn storage_setup_finishing(step: &coven::StorageSetupStep) -> bool {
+    matches!(
+        step,
+        coven::StorageSetupStep::CreatingStore | coven::StorageSetupStep::RecordingAccess
+    )
+}
+
 impl LibraryManager {
     pub async fn is_sync_configured(&self) -> Result<bool, LibraryError> {
         Ok(self.store.storage_config().await?.is_some())

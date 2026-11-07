@@ -169,6 +169,7 @@ extension ProfilesSubscription: PulledSubscription {}
 extension RequestedProfileSubscription: PulledSubscription {}
 extension LibraryNameSubscription: PulledSubscription {}
 extension SetupStatesSubscription: PulledSubscription {}
+extension StorageSetupFinishingSubscription: PulledSubscription {}
 extension AlbumBrowseSubscription: PulledSubscription {}
 extension ArtistBrowseSubscription: PulledSubscription {}
 extension ComposerBrowseSubscription: PulledSubscription {}

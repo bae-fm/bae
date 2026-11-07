@@ -271,6 +271,7 @@
     <string name="storage_onedrive_folder_name">שם התיקייה</string>
     <string name="storage_onedrive_create">יצירה</string>
     <string name="storage_onedrive_use_folder">שימוש בתיקייה הזו</string>
+    <string name="storage_setup_cancelling">מבטל…</string>
     <string name="storage_setup_done">הסנכרון הוגדר. שמור את קוד השחזור שלך במקום פרטי: אם תאבד את כל המכשירים שלך, הוא מחזיר לך את הספרייה.</string>
     <string name="done">סיום</string>
     <string name="recovery_code_title">קוד השחזור שלך</string>

@@ -36,29 +36,28 @@ import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
-import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeStorageFolder
-import uniffi.bae_bridge.BridgeStorageSetup
-import uniffi.bae_bridge.BridgeStorageSetupProgress
 
 private val logger = BaeLogger("bae.ProviderFolderChoice")
 
 /**
  * The Dropbox folders shared with the signed-in account; choosing one makes
  * it the library's cloud home, where the household's members can reach it.
+ * [setup] runs the setup, which the person can stop with Cancel, calling
+ * [onCancel].
  */
 @Composable
 internal fun DropboxFolderChoice(
     session: OpenLibrary,
     providers: OAuthProviders,
+    setup: StorageSetupRunner,
     onError: (DisplayError?) -> Unit,
-    onSetUp: (BridgeStorageSetup) -> Unit,
+    onCancel: () -> Unit,
 ) {
     val scope = rememberScreenScope()
     var folders by remember { mutableStateOf<List<BridgeStorageFolder>?>(null) }
     var busy by remember { mutableStateOf(false) }
-    val setup = rememberStorageSetupRunner(session, onError, onSetUp)
     val load: suspend () -> Unit = {
         folders = null
         performBridgeAction(logger, "list Dropbox shared folders", session.errors, onError) {
@@ -89,7 +88,7 @@ internal fun DropboxFolderChoice(
                     }
                 }
             }
-            setup.steps?.let { StorageSetupLine(it) }
+            StorageSetupRunLine(setup, onCancel)
             OutlinedButton(onClick = { scope.launch { load() } }, enabled = !busy) {
                 Text(stringResource(R.string.storage_refresh))
             }
@@ -101,18 +100,20 @@ internal fun DropboxFolderChoice(
  * The signed-in OneDrive, browsed from its top: open a folder to go inside,
  * make a new one, and use the folder shown as the library's cloud home. A
  * listing that fails shows its failure and Retry here, where the person is.
+ * [setup] runs the setup, which the person can stop with Cancel, calling
+ * [onCancel].
  */
 @Composable
 internal fun OneDriveFolderChoice(
     session: OpenLibrary,
     providers: OAuthProviders,
+    setup: StorageSetupRunner,
     onError: (DisplayError?) -> Unit,
-    onSetUp: (BridgeStorageSetup) -> Unit,
+    onCancel: () -> Unit,
 ) {
     val scope = rememberScreenScope()
     val browser = remember(session) { OneDriveBrowser(session.appHandle, providers, session.errors) }
     var naming by remember { mutableStateOf(false) }
-    val setup = rememberStorageSetupRunner(session, onError, onSetUp)
     LaunchedEffect(browser) { browser.openRoot() }
 
     val shown = browser.shown
@@ -125,7 +126,7 @@ internal fun OneDriveFolderChoice(
             Text(stringResource(R.string.retry))
         }
     }
-    OneDriveWorkLine(browser.work, setup.steps)
+    OneDriveWorkLine(browser.work, setup, onCancel)
     if (shown == null) return
     shown.children.forEach { folder ->
         FolderRow(folder = folder, enabled = !browser.busy) { scope.launch { browser.open(shown, folder) } }
@@ -161,11 +162,12 @@ internal fun OneDriveFolderChoice(
     }
 }
 
-/** What a OneDrive folder choice has in flight, named, or the setup's [setupSteps] while it sets up. */
+/** What a OneDrive folder choice has in flight, named, or [setup]'s setup while it sets up, with its Cancel. */
 @Composable
 private fun OneDriveWorkLine(
     work: OneDriveWork?,
-    setupSteps: LatestSource<BridgeStorageSetupProgress>?,
+    setup: StorageSetupRunner,
+    onCancel: () -> Unit,
 ) {
     when (work) {
         OneDriveWork.LISTING -> {
@@ -177,7 +179,7 @@ private fun OneDriveWorkLine(
         }
 
         OneDriveWork.SETTING_UP -> {
-            setupSteps?.let { StorageSetupLine(it) }
+            StorageSetupRunLine(setup, onCancel)
         }
 
         null -> {}

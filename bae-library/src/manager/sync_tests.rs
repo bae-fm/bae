@@ -757,6 +757,41 @@ async fn setting_up_s3_storage_tells_each_step_coven_reports() {
     );
 }
 
+/// The steps `storage_setup_finishing` names are past setup's point of no
+/// return: a cancel there answers `Finishing` and the setup lands, so the
+/// screen that hides Cancel at them hides it where it could no longer undo.
+/// Every step before is not finishing.
+#[tokio::test]
+async fn a_finishing_step_is_past_the_point_of_no_return() {
+    let (test, _temp) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let told = std::sync::Mutex::new(Vec::new());
+
+    manager
+        .save_s3_config(memory_s3_config(&test), "Test Device", &|progress| {
+            let finishing = crate::storage_setup_finishing(&progress.step);
+            let answer = finishing.then(|| manager.cancel_storage_setup());
+            told.lock().unwrap().push((progress.step, answer));
+        })
+        .await
+        .expect("a setup cancelled past its point of no return finishes");
+
+    let told = told.into_inner().unwrap();
+    let first_finishing =
+        told.iter().position(|(_, answer)| answer.is_some()).expect("setup reached creating");
+    let (before, finishing) = told.split_at(first_finishing);
+    assert!(before.iter().all(|(_, answer)| answer.is_none()), "{told:?}");
+    assert!(
+        finishing.iter().all(|step| step
+            == &(
+                coven::StorageSetupStep::CreatingStore,
+                Some(coven::SetupCancellation::Finishing)
+            )),
+        "{told:?}"
+    );
+    assert!(manager.is_sync_configured().await.unwrap());
+}
+
 /// Leaving a setup's screen drops its call, which cancels the setup: coven
 /// alone would run it to its end with nobody waiting. The cancelled setup
 /// shows nothing, and the library stays unconfigured.

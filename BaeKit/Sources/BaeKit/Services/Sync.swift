@@ -6,8 +6,9 @@ public final class Sync: Sendable, Observable {
     public let saveSyncConfig:
         @Sendable (BridgeSaveSyncConfig, BridgeLibrarySetup) async throws ->
             BridgeStorageSetup
-    /// A new storage setup's steps, for the view that shows the setup.
-    public let storageSetupSteps: @Sendable () -> StorageSetupSteps
+    /// A new storage setup to follow, for the view that shows the setup.
+    public let followStorageSetup:
+        @MainActor @Sendable () -> StorageSetupFollowing
     /// Cancel the running storage setup. Before its point of no return it
     /// is undone and its call throws `BridgeError.Cancelled`; past it, it
     /// finishes, and Cancel no longer applies.
@@ -63,9 +64,10 @@ public final class Sync: Sendable, Observable {
             async throws -> BridgeStorageSetup = { _, _ in
                 throw StubError.notImplemented
             },
-        storageSetupSteps: @escaping @Sendable () -> StorageSetupSteps = {
-            preconditionFailure("this Sync sets no storage up")
-        },
+        followStorageSetup:
+            @escaping @MainActor @Sendable () -> StorageSetupFollowing = {
+                preconditionFailure("this Sync sets no storage up")
+            },
         cancelStorageSetup:
             @escaping @Sendable () -> BridgeSetupCancellation = {
                 .noSetup
@@ -151,7 +153,7 @@ public final class Sync: Sendable, Observable {
         pendingActions: SyncPendingActions = SyncPendingActions()
     ) {
         self.saveSyncConfig = saveSyncConfig
-        self.storageSetupSteps = storageSetupSteps
+        self.followStorageSetup = followStorageSetup
         self.cancelStorageSetup = cancelStorageSetup
         self.dismissUndoneStorageSetup = dismissUndoneStorageSetup
         self.generateRestoreCode = generateRestoreCode
@@ -193,7 +195,7 @@ public final class Sync: Sendable, Observable {
                     setup: $1
                 )
             },
-            storageSetupSteps: { StorageSetupSteps(host: host) },
+            followStorageSetup: { StorageSetupFollowing(host: host) },
             cancelStorageSetup: { handle.cancelStorageSetup() },
             dismissUndoneStorageSetup: {
                 try await handle.dismissUndoneStorageSetup(operation: $0)

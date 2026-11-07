@@ -267,6 +267,7 @@
     <string name="storage_onedrive_folder_name">Mappnamn</string>
     <string name="storage_onedrive_create">Skapa</string>
     <string name="storage_onedrive_use_folder">Använd den här mappen</string>
+    <string name="storage_setup_cancelling">Avbryter…</string>
     <string name="storage_setup_done">Synkroniseringen är konfigurerad. Förvara din återställningskod på ett privat ställe: om du förlorar alla dina enheter får du tillbaka biblioteket med den.</string>
     <string name="done">Klar</string>
     <string name="recovery_code_title">Din återställningskod</string>

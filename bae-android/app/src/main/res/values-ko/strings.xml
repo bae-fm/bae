@@ -265,6 +265,7 @@
     <string name="storage_onedrive_folder_name">폴더 이름</string>
     <string name="storage_onedrive_create">만들기</string>
     <string name="storage_onedrive_use_folder">이 폴더 사용</string>
+    <string name="storage_setup_cancelling">취소하는 중…</string>
     <string name="storage_setup_done">동기화가 설정되었습니다. 복구 코드를 다른 사람이 볼 수 없는 곳에 보관하세요. 모든 기기를 잃어버려도 이 코드로 라이브러리를 되찾을 수 있습니다.</string>
     <string name="done">완료</string>
     <string name="recovery_code_title">내 복구 코드</string>
