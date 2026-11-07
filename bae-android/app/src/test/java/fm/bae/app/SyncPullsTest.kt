@@ -42,11 +42,11 @@ class SyncPullsTest {
         session.wireUp(scope)
         assertEquals(SyncLine.Checking, store.line.value)
 
-        handle.syncStatus.deliver(status(BridgeSyncStatusWord.SYNCING, BridgeSyncTone.NEUTRAL))
+        handle.syncStatus.deliver(status(BridgeSyncStatusWord.SYNCING, "core.sync.syncing", BridgeSyncTone.NEUTRAL))
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(BridgeSyncStatusWord.SYNCING, (store.line.value as SyncLine.Read).shown.status)
 
-        handle.syncStatus.deliver(status(BridgeSyncStatusWord.SYNCED, BridgeSyncTone.SUCCESS))
+        handle.syncStatus.deliver(status(BridgeSyncStatusWord.SYNCED, "core.sync.synced", BridgeSyncTone.SUCCESS))
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(BridgeSyncStatusWord.SYNCED, (store.line.value as SyncLine.Read).shown.status)
 
@@ -96,9 +96,18 @@ class SyncPullsTest {
 
     private fun status(
         status: BridgeSyncStatusWord,
+        statusKey: String,
         tone: BridgeSyncTone,
     ) = BridgeSyncStatusSnapshot(
-        shown = BridgeSyncShown(status = status, tone = tone, cause = null, fix = null, lastSynced = null),
+        shown =
+            BridgeSyncShown(
+                status = status,
+                statusKey = statusKey,
+                tone = tone,
+                cause = null,
+                fix = null,
+                lastSynced = null,
+            ),
         pending = emptyList(),
         setupRunning = false,
         undoneSetup = null,

@@ -12,7 +12,6 @@ import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncTone
-import uniffi.bae_bridge.bridgeSyncStatusKey
 import java.text.DateFormat
 import java.util.Date
 
@@ -20,7 +19,7 @@ import java.util.Date
 internal fun syncStatusText(
     context: Context,
     shown: BridgeSyncShown,
-): String = context.coreString(bridgeSyncStatusKey(shown.status))
+): String = context.coreString(shown.statusKey)
 
 /**
  * Why the state is what it is, in core's words. A cause that names when sync resumes takes that time as its last

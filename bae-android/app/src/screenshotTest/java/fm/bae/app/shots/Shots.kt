@@ -324,21 +324,21 @@ fun SyncUpdateRequired() {
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun SyncStatusSynced() {
-    SyncStatusScene(syncShown(BridgeSyncStatusWord.SYNCED, BridgeSyncTone.SUCCESS))
+    SyncStatusScene(syncShown(BridgeSyncStatusWord.SYNCED, "core.sync.synced", BridgeSyncTone.SUCCESS))
 }
 
 /** The Sync page's status block: sync held back, no problem. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun SyncStatusWaiting() {
-    SyncStatusScene(syncShown(BridgeSyncStatusWord.WAITING_TO_SYNC, BridgeSyncTone.NEUTRAL))
+    SyncStatusScene(syncShown(BridgeSyncStatusWord.WAITING_TO_SYNC, "core.sync.status.waiting_to_sync", BridgeSyncTone.NEUTRAL))
 }
 
 /** The Sync page's status block: the storage can't be reached, and when sync last finished. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun SyncStatusOffline() {
-    SyncStatusScene(syncShown(BridgeSyncStatusWord.OFFLINE, BridgeSyncTone.WARNING, lastSynced = true))
+    SyncStatusScene(syncShown(BridgeSyncStatusWord.OFFLINE, "core.sync.offline", BridgeSyncTone.WARNING, lastSynced = true))
 }
 
 /** The Sync page's status block: signed out of Dropbox, with its sign-in. */
@@ -348,6 +348,7 @@ fun SyncStatusSignedOut() {
     SyncStatusScene(
         syncShown(
             BridgeSyncStatusWord.SIGNED_OUT_OF_DROPBOX,
+            "core.sync.status.signed_out_dropbox",
             BridgeSyncTone.WARNING,
             fix = BridgeSyncFix.SignIn(BridgeCloudProvider.DROPBOX),
             lastSynced = true,
@@ -362,6 +363,7 @@ fun SyncStatusFailed() {
     SyncStatusScene(
         syncShown(
             BridgeSyncStatusWord.SYNC_FAILED,
+            "core.sync.failed",
             BridgeSyncTone.DANGER,
             cause = BridgeSyncCause(BridgeMessage("core.sync.cause.disk_failed", emptyList()), null),
             fix = BridgeSyncFix.RetryNow,
@@ -374,12 +376,14 @@ private const val TWO_HOURS_SECONDS = 7_200L
 
 private fun syncShown(
     status: BridgeSyncStatusWord,
+    statusKey: String,
     tone: BridgeSyncTone,
     cause: BridgeSyncCause? = null,
     fix: BridgeSyncFix? = null,
     lastSynced: Boolean = false,
 ) = BridgeSyncShown(
     status = status,
+    statusKey = statusKey,
     tone = tone,
     cause = cause,
     fix = fix,

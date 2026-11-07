@@ -88,6 +88,7 @@ class SyncScreenTest {
     private val notSynced =
         BridgeSyncShown(
             status = BridgeSyncStatusWord.NOT_SYNCED,
+            statusKey = "core.sync.status.not_synced",
             tone = BridgeSyncTone.NEUTRAL,
             cause = null,
             fix = null,

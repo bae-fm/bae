@@ -29,7 +29,7 @@ class SyncStatusStoreTest {
             override fun display(outcome: BridgePlayOutcome): DisplayError? = null
         }
 
-    private val synced = shownAs(BridgeSyncStatusWord.SYNCED, BridgeSyncTone.SUCCESS)
+    private val synced = shownAs(BridgeSyncStatusWord.SYNCED, "core.sync.synced", BridgeSyncTone.SUCCESS)
 
     /** The state, its fix and its time are core's, and reach the page as read. */
     @Test
@@ -38,6 +38,7 @@ class SyncStatusStoreTest {
         val signedOut =
             BridgeSyncShown(
                 status = BridgeSyncStatusWord.SIGNED_OUT_OF_DROPBOX,
+                statusKey = "core.sync.status.signed_out_dropbox",
                 tone = BridgeSyncTone.WARNING,
                 cause = null,
                 fix = BridgeSyncFix.SignIn(uniffi.bae_bridge.BridgeCloudProvider.DROPBOX),
@@ -82,8 +83,9 @@ class SyncStatusStoreTest {
 
     private fun shownAs(
         status: BridgeSyncStatusWord,
+        statusKey: String,
         tone: BridgeSyncTone,
-    ) = BridgeSyncShown(status = status, tone = tone, cause = null, fix = null, lastSynced = null)
+    ) = BridgeSyncShown(status = status, statusKey = statusKey, tone = tone, cause = null, fix = null, lastSynced = null)
 
     private fun status(shown: BridgeSyncShown) =
         BridgeSyncStatusSnapshot(

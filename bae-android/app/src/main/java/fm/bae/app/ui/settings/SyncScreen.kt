@@ -573,6 +573,7 @@ private fun SyncScreenPreview() {
                     SyncLine.Read(
                         BridgeSyncShown(
                             status = BridgeSyncStatusWord.SIGNED_OUT_OF_DROPBOX,
+                            statusKey = "core.sync.status.signed_out_dropbox",
                             tone = BridgeSyncTone.WARNING,
                             cause = null,
                             fix = BridgeSyncFix.SignIn(BridgeCloudProvider.DROPBOX),

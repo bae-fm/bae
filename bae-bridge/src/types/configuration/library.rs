@@ -449,7 +449,7 @@ pub enum BridgeSyncTone {
     Danger,
 }
 
-/// The sync state, named; `bridge_sync_status_key` gives its words.
+/// The sync state, named; `key` gives its words.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSyncStatusWord {
     /// No storage is set up on this device. The Mac makes libraries; a
@@ -513,6 +513,10 @@ pub enum BridgeSyncFix {
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeSyncShown {
     pub status: BridgeSyncStatusWord,
+    /// The catalog key of the state's words. The platform looks the words up
+    /// itself; it never asks the bridge for them, so a screen renders without
+    /// the native library loaded.
+    pub status_key: String,
     pub tone: BridgeSyncTone,
     pub cause: Option<BridgeSyncCause>,
     pub fix: Option<BridgeSyncFix>,
@@ -523,8 +527,10 @@ pub struct BridgeSyncShown {
 
 impl BridgeSyncShown {
     pub(crate) fn from_core(shown: bae_sync_status::SyncShown) -> Self {
+        let status = BridgeSyncStatusWord::from_core(shown.status);
         Self {
-            status: BridgeSyncStatusWord::from_core(shown.status),
+            status_key: status.key().to_string(),
+            status,
             tone: match shown.tone {
                 bae_sync_status::SyncTone::Neutral => BridgeSyncTone::Neutral,
                 bae_sync_status::SyncTone::Success => BridgeSyncTone::Success,
@@ -648,29 +654,31 @@ impl BridgeSyncFix {
     }
 }
 
-/// The catalog key of a sync state's words.
-#[uniffi::export]
-pub fn bridge_sync_status_key(status: BridgeSyncStatusWord) -> String {
-    match status {
-        BridgeSyncStatusWord::NotSynced => "core.sync.status.not_synced",
-        BridgeSyncStatusWord::SettingUpStorage => "core.sync.setting_up_storage",
-        BridgeSyncStatusWord::Syncing => "core.sync.syncing",
-        BridgeSyncStatusWord::WaitingToSync => "core.sync.status.waiting_to_sync",
-        BridgeSyncStatusWord::Synced => "core.sync.synced",
-        BridgeSyncStatusWord::OfflineWithUnsentChanges => "core.sync.status.offline_unsent",
-        BridgeSyncStatusWord::Offline => "core.sync.offline",
-        BridgeSyncStatusWord::UpdateNeeded => "core.sync.status.update_needed",
-        BridgeSyncStatusWord::SignedOutOfDropbox => "core.sync.status.signed_out_dropbox",
-        BridgeSyncStatusWord::SignedOutOfOneDrive => "core.sync.status.signed_out_onedrive",
-        BridgeSyncStatusWord::SignedOutOfICloud => "core.sync.status.signed_out_icloud",
-        BridgeSyncStatusWord::AccessKeyNotAccepted => "core.sync.status.access_key_not_accepted",
-        BridgeSyncStatusWord::DeviceNeedsReset => "core.sync.status.device_needs_reset",
-        BridgeSyncStatusWord::NoAccess => "core.sync.status.no_access",
-        BridgeSyncStatusWord::FolderMissing => "core.sync.status.folder_missing",
-        BridgeSyncStatusWord::ClockWrong => "core.sync.status.clock_wrong",
-        BridgeSyncStatusWord::RemovedFromTheLibrary => "core.sync.status.removed",
-        BridgeSyncStatusWord::StorageFull => "core.sync.status.storage_full",
-        BridgeSyncStatusWord::SyncFailed => "core.sync.failed",
+impl BridgeSyncStatusWord {
+    /// The catalog key of the state's words.
+    pub(crate) fn key(self) -> &'static str {
+        match self {
+            BridgeSyncStatusWord::NotSynced => "core.sync.status.not_synced",
+            BridgeSyncStatusWord::SettingUpStorage => "core.sync.setting_up_storage",
+            BridgeSyncStatusWord::Syncing => "core.sync.syncing",
+            BridgeSyncStatusWord::WaitingToSync => "core.sync.status.waiting_to_sync",
+            BridgeSyncStatusWord::Synced => "core.sync.synced",
+            BridgeSyncStatusWord::OfflineWithUnsentChanges => "core.sync.status.offline_unsent",
+            BridgeSyncStatusWord::Offline => "core.sync.offline",
+            BridgeSyncStatusWord::UpdateNeeded => "core.sync.status.update_needed",
+            BridgeSyncStatusWord::SignedOutOfDropbox => "core.sync.status.signed_out_dropbox",
+            BridgeSyncStatusWord::SignedOutOfOneDrive => "core.sync.status.signed_out_onedrive",
+            BridgeSyncStatusWord::SignedOutOfICloud => "core.sync.status.signed_out_icloud",
+            BridgeSyncStatusWord::AccessKeyNotAccepted => {
+                "core.sync.status.access_key_not_accepted"
+            }
+            BridgeSyncStatusWord::DeviceNeedsReset => "core.sync.status.device_needs_reset",
+            BridgeSyncStatusWord::NoAccess => "core.sync.status.no_access",
+            BridgeSyncStatusWord::FolderMissing => "core.sync.status.folder_missing",
+            BridgeSyncStatusWord::ClockWrong => "core.sync.status.clock_wrong",
+            BridgeSyncStatusWord::RemovedFromTheLibrary => "core.sync.status.removed",
+            BridgeSyncStatusWord::StorageFull => "core.sync.status.storage_full",
+            BridgeSyncStatusWord::SyncFailed => "core.sync.failed",
+        }
     }
-    .to_string()
 }

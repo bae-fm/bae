@@ -124,6 +124,7 @@ struct StorageSetupSubscriptionTests {
                 shown: running
                     ? BridgeSyncShown(
                         status: .settingUpStorage,
+                        statusKey: "core.sync.setting_up_storage",
                         tone: .neutral,
                         cause: nil,
                         fix: nil,

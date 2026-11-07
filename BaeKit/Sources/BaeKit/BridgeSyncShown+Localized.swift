@@ -3,7 +3,7 @@ import Foundation
 extension BridgeSyncShown {
     /// The state in the person's language.
     public var statusLine: String {
-        localizedCoreString(bridgeSyncStatusKey(status: status))
+        localizedCoreString(statusKey)
     }
 
     /// Why the state is what it is, in the person's language.

@@ -98,6 +98,7 @@ struct SyncStatusStoreTests {
         let resumes = Date(timeIntervalSince1970: 1_000_000)
         let shown = BridgeSyncShown(
             status: .waitingToSync,
+            statusKey: "core.sync.status.waiting_to_sync",
             tone: .warning,
             cause: BridgeSyncCause(
                 message: BridgeMessage(
