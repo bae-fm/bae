@@ -4516,13 +4516,17 @@ release's or track's id as UTF-8, or a candidate's key.
   it until the next read fills it whole. What the app pulls from a stream,
   through the same helper as every screen subscription, is the keys that
   started or stopped holding a value since its last pull, a key that came
-  and went once, never a value that moved; and a failed read, once the keys
-  it emptied are pulled. Once cancelled, a pull answers with the keys that
+  and went once, never a value that moved; the keys that started or stopped
+  moving, and the keys at rest whose value changed (a paused track's position,
+  a fully buffered track); and a failed read, once the keys it emptied are
+  pulled. Once cancelled, a pull answers with the keys that
   held a value, and every pull after it that the stream was cancelled. The
   pulls of an open's or a setup call's stream run on the host's runtime,
   which is why the app makes those objects from the host. The native
   view drawing a key reads the key's latest value once per display frame
-  while it holds one; nothing the UI framework observes holds a fast value.
+  while the key is moving, and once on each pull that names it otherwise; the
+  playing track's position rests while it is not playing, and its buffered
+  parts rest once they are one stretch from start to end; nothing the UI framework observes holds a fast value.
 - **Pulled subscriptions** — the browse and download lists, the searches,
   the import list and its counts, the detail views, the Storage manager's
   list, a release's files, the queue's upcoming tail, and the reads of which

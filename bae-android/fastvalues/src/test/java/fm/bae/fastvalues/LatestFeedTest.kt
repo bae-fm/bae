@@ -91,6 +91,8 @@ class LatestFeedTest {
 
         override fun latest(key: ByteArray): BridgeFastValue? = null
 
+        override fun moving(key: ByteArray): Boolean = false
+
         override fun cancel() {
             cancelled = true
             answers.close(BridgeException.Cancelled())

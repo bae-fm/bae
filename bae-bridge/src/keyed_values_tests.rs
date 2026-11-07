@@ -186,3 +186,33 @@ fn a_cancelled_stream_holds_nothing_and_takes_no_write() {
     assert_eq!(stream.latest(b"b".to_vec()), None);
     assert_eq!(pulled_now(&values), Some(Err(BridgeError::Cancelled)));
 }
+
+/// A key at rest is not read every frame, so the pull names it when it starts
+/// or stops moving and whenever its value changes; a moving key's value
+/// changing is not named.
+#[test]
+fn a_key_at_rest_is_pulled_when_it_flips_or_its_value_changes() {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let (stream, writer, values) = fed_stream(&runtime);
+
+    let rests = |value| writer.reset_resting(HashMap::from([(b"a".to_vec(), value)]), |_, _| true);
+    rests(share(0.1));
+    assert!(!stream.moving(b"a".to_vec()));
+    assert_eq!(pulled_now(&values), keys(&["a"]));
+    rests(share(0.1));
+    assert_eq!(pulled_now(&values), None, "the same value at rest tells nothing");
+
+    rests(share(0.2));
+    assert_eq!(pulled_now(&values), keys(&["a"]), "a seek while at rest is pulled");
+
+    writer.set("a", share(0.3));
+    assert!(stream.moving(b"a".to_vec()));
+    assert_eq!(pulled_now(&values), keys(&["a"]), "starting to move is pulled");
+    writer.set("a", share(0.4));
+    assert_eq!(pulled_now(&values), None, "a moving value is not pulled");
+
+    rests(share(0.5));
+    assert!(!stream.moving(b"a".to_vec()));
+    assert_eq!(pulled_now(&values), keys(&["a"]), "coming to rest is pulled");
+    assert!(!stream.moving(b"missing".to_vec()));
+}

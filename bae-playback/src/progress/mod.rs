@@ -94,6 +94,9 @@ pub struct PlaybackPositions {
     /// value across ordinary position ticks so consumers cannot miss the seek
     /// acknowledgement when watch delivery coalesces updates.
     pub seek_revision: u64,
+    /// Whether the library track is playing, so its position moves; false
+    /// while it is paused, loading or stopped.
+    pub playing: bool,
     /// `None` while no preview is loaded.
     pub preview: Option<PreviewPosition>,
 }
@@ -182,7 +185,7 @@ impl PlaybackValues {
 
 impl PlaybackPositions {
     pub(super) fn initial() -> Self {
-        Self { library: None, seek_revision: 0, preview: None }
+        Self { library: None, seek_revision: 0, playing: false, preview: None }
     }
 
     /// These positions after `event`, or `None` when `event` is not about
@@ -200,6 +203,7 @@ impl PlaybackPositions {
                 {
                     next.library = None;
                 }
+                next.playing = matches!(state, PlaybackState::Playing { .. });
             }
             PlaybackProgress::PositionUpdate { track_id, position_ms, duration_ms, progress } => {
                 next.library = Some(PlaybackPosition {

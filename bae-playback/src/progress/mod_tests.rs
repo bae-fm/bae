@@ -111,7 +111,8 @@ fn a_state_on_another_track_ends_the_library_position() {
     };
 
     let same_track = positions.applying(&playing("track-1")).expect("a state change is folded");
-    assert_eq!(same_track, positions);
+    assert_eq!(same_track.library, positions.library);
+    assert!(same_track.playing);
 
     let next_track = positions.applying(&playing("track-2")).expect("a state change is folded");
     assert_eq!(next_track.library, None);
@@ -120,6 +121,21 @@ fn a_state_on_another_track_ends_the_library_position() {
         .applying(&PlaybackProgress::StateChanged { state: PlaybackState::Stopped })
         .expect("a state change is folded");
     assert_eq!(stopped.library, None);
+    assert!(!stopped.playing);
+
+    let paused = same_track
+        .applying(&PlaybackProgress::StateChanged {
+            state: PlaybackState::Paused {
+                track: crate::PlayingTrack {
+                    track_id: "track-1".to_string(),
+                    duration_ms: Some(100_000),
+                },
+                reason: crate::PlaybackPauseReason::Manual,
+            },
+        })
+        .expect("a state change is folded");
+    assert_eq!(paused.library, positions.library);
+    assert!(!paused.playing);
 }
 
 #[test]

@@ -26,6 +26,7 @@ class FrameFollowingTest {
     /** A stream that holds one position under every key and counts how often a key is read. */
     private class CountedReads : KeyedValueStream(NoHandle) {
         var reads = 0
+        var moving = true
 
         override suspend fun next(): List<ByteArray> = awaitCancellation()
 
@@ -33,6 +34,8 @@ class FrameFollowingTest {
             reads += 1
             return BridgeFastValue.TrackPosition(BridgeTrackPosition(1, 10uL, 0.1, 0uL))
         }
+
+        override fun moving(key: ByteArray): Boolean = moving
 
         override fun cancel() = Unit
     }
@@ -43,14 +46,7 @@ class FrameFollowingTest {
         ShadowChoreographer.setPaused(true)
         ShadowChoreographer.setFrameDelay(FRAME)
         val counted = CountedReads()
-        val positions = LatestStream.trackPositions()
-        positions.fed(CoroutineScope(Dispatchers.Unconfined), onError = {}) { counted }
-        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
-        val view = View(activity)
-        activity.setContentView(view)
-        val following = FrameFollowing<BridgeTrackPosition>(view) {}
-        following.follow(positions.source("track"))
-
+        followed(counted)
         val looper = shadowOf(Looper.getMainLooper())
         looper.idleFor(FRAME)
         val before = counted.reads
@@ -59,6 +55,31 @@ class FrameFollowingTest {
         looper.idleFor(FRAME)
 
         assertEquals(3, counted.reads - before)
+    }
+
+    @Test
+    fun aKeyAtRestIsReadOnceAndNotEachFrame() {
+        ShadowChoreographer.setPaused(true)
+        ShadowChoreographer.setFrameDelay(FRAME)
+        val counted = CountedReads().apply { moving = false }
+        followed(counted)
+        val looper = shadowOf(Looper.getMainLooper())
+        looper.idleFor(FRAME)
+        val before = counted.reads
+
+        repeat(3) { looper.idleFor(FRAME) }
+
+        assertEquals(0, counted.reads - before)
+    }
+
+    /** A View following the position of a track whose stream is [counted]. */
+    private fun followed(counted: CountedReads): FrameFollowing<BridgeTrackPosition> {
+        val positions = LatestStream.trackPositions()
+        positions.fed(CoroutineScope(Dispatchers.Unconfined), onError = {}) { counted }
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val view = View(activity)
+        activity.setContentView(view)
+        return FrameFollowing<BridgeTrackPosition>(view) {}.also { it.follow(positions.source("track")) }
     }
 
     private companion object {

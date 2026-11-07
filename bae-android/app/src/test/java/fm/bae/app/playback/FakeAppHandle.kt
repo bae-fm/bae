@@ -794,6 +794,8 @@ internal class FakeKeyedValueStream : KeyedValueStream(NoHandle) {
 
     override fun latest(key: ByteArray): BridgeFastValue? = null
 
+    override fun moving(key: ByteArray): Boolean = false
+
     override suspend fun next(): List<ByteArray> {
         cancelled.await()
         throw BridgeException.Cancelled()

@@ -118,6 +118,20 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
         }
     }
 
+    /// Whether the key's own feed holds a value that is changing: a key at
+    /// rest is read when a pull names it, not each frame. A preview's values
+    /// stand still, and count as changing so a view reads them as before.
+    fileprivate func moving(for key: Data) -> Bool {
+        switch backing.withLockUnchecked({ $0 }) {
+        case .unfed:
+            return false
+        case .preview(let values):
+            return values[key] != nil
+        case .fed(let stream):
+            return stream.moving(key: key)
+        }
+    }
+
     /// Hold what `open` starts feeding, until the returned feed is
     /// cancelled or dropped, pulling which keys started or stopped holding a
     /// value for the views watching them. A feed with failed reads hands each
@@ -723,6 +737,10 @@ public struct LatestSource<Value: Sendable & Equatable>: Sendable {
 
     fileprivate var latest: Value? { stream.latest(for: key) }
 
+    /// Whether the key holds a value that is changing, which a view reads
+    /// each frame; a key at rest is read when a pull names it.
+    fileprivate var moving: Bool { stream.moving(for: key) }
+
     /// Whether the key holds a value now, which says whether a line drawing
     /// it shows anything, never what.
     public var holdsValue: Bool { latest != nil }
@@ -740,8 +758,9 @@ extension LatestSource: Equatable {
     }
 }
 
-/// Which keys started or stopped holding a value, told to the native views
-/// watching each on the main actor. A value moving tells nothing.
+/// Which keys started or stopped holding a value or moving, or changed a
+/// value at rest, told to the native views watching each on the main actor.
+/// A value moving tells nothing.
 private final class KeyActivity: Sendable {
     struct Watch: Hashable, Sendable {
         let key: Data
@@ -801,9 +820,10 @@ private final class KeyActivity: Sendable {
 
 #if os(macOS)
     /// A native view's reading of one key of a fast stream on the display's
-    /// own clock: while the key is active, the view's display link reads the
+    /// own clock: while the key is moving, the view's display link reads the
     /// key's latest value each frame and shows it if it changed; while the
-    /// key is idle, nothing runs. Values arriving faster than frames are never
+    /// key is at rest or holds nothing, nothing runs, and the view shows the
+    /// key's value once on each pull that names the key. Values arriving faster than frames are never
     /// all shown; the screen shows the latest one each frame.
     @MainActor
     public final class FrameFollowing<Value: Sendable & Equatable> {
@@ -847,10 +867,11 @@ private final class KeyActivity: Sendable {
             shown = .none
         }
 
-        /// Start reading each frame as the key starts, and stop as it goes
-        /// idle, showing what it holds either way.
+        /// Start reading each frame as the key starts moving, and stop as it
+        /// rests or goes idle, showing what it holds either way.
         private func activityChanged() {
-            let active = showLatest() != nil
+            showLatest()
+            let active = source?.moving ?? false
             if active, link == nil, let view {
                 let link = view.displayLink(
                     target: ticker,

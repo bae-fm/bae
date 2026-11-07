@@ -66,6 +66,8 @@ private final class NoSteps: KeyedValueStream, @unchecked Sendable {
 
     override func latest(key _: Data) -> BridgeFastValue? { nil }
 
+    override func moving(key _: Data) -> Bool { false }
+
     override func next() async throws -> [Data] {
         try await withCheckedThrowingContinuation { continuation in
             lock.withLock { puller = continuation }

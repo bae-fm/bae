@@ -329,8 +329,9 @@ pub(crate) fn playback_positions(
         let mut positions = services.subscribe_playback_positions();
         async move {
             loop {
-                let held = track_positions(&positions.positions());
-                writer.reset(held);
+                let now = positions.positions();
+                // A paused track's position stays where it is.
+                writer.reset_resting(track_positions(&now), |_, _| !now.playing);
                 if positions.changed().await.is_err() {
                     return;
                 }
@@ -348,7 +349,9 @@ pub(crate) fn track_buffered(
         let mut buffered = services.follow_track_buffered();
         async move {
             while let Some(held) = buffered.next().await {
-                writer.reset(track_buffered_held(held));
+                writer.reset_resting(track_buffered_held(held), |_, value| {
+                    track_is_fully_buffered(value)
+                });
             }
         }
     })
@@ -492,6 +495,16 @@ fn track_buffered_held(
         })
         .into_iter()
         .collect()
+}
+
+/// Whether `value` is a track held from its start to its end in one stretch,
+/// which no longer changes.
+fn track_is_fully_buffered(value: &BridgeFastValue) -> bool {
+    matches!(
+        value,
+        BridgeFastValue::TrackBuffered { buffered }
+            if matches!(buffered.ranges.as_slice(), [span] if span.start == 0.0 && span.end == 1.0)
+    )
 }
 
 /// The track whose load waits on storage as its stream holds it: under its

@@ -6,9 +6,11 @@
 //! subscription value. A stream built in [`crate::screens`] is written on the
 //! bridge's side; the host reads a key's latest value with `latest` when the
 //! native view drawing that key draws a frame. What the host pulls, as it
-//! pulls every screen value, is which keys started or stopped holding a value,
-//! so a view knows when to start and stop drawing, and a failed read of the
-//! feed; a value moving tells nothing.
+//! pulls every screen value, is which keys started or stopped holding a value
+//! or moving, so a view knows when to start and stop drawing, and a failed
+//! read of the feed; a value moving tells nothing. A key whose value is at
+//! rest (a paused track's position) is not read every frame: its value
+//! changing is pulled instead, since nothing else tells the view.
 
 use std::collections::{BTreeSet, HashMap};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -52,8 +54,30 @@ fn lock(held: &Mutex<Held>) -> MutexGuard<'_, Held> {
 /// What a stream holds: each key's value until the stream is cancelled,
 /// and nothing from then on.
 enum Values {
-    Open(HashMap<Vec<u8>, BridgeFastValue>),
+    Open(HashMap<Vec<u8>, Entry>),
     Cancelled,
+}
+
+/// One key's value, and whether it is at rest: not changing until the feed
+/// says so, so a view need not read it each frame.
+#[derive(Clone)]
+struct Entry {
+    value: BridgeFastValue,
+    resting: bool,
+}
+
+impl Entry {
+    /// Whether a view that last saw `before` of this key must be told: the key
+    /// came, went, or flipped between moving and resting, or it rests and its
+    /// value changed. A moving key's value changing is not told.
+    fn tells_change_from(&self, before: Option<&Entry>) -> bool {
+        match before {
+            None => true,
+            Some(before) => {
+                before.resting != self.resting || (self.resting && before.value != self.value)
+            }
+        }
+    }
 }
 
 impl StreamValues {
@@ -70,14 +94,22 @@ impl StreamValues {
 
     pub(crate) fn latest(&self, key: &[u8]) -> Option<BridgeFastValue> {
         match &lock(&self.held).values {
-            Values::Open(values) => values.get(key).cloned(),
+            Values::Open(values) => values.get(key).map(|entry| entry.value.clone()),
             Values::Cancelled => None,
         }
     }
 
-    /// Change the values, and keep the keys `change` says started or stopped
-    /// holding one for the next pull. A cancelled stream takes no change.
-    fn write(&self, change: impl FnOnce(&mut HashMap<Vec<u8>, BridgeFastValue>) -> Vec<Vec<u8>>) {
+    /// Whether the key holds a value that is not at rest.
+    fn moving(&self, key: &[u8]) -> bool {
+        match &lock(&self.held).values {
+            Values::Open(values) => values.get(key).is_some_and(|entry| !entry.resting),
+            Values::Cancelled => false,
+        }
+    }
+
+    /// Change the values, and keep the keys `change` says a view must be told
+    /// of (see [`Entry::tells_change_from`]) for the next pull. A cancelled stream takes no change.
+    fn write(&self, change: impl FnOnce(&mut HashMap<Vec<u8>, Entry>) -> Vec<Vec<u8>>) {
         let mut held = lock(&self.held);
         let started_or_stopped = match &mut held.values {
             Values::Open(values) => change(values),
@@ -168,6 +200,12 @@ impl KeyedValueStream {
         self.values.latest(&key)
     }
 
+    /// Whether the key holds a value that is changing: a view reads such a
+    /// key each frame, and a key at rest only when a pull names it.
+    pub fn moving(&self, key: Vec<u8>) -> bool {
+        self.values.moving(&key)
+    }
+
     /// End the stream's feed: from now on it holds nothing, and nothing
     /// writes it.
     pub fn cancel(&self) {
@@ -223,12 +261,18 @@ impl StreamWriter {
         Self { values }
     }
 
-    /// The stream names `key` with `value`.
+    /// The stream names `key` with `value`, a value that keeps changing.
     pub(crate) fn set(&self, key: impl Into<Vec<u8>>, value: BridgeFastValue) {
         let key = key.into();
-        self.values.write(|values| match values.insert(key.clone(), value) {
-            None => vec![key],
-            Some(_) => vec![],
+        let entry = Entry { value, resting: false };
+        self.values.write(|values| {
+            let tell = entry.tells_change_from(values.get(&key));
+            values.insert(key.clone(), entry);
+            if tell {
+                vec![key]
+            } else {
+                vec![]
+            }
         });
     }
 
@@ -250,13 +294,35 @@ impl StreamWriter {
         self.remove(ONLY_KEY);
     }
 
-    /// The stream names every key in `all`, and none other.
+    /// The stream names every key in `all`, and none other, each with a value
+    /// that keeps changing.
     pub(crate) fn reset(&self, all: HashMap<Vec<u8>, BridgeFastValue>) {
+        self.reset_resting(all, |_, _| false);
+    }
+
+    /// The stream names every key in `all`, and none other; `resting` says
+    /// which of them stay as they are until the feed writes again.
+    pub(crate) fn reset_resting(
+        &self,
+        all: HashMap<Vec<u8>, BridgeFastValue>,
+        resting: impl Fn(&[u8], &BridgeFastValue) -> bool,
+    ) {
         self.values.write(|values| {
+            let all: HashMap<Vec<u8>, Entry> = all
+                .into_iter()
+                .map(|(key, value)| {
+                    let resting = resting(&key, &value);
+                    (key, Entry { value, resting })
+                })
+                .collect();
             let changed: Vec<Vec<u8>> = values
                 .keys()
                 .filter(|key| !all.contains_key(*key))
-                .chain(all.keys().filter(|key| !values.contains_key(*key)))
+                .chain(
+                    all.iter()
+                        .filter(|(key, entry)| entry.tells_change_from(values.get(*key)))
+                        .map(|(key, _)| key),
+                )
                 .cloned()
                 .collect();
             *values = all;

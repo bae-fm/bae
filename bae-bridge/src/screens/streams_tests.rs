@@ -147,3 +147,25 @@ fn one_batch_of_outbox_transfers_writes_both_streams() {
     assert_eq!(release_values.latest(b"release-1"), None);
     assert_eq!(total_values.latest(b""), None);
 }
+
+/// A track is at rest in its stream once it is held in one stretch from its
+/// start to its end, and not before.
+#[test]
+fn a_track_held_from_start_to_end_in_one_stretch_is_at_rest() {
+    let held = |ranges: Vec<(f64, f64)>| {
+        track_buffered_held(Some(bae_playback::TrackBuffered {
+            track_id: "track-1".into(),
+            ranges: ranges
+                .into_iter()
+                .map(|(start, end)| bae_playback::TrackSpan { start, end })
+                .collect(),
+        }))
+        .into_values()
+        .next()
+        .unwrap()
+    };
+    assert!(track_is_fully_buffered(&held(vec![(0.0, 1.0)])));
+    assert!(!track_is_fully_buffered(&held(vec![(0.0, 0.5)])));
+    assert!(!track_is_fully_buffered(&held(vec![(0.0, 0.5), (0.75, 1.0)])));
+    assert!(!track_is_fully_buffered(&held(vec![])));
+}

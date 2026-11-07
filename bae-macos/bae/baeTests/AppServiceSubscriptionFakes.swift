@@ -412,6 +412,10 @@ final class NoopKeyedValueStream: KeyedValueStream,
         nil
     }
 
+    override func moving(key _: Data) -> Bool {
+        false
+    }
+
     override func next() async throws -> [Data] {
         try await keys.next()
     }

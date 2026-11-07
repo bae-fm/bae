@@ -10,4 +10,5 @@ data class LatestSource<V : Any> internal constructor(
     internal val key: String,
 ) {
     internal val latest: V? get() = stream.latest(key)
+    internal val moving: Boolean get() = stream.moving(key)
 }

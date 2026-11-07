@@ -5,9 +5,10 @@ import android.view.View
 
 /**
  * A View's reading of one key of a fast stream on the display's own clock:
- * while the key is active and the View is attached, a Choreographer frame
+ * while the key is moving and the View is attached, a Choreographer frame
  * callback reads the key's latest value each frame and shows it if it changed;
- * while the key is idle, nothing runs. Values arriving faster than frames are
+ * while the key is at rest or holds nothing, nothing runs, and the View shows
+ * the key's value once on each pull that names the key. Values arriving faster than frames are
  * never all shown; the screen shows the latest one each frame.
  */
 class FrameFollowing<V : Any>(
@@ -57,9 +58,13 @@ class FrameFollowing<V : Any>(
         }
     }
 
-    /** Start reading each frame as the key starts, and stop as it goes idle, showing what it holds either way. */
+    /**
+     * Start reading each frame as the key starts moving, and stop as it rests or goes idle, showing
+     * what it holds either way.
+     */
     private fun activityChanged() {
-        if (showLatest() != null && view.isAttachedToWindow) {
+        showLatest()
+        if (source?.moving == true && view.isAttachedToWindow) {
             if (!ticking) {
                 ticking = true
                 Choreographer.getInstance().postFrameCallback(this)

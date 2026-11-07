@@ -9,6 +9,7 @@ import Testing
 private final class QueuedKeyStream: KeyedValueStream, @unchecked Sendable {
     private let lock = NSLock()
     private var held: [Data: BridgeFastValue] = [:]
+    private var resting: Set<Data> = []
     private var queued: [Result<[Data], any Error>] = []
     private var puller: CheckedContinuation<[Data], any Error>?
 
@@ -20,9 +21,22 @@ private final class QueuedKeyStream: KeyedValueStream, @unchecked Sendable {
         preconditionFailure("a queued stream is made by init()")
     }
 
-    /// Hold `value` under `key`, and queue that the key started.
-    func start(_ key: Data, holding value: BridgeFastValue) {
-        lock.recording { held[key] = value }
+    /// Hold `value` under `key`, and queue that the key started, moving
+    /// unless it `rests`.
+    func start(
+        _ key: Data,
+        holding value: BridgeFastValue,
+        rests: Bool = false
+    ) {
+        lock.recording {
+            held[key] = value
+            if rests {
+                resting.insert(key)
+            }
+            else {
+                resting.remove(key)
+            }
+        }
         answer(.success([key]))
     }
 
@@ -33,6 +47,10 @@ private final class QueuedKeyStream: KeyedValueStream, @unchecked Sendable {
 
     override func latest(key: Data) -> BridgeFastValue? {
         lock.withLock { held[key] }
+    }
+
+    override func moving(key: Data) -> Bool {
+        lock.withLock { held[key] != nil && !resting.contains(key) }
     }
 
     override func next() async throws -> [Data] {
@@ -51,6 +69,7 @@ private final class QueuedKeyStream: KeyedValueStream, @unchecked Sendable {
     override func cancel() {
         let puller = lock.withLock {
             held = [:]
+            resting = []
             let puller = self.puller
             self.puller = nil
             return puller
@@ -127,6 +146,40 @@ struct LatestFeedTests {
             BridgeError.Diagnostic(category: .database, detail: "read failed")
         )
         try await Wait.until { failed.count == 1 }
+
+        following.stop()
+        for feed in feeds { feed.cancel() }
+    }
+
+    @Test(
+        "a value changed at rest reaches the view on the pull that names its key"
+    )
+    func aValueChangedAtRestIsShownOnThePull() async throws {
+        let handle = UploadTotalHandle()
+        let stream = LatestStream<BridgeUploadTransfer>.uploadTotal()
+        let feeds = OutboxStore(uploadsPaused: false, filesBeingSent: stream)
+            .feedTransfers(from: handle) { _ in }
+        let shown = Shown()
+        let following = FrameFollowing<BridgeUploadTransfer>(view: NSView()) {
+            shown.value = $0
+        }
+        following.follow(stream.only)
+
+        let first = BridgeUploadTransfer(bar: nil, throughputBps: 5)
+        handle.stream.start(
+            Data(),
+            holding: .uploadTotal(transfer: first),
+            rests: true
+        )
+        try await Wait.until { shown.value == first }
+
+        let second = BridgeUploadTransfer(bar: nil, throughputBps: 9)
+        handle.stream.start(
+            Data(),
+            holding: .uploadTotal(transfer: second),
+            rests: true
+        )
+        try await Wait.until { shown.value == second }
 
         following.stop()
         for feed in feeds { feed.cancel() }

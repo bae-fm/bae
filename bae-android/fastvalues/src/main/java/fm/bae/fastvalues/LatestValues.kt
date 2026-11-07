@@ -65,6 +65,14 @@ class LatestStream<V : Any> private constructor(
             }
         }
 
+    /** Whether [key] holds a value that is changing; a key at rest is read when a pull names it. */
+    internal fun moving(key: String): Boolean =
+        if (preview != null) {
+            preview.containsKey(key)
+        } else {
+            fed?.moving(key.encodeToByteArray()) ?: false
+        }
+
     /**
      * A test's write of [key] into a stream [written] made, telling the Views
      * watching it on the main thread when it starts or stops holding a value.
@@ -271,7 +279,10 @@ private val mainThread by lazy { Handler(Looper.getMainLooper()) }
 internal class KeyActivity {
     private val watchers = ConcurrentHashMap<String, MutableSet<() -> Unit>>()
 
-    /** Run [changed] on the main thread each time [key] starts or stops holding a value, until [stopWatching]. */
+    /**
+     * Run [changed] on the main thread each time [key] starts or stops holding a value or moving, or
+     * changes its value at rest, until [stopWatching].
+     */
     fun watch(
         key: String,
         changed: () -> Unit,
@@ -287,7 +298,7 @@ internal class KeyActivity {
     }
 
     /**
-     * Tell the Views watching the keys that started or stopped; called on the main thread. The bridge
+     * Tell the Views watching the keys that changed; called on the main thread. The bridge
      * names a key by its bytes; every key this app watches is an id, whose bytes are its UTF-8.
      */
     fun keysChanged(keys: List<ByteArray>) {
