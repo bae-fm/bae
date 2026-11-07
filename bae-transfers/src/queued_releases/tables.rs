@@ -541,6 +541,12 @@ pub mod worker_moves {
         activate_queued_release_on::<P>(sql, release_id)
     }
 
+    /// The handle a worker gives the operation running `release_id`'s entry,
+    /// for a test that runs the operation without a worker.
+    pub fn active_entry<P: QueuedPayload>(release_id: &str) -> crate::ActiveEntry<P> {
+        crate::queued_releases::ActiveEntry::new(release_id)
+    }
+
     /// Finish `release_id`'s active entry, as the worker does on success.
     pub fn finish_on<P: QueuedPayload>(
         sql: &CovenWrite<'_>,

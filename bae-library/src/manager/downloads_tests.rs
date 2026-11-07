@@ -762,3 +762,58 @@ async fn fail_download(
 async fn clear_transfers_as_opening(manager: &LibraryManager) -> Result<(), bae_store::DbError> {
     manager.store.call(bae_transfers::tables::clear_transfers_on).await
 }
+
+/// A cancel that takes a pin's entry out of the queue while the pin's files
+/// download fails the pin's one write, which pins nothing: the release is
+/// never pinned without its entry having ended with the pin.
+#[tokio::test]
+async fn a_pin_and_its_entry_end_in_one_write() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let home = connect_test_cloud(&test).await;
+    let release_id =
+        uploaded_release(manager, &temp_dir.path().join("one-write"), "One Write", false).await;
+    let file = release_files(manager, &release_id).await.remove(0);
+    manager.evict_file_for_test(file.file).await.unwrap();
+
+    // The memory provider holds the read of the stored file, so the cancel
+    // lands after the pin started and before its files are whole.
+    let files_prefix = coven::ObjectPrefix::files(manager.store.store_id_for_test());
+    let stored = home
+        .request_trace()
+        .into_iter()
+        .rev()
+        .find_map(|request| match request {
+            coven::MemoryRequest::Create(path) if files_prefix.contains(&path) => Some(path),
+            _ => None,
+        })
+        .expect("the upload created the stored file");
+    let (observed, reading) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    home.hold_next_read(stored, observed, resumed).await;
+    let pin = tokio::spawn({
+        let manager = manager.clone();
+        let release_id = release_id.clone();
+        async move {
+            let entry = started_pin_entry(&manager, &release_id).await;
+            manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await
+        }
+    });
+    reading.await.unwrap();
+    manager.cancel_download(&release_id).await.unwrap();
+    resume.send(()).unwrap();
+
+    let error = pin.await.unwrap().expect_err("the pin's write finds its entry gone");
+    assert!(
+        matches!(error, LibraryError::Database(bae_store::DbError::EntryCancelled { .. })),
+        "{error:?}"
+    );
+    assert_eq!(manager.store.files_pinned(&[file.file]).await.unwrap(), vec![Some(false)]);
+    assert!(download_queue_now(manager).await.rows.is_empty());
+
+    // Uncancelled, the same pin pins the release and ends its entry.
+    let entry = started_pin_entry(manager, &release_id).await;
+    manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await.unwrap();
+    assert_eq!(manager.store.files_pinned(&[file.file]).await.unwrap(), vec![Some(true)]);
+    assert!(download_queue_now(manager).await.rows.is_empty());
+}

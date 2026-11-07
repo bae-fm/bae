@@ -480,6 +480,25 @@ pub(super) async fn insert_pinnable_release(manager: &TestManager) -> String {
     release
 }
 
+/// The queue entry a test's direct pin of `release_id` ends in its write: the
+/// release queued and started as the download worker starts it, with the
+/// queue paused so the worker leaves the entry to the test.
+pub(super) async fn started_pin_entry(
+    manager: &LibraryManager,
+    release_id: &str,
+) -> bae_transfers::ActiveEntry<()> {
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.enqueue_pins(vec![release_id.to_string()]).await.unwrap();
+    let started = release_id.to_string();
+    let activated = manager
+        .store
+        .call(move |sql| bae_transfers::tables::worker_moves::activate_on::<()>(sql, &started))
+        .await
+        .unwrap();
+    assert!(activated, "the pin's release is in the download queue");
+    bae_transfers::tables::worker_moves::active_entry::<()>(release_id)
+}
+
 /// Insert `n` plain track rows on the release's one CD. Mirrors the row shape
 /// `prepared.parsed.tracks` would produce so the track-count check in
 /// `re_identify_release` accepts the picked release.

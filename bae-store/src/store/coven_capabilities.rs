@@ -334,6 +334,19 @@ impl Store {
         )
     }
 
+    /// Download what each of `files` lacks into a whole copy, pinning nothing:
+    /// a write commits the result with `CovenWrite::pin`, beside whatever
+    /// else it must commit with the pin.
+    pub async fn prepare_pin(
+        &self,
+        files: &[coven::FileRef],
+    ) -> Result<coven::PreparedPin, coven::FileReadError> {
+        self.reported(self.inner.handle.prepare_pin(files).await)
+    }
+
+    /// Pin `files` in a write of their own, for a test that has no queue
+    /// entry to end with them.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn pin(&self, files: &[coven::FileRef]) -> Result<(), coven::FileReadError> {
         self.reported(self.inner.handle.pin(files).await)
     }

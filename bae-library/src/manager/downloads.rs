@@ -69,8 +69,8 @@ impl LibraryManager {
     /// task, so a panicked pin reports the panic rather than "the channel closed".
     ///
     /// Success needs no follow-up here: `pin_release_files_with_progress`
-    /// committed the new state, so the release subscription updates its
-    /// `pinned` flag.
+    /// pins the files and ends the queue entry in one write, so the release
+    /// subscription updates its `pinned` flag as the entry leaves.
     /// Completion and failure reach diagnostics from inside the transfer
     /// (`StorageTransferCompleted` / `StorageTransferFailed`), so there is nothing
     /// to report on the way out.
@@ -78,14 +78,19 @@ impl LibraryManager {
         self.downloads
             .run_serial(
                 "Pin",
-                |op| async move {
+                |op, entry| async move {
                     let release_id = op.release_id;
                     let initial_progress = self.initial_download_progress(&release_id).await?;
                     let drive_release_id = release_id.clone();
-                    let running = self.start_pin_transfer(release_id, move |progress| async move {
-                        self.drive_transfer(&drive_release_id, ReleaseStorageAction::Pin, progress)
+                    let running =
+                        self.start_pin_transfer(release_id, entry, move |progress| async move {
+                            self.drive_transfer(
+                                &drive_release_id,
+                                ReleaseStorageAction::Pin,
+                                progress,
+                            )
                             .await
-                    });
+                        });
                     Ok((initial_progress, running))
                 },
                 |_release_id, _result| {},

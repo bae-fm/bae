@@ -140,8 +140,9 @@ async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
         let manager = test.library.manager().clone();
         let release_id = release_id.clone();
         async move {
+            let entry = started_pin_entry(&manager, &release_id).await;
             manager
-                .pin_release_files_with_progress(&release_id, move |progress| {
+                .pin_release_files_with_progress(&release_id, entry, move |progress| {
                     bytes_tx.send(progress.bytes_done).unwrap();
                 })
                 .await
@@ -255,8 +256,9 @@ async fn a_failed_files_bytes_never_count() {
         let manager = test.library.manager().clone();
         let release_id = release.id.clone();
         async move {
+            let entry = started_pin_entry(&manager, &release_id).await;
             manager
-                .pin_release_files_with_progress(&release_id, move |progress| {
+                .pin_release_files_with_progress(&release_id, entry, move |progress| {
                     bytes_tx.send(progress.bytes_done).unwrap();
                 })
                 .await
@@ -350,7 +352,11 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
 
     let mut progress = Vec::new();
     manager
-        .pin_release_files_with_progress(&release.id, |update| progress.push(update))
+        .pin_release_files_with_progress(
+            &release.id,
+            started_pin_entry(manager, &release.id).await,
+            |update| progress.push(update),
+        )
         .await
         .unwrap();
 

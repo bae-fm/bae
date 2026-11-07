@@ -69,6 +69,37 @@ async fn collect_progress(
     events
 }
 
+/// Pin `release_id` as the download worker does: its queue entry started, the
+/// pin ending it in its write. Returns the events the pin reported and how it
+/// ended. A release the queue passes over (a local one) has no entry, which
+/// the pin never gets to end.
+async fn pin_with_events(
+    library: &bae_library::test_libraries::TestLibrary,
+    release_id: &str,
+) -> (Vec<TransferProgress>, Result<bae_transfers::Finished, bae_library::LibraryError>) {
+    let manager = library.manager();
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.enqueue_pins(vec![release_id.to_string()]).await.unwrap();
+    let started = release_id.to_string();
+    library
+        .store()
+        .call(move |sql| bae_transfers::tables::worker_moves::activate_on::<()>(sql, &started))
+        .await
+        .unwrap();
+    let entry = bae_transfers::tables::worker_moves::active_entry::<()>(release_id);
+    let events = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let sink = events.clone();
+    let outcome = manager
+        .start_pin_transfer(release_id.to_string(), entry, |progress| async move {
+            *sink.lock().unwrap() = collect_progress(progress).await;
+            Ok(())
+        })
+        .finish()
+        .await;
+    let events = std::mem::take(&mut *events.lock().unwrap());
+    (events, outcome)
+}
+
 fn failed(events: &[TransferProgress]) -> bool {
     events.iter().any(|e| matches!(e, TransferProgress::Failed { .. }))
 }
@@ -186,15 +217,9 @@ async fn test_pin_rejects_local_release() {
         crate::create_local_release(mgr.manager(), &tmp.path().join("src"), &[("a.flac", b"a")])
             .await;
 
-    let events =
-        mgr.manager()
-            .start_pin_transfer(release_id, |progress| async move {
-                Ok(collect_progress(progress).await)
-            })
-            .finish()
-            .await
-            .expect("pin task completes");
+    let (events, outcome) = pin_with_events(&mgr, &release_id).await;
     assert!(failed(&events), "pin must fail for a local release");
+    outcome.expect_err("a failed pin ends no queue entry");
 }
 
 /// Unpin rejects a Local release: it has no remote files to drop from the cache.
@@ -277,14 +302,8 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
     )
     .await;
 
-    let events = mgr
-        .manager()
-        .start_pin_transfer(release_id.clone(), |progress| async move {
-            Ok(collect_progress(progress).await)
-        })
-        .finish()
-        .await
-        .expect("pin task completes");
+    let (events, outcome) = pin_with_events(&mgr, &release_id).await;
+    outcome.expect("pin task completes");
     let Some((TransferProgress::Complete { .. }, before)) = events.split_last() else {
         panic!("a pin completes: {events:?}");
     };
@@ -368,13 +387,7 @@ async fn the_detail_views_follow_a_releases_pin() {
     };
     shown(false).await;
 
-    mgr.manager()
-        .start_pin_transfer(release_id.clone(), |progress| async move {
-            Ok(collect_progress(progress).await)
-        })
-        .finish()
-        .await
-        .expect("pin task completes");
+    pin_with_events(&mgr, &release_id).await.1.expect("pin task completes");
     shown(true).await;
 
     mgr.manager().unpin_releases(std::slice::from_ref(&release_id)).await.unwrap();
@@ -397,13 +410,7 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
     )
     .await;
 
-    mgr.manager()
-        .start_pin_transfer(release_id.clone(), |progress| async move {
-            Ok(collect_progress(progress).await)
-        })
-        .finish()
-        .await
-        .expect("pin task completes");
+    pin_with_events(&mgr, &release_id).await.1.expect("pin task completes");
     assert_eq!(
         crate::release_storage(&db, &release_id).await,
         ReleaseStorageState::InStorage { pinned: true }
@@ -596,13 +603,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         &[("b.flac", b"unpinned")],
     )
     .await;
-    mgr.manager()
-        .start_pin_transfer(pinned.clone(), |progress| async move {
-            Ok(collect_progress(progress).await)
-        })
-        .finish()
-        .await
-        .expect("pin task completes");
+    pin_with_events(&mgr, &pinned).await.1.expect("pin task completes");
 
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     let view = |selected: &[&String]| StorageBrowseRequest {

@@ -11,6 +11,7 @@ use crate::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use bae_store::DbError;
 use bae_store::Store;
 use bae_util::task_failure::{caught, caught_sync, Bug, TaskFailed};
+use coven::CovenWrite;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
@@ -37,6 +38,38 @@ impl<Fut> RunningOp<Fut> {
         self.outcome.await
     }
 }
+
+/// The entry a worker's operation is running, which only the operation's own
+/// write can end. A successful operation hands back the [`Finished`] that
+/// [`ActiveEntry::finish_on`] returns, so its work and its entry's end commit
+/// in one write or not at all.
+pub struct ActiveEntry<Extra> {
+    release_id: String,
+    _queue: PhantomData<fn() -> Extra>,
+}
+
+impl<Extra: QueuedPayload> ActiveEntry<Extra> {
+    pub(crate) fn new(release_id: &str) -> Self {
+        Self { release_id: release_id.to_string(), _queue: PhantomData }
+    }
+
+    /// End the entry in `sql`, the write that also commits the operation's
+    /// work: it leaves the queue. Fails the write, rolling the work back
+    /// with it, with [`DbError::EntryCancelled`] when the entry had already
+    /// left, cancelled while it ran.
+    pub fn finish_on(&self, sql: &CovenWrite<'_>) -> Result<Finished, DbError> {
+        if tables::finish_queued_release_on::<Extra>(sql, &self.release_id)? {
+            Ok(Finished(()))
+        } else {
+            Err(DbError::EntryCancelled { release_id: self.release_id.clone() })
+        }
+    }
+}
+
+/// That an operation ended its entry: only [`ActiveEntry::finish_on`] makes
+/// one.
+#[derive(Debug)]
+pub struct Finished(());
 
 /// Coven's word on whether the device has a usable network, followed for a
 /// queue whose entries need one. It wakes the worker parked on a queue it
@@ -363,8 +396,11 @@ where
     ///   the entry stays queued for the resume. A pause landing between the
     ///   pick and the start makes the table refuse the start, and the work
     ///   just started is aborted the same way.
-    /// - Success takes the entry out; failure marks it failed and leaves it for
-    ///   retry. A `start` that fails marks it failed the same way — nothing was
+    /// - Success takes the entry out, in the operation's own write: it ends
+    ///   its entry with [`ActiveEntry::finish_on`] beside its work, so both
+    ///   commit together, and a cancel that took the entry out meanwhile
+    ///   fails that write ([`DbError::EntryCancelled`]) and rolls the work
+    ///   back. Failure marks the entry failed and leaves it for retry. A `start` that fails marks it failed the same way — nothing was
     ///   spawned.
     /// - An entry whose `start`, work or `on_done` panics is reported through
     ///   `bug` and fails as any failure does; the worker goes on to the next
@@ -378,9 +414,9 @@ where
         bug: ReportBug,
     ) where
         Error: From<TaskFailed> + std::fmt::Display,
-        Start: FnMut(ReleaseQueueEntry<Extra>) -> StartFut,
+        Start: FnMut(ReleaseQueueEntry<Extra>, ActiveEntry<Extra>) -> StartFut,
         StartFut: Future<Output = Result<(Progress, RunningOp<Fut>), Error>>,
-        Fut: Future<Output = Result<(), Error>>,
+        Fut: Future<Output = Result<Finished, Error>>,
         Done: FnMut(&str, Result<(), &Error>),
         StoreFailed: Fn(&str, &DbError),
         ReportBug: Fn(Bug) -> Bug,
@@ -416,8 +452,9 @@ where
                 }
             };
             let release_id = entry.release_id.clone();
+            let active = ActiveEntry::new(&release_id);
 
-            let started = caught(label, async { start(entry).await })
+            let started = caught(label, async { start(entry, active).await })
                 .await
                 .unwrap_or_else(|panic| Err(failed(panic)));
             let (progress, running) = match started {
@@ -468,11 +505,8 @@ where
             let result = caught(label, outcome).await.unwrap_or_else(|panic| Err(failed(panic)));
             let left_id = release_id.clone();
             let left = match &result {
-                Ok(()) => {
-                    store
-                        .call(move |sql| tables::finish_queued_release_on::<Extra>(sql, &left_id))
-                        .await
-                }
+                // The operation's own write ended the entry.
+                Ok(Finished(())) => Ok(true),
                 Err(error) => {
                     let message = error.to_string();
                     store

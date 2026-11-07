@@ -84,21 +84,22 @@ type Outcomes = Arc<OutcomeLog>;
 /// reports.
 fn worker<Start, StartFut, Fut>(
     queue: &QueuedReleases<(), u8>,
-    start: Start,
+    mut start: Start,
 ) -> (tokio::task::JoinHandle<()>, Outcomes)
 where
-    Start: FnMut(ReleaseQueueEntry<()>) -> StartFut + Send + 'static,
+    Start: FnMut(ReleaseQueueEntry<()>, Ending) -> StartFut + Send + 'static,
     StartFut: Future<Output = Result<(u8, RunningOp<Fut>), WorkError>> + Send,
-    Fut: Future<Output = Result<(), WorkError>> + Send,
+    Fut: Future<Output = Result<Finished, WorkError>> + Send,
 {
     let done: Outcomes = Arc::default();
     let worker_queue = queue.clone();
     let recorded = done.clone();
     let task = tokio::spawn(async move {
+        let ending = worker_queue.clone();
         worker_queue
             .run_serial(
                 "Test",
-                start,
+                move |entry, active| start(entry, Ending { queue: ending.clone(), active }),
                 move |release_id, result| {
                     recorded.push(release_id, result.map_err(|error: &WorkError| error.to_string()))
                 },
@@ -134,21 +135,44 @@ async fn reported(done: &Outcomes, count: usize) -> Vec<(String, Result<(), Stri
     .expect("the worker reports the outcomes")
 }
 
-/// A spawned task's abort handle and the outcome it yields, mapping a
-/// panic to a failure that names it.
-fn spawned(
-    task: tokio::task::JoinHandle<()>,
-) -> RunningOp<impl Future<Output = Result<(), WorkError>>> {
-    let abort = task.abort_handle();
-    RunningOp::new(abort, async move {
-        match task.await {
-            Ok(()) => Ok(()),
-            Err(join_error) if join_error.is_cancelled() => {
-                Err(WorkError::Failed("cancelled".to_string()))
+/// What a test's operation ends its entry with.
+struct Ending {
+    queue: QueuedReleases<(), u8>,
+    active: ActiveEntry<()>,
+}
+
+impl Ending {
+    /// A spawned task's abort handle and the outcome it yields, mapping a
+    /// panic to a failure that names it; once the task is done, the entry
+    /// ends in a write of its own.
+    fn spawned(
+        self,
+        task: tokio::task::JoinHandle<()>,
+    ) -> RunningOp<impl Future<Output = Result<Finished, WorkError>>> {
+        let abort = task.abort_handle();
+        RunningOp::new(abort, async move {
+            match task.await {
+                Ok(()) => {}
+                Err(join_error) if join_error.is_cancelled() => {
+                    return Err(WorkError::Failed("cancelled".to_string()))
+                }
+                Err(join_error) => {
+                    return Err(WorkError::Failed(format!("task panicked: {join_error}")))
+                }
             }
-            Err(join_error) => Err(WorkError::Failed(format!("task panicked: {join_error}"))),
-        }
-    })
+            self.finish().await
+        })
+    }
+
+    /// End the entry in a write of its own.
+    async fn finish(self) -> Result<Finished, WorkError> {
+        let Ending { queue, active } = self;
+        queue
+            .store
+            .call(move |sql| active.finish_on(sql))
+            .await
+            .map_err(|error| WorkError::Failed(error.to_string()))
+    }
 }
 
 /// A finished entry leaves the queue and the next one starts; its outcome is
@@ -157,7 +181,11 @@ fn spawned(
 async fn a_finished_entry_leaves_and_the_next_starts() {
     let (queue, _tmp) = queue().await;
     queue.enqueue_all(vec![entry(RELEASE_A), entry(RELEASE_B)]).await.unwrap();
-    let (task, done) = worker(&queue, |_entry| async { Ok((0, spawned(tokio::spawn(async {})))) });
+    let (task, done) =
+        worker(
+            &queue,
+            |_entry, ending| async move { Ok((0, ending.spawned(tokio::spawn(async {})))) },
+        );
 
     let outcomes = reported(&done, 2).await;
     task.abort();
@@ -172,8 +200,9 @@ async fn a_finished_entry_leaves_and_the_next_starts() {
 async fn a_panicking_operation_marks_the_release_failed_with_the_panic() {
     let (queue, _tmp) = queue().await;
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
-    let (task, _done) =
-        worker(&queue, |_entry| async { Ok((0, spawned(tokio::spawn(async { panic!("boom") })))) });
+    let (task, _done) = worker(&queue, |_entry, ending| async move {
+        Ok((0, ending.spawned(tokio::spawn(async { panic!("boom") }))))
+    });
 
     let rows =
         until(&queue, |rows| matches!(rows.first(), Some((_, ReleaseQueueState::Failed { .. }))))
@@ -192,23 +221,27 @@ async fn an_entry_that_panics_fails_and_the_next_one_runs() {
     let bugs: Arc<Mutex<Vec<bae_util::task_failure::Bug>>> = Arc::default();
     let done: Outcomes = Arc::default();
     let worker_queue = queue.clone();
+    let ending_queue = queue.clone();
     let (recorded, reports) = (done.clone(), bugs.clone());
     let task = tokio::spawn(async move {
         worker_queue
             .run_serial(
                 "Test",
-                |entry: ReleaseQueueEntry<()>| async move {
-                    let abort = tokio::spawn(async {}).abort_handle();
-                    let panics = entry.release_id == RELEASE_A;
-                    Ok((
-                        0,
-                        RunningOp::new(abort, async move {
-                            if panics {
-                                panic!("the entry's work broke");
-                            }
-                            Ok(())
-                        }),
-                    ))
+                move |entry: ReleaseQueueEntry<()>, active| {
+                    let ending = Ending { queue: ending_queue.clone(), active };
+                    async move {
+                        let abort = tokio::spawn(async {}).abort_handle();
+                        let panics = entry.release_id == RELEASE_A;
+                        Ok((
+                            0,
+                            RunningOp::new(abort, async move {
+                                if panics {
+                                    panic!("the entry's work broke");
+                                }
+                                ending.finish().await
+                            }),
+                        ))
+                    }
                 },
                 move |release_id, result| {
                     recorded.push(release_id, result.map_err(|error: &WorkError| error.to_string()))
@@ -247,7 +280,7 @@ async fn a_cancel_before_the_start_aborts_the_work() {
     let work = Arc::new(Mutex::new(Some(work_tx)));
     let canceller = queue.clone();
     let spawned_work = work.clone();
-    let (task, done) = worker(&queue, move |entry| {
+    let (task, done) = worker(&queue, move |entry, _ending| {
         let canceller = canceller.clone();
         let spawned_work = spawned_work.clone();
         async move {
@@ -257,7 +290,12 @@ async fn a_cancel_before_the_start_aborts_the_work() {
             if let Some(work) = spawned_work.lock().unwrap().take() {
                 work.send(pending).expect("the test waits for the work");
             }
-            Ok((0, RunningOp::new(abort, async { Ok(()) })))
+            Ok((
+                0,
+                RunningOp::new(abort, async {
+                    Err(WorkError::Failed("aborted before it ran".to_string()))
+                }),
+            ))
         }
     });
 
@@ -280,8 +318,8 @@ async fn a_cancel_before_the_start_aborts_the_work() {
 async fn a_cancel_while_running_aborts_the_work_and_is_no_failure() {
     let (queue, _tmp) = queue().await;
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
-    let (task, done) = worker(&queue, |_entry| async {
-        Ok((7, spawned(tokio::spawn(std::future::pending::<()>()))))
+    let (task, done) = worker(&queue, |_entry, ending| async move {
+        Ok((7, ending.spawned(tokio::spawn(std::future::pending::<()>()))))
     });
     let mut transfers = queue.watch_transfers();
     transfers.until(|transfers| transfers.get(RELEASE_A) == Some(&7)).await.unwrap();
@@ -306,8 +344,8 @@ async fn a_cancel_while_running_aborts_the_work_and_is_no_failure() {
 async fn progress_is_the_running_entrys_alone() {
     let (queue, _tmp) = queue().await;
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
-    let (task, _done) = worker(&queue, |_entry| async {
-        Ok((0, spawned(tokio::spawn(std::future::pending::<()>()))))
+    let (task, _done) = worker(&queue, |_entry, ending| async move {
+        Ok((0, ending.spawned(tokio::spawn(std::future::pending::<()>()))))
     });
     let mut transfers = queue.watch_transfers();
     transfers.until(|transfers| transfers.contains_key(RELEASE_A)).await.unwrap();
@@ -328,7 +366,11 @@ async fn a_paused_queue_starts_nothing_until_it_resumes() {
     let (queue, _tmp) = queue().await;
     queue.set_paused(true).await.unwrap();
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
-    let (task, done) = worker(&queue, |_entry| async { Ok((0, spawned(tokio::spawn(async {})))) });
+    let (task, done) =
+        worker(
+            &queue,
+            |_entry, ending| async move { Ok((0, ending.spawned(tokio::spawn(async {})))) },
+        );
     // The worker read the paused queue as holding nothing to start and parked.
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, queue.parked(1))
         .await
@@ -350,7 +392,7 @@ async fn a_pause_while_running_stops_the_work_and_a_resume_runs_it_again() {
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
     let starts = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let counted = starts.clone();
-    let (task, done) = worker(&queue, move |_entry| {
+    let (task, done) = worker(&queue, move |_entry, ending| {
         // The first run never finishes by itself; the second does.
         let first = counted.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0;
         async move {
@@ -359,7 +401,7 @@ async fn a_pause_while_running_stops_the_work_and_a_resume_runs_it_again() {
             } else {
                 tokio::spawn(async {})
             };
-            Ok((7, spawned(work)))
+            Ok((7, ending.spawned(work)))
         }
     });
     let mut transfers = queue.watch_transfers();

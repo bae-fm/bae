@@ -39,6 +39,11 @@ pub enum DbError {
     /// A stored path whose bytes this platform never records.
     #[error("a stored path does not open on this device")]
     StoredPath(#[source] coven::PathBytesError),
+    /// A write that ends a queue's active entry found it gone: a cancel took
+    /// it out while the write's work ran, so the write fails and its work
+    /// rolls back with it.
+    #[error("the queue entry for release {release_id} was cancelled")]
+    EntryCancelled { release_id: String },
     /// A write failed and rolling it back failed too.
     #[error("{operation}; rollback failed: {rollback}")]
     Rollback {
@@ -125,6 +130,7 @@ impl bae_util::task_failure::ReportedBug for DbError {
             | Self::UnreadableJson { .. }
             | Self::Encode { .. }
             | Self::OutOfRange { .. }
+            | Self::EntryCancelled { .. }
             | Self::StoredPath(_) => None,
         }
     }
@@ -148,6 +154,7 @@ impl coven::task::CarriesBug for DbError {
             | Self::UnreadableJson { .. }
             | Self::Encode { .. }
             | Self::OutOfRange { .. }
+            | Self::EntryCancelled { .. }
             | Self::StoredPath(_) => None,
         }
     }

@@ -74,6 +74,7 @@ fn refusal_is_a_bug(error: &bae_store::DbError) -> bool {
         | E::UnreadableJson { .. }
         | E::Encode { .. }
         | E::OutOfRange { .. }
+        | E::EntryCancelled { .. }
         | E::StoredPath(_) => true,
     }
 }

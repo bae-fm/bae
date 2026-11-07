@@ -2074,11 +2074,11 @@ Pins download one release at a time from a queue that can be paused,
 cancelled and retried. Pausing stops the download that is running at once
 rather than after its file, and its release stays queued in its place; resuming
 starts it again from the beginning, since a stopped download does not yet
-continue from the bytes it fetched, and its files' pins are put back as they
-were, as a cancel's are. The queue takes no entry while the device has no
+continue from the bytes it fetched, and nothing of it was pinned, as with a
+cancel. The queue takes no entry while the device has no
 usable network, as coven's network watch says, and goes on when it returns; a
 platform that cannot tell holds nothing back. A pin that fails stays in the queue with its error,
-its files' pins put back as they were, and its row sorts first, reading Download failed; one that breaks on a bug fails the
+nothing of it pinned, and its row sorts first, reading Download failed; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. Retrying
 queues every failed pin again, each in its place, so a release's own
 control retries them all, as the queue's does. coven's record of the failed
@@ -2089,7 +2089,7 @@ becomes pinned only once every file lands. The
 queue is kept on the device across restarts, entries and pause: a release that
 wasn't fully pinned stays as it was, and the entry that was downloading
 downloads again from its start. coven downloads each file whole first and pins
-nothing until then; one write pins every file of the release once the last is whole
+nothing until then; one write pins every file of the release once the last is whole and takes it out of the queue
 ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)),
 so a failed or cancelled pin leaves no file of it pinned. How far the release
 downloading has got is not kept, nor how fast it goes. Its bytes are the sizes

@@ -260,7 +260,14 @@ fn a_release_s_storage_counts_its_pins_and_queued_files_on_each_device() {
             .await;
 
         let manager = devices.a().manager();
-        manager.pin_release_files_with_progress(&theirs.id, |_| {}).await.unwrap();
+        manager
+            .pin_release_files_with_progress(
+                &theirs.id,
+                started_pin_entry(manager, &theirs.id).await,
+                |_| {},
+            )
+            .await
+            .unwrap();
         assert_eq!(
             storage_row(&manager.store, &theirs.id).await,
             vec!["1 files, 11 bytes, stored 1, 1 pinned, 0 queued, first place as queued"]
@@ -322,7 +329,10 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     let pin = tokio::spawn({
         let manager = test.library.manager().clone();
         let release_id = release_id.clone();
-        async move { manager.pin_release_files_with_progress(&release_id, |_| {}).await }
+        async move {
+            let entry = started_pin_entry(&manager, &release_id).await;
+            manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await
+        }
     });
     let fetched = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
@@ -447,7 +457,11 @@ async fn a_pin_the_provider_refuses_is_a_storage_setup_failure() {
         })
         .await;
         let error = manager
-            .pin_release_files_with_progress(&release.id, |_| {})
+            .pin_release_files_with_progress(
+                &release.id,
+                started_pin_entry(manager, &release.id).await,
+                |_| {},
+            )
             .await
             .expect_err("the provider refuses the read");
 
@@ -481,7 +495,11 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
     home.set_online(false);
 
     let error = manager
-        .pin_release_files_with_progress(&release.id, |_| {})
+        .pin_release_files_with_progress(
+            &release.id,
+            started_pin_entry(manager, &release.id).await,
+            |_| {},
+        )
         .await
         .expect_err("the pin cannot fetch the file");
 

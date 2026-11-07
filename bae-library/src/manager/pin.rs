@@ -1,4 +1,5 @@
-//! Release pins restore their previous state if downloading fails or is cancelled.
+//! A release pin keeps nothing until every file is whole, then pins them all
+//! and ends its download queue entry in one write.
 use super::*;
 
 /// What a pin has heard of its release's files, from coven's download watch
@@ -73,8 +74,9 @@ impl LibraryManager {
     pub(crate) async fn pin_release_files_with_progress(
         &self,
         release: &str,
+        entry: bae_transfers::ActiveEntry<()>,
         mut on_progress: impl FnMut(bae_transfers::DownloadTransferProgress) + Send,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<bae_transfers::Finished, LibraryError> {
         let pinnable = self.release_pinnable_files(release).await?;
         let total = super::coven_files::total_bytes(release, &pinnable)?;
         let ids: Vec<String> = pinnable.iter().map(|entry| entry.row_id.clone()).collect();
@@ -86,92 +88,76 @@ impl LibraryManager {
             .zip(pinnable.iter().map(|entry| (entry.file.id(), entry.bytes)))
             .collect();
         let files = pinnable.into_iter().map(|entry| entry.file).collect::<Vec<_>>();
-        let previous = self
-            .store
-            .files_pinned(&files.iter().map(coven::FileRef::id).collect::<Vec<_>>())
-            .await?;
-        let changed = files
-            .iter()
-            .zip(previous)
-            .filter_map(|(file, pinned)| (pinned != Some(true)).then_some(file.id()))
-            .collect::<Vec<_>>();
         let cancel = crate::CancellationToken::new();
         let cancel_on_drop = cancel.clone().drop_guard();
         let manager = self.clone();
         let release = release.to_string();
         let (progress_tx, mut progress_rx) = tokio::sync::mpsc::unbounded_channel();
         let task = self.run_file_operation("pin release", move |closing| async move {
-            // Progress reads belong to the operation: if one fails, finish
-            // rolling back its pins before reporting the failure. A panic in
-            // the pin is caught here, reported, and rolled back the same way.
-            let result = caught("pin a release", async {
-                // Which of the release's files this device keeps, as each is
-                // kept. Its runs can lag the download watch: a file whose
-                // download finished counts whole from the watch's word, so
-                // the lag never sets the bytes back.
-                let kept = manager.records.subscribe_release_files_kept(&release);
-                #[cfg(test)]
-                let kept = {
-                    let hold = manager.pin_reads_hold.clone();
-                    kept.process(move |read| {
-                        hold.wait();
-                        Ok(read)
-                    })
+            // Which of the release's files this device keeps, as each is
+            // kept. Its runs can lag the download watch: a file whose
+            // download finished counts whole from the watch's word, so the
+            // lag never sets the bytes back.
+            let kept = manager.records.subscribe_release_files_kept(&release);
+            #[cfg(test)]
+            let kept = {
+                let hold = manager.pin_reads_hold.clone();
+                kept.process(move |read| {
+                    hold.wait();
+                    Ok(read)
+                })
+            };
+            let mut kept = kept;
+            let mut transfers = manager.store.subscribe_download_file_transfers();
+            let mut count = PinCount::default();
+            let prepare = manager.store.prepare_pin(&files);
+            tokio::pin!(prepare);
+            let mut rate: Option<bae_transfers::DownloadRate> = None;
+            // Tell `on_progress` what the pin holds now, once a read has said.
+            let mut report = |count: &PinCount| -> Result<(), LibraryError> {
+                let Some(bytes) = count.bytes(&sizes) else {
+                    return Ok(());
                 };
-                let mut kept = kept;
-                let mut transfers = manager.store.subscribe_download_file_transfers();
-                let mut count = PinCount::default();
-                let pin = manager.store.pin(&files);
-                tokio::pin!(pin);
-                let mut rate: Option<bae_transfers::DownloadRate> = None;
-                loop {
-                    // Whether the pin finished.
-                    let finished = tokio::select! {
-                        _ = cancel.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled".into())),
-                        _ = closing.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled because the library is closing".into())),
-                        result = &mut pin => {
-                            result.map_err(|error| LibraryError::file_read(format!("pin release {release}"), error))?;
-                            // The write keeps every file; read that now
-                            // rather than wait for the live query's next run.
-                            count.read(manager.records.release_files_kept(&release).await?);
-                            true
-                        }
-                        next = kept.next() => {
-                            count.read(next.expect("a query of kept files reports why it ended, which returns first")?);
-                            false
-                        }
-                        changes = transfers.next() => {
-                            count.heard(changes.ok_or_else(|| LibraryError::Storage(format!("pin release {release}: the store closed")))?);
-                            false
-                        }
-                    };
-                    let Some(bytes) = count.bytes(&sizes) else {
-                        continue;
-                    };
-                    let next = bae_transfers::DownloadTransferProgress::new(&release, bytes, total)?;
-                    let now = manager.clock.now();
-                    let next = rate
-                        .get_or_insert_with(|| bae_transfers::DownloadRate::begin(now, next.bytes_done))
-                        .measure(next, now);
-                    progress_tx.send(next).map_err(|error| LibraryError::Storage(format!("pinning release was cancelled: {error}")))?;
-                    if finished {
-                        return Ok(());
+                let next = bae_transfers::DownloadTransferProgress::new(&release, bytes, total)?;
+                let now = manager.clock.now();
+                let next = rate
+                    .get_or_insert_with(|| bae_transfers::DownloadRate::begin(now, next.bytes_done))
+                    .measure(next, now);
+                progress_tx.send(next).map_err(|error| LibraryError::Storage(format!("pinning release was cancelled: {error}")))
+            };
+            // Nothing is pinned until every file is whole.
+            let prepared = loop {
+                tokio::select! {
+                    _ = cancel.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled".into())),
+                    _ = closing.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled because the library is closing".into())),
+                    prepared = &mut prepare => {
+                        break prepared.map_err(|error| LibraryError::file_read(format!("pin release {release}"), error))?;
+                    }
+                    next = kept.next() => {
+                        count.read(next.expect("a query of kept files reports why it ended, which returns first")?);
+                    }
+                    changes = transfers.next() => {
+                        count.heard(changes.ok_or_else(|| LibraryError::Storage(format!("pin release {release}: the store closed")))?);
                     }
                 }
-            })
-            .await
-            .unwrap_or_else(|bug| Err(manager.panicked(bug).into()));
-            if let Err(operation) = result {
-                return match manager.store.unpin(&changed).await {
-                    Ok(()) => Err(operation),
-                    Err(error) => {
-                        let error = LibraryError::Cleanup { operation: Box::new(operation), cleanup: Box::new(error.into()) };
-                        tracing::error!(%error, "could not roll back release pins");
-                        Err(error)
-                    }
-                };
-            }
-            Ok(())
+                report(&count)?;
+            };
+            // One write pins every file and ends the release's queue entry,
+            // so no reader sees the release pinned with its entry still
+            // active, and a cancel that took the entry out meanwhile fails
+            // the write and pins nothing.
+            let finished = manager
+                .store
+                .call(move |sql| {
+                    sql.pin(prepared)?;
+                    entry.finish_on(sql)
+                })
+                .await?;
+            // The write keeps every file; read that now rather than wait for
+            // the live query's next run.
+            count.read(manager.records.release_files_kept(&release).await?);
+            report(&count)?;
+            Ok(finished)
         });
         tokio::pin!(task);
         let result = loop {

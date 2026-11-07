@@ -116,7 +116,7 @@ impl LibraryManager {
         self.outputs
             .run_serial(
                 "Export",
-                |op| {
+                |op, entry| {
                     running_is_save.store(
                         matches!(op.payload.kind, OutputKind::Save { .. }),
                         Ordering::Relaxed,
@@ -125,7 +125,9 @@ impl LibraryManager {
                     let worker = self.clone();
                     let manager = self.clone();
                     let task = self.runtime_handle.spawn(async move {
-                        worker.export_release_to_dir(&op.release_id, op.payload).await
+                        worker.export_release_to_dir(&op.release_id, op.payload).await?;
+                        // The files are in place: the export ends its entry.
+                        Ok(worker.store.call(move |sql| entry.finish_on(sql)).await?)
                     });
                     let abort = task.abort_handle();
                     async move {

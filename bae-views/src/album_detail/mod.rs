@@ -177,12 +177,6 @@ pub enum ReleaseDownloadStatus {
 /// The control's state for one release, or `None` when there is no control to
 /// show at all — no storage, or a release whose audio is already local.
 ///
-/// **A live queue entry outranks `pinned`.** On pin success the pin marker
-/// coven watches (which flips `pinned`) and the entry leaving the download
-/// queue arrive in either order, so honoring the queue entry keeps the control
-/// offering Cancel until the download has actually left the queue — instead of
-/// flickering to Downloaded and back.
-///
 /// **Available means exactly "core offers Pin".** Deriving it from `pinned` alone
 /// would re-answer a question [`available_storage_actions`] has already answered,
 /// and would disagree with it the moment its gate changes. `Unpin` is not

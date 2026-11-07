@@ -100,12 +100,16 @@ async fn a_failed_transfer_ships_storage_transfer_failed() {
     let (manager, diagnostics, transport, _home) = manager_with_recording_transport().await;
 
     // No such release, so `ReleaseTransfer::start` errors before any file work.
-    let running =
-        manager.start_pin_transfer("missing-release".to_string(), |mut progress| async move {
+    let entry = bae_transfers::tables::worker_moves::active_entry::<()>("missing-release");
+    let running = manager.start_pin_transfer(
+        "missing-release".to_string(),
+        entry,
+        |mut progress: TransferProgressFeed| async move {
             while progress.recv().await.is_some() {}
             Ok(())
-        });
-    running.finish().await.expect("transfer task completes");
+        },
+    );
+    running.finish().await.expect_err("a failed transfer finishes no queue entry");
 
     let events = shipped_events(&diagnostics, &transport).await;
     let failed = events

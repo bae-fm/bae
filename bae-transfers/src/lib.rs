@@ -24,7 +24,7 @@ pub use output_snapshot::{
     OutputProgress, OutputRequest, OutputRow, OutputSnapshot, OutputState,
 };
 pub use queued_releases::tables;
-pub use queued_releases::{QueuedPayload, QueuedReleases, RunningOp};
+pub use queued_releases::{ActiveEntry, Finished, QueuedPayload, QueuedReleases, RunningOp};
 #[cfg(desktop)]
 pub use release_queue::ReleaseQueueEntries;
 pub use release_queue::{
