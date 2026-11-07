@@ -303,7 +303,8 @@ async fn a_release_detail_says_where_its_download_stands() {
 /// the pinned cache, so it reads as (Remote, pinned). Its progress counts
 /// against the release's whole size, never goes back, and reaches that size
 /// before the pin completes. Which steps it reports before that depends on
-/// how coven's download races the pins query, so none is asserted.
+/// how coven's download watch races the query of kept files, so none is
+/// asserted.
 #[tokio::test]
 async fn test_pin_remote_fetches_into_pinned_cache() {
     bae_util::test_logs::install();

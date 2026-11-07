@@ -27,15 +27,6 @@ pub struct DbReleaseDetail {
     pub cover_version: Option<String>,
 }
 
-/// Where one release file stands for its pin: whether this device keeps it
-/// whole, and while this process downloads it to be kept, the file coven
-/// downloads.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct DbFilePin {
-    pub kept: bool,
-    pub downloading: Option<coven::FileId>,
-}
-
 /// A track as the release editor reads its audio: the track, how many audio
 /// formats it stores, and its formats' segments in segment order, each with
 /// the file it names.

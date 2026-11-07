@@ -758,7 +758,8 @@ pub struct LibraryManager {
     /// writes with no other of them on this device between the two.
     #[cfg(desktop)]
     release_writes: Arc<tokio::sync::Mutex<()>>,
-    /// Where a test holds each run of a pin's query of its release's pins.
+    /// Where a test holds each run of a pin's query of which of its
+    /// release's files are kept.
     #[cfg(test)]
     pin_reads_hold: Arc<pin::Hold>,
 }

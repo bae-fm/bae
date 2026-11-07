@@ -41,11 +41,11 @@ impl LibraryManager {
     /// storage after that.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn wait_for_kept_release_for_test(&self, release_id: &str) {
-        let mut pins = self.records.subscribe_release_file_pins(release_id);
+        let mut kept = self.records.subscribe_release_files_kept(release_id);
         tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             loop {
-                let pins = pins.next().await.expect("the query stays open").unwrap();
-                if pins.values().all(|pin| pin.kept) {
+                let kept = kept.next().await.expect("the query stays open").unwrap();
+                if kept.values().all(|kept| *kept) {
                     break;
                 }
             }

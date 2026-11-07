@@ -283,50 +283,44 @@ pub fn image_file_on<Q: coven::SqlRead>(
         .optional()?)
 }
 
-/// Where each of the release `?1`'s files stands for its pin: whether this
-/// device keeps it whole, as `coven_pins` says, and while this process
-/// downloads it to be kept, the file coven downloads, as `coven_downloading`
-/// lists it.
-const RELEASE_FILE_PINS: &str = "SELECT f.id, pin.file IS NOT NULL, downloading.file \
+/// Whether this device keeps each of the release `?1`'s files whole, as
+/// `coven_pins` says.
+const RELEASE_FILES_KEPT: &str = "SELECT f.id, pin.file IS NOT NULL \
      FROM release_files AS f \
      LEFT JOIN coven_pins AS pin ON pin.file = f.file \
-     LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
      WHERE f.release_id = ?1";
 
-/// [`RELEASE_FILE_PINS`] for `release_id`, by release file id.
-fn release_file_pins_on(
+/// [`RELEASE_FILES_KEPT`] for `release_id`, by release file id.
+fn release_files_kept_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
-) -> Result<std::collections::BTreeMap<String, DbFilePin>, DbError> {
+) -> Result<std::collections::BTreeMap<String, bool>, DbError> {
     Ok(sql
-        .query(RELEASE_FILE_PINS, [release_id], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                DbFilePin { kept: row.get(1)?, downloading: row.get(2)? },
-            ))
+        .query(RELEASE_FILES_KEPT, [release_id], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?))
         })?
         .into_iter()
         .collect())
 }
 
 impl Records {
-    /// Where each of the release's files stands for its pin now, by release
-    /// file id.
-    pub async fn release_file_pins(
+    /// Whether this device keeps each of the release's files whole now, by
+    /// release file id.
+    pub async fn release_files_kept(
         &self,
         release_id: &str,
-    ) -> Result<std::collections::BTreeMap<String, DbFilePin>, DbError> {
+    ) -> Result<std::collections::BTreeMap<String, bool>, DbError> {
         let release_id = release_id.to_string();
-        self.store.read(move |sql| release_file_pins_on(&sql, &release_id)).await
+        self.store.read(move |sql| release_files_kept_on(&sql, &release_id)).await
     }
 
-    /// Where each of the release's files stands for its pin, live: it reruns
-    /// as a file is kept and as a download to keep one starts or ends.
-    pub fn subscribe_release_file_pins(
+    /// Whether this device keeps each of the release's files whole, live: it
+    /// reruns as a file is pinned or unpinned.
+    pub fn subscribe_release_files_kept(
         &self,
         release_id: &str,
-    ) -> coven::LiveQuery<std::collections::BTreeMap<String, DbFilePin>, DbError> {
+    ) -> coven::LiveQuery<std::collections::BTreeMap<String, bool>, DbError> {
         let release_id = release_id.to_string();
-        self.store.subscribe(move |sql| release_file_pins_on(&sql, &release_id))
+        self.store.subscribe(move |sql| release_files_kept_on(&sql, &release_id))
     }
 }

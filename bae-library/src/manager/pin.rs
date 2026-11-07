@@ -2,32 +2,26 @@
 use super::*;
 
 /// What a pin has heard of its release's files, from coven's download watch
-/// and from its own reads of the release's pins, which together say how many
-/// of the release's bytes the pin holds.
+/// and from its reads of which files this device keeps, which together say
+/// how many of the release's bytes the pin holds.
 #[derive(Default)]
 struct PinCount {
     /// How far each file being downloaded has got, as the watch last told it.
     moved: std::collections::BTreeMap<coven::FileId, coven::TransferProgress>,
-    /// The release's files whose download for this pin has ended whole, as
-    /// the watch says a download finished or `read` infers from the pins.
-    /// coven commits the pin's files together once every download is, so
-    /// each waits whole for that write.
+    /// The release's files whose download for this pin finished, as the watch
+    /// told it: each is whole and waits for the write that keeps the pin's
+    /// files together once every download has finished.
     fetched: std::collections::BTreeSet<coven::FileId>,
-    /// Where each file stood at the last read of the pins; `None` until the
-    /// first.
-    read: Option<std::collections::BTreeMap<String, bae_records::DbFilePin>>,
+    /// Whether this device keeps each file whole, by release file id, as the
+    /// last read told it; `None` until the first.
+    kept: Option<std::collections::BTreeMap<String, bool>>,
 }
 
 impl PinCount {
-    /// Take what the watch told, and say whether a download ended or the
-    /// watch started over, after which the pins are read again. A share that
-    /// only started or moved needs no read: until the pins say the file
-    /// downloads it counts nothing, and after, its share only grows. Only a
-    /// download that finished brought its file whole; one that failed, was
-    /// held or was dropped brought none of it.
-    fn heard(&mut self, changes: Vec<coven::TransferChange>) -> bool {
-        let ended =
-            changes.iter().any(|change| !matches!(change, coven::TransferChange::Updated { .. }));
+    /// Take what the watch told. Only a download that finished brought its
+    /// file whole; one that failed, was held or was dropped brought none of
+    /// it.
+    fn heard(&mut self, changes: Vec<coven::TransferChange>) {
         self.fetched.extend(changes.iter().filter_map(|change| match change {
             coven::TransferChange::Removed { file, end: coven::TransferEnd::Finished } => {
                 Some(*file)
@@ -35,48 +29,39 @@ impl PinCount {
             _ => None,
         }));
         crate::file_transfers::apply(&mut self.moved, changes);
-        ended
     }
 
-    /// Take a read of the release's pins. The pins and the watch each say
-    /// when a download ends, in either order: a file the last read showed
-    /// downloading that this one shows neither downloading nor kept has
-    /// ended its download whole, whether or not the watch has said so yet.
-    fn read(&mut self, pins: std::collections::BTreeMap<String, bae_records::DbFilePin>) {
-        if let Some(last) = &self.read {
-            for (id, pin) in last {
-                let Some(file) = pin.downloading else { continue };
-                if pins.get(id).is_some_and(|now| !now.kept && now.downloading.is_none()) {
-                    self.fetched.insert(file);
-                }
-            }
-        }
-        self.read = Some(pins);
+    /// Take a read of which of the release's files this device keeps.
+    fn read(&mut self, kept: std::collections::BTreeMap<String, bool>) {
+        self.kept = Some(kept);
     }
 
     /// Of the files `sizes` names, by release file id with its coven file
-    /// and plaintext size, the bytes the pin holds: each file kept or
-    /// fetched whole, and of each file downloading to be kept, the share of
-    /// its size its object has moved. Counting each file's own share keeps
-    /// the bytes moving as a file arrives, where the cache's coverage holds
-    /// still until a file is kept. `None` before the pins were first read.
+    /// and plaintext size, the bytes the pin holds: each file kept or fetched
+    /// whole, and of each file the watch has in flight, the share of its size
+    /// its object has moved. The watch's files in flight are the ones
+    /// `coven_downloading` lists, and the watch says when each download ends
+    /// and how, so a file counts its share until then and its whole size
+    /// after only if it finished: the bytes never go back as a file lands,
+    /// and never count a file whose download failed. Counting each file's own
+    /// share keeps the bytes moving as a file arrives, where the cache's
+    /// coverage holds still until a file is kept. `None` before the first
+    /// read of which files are kept.
     fn bytes(
         &self,
         sizes: &std::collections::BTreeMap<String, (coven::FileId, u64)>,
     ) -> Option<u64> {
-        let pins = self.read.as_ref()?;
+        let kept = self.kept.as_ref()?;
         Some(
             sizes
                 .iter()
-                .map(|(id, (file, size))| match pins.get(id) {
-                    Some(pin) if pin.kept => *size,
-                    _ if self.fetched.contains(file) => *size,
-                    Some(bae_records::DbFilePin { downloading: Some(file), .. }) => {
-                        self.moved.get(file).map_or(0, |progress| {
-                            (*size as f64 * crate::file_transfers::fraction(*progress)) as u64
-                        })
+                .map(|(id, (file, size))| {
+                    if kept.get(id) == Some(&true) || self.fetched.contains(file) {
+                        return *size;
                     }
-                    _ => 0,
+                    self.moved.get(file).map_or(0, |progress| {
+                        (*size as f64 * crate::file_transfers::fraction(*progress)) as u64
+                    })
                 })
                 .try_fold(0u64, |total, bytes| total.checked_add(bytes))
                 .expect("a release's pinned bytes fit its total"),
@@ -120,49 +105,46 @@ impl LibraryManager {
             // rolling back its pins before reporting the failure. A panic in
             // the pin is caught here, reported, and rolled back the same way.
             let result = caught("pin a release", async {
-                // Says when the release's pins change. Its value can predate
-                // what the download watch has told since: joined with the
-                // watch, a file whose download just ended would count as
-                // neither kept nor downloading, and the bytes would fall
-                // back. So each count reads the pins itself, after the
-                // watch's state it joins.
-                let pins = manager.records.subscribe_release_file_pins(&release);
+                // Which of the release's files this device keeps, as each is
+                // kept. Its runs can lag the download watch: a file whose
+                // download finished counts whole from the watch's word, so
+                // the lag never sets the bytes back.
+                let kept = manager.records.subscribe_release_files_kept(&release);
                 #[cfg(test)]
-                let pins = {
+                let kept = {
                     let hold = manager.pin_reads_hold.clone();
-                    pins.process(move |read| {
+                    kept.process(move |read| {
                         hold.wait();
                         Ok(read)
                     })
                 };
-                let mut pins = pins;
+                let mut kept = kept;
                 let mut transfers = manager.store.subscribe_download_file_transfers();
                 let mut count = PinCount::default();
                 let pin = manager.store.pin(&files);
                 tokio::pin!(pin);
                 let mut rate: Option<bae_transfers::DownloadRate> = None;
                 loop {
-                    // Whether the pin finished, and whether the pins must be
-                    // read again before counting.
-                    let (finished, reread) = tokio::select! {
+                    // Whether the pin finished.
+                    let finished = tokio::select! {
                         _ = cancel.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled".into())),
                         _ = closing.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled because the library is closing".into())),
                         result = &mut pin => {
                             result.map_err(|error| LibraryError::file_read(format!("pin release {release}"), error))?;
-                            (true, true)
+                            // The write keeps every file; read that now
+                            // rather than wait for the live query's next run.
+                            count.read(manager.records.release_files_kept(&release).await?);
+                            true
                         }
-                        next = pins.next() => {
-                            next.expect("a pin query reports why it ended, which returns first")?;
-                            (false, true)
+                        next = kept.next() => {
+                            count.read(next.expect("a query of kept files reports why it ended, which returns first")?);
+                            false
                         }
                         changes = transfers.next() => {
-                            let changes = changes.ok_or_else(|| LibraryError::Storage(format!("pin release {release}: the store closed")))?;
-                            (false, count.heard(changes))
+                            count.heard(changes.ok_or_else(|| LibraryError::Storage(format!("pin release {release}: the store closed")))?);
+                            false
                         }
                     };
-                    if reread {
-                        count.read(manager.records.release_file_pins(&release).await?);
-                    }
                     let Some(bytes) = count.bytes(&sizes) else {
                         continue;
                     };
@@ -211,9 +193,9 @@ impl LibraryManager {
     }
 }
 
-/// Where a test holds each run of a pin's query of its release's pins, whose
-/// timing it doesn't otherwise control: while held, each run waits; dropping
-/// the returned guard lets them through.
+/// Where a test holds each run of a pin's query of which of its release's
+/// files are kept, whose timing it doesn't otherwise control: while held,
+/// each run waits; dropping the returned guard lets them through.
 #[cfg(test)]
 #[derive(Default)]
 pub(crate) struct Hold {
@@ -250,3 +232,7 @@ impl Drop for Held {
 #[cfg(test)]
 #[path = "pin_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "pin_progress_tests.rs"]
+mod progress_tests;
