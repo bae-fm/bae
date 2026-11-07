@@ -796,7 +796,13 @@ ImageHold = "RemoteImageHost"
 "bae-audio/src/test_reads.rs" = ["COUNTS"]
 "bae-audio/src/track_stream.rs" = ["StreamingState::new"]
 "bae-bridge/src/audio_focus.rs" = ["PlatformAudioFocus::new"]
-"bae-bridge/src/handle.rs" = ["AppHandle::start"]
+"bae-bridge/src/handle.rs" = [
+    "AppHandle::start",
+    # A released library closes on a thread of its own when the caller is on a runtime thread,
+    # which cannot drop the runtime. It asks whether it is on one, and hands the thread it
+    # starts to the host to wait on.
+    "Session::end_released",
+]
 "bae-bridge/src/host/steps.rs" = [
     "BridgeCatalogApply::new",
     "BridgeLibraryClosing::new",
