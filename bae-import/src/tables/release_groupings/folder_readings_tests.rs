@@ -134,3 +134,49 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
         ))
     );
 }
+
+/// A scan's reading of a folder the store reads as another grouping, as
+/// one stored after the reading was taken, is refused as that, and the
+/// stored grouping stays.
+#[tokio::test]
+async fn a_reading_under_another_grouping_is_refused() {
+    use crate::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
+
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let root = host_root("/mounted/library");
+    tables.add_watched_import_folder(&root).await.unwrap();
+    let key = FolderReleaseDecisionKey {
+        watched_folder_path: root.clone(),
+        relative_folder: crate::RelativeFolder::test("Box"),
+    };
+    let stored = crate::CandidateKey::grouping("stored");
+    let taken = crate::CandidateKey::grouping("taken");
+    tables
+        .record_scanned_folder_release_decision(
+            &key,
+            FolderReleaseDecision::KeepAsSeparateReleases,
+            &stored,
+        )
+        .await
+        .unwrap();
+
+    let refused = tables
+        .record_scanned_folder_release_decision(
+            &key,
+            FolderReleaseDecision::CombineAsOneRelease,
+            &taken,
+        )
+        .await;
+
+    assert!(
+        matches!(
+            &refused,
+            Err(crate::ImportError::FolderReading(
+                crate::tables::FolderReadingRefusal::GroupedElsewhere { stored: held, grouping, .. }
+            )) if *held == stored && *grouping == taken
+        ),
+        "{refused:?}"
+    );
+    assert_eq!(tables.folder_reading_grouping(&key).await.unwrap(), Some(stored));
+}

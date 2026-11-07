@@ -7,6 +7,35 @@ use super::*;
 use crate::folder_scanner::{FolderReleaseDecisionAuthor, FolderReleaseDecisions};
 use crate::tables::watched_folders::relative_below;
 
+/// Why storing a folder's reading was refused. Nothing of it was written.
+#[derive(Debug, thiserror::Error)]
+pub enum FolderReadingRefusal {
+    /// The folder is watched under another watched folder than the one the
+    /// reading was taken under: the watched folders changed meanwhile.
+    #[error(
+        "{} is watched under {}, not {}",
+        coven::path_text(folder),
+        coven::path_text(watched),
+        coven::path_text(named)
+    )]
+    WatchedElsewhere { folder: PathBuf, watched: PathBuf, named: PathBuf },
+    /// The folder is read as another grouping than the reading names: the
+    /// store changed after the reading was taken.
+    #[error(
+        "{folder} is read as grouping {stored}, not {grouping}: the store changed after the \
+         reading was taken"
+    )]
+    GroupedElsewhere { folder: String, stored: CandidateKey, grouping: CandidateKey },
+    /// A reading handed to store under one watched folder names a folder
+    /// of another.
+    #[error(
+        "folder release decision belongs to {} instead of {}",
+        coven::path_text(decision_root),
+        coven::path_text(root)
+    )]
+    OtherRoot { decision_root: PathBuf, root: PathBuf },
+}
+
 /// Store the grouping `grouping` anchored at the folder `key` names; a
 /// heuristic reading never replaces the person's. A folder's grouping keeps
 /// its key while stored, since its release is addressed by it, so a reading
@@ -18,13 +47,13 @@ pub(crate) fn store_folder_reading(
     author: crate::folder_scanner::FolderReleaseDecisionAuthor,
     grouping: &CandidateKey,
 ) -> Result<(), crate::ImportError> {
-    if key.relative_folder.is_root() {
-        return Err(DbError::Message(format!(
-            "{} is never a release, so it has no reading to store",
-            coven::path_text(&key.watched_folder_path)
-        ))
-        .into());
-    }
+    // The walk reads folders below a watched folder, never the watched
+    // folder itself.
+    assert!(
+        !key.relative_folder.is_root(),
+        "{} is never a release, so it has no reading to store",
+        coven::path_text(&key.watched_folder_path)
+    );
     let author = match author {
         crate::folder_scanner::FolderReleaseDecisionAuthor::User => "user",
         crate::folder_scanner::FolderReleaseDecisionAuthor::Heuristic => "heuristic",
@@ -35,12 +64,11 @@ pub(crate) fn store_folder_reading(
         crate::tables::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder);
     let covering = crate::tables::watched_folders::require_watched(sql, &anchor)?;
     if covering.as_os_str() != key.watched_folder_path.as_os_str() {
-        return Err(DbError::Message(format!(
-            "{} is watched under {}, not {}",
-            coven::path_text(&anchor),
-            coven::path_text(&covering),
-            coven::path_text(&key.watched_folder_path)
-        ))
+        return Err(FolderReadingRefusal::WatchedElsewhere {
+            folder: anchor,
+            watched: covering,
+            named: key.watched_folder_path.clone(),
+        }
         .into());
     }
     let anchor = coven::path_bytes(&anchor);
@@ -59,11 +87,11 @@ pub(crate) fn store_folder_reading(
         |row| row.get(0),
     )?;
     if &stored != grouping {
-        return Err(DbError::Message(format!(
-            "{} is read as grouping {stored}, not {grouping}: the store changed after the \
-             reading was taken",
-            key.relative_folder.text()
-        ))
+        return Err(FolderReadingRefusal::GroupedElsewhere {
+            folder: key.relative_folder.text().to_string(),
+            stored,
+            grouping: grouping.clone(),
+        }
         .into());
     }
     Ok(())
@@ -72,13 +100,12 @@ pub(crate) fn store_folder_reading(
 pub(crate) fn validate_decision_key_ownership(
     watched_folder_path: &Path,
     key: &FolderReleaseDecisionKey,
-) -> Result<(), DbError> {
+) -> Result<(), FolderReadingRefusal> {
     if key.watched_folder_path.as_os_str() != watched_folder_path.as_os_str() {
-        return Err(DbError::Message(format!(
-            "folder release decision belongs to {} instead of {}",
-            coven::path_text(&key.watched_folder_path),
-            coven::path_text(watched_folder_path)
-        )));
+        return Err(FolderReadingRefusal::OtherRoot {
+            decision_root: key.watched_folder_path.clone(),
+            root: watched_folder_path.to_path_buf(),
+        });
     }
     Ok(())
 }

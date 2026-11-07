@@ -42,8 +42,8 @@ pub use import_state::{
     DbCandidateIdentifyResult, DbCandidatePaneRows, DbImportCandidateState, ImportCommitError,
     NewImportCandidateVerdict, PreparationRefusal, VerdictPick,
 };
-pub use release_groupings::GroupingChanges;
 pub(crate) use release_groupings::GroupingFacts;
+pub use release_groupings::{FolderReadingRefusal, GroupingChanges};
 pub use watched_folders::watched_path;
 pub use watched_folders::{WatchedFolderRefusal, WatchedFoldersRemoved};
 

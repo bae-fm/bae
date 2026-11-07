@@ -28,6 +28,7 @@ pub(super) use folder_readings::{store_folder_reading, validate_decision_key_own
 use std::path::{Path, PathBuf};
 
 pub(super) mod folder_readings;
+pub use folder_readings::FolderReadingRefusal;
 
 /// A stored release, whether it may be worked on, and why not when it is a
 /// grouping's release that is blocked.
@@ -331,11 +332,16 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
          WHERE key = ?",
         params![reads_parent_files, key],
     )?;
+    // Its members are entries of the root's scan, which a root holds only
+    // once it was read.
     let generation = folder_scans::root_generation_on(sql, &root)?.ok_or_else(|| {
-        DbError::Message(format!(
-            "{} has not been read, so no release can be listed under it",
-            coven::path_text(&root)
-        ))
+        DbError::unreadable(
+            format!(
+                "folder_scan_roots.generation of {}, which holds scanned entries",
+                coven::path_text(&root)
+            ),
+            None::<i64>,
+        )
     })?;
     let written = folder_scans::write_entry(
         sql,
@@ -491,9 +497,11 @@ fn anchored_at(
     sql: &impl coven::SqlRead,
     anchor: &Path,
 ) -> Result<FolderReleaseDecisionKey, DbError> {
+    // A grouping anchored at a folder goes with the watched folder covering
+    // it.
     let root = super::watched_folders::watched_folder_among_on(sql, anchor.ancestors())?
         .ok_or_else(|| {
-            DbError::Message(format!("{} is under no watched folder", coven::path_text(anchor)))
+            DbError::unreadable("release_grouping.anchor_folder under no watched folder", anchor)
         })?;
     Ok(FolderReleaseDecisionKey {
         relative_folder: super::watched_folders::relative_below(&root, anchor)?,
