@@ -30,6 +30,15 @@ printf '%s\n' \
     > "$stub_bin/python3"
 chmod +x "$stub_bin/xcodegen" "$stub_bin/xcodebuild" "$stub_bin/python3"
 
+# --skip-rust needs the bridge's xcframework to exist; a stub stands in when
+# this checkout has not built one.
+real_xcframework="$repo_root/BaeKit/Frameworks/BaeBridgeFFI.xcframework"
+if [[ ! -f "$real_xcframework/Info.plist" ]]; then
+    mkdir -p "$real_xcframework"
+    touch "$real_xcframework/Info.plist"
+    trap 'rm -rf "$test_root" "$real_xcframework"' EXIT
+fi
+
 (
     cd "$repo_root"
     PATH="$stub_bin:$PATH" \
@@ -88,6 +97,7 @@ reject_setting "INFOPLIST_FILE"
 
 rust_fixture="$test_root/rust-owner-repo"
 rust_build_capture="$test_root/rust-builds"
+event_log="$test_root/events"
 binding_install_capture="$test_root/binding-installs"
 mkdir -p \
     "$rust_fixture/bae-macos/bae" \
@@ -96,7 +106,7 @@ mkdir -p \
     "$rust_fixture/bae-ffmpeg/dist"
 cp "$repo_root/bae-macos/run.sh" "$rust_fixture/bae-macos/run.sh"
 cp "$repo_root/bae-macos/prepare-build.sh" \
-    "$rust_fixture/bae-macos/prepare-build.sh"
+    "$repo_root/bae-macos/ensure-bridge.sh" "$rust_fixture/bae-macos/"
 cp "$repo_root/scripts/check-ffmpeg-dist.sh" "$repo_root/scripts/bae-ffmpeg-release" \
     "$repo_root/scripts/xcode-trees.sh" "$rust_fixture/scripts/"
 cp "$repo_root/scripts/bae-ffmpeg-release" "$rust_fixture/bae-ffmpeg/dist/VERSION"
@@ -104,11 +114,14 @@ cp "$repo_root/scripts/bae-ffmpeg-release" "$rust_fixture/bae-ffmpeg/dist/VERSIO
 printf '%s\n' \
     '#!/usr/bin/env bash' \
     'set -euo pipefail' \
+    "printf 'bridge\\n' >> '$event_log'" \
     'if [[ "${1:-}" == "--release" ]]; then' \
     "    printf 'release\\n' >> '$rust_build_capture'" \
     'else' \
     "    printf 'debug\\n' >> '$rust_build_capture'" \
     'fi' \
+    'mkdir -p BaeKit/Frameworks/BaeBridgeFFI.xcframework' \
+    'touch BaeKit/Frameworks/BaeBridgeFFI.xcframework/Info.plist' \
     > "$rust_fixture/bae-bridge/build-macos.sh"
 printf '%s\n' \
     '#!/usr/bin/env bash' \
@@ -121,12 +134,14 @@ chmod +x \
     "$rust_fixture/scripts/build-layout.sh" \
     "$rust_fixture/bae-macos/run.sh" \
     "$rust_fixture/bae-macos/prepare-build.sh" \
+    "$rust_fixture/bae-macos/ensure-bridge.sh" \
     "$rust_fixture/bae-bridge/build-macos.sh" \
     "$rust_fixture/bae-bridge/install-swift-bindings.sh"
 
 printf '%s\n' \
     '#!/usr/bin/env bash' \
     'set -euo pipefail' \
+    "printf 'xcodebuild\\n' >> '$event_log'" \
     'configuration=Debug' \
     'skip_rust=NO' \
     'while [[ $# -gt 0 ]]; do' \
@@ -144,6 +159,7 @@ chmod +x "$stub_bin/xcodebuild"
 run_rust_fixture() {
     : > "$rust_build_capture"
     : > "$binding_install_capture"
+    : > "$event_log"
     (
         cd "$rust_fixture"
         PATH="$stub_bin:$PATH" \
@@ -164,8 +180,52 @@ expect_rust_builds() {
     fi
 }
 
+# A warm checkout (the bridge's xcframework present) leaves the build to the
+# scheme pre-action.
+seed_xcframework() {
+    mkdir -p "$rust_fixture/BaeKit/Frameworks/BaeBridgeFFI.xcframework"
+    touch "$rust_fixture/BaeKit/Frameworks/BaeBridgeFFI.xcframework/Info.plist"
+}
+cold_xcframework() {
+    rm -rf "$rust_fixture/BaeKit/Frameworks"
+}
+
+# xcodebuild resolves packages before the pre-action can build the bridge, so
+# a cold checkout needs the bridge built first.
+expect_events() {
+    local expected="$1"
+    if [[ "$(< "$event_log")" != "$expected" ]]; then
+        echo "Unexpected build order: $(tr '\n' ' ' < "$event_log")" >&2
+        exit 1
+    fi
+}
+
+cold_xcframework
+run_rust_fixture
+expect_rust_builds $'debug\ndebug'
+expect_events $'bridge\nxcodebuild\nbridge'
+
+cold_xcframework
+run_rust_fixture --release
+expect_rust_builds $'release\nrelease'
+expect_events $'bridge\nxcodebuild\nbridge'
+
+cold_xcframework
+if skip_output="$(run_rust_fixture --skip-rust 2>&1)"; then
+    echo "run.sh --skip-rust succeeded with no xcframework" >&2
+    exit 1
+fi
+if ! grep -Fq "BaeBridgeFFI.xcframework" <<< "$skip_output"; then
+    echo "run.sh --skip-rust did not name the missing xcframework: $skip_output" >&2
+    exit 1
+fi
+expect_rust_builds ""
+expect_events ""
+
+seed_xcframework
 run_rust_fixture
 expect_rust_builds "debug"
+expect_events $'xcodebuild\nbridge'
 
 run_rust_fixture --skip-rust
 expect_rust_builds ""

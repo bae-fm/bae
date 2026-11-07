@@ -42,6 +42,8 @@ RESULTS="$(mktemp -d)"
 trap 'rm -rf "$RESULTS"' EXIT
 BUNDLE="$RESULTS/baeTests.xcresult"
 
+./bae-macos/ensure-bridge.sh Debug
+
 status=0
 xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \

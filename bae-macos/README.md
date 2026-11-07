@@ -26,7 +26,10 @@ pieces. The app depends on it as a local package (`packages.BaeKit:
 the shared layer and the re-exported bridge types. `build-macos.sh` produces the package's inputs: it installs the macOS
 uniffi bindings into `BaeKit/Sources/BaeBridge` and writes the macOS slice of
 the `BaeKit/Frameworks/BaeBridgeFFI.xcframework` binary target, keeping any
-iOS slices `build-ios.sh` wrote.
+iOS slices `build-ios.sh` wrote. `run.sh` and `test.sh` call
+`ensure-bridge.sh` before xcodebuild: xcodebuild resolves packages before the
+scheme pre-action can build the bridge, so on a checkout with no xcframework
+the bridge is built first (and `--skip-rust` fails there, naming the fix).
 
 ## Build
 

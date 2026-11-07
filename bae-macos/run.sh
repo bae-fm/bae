@@ -102,6 +102,8 @@ XCODEBUILD_ARGUMENTS=(
 if [[ "$SKIP_RUST" == true ]]; then
     XCODEBUILD_ARGUMENTS+=(BAE_SKIP_RUST_BRIDGE=YES)
 fi
+BAE_SKIP_RUST_BRIDGE="$([[ "$SKIP_RUST" == true ]] && echo YES || echo NO)" \
+    ./bae-macos/ensure-bridge.sh "$CONFIG"
 xcodebuild "${XCODEBUILD_ARGUMENTS[@]}" build
 
 # The app must load only what it bundles and what macOS provides. A Debug build
