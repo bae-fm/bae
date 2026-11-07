@@ -29,8 +29,8 @@ fn a_pin_holds_its_kept_and_fetched_files_and_each_downloads_share() {
     ]
     .into_iter()
     .collect();
-    let mut count = PinCount::default();
-    assert_eq!(count.bytes(&sizes), None, "nothing is counted before the kept files are read");
+    let mut count = PinCount::new(sizes.clone());
+    assert_eq!(count.bytes(), None, "nothing is counted before the kept files are read");
     count.read(kept(&[
         ("kept", true),
         ("fetched", false),
@@ -52,7 +52,7 @@ fn a_pin_holds_its_kept_and_fetched_files_and_each_downloads_share() {
         end: coven::TransferEnd::Finished,
     }]);
 
-    assert_eq!(count.bytes(&sizes), Some(1_000 + 2_000 + 100));
+    assert_eq!(count.bytes(), Some(1_000 + 2_000 + 100));
 }
 
 /// A file counts the share its download moved until the watch says how the
@@ -63,23 +63,71 @@ fn a_pin_holds_its_kept_and_fetched_files_and_each_downloads_share() {
 fn a_download_counts_its_share_until_the_watch_says_it_finished() {
     let sizes: BTreeMap<String, (coven::FileId, u64)> =
         [("a".to_string(), (file(1), 400))].into_iter().collect();
-    let mut count = PinCount::default();
+    let mut count = PinCount::new(sizes.clone());
     count.read(kept(&[("a", false)]));
     count.heard(vec![coven::TransferChange::Updated {
         file: file(1),
         progress: coven::TransferProgress { bytes_transferred: 330, bytes_total: 440 },
     }]);
-    assert_eq!(count.bytes(&sizes), Some(300));
+    assert_eq!(count.bytes(), Some(300));
 
     count.read(kept(&[("a", false)]));
-    assert_eq!(count.bytes(&sizes), Some(300), "a read that doesn't keep the file yet");
+    assert_eq!(count.bytes(), Some(300), "a read that doesn't keep the file yet");
     count.heard(vec![coven::TransferChange::Removed {
         file: file(1),
         end: coven::TransferEnd::Finished,
     }]);
-    assert_eq!(count.bytes(&sizes), Some(400), "the watch says the download finished");
+    assert_eq!(count.bytes(), Some(400), "the watch says the download finished");
     count.read(kept(&[("a", false)]));
-    assert_eq!(count.bytes(&sizes), Some(400), "a read before the pin's write");
+    assert_eq!(count.bytes(), Some(400), "a read before the pin's write");
+}
+
+/// The bytes a pin keeps by transfer wake always equal a count made from
+/// scratch over every file, through resets, updates, finishes, ends and
+/// reads of the kept files.
+#[test]
+fn the_running_total_equals_a_count_over_every_file() {
+    let sizes: BTreeMap<String, (coven::FileId, u64)> =
+        (1..=20u128).map(|n| (format!("f{n}"), (file(n), n as u64 * 1_000))).collect();
+    let from_scratch = |count: &PinCount| -> u64 {
+        let kept = count.kept.as_ref().unwrap();
+        sizes
+            .iter()
+            .map(|(id, (file, size))| {
+                if kept.get(id) == Some(&true) || count.fetched.contains(file) {
+                    *size
+                } else {
+                    count.moved.get(file).map_or(0, |progress| {
+                        (*size as f64 * crate::file_transfers::fraction(*progress)) as u64
+                    })
+                }
+            })
+            .sum()
+    };
+    let moved = |n: u128, done: u64| coven::TransferChange::Updated {
+        file: file(n),
+        progress: coven::TransferProgress { bytes_transferred: done, bytes_total: 100 },
+    };
+    let mut count = PinCount::new(sizes.clone());
+    count.heard(vec![moved(1, 50)]);
+    count.read(kept(&[("f2", true), ("f3", false)]));
+    assert_eq!(count.bytes(), Some(from_scratch(&count)));
+    let steps: Vec<Vec<coven::TransferChange>> = vec![
+        vec![moved(1, 70), moved(4, 10), moved(5, 99)],
+        vec![coven::TransferChange::Reset(
+            [(file(6), coven::TransferProgress { bytes_transferred: 1, bytes_total: 4 })].into(),
+        )],
+        vec![moved(7, 30), moved(7, 60)],
+        vec![coven::TransferChange::Removed { file: file(7), end: coven::TransferEnd::Finished }],
+        vec![coven::TransferChange::Removed { file: file(6), end: coven::TransferEnd::Failed }],
+        vec![moved(6, 100), moved(20, 5), moved(99, 40)],
+    ];
+    for step in steps {
+        count.heard(step);
+        assert_eq!(count.bytes(), Some(from_scratch(&count)));
+    }
+    count.read(kept(&[("f6", true), ("f7", false), ("f20", true)]));
+    assert_eq!(count.bytes(), Some(from_scratch(&count)));
 }
 
 /// A download that failed, was held or was dropped brought none of its file
@@ -89,16 +137,16 @@ fn a_download_that_ended_unfinished_counts_none_of_its_file() {
     let sizes: BTreeMap<String, (coven::FileId, u64)> =
         [("a".to_string(), (file(1), 400))].into_iter().collect();
     for end in [coven::TransferEnd::Failed, coven::TransferEnd::Held, coven::TransferEnd::Dropped] {
-        let mut count = PinCount::default();
+        let mut count = PinCount::new(sizes.clone());
         count.read(kept(&[("a", false)]));
         count.heard(vec![coven::TransferChange::Updated {
             file: file(1),
             progress: coven::TransferProgress { bytes_transferred: 220, bytes_total: 440 },
         }]);
-        assert_eq!(count.bytes(&sizes), Some(200));
+        assert_eq!(count.bytes(), Some(200));
 
         count.heard(vec![coven::TransferChange::Removed { file: file(1), end }]);
-        assert_eq!(count.bytes(&sizes), Some(0), "a download that ended {end:?}");
+        assert_eq!(count.bytes(), Some(0), "a download that ended {end:?}");
     }
 }
 

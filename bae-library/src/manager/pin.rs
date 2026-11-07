@@ -5,8 +5,12 @@ use super::*;
 /// What a pin has heard of its release's files, from coven's download watch
 /// and from its reads of which files this device keeps, which together say
 /// how many of the release's bytes the pin holds.
-#[derive(Default)]
 struct PinCount {
+    /// Each file's coven file and plaintext size, by release file id, which
+    /// its share of the download counts against.
+    sizes: std::collections::BTreeMap<String, (coven::FileId, u64)>,
+    /// The release file id of each coven file in `sizes`.
+    release_files: std::collections::HashMap<coven::FileId, String>,
     /// How far each file being downloaded has got, as the watch last told it.
     moved: std::collections::BTreeMap<coven::FileId, coven::TransferProgress>,
     /// The release's files whose download for this pin finished, as the watch
@@ -16,57 +20,103 @@ struct PinCount {
     /// Whether this device keeps each file whole, by release file id, as the
     /// last read told it; `None` until the first.
     kept: Option<std::collections::BTreeMap<String, bool>>,
+    /// The bytes each file counts now, by release file id, once `kept` is
+    /// read.
+    counted: std::collections::BTreeMap<String, u64>,
+    /// The sum of `counted`, kept as files change so a transfer wake counts
+    /// only the files it names.
+    held: u64,
 }
 
 impl PinCount {
+    /// A count of the files `sizes` names, by release file id with its coven
+    /// file and plaintext size, that has heard nothing.
+    fn new(sizes: std::collections::BTreeMap<String, (coven::FileId, u64)>) -> Self {
+        Self {
+            release_files: sizes.iter().map(|(id, (file, _))| (*file, id.clone())).collect(),
+            sizes,
+            moved: Default::default(),
+            fetched: Default::default(),
+            kept: None,
+            counted: Default::default(),
+            held: 0,
+        }
+    }
+
     /// Take what the watch told. Only a download that finished brought its
     /// file whole; one that failed, was held or was dropped brought none of
     /// it.
     fn heard(&mut self, changes: Vec<coven::TransferChange>) {
-        self.fetched.extend(changes.iter().filter_map(|change| match change {
-            coven::TransferChange::Removed { file, end: coven::TransferEnd::Finished } => {
-                Some(*file)
+        let mut touched = std::collections::BTreeSet::new();
+        let mut all = false;
+        for change in &changes {
+            match change {
+                coven::TransferChange::Reset(_) => all = true,
+                coven::TransferChange::Updated { file, .. } => {
+                    touched.insert(*file);
+                }
+                coven::TransferChange::Removed { file, end } => {
+                    touched.insert(*file);
+                    if *end == coven::TransferEnd::Finished {
+                        self.fetched.insert(*file);
+                    }
+                }
             }
-            _ => None,
-        }));
+        }
         crate::file_transfers::apply(&mut self.moved, changes);
+        if all {
+            self.recount_all();
+        } else {
+            for file in touched {
+                if let Some(id) = self.release_files.get(&file) {
+                    self.recount(&id.clone());
+                }
+            }
+        }
     }
 
     /// Take a read of which of the release's files this device keeps.
     fn read(&mut self, kept: std::collections::BTreeMap<String, bool>) {
         self.kept = Some(kept);
+        self.recount_all();
     }
 
-    /// Of the files `sizes` names, by release file id with its coven file
-    /// and plaintext size, the bytes the pin holds: each file kept or fetched
-    /// whole, and of each file the watch has in flight, the share of its size
-    /// its object has moved. The watch's files in flight are the ones
-    /// `coven_downloading` lists, and the watch says when each download ends
-    /// and how, so a file counts its share until then and its whole size
-    /// after only if it finished: the bytes never go back as a file lands,
-    /// and never count a file whose download failed. Counting each file's own
-    /// share keeps the bytes moving as a file arrives, where the cache's
-    /// coverage holds still until a file is kept. `None` before the first
-    /// read of which files are kept.
-    fn bytes(
-        &self,
-        sizes: &std::collections::BTreeMap<String, (coven::FileId, u64)>,
-    ) -> Option<u64> {
-        let kept = self.kept.as_ref()?;
-        Some(
-            sizes
-                .iter()
-                .map(|(id, (file, size))| {
-                    if kept.get(id) == Some(&true) || self.fetched.contains(file) {
-                        return *size;
-                    }
-                    self.moved.get(file).map_or(0, |progress| {
-                        (*size as f64 * crate::file_transfers::fraction(*progress)) as u64
-                    })
-                })
-                .try_fold(0u64, |total, bytes| total.checked_add(bytes))
-                .expect("a release's pinned bytes fit its total"),
-        )
+    fn recount_all(&mut self) {
+        let ids: Vec<String> = self.sizes.keys().cloned().collect();
+        for id in ids {
+            self.recount(&id);
+        }
+    }
+
+    /// Count the release file `id` again: it counts its whole size if kept or
+    /// fetched whole, else the share of its size its object has moved. The
+    /// watch says when each download ends and how, so a file counts its share
+    /// until then and its whole size after only if it finished: the bytes
+    /// never go back as a file lands, and never count a file whose download
+    /// failed. Counting each file's own share keeps the bytes moving as a
+    /// file arrives, where the cache's coverage holds still until a file is
+    /// kept. Nothing counts before the first read of which files are kept.
+    fn recount(&mut self, id: &str) {
+        let Some(kept) = &self.kept else {
+            return;
+        };
+        let (file, size) = self.sizes[id];
+        let now = if kept.get(id) == Some(&true) || self.fetched.contains(&file) {
+            size
+        } else {
+            self.moved.get(&file).map_or(0, |progress| {
+                (size as f64 * crate::file_transfers::fraction(*progress)) as u64
+            })
+        };
+        let before = self.counted.insert(id.to_string(), now).unwrap_or(0);
+        self.held =
+            (self.held - before).checked_add(now).expect("a release's pinned bytes fit its total");
+    }
+
+    /// The bytes the pin holds; `None` before the first read of which files
+    /// are kept.
+    fn bytes(&self) -> Option<u64> {
+        self.kept.as_ref().map(|_| self.held)
     }
 }
 
@@ -109,13 +159,13 @@ impl LibraryManager {
             };
             let mut kept = kept;
             let mut transfers = manager.store.subscribe_download_file_transfers();
-            let mut count = PinCount::default();
+            let mut count = PinCount::new(sizes);
             let prepare = manager.store.prepare_pin(&files);
             tokio::pin!(prepare);
             let mut rate: Option<bae_transfers::DownloadRate> = None;
             // Tell `on_progress` what the pin holds now, once a read has said.
             let mut report = |count: &PinCount| -> Result<(), LibraryError> {
-                let Some(bytes) = count.bytes(&sizes) else {
+                let Some(bytes) = count.bytes() else {
                     return Ok(());
                 };
                 let next = bae_transfers::DownloadTransferProgress::new(&release, bytes, total)?;
