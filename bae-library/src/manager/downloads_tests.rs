@@ -483,8 +483,8 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
 
 /// A release is pinning while the download queue holds it waiting or
 /// downloading, in the write that changes the queue: a failure, a cancel, a
-/// finish and the queue emptied as the library opens each return it to its
-/// resting place, and a retry or a refreshed listing row keep it pinning.
+/// finish each return it to its resting place, and a retry, a refreshed
+/// listing row or the library opening keep it pinning.
 #[tokio::test]
 async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     let (test, temp_dir) = setup_test_manager().await;
@@ -535,7 +535,7 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
 
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
     clear_transfers_as_opening(manager).await.unwrap();
-    assert_eq!(ascending().await, resting, "emptied as the library opens");
+    assert_eq!(ascending().await, second_pinning, "kept as the library opens");
 }
 
 /// The queues the Storage Manager's list value carries, as one read of it

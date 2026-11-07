@@ -2006,8 +2006,8 @@ fails ends in a write of its own. That write refuses a release not in the
 transition it ends, and then changes no file. A pin in flight is
 the download queue's active entry. The storage rows and the album and
 release detail read the transition in their own query. No transition
-outlives the process that ran it, so the rows are emptied as the library
-opens.
+outlives the process that ran it, so the `release_storage_action` rows are
+emptied as the library opens.
 
 Each row's storage state is the place it sorts by, which core reads with the
 row: Uploading, its chip filled as far as its bytes have come while any file
@@ -2071,9 +2071,9 @@ download is listed among the pending records (§6.4), whose *Retry* queues the
 release's pin again; nothing retries it on its own. A read that fails, as a
 track plays, leaves no record: its failure goes to whatever read it. A release
 becomes pinned only once every file lands. The
-queue is kept on the device and emptied as the library opens: after a restart
-it is empty, and paused if the person paused it, and a release that wasn't
-fully pinned stays as it was. coven downloads each file whole first and pins
+queue is kept on the device across restarts, entries and pause: a release that
+wasn't fully pinned stays as it was, and the entry that was downloading
+downloads again from its start. coven downloads each file whole first and pins
 nothing until then; one write pins every file of the release once the last is whole
 ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)),
 so a failed or cancelled pin leaves no file of it pinned. How far the release
@@ -4880,8 +4880,8 @@ write commits, so the release and the row naming it land in either order.
 | `release_storage_action` | release in a storage transition this process runs while its files rest where they are: a move to storage being admitted, an unpin, or making it local (§4.2) |
 | `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |
 
-No transfer outlives the process that ran it, so the library opens with every
-queue empty and running, and no release in a storage transition.
+The download queue keeps its entries and its pause across restarts; the export
+queue opens empty and running, and no release is in a storage transition.
 
 ### A.10 Settings
 

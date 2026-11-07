@@ -55,9 +55,10 @@ impl LibraryManager {
         // The store opens running one transfer per direction, the least any
         // preference allows, so nothing it starts before this exceeds them.
         store.set_transfer_limits(bae_preferences::preferences(&store).await?.transfer_limits());
-        // No transfer outlives the process that ran it, so the library opens
-        // with its transfer queues empty, before their workers start, and
-        // with no release in a storage transition.
+        // The download queue and its pause are kept: a release not fully
+        // pinned stays as it was and its entry runs again. The library opens
+        // with the export queue empty and running, before the workers start,
+        // and with no release in a storage transition.
         store.call(bae_transfers::tables::clear_transfers_on).await?;
         // Nor does an attempt to start sync: a failed start stands only in
         // the process that made it.

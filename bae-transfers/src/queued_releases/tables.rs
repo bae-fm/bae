@@ -380,7 +380,9 @@ pub(crate) fn release_queued_on<P: QueuedPayload>(
     )?)
 }
 
-/// The first queued entry, unless the queue is paused.
+/// The entry the worker takes next, unless the queue is paused: the active
+/// entry if there is one, else the first queued. An active entry is one the
+/// worker took and has not ended, so after a restart it is taken first.
 pub(crate) fn next_queued_release_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<Option<ReleaseQueueEntry<P>>, DbError> {
@@ -388,9 +390,9 @@ pub(crate) fn next_queued_release_on<P: QueuedPayload>(
         .query_row(
             &format!(
                 "SELECT {columns} FROM {table} \
-                 WHERE state = 'queued' \
+                 WHERE state IN ('active', 'queued') \
                    AND NOT (SELECT paused FROM release_queues WHERE queue = ?) \
-                 ORDER BY position LIMIT 1",
+                 ORDER BY state = 'active' DESC, position LIMIT 1",
                 columns = entry_columns::<P>(""),
                 table = P::TABLE,
             ),
@@ -400,8 +402,9 @@ pub(crate) fn next_queued_release_on<P: QueuedPayload>(
         .optional()?)
 }
 
-/// Start `release_id`'s entry; `false` when it is not queued, having
-/// been cancelled or never queued, or when the queue is paused, a pause having
+/// Start `release_id`'s entry, or start it again when the process that
+/// started it ended; `false` when the queue does not hold it, having been
+/// cancelled or never queued, or when the queue is paused, a pause having
 /// landed after the worker picked the entry.
 pub(crate) fn activate_queued_release_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
@@ -409,7 +412,7 @@ pub(crate) fn activate_queued_release_on<P: QueuedPayload>(
 ) -> Result<bool, DbError> {
     Ok(sql.execute(
         &format!(
-            "UPDATE {} SET state = 'active' WHERE release_id = ?1 AND state = 'queued' \
+            "UPDATE {} SET state = 'active' WHERE release_id = ?1 AND state IN ('queued', 'active') \
                AND NOT (SELECT paused FROM release_queues WHERE queue = ?2)",
             P::TABLE
         ),
@@ -515,12 +518,11 @@ pub(crate) fn end_download_entry_on(sql: &CovenWrite<'_>, release_id: &str) -> R
     Ok(())
 }
 
-/// Empty both queues, let the export and save queue run, and end every storage
-/// transition: what the library opens with, since no transfer outlives the
-/// process that ran it. The pin queue stays as the person paused it, as
-/// coven's upload pause does.
+/// Empty the export and save queue, let it run, and end every storage
+/// transition: what the library opens with, since those do not outlive the
+/// process that ran them. The download queue and its pause are kept, as
+/// coven's upload pause is: the entry that was downloading runs again.
 pub fn clear_transfers_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
-    sql.execute("DELETE FROM download_queue", [])?;
     sql.execute("DELETE FROM output_queue", [])?;
     sql.execute("DELETE FROM release_storage_action", [])?;
     sql.execute("UPDATE release_queues SET paused = 0 WHERE queue = 'output'", [])?;

@@ -3,10 +3,9 @@
 //! Pinning routes through a serial queue rather than an ephemeral
 //! per-release task: one release downloads at a time, the rest wait, and the
 //! user can pause/cancel/retry. The queue is the `download_queue` table, which
-//! the library empties as it opens: after a restart it is empty, and any
-//! release that wasn't fully pinned stays cloud-only, since a pin flips a
-//! release to pinned only once every file lands. A pause lasts across the
-//! restart.
+//! the library keeps as it opens, with its pause: a release that wasn't fully
+//! pinned stays as it was, since a pin flips a release to pinned only once
+//! every file lands, and its entry runs again.
 
 use super::*;
 

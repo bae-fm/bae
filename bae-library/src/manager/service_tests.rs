@@ -10,11 +10,10 @@ use bae_store::live_query::LiveQueryError;
 use coven::MemoryStorage;
 use tempfile::TempDir;
 
-/// No transfer outlives the process that ran it: a library opened over a
-/// store whose queues still hold entries opens with both empty, and the pin
-/// queue paused as the person left it.
+/// A library opened over a store whose download queue holds an entry opens
+/// with that entry and the pause the person left it with.
 #[tokio::test]
-async fn opening_a_library_empties_its_transfer_queues() {
+async fn opening_a_library_keeps_its_download_queue() {
     let temp_dir = TempDir::new().unwrap();
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
@@ -48,7 +47,8 @@ async fn opening_a_library_empties_its_transfer_queues() {
     .await;
 
     let queue = manager.manager().download_snapshot().await.unwrap();
-    assert!(queue.rows.is_empty(), "{queue:?}");
+    let kept: Vec<_> = queue.rows.iter().map(|row| row.op.release_id.as_str()).collect();
+    assert_eq!(kept, vec![REL_1], "{queue:?}");
     assert!(queue.paused);
 }
 

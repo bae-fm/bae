@@ -252,22 +252,40 @@ async fn an_output_keeps_its_target_and_preset() {
     assert!(downloads(&db).await.is_empty(), "an output is not a download");
 }
 
-/// The library opens with both queues empty, the export and save queue
-/// running, and the pin queue paused as the person left it: no transfer
-/// outlives the process that ran it, but a pause is the person's setting.
+/// The library opens with the download queue as the process left it, entries
+/// and pause, and the export and save queue empty and running: the download
+/// that was running starts again after a restart, an export does not.
 #[tokio::test]
-async fn opening_empties_the_queues_and_keeps_the_pin_pause() {
+async fn opening_keeps_the_download_queue_and_its_pause() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let export = ReleaseQueueEntry {
+        release_id: RELEASE_B.to_string(),
+        created_at: 8,
+        payload: OutputRequest { target_dir: "/Users/ana/Music".into(), kind: OutputKind::Export },
+    };
     enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
+    enqueue_releases(&db, vec![export]).await.unwrap();
+    assert!(activate_queued_release::<()>(&db, RELEASE_A).await.unwrap());
+
+    // A quit while the download ran.
+    clear_transfers(&db).await.unwrap();
+    assert_eq!(
+        downloads(&db).await,
+        vec![(RELEASE_A.to_string(), ReleaseQueueState::Active { progress: () })]
+    );
+    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), Some(download(RELEASE_A)));
+    assert!(release_queue::<OutputRequest>(&db).await.unwrap().rows.is_empty());
+
+    // A quit while both queues were paused.
     set_release_queue_paused::<()>(&db, true).await.unwrap();
     set_release_queue_paused::<OutputRequest>(&db, true).await.unwrap();
-
     clear_transfers(&db).await.unwrap();
-
-    let queue = release_queue::<()>(&db).await.unwrap();
-    assert!(queue.rows.is_empty());
-    assert!(queue.paused);
+    assert!(release_queue::<()>(&db).await.unwrap().paused);
+    assert_eq!(downloads(&db).await.len(), 1);
+    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), None, "paused");
     assert!(!release_queue::<OutputRequest>(&db).await.unwrap().paused);
+    set_release_queue_paused::<()>(&db, false).await.unwrap();
+    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), Some(download(RELEASE_A)));
 }
 
 /// Opening the library ends every storage transition: none outlives the

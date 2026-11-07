@@ -774,8 +774,8 @@ pub struct LibraryManager {
     /// The "Pin for offline" queue: its table, which the Downloads pane and
     /// the detail views read, and the bytes its active download has moved. A
     /// single serial worker drains it one release at a time. Shared across
-    /// manager clones; emptied as the library opens (a release that wasn't
-    /// fully pinned stays cloud-only).
+    /// manager clones; kept, with its pause, as the library opens (a release
+    /// that wasn't fully pinned stays as it was and its entry runs again).
     downloads: bae_transfers::Downloads,
     /// The "Export…" and save queue: its table, which the inspector reads, and
     /// the percent its active output has reached. A single serial worker

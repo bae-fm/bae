@@ -13,9 +13,8 @@ INSERT OR IGNORE INTO release_queue_versions (source, version) VALUES
 
 -- The queues this device works through one release at a time: downloads to
 -- keep releases offline, and exports and saves. Whether each is paused. Never
--- synced. No transfer outlives the process that ran it, so as the library
--- opens both queues empty and the export and save queue runs; the pin queue
--- stays paused if the person paused it.
+-- synced. The download queue and its pause are kept across restarts; the
+-- export and save queue opens empty and running.
 CREATE TABLE IF NOT EXISTS release_queues (
     queue  TEXT PRIMARY KEY CHECK (queue IN ('download', 'output')),
     paused INTEGER NOT NULL CHECK (paused IN (0, 1))
