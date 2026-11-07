@@ -4808,12 +4808,12 @@
    "name": "Settings/Library"
   },
   {
-   "id": "shared",
-   "name": "Shared"
-  },
-  {
    "id": "explore",
    "name": "Explorations"
+  },
+  {
+   "id": "shared",
+   "name": "Shared"
   }
  ],
  "title": "bae mocks"
