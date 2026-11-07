@@ -311,7 +311,7 @@ impl BridgeReleaseStorageAction {
             Self::Pin => "core.transfer.action.pin",
             Self::Unpin => "core.transfer.action.unpin",
             Self::Upload => "core.transfer.action.upload",
-            Self::DetachAudio => "core.transfer.action.detach_audio",
+            Self::DetachAudio => "core.transfer.action.make_local",
         }
     }
 }
