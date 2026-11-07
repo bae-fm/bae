@@ -223,11 +223,6 @@ impl LibraryManager {
         Ok(self.sync_status.acknowledge_undone_storage_setup(operation).await?)
     }
 
-    pub async fn unlock_store_key(&self) -> Result<(), LibraryError> {
-        self.store.unlock_store_key().await?;
-        Ok(())
-    }
-
     /// Start coven's sync loop with the store keys this session unlocked. Its
     /// first pass connects, and a pass that can't reach storage backs off and
     /// retries like any other; starting fails only when the session lacks a

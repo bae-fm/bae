@@ -543,7 +543,10 @@ where
             .block_on(library_manager.acknowledge_settled_storage_setups())
             .map_err(|error| BootstrapError::Database(error.to_string()))?;
         let connects = provider_configured || setup_finishing;
-        let key_state = library_manager.store_key_state().map_err(classify_key_state_error)?;
+        let key_state = store
+            .store_key_state()
+            .map_err(bae_library::LibraryError::from)
+            .map_err(classify_key_state_error)?;
         let locked = connects && key_state == coven::StoreKeyState::Locked;
         let advance_active_pointer = !locked;
         if locked {

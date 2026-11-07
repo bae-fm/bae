@@ -392,7 +392,9 @@ impl AppServices {
     delegate_async!(manager, set_subsonic_config => set_subsonic_config(config: bae_preferences::SubsonicConfig) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_cast_enabled => set_cast_enabled(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_cast_transcode_format => set_cast_transcode_format(format: bae_preferences::CastTranscodeFormat) -> Result<(), bae_preferences::PreferencesError>);
-    delegate_sync!(manager, store_key_state => store_key_state() -> Result<coven::StoreKeyState, bae_library::LibraryError>);
+    pub fn store_key_state(&self) -> Result<coven::StoreKeyState, bae_library::LibraryError> {
+        Ok(self.inner.store.store_key_state()?)
+    }
     delegate_async!(manager, set_max_concurrent_uploads => set_max_concurrent_uploads(n: u32) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_max_concurrent_downloads => set_max_concurrent_downloads(n: u32) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_side_pause_countdown => set_side_pause_countdown(countdown: bae_preferences::SidePauseCountdown) -> Result<(), bae_preferences::PreferencesError>);
@@ -454,8 +456,11 @@ impl AppServices {
     delegate_async!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, rename_library => rename_library(name: &bae_store::EnteredName) -> Result<(), bae_library::LibraryError>);
-    delegate_async!(manager, forget_encryption_key => forget_encryption_key() -> Result<(), bae_library::LibraryError>);
-    delegate_async!(manager, unlock_store_key => unlock_store_key() -> Result<(), bae_library::LibraryError>);
+    delegate_store!(forget_encryption_key => forget_store_keys() -> ());
+    pub async fn unlock_store_key(&self) -> Result<(), bae_library::LibraryError> {
+        self.inner.store.unlock_store_key().await?;
+        Ok(())
+    }
     delegate_sync!(store, trigger_sync => sync_now() -> ());
     delegate_store!(release_memory => release_memory() -> ());
     delegate_async!(manager, retry_now => retry_now() -> Result<impl std::future::Future<Output = bae_sync_status::SyncRetryOutcome> + Send + 'static, bae_library::LibraryError>);

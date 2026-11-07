@@ -49,15 +49,6 @@ impl LibraryManager {
         )
         .await
     }
-
-    pub async fn forget_encryption_key(&self) -> Result<(), LibraryError> {
-        self.store.forget_store_keys().await?;
-        Ok(())
-    }
-
-    pub fn store_key_state(&self) -> Result<coven::StoreKeyState, LibraryError> {
-        Ok(self.store.store_key_state()?)
-    }
 }
 
 #[cfg(test)]

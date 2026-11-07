@@ -347,7 +347,7 @@ async fn only_a_failed_start_with_storage_set_up_offers_reconnect() {
     let (test, temp) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    manager.forget_encryption_key().await.unwrap();
+    manager.store.forget_store_keys().await.unwrap();
     manager.start().unwrap();
     manager.attach_and_start_sync_at_startup().await;
     let status = manager.sync_status().await.unwrap();
@@ -420,14 +420,14 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
 #[tokio::test]
 async fn a_start_whose_pass_ends_as_the_last_did_ends_the_failed_start() {
     let (manager, _temp, _clock) = library_on_a_stopped_clock().await;
-    manager.library.manager().forget_encryption_key().await.unwrap();
+    manager.library.manager().store.forget_store_keys().await.unwrap();
     manager.library.manager().attach_and_start_sync_at_startup().await;
     assert!(
         manager.library.manager().sync_status().await.unwrap().error.is_some(),
         "the start without the store keys failed"
     );
 
-    manager.library.manager().unlock_store_key().await.unwrap();
+    manager.library.manager().store.unlock_store_key().await.unwrap();
     manager.library.manager().attach_and_start_sync().await.unwrap();
     let status = manager.library.manager().sync_status().await.unwrap();
     assert!(status.error.is_none(), "a start under way shows the failed one: {status:?}");
