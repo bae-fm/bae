@@ -227,6 +227,8 @@ non_owner_types = [
     # What the Subsonic router's handlers share, copied into each request: the
     # server's services, credential and diagnostics.
     "AppState",
+    # The state a session's lock guards: open, removed or ended.
+    "SessionState",
 ]
 
 # Values an owner makes for its caller's one operation, view or read and
@@ -428,6 +430,21 @@ task_types = [
     "Ap2Session",
     "PcmFeed",
     "RendererMediaSource",
+    # What one call shows the app of its progress: the stream it reports in, its
+    # values and writer, the state it says, and the call objects the app makes for
+    # each setup, open, close or apply, plus a task the runtime aborts when it is
+    # dropped.
+    "ProgressStream",
+    "StreamValues",
+    "StreamWriter",
+    "SetupStateWatch",
+    "SetupStateWriter",
+    "SetupStates",
+    "BridgeLibrarySetup",
+    "BridgeLibraryOpening",
+    "BridgeLibraryClosing",
+    "BridgeCatalogApply",
+    "AbortOnDrop",
 ]
 
 # Handles (Appendix F.3): what an owner makes from its own state to hand out.
@@ -510,6 +527,9 @@ ImageHold = "RemoteImageHost"
 ]
 # A test's library with the app's services started over it.
 "bae-app/src/test_services.rs" = ["runtime_with_services"]
+# The platform hands its artwork analyzer in once at launch; the adapter is
+# built where it arrives.
+"bae-bridge/src/handle/desktop.rs" = ["AppHandle::register_artwork_analyzer"]
 "bae-bridge/src/host.rs" = [
     "BridgeHost::open_prepared",
     "BridgeHost::create_library",
@@ -518,6 +538,8 @@ ImageHold = "RemoteImageHost"
     "BridgeHost::new",
     "BridgeHost::start",
     "BridgeHost::with_test_keyring",
+    "BridgeHost::set_oauth_presenter",
+    "start_handle",
 ]
 # Restoring, joining and resetting a device open the library they leave.
 "bae-bridge/src/host/bootstrap.rs" = [
@@ -532,11 +554,25 @@ ImageHold = "RemoteImageHost"
     "BootstrapCancellation::new",
     "BridgeJoinControl::new",
 ]
+# An owner's constructor builds the owner and the parts it holds that nothing
+# else shares.
+"bae-bridge/src/host/closing_libraries.rs" = ["ClosingLibraries::new"]
+# A dev reset creates the library and opens it.
+"bae-bridge/src/host/dev_reset.rs" = ["BridgeHost::run_dev_reset"]
 # The sink the app built at launch, taken back as core's by the host the app
 # builds on it.
-"bae-bridge/src/init.rs" = ["BridgeDiagnostics::core"]
+"bae-bridge/src/init.rs" = [
+    "BridgeDiagnostics::core",
+    "configure_diagnostics",
+]
 # A library just set up opens.
 "bae-bridge/src/setup.rs" = ["OpenedLibrary::open", "OpenedLibrary::new"]
+# A bootstrap's outcome carries the library it opened.
+"bae-bridge/src/types/bootstrap.rs" = [
+    "BridgeBootstrapResult::opened",
+    "BridgeBootstrapResult::joined",
+    "BridgeBootstrapResult::failure",
+]
 # x
 "bae-cast/src/renderer/protocol_discovery.rs" = ["ProtocolDiscovery::new"]
 # A test's catalog fakes: the providers its library asks are built over
