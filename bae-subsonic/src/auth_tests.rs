@@ -4,11 +4,11 @@ fn params(pairs: &[(&str, &str)]) -> Params {
     Params(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect())
 }
 
-fn token(password: &str, salt: &str) -> String {
-    let mut hasher = Md5::new();
-    hasher.update(password.as_bytes());
-    hasher.update(salt.as_bytes());
-    hex::encode(hasher.finalize())
+/// The one fixed oracle for the token every other test builds requests with:
+/// md5("hunter2" + "abcdef") in lowercase hex.
+#[test]
+fn token_is_the_md5_of_password_then_salt() {
+    assert_eq!(token("hunter2", "abcdef"), "53b35391fb917b85a4bda14204fedf4f");
 }
 
 fn credential() -> SubsonicCredential {

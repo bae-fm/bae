@@ -17,7 +17,7 @@ use bae_import::release_candidate::CandidateSource;
 use bae_import::{ImportCommand, ImportDestination, ReleaseFileScope};
 use bae_preferences::SubsonicCredential;
 use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack};
-use md5::{Digest, Md5};
+use bae_subsonic::token;
 use serde_json::Value;
 use tempfile::TempDir;
 use tower::ServiceExt;
@@ -28,13 +28,6 @@ const SALT: &str = "abcdef";
 
 fn credential() -> SubsonicCredential {
     SubsonicCredential { username: USER.to_string(), password: PASS.to_string() }
-}
-
-fn token(password: &str, salt: &str) -> String {
-    let mut hasher = Md5::new();
-    hasher.update(password.as_bytes());
-    hasher.update(salt.as_bytes());
-    hex::encode(hasher.finalize())
 }
 
 /// A valid auth query string, plus any extra parameters appended.
