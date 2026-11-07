@@ -426,7 +426,9 @@ impl LibraryError {
             LibraryError::PrimaryRelease(error) => primary_release_category(error),
             LibraryError::CreditName(error) => credit_name_category(error),
             LibraryError::Deletion(error) => write_error_category(error, deletion_refusal_category),
-            LibraryError::ImageWrite(error) => image_write_category(error),
+            LibraryError::ImageWrite(error) => {
+                write_error_category(error, image_write_refusal_category)
+            }
             LibraryError::Identity(bae_records::IdentityRefusal::ArtistGone(_)) => {
                 C::ChangedMeanwhile
             }
@@ -462,17 +464,16 @@ impl From<bae_import::CatalogSessionError> for LibraryError {
     }
 }
 
-/// The class a surface words an image replacement's failure in: when another
+/// The class a surface words an image replacement's refusal in: when another
 /// write of the image beat it, the image changed meanwhile, and the
 /// replacement is the person's to make again, over the image that landed.
-fn image_write_category(error: &bae_records::ImageWriteError) -> bae_diagnostics::UiErrorCategory {
-    use bae_records::ImageWriteError as E;
-    match error {
-        E::Database(error) => bae_diagnostics::database_category(error),
-        E::Rollback { operation: failed, .. } | E::FileCleanup { write: failed, .. } => {
-            image_write_category(failed)
+fn image_write_refusal_category(
+    refusal: &bae_records::ImageWriteRefusal,
+) -> bae_diagnostics::UiErrorCategory {
+    match refusal {
+        bae_records::ImageWriteRefusal::Superseded { .. } => {
+            bae_diagnostics::UiErrorCategory::ChangedMeanwhile
         }
-        E::Superseded { .. } => bae_diagnostics::UiErrorCategory::ChangedMeanwhile,
     }
 }
 
@@ -480,7 +481,7 @@ fn image_write_category(error: &bae_records::ImageWriteError) -> bae_diagnostics
 impl From<bae_records::ImageWriteError> for LibraryError {
     fn from(error: bae_records::ImageWriteError) -> Self {
         match error {
-            bae_records::ImageWriteError::Database(error) => Self::Database(error),
+            bae_store::WriteError::Database(error) => Self::Database(error),
             error => Self::ImageWrite(error),
         }
     }

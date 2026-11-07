@@ -254,7 +254,7 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
         .expect_err("a replacement planned against a superseded cover is refused");
 
     assert!(
-        matches!(&error, bae_records::ImageWriteError::Superseded { subject_id, .. } if *subject_id == release.id),
+        matches!(&error, bae_store::WriteError::Refused(bae_records::ImageWriteRefusal::Superseded { subject_id, .. }) if *subject_id == release.id),
         "{error:?}"
     );
     assert_eq!(

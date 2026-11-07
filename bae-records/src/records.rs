@@ -43,7 +43,7 @@ pub use label_resolution::{LabelParts, LabelWrite};
 #[cfg(desktop)]
 use artist_resolution::relink;
 pub mod files;
-pub use files::ImageWriteError;
+pub use files::{ImageWriteError, ImageWriteRefusal};
 pub(crate) mod identity_merges;
 pub mod queued_uploads;
 pub mod release_records;

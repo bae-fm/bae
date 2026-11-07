@@ -1,89 +1,17 @@
 use super::*;
 use bae_store::file_version_sql;
 
-/// Why an image's replacement did not commit. Nothing of it landed.
+/// Why an image's replacement was refused. Nothing of it landed.
 #[derive(Debug, thiserror::Error)]
-pub enum ImageWriteError {
+pub enum ImageWriteRefusal {
     /// Another write of the image landed after the replacement was planned:
     /// its row names another file than the planner saw.
     #[error("the {image_type:?} image of {subject_id} changed after planning")]
     Superseded { image_type: LibraryImageType, subject_id: String },
-    #[error(transparent)]
-    Database(#[from] DbError),
-    /// The replacement was refused, and rolling it back failed too.
-    #[error("{operation}; rollback failed: {rollback}")]
-    Rollback {
-        operation: Box<ImageWriteError>,
-        #[source]
-        rollback: rusqlite::Error,
-    },
-    /// The replacement was refused, and removing the bytes it staged failed
-    /// too, each failure kept.
-    #[error("file cleanup failed: {failures:?}; write: {write}")]
-    FileCleanup { write: Box<ImageWriteError>, failures: Vec<coven::DbError> },
 }
 
-impl From<rusqlite::Error> for ImageWriteError {
-    fn from(error: rusqlite::Error) -> Self {
-        Self::Database(error.into())
-    }
-}
-
-impl From<coven::DbError> for ImageWriteError {
-    fn from(error: coven::DbError) -> Self {
-        Self::Database(error.into())
-    }
-}
-
-impl coven::task::CarriesBug for ImageWriteError {
-    fn bug(&self) -> Option<&coven::task::Bug> {
-        use coven::task::CarriesBug;
-        match self {
-            Self::Database(error) => error.bug(),
-            Self::Rollback { operation, .. } => operation.bug(),
-            Self::FileCleanup { write, failures } => {
-                write.bug().or_else(|| failures.iter().find_map(CarriesBug::bug))
-            }
-            Self::Superseded { .. } => None,
-        }
-    }
-}
-
-/// A bug a coven call carried back, which the store reported as it returned.
-impl bae_util::task_failure::ReportedBug for ImageWriteError {
-    fn reported_bug(&self) -> Option<&coven::task::Bug> {
-        match self {
-            Self::Database(error) => error.reported_bug(),
-            Self::Rollback { operation, .. } => operation.reported_bug(),
-            Self::FileCleanup { write, failures } => write.reported_bug().or_else(|| {
-                failures.iter().find_map(bae_util::task_failure::ReportedBug::reported_bug)
-            }),
-            Self::Superseded { .. } => None,
-        }
-    }
-}
-
-/// A failed rollback or byte removal is kept beside the failure it followed:
-/// a store failure keeps it in its own, a refusal stays the refusal it is.
-impl coven::WriteFailure for ImageWriteError {
-    fn with_rollback(self, rollback: rusqlite::Error) -> Self {
-        match self {
-            Self::Database(error) => {
-                Self::Database(coven::WriteFailure::with_rollback(error, rollback))
-            }
-            operation => Self::Rollback { operation: Box::new(operation), rollback },
-        }
-    }
-
-    fn with_cleanup(write: Self, failures: Vec<coven::DbError>) -> Self {
-        match write {
-            Self::Database(error) => {
-                Self::Database(coven::WriteFailure::with_cleanup(error, failures))
-            }
-            write => Self::FileCleanup { write: Box::new(write), failures },
-        }
-    }
-}
+/// Why an image's replacement did not commit.
+pub type ImageWriteError = WriteError<ImageWriteRefusal>;
 
 impl Records {
     /// Replace an image's bytes and row atomically: the write stages the bytes
@@ -135,10 +63,10 @@ impl Records {
                     // since planning: the row names another file than it did.
                     let current = image_file_on(&sql, &image.image_type, &image.id)?;
                     if current != planned {
-                        return Err(ImageWriteError::Superseded {
+                        return Err(WriteError::Refused(ImageWriteRefusal::Superseded {
                             image_type: image.image_type.clone(),
                             subject_id: image.id.clone(),
-                        });
+                        }));
                     }
                     upsert_library_image_row(&sql, &image, &file)?;
                     Ok(())
