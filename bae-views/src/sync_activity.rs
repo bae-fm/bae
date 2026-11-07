@@ -150,10 +150,14 @@ fn sync_activity(state: coven::SyncStatus, rows: SyncActivityRows) -> SyncActivi
     SyncActivity::new(&SyncStatusSnapshot::read(state, status), &uploads, &downloads)
 }
 
-/// The upload queue's counts: every queued file, those being sent, and
-/// whether uploads are paused, each read by index or in one row.
+/// The SQL creating the count of queued files and the triggers that keep it.
+pub(super) const SQL: &str = include_str!("sync_activity.sql");
+
+/// The upload queue's counts: every queued file, as `upload_queue_count`
+/// keeps it, those being sent, and whether uploads are paused, each read in
+/// one row.
 const UPLOAD_QUEUE_COUNTS: &str = "SELECT \
-     (SELECT COUNT(*) FROM coven_upload_queue), \
+     (SELECT queued FROM upload_queue_count), \
      (SELECT COUNT(*) FROM coven_sending), \
      (SELECT paused FROM coven_upload_pause)";
 

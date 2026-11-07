@@ -236,3 +236,46 @@ fn the_list_offers_retry_only_when_a_retry_runs_a_pass_that_can_clear_a_failure(
     assert!(!failed(coven::RetryEffect::Failed));
     assert!(!activity(&status()).retry_offered);
 }
+
+/// What the activity reads as queued, and what counting the queue gives.
+async fn queued_counts(store: &bae_store::Store) -> (u32, u32) {
+    store
+        .read(|sql| {
+            Ok::<_, bae_store::DbError>((
+                upload_queue_counts_on(&sql)?.queued,
+                sql.query_row("SELECT COUNT(*) FROM coven_upload_queue", [], |row| row.get(0))?,
+            ))
+        })
+        .await
+        .unwrap()
+}
+
+/// An artist image, which stages one file for the cloud.
+async fn write_image(records: &bae_records::Records, artist: &str) {
+    let image = bae_records::DbLibraryImage {
+        id: artist.to_string(),
+        image_type: bae_records::LibraryImageType::Artist,
+        content_type: bae_util::content_type::ContentType::Jpeg,
+    };
+    records.write_library_image(&image, artist.as_bytes()).await.unwrap();
+}
+
+/// The queued count follows files joining the queue and leaving it, and is
+/// what counting the queue gives: two files queue, and replacing one image
+/// queues its new file and drops the old.
+#[tokio::test]
+async fn the_queued_count_follows_the_queue() {
+    let (store, _tmp) = bae_store::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
+    let records = bae_records::test_fixtures::test_records(&store);
+    let artists = bae_records::test_fixtures::library::RecordsFixture::new()
+        .artist("a", "A")
+        .artist("b", "B");
+    artists.write(&records).await;
+    assert_eq!(queued_counts(&store).await, (0, 0));
+    write_image(&records, "a").await;
+    assert_eq!(queued_counts(&store).await, (1, 1));
+    write_image(&records, "b").await;
+    assert_eq!(queued_counts(&store).await, (2, 2));
+    write_image(&records, "a").await;
+    assert_eq!(queued_counts(&store).await, (2, 2));
+}

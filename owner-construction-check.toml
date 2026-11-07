@@ -1350,6 +1350,7 @@ name = "library views"
 owner = "LibraryViews"
 homes = ["bae-views/src/"]
 tables = [
+    "upload_queue_count",
     "composer_work",
     "composer_release",
     "composer_unlinked_credit",

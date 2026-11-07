@@ -102,6 +102,7 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[bae_store::SchemaPart::new(
     composer::SQL,
     composer_detail::SQL,
     storage::SQL,
+    sync_activity::SQL,
     search::SQL,
     versions::SQL,
 ])
