@@ -15,6 +15,9 @@ fi
 # relative bae-ffmpeg/dist. Dropping them here changes ffmpeg-sys' build
 # fingerprint between the workflow's direct bridge build and this pre-action,
 # forcing a rebuild in an environment that can no longer find the headers.
+#
+# TERM survives too: run.sh runs this in a terminal on a cold checkout, and
+# cargo with no TERM still draws its progress bar but never erases it.
 if [ "${BAE_MACOS_PREPARE_CLEAN_ENV:-0}" != 1 ]; then
   set -- \
     HOME="$HOME" \
@@ -26,7 +29,7 @@ if [ "${BAE_MACOS_PREPARE_CLEAN_ENV:-0}" != 1 ]; then
     BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,cast}" \
     BAE_MACOS_PREPARE_CLEAN_ENV=1
   for var in MACOSX_DEPLOYMENT_TARGET FFMPEG_DIR PKG_CONFIG_PATH LIBRARY_PATH \
-    DYLD_LIBRARY_PATH BINDGEN_EXTRA_CLANG_ARGS C_INCLUDE_PATH; do
+    DYLD_LIBRARY_PATH BINDGEN_EXTRA_CLANG_ARGS C_INCLUDE_PATH TERM; do
     eval "val=\${$var:-}"
     if [ -n "$val" ]; then
       set -- "$@" "$var=$val"
