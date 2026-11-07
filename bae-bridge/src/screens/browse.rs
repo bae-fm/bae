@@ -81,11 +81,13 @@ browse_window! {
 /// The album grid as of one revision. Grouped by artist, an album shows once
 /// in each of its artists' sections, so the grid's positions count
 /// appearances: `row_count` of them, over `total_count` albums. Flat, the two
-/// are equal and there are no sections.
+/// are equal and there are no sections. Grouped, `sections` are the artists'
+/// headings when they changed since the snapshot before and in the one whose
+/// rows they fit, the first always; `None` says the last ones still stand.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeAlbumBrowseSnapshot {
     pub windows: Vec<BridgeAlbumBrowseWindow>,
-    pub sections: Vec<crate::types::BridgeLibraryBrowseSection>,
+    pub sections: Option<Vec<crate::types::BridgeLibraryBrowseSection>>,
     pub total_count: u64,
     pub row_count: u64,
     pub request_revision: u64,
@@ -97,15 +99,17 @@ impl BridgeAlbumBrowseSnapshot {
         let bae_views::AlbumBrowseSnapshot { list, sections, row_count } = snapshot;
         Self {
             windows: list.windows.into_iter().map(BridgeAlbumBrowseWindow::from_core).collect(),
-            sections: sections
-                .into_iter()
-                .map(|section| crate::types::BridgeLibraryBrowseSection {
-                    id: section.id,
-                    title: section.title,
-                    image: section.image.map(crate::types::BridgeImageRef::from_core),
-                    window: crate::types::BridgeLibraryPageWindow::from_core(section.window),
-                })
-                .collect(),
+            sections: sections.map(|sections| {
+                sections
+                    .into_iter()
+                    .map(|section| crate::types::BridgeLibraryBrowseSection {
+                        id: section.id,
+                        title: section.title,
+                        image: section.image.map(crate::types::BridgeImageRef::from_core),
+                        window: crate::types::BridgeLibraryPageWindow::from_core(section.window),
+                    })
+                    .collect()
+            }),
             total_count: list.total_count,
             row_count,
             request_revision: list.request_revision,

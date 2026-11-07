@@ -32,6 +32,20 @@ private final class RecordingBrowse: @unchecked Sendable {
     }
 }
 
+/// How many deliveries a query has made.
+private final class DeliveryCount: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    /// The number of the delivery being made, from one.
+    func next() -> Int {
+        lock.withLock {
+            count += 1
+            return count
+        }
+    }
+}
+
 @Suite("LibraryBrowsePageSource")
 struct LibraryBrowsePageSourceTests {
     @MainActor
@@ -101,6 +115,43 @@ struct LibraryBrowsePageSourceTests {
         await list.loadInitial()
         #expect(list.sections == sections)
         #expect(list.idAt(90) == nil)
+        await list.withPage(containing: 90) {}
+        #expect(list.idAt(90) == "album-90")
+        #expect(list.sections == sections)
+        list.cancel()
+    }
+
+    @MainActor
+    @Test("a delivery without sections leaves the last ones standing")
+    func sectionsStandUntilAnotherArrive() async throws {
+        let rows = (0..<120).map { makeBridgeAlbum(id: "album-\($0)") }
+        let sections = [
+            BridgeLibraryBrowseSection(
+                id: "artist-a",
+                title: "Artist A",
+                image: nil,
+                window: .init(offset: 0, limit: 120)
+            )
+        ]
+        let fixed = LibraryBrowseQuery<BridgeAlbum>
+            .fixed(rows, answers: FixedAnswers())
+        let delivered = DeliveryCount()
+        let query = LibraryBrowseQuery<BridgeAlbum>(
+            setWindows: fixed.setWindows,
+            values: PulledValues(fixed.values) { page in
+                LibraryBrowseDelivery(
+                    windows: page.windows,
+                    totalCount: page.totalCount,
+                    sections: delivered.next() == 1 ? sections : nil
+                )
+            }
+        )
+        let list = AlbumList(
+            pageSource: LibraryAlbumPageSource(query: query),
+            onError: { Issue.record("Page failed: \($0)") }
+        )
+        await list.loadInitial()
+        try await Wait.until { list.sections == sections }
         await list.withPage(containing: 90) {}
         #expect(list.idAt(90) == "album-90")
         #expect(list.sections == sections)

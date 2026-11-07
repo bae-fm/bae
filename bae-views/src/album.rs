@@ -2,8 +2,11 @@
 //! selection, an album's detail, and library search.
 
 use super::*;
+use listing::{
+    album_appearance_count_on, album_browse_sections_query, album_browse_sources, album_count_on,
+    grouped_artist_direction, SectionsDelivery,
+};
 pub(crate) use listing::{album_browse_order, album_rows_on, AlbumAppearanceRow};
-use listing::{album_browse_sections_query, album_browse_sources, album_count_on};
 
 mod listing;
 pub(super) use listing::SQL as LISTING_SQL;
@@ -128,39 +131,17 @@ impl LibraryViews {
         let (relation, order) = album_browse_order(sort, group_by_artist);
         let sources = album_browse_sources(group_by_artist);
         let places = KnownPlaces::new();
-        let section_query = group_by_artist.then(|| {
-            album_browse_sections_query(
-                sort.iter()
-                    .find(|c| c.field == AlbumSortField::Artist)
-                    .map_or(SortDirection::Ascending, |c| c.direction),
-            )
-        });
+        let sections = std::sync::Arc::new(SectionsDelivery::new(
+            group_by_artist.then(|| album_browse_sections_query(grouped_artist_direction(sort))),
+        ));
+        let delivery = sections.clone();
         self.store
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
                 let versions = list_versions_on(&sql, crate::versions::TABLE, sources)?;
+                let sections_found = sections.read(&sql)?;
                 let total_count = album_count_on(&sql)?;
-                let sections = match &section_query {
-                    Some(query) => sql.query(query, [], |row| {
-                        Ok(crate::LibraryBrowseSection {
-                            id: row.get(0)?,
-                            title: row.get(1)?,
-                            image: bae_records::artist_image_ref(
-                                &row.get::<_, String>(0)?,
-                                row.get(4)?,
-                            ),
-                            window: bae_store::LibraryPageWindow {
-                                offset: row.get::<_, i64>(2)? as u64,
-                                limit: row.get::<_, i64>(3)? as u64,
-                            },
-                        })
-                    })?,
-                    None => Vec::new(),
-                };
-                let row_count = if group_by_artist {
-                    sections.iter().map(|section| section.window.limit).sum()
-                } else {
-                    total_count
-                };
+                let row_count =
+                    if group_by_artist { album_appearance_count_on(&sql)? } else { total_count };
                 let WindowsRead { windows, found } = read_windows(
                     &order,
                     requested,
@@ -174,9 +155,9 @@ impl LibraryViews {
                     .into_iter()
                     .map(|(window, rows)| bae_store::LibraryBrowseWindow { window, rows })
                     .collect::<Vec<_>>();
-                Ok((windows, total_count, row_count, sections))
+                Ok((windows, total_count, row_count, sections_found))
             })
-            .process(|(windows, total_count, row_count, sections)| {
+            .process(move |(windows, total_count, row_count, sections_found)| {
                 let windows = windows
                     .into_iter()
                     .map(|window: bae_store::LibraryBrowseWindow<AlbumAppearanceRow>| {
@@ -190,6 +171,7 @@ impl LibraryViews {
                         })
                     })
                     .collect::<Result<_, DbError>>()?;
+                let sections = delivery.deliver(sections_found);
                 Ok(AlbumBrowseProjection { windows, total_count, row_count, sections })
             })
     }
@@ -607,7 +589,11 @@ pub struct AlbumBrowseProjection {
     pub windows: Vec<bae_store::LibraryBrowseWindow<DbAlbumAppearance>>,
     pub total_count: u64,
     pub row_count: u64,
-    pub sections: Vec<crate::LibraryBrowseSection>,
+    /// The grid's artist sections as of this read, when they changed since
+    /// the read before it or this is the first: `Some` is exactly the read
+    /// whose rows they fit, and `None` says the last `Some` still stands.
+    /// A flat grid has none: its first read is `Some` of nothing.
+    pub sections: Option<Vec<crate::LibraryBrowseSection>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

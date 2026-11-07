@@ -93,6 +93,8 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
     let rows = &grouped.windows[0].rows;
     let sections: Vec<(String, Vec<String>)> = grouped
         .sections
+        .as_ref()
+        .expect("the first delivery carries the sections")
         .iter()
         .map(|section| {
             let start = section.window.offset as usize;

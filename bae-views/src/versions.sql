@@ -6,14 +6,14 @@
 -- they stood for that read (§9.2).
 CREATE TABLE IF NOT EXISTS library_list_versions (
     source  TEXT PRIMARY KEY CHECK (source IN (
-        'album_listing', 'album_artist_link', 'artist_listing', 'composer_listing',
-        'composer_detail_row', 'release_listing', 'library_search')),
+        'album_listing', 'album_artist_link', 'artist_listing', 'artist_image',
+        'composer_listing', 'composer_detail_row', 'release_listing', 'library_search')),
     version INTEGER NOT NULL
 ) STRICT;
 
 INSERT OR IGNORE INTO library_list_versions (source, version) VALUES
     ('album_listing', 0), ('album_artist_link', 0), ('artist_listing', 0),
-    ('composer_listing', 0), ('composer_detail_row', 0), ('release_listing', 0),
+    ('artist_image', 0), ('composer_listing', 0), ('composer_detail_row', 0), ('release_listing', 0),
     ('library_search', 0);
 
 CREATE TRIGGER IF NOT EXISTS composer_listing_order_added AFTER INSERT ON composer_listing
@@ -99,6 +99,43 @@ WHEN OLD.name IS NOT NEW.name
   OR OLD.album_count IS NOT NEW.album_count
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'artist_listing';
+END;
+
+-- The artists' pictures, which the album grid's artist sections carry: an
+-- artist's picture version is its image row's coven file with the device that
+-- holds it, so the version moves with the row and with where the file is.
+CREATE TRIGGER IF NOT EXISTS artist_image_order_added AFTER INSERT ON artist_images
+BEGIN
+    UPDATE library_list_versions SET version = version + 1 WHERE source = 'artist_image';
+END;
+
+CREATE TRIGGER IF NOT EXISTS artist_image_order_removed AFTER DELETE ON artist_images
+BEGIN
+    UPDATE library_list_versions SET version = version + 1 WHERE source = 'artist_image';
+END;
+
+CREATE TRIGGER IF NOT EXISTS artist_image_order_moved AFTER UPDATE OF file ON artist_images
+WHEN OLD.file IS NOT NEW.file
+BEGIN
+    UPDATE library_list_versions SET version = version + 1 WHERE source = 'artist_image';
+END;
+
+CREATE TRIGGER IF NOT EXISTS artist_image_file_recorded AFTER INSERT ON coven_files
+WHEN EXISTS (SELECT 1 FROM artist_images WHERE file = NEW.id)
+BEGIN
+    UPDATE library_list_versions SET version = version + 1 WHERE source = 'artist_image';
+END;
+
+CREATE TRIGGER IF NOT EXISTS artist_image_file_placed AFTER UPDATE OF coordinates ON coven_files
+WHEN EXISTS (SELECT 1 FROM artist_images WHERE file = NEW.id)
+BEGIN
+    UPDATE library_list_versions SET version = version + 1 WHERE source = 'artist_image';
+END;
+
+CREATE TRIGGER IF NOT EXISTS artist_image_file_removed AFTER DELETE ON coven_files
+WHEN EXISTS (SELECT 1 FROM artist_images WHERE file = OLD.id)
+BEGIN
+    UPDATE library_list_versions SET version = version + 1 WHERE source = 'artist_image';
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_order_added AFTER INSERT ON release_listing

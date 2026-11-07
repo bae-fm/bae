@@ -30,11 +30,13 @@ pub struct LibraryBrowseSnapshot<Row> {
 /// One delivery of the album grid. Grouped by artist, an album shows once in
 /// each of its artists' sections, so the grid's positions count appearances:
 /// `row_count` of them, over the list's `total_count` albums. Flat, the two
-/// are equal and there are no sections.
+/// are equal. Grouped, `sections` are the artists' headings, delivered when
+/// they changed since the delivery before and in the delivery whose rows they
+/// fit: `None` says the last ones still stand.
 #[derive(Debug, Clone)]
 pub struct AlbumBrowseSnapshot {
     pub list: LibraryBrowseSnapshot<crate::album_detail::AlbumAppearance>,
-    pub sections: Vec<LibraryBrowseSection>,
+    pub sections: Option<Vec<LibraryBrowseSection>>,
     pub row_count: u64,
 }
 

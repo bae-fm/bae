@@ -37,6 +37,10 @@ class BrowserPageStoresTest {
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(sections, store.beside)
         assertEquals("album", store.rows[0])
+        // A delivery without sections leaves the last ones standing, beside its rows.
+        store.queries.single().emit(window(60), "next")
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(sections, store.beside)
         store.deactivate()
         assertTrue(store.beside.isEmpty())
     }
@@ -192,7 +196,7 @@ class BrowserPageStoresTest {
         fun emit(
             window: BridgeLibraryPageWindow,
             row: String,
-            sections: AlbumGridSections = emptyList(),
+            sections: AlbumGridSections? = null,
         ) {
             values.trySend(Result.success(BrowseRows(listOf(window to listOf(row)), totalCount = 500, beside = sections)))
         }

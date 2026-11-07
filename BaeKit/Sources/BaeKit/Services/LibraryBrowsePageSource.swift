@@ -25,13 +25,15 @@ public struct LibraryBrowseDelivery<Row: Sendable>: Sendable {
     public let windows: [Window]
     public let totalCount: Int
     public let itemCount: Int?
-    public let sections: [BridgeLibraryBrowseSection]
+    /// The album grid's artist sections when they changed since the delivery
+    /// before and these are the rows they fit; nil says the last stand.
+    public let sections: [BridgeLibraryBrowseSection]?
 
     public init(
         windows: [Window],
         totalCount: Int,
         itemCount: Int? = nil,
-        sections: [BridgeLibraryBrowseSection] = []
+        sections: [BridgeLibraryBrowseSection]? = nil
     ) {
         self.windows = windows
         self.totalCount = totalCount
@@ -161,7 +163,11 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
     @MainActor
     private func deliver(_ delivery: LibraryBrowseDelivery<Row>) {
         let sinks = lock.withLock { self.sinks }
-        sectionStore.values = delivery.sections
+        // Sections and rows land in this one turn: a delivery that carries
+        // sections is the one whose rows they fit.
+        if let sections = delivery.sections, sections != sectionStore.values {
+            sectionStore.values = sections
+        }
         sectionStore.itemCount = delivery.itemCount
         for window in delivery.windows {
             let key = WindowKey(

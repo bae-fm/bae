@@ -37,13 +37,13 @@ internal class PageError(
 
 /**
  * One value a browse query delivered: each requested window with its rows, the list's total, and
- * what the list delivers [beside] its rows (the album grid's artist sections; [Unit] for the other
- * lists).
+ * what the list delivers [beside] its rows when that changed (the album grid's artist sections, in
+ * the delivery whose rows they fit; null says the last ones stand; [Unit] for the other lists).
  */
 internal class BrowseRows<Row, Beside>(
     val windows: List<Pair<BridgeLibraryPageWindow, List<Row>>>,
     val totalCount: Int,
-    val beside: Beside,
+    val beside: Beside?,
 )
 
 /** A live browse over one library list whose windows change in place, pulled as rows by window. */
@@ -187,7 +187,8 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
         }
         rows.keys.filter { it >= delivered.totalCount }.forEach(rows::remove)
         totalCount = delivered.totalCount
-        beside = delivered.beside
+        // Rows and what came with them land in this one turn.
+        delivered.beside?.let { beside = it }
         loading = false
         error = null
     }
