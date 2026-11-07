@@ -213,6 +213,9 @@ non_owner_types = [
     "ServerState",
     # The hold on one image path, kept in the test image host's map.
     "HeldPath",
+    # What a play-on command carries to start remote playback.
+    "RemoteConnect",
+    "AirPlayConnect",
 ]
 
 # Values an owner makes for its caller's one operation, view or read and
@@ -333,6 +336,53 @@ task_types = [
     "Ticket",
     # A live read's resolver, built with the read.
     "Resolving",
+    # The track playing in the service, from its load to its stop: the slot it
+    # sits in, its decode, its sources and what the next track is preloaded with.
+    "PlaybackSlot",
+    "CurrentTrack",
+    "TrackDecoder",
+    "PlayingBytes",
+    "PreloadedNext",
+    "PreloadedNextSource",
+    "PlaybackSource",
+    # One output stream, one output and the drain, writer and wake that feed it,
+    # for as long as the output plays; each implementation of an output is one the
+    # device opens for one player.
+    "OutputStream",
+    "AudioDrain",
+    "ResamplingDrain",
+    "DeviceWriter",
+    "AudioEventSender",
+    "AudioEventReceiver",
+    "EventRelay",
+    "RelayState",
+    "PcmWake",
+    "DrainSource",
+    "AirPlayAudioStream",
+    "AAudioStreamHandle",
+    "CpalStream",
+    "CaptureStream",
+    "CapturedStream",
+    "CpalAudioOutput",
+    "CaptureAudioOutput",
+    "ManualCaptureAudioOutput",
+    "AirPlayOutput",
+    # One player's output with the state and volume its streams play by, and one
+    # pipeline decoding into it.
+    "PlayerOutput",
+    "AudioOutputControls",
+    "StreamPipeline",
+    # One preview: the file read, what it plays and its pipeline; and one file's
+    # reader.
+    "PreviewSource",
+    "ActivePreview",
+    "LocalReader",
+    "CovenFileReader",
+    # One remote playback session, from play-on to hand-back.
+    "RendererSession",
+    "RemoteRenderer",
+    "AirPlayRenderer",
+    "AirPlayControl",
 ]
 
 # Handles (Appendix F.3): what an owner makes from its own state to hand out.
@@ -444,6 +494,15 @@ ImageHold = "RemoteImageHost"
     "FakeCatalogs::offline",
     "FakeCatalogs::over",
 ]
+# The follow of the tracks a service holds, made for the service when it is
+# built.
+"bae-playback/src/service/advance.rs" = ["track_infos_follow"]
+# A test's capture devices: the audio devices a test hands the playback
+# service in place of the system's.
+"bae-playback/src/test_capture.rs" = [
+    "capture_device",
+    "manual_capture_device",
+]
 # The fixtures below build records over a test store and hand them to their
 # test.
 "bae-records/src/test_fixtures.rs" = [
@@ -540,6 +599,9 @@ ImageHold = "RemoteImageHost"
     "PlaybackService::start_inner",
     "OwnCommands::first",
     "OwnCommands::of_the_next_service",
+    "PlaybackThread::run",
+    "PlaybackThread::serve",
+    "PlaybackThread::service",
 ]
 # Starts the import service's worker and watcher threads and builds the parts
 # its handle holds; its handle stops them.
