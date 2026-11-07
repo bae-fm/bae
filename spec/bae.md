@@ -2056,14 +2056,16 @@ write pins every file of the release once the last is whole
 ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)),
 so a failed or cancelled pin leaves no file of it pinned. How far the release
 downloading has got is not kept, nor how fast it goes. Its bytes are the sizes
-of its files kept whole, of its files whose download for this pin has ended,
+of its files kept whole, of its files whose download for this pin finished,
 each whole and waiting for that write, and, of each file `coven_downloading`
 lists, the share of its size its object has moved, as coven's download watch
 tells it, so they move as a file arrives rather than as each lands; a share
 counts against the file's own size, since the watch's bytes are the encrypted
-object's. They never go back as a file lands: coven ends a download only once
-its file is whole, and the watch's word of the end counts it whole, never as
-nothing. Its rate is what it has moved since it began over the time since. Unpinning moves the files into the
+object's. They never go back as a file lands: the watch says how each
+download ended, and one that finished counts its file whole, never as nothing.
+On the watch's word, a download that failed, was held or was dropped counts
+none of its file; a read of the release's pins that no longer lists the file
+in `coven_downloading` still counts it whole until the pin's error arrives. Its rate is what it has moved since it began over the time since. Unpinning moves the files into the
 cache, still readable, now evictable.
 
 Asking to pin several releases queues, in the order asked and in one write,

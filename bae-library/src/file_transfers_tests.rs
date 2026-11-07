@@ -27,7 +27,7 @@ fn a_reader_holds_each_file_in_flight() {
         &mut held,
         vec![
             coven::TransferChange::Updated { file: b, progress: progress(2, 10) },
-            coven::TransferChange::Removed { file: a },
+            coven::TransferChange::Removed { file: a, end: coven::TransferEnd::Finished },
         ],
     );
     assert_eq!(held, [(b, progress(2, 10))].into_iter().collect());

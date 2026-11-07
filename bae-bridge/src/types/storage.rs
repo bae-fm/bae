@@ -48,10 +48,7 @@ impl BridgeStorageLocation {
                 Self::Dropbox {
                     location: BridgeDropboxLocation::from_core(location),
                     account_label,
-                    folder_label: folder_label.map(|label| BridgeFolderLabel {
-                        name: label.name,
-                        web_url: label.web_url.into(),
-                    }),
+                    folder_label: folder_label.map(BridgeFolderLabel::from_core),
                 }
             }
             coven::StorageConfig::OneDrive { drive_id, folder_id, account_label, folder_label } => {
@@ -59,10 +56,7 @@ impl BridgeStorageLocation {
                     drive_id,
                     folder_id,
                     account_label,
-                    folder_label: folder_label.map(|label| BridgeFolderLabel {
-                        name: label.name,
-                        web_url: label.web_url.into(),
-                    }),
+                    folder_label: folder_label.map(BridgeFolderLabel::from_core),
                 }
             }
             coven::StorageConfig::CloudKit { container, owner, zone } => {
@@ -114,6 +108,13 @@ pub struct BridgeFolderLabel {
     pub name: String,
     /// Where the folder opens in a browser: an https address.
     pub web_url: String,
+}
+
+impl BridgeFolderLabel {
+    fn from_core(label: coven::FolderLabel) -> Self {
+        let coven::FolderLabel { name, web_url } = label;
+        Self { name, web_url: web_url.into() }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

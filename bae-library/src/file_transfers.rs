@@ -26,7 +26,7 @@ pub(crate) fn apply(
             coven::TransferChange::Updated { file, progress } => {
                 held.insert(file, progress);
             }
-            coven::TransferChange::Removed { file } => {
+            coven::TransferChange::Removed { file, .. } => {
                 held.remove(&file);
             }
         }
@@ -54,7 +54,7 @@ impl FileTransferChange {
             coven::TransferChange::Updated { file, progress } => {
                 Self::Updated { file, fraction: fraction(progress) }
             }
-            coven::TransferChange::Removed { file } => Self::Removed { file },
+            coven::TransferChange::Removed { file, .. } => Self::Removed { file },
         }
     }
 }

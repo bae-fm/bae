@@ -8,9 +8,10 @@ use super::*;
 struct PinCount {
     /// How far each file being downloaded has got, as the watch last told it.
     moved: std::collections::BTreeMap<coven::FileId, coven::TransferProgress>,
-    /// The release's files whose download for this pin has ended: coven ends
-    /// a download only once its file is whole, and commits the pin's files
-    /// together once every download is, so each waits whole for that write.
+    /// The release's files whose download for this pin has ended whole, as
+    /// the watch says a download finished or `read` infers from the pins.
+    /// coven commits the pin's files together once every download is, so
+    /// each waits whole for that write.
     fetched: std::collections::BTreeSet<coven::FileId>,
     /// Where each file stood at the last read of the pins; `None` until the
     /// first.
@@ -21,18 +22,19 @@ impl PinCount {
     /// Take what the watch told, and say whether a download ended or the
     /// watch started over, after which the pins are read again. A share that
     /// only started or moved needs no read: until the pins say the file
-    /// downloads it counts nothing, and after, its share only grows.
+    /// downloads it counts nothing, and after, its share only grows. Only a
+    /// download that finished brought its file whole; one that failed, was
+    /// held or was dropped brought none of it.
     fn heard(&mut self, changes: Vec<coven::TransferChange>) -> bool {
         let ended =
             changes.iter().any(|change| !matches!(change, coven::TransferChange::Updated { .. }));
-        let before: Vec<coven::FileId> = self.moved.keys().copied().collect();
-        for change in &changes {
-            if let coven::TransferChange::Removed { file } = change {
-                self.fetched.insert(*file);
+        self.fetched.extend(changes.iter().filter_map(|change| match change {
+            coven::TransferChange::Removed { file, end: coven::TransferEnd::Finished } => {
+                Some(*file)
             }
-        }
+            _ => None,
+        }));
         crate::file_transfers::apply(&mut self.moved, changes);
-        self.fetched.extend(before.into_iter().filter(|file| !self.moved.contains_key(file)));
         ended
     }
 

@@ -120,20 +120,26 @@ mod conversion_roundtrip {
     /// left to coven, which reads it at every connection.
     #[test]
     fn a_folder_label_crosses_to_the_app() {
-        let labelled: [coven::StorageConfig; 2] = [
-            serde_json::from_value(serde_json::json!({"Dropbox": {
-                "location": {"SharedFolder": {"namespace_id": "namespace-1"}},
-                "account_label": "person@example.com",
-                "folder_label": {"name": "Music", "web_url": "https://www.dropbox.com/home/Music"},
-            }}))
-            .unwrap(),
-            serde_json::from_value(serde_json::json!({"OneDrive": {
-                "drive_id": "drive-1",
-                "folder_id": "folder-1",
-                "account_label": "person@example.org",
-                "folder_label": {"name": "Music Library", "web_url": "https://onedrive.live.com/?id=folder-1"},
-            }}))
-            .unwrap(),
+        let labelled = [
+            coven::StorageConfig::Dropbox {
+                location: coven::DropboxLocation::SharedFolder {
+                    namespace_id: "namespace-1".into(),
+                },
+                account_label: Some("person@example.com".into()),
+                folder_label: Some(coven::FolderLabel {
+                    name: "Music".into(),
+                    web_url: "https://www.dropbox.com/home/Music".parse().unwrap(),
+                }),
+            },
+            coven::StorageConfig::OneDrive {
+                drive_id: "drive-1".into(),
+                folder_id: "folder-1".into(),
+                account_label: Some("person@example.org".into()),
+                folder_label: Some(coven::FolderLabel {
+                    name: "Music Library".into(),
+                    web_url: "https://onedrive.live.com/?id=folder-1".parse().unwrap(),
+                }),
+            },
         ];
         let crossed: Vec<_> = labelled
             .iter()

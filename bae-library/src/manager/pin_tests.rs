@@ -54,7 +54,10 @@ fn a_pin_holds_its_kept_and_fetched_files_and_each_downloads_share() {
             progress: coven::TransferProgress { bytes_transferred: 1, bytes_total: 2 },
         },
     ]);
-    count.heard(vec![coven::TransferChange::Removed { file: file(11) }]);
+    count.heard(vec![coven::TransferChange::Removed {
+        file: file(11),
+        end: coven::TransferEnd::Finished,
+    }]);
 
     assert_eq!(count.bytes(&sizes), Some(1_000 + 2_000 + 100));
 }
@@ -90,8 +93,31 @@ fn a_download_the_pins_end_before_the_watch_keeps_its_bytes() {
     );
     assert_eq!(count.bytes(&sizes), Some(400));
     // Then the watch says so too.
-    assert!(count.heard(vec![coven::TransferChange::Removed { file: file(1) }]));
+    assert!(count.heard(vec![coven::TransferChange::Removed {
+        file: file(1),
+        end: coven::TransferEnd::Finished,
+    }]));
     assert_eq!(count.bytes(&sizes), Some(400));
+}
+
+/// A download that failed, was held or was dropped brought none of its file
+/// whole, so the pin counts none of it once the watch says how it ended.
+#[test]
+fn a_download_that_ended_unfinished_counts_none_of_its_file() {
+    let sizes: BTreeMap<String, (coven::FileId, u64)> =
+        [("a".to_string(), (file(1), 400))].into_iter().collect();
+    for end in [coven::TransferEnd::Failed, coven::TransferEnd::Held, coven::TransferEnd::Dropped] {
+        let mut count = PinCount::default();
+        count.read([("a".to_string(), pin(false, Some(file(1))))].into_iter().collect());
+        count.heard(vec![coven::TransferChange::Updated {
+            file: file(1),
+            progress: coven::TransferProgress { bytes_transferred: 220, bytes_total: 440 },
+        }]);
+        assert_eq!(count.bytes(&sizes), Some(200));
+
+        assert!(count.heard(vec![coven::TransferChange::Removed { file: file(1), end }]));
+        assert_eq!(count.bytes(&sizes), Some(0), "a download that ended {end:?}");
+    }
 }
 
 /// Each release whose storage row's pinned or file count differs from the
