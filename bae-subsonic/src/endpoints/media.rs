@@ -156,16 +156,15 @@ fn produce_body(
     let (tx, rx) = mpsc::channel(4);
     let diagnostics = diagnostics.clone();
     let failing = tx.clone();
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "nobody waits for the work, which catches its own panic, reports it and ends the body"
-    )]
-    drop(tokio::task::spawn_blocking(move || {
+    // Nobody waits for the work, which catches its own panic, reports it and
+    // ends the body.
+    let reporter = diagnostics.clone();
+    reporter.blocking_unawaited(operation, move || {
         if let Err(bug) = caught_sync(operation, move || produce(tx)) {
             let bug = diagnostics.panicked(bug);
             end_body(&failing, std::io::Error::other(bug));
         }
-    }));
+    });
     rx
 }
 

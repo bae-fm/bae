@@ -81,6 +81,20 @@ impl Diagnostics {
         }
     }
 
+    /// Start `work`, named `operation`, on the blocking pool with nobody
+    /// waiting for it: it runs to its end, and a panic in it goes to the crash
+    /// reporter. For work that hands its results on through a channel it owns.
+    pub fn blocking_unawaited(
+        &self,
+        operation: &'static str,
+        work: impl FnOnce() + Send + 'static,
+    ) {
+        drop(coven::task::blocking_completing(operation, self.bug_sink(), move || {
+            work();
+            Ok::<(), std::convert::Infallible>(())
+        }));
+    }
+
     /// Report `bug`, work that panicked, and hand it back for the caller's
     /// own error type: what `caught` and `caught_sync` fail with, and the
     /// panics in coven's errors.

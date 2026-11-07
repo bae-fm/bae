@@ -64,6 +64,22 @@ async fn blocking_reports_a_panic_its_caller_stopped_waiting_for() {
     );
 }
 
+/// Work started with nobody waiting runs to its end, and its panic reaches the
+/// crash reporter.
+#[tokio::test]
+async fn blocking_unawaited_reports_a_panic_nobody_waits_for() {
+    let reports = Arc::new(crate::HeardBugReports::new());
+    let diagnostics = Diagnostics::noop().reporting_bugs_to(reports.clone());
+    diagnostics.blocking_unawaited("write a body", || panic!("short write"));
+    let report = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, reports.next())
+        .await
+        .expect("the panic is reported");
+    assert_eq!(
+        report,
+        ("write a body".to_string(), "write a body panicked: short write".to_string())
+    );
+}
+
 #[tokio::test]
 async fn spawn_reported_reports_a_panic_and_lets_its_owner_end_the_work() {
     let (diagnostics, reports) = reporting();
