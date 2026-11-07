@@ -278,9 +278,10 @@ impl UnstoredRow {
 fn other_device(name: String, state: &str, member_removed: bool) -> Option<crate::OtherDevice> {
     use crate::OtherDevice;
     use bae_store::FormerDeviceState;
+    if let Some(state) = FormerDeviceState::of_state(state) {
+        return Some(OtherDevice::Former { name, state });
+    }
     Some(match state {
-        "replaced" => OtherDevice::Former { name, state: FormerDeviceState::Replaced },
-        "removed" => OtherDevice::Former { name, state: FormerDeviceState::Removed },
         "active" if member_removed => {
             OtherDevice::Former { name, state: FormerDeviceState::Removed }
         }

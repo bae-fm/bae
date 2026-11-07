@@ -293,13 +293,7 @@ impl<'a> FailureColumns<'a> {
             PlaybackErrorReason::OnOtherDevice(device) => {
                 let (name, state) = match device {
                     bae_records::OtherDevice::Active { name } => (name, "active"),
-                    bae_records::OtherDevice::Former { name, state } => (
-                        name,
-                        match state {
-                            bae_store::FormerDeviceState::Removed => "removed",
-                            bae_store::FormerDeviceState::Replaced => "replaced",
-                        },
-                    ),
+                    bae_records::OtherDevice::Former { name, state } => (name, state.state_text()),
                 };
                 Self { device: Some(name), device_state: Some(state), ..columns("on_other_device") }
             }
@@ -425,15 +419,10 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
             let state: String = row.get("failure_device_state")?;
             PlaybackErrorReason::OnOtherDevice(match state.as_str() {
                 "active" => bae_records::OtherDevice::Active { name },
-                "removed" => bae_records::OtherDevice::Former {
-                    name,
-                    state: bae_store::FormerDeviceState::Removed,
+                other => match bae_store::FormerDeviceState::of_state(other) {
+                    Some(state) => bae_records::OtherDevice::Former { name, state },
+                    None => return Err(unknown(row, "failure_device_state", other)),
                 },
-                "replaced" => bae_records::OtherDevice::Former {
-                    name,
-                    state: bae_store::FormerDeviceState::Replaced,
-                },
-                other => return Err(unknown(row, "failure_device_state", other)),
             })
         }
         "original_missing" => PlaybackErrorReason::OriginalMissing,

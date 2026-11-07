@@ -116,17 +116,13 @@ pub(crate) fn member_row(
                 Ok(FormerDevice {
                     id: device_id(row, first + 8, &id)?,
                     name,
-                    state: match state.as_str() {
-                        "removed" => FormerDeviceState::Removed,
-                        "replaced" => FormerDeviceState::Replaced,
-                        other => {
-                            return Err(column_conversion_error(
-                                row,
-                                first + 8,
-                                format!("{other} is not a device state"),
-                            ))
-                        }
-                    },
+                    state: FormerDeviceState::of_state(&state).ok_or_else(|| {
+                        column_conversion_error(
+                            row,
+                            first + 8,
+                            format!("{state} is not a device state"),
+                        )
+                    })?,
                 })
             })
             .collect::<rusqlite::Result<_>>()?,
