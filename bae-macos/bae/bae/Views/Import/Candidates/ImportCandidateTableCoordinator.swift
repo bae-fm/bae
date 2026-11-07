@@ -20,6 +20,9 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     /// Reveals, and the clip view's and scroll view's notifications.
     private var subscriptions: [AnyCancellable] = []
 
+    /// How many times a cell has been given an item to draw.
+    private(set) var cellsShown = 0
+
     /// The rows of `list` the table was last loaded with.
     private var shownRows: ImportCandidateTableRows?
     /// The appearance the table's rows were last drawn in.
@@ -166,11 +169,48 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         refreshPinnedHeader()
     }
 
-    /// Load the table with `rows` when they are not the ones it shows.
+    /// Load the table with `rows` when they are not the ones it shows. A new
+    /// list loads every row. For the same list, a change in how many rows it
+    /// has is told to the table as that, and only the rows now holding
+    /// something other than what their cell draws are drawn again: a row
+    /// added below the view, or a value that changed a row off screen,
+    /// draws no cell.
     private func load(_ rows: ImportCandidateTableRows) {
         guard rows != shownRows else { return }
+        let previous = shownRows
         shownRows = rows
-        reloadRows()
+        guard let previous, let tableView else {
+            reloadRows()
+            return
+        }
+        if previous.count != rows.count {
+            tableView.noteNumberOfRowsChanged()
+        }
+        redrawChangedRows(in: tableView)
+        pinnedStrip.forget()
+    }
+
+    /// Draw again the rows the table has made cells for whose item is no
+    /// longer the one their cell draws.
+    private func redrawChangedRows(in tableView: ImportCandidateTableView) {
+        var stale = IndexSet()
+        let made = tableView.rows(in: tableView.preparedContentRect)
+        guard made.length > 0 else { return }
+        for row in made.location..<(made.location + made.length)
+        where row < rowCount {
+            let current = item(at: row)
+            let cell =
+                tableView.view(atColumn: 0, row: row, makeIfNecessary: false)
+                as? ImportListEntryCell
+            if cell?.shownItem != current {
+                stale.insert(row)
+            }
+        }
+        guard !stale.isEmpty else { return }
+        tableView.reloadData(
+            forRowIndexes: stale,
+            columnIndexes: IndexSet(integer: 0)
+        )
     }
 
     /// Draw every row anew, and the pinned header with them.
@@ -280,6 +320,7 @@ extension ImportCandidateTableCoordinator {
         let cell = reused(tableView, Self.identifier(for: item)) {
             ImportListEntryCell(identifier: $0)
         }
+        cellsShown += 1
         cell.show(
             ImportListEntry(
                 item: item,

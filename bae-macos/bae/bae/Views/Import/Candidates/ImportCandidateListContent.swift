@@ -109,10 +109,6 @@ struct ImportCandidateListContent: View {
     private var uiStore
     @Environment(ImportSelection.self)
     private var importSelection
-    @Environment(ImageStore.self)
-    private var imageStore
-    @Environment(\.displayScale)
-    private var displayScale
     @State
     private var revealOperation: ImportCandidateRevealOperation?
     /// The positions reveals land on, which the table scrolls to.
@@ -153,11 +149,6 @@ struct ImportCandidateListContent: View {
             filterText: uiStore.importCandidateFilterText,
             pendingFilter: uiStore.importCandidatePendingFilter
         )
-    }
-
-    /// Whether the active tab has nothing to show.
-    private var activeTabIsEmpty: Bool {
-        (listSlot.list?.totalCount ?? 0) == 0
     }
 
     var body: some View {
@@ -227,14 +218,11 @@ struct ImportCandidateListContent: View {
                 .onTapGesture { filterFocused = true }
             }
         } content: {
-            Group {
-                if activeTabIsEmpty {
-                    emptyState
-                }
-                else {
-                    tabList
-                }
-            }
+            ImportCandidateListSwitch(
+                listSlot: listSlot,
+                importStore: importStore,
+                table: { tabList }
+            )
             // Until the read answering the view the person asked for lands,
             // the list holds the previous view's rows: they stay unshown and
             // out of reach rather than standing in for this view's.
@@ -242,14 +230,8 @@ struct ImportCandidateListContent: View {
             .allowsHitTesting(listSlot.answersView)
             .accessibilityHidden(!listSlot.answersView)
         }
-        // Decode the covers of the rows the list has loaded as they land, so
-        // a page scrolled to is not a column of spinners.
-        .task(id: importStore.loadedCovers) {
-            await imageStore.warm(
-                Array(importStore.loadedCovers),
-                pointSize: TriageRowView.coverPointSize,
-                displayScale: displayScale
-            )
+        .background {
+            ImportCoverWarmer(importStore: importStore)
         }
         .onDisappear {
             cancelReveal()
@@ -270,15 +252,6 @@ struct ImportCandidateListContent: View {
                 try await listSlot.revealCandidate(request.candidateKey)
             }
         }
-    }
-
-    /// The empty tab, or a narrowed list with no matches.
-    private var emptyState: some View {
-        ContentUnavailableView {
-            Text(summary.narrowed == nil ? "Nothing here yet" : "No matches")
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.surface)
     }
 
     @ViewBuilder
@@ -435,3 +408,52 @@ extension ImportCandidateListContent {
     }
 
 #endif
+
+/// Decodes the covers of the rows the list has loaded as they land, so a page
+/// scrolled to is not a column of spinners. A view of its own so that the
+/// covers moving redraws this and not the list's chrome.
+private struct ImportCoverWarmer: View {
+    let importStore: ImportStore
+
+    @Environment(ImageStore.self)
+    private var imageStore
+    @Environment(\.displayScale)
+    private var displayScale
+
+    var body: some View {
+        Color.clear
+            .task(id: importStore.loadedCovers) {
+                await imageStore.warm(
+                    Array(importStore.loadedCovers),
+                    pointSize: TriageRowView.coverPointSize,
+                    displayScale: displayScale
+                )
+            }
+    }
+}
+
+/// The list's table, or the empty tab, or a narrowed list with no matches.
+/// A view of its own so that the list's count and the summary are read here
+/// and not by the list's chrome.
+private struct ImportCandidateListSwitch<Table: View>: View {
+    let listSlot: ImportListSlot
+    let importStore: ImportStore
+    @ViewBuilder
+    let table: () -> Table
+
+    var body: some View {
+        if (listSlot.list?.totalCount ?? 0) == 0 {
+            ContentUnavailableView {
+                Text(
+                    importStore.summary.narrowed == nil
+                        ? "Nothing here yet" : "No matches"
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.surface)
+        }
+        else {
+            table()
+        }
+    }
+}

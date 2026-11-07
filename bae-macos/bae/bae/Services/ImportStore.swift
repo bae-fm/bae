@@ -202,6 +202,7 @@ class ImportStore {
         }
         items = next
         updateSelectedLoadedKeys()
+        updateLoadedCovers()
     }
 
     /// The keys of the loaded rows the person has selected, as core's rows
@@ -284,16 +285,24 @@ class ImportStore {
         }
         items = items.filter { loaded.contains($0.key) }
         updateSelectedLoadedKeys()
+        updateLoadedCovers()
     }
 
     /// The covers the loaded rows draw, to decode before they are on screen.
-    var loadedCovers: Set<ImageContent> {
-        Set(
+    /// Kept as the rows land and leave, and written only when the set moves:
+    /// a view reading it is not redrawn by a row whose cover is already in.
+    private(set) var loadedCovers: Set<ImageContent> = []
+
+    private func updateLoadedCovers() {
+        let next = Set(
             items.values.compactMap { item -> ImageContent? in
                 guard case .candidate(_, let row, _) = item else { return nil }
                 return sidebarCover(for: row)
             }
         )
+        if next != loadedCovers {
+            loadedCovers = next
+        }
     }
 
     /// The effective cover resolved by core for this row.

@@ -90,6 +90,9 @@ final class ImportListEntryCell: NSTableCellView {
         }
     }
 
+    /// The item the cell draws now.
+    var shownItem: BridgeImportListItem? { entry?.item }
+
     func show(_ entry: ImportListEntry) {
         self.entry = entry
         render()

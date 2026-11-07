@@ -158,6 +158,62 @@ struct ImportCandidateTablePlaceTests {
         }
     }
 
+    // MARK: What a delivery redraws
+
+    @MainActor
+    @Test("a row added below the view draws no cell")
+    func aRowBelowTheViewDrawsNoCell() async throws {
+        let source = MutableImportListPageSource(
+            items: (0..<200).map(Self.candidateItem)
+        )
+        let store = ImportStore()
+        let uiStore = UiStore()
+        let slot = try await Self.loadedSlot(source, store, uiStore)
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore,
+            size: Self.size
+        ) { table in
+            let coordinator = try Self.coordinator(of: table)
+            let drawn = coordinator.cellsShown
+
+            await source.replaceItems(
+                (0..<200).map(Self.candidateItem) + [Self.candidateItem(200)]
+            )
+            try await Wait.until { table.numberOfRows == 201 }
+            #expect(coordinator.cellsShown == drawn)
+        }
+    }
+
+    @MainActor
+    @Test("a value changing one row draws that row's cell only")
+    func aChangedRowDrawsItsCellOnly() async throws {
+        let source = MutableImportListPageSource(
+            items: (0..<200).map(Self.candidateItem)
+        )
+        let store = ImportStore()
+        let uiStore = UiStore()
+        let slot = try await Self.loadedSlot(source, store, uiStore)
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore,
+            size: Self.size
+        ) { table in
+            let coordinator = try Self.coordinator(of: table)
+            let drawn = coordinator.cellsShown
+            var items = (0..<200).map(Self.candidateItem)
+            items[2] = Self.candidateItem(2, folderName: "Renamed")
+
+            await source.replaceItems(items)
+            try await Wait.until { coordinator.cellsShown > drawn }
+            // Let any further cell the same delivery asks for be drawn.
+            try await Wait.until { slot.list?.row(at: 2) == items[2] }
+            #expect(coordinator.cellsShown == drawn + 1)
+        }
+    }
+
     // MARK: Where a delivery scrolls
 
     @Test("a delivery under the same narrowing keeps the place")
@@ -270,11 +326,25 @@ extension ImportCandidateTablePlaceTests {
         candidateItem(index).id
     }
 
+    @MainActor
+    private static func coordinator(
+        of table: NSTableView
+    ) throws -> ImportCandidateTableCoordinator {
+        try #require(table.delegate as? ImportCandidateTableCoordinator)
+    }
+
     private static func candidateItem(_ index: Int) -> BridgeImportListItem {
+        candidateItem(index, folderName: "Release \(index)")
+    }
+
+    private static func candidateItem(
+        _ index: Int,
+        folderName: String
+    ) -> BridgeImportListItem {
         PreviewData.candidateItem(
             BridgeTriageRow(
                 candidateKey: Data(folderPath(index).utf8),
-                folderName: "Release \(index)",
+                folderName: folderName,
                 watchedFolderPath: Data("/library".utf8),
                 displayPath: "Release \(index)",
                 actionable: true,
