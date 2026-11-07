@@ -302,7 +302,7 @@ async fn opening_ends_every_transition() {
     crate::release_storage_action::begin_release_storage_action(
         &db,
         RELEASE_A,
-        crate::StoredTransition::Unpin,
+        crate::StoredTransition::DetachAudio,
     )
     .await
     .unwrap();

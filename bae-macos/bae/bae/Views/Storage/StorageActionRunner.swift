@@ -115,7 +115,7 @@ final class StorageActionRunner {
     /// Run `action` against every release in `releaseIds`. Moving to cloud
     /// defers to the confirm sheet; detaching audio asks for a destination folder
     /// once and moves each release into it; pin enqueues the whole batch on the
-    /// download queue; unpin runs directly.
+    /// download queue; unpin releases the whole batch's pins in one call.
     func run(_ action: BridgeReleaseStorageAction, releaseIds: [String]) {
         switch action {
         case .upload:
@@ -133,7 +133,12 @@ final class StorageActionRunner {
                 catch { uiStore.showError(error) }
             }
         case .unpin:
-            runEach(listed(releaseIds), downloads.unpinRelease)
+            let releaseIds = listed(releaseIds)
+            guard !releaseIds.isEmpty else { return }
+            Task {
+                do { try await downloads.unpinReleases(releaseIds) }
+                catch { uiStore.showError(error) }
+            }
         }
     }
 

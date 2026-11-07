@@ -2005,10 +2005,9 @@ being sent together; no screen shows one file's rate, so none is sent. A
 file that only waits has no rate, and a pause ends every measurement. While its files wait, or a transfer runs,
 the release offers no storage action but cancelling, which would race it
 otherwise. Which transition a release is in is a device-local row: written
-in the write that admits an unpin or making the release local, which a
-release already in one refuses, and deleted as the transition ends, however
-it ends: an unpin's in the write that releases its pins, a make-local's in
-the write that switches its files, so the row and coven's change commit together and the
+in the write that admits making the release local, which a release already
+in one refuses, and deleted as the transition ends, however it ends: in the
+write that switches its files, so the row and coven's change commit together and the
 release never shows a transition its files have finished; one whose work
 fails ends in a write of its own. That write refuses a release not in the
 transition it ends, and then changes no file. A pin in flight is
@@ -2100,7 +2099,8 @@ the encrypted object's. A file counts its share until the watch says how its
 download ended, and its whole size after only if the download finished, so the
 bytes never go back as a file lands; a download that failed, was held or was
 dropped counts none of its file. Its rate is what it has moved since it began over the time since. Unpinning moves the files into the
-cache, still readable, now evictable.
+cache, still readable, now evictable; unpinning a selection is one write for
+all its releases, and one that can't unpin is named while the rest unpin.
 
 Asking to pin several releases queues, in the order asked and in one write,
 each that can be: one already waiting or downloading, pinned, local, or
@@ -4967,7 +4967,7 @@ write commits, so the release and the row naming it land in either order.
 | `release_queues` | whether the pin queue and the export and save queue are paused |
 | `release_queue_versions` | queue table (`download_queue`, `output_queue`): how many writes have added, removed or moved its entries, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `download_queue` | release queued to pin, in the order queued: queued, downloading, or failed with its error (§4.3) |
-| `release_storage_action` | release in a storage transition this process runs while its files rest where they are: an unpin or making it local (§4.2) |
+| `release_storage_action` | release making itself local, a storage transition this process runs while its files rest where they are (§4.2) |
 | `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |
 
 The download queue keeps its entries and its pause across restarts; the export

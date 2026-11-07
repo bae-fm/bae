@@ -454,8 +454,8 @@ internal open class FakeAppHandle(
         unfaked("stop")
     }
 
-    override suspend fun unpinRelease(releaseId: String) {
-        unfaked("unpinRelease")
+    override suspend fun unpinReleases(releaseIds: List<String>) {
+        unfaked("unpinReleases")
     }
 
     override suspend fun uploadReleases(releaseIds: List<String>): BridgeUploadReleasesOutcome = unfaked("uploadReleases")

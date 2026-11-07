@@ -90,14 +90,12 @@ pub fn transfer_action_column(
 /// pin, which is the download queue's active entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoredTransition {
-    Unpin,
     DetachAudio,
 }
 
 impl StoredTransition {
     fn column(self) -> &'static str {
         match self {
-            Self::Unpin => ReleaseStorageAction::Unpin,
             Self::DetachAudio => ReleaseStorageAction::DetachAudio,
         }
         .key()
@@ -252,20 +250,75 @@ pub async fn move_releases_to_cloud(
         .await
 }
 
-/// Release the pins on a release's files, `files`, and end its unpin
-/// transition, in one write: the release shows Unpinning until its files
-/// are evictable and never after. coven evicts each namespace down to its
-/// budget in the same write.
-pub async fn unpin_release(
+/// Why a release of a selection did not unpin.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnpinRefusal {
+    /// No such release is in the library.
+    Missing,
+    /// The release holds no files.
+    NoFiles,
+    /// A file of the release is not stored in the cloud.
+    NotInStorage,
+}
+
+/// What one write unpinning a selection did.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Unpinned {
+    /// Each release whose pins were released, in the selection's order, with
+    /// how many files it holds.
+    pub unpinned: Vec<(String, u32)>,
+    /// Each release that could not unpin, with why. It changed nothing.
+    pub refused: Vec<(String, UnpinRefusal)>,
+}
+
+/// One release's files, each with whether it is stored in the cloud: no
+/// device holds it alone.
+const RELEASE_UNPIN_FILES: &str = "SELECT f.file, coven_file_device(c.coordinates) IS NULL \
+     FROM release_files AS f \
+     JOIN coven_files AS c ON c.id = f.file \
+     WHERE f.release_id = ?1 ORDER BY f.id";
+
+/// Release the pins on the files of every release of `release_ids` stored in
+/// the cloud, in one write: coven moves each file from the pinned cache to
+/// the evictable cache, still readable and now droppable, and evicts each
+/// namespace down to its budget in the same write. No transition is shown on
+/// the way. A release that cannot unpin is named with why and changes
+/// nothing; the rest unpin.
+pub async fn unpin_releases(
     store: &Store,
-    release_id: &str,
-    files: Vec<coven::FileId>,
-) -> Result<(), StorageTransitionError> {
-    let release_id = release_id.to_string();
+    release_ids: Vec<String>,
+) -> Result<Unpinned, StorageTransitionError> {
     store
         .write(move |sql| {
-            sql.unpin(&files)?;
-            end_transition_on(&sql, &release_id, StoredTransition::Unpin)
+            let mut outcome = Unpinned { unpinned: Vec::new(), refused: Vec::new() };
+            for release_id in release_ids {
+                let exists: bool = sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM releases WHERE id = ?1)",
+                    [&release_id],
+                    |row| row.get(0),
+                )?;
+                if !exists {
+                    outcome.refused.push((release_id, UnpinRefusal::Missing));
+                    continue;
+                }
+                let files: Vec<(coven::FileId, bool)> =
+                    sql.query(RELEASE_UNPIN_FILES, [&release_id], |row| {
+                        Ok((row.get(0)?, row.get(1)?))
+                    })?;
+                if files.is_empty() {
+                    outcome.refused.push((release_id, UnpinRefusal::NoFiles));
+                    continue;
+                }
+                if files.iter().any(|(_, in_storage)| !in_storage) {
+                    outcome.refused.push((release_id, UnpinRefusal::NotInStorage));
+                    continue;
+                }
+                let count = u32::try_from(files.len()).expect("a release's files fit a u32");
+                let files: Vec<coven::FileId> = files.into_iter().map(|(file, _)| file).collect();
+                sql.unpin(&files)?;
+                outcome.unpinned.push((release_id, count));
+            }
+            Ok(outcome)
         })
         .await
 }

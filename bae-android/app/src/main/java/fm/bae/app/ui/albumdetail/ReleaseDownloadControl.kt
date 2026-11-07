@@ -141,12 +141,12 @@ private suspend fun runUnpin(
     onSettled: () -> Unit,
 ): DisplayError? =
     try {
-        session.appHandle.unpinRelease(releaseId)
+        session.appHandle.unpinReleases(listOf(releaseId))
         null
     } catch (e: CancellationException) {
         throw e
     } catch (e: BridgeException) {
-        logger.error("unpinRelease failed for $releaseId", e)
+        logger.error("unpinReleases failed for $releaseId", e)
         context.displayError(e)
     } finally {
         onSettled()

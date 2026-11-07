@@ -22,7 +22,7 @@ async fn a_release_is_in_one_transition_at_a_time() {
         .await
         .unwrap());
     assert!(
-        !begin_release_storage_action(&db, RELEASE_A, StoredTransition::Unpin).await.unwrap(),
+        !begin_release_storage_action(&db, RELEASE_A, StoredTransition::DetachAudio).await.unwrap(),
         "a release in a transition refuses another"
     );
     assert_eq!(
@@ -33,10 +33,12 @@ async fn a_release_is_in_one_transition_at_a_time() {
 
     end_release_storage_action(&db, RELEASE_A).await.unwrap();
     assert_eq!(release_transfer_action(&db, RELEASE_A).await.unwrap(), None);
-    assert!(begin_release_storage_action(&db, RELEASE_A, StoredTransition::Unpin).await.unwrap());
+    assert!(begin_release_storage_action(&db, RELEASE_A, StoredTransition::DetachAudio)
+        .await
+        .unwrap());
     assert_eq!(
         release_transfer_action(&db, RELEASE_A).await.unwrap(),
-        Some(ReleaseStorageAction::Unpin)
+        Some(ReleaseStorageAction::DetachAudio)
     );
 }
 

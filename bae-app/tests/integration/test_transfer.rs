@@ -208,7 +208,7 @@ async fn test_unpin_rejects_local_release() {
             .await;
 
     assert!(
-        mgr.manager().unpin_release(&release_id).await.is_err(),
+        mgr.manager().unpin_releases(std::slice::from_ref(&release_id)).await.is_err(),
         "unpin must fail for a local release"
     );
 }
@@ -377,7 +377,7 @@ async fn the_detail_views_follow_a_releases_pin() {
         .expect("pin task completes");
     shown(true).await;
 
-    mgr.manager().unpin_release(&release_id).await.unwrap();
+    mgr.manager().unpin_releases(std::slice::from_ref(&release_id)).await.unwrap();
     shown(false).await;
 }
 
@@ -409,7 +409,7 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
         ReleaseStorageState::InStorage { pinned: true }
     );
 
-    mgr.manager().unpin_release(&release_id).await.unwrap();
+    mgr.manager().unpin_releases(std::slice::from_ref(&release_id)).await.unwrap();
     assert_eq!(
         crate::release_storage(&db, &release_id).await,
         ReleaseStorageState::InStorage { pinned: false }

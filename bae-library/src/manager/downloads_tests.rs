@@ -518,7 +518,7 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
         .await
         .expect("the pin finishes");
 
-        manager.unpin_release(&cloud).await.unwrap();
+        manager.unpin_releases(std::slice::from_ref(&cloud)).await.unwrap();
         rows_until(&mut rows, |value| value.files.iter().all(|file| file.pin.is_none())).await;
     }
 }

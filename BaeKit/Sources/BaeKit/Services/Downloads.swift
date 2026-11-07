@@ -12,10 +12,11 @@ public final class Downloads: Sendable, Observable {
     /// its live read, and the bytes each download moves through its transfers.
     public let queuePins:
         @Sendable (_ releaseIds: [String]) async throws -> Void
-    /// Unpin a release: coven moves its files from storage/pinned/ to the
-    /// evictable cache; the release stays Remote and playable.
-    public let unpinRelease:
-        @Sendable (_ releaseId: String) async throws -> Void
+    /// Unpin releases, all in one write: coven moves their files from
+    /// storage/pinned/ to the evictable cache; each release stays Remote and
+    /// playable.
+    public let unpinReleases:
+        @Sendable (_ releaseIds: [String]) async throws -> Void
     /// Pause or resume the download queue. In-flight downloads finish; the
     /// queue stops starting new ones until resumed.
     public let setDownloadsPaused:
@@ -36,7 +37,7 @@ public final class Downloads: Sendable, Observable {
     public init(
         queuePins: @escaping @Sendable ([String]) async throws -> Void = { _ in
         },
-        unpinRelease: @escaping @Sendable (String) async throws -> Void = {
+        unpinReleases: @escaping @Sendable ([String]) async throws -> Void = {
             _ in
         },
         setDownloadsPaused: @escaping @Sendable (Bool) async throws -> Void = {
@@ -53,7 +54,7 @@ public final class Downloads: Sendable, Observable {
             }
     ) {
         self.queuePins = queuePins
-        self.unpinRelease = unpinRelease
+        self.unpinReleases = unpinReleases
         self.setDownloadsPaused = setDownloadsPaused
         self.cancelDownload = cancelDownload
         self.retryDownloads = retryDownloads
@@ -63,7 +64,7 @@ public final class Downloads: Sendable, Observable {
     public convenience init(handle: any AppHandleProtocol) {
         self.init(
             queuePins: { try await handle.queuePinReleases(releaseIds: $0) },
-            unpinRelease: { try await handle.unpinRelease(releaseId: $0) },
+            unpinReleases: { try await handle.unpinReleases(releaseIds: $0) },
             setDownloadsPaused: {
                 try await handle.setDownloadsPaused(paused: $0)
             },

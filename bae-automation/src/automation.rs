@@ -393,7 +393,7 @@ impl Automation {
             }
             AutomationStorageAction::Unpin => {
                 require_action(&summary, AutomationReleaseStorageAction::Unpin, "unpin")?;
-                self.services.unpin_release(&release_id).await?;
+                self.services.unpin_releases(std::slice::from_ref(&release_id)).await?;
                 Ok(AutomationStorageActionOutcome::Unpinned { release_id })
             }
             AutomationStorageAction::DetachAudio { destination_dir } => {

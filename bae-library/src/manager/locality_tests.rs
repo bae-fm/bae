@@ -322,7 +322,7 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
         "covers remain evictable when audio is pinned"
     );
 
-    manager.unpin_release(&release.id).await.unwrap();
+    manager.unpin_releases(std::slice::from_ref(&release.id)).await.unwrap();
 
     assert!(
         !file_pinned(manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
@@ -336,7 +336,7 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
 
 /// A transition's row is there while its work runs; a work that fails or
 /// panics has it deleted in a write of its own. A work that succeeds deletes
-/// it in the write that finishes it, as the unpin and make-local tests below
+/// it in the write that finishes it, as the make-local test below
 /// show.
 #[tokio::test]
 async fn a_failed_transition_ends_in_a_write_of_its_own() {
@@ -353,7 +353,7 @@ async fn a_failed_transition_ends_in_a_write_of_its_own() {
     let failed = manager
         .library
         .manager()
-        .run_storage_action(&release.id, StoredTransition::Unpin, async {
+        .run_storage_action(&release.id, StoredTransition::DetachAudio, async {
             Err::<(), _>(LibraryError::Storage(format!(
                 "the work failed, showing {:?}",
                 shown().await
@@ -363,13 +363,13 @@ async fn a_failed_transition_ends_in_a_write_of_its_own() {
     let Err(LibraryError::Storage(failure)) = failed else {
         panic!("{failed:?}");
     };
-    assert!(failure.ends_with("Some(Unpin)"), "the row is there while it runs: {failure}");
+    assert!(failure.ends_with("Some(DetachAudio)"), "the row is there while it runs: {failure}");
     assert_eq!(shown().await, None, "a failure ends it");
 
     let panicked = manager
         .library
         .manager()
-        .run_storage_action(&release.id, StoredTransition::Unpin, async {
+        .run_storage_action(&release.id, StoredTransition::DetachAudio, async {
             if release.id.is_empty() {
                 return Ok(());
             }
@@ -380,58 +380,58 @@ async fn a_failed_transition_ends_in_a_write_of_its_own() {
     assert_eq!(shown().await, None, "a panic ends it");
 }
 
-/// Unpinning releases a release's pins in the write that ends its
-/// transition: a write that can't end it releases nothing, so the release
-/// never shows the unpin once its files are evictable.
+/// Unpinning a selection releases every pin in one write: no release shows an
+/// unpin on the way, because no row of one is written.
 #[tokio::test]
-async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
+async fn unpinning_a_selection_releases_every_pin_in_one_write() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    let release = insert_local_release_with_files(
-        manager,
-        &temp_dir.path().join("kept"),
-        "Kept",
-        &[("track.flac", b"track-bytes")],
-    )
-    .await;
-    manager.upload_release(&release.id, true).await.unwrap();
-    manager.drain_uploads_expecting_work().await.unwrap();
-    wait_for_kept_release(manager, &release.id).await;
-    let file = release_files(manager, &release.id).await.remove(0);
-    let pinned = || async {
-        file_pinned(manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file.id).await
-    };
-    assert!(pinned().await);
+    let mut pinned = Vec::new();
+    for name in ["a", "b"] {
+        let release = insert_local_release_with_files(
+            manager,
+            &temp_dir.path().join(name),
+            &format!("Kept {name}"),
+            &[("track.flac", name.as_bytes())],
+        )
+        .await;
+        manager.upload_release(&release.id, true).await.unwrap();
+        manager.drain_uploads_expecting_work().await.unwrap();
+        wait_for_kept_release(manager, &release.id).await;
+        let file = release_files(manager, &release.id).await.remove(0);
+        assert!(file_pinned(manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file.id).await);
+        pinned.push((release.id, file.id));
+    }
 
-    let refused = bae_transfers::release_storage_action::unpin_release(
-        &manager.store,
-        &release.id,
-        vec![file.file],
-    )
-    .await;
+    let rows = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let mut transitions = manager.store.subscribe(|sql| {
+        Ok(sql.query_row("SELECT COUNT(*) FROM release_storage_action", [], |row| {
+            row.get::<_, i64>(0)
+        })?)
+    });
+    let seen = rows.clone();
+    let collector = tokio::spawn(async move {
+        while let Some(Ok(count)) = transitions.next().await {
+            seen.lock().unwrap().push(count);
+        }
+    });
+
+    let ids: Vec<String> = pinned.iter().map(|(release, _)| release.clone()).collect();
+    manager.unpin_releases(&ids).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    collector.abort();
+
+    for (release, file) in &pinned {
+        assert!(
+            !file_pinned(manager, bae_records::synced::RELEASE_FILES_NAMESPACE, file).await,
+            "release {release} unpinned"
+        );
+    }
     assert!(
-        matches!(
-            refused,
-            Err(bae_store::WriteError::Refused(
-                bae_transfers::StorageTransitionRefusal::NotInTransition {
-                    transition: bae_transfers::StoredTransition::Unpin,
-                    ..
-                }
-            ))
-        ),
-        "no unpin was admitted for the write to end: {refused:?}"
-    );
-    assert!(pinned().await, "a write that can't end the transition releases no pin");
-
-    manager.unpin_release(&release.id).await.unwrap();
-    assert!(!pinned().await, "the unpin released the pin");
-    assert_eq!(
-        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &release.id)
-            .await
-            .unwrap(),
-        None,
-        "and ended the transition"
+        rows.lock().unwrap().iter().all(|count| *count == 0),
+        "no release shows a transition: {:?}",
+        rows.lock().unwrap()
     );
 }
 
@@ -519,7 +519,7 @@ async fn a_release_in_a_transition_refuses_another() {
     assert!(bae_transfers::release_storage_action::begin_release_storage_action(
         &manager.library.manager().store,
         &release.id,
-        StoredTransition::Unpin
+        StoredTransition::DetachAudio
     )
     .await
     .unwrap());
@@ -542,7 +542,7 @@ async fn a_release_in_a_transition_refuses_another() {
         )
         .await
         .unwrap(),
-        Some(ReleaseStorageAction::Unpin)
+        Some(ReleaseStorageAction::DetachAudio)
     );
 }
 

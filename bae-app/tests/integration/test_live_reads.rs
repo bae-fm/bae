@@ -138,7 +138,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
             bae_transfers::release_storage_action::begin_release_storage_action(
                 &db,
                 &transitioning,
-                bae_transfers::StoredTransition::Unpin,
+                bae_transfers::StoredTransition::DetachAudio,
             )
             .await
             .unwrap();
@@ -435,18 +435,18 @@ async fn a_transition_reaches_the_reads_from_its_row() {
     assert!(bae_transfers::release_storage_action::begin_release_storage_action(
         manager.store(),
         &release.id,
-        StoredTransition::Unpin
+        StoredTransition::DetachAudio
     )
     .await
     .unwrap());
-    let unpinning = Some(ReleaseStorageAction::Unpin);
-    until("the album shows the transition", || album_detail.next(), album_shows(unpinning)).await;
-    until("the release shows the transition", || release_detail.next(), release_shows(unpinning))
+    let detaching = Some(ReleaseStorageAction::DetachAudio);
+    until("the album shows the transition", || album_detail.next(), album_shows(detaching)).await;
+    until("the release shows the transition", || release_detail.next(), release_shows(detaching))
         .await;
     until(
         "the row shows the transition",
         || storage.next(),
-        row_shows(StorageRowStatus::Transferring(ReleaseStorageAction::Unpin)),
+        row_shows(StorageRowStatus::Transferring(ReleaseStorageAction::DetachAudio)),
     )
     .await;
 

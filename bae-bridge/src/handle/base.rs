@@ -126,8 +126,9 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    fn unpin_release(release_id: String) -> () {
-        Ok(this.services.unpin_release(&release_id).await?)
+    /// Unpin the releases, every one in one write.
+    fn unpin_releases(release_ids: Vec<String>) -> () {
+        Ok(this.services.unpin_releases(&release_ids).await?)
     }
 
     /// Move the releases to the cloud, pinned here as the stored import

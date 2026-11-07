@@ -3,6 +3,8 @@
 //! transition runs.
 
 use super::*;
+use bae_diagnostics::{LocalId, TelemetryEvent};
+use bae_transfers::release_storage_action::UnpinRefusal;
 
 impl LibraryManager {
     /// Run `work` as `release_id`'s transition `action`: its row is written
@@ -161,11 +163,46 @@ impl LibraryManager {
             .collect()
     }
 
-    /// Unpin a release: coven moves its files out of the pinned cache and into the
-    /// evictable cache, so they stay readable but become droppable.
-    pub async fn unpin_release(&self, release_id: &str) -> Result<(), LibraryError> {
-        let rx = self.start_unpin_transfer(release_id.to_string());
-        self.drive_transfer(release_id, ReleaseStorageAction::Unpin, rx).await
+    /// Unpin the releases of a selection, every one in one write: coven moves
+    /// their files out of the pinned cache and into the evictable cache, so
+    /// they stay readable but become droppable. No release shows a transition
+    /// on the way. A release that cannot unpin changes nothing and the rest
+    /// unpin; the first such release is then the error returned.
+    pub async fn unpin_releases(&self, release_ids: &[String]) -> Result<(), LibraryError> {
+        let store = self.store.clone();
+        let selection = release_ids.to_vec();
+        let unpinned = self
+            .run_file_operation("unpin releases", move |_closing| async move {
+                Ok(bae_transfers::release_storage_action::unpin_releases(&store, selection).await?)
+            })
+            .await?;
+        for (release_id, file_count) in unpinned.unpinned {
+            tracing::info!(%release_id, "release unpinned");
+            self.record_telemetry(TelemetryEvent::StorageTransferCompleted {
+                action: ReleaseStorageAction::Unpin,
+                release_id: LocalId(release_id),
+                file_count,
+            });
+        }
+        let mut first = None;
+        for (release_id, refusal) in unpinned.refused {
+            let error = match refusal {
+                UnpinRefusal::Missing => {
+                    LibraryError::release_missing(&release_id, ReleaseWork::Transfer)
+                }
+                UnpinRefusal::NoFiles => LibraryError::Storage("Release has no files".to_string()),
+                UnpinRefusal::NotInStorage => {
+                    LibraryError::Storage("Cannot unpin a local release".to_string())
+                }
+            };
+            tracing::error!(%release_id, failure = %error, "release unpin refused");
+            self.record_telemetry(TelemetryEvent::StorageTransferFailed {
+                action: ReleaseStorageAction::Unpin,
+                release_id: LocalId(release_id),
+            });
+            first.get_or_insert(error);
+        }
+        first.map_or(Ok(()), Err)
     }
 
     /// Make an uploaded release Local again into the folder `new_path`, as

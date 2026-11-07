@@ -23,7 +23,7 @@ use tracing::{debug, error, info};
 type TransferResult = Result<(), LibraryError>;
 type ProgressTx = mpsc::UnboundedSender<TransferProgress>;
 
-/// Progress updates emitted during a pin, unpin, or audio detachment operation. A
+/// Progress updates emitted during a pin or audio detachment operation. A
 /// failure carries the typed error, so the caller reports why it failed —
 /// the cloud out of reach, its credentials, or this device's own store.
 #[derive(Debug)]
@@ -33,7 +33,7 @@ pub enum TransferProgress {
     Failed { release_id: String, error: LibraryError },
 }
 
-/// The progress one pin, unpin or audio detachment reports, until it says how
+/// The progress one pin or audio detachment reports, until it says how
 /// it ended, from the library manager that started it.
 pub struct TransferProgressFeed(mpsc::UnboundedReceiver<TransferProgress>);
 
@@ -92,19 +92,6 @@ impl LibraryManager {
         RunningOp::new(abort, outcome)
     }
 
-    /// Unpin a release: move its files from the pinned cache to the evictable
-    /// cache, as the release's transition. Returns a receiver for progress
-    /// updates.
-    pub(crate) fn start_unpin_transfer(&self, release_id: String) -> TransferProgressFeed {
-        let library_manager = self.clone();
-        let unpinned_release_id = release_id.clone();
-        let (rx, _) = spawn_transfer(
-            ReleaseTransfer::new(self.clone(), release_id, ReleaseStorageAction::Unpin),
-            move |_tx| async move { library_manager.unpin_release_files(&unpinned_release_id).await },
-        );
-        TransferProgressFeed(rx)
-    }
-
     /// Make a Remote release Local, as the release's transition: coven
     /// downloads its files into `new_path` and switches them to this device
     /// only in one write. `cancel` stops it; the transfer's task holds
@@ -143,7 +130,7 @@ impl LibraryManager {
 /// all is its `release_storage_action` row, or for a pin its download queue
 /// entry; this owns what one transfer checks, logs, and reports.
 ///
-/// A pin, unpin, or audio detachment is handed to [`spawn_transfer`], which drives it
+/// A pin or audio detachment is handed to [`spawn_transfer`], which drives it
 /// on its own task and reports on a progress channel.
 pub(crate) struct ReleaseTransfer {
     library_manager: LibraryManager,
@@ -171,7 +158,7 @@ impl ReleaseTransfer {
             return Err(LibraryError::Storage("Release has no files".to_string()));
         }
 
-        // Pin, unpin and detach act on files stored in the cloud.
+        // Pin and detach act on files stored in the cloud.
         let mut ready = true;
         for file in &files {
             let file = self.library_manager.release_file_ref(&file.id).await?;
@@ -261,7 +248,7 @@ where
 fn transfer_operation(action: ReleaseStorageAction) -> &'static str {
     match action {
         ReleaseStorageAction::Pin => "pin a release",
-        ReleaseStorageAction::Unpin => "unpin a release",
+        ReleaseStorageAction::Unpin => unreachable!("an unpin is no spawned transfer"),
         ReleaseStorageAction::Upload => unreachable!("a move to the cloud is no spawned transfer"),
         ReleaseStorageAction::DetachAudio => "make a release local",
     }
@@ -270,7 +257,7 @@ fn transfer_operation(action: ReleaseStorageAction) -> &'static str {
 fn wrong_state_error(action: ReleaseStorageAction) -> &'static str {
     match action {
         ReleaseStorageAction::Pin => "Cannot pin a local release",
-        ReleaseStorageAction::Unpin => "Cannot unpin a local release",
+        ReleaseStorageAction::Unpin => unreachable!("an unpin is no spawned transfer"),
         ReleaseStorageAction::Upload => unreachable!("a move to the cloud is no spawned transfer"),
         ReleaseStorageAction::DetachAudio => "Release is already local",
     }

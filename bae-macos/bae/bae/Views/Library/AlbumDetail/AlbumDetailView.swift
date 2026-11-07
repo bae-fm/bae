@@ -470,7 +470,7 @@ extension AlbumDetailView {
     private func unpinRelease(releaseId: String) {
         let downloads = downloads
         runStorageTransition {
-            try await downloads.unpinRelease(releaseId)
+            try await downloads.unpinReleases([releaseId])
         }
     }
 
