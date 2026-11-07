@@ -62,18 +62,19 @@ const ALBUM_LINKS_READ: &str = "read";
 const ALBUM_LINKS_UNREAD: &str = "unread";
 
 /// The `album_links` column a release's facts are stored with: a MusicBrainz
-/// release's reading, none for a Discogs release.
-fn album_links_column(facts: &CatalogFacts) -> Result<Option<&'static str>, DbError> {
+/// release's reading, none for a Discogs release. Fetching a MusicBrainz
+/// release reads its album links, or fails to, so a stored one never holds
+/// links nothing asked for.
+fn album_links_column(facts: &CatalogFacts) -> Option<&'static str> {
     match facts {
         CatalogFacts::MusicBrainz { album_links, .. } => match album_links {
-            AlbumLinks::Read(_) => Ok(Some(ALBUM_LINKS_READ)),
-            AlbumLinks::Unread => Ok(Some(ALBUM_LINKS_UNREAD)),
-            AlbumLinks::NotAsked => Err(DbError::Message(
-                "a fetched MusicBrainz release carries album links that were never read"
-                    .to_string(),
-            )),
+            AlbumLinks::Read(_) => Some(ALBUM_LINKS_READ),
+            AlbumLinks::Unread => Some(ALBUM_LINKS_UNREAD),
+            AlbumLinks::NotAsked => {
+                panic!("a fetched MusicBrainz release carries album links that were never read")
+            }
         },
-        CatalogFacts::Discogs { .. } => Ok(None),
+        CatalogFacts::Discogs { .. } => None,
     }
 }
 
@@ -92,27 +93,26 @@ fn derived_album_year(first_year: Option<i32>, pressing_year: Option<i32>) -> Op
     first_year.or(pressing_year)
 }
 
-/// Refuse a release whose album year or media counts differ from what its
+/// Panic on a release whose album year or media counts differ from what its
 /// other facts give, which is all the store keeps of them: an extraction
 /// derives both that way, and storing one that doesn't would read back as
 /// another release.
-fn check_derived_facts(release: &SourceRelease) -> Result<(), DbError> {
+fn check_derived_facts(release: &SourceRelease) {
     let metadata = &release.metadata;
     let derived = derived_album_year(metadata.album.first_year, metadata.pressing.year);
-    if metadata.album.year != derived {
-        return Err(DbError::Message(format!(
-            "{:?} states album year {:?}, not its first year or pressing year {derived:?}",
-            release.release, metadata.album.year
-        )));
-    }
+    assert!(
+        metadata.album.year == derived,
+        "{:?} states album year {:?}, not its first year or pressing year {derived:?}",
+        release.release,
+        metadata.album.year
+    );
     let counts = release.stated_media().counts();
-    if metadata.pressing.facts.media != counts {
-        return Err(DbError::Message(format!(
-            "{:?} counts media {:?}, not the {counts:?} its mediums and formats state",
-            release.release, metadata.pressing.facts.media
-        )));
-    }
-    Ok(())
+    assert!(
+        metadata.pressing.facts.media == counts,
+        "{:?} counts media {:?}, not the {counts:?} its mediums and formats state",
+        release.release,
+        metadata.pressing.facts.media
+    );
 }
 
 /// Write `release`, replacing whatever was stored for it.
@@ -120,7 +120,7 @@ pub(super) fn replace_source_release_on(
     sql: &CovenWrite<'_>,
     release: &SourceRelease,
 ) -> Result<(), DbError> {
-    check_derived_facts(release)?;
+    check_derived_facts(release);
     let catalog = release.release.catalog.as_str();
     let key = release.release.key.as_str();
     let metadata = &release.metadata;
@@ -159,7 +159,7 @@ pub(super) fn replace_source_release_on(
             serde_json::to_string(&release.notes).expect("notes serialize"),
             release.archive_release.as_ref().map(|archive| archive.release_id.as_str()),
             release.archive_release.as_ref().and_then(|archive| archive.group_id.as_deref()),
-            album_links_column(&release.catalog)?,
+            album_links_column(&release.catalog),
         ],
     )?;
     for table in CHILD_TABLES {

@@ -409,19 +409,26 @@ async fn a_stored_release_reads_back_its_album_year_and_media_counts() {
 }
 
 /// A release whose album year or media counts are not what its other facts
-/// give is refused, since the store keeps only those other facts.
+/// give is one no extraction builds, since the store keeps only those other
+/// facts: its write fails with the bug the store reports.
 #[tokio::test]
-async fn a_release_whose_derived_facts_disagree_is_not_stored() {
-    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
-    let tables = crate::tables::ImportTables::new(db.clone());
+async fn a_release_whose_derived_facts_disagree_is_a_bug() {
     let extracted = musicbrainz_documents().extract().unwrap();
     let mut year = extracted.clone();
     year.metadata.album.year = Some(1970);
     let mut media = extracted.clone();
     media.metadata.pressing.facts.media.clear();
-    for release in [year, media] {
-        assert!(tables.save_source_release(&release).await.is_err());
-        assert_eq!(tables.load_source_release(release.release()).await.unwrap(), None);
+    for (release, said) in [(year, "states album year"), (media, "counts media")] {
+        let (db, _tmp, heard) =
+            bae_store::test_fixtures::temp_db_hearing_bugs(crate::TEST_SCHEMA).await;
+        let tables = crate::tables::ImportTables::new(db.clone());
+
+        let failed = tables.save_source_release(&release).await.unwrap_err();
+
+        let reported = heard.take();
+        assert_eq!(reported.len(), 1, "{reported:?}");
+        assert_eq!(coven::task::CarriesBug::bug(&failed), Some(&reported[0]));
+        assert!(reported[0].message.contains(said), "{reported:?}");
     }
 }
 
