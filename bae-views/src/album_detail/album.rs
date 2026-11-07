@@ -30,7 +30,7 @@ pub struct AlbumDetail {
 
 /// The slim projection a list view renders. Composed into [`AlbumDetail`] for
 /// detail views.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AlbumSummary {
     pub id: String,
     pub title: String,
@@ -69,7 +69,7 @@ impl AlbumSummary {
 
 /// One row of the album grid: an album, listed once when the grid is flat and
 /// under each artist its credits show when grouped by artist.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AlbumAppearance {
     pub album: AlbumSummary,
     /// Grouped by artist: the album's credits other than the artist whose

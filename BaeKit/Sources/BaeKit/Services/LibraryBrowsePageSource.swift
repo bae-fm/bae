@@ -78,6 +78,10 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
     private struct Sink {
         let value: @MainActor @Sendable ([Row], Int) -> Void
         let error: @MainActor @Sendable (any Error) -> Void
+        /// What the page last heard: a value names only the windows whose
+        /// rows changed, so a page it does not name is told the new total
+        /// with these rows.
+        var heard: (rows: [Row], total: Int)?
     }
 
     private let query: LibraryBrowseQuery<Row>
@@ -88,6 +92,10 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
     public var itemCount: Int? { sectionStore.itemCount }
     private let lock = NSLock()
     private var sinks: [WindowKey: Sink] = [:]
+    /// How many `coalescingRequests` are running, and whether a change to the
+    /// windows waits for the last of them to return.
+    private var requestHolds = 0
+    private var requestOwed = false
     private var deliveries:
         ScreenSubscription<PulledValues<LibraryBrowseDelivery<Row>>>?
     /// The read failure this source died of, kept so a page registered after
@@ -113,24 +121,46 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
         onError: @escaping @MainActor @Sendable (any Error) -> Void
     ) -> any PageSubscription {
         let key = WindowKey(offset: UInt64(offset), limit: UInt64(limit))
-        let (failure, windows) = lock.withLock {
+        let (failure, windows, held) = lock.withLock {
             sinks[key] = Sink(value: onValue, error: onError)
-            return (self.failure, requestedWindows())
+            if requestHolds > 0 { requestOwed = true }
+            return (self.failure, requestedWindows(), requestHolds > 0)
         }
         if let failure {
             Task { @MainActor in onError(failure) }
             return PageWindow(source: self, key: key)
         }
-        push(windows, failing: onError)
+        if !held {
+            push(windows, failing: onError)
+        }
         return PageWindow(source: self, key: key)
     }
 
     private func remove(_ key: WindowKey) {
-        let windows = lock.withLock {
+        let (windows, held) = lock.withLock {
             sinks.removeValue(forKey: key)
+            if requestHolds > 0 { requestOwed = true }
+            return (requestedWindows(), requestHolds > 0)
+        }
+        if !held {
+            push(windows, failing: nil)
+        }
+    }
+
+    /// Run `body`, which adds and drops pages, as one change: the windows
+    /// that are left are asked for once, when it returns.
+    public func coalescingRequests(_ body: () -> Void) {
+        lock.withLock { requestHolds += 1 }
+        body()
+        let windows: [BridgeLibraryPageWindow]? = lock.withLock {
+            requestHolds -= 1
+            guard requestHolds == 0, requestOwed else { return nil }
+            requestOwed = false
             return requestedWindows()
         }
-        push(windows, failing: nil)
+        if let windows {
+            push(windows, failing: nil)
+        }
     }
 
     /// Every registered page as a window, in offset order, so the same pages
@@ -162,19 +192,45 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
 
     @MainActor
     private func deliver(_ delivery: LibraryBrowseDelivery<Row>) {
-        let sinks = lock.withLock { self.sinks }
+        let calls = hearingThis(delivery)
         // Sections and rows land in this one turn: a delivery that carries
         // sections is the one whose rows they fit.
         if let sections = delivery.sections, sections != sectionStore.values {
             sectionStore.values = sections
         }
         sectionStore.itemCount = delivery.itemCount
-        for window in delivery.windows {
-            let key = WindowKey(
-                offset: window.window.offset,
-                limit: window.window.limit
-            )
-            sinks[key]?.value(window.rows, delivery.totalCount)
+        for (sink, rows) in calls {
+            sink.value(rows, delivery.totalCount)
+        }
+    }
+
+    /// The pages this value tells something, each with the rows to tell it:
+    /// the rows of its window when the value names it, and otherwise the rows
+    /// it already has when the total moved.
+    private func hearingThis(
+        _ delivery: LibraryBrowseDelivery<Row>
+    ) -> [(Sink, [Row])] {
+        let total = delivery.totalCount
+        return lock.withLock {
+            for window in delivery.windows {
+                let key = WindowKey(
+                    offset: window.window.offset,
+                    limit: window.window.limit
+                )
+                sinks[key]?.heard = (window.rows, total)
+            }
+            var calls: [(Sink, [Row])] = []
+            for (key, sink) in sinks {
+                guard let heard = sink.heard else { continue }
+                let named = delivery.windows.contains {
+                    $0.window.offset == key.offset
+                        && $0.window.limit == key.limit
+                }
+                guard named || heard.total != total else { continue }
+                sinks[key]?.heard = (heard.rows, total)
+                calls.append((sink, heard.rows))
+            }
+            return calls
         }
     }
 

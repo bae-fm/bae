@@ -16,7 +16,7 @@ pub struct ComposerDetail {
 
 /// One row of a composer's page: its id, the heading it opens when it is the
 /// first of its part of the page, and what it shows.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ComposerDetailRow {
     pub id: i64,
     pub heading: Option<ComposerHeading>,
@@ -35,7 +35,7 @@ pub enum ComposerHeading {
 }
 
 /// What a row of a composer's page shows.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ComposerDetailItem {
     /// A work, `part` when it is listed under the work heading its group.
     Work {

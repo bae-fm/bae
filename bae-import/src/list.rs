@@ -225,6 +225,9 @@ pub struct ImportListProjection {
 /// A projection, and what woke the live query.
 #[derive(Debug, Clone)]
 pub struct ImportListSnapshot {
+    /// The requested windows whose rows differ from what the last snapshot
+    /// delivered for them, and every window asked for since; a window not
+    /// named holds the rows the surface already has.
     pub windows: Vec<LibraryBrowseWindow<ImportListItem>>,
     pub total_count: u64,
     pub summary: ImportQueueSummary,

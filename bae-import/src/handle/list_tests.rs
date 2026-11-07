@@ -76,17 +76,22 @@ impl LiveList {
     async fn next(&mut self) {
         let snapshot = self.list.next().await.expect("the list answers");
         self.entries = snapshot.pending_filter_entries.clone();
-        self.shown = Some(
-            snapshot
-                .windows
-                .iter()
-                .flat_map(|window| &window.rows)
-                .filter_map(|item| match item {
-                    crate::ImportListItem::Candidate { row, .. } => Some(row.candidate_key.clone()),
-                    _ => None,
-                })
-                .collect(),
-        );
+        // A snapshot naming no window leaves the rows as they were.
+        if !snapshot.windows.is_empty() {
+            self.shown = Some(
+                snapshot
+                    .windows
+                    .iter()
+                    .flat_map(|window| &window.rows)
+                    .filter_map(|item| match item {
+                        crate::ImportListItem::Candidate { row, .. } => {
+                            Some(row.candidate_key.clone())
+                        }
+                        _ => None,
+                    })
+                    .collect(),
+            );
+        }
     }
 }
 
@@ -289,16 +294,7 @@ async fn a_run_off_the_page_delivers_its_count() {
 
     assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::InProgress), Some(1));
     assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::All), Some(2));
-    assert_eq!(
-        moved
-            .windows
-            .iter()
-            .flat_map(|window| &window.rows)
-            .filter_map(candidate_key)
-            .collect::<Vec<_>>(),
-        vec![&on_page],
-        "the page holds the same row"
-    );
+    assert!(moved.windows.is_empty(), "the page holds the row it held: {on_page:?}");
     shut_down(handle).await;
 }
 
@@ -797,8 +793,8 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     );
 }
 
-/// Where a candidate off the page stands reaches no row: it delivers the page
-/// again only for the count it moves. Once a new window puts the candidate on
+/// Where a candidate off the page stands reaches no row: it delivers no rows,
+/// only the count it moves. Once a new window puts the candidate on
 /// the page, its row carries its standing and the same subscription delivers
 /// its changes.
 #[tokio::test(flavor = "multi_thread")]
@@ -823,7 +819,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     fixture.import.claim_candidate_for_import(&off_key, "import-off").await;
     let counted_off = next_page(&list).await;
     assert_eq!(counted_off.view_revision, initial.view_revision);
-    assert_eq!(counted_off.windows, initial.windows, "the claim off the page reached no row on it");
+    assert!(counted_off.windows.is_empty(), "the claim off the page delivered no rows");
     assert_eq!(
         counted(&counted_off.pending_filter_entries, crate::PendingFilter::InProgress),
         Some(1)
@@ -874,7 +870,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
 }
 
 /// A verdict stored for a row off the page reaches no row on it, but moves
-/// the filter's counts, so the list delivers the page again with them.
+/// the filter's counts, so the list delivers them with no rows.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     let fixture = Fixture::new("verdict-off-the-page").await;
@@ -902,8 +898,8 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
         "the verdict moved a count"
     );
     assert_eq!(counted(&moved.pending_filter_entries, crate::PendingFilter::All), Some(2));
-    assert_eq!(moved.windows, initial.windows, "the verdict off the page reached no row on it");
-    assert_eq!(page_live(&moved).into_keys().collect::<Vec<_>>(), vec![on_key]);
+    assert!(moved.windows.is_empty(), "the verdict off the page delivered no rows");
+    assert_eq!(moved.total_count, initial.total_count);
 }
 
 fn preparing(import_id: &str) -> crate::ImportProgress {

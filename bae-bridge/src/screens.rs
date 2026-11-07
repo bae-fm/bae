@@ -55,6 +55,11 @@ live_query_read!(
     over [Request: Send + Sync + 'static, Value: Send + 'static]
 );
 
+live_query_read!(
+    bae_views::LiveLibraryBrowse<Snapshot> => Snapshot,
+    over [Snapshot: bae_views::WindowedSnapshot]
+);
+
 #[cfg(desktop)]
 live_query_read!(
     bae_app::live_reads::LiveImportCandidate

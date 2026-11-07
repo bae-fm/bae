@@ -123,6 +123,10 @@ import Foundation
             let value:
                 @MainActor @Sendable ([BridgeImportListItem], Int) -> Void
             let error: @MainActor @Sendable (any Error) -> Void
+            /// What the page last heard: a value names only the windows whose
+            /// rows changed, so a page it does not name is told the new total
+            /// with these rows.
+            var heard: (rows: [BridgeImportListItem], total: Int)?
         }
 
         private struct ViewWaiter {
@@ -152,6 +156,10 @@ import Foundation
             @MainActor @Sendable (BridgeSelectionSummary, UInt64) -> Void
         private let lock = NSLock()
         private var sinks: [WindowKey: Sink] = [:]
+        /// How many `coalescingRequests` are running, and whether a change to
+        /// the windows waits for the last of them to return.
+        private var requestHolds = 0
+        private var requestOwed = false
         private var viewWaiters: [UUID: ViewWaiterState] = [:]
         private var latestSummary: DeliveredSummary?
         private var deliveries:
@@ -258,12 +266,16 @@ import Foundation
             sinks[key] = Sink(value: onValue, error: onError)
             let failure = self.failure
             let windows = requestedWindows()
+            let held = requestHolds > 0
+            if held { requestOwed = true }
             lock.unlock()
             if let failure {
                 Task { @MainActor in onError(failure) }
                 return PageWindow(source: self, key: key)
             }
-            push(windows, failing: onError)
+            if !held {
+                push(windows, failing: onError)
+            }
             return PageWindow(source: self, key: key)
         }
 
@@ -273,18 +285,12 @@ import Foundation
             lock.lock()
             sinks.removeValue(forKey: key)
             let windows = requestedWindows()
+            let held = requestHolds > 0
+            if held { requestOwed = true }
             lock.unlock()
-            push(windows, failing: nil)
-        }
-
-        /// Every registered page as a window, in offset order so the request is
-        /// the same value for the same set of pages.
-        private func requestedWindows() -> [BridgeLibraryPageWindow] {
-            sinks.keys
-                .sorted { ($0.offset, $0.limit) < ($1.offset, $1.limit) }
-                .map {
-                    BridgeLibraryPageWindow(offset: $0.offset, limit: $0.limit)
-                }
+            if !held {
+                push(windows, failing: nil)
+            }
         }
 
         private func push(
@@ -304,32 +310,6 @@ import Foundation
                     failEveryPage(with: error)
                 }
             }
-        }
-
-        /// Every page registered right now, read under the lock.
-        private func registeredSinks() -> [WindowKey: Sink] {
-            lock.lock()
-            defer { lock.unlock() }
-            return sinks
-        }
-
-        @MainActor
-        private func deliver(_ snapshot: BridgeImportListSnapshot) {
-            let sinks = registeredSinks()
-            onSummary(snapshot.summary)
-            onPendingFilterEntries(snapshot.pendingFilterEntries)
-            for window in snapshot.windows {
-                let key = WindowKey(
-                    offset: window.window.offset,
-                    limit: window.window.limit
-                )
-                sinks[key]?.value(window.rows, Int(snapshot.totalCount))
-            }
-            onSelection(snapshot.selection, snapshot.selectionRevision)
-            fulfillViewWaiters(
-                revision: snapshot.viewRevision,
-                summary: snapshot.summary
-            )
         }
 
         /// Tell every page and every view waiter the source died of `error`.
@@ -375,6 +355,78 @@ import Foundation
     }
 
     extension ImportListPageSource {
+        /// Run `body`, which adds and drops pages, as one change: the windows
+        /// that are left are asked for once, when it returns.
+        public func coalescingRequests(_ body: () -> Void) {
+            lock.withLock { requestHolds += 1 }
+            body()
+            let windows: [BridgeLibraryPageWindow]? = lock.withLock {
+                requestHolds -= 1
+                guard requestHolds == 0, requestOwed else { return nil }
+                requestOwed = false
+                return requestedWindows()
+            }
+            if let windows {
+                push(windows, failing: nil)
+            }
+        }
+
+        /// Every registered page as a window, in offset order so the request is
+        /// the same value for the same set of pages.
+        private func requestedWindows() -> [BridgeLibraryPageWindow] {
+            sinks.keys
+                .sorted { ($0.offset, $0.limit) < ($1.offset, $1.limit) }
+                .map {
+                    BridgeLibraryPageWindow(offset: $0.offset, limit: $0.limit)
+                }
+        }
+
+        /// The pages this value tells something, each with the rows to tell
+        /// it: the rows of its window when the value names it, and otherwise
+        /// the rows it already has when the total moved.
+        private func hearingThis(
+            _ snapshot: BridgeImportListSnapshot,
+            total: Int
+        ) -> [(Sink, [BridgeImportListItem])] {
+            lock.withLock {
+                for window in snapshot.windows {
+                    let key = WindowKey(
+                        offset: window.window.offset,
+                        limit: window.window.limit
+                    )
+                    sinks[key]?.heard = (window.rows, total)
+                }
+                var calls: [(Sink, [BridgeImportListItem])] = []
+                for (key, sink) in sinks {
+                    guard let heard = sink.heard else { continue }
+                    let named = snapshot.windows.contains {
+                        $0.window.offset == key.offset
+                            && $0.window.limit == key.limit
+                    }
+                    guard named || heard.total != total else { continue }
+                    sinks[key]?.heard = (heard.rows, total)
+                    calls.append((sink, heard.rows))
+                }
+                return calls
+            }
+        }
+
+        @MainActor
+        private func deliver(_ snapshot: BridgeImportListSnapshot) {
+            let total = Int(snapshot.totalCount)
+            let calls = hearingThis(snapshot, total: total)
+            onSummary(snapshot.summary)
+            onPendingFilterEntries(snapshot.pendingFilterEntries)
+            for (sink, rows) in calls {
+                sink.value(rows, total)
+            }
+            onSelection(snapshot.selection, snapshot.selectionRevision)
+            fulfillViewWaiters(
+                revision: snapshot.viewRevision,
+                summary: snapshot.summary
+            )
+        }
+
         /// Run `write`, a change to what the list shows answering with its
         /// view revision, once every change asked for before it has landed.
         private func changeView(

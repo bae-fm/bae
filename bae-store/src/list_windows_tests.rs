@@ -150,3 +150,48 @@ fn places_kept_under_one_standing_are_none_under_another() {
     assert_eq!(known.under(&vec![1, 2]), places);
     assert!(known.under(&vec![1, 3]).is_empty());
 }
+
+fn window(offset: u64, limit: u64) -> LibraryPageWindow {
+    LibraryPageWindow { offset, limit }
+}
+
+fn delivery(offset: u64, rows: &[u32]) -> LibraryBrowseWindow<u32> {
+    LibraryBrowseWindow { window: window(offset, 2), rows: rows.to_vec() }
+}
+
+#[test]
+fn a_window_is_told_only_when_its_rows_differ() {
+    let told = WindowsTold::new([window(0, 2), window(2, 2)].into());
+
+    let first = told.changed(vec![delivery(0, &[1, 2]), delivery(2, &[3, 4])]);
+    assert_eq!(first.len(), 2, "nothing was told yet");
+
+    let moved = told.changed(vec![delivery(0, &[1, 2]), delivery(2, &[3, 5])]);
+    assert_eq!(moved, vec![delivery(2, &[3, 5])], "only the window whose rows moved");
+
+    assert!(told.changed(vec![delivery(0, &[1, 2]), delivery(2, &[3, 5])]).is_empty());
+}
+
+#[test]
+fn a_window_asked_for_again_is_told_whatever_it_held_before() {
+    let told = WindowsTold::new([window(0, 2)].into());
+    told.changed(vec![delivery(0, &[1, 2])]);
+
+    // Dropped and asked for again before any delivery saw it gone.
+    told.request(&[].into());
+    told.request(&[window(0, 2)].into());
+    assert_eq!(told.changed(vec![delivery(0, &[1, 2])]), vec![delivery(0, &[1, 2])]);
+
+    // A window still asked for through a new request stays told.
+    told.request(&[window(0, 2), window(2, 2)].into());
+    assert_eq!(
+        told.changed(vec![delivery(0, &[1, 2]), delivery(2, &[3, 4])]),
+        vec![delivery(2, &[3, 4])]
+    );
+}
+
+#[test]
+fn a_window_nobody_asks_for_is_not_told() {
+    let told = WindowsTold::new([window(0, 2)].into());
+    assert!(told.changed(vec![delivery(2, &[3, 4])]).is_empty());
+}

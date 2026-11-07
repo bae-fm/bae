@@ -590,6 +590,77 @@ extension ImportListPageSourceTests {
     }
 
     @MainActor
+    @Test("a value naming no window tells every page the new total")
+    func aCountOnlyValueReachesEveryPage() async throws {
+        let subscription = StubListSubscription()
+        let source = ImportListPageSource(
+            subscription: subscription,
+            onSummary: { _ in },
+            onPendingFilterEntries: { _ in },
+            onSelection: { _, _ in }
+        )
+        var heard: [([String], Int)] = []
+        _ = source.subscribe(
+            offset: 0,
+            limit: 2,
+            onValue: { items, total in
+                heard.append((items.map(\.id), total))
+                Wait.happened()
+            },
+            onError: { _ in }
+        )
+        subscription.deliver(
+            snapshot(
+                [SnapshotWindow(offset: 0, limit: 2, keys: ["/w/a", "/w/b"])],
+                totalCount: 2
+            )
+        )
+        try await Wait.until({ heard.count == 1 })
+
+        subscription.deliver(snapshot([], totalCount: 3))
+        try await Wait.until({ heard.count == 2 })
+        #expect(heard[1].0 == ["candidate:/w/a", "candidate:/w/b"])
+        #expect(heard[1].1 == 3)
+
+        // The total did not move, and no window is named: nothing to tell.
+        subscription.deliver(snapshot([], totalCount: 3))
+        try await Wait.until({ subscription.asks >= 4 })
+        #expect(heard.count == 2)
+    }
+
+    @MainActor
+    @Test("one added page and one dropped page ask for the windows once")
+    func anAddAndADropAreOneRequest() async throws {
+        let subscription = StubListSubscription()
+        let source = ImportListPageSource(
+            subscription: subscription,
+            onSummary: { _ in },
+            onPendingFilterEntries: { _ in },
+            onSelection: { _, _ in }
+        )
+        let first = source.subscribe(
+            offset: 0,
+            limit: 2,
+            onValue: { _, _ in },
+            onError: { _ in }
+        )
+        let asked = subscription.requestedWindows.count
+
+        source.coalescingRequests {
+            _ = source.subscribe(
+                offset: 2,
+                limit: 2,
+                onValue: { _, _ in },
+                onError: { _ in }
+            )
+            first.cancel()
+        }
+
+        #expect(subscription.requestedWindows.count == asked + 1)
+        #expect(subscription.requestedWindows.last?.map(\.offset) == [2])
+    }
+
+    @MainActor
     @Test("a redelivered window and a new one both keep every loaded item")
     func deliveriesNeverDropALoadedItem() async throws {
         let total = 60

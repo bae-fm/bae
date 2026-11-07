@@ -4123,7 +4123,11 @@ Reads come two ways:
   pointed at a new window in place as the person scrolls, and a window that
   leaves the screen before its first value is let go of then, so the
   windows a fast scroll stops on are not read behind every one it passed;
-  one that has ended takes the new window and reads nothing more. The album grid grouped by artist delivers its artists' headings (name, picture, where its albums start) in the delivery whose rows they fit, the first and then only one after what they read changed (`artist_listing`, `artist_image`), so scrolling to another window sends no artist. The downloads list on the phones is such a list: it
+  one that has ended takes the new window and reads nothing more. A value of
+  such a list carries the rows of only the windows whose rows differ from the
+  last value delivered for them, and of every window asked for since, with
+  the list's count always: a write that moves a count, or a row no window
+  shows, delivers no rows. The album grid grouped by artist delivers its artists' headings (name, picture, where its albums start) in the delivery whose rows they fit, the first and then only one after what they read changed (`artist_listing`, `artist_image`), so scrolling to another window sends no artist. The downloads list on the phones is such a list: it
   reads how many releases the queue holds and the windows on screen, and its
   pause and retry controls and summary line read how many are in each phase.
   Each list sorts by terms that end with a unique one, so every row has one

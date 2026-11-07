@@ -30,9 +30,16 @@ public protocol PageSource<Row>: Sendable {
         onValue: @escaping @MainActor @Sendable ([Row], Int) -> Void,
         onError: @escaping @MainActor @Sendable (any Error) -> Void
     ) -> any PageSubscription
+
+    /// Run `body`, which adds and drops pages, as one change to what the
+    /// source reads: a source that serves every page from one query asks it
+    /// for the pages that are left once, when `body` returns, not once per
+    /// page.
+    func coalescingRequests(_ body: () -> Void)
 }
 
 extension PageSource {
+    public func coalescingRequests(_ body: () -> Void) { body() }
     @MainActor
     public var sections: [BridgeLibraryBrowseSection] { [] }
     @MainActor
@@ -282,7 +289,30 @@ where Row.ID: Sendable {
     private func subscribe(_ page: Range<Int>, initial: Bool) {
         let identity = UUID()
         pages[page] = LivePage(identity: identity)
-        let subscription = pageSource.subscribe(
+        pageSource.coalescingRequests {
+            let subscription = openPage(
+                page,
+                identity: identity,
+                initial: initial
+            )
+            // A source may answer, and fail the first page, before handing back
+            // its subscription; one the list no longer keeps is ended here.
+            if isCurrent(page, identity) {
+                pages[page]?.subscription = subscription
+                dropUnheldPages()
+            }
+            else {
+                subscription.cancel()
+            }
+        }
+    }
+
+    private func openPage(
+        _ page: Range<Int>,
+        identity: UUID,
+        initial: Bool
+    ) -> any PageSubscription {
+        pageSource.subscribe(
             offset: page.lowerBound,
             limit: page.count,
             onValue: { [weak self] rows, totalCount in
@@ -305,14 +335,6 @@ where Row.ID: Sendable {
                 }
             }
         )
-        // A source may answer, and fail the first page, before handing back
-        // its subscription; one the list no longer keeps is ended here.
-        guard isCurrent(page, identity) else {
-            subscription.cancel()
-            return
-        }
-        pages[page]?.subscription = subscription
-        dropUnheldPages()
     }
 
     /// Take one page's delivered value: the rows take the positions the page
@@ -399,11 +421,13 @@ where Row.ID: Sendable {
         let farthestFirst = unheld.sorted {
             distance($0, from: center) > distance($1, from: center)
         }
-        for page in farthestFirst.prefix(
-            unheld.count - Self.maximumUnheldPages
-        ) {
-            drop(page)
-            segments.remove(page)
+        pageSource.coalescingRequests {
+            for page in farthestFirst.prefix(
+                unheld.count - Self.maximumUnheldPages
+            ) {
+                drop(page)
+                segments.remove(page)
+            }
         }
     }
 

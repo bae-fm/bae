@@ -43,6 +43,59 @@ pub struct LibraryBrowseWindow<Row> {
     pub rows: Vec<Row>,
 }
 
+/// What a surface has been told of a list's windows, so a delivery names only
+/// the windows whose rows differ from what it holds.
+///
+/// A window the surface has just asked for is never skipped, whatever rows an
+/// earlier delivery held under the same offset and limit: [`request`](Self::request)
+/// forgets every window that was not in the request before it or is not in
+/// the request now, and [`changed`](Self::changed) keeps nothing for a window
+/// outside the request standing.
+#[derive(Debug)]
+pub struct WindowsTold<Row> {
+    state: Mutex<ToldState<Row>>,
+}
+
+#[derive(Debug)]
+struct ToldState<Row> {
+    requested: LibraryPageWindows,
+    told: BTreeMap<LibraryPageWindow, Vec<Row>>,
+}
+
+impl<Row: Clone + PartialEq> WindowsTold<Row> {
+    pub fn new(requested: LibraryPageWindows) -> Self {
+        Self { state: Mutex::new(ToldState { requested, told: BTreeMap::new() }) }
+    }
+
+    /// The surface now asks for `requested`.
+    pub fn request(&self, requested: &LibraryPageWindows) {
+        let mut state = self.state.lock().expect("windows told mutex poisoned");
+        let before = std::mem::replace(&mut state.requested, requested.clone());
+        state.told.retain(|window, _| before.contains(window) && requested.contains(window));
+    }
+
+    /// `windows` less those the surface already holds with these rows. A
+    /// window outside the request standing is dropped: nothing there is
+    /// listening.
+    pub fn changed(&self, windows: Vec<LibraryBrowseWindow<Row>>) -> Vec<LibraryBrowseWindow<Row>> {
+        let mut guard = self.state.lock().expect("windows told mutex poisoned");
+        let ToldState { requested, told } = &mut *guard;
+        windows
+            .into_iter()
+            .filter(|window| {
+                if !requested.contains(&window.window) {
+                    return false;
+                }
+                if told.get(&window.window) == Some(&window.rows) {
+                    return false;
+                }
+                told.insert(window.window.clone(), window.rows.clone());
+                true
+            })
+            .collect()
+    }
+}
+
 /// One term of a list's order: an SQL expression over the list's row, the
 /// way it runs, and whether it can be NULL, which sorts below every value.
 #[derive(Debug, Clone)]

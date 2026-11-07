@@ -123,8 +123,9 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
         )
     private val waiters = mutableListOf<Waiter<Row>>()
     private val ready = CompletableDeferred<Unit>()
+
+    /** The rows of each requested window delivered so far; a value names only the windows that changed. */
     private var delivered: Map<BridgeLibraryPageWindow, List<Row>> = emptyMap()
-    private var deliveredRequest: Set<BridgeLibraryPageWindow> = emptySet()
     private var lastCount: Int? = null
     private var closed = false
     private val consumer: Job =
@@ -157,14 +158,17 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
                     false
                 }
             }
+            delivered = delivered - evicted.toSet()
             val absolute = requested.keys.toList()
-            if (deliveredRequest == absolute.toSet()) {
-                delivered[window]?.let {
-                    waiter.complete(it)
-                    return@withLock
-                }
+            val held = delivered[window]
+            if (held != null) {
+                waiter.complete(held)
+                // Nothing to ask for unless a window was dropped, which core
+                // forgets having delivered only when the request says so.
+                if (evicted.isEmpty()) return@withLock
+            } else {
+                waiters += Waiter(window, waiter)
             }
-            waiters += Waiter(window, waiter)
             try {
                 query.setWindows(absolute)
             } catch (error: BridgeException) {
@@ -197,7 +201,7 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
         }
     }
 
-    /** Each value answers the windows it was read for; nothing reaches a projection once it is closed. */
+    /** Each value brings the windows whose rows changed; nothing reaches a projection once it is closed. */
     private suspend fun consume() {
         query.pullEach(
             onValue = { snapshot ->
@@ -206,8 +210,7 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
                         if (closed) return@pullEach
                         val value = snapshotReader.windows(snapshot)
                         val count = snapshotReader.totalCount(snapshot)
-                        delivered = value
-                        deliveredRequest = value.keys
+                        delivered = (delivered + value).filterKeys { it in requested }
                         lastCount = count
                         waiters.removeAll { waiter ->
                             value[waiter.window]?.let(waiter.result::complete) ?: false
