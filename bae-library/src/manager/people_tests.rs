@@ -386,3 +386,52 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
         assert_eq!(first, Some(stopped));
     });
 }
+
+/// Robin tells her laptop a device is cut off while it is still in the
+/// library. Coven refuses: only a device gone for good can have been cut off,
+/// so the call changes nothing and fails with coven's refusal (§14.2).
+#[test]
+fn confirming_a_cut_off_for_a_device_still_in_the_library_is_refused() {
+    run_two_device_test(async |devices| {
+        let (laptop, tablet) = (devices.a(), devices.b());
+        let tablet_id = tablet.store().device_id();
+        laptop
+            .wait_until("the tablet's registration", || async {
+                laptop
+                    .manager()
+                    .get_members()
+                    .await
+                    .unwrap()
+                    .members
+                    .iter()
+                    .any(|member| member.active_devices.iter().any(|d| d.id == tablet_id))
+            })
+            .await;
+        let refused = laptop.manager().confirm_device_cut_off(tablet_id).await;
+        assert!(
+            matches!(
+                refused,
+                Err(crate::manager::LibraryError::Sync(coven::SyncError::Rejected(
+                    coven::OperationRejection::NotAllowed
+                )))
+            ),
+            "{refused:?}"
+        );
+    });
+}
+
+/// A provider request to one of the accounts runs when Robin confirms: coven
+/// changes nothing and says to call again once it ends, which is not a failure
+/// of the library, so the person is asked to try again.
+#[test]
+fn a_running_provider_request_asks_to_confirm_again() {
+    use super::{device_cut_off, DeviceCutOff};
+    let running = Err(coven::SyncError::from(coven::DbError::ProviderRequestRunning));
+    assert_eq!(device_cut_off(running).unwrap(), DeviceCutOff::ProviderRequestRunning);
+    assert_eq!(device_cut_off(Ok(())).unwrap(), DeviceCutOff::Confirmed);
+    let refused = device_cut_off(Err(coven::SyncError::NoStorage));
+    assert!(
+        matches!(refused, Err(crate::manager::LibraryError::Sync(coven::SyncError::NoStorage))),
+        "{refused:?}"
+    );
+}

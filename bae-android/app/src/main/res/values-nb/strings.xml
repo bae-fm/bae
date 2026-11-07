@@ -329,6 +329,10 @@
         <item quantity="other">Fjernede enheter (%1$d)</item>
     </plurals>
     <string name="device_removed_title">Enheten blir fjernet</string>
+    <string name="device_cut_off_confirm">Jeg har koblet fra denne enheten</string>
+    <string name="device_cut_off_not_yet">Ikke ennå</string>
+    <string name="device_cut_off_running_title">En forespørsel til lagringen din kjører fortsatt</string>
+    <string name="device_cut_off_running_body">Vent til den er ferdig, og prøv igjen.</string>
     <string name="members_invite">Inviter en person</string>
     <string name="invite_name">Navn</string>
     <string name="invite_lifetime_hour">1 time</string>

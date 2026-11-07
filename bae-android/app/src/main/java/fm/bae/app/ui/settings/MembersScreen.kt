@@ -374,7 +374,7 @@ private fun memberCallbacks(
         onInvite = { dialogs.inviting = true },
         onSetRole = { member, role -> model.perform("set member role") { handle.setMemberRole(member.id, role) } },
         onRemovePerson = { member, name -> dialogs.pendingRemoval = PendingRemoval.Person(member, name) },
-        onRemoveDevice = { dialogs.pendingRemoval = PendingRemoval.Device(it) },
+        onRemoveDevice = { device, own -> dialogs.pendingRemoval = PendingRemoval.Device(device, own) },
         onAddDevice = { dialogs.addingDevice = true },
         onDismissChange = { change ->
             model.perform("dismiss an admin change") { handle.acknowledgeAdminChange(change.operation) }
@@ -397,7 +397,8 @@ internal class MemberCallbacks(
     val onInvite: () -> Unit,
     val onSetRole: (BridgeMember, BridgeMemberRole) -> Unit,
     val onRemovePerson: (BridgeMember, String) -> Unit,
-    val onRemoveDevice: (BridgeActiveDevice) -> Unit,
+    /** Remove a device, which is the person's own or another's. */
+    val onRemoveDevice: (BridgeActiveDevice, Boolean) -> Unit,
     val onAddDevice: () -> Unit,
     val onDismissChange: (BridgeAdminChange) -> Unit,
 )

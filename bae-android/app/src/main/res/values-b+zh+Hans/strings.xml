@@ -323,6 +323,10 @@
         <item quantity="other">已移除的设备（%1$d）</item>
     </plurals>
     <string name="device_removed_title">此设备将被移除</string>
+    <string name="device_cut_off_confirm">我已切断此设备的访问</string>
+    <string name="device_cut_off_not_yet">暂不</string>
+    <string name="device_cut_off_running_title">对你的存储空间的请求仍在运行</string>
+    <string name="device_cut_off_running_body">请等它结束后再试一次。</string>
     <string name="members_invite">邀请成员</string>
     <string name="invite_name">姓名</string>
     <string name="invite_lifetime_hour">1 小时</string>

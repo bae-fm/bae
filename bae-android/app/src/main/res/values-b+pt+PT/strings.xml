@@ -330,6 +330,10 @@
         <item quantity="other">Dispositivos removidos (%1$d)</item>
     </plurals>
     <string name="device_removed_title">O dispositivo será removido</string>
+    <string name="device_cut_off_confirm">Desliguei este dispositivo</string>
+    <string name="device_cut_off_not_yet">Ainda não</string>
+    <string name="device_cut_off_running_title">Um pedido ao seu armazenamento ainda está em curso</string>
+    <string name="device_cut_off_running_body">Aguarde que termine e tente novamente.</string>
     <string name="members_invite">Convidar uma pessoa</string>
     <string name="invite_name">Nome</string>
     <string name="invite_lifetime_hour">1 hora</string>

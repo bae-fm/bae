@@ -2429,7 +2429,7 @@ editable by every member.
 |---|---|---|
 | Add a person | an admin, by invite ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)) | the new person's device writes their `people` row as it joins |
 | Add a device | the person, from the new device, with their restore code ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)) | nothing beyond coven |
-| Remove a device | the person, for their own; an admin, for anyone's | nothing beyond coven |
+| Remove a device | the person, for their own; an admin, for anyone's | nothing beyond coven; the person tells this device when they have cut a lost device off at the provider (below) |
 | Remove a person | an admin | their circle goes, with its rows |
 | Rename the library | an admin | every device shows the new name (§5.1) |
 | Rename yourself | the person | every device shows the new name on their profile (§5.4) |
@@ -2486,7 +2486,24 @@ laptop syncs the phone moves to his removed devices and the row says done.
 A finished change stays until the person dismisses it: one write
 acknowledges its outcome to coven and deletes its row. A change still
 waiting can't be dismissed. Removing a device says at once what is left to
-do at the provider, titled as a removal still to happen.
+do at the provider, titled as a removal still to happen
+([coven §14.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#142-provider-access)
+names the step for Dropbox, OneDrive and iCloud, and on S3 there is none).
+
+**Cutting off a lost device.** When the step is for one of the person's own
+devices, the same message offers **I cut off this device** beside **Not yet**:
+the person does the step at the provider and presses it, and the app calls
+coven's `confirm_device_cut_off`, which says nothing more of that device can
+land, so this device takes back every account the lost device's shares named
+that no member or open invite uses
+([coven §14.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#142-provider-access),
+[§20.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#209-sharing-with-accounts)).
+It works only for a device removed from the library, on a device of the person
+whose account holds the store; coven refuses it otherwise, and the app shows
+that refusal as any other. While a request to one of those accounts runs, coven
+changes nothing and the app says a request to the storage is still running,
+asking to **Try again** once it ends, or **Not yet**. Another person's device
+removed by an admin gets only **OK**: its person does the step.
 
 A new phone's first screen is bae's sheep and name over **Scan code** and
 **Enter code**, with no other words: the code says what it is for. An invite

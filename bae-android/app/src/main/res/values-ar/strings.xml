@@ -358,6 +358,10 @@
         <item quantity="other">الأجهزة المُزالة (%1$d)</item>
     </plurals>
     <string name="device_removed_title">ستتم إزالة الجهاز</string>
+    <string name="device_cut_off_confirm">لقد فصلت هذا الجهاز</string>
+    <string name="device_cut_off_not_yet">ليس بعد</string>
+    <string name="device_cut_off_running_title">طلب إلى مساحة التخزين لديك لا يزال قيد التنفيذ</string>
+    <string name="device_cut_off_running_body">انتظر حتى ينتهي، ثم حاول مرة أخرى.</string>
     <string name="members_invite">دعوة شخص</string>
     <string name="invite_name">الاسم</string>
     <string name="invite_lifetime_hour">ساعة واحدة</string>

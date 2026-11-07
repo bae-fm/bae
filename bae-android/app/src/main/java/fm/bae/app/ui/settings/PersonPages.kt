@@ -125,7 +125,7 @@ private fun DevicesCard(
             CardRow(
                 title = device.name,
                 subtitle = if (device.isSelf) stringResource(R.string.members_this_device) else null,
-                trailing = if (device.canRemove) ({ RemoveDeviceButton(device, callbacks) }) else null,
+                trailing = if (device.canRemove) ({ RemoveDeviceButton(device, member.isSelf, callbacks) }) else null,
             )
         }
         if (addLast && member.isSelf) {
@@ -142,10 +142,11 @@ private fun DevicesCard(
 @Composable
 private fun RemoveDeviceButton(
     device: BridgeActiveDevice,
+    own: Boolean,
     callbacks: MemberCallbacks,
 ) {
     TextButton(
-        onClick = { callbacks.onRemoveDevice(device) },
+        onClick = { callbacks.onRemoveDevice(device, own) },
         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
     ) {
         Text(stringResource(R.string.members_remove))
@@ -159,7 +160,7 @@ private fun DevicesPagePreview() {
         Column(modifier = Modifier.padding(ThemeSpace.edge)) {
             DevicesCard(
                 member = PreviewData.member(),
-                callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, {}, {}, {}),
+                callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {}),
                 addLast = true,
             )
         }

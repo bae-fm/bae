@@ -330,6 +330,10 @@
         <item quantity="other">Verwijderde apparaten (%1$d)</item>
     </plurals>
     <string name="device_removed_title">Het apparaat wordt verwijderd</string>
+    <string name="device_cut_off_confirm">Ik heb dit apparaat losgekoppeld</string>
+    <string name="device_cut_off_not_yet">Nog niet</string>
+    <string name="device_cut_off_running_title">Een verzoek aan je opslag loopt nog</string>
+    <string name="device_cut_off_running_body">Wacht tot het klaar is en probeer het dan opnieuw.</string>
     <string name="members_invite">Iemand uitnodigen</string>
     <string name="invite_name">Naam</string>
     <string name="invite_lifetime_hour">1 uur</string>

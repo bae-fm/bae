@@ -51,7 +51,7 @@ internal fun PeopleScene(
     asAdmin: Boolean = true,
 ) {
     val people = scenePeople()
-    val callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, {}, {}, {})
+    val callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {})
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(modifier = Modifier.fillMaxSize()) {

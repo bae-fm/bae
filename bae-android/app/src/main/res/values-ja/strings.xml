@@ -323,6 +323,10 @@
         <item quantity="other">削除済みのデバイス（%1$d）</item>
     </plurals>
     <string name="device_removed_title">デバイスは削除されます</string>
+    <string name="device_cut_off_confirm">このデバイスを切り離しました</string>
+    <string name="device_cut_off_not_yet">まだ</string>
+    <string name="device_cut_off_running_title">ストレージへのリクエストがまだ実行中です</string>
+    <string name="device_cut_off_running_body">終了するまで待ってから、もう一度お試しください。</string>
     <string name="members_invite">メンバーを招待</string>
     <string name="invite_name">名前</string>
     <string name="invite_lifetime_hour">1時間</string>

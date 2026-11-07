@@ -156,6 +156,17 @@ impl LibraryManager {
         Ok(self.membership.remove_device(device).await?)
     }
 
+    /// The person did the provider step for a device they removed, so
+    /// nothing it sent can land any more (coven §14.2). While a provider
+    /// request to one of the accounts it shared runs, nothing changes and
+    /// the person confirms again once it ends.
+    pub async fn confirm_device_cut_off(
+        &self,
+        device: coven::DeviceId,
+    ) -> Result<DeviceCutOff, LibraryError> {
+        device_cut_off(self.store.confirm_device_cut_off(device).await)
+    }
+
     /// Change a member's role, recorded as a removal is.
     pub async fn set_member_role(
         &self,
@@ -181,6 +192,28 @@ impl LibraryManager {
             }
             result => Ok(result?),
         }
+    }
+}
+
+/// How confirming a device cut off ended.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DeviceCutOff {
+    /// This device takes back the accounts the removed device's shares named.
+    Confirmed,
+    /// A provider request to one of those accounts runs; nothing changed.
+    ProviderRequestRunning,
+}
+
+/// A request running is the only refusal that asks the person to try again.
+pub(super) fn device_cut_off(
+    result: Result<(), coven::SyncError>,
+) -> Result<DeviceCutOff, LibraryError> {
+    match result {
+        Ok(()) => Ok(DeviceCutOff::Confirmed),
+        Err(coven::SyncError::Database(coven::DbError::ProviderRequestRunning)) => {
+            Ok(DeviceCutOff::ProviderRequestRunning)
+        }
+        Err(error) => Err(error.into()),
     }
 }
 

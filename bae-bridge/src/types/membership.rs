@@ -151,6 +151,22 @@ impl BridgeProviderSignOut {
         }
     }
 }
+/// How confirming a removed device cut off ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeDeviceCutOff {
+    Confirmed,
+    /// A provider request to one of the accounts runs; nothing changed, and
+    /// confirming again works once it ends.
+    ProviderRequestRunning,
+}
+impl BridgeDeviceCutOff {
+    pub(crate) fn from_core(value: bae_library::DeviceCutOff) -> Self {
+        match value {
+            bae_library::DeviceCutOff::Confirmed => Self::Confirmed,
+            bae_library::DeviceCutOff::ProviderRequestRunning => Self::ProviderRequestRunning,
+        }
+    }
+}
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeInviteAccess {
     ProviderAccount { email: String },

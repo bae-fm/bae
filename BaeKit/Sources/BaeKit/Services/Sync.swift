@@ -24,6 +24,10 @@ public final class Sync: Sendable, Observable {
     public let removeMember: @Sendable (String) async throws -> Void
     public let removeDevice:
         @Sendable (UInt64) async throws -> BridgeProviderSignOut?
+    /// The person did the provider step for a device they removed: nothing
+    /// it sent can land any more.
+    public let confirmDeviceCutOff:
+        @Sendable (UInt64) async throws -> BridgeDeviceCutOff
     public let setMemberRole:
         @Sendable (String, BridgeMemberRole) async throws -> Void
     /// Dismiss a finished admin change by its operation.
@@ -88,6 +92,9 @@ public final class Sync: Sendable, Observable {
         },
         removeDevice:
             @escaping @Sendable (UInt64) async throws -> BridgeProviderSignOut? =
+            { _ in throw StubError.notImplemented },
+        confirmDeviceCutOff:
+            @escaping @Sendable (UInt64) async throws -> BridgeDeviceCutOff =
             { _ in throw StubError.notImplemented },
         setMemberRole:
             @escaping @Sendable (String, BridgeMemberRole) async throws -> Void =
@@ -158,6 +165,7 @@ public final class Sync: Sendable, Observable {
         self.addDevice = addDevice
         self.removeMember = removeMember
         self.removeDevice = removeDevice
+        self.confirmDeviceCutOff = confirmDeviceCutOff
         self.setMemberRole = setMemberRole
         self.acknowledgeAdminChange = acknowledgeAdminChange
         self.invitePerson = invitePerson
@@ -202,6 +210,9 @@ public final class Sync: Sendable, Observable {
             addDevice: { try await handle.addDevice() },
             removeMember: { try await handle.removeMember(member: $0) },
             removeDevice: { try await handle.removeDevice(device: $0) },
+            confirmDeviceCutOff: {
+                try await handle.confirmDeviceCutOff(device: $0)
+            },
             setMemberRole: {
                 try await handle.setMemberRole(member: $0, role: $1)
             },

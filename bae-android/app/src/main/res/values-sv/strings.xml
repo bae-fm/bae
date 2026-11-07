@@ -329,6 +329,10 @@
         <item quantity="other">Borttagna enheter (%1$d)</item>
     </plurals>
     <string name="device_removed_title">Enheten tas bort</string>
+    <string name="device_cut_off_confirm">Jag har kopplat bort den här enheten</string>
+    <string name="device_cut_off_not_yet">Inte än</string>
+    <string name="device_cut_off_running_title">En förfrågan till din lagring pågår fortfarande</string>
+    <string name="device_cut_off_running_body">Vänta tills den är klar och försök igen.</string>
     <string name="members_invite">Bjud in en person</string>
     <string name="invite_name">Namn</string>
     <string name="invite_lifetime_hour">1 timme</string>

@@ -329,6 +329,10 @@
         <item quantity="other">Poistetut laitteet (%1$d)</item>
     </plurals>
     <string name="device_removed_title">Laite poistetaan</string>
+    <string name="device_cut_off_confirm">Olen katkaissut tämän laitteen pääsyn</string>
+    <string name="device_cut_off_not_yet">Ei vielä</string>
+    <string name="device_cut_off_running_title">Tallennustilaasi kohdistuva pyyntö on yhä käynnissä</string>
+    <string name="device_cut_off_running_body">Odota, että se päättyy, ja yritä sitten uudelleen.</string>
     <string name="members_invite">Kutsu henkilö</string>
     <string name="invite_name">Nimi</string>
     <string name="invite_lifetime_hour">1 tunti</string>

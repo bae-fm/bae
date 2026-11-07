@@ -63,7 +63,12 @@ struct PeopleAndDevicesPage: View {
     /// What the person still has to do in the provider after removing a
     /// device.
     @State
-    private var signOut: BridgeProviderSignOut?
+    private var signOut: CutOffStep?
+    /// The removed device whose cut-off was confirmed while a request to the
+    /// provider ran: nothing changed, and confirming again works once it
+    /// ends.
+    @State
+    private var cutOffRunning: UInt64?
     @State
     private var task: Task<Void, Never>?
     @State
@@ -71,7 +76,16 @@ struct PeopleAndDevicesPage: View {
 
     private enum Removal {
         case person(BridgeMember, name: String)
-        case device(BridgeActiveDevice)
+        /// A device, and whether it is this person's own.
+        case device(BridgeActiveDevice, own: Bool)
+    }
+
+    /// The provider step a removed device needs. Its own person, who did
+    /// the step, tells the library it is done.
+    private struct CutOffStep {
+        let device: UInt64
+        let instruction: BridgeProviderSignOut
+        let own: Bool
     }
 
     init(
@@ -198,10 +212,31 @@ struct PeopleAndDevicesPage: View {
                 set: { if !$0 { signOut = nil } }
             ),
             presenting: signOut
-        ) { _ in
-            Button("OK", role: .cancel) {}
-        } message: { instruction in
-            Text(instruction.text)
+        ) { step in
+            if step.own {
+                Button("I cut off this device") {
+                    confirmCutOff(step.device)
+                }
+                Button("Not yet", role: .cancel) {}
+            }
+            else {
+                Button("OK", role: .cancel) {}
+            }
+        } message: { step in
+            Text(step.instruction.text)
+        }
+        .alert(
+            "A request to your storage is still running",
+            isPresented: Binding(
+                get: { cutOffRunning != nil },
+                set: { if !$0 { cutOffRunning = nil } }
+            ),
+            presenting: cutOffRunning
+        ) { device in
+            Button("Try again") { confirmCutOff(device) }
+            Button("Not yet", role: .cancel) {}
+        } message: { _ in
+            Text("Wait for it to end, then try again.")
         }
     }
 
@@ -393,7 +428,7 @@ extension PeopleAndDevicesPage {
                 LabeledContent {
                     if device.canRemove {
                         Button("Remove…", role: .destructive) {
-                            removal = .device(device)
+                            removal = .device(device, own: member.isSelf)
                         }
                         .buttonStyle(.borderless)
                         .disabled(task != nil)
@@ -459,7 +494,7 @@ extension PeopleAndDevicesPage {
     private var removalTitle: String {
         switch removal {
         case .person(_, let name): String(localized: "Remove \(name)?")
-        case .device(let device): String(localized: "Remove \(device.name)?")
+        case .device(let device, _): String(localized: "Remove \(device.name)?")
         case nil: ""
         }
     }
@@ -474,8 +509,23 @@ extension PeopleAndDevicesPage {
             run { try await sync.removeMember(member.id) }
             // The person is gone: their page with them.
             subpage = .people
-        case .device(let device):
-            run { signOut = try await sync.removeDevice(device.id) }
+        case .device(let device, let own):
+            run {
+                signOut = try await sync.removeDevice(device.id)
+                    .map {
+                        CutOffStep(device: device.id, instruction: $0, own: own)
+                    }
+            }
+        }
+    }
+
+    /// Tell the library the person cut a removed device off at the provider.
+    private func confirmCutOff(_ device: UInt64) {
+        run {
+            switch try await sync.confirmDeviceCutOff(device) {
+            case .confirmed: break
+            case .providerRequestRunning: cutOffRunning = device
+            }
         }
     }
 

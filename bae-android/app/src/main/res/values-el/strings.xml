@@ -329,6 +329,10 @@
         <item quantity="other">Συσκευές που αφαιρέθηκαν (%1$d)</item>
     </plurals>
     <string name="device_removed_title">Η συσκευή θα αφαιρεθεί</string>
+    <string name="device_cut_off_confirm">Έχω αποκόψει αυτή τη συσκευή</string>
+    <string name="device_cut_off_not_yet">Όχι ακόμα</string>
+    <string name="device_cut_off_running_title">Ένα αίτημα προς τον αποθηκευτικό σας χώρο εκτελείται ακόμα</string>
+    <string name="device_cut_off_running_body">Περιμένετε να ολοκληρωθεί και δοκιμάστε ξανά.</string>
     <string name="members_invite">Πρόσκληση ατόμου</string>
     <string name="invite_name">Όνομα</string>
     <string name="invite_lifetime_hour">1 ώρα</string>

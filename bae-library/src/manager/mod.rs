@@ -71,6 +71,7 @@ mod release;
 mod release_edit;
 #[cfg(desktop)]
 mod release_metadata;
+pub use people::DeviceCutOff;
 #[cfg(desktop)]
 pub use release_edit::ReleaseEdit;
 #[cfg(desktop)]

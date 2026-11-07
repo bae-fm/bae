@@ -323,6 +323,10 @@
         <item quantity="other">已移除的裝置（%1$d）</item>
     </plurals>
     <string name="device_removed_title">此裝置將被移除</string>
+    <string name="device_cut_off_confirm">我已切斷此裝置的存取</string>
+    <string name="device_cut_off_not_yet">暫不</string>
+    <string name="device_cut_off_running_title">對你的儲存空間的請求仍在執行</string>
+    <string name="device_cut_off_running_body">請等它結束後再試一次。</string>
     <string name="members_invite">邀請成員</string>
     <string name="invite_name">姓名</string>
     <string name="invite_lifetime_hour">1 小時</string>

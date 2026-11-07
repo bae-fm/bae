@@ -337,6 +337,10 @@
         <item quantity="other">Uklonjeni uređaji (%1$d)</item>
     </plurals>
     <string name="device_removed_title">Uređaj će biti uklonjen</string>
+    <string name="device_cut_off_confirm">Odspojio/la sam ovaj uređaj</string>
+    <string name="device_cut_off_not_yet">Još ne</string>
+    <string name="device_cut_off_running_title">Zahtjev prema vašem pohranjivanju još se izvršava</string>
+    <string name="device_cut_off_running_body">Pričekajte da završi pa pokušajte ponovno.</string>
     <string name="members_invite">Pozovi osobu</string>
     <string name="invite_name">Ime</string>
     <string name="invite_lifetime_hour">1 sat</string>

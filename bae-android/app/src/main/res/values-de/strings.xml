@@ -330,6 +330,10 @@
         <item quantity="other">Entfernte Geräte (%1$d)</item>
     </plurals>
     <string name="device_removed_title">Das Gerät wird entfernt</string>
+    <string name="device_cut_off_confirm">Ich habe dieses Gerät getrennt</string>
+    <string name="device_cut_off_not_yet">Noch nicht</string>
+    <string name="device_cut_off_running_title">Eine Anfrage an deinen Speicher läuft noch</string>
+    <string name="device_cut_off_running_body">Warte, bis sie beendet ist, und versuche es dann erneut.</string>
     <string name="members_invite">Person einladen</string>
     <string name="invite_name">Name</string>
     <string name="invite_lifetime_hour">1 Stunde</string>

@@ -330,6 +330,10 @@
         <item quantity="other">Премахнати устройства (%1$d)</item>
     </plurals>
     <string name="device_removed_title">Устройството ще бъде премахнато</string>
+    <string name="device_cut_off_confirm">Прекъснах достъпа на това устройство</string>
+    <string name="device_cut_off_not_yet">Още не</string>
+    <string name="device_cut_off_running_title">Заявка към хранилището ви още се изпълнява</string>
+    <string name="device_cut_off_running_body">Изчакайте да приключи и опитайте отново.</string>
     <string name="members_invite">Поканване на човек</string>
     <string name="invite_name">Име</string>
     <string name="invite_lifetime_hour">1 час</string>

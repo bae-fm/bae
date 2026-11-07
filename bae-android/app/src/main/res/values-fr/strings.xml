@@ -335,6 +335,10 @@
         <item quantity="other">Appareils retirés (%1$d)</item>
     </plurals>
     <string name="device_removed_title">L’appareil va être supprimé</string>
+    <string name="device_cut_off_confirm">J’ai coupé l’accès de cet appareil</string>
+    <string name="device_cut_off_not_yet">Pas encore</string>
+    <string name="device_cut_off_running_title">Une requête vers votre stockage est toujours en cours</string>
+    <string name="device_cut_off_running_body">Attendez qu’elle se termine, puis réessayez.</string>
     <string name="members_invite">Inviter une personne</string>
     <string name="invite_name">Nom</string>
     <string name="invite_lifetime_hour">1 heure</string>

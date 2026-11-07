@@ -335,6 +335,10 @@
         <item quantity="other">Dispositivos quitados (%1$d)</item>
     </plurals>
     <string name="device_removed_title">Se quitará el dispositivo</string>
+    <string name="device_cut_off_confirm">He desconectado este dispositivo</string>
+    <string name="device_cut_off_not_yet">Todavía no</string>
+    <string name="device_cut_off_running_title">Una solicitud a tu almacenamiento sigue en curso</string>
+    <string name="device_cut_off_running_body">Espera a que termine y vuelve a intentarlo.</string>
     <string name="members_invite">Invitar a una persona</string>
     <string name="invite_name">Nombre</string>
     <string name="invite_lifetime_hour">1 hora</string>

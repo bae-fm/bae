@@ -455,4 +455,17 @@ impl Store {
     pub async fn cancel_invite(&self, invite: &coven::InviteId) -> Result<(), coven::SyncError> {
         self.reported(self.inner.handle.cancel_invite(invite).await)
     }
+
+    /// Tell this device that the person did the provider step for a removed
+    /// device of theirs, so nothing it sent can land any more: this device
+    /// takes back the accounts that device's shares named which nothing
+    /// intends now (coven §14.2, §20.9). Fails with
+    /// `DbError::ProviderRequestRunning` while a request to one of those
+    /// accounts runs, changing nothing.
+    pub async fn confirm_device_cut_off(
+        &self,
+        device: coven::DeviceId,
+    ) -> Result<(), coven::SyncError> {
+        self.reported(self.inner.handle.confirm_device_cut_off(device).await)
+    }
 }

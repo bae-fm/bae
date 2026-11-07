@@ -26,6 +26,7 @@ import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFastValue
@@ -606,6 +607,8 @@ internal open class FakeAppHandle(
     override suspend fun ownPerson(): BridgePerson? = unfaked("ownPerson")
 
     override suspend fun removeDevice(device: ULong): BridgeProviderSignOut? = unfaked("removeDevice")
+
+    override suspend fun confirmDeviceCutOff(device: ULong): BridgeDeviceCutOff = unfaked("confirmDeviceCutOff")
 
     override suspend fun removeMember(member: String) {
         unfaked("removeMember")

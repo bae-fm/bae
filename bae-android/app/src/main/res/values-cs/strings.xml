@@ -344,6 +344,10 @@
         <item quantity="other">Odebraná zařízení (%1$d)</item>
     </plurals>
     <string name="device_removed_title">Zařízení bude odebráno</string>
+    <string name="device_cut_off_confirm">Toto zařízení jsem odpojil(a)</string>
+    <string name="device_cut_off_not_yet">Ještě ne</string>
+    <string name="device_cut_off_running_title">Požadavek na vaše úložiště stále běží</string>
+    <string name="device_cut_off_running_body">Počkejte, až skončí, a zkuste to znovu.</string>
     <string name="members_invite">Pozvat osobu</string>
     <string name="invite_name">Jméno</string>
     <string name="invite_lifetime_hour">1 hodina</string>

@@ -384,6 +384,10 @@
         <item quantity="other">Removed devices (%1$d)</item>
     </plurals>
     <string name="device_removed_title">The device will be removed</string>
+    <string name="device_cut_off_confirm">I cut off this device</string>
+    <string name="device_cut_off_not_yet">Not yet</string>
+    <string name="device_cut_off_running_title">A request to your storage is still running</string>
+    <string name="device_cut_off_running_body">Wait for it to end, then try again.</string>
     <string name="members_invite">Invite a person</string>
     <string name="invite_name">Name</string>
     <string name="invite_lifetime_hour">1 hour</string>

@@ -323,6 +323,10 @@
         <item quantity="other">제거된 기기 (%1$d)</item>
     </plurals>
     <string name="device_removed_title">기기가 제거됩니다</string>
+    <string name="device_cut_off_confirm">이 기기의 접근을 차단했습니다</string>
+    <string name="device_cut_off_not_yet">아직 아님</string>
+    <string name="device_cut_off_running_title">저장소에 대한 요청이 아직 실행 중입니다</string>
+    <string name="device_cut_off_running_body">요청이 끝날 때까지 기다린 다음 다시 시도하세요.</string>
     <string name="members_invite">사람 초대</string>
     <string name="invite_name">이름</string>
     <string name="invite_lifetime_hour">1시간</string>

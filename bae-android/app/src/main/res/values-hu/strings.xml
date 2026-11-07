@@ -329,6 +329,10 @@
         <item quantity="other">Eltávolított eszközök (%1$d)</item>
     </plurals>
     <string name="device_removed_title">Az eszköz el lesz távolítva</string>
+    <string name="device_cut_off_confirm">Lecsatlakoztattam ezt az eszközt</string>
+    <string name="device_cut_off_not_yet">Még nem</string>
+    <string name="device_cut_off_running_title">A tárhelyedre irányuló egyik kérés még fut</string>
+    <string name="device_cut_off_running_body">Várd meg, amíg befejeződik, aztán próbáld újra.</string>
     <string name="members_invite">Személy meghívása</string>
     <string name="invite_name">Név</string>
     <string name="invite_lifetime_hour">1 óra</string>

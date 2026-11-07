@@ -97,6 +97,7 @@ forward! {async this => {
     fn own_person()->Option<BridgePerson> {Ok(this.services.own_person().await?.map(BridgePerson::from_core))}
     fn remove_member(member:String)->() {Ok(this.services.remove_member(&crate::from_app::member(&member)?).await?)}
     fn remove_device(device:u64)->Option<BridgeProviderSignOut> {Ok(this.services.remove_device(coven::DeviceId(device)).await?.map(BridgeProviderSignOut::from_core))}
+    fn confirm_device_cut_off(device:u64)->BridgeDeviceCutOff {Ok(BridgeDeviceCutOff::from_core(this.services.confirm_device_cut_off(coven::DeviceId(device)).await?))}
     fn acknowledge_admin_change(operation:i64)->() {Ok(this.services.acknowledge_admin_change(coven::OperationId(operation)).await?)}
     fn set_member_role(member:String,role:BridgeMemberRole)->() {Ok(this.services.set_member_role(&crate::from_app::member(&member)?,role.into_core()).await?)}
     fn invite_person(role:BridgeMemberRole,name:String,access:BridgeInviteAccess,lifetime:BridgeInviteLifetime)->String {Ok(this.services.invite_person(role.into_core(),name,access.into_core(),lifetime.into_core()).await?.0.to_string())}
