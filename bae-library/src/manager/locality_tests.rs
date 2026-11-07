@@ -413,10 +413,12 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
     assert!(
         matches!(
             refused,
-            Err(bae_transfers::StorageTransitionError::NotInTransition {
-                transition: bae_transfers::StoredTransition::Unpin,
-                ..
-            })
+            Err(bae_store::WriteError::Refused(
+                bae_transfers::StorageTransitionRefusal::NotInTransition {
+                    transition: bae_transfers::StoredTransition::Unpin,
+                    ..
+                }
+            ))
         ),
         "no unpin was admitted for the write to end: {refused:?}"
     );
@@ -476,10 +478,12 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
     assert!(
         matches!(
             refused,
-            Err(bae_transfers::StorageTransitionError::NotInTransition {
-                transition: bae_transfers::StoredTransition::DetachAudio,
-                ..
-            })
+            Err(bae_store::WriteError::Refused(
+                bae_transfers::StorageTransitionRefusal::NotInTransition {
+                    transition: bae_transfers::StoredTransition::DetachAudio,
+                    ..
+                }
+            ))
         ),
         "no make-local was admitted for the write to end: {refused:?}"
     );

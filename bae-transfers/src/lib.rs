@@ -31,7 +31,9 @@ pub use release_queue::{
     ReleaseQueueWindows, TransferCount, TransferStage,
 };
 pub use release_state::{release_transfer_state_on, ReleaseTransferState};
-pub use release_storage_action::{StorageTransitionError, StoredTransition};
+pub use release_storage_action::{
+    StorageTransitionError, StorageTransitionRefusal, StoredTransition,
+};
 pub use release_transfers::{
     release_changes, ReleaseTransferChange, ReleaseTransferReport, ReleaseTransfers,
     ReleaseTransfersWatch,

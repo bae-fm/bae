@@ -9,6 +9,7 @@ pub(crate) const SQL: &str = include_str!("release_storage_action.sql");
 
 use bae_store::DbError;
 use bae_store::Store;
+use bae_store::WriteError;
 use bae_types::release_storage::ReleaseStorageAction;
 use coven::{CovenWrite, SqlReadContext};
 use rusqlite::{params, Row};
@@ -16,10 +17,10 @@ use rusqlite::{params, Row};
 /// Ends the storage transition of the release `?1`, whatever it is.
 const END_RELEASE_STORAGE_ACTION: &str = "DELETE FROM release_storage_action WHERE release_id = ?1";
 
-/// Why a write that ends a release's storage transition did not commit.
-/// Nothing of it landed.
+/// Why a write that ends a release's storage transition was refused. Nothing
+/// of it landed.
 #[derive(Debug, thiserror::Error)]
-pub enum StorageTransitionError {
+pub enum StorageTransitionRefusal {
     /// The release is not in the transition the write ends: its work would
     /// finish a transition nobody admitted.
     #[error("release {release_id} is not in the {transition:?} transition its write ends")]
@@ -27,82 +28,10 @@ pub enum StorageTransitionError {
     /// The release holds no files to move to the cloud.
     #[error("release {release_id} has no files")]
     NoFiles { release_id: String },
-    #[error(transparent)]
-    Database(#[from] DbError),
-    /// The write was refused, and rolling it back failed too.
-    #[error("{operation}; rollback failed: {rollback}")]
-    Rollback {
-        operation: Box<StorageTransitionError>,
-        #[source]
-        rollback: rusqlite::Error,
-    },
-    /// The write was refused, and removing the bytes it released failed too,
-    /// each failure kept.
-    #[error("file cleanup failed: {failures:?}; write: {write}")]
-    FileCleanup { write: Box<StorageTransitionError>, failures: Vec<coven::DbError> },
 }
 
-impl From<rusqlite::Error> for StorageTransitionError {
-    fn from(error: rusqlite::Error) -> Self {
-        Self::Database(error.into())
-    }
-}
-
-impl From<coven::DbError> for StorageTransitionError {
-    fn from(error: coven::DbError) -> Self {
-        Self::Database(error.into())
-    }
-}
-
-impl coven::task::CarriesBug for StorageTransitionError {
-    fn bug(&self) -> Option<&coven::task::Bug> {
-        use coven::task::CarriesBug;
-        match self {
-            Self::Database(error) => error.bug(),
-            Self::Rollback { operation, .. } => operation.bug(),
-            Self::FileCleanup { write, failures } => {
-                write.bug().or_else(|| failures.iter().find_map(CarriesBug::bug))
-            }
-            Self::NotInTransition { .. } | Self::NoFiles { .. } => None,
-        }
-    }
-}
-
-/// A bug a coven call carried back, which the store reported as it returned.
-impl bae_util::task_failure::ReportedBug for StorageTransitionError {
-    fn reported_bug(&self) -> Option<&coven::task::Bug> {
-        match self {
-            Self::Database(error) => error.reported_bug(),
-            Self::Rollback { operation, .. } => operation.reported_bug(),
-            Self::FileCleanup { write, failures } => write.reported_bug().or_else(|| {
-                failures.iter().find_map(bae_util::task_failure::ReportedBug::reported_bug)
-            }),
-            Self::NotInTransition { .. } | Self::NoFiles { .. } => None,
-        }
-    }
-}
-
-/// A failed rollback or byte removal is kept beside the failure it followed:
-/// a store failure keeps it in its own, a refusal stays the refusal it is.
-impl coven::WriteFailure for StorageTransitionError {
-    fn with_rollback(self, rollback: rusqlite::Error) -> Self {
-        match self {
-            Self::Database(error) => {
-                Self::Database(coven::WriteFailure::with_rollback(error, rollback))
-            }
-            operation => Self::Rollback { operation: Box::new(operation), rollback },
-        }
-    }
-
-    fn with_cleanup(write: Self, failures: Vec<coven::DbError>) -> Self {
-        match write {
-            Self::Database(error) => {
-                Self::Database(coven::WriteFailure::with_cleanup(error, failures))
-            }
-            write => Self::FileCleanup { write: Box::new(write), failures },
-        }
-    }
-}
+/// Why a write that ends a release's storage transition did not commit.
+pub type StorageTransitionError = WriteError<StorageTransitionRefusal>;
 
 /// End `release_id`'s transition `action` in the write that finishes its
 /// work, so the release shows the transition until that work has committed
@@ -118,10 +47,10 @@ fn end_transition_on(
         params![release_id, action.column()],
     )?;
     if ended == 0 {
-        return Err(StorageTransitionError::NotInTransition {
+        return Err(WriteError::Refused(StorageTransitionRefusal::NotInTransition {
             release_id: release_id.to_string(),
             transition: action,
-        });
+        }));
     }
     Ok(())
 }
@@ -252,7 +181,7 @@ pub async fn attach_release_files(
         })
         .await?;
     if files.is_empty() {
-        return Err(StorageTransitionError::NoFiles { release_id });
+        return Err(WriteError::Refused(StorageTransitionRefusal::NoFiles { release_id }));
     }
     let moving: Vec<coven::MoveFile> = files
         .into_iter()

@@ -420,7 +420,9 @@ impl LibraryError {
             LibraryError::Save(_) => C::Save,
             LibraryError::FileRead { error, .. } => file_read_category(error),
             LibraryError::MakeLocal(error) => device_only_category(error),
-            LibraryError::StorageTransition(error) => storage_transition_category(error),
+            LibraryError::StorageTransition(error) => {
+                write_error_category(error, storage_transition_refusal_category)
+            }
             LibraryError::SetupDismiss(error) => setup_dismiss_category(error),
             LibraryError::AdminChangeDismiss(error) => admin_change_dismiss_category(error),
             LibraryError::PrimaryRelease(error) => primary_release_category(error),
@@ -527,19 +529,17 @@ impl From<bae_records::DeletionError> for LibraryError {
     }
 }
 
-/// The class a surface words a storage transition's failed write in. Its
+/// The class a surface words a storage transition's refused write in. Its
 /// work runs only for a transition the library admitted, on a release with
 /// files, so either refusal is the library breaking its own guarantee.
-fn storage_transition_category(
-    error: &bae_transfers::StorageTransitionError,
+fn storage_transition_refusal_category(
+    refusal: &bae_transfers::StorageTransitionRefusal,
 ) -> bae_diagnostics::UiErrorCategory {
-    use bae_transfers::StorageTransitionError as E;
-    match error {
-        E::Database(error) => bae_diagnostics::database_category(error),
-        E::Rollback { operation: failed, .. } | E::FileCleanup { write: failed, .. } => {
-            storage_transition_category(failed)
+    match refusal {
+        bae_transfers::StorageTransitionRefusal::NotInTransition { .. }
+        | bae_transfers::StorageTransitionRefusal::NoFiles { .. } => {
+            bae_diagnostics::UiErrorCategory::Internal
         }
-        E::NotInTransition { .. } | E::NoFiles { .. } => bae_diagnostics::UiErrorCategory::Internal,
     }
 }
 
@@ -548,7 +548,7 @@ fn storage_transition_category(
 impl From<bae_transfers::StorageTransitionError> for LibraryError {
     fn from(error: bae_transfers::StorageTransitionError) -> Self {
         match error {
-            bae_transfers::StorageTransitionError::Database(error) => Self::Database(error),
+            bae_store::WriteError::Database(error) => Self::Database(error),
             error => Self::StorageTransition(error),
         }
     }
