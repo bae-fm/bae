@@ -53,6 +53,10 @@ pub enum UiErrorCategory {
     /// album's primary moved, an artist given a printed name was deleted or
     /// merged. Nothing was written; asking again acts on what now stands.
     ChangedMeanwhile,
+    /// A credit's catalog ids disagree with those of the library artist it
+    /// matched, so its write can't say which artist it is; the detail names
+    /// the artist.
+    ConflictingSourceIds,
     /// A release read from several folders cannot be worked on as it stands,
     /// or cannot be made, for a reason the person can act on.
     GroupingBlocked(GroupingBlockReason),

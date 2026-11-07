@@ -177,6 +177,9 @@ pub enum LibraryError {
     /// landed after it was planned, or the store failed.
     #[error(transparent)]
     ImageWrite(bae_records::ImageWriteError),
+    /// A write's credits cannot be written as the library stands.
+    #[error(transparent)]
+    Identity(bae_records::IdentityRefusal),
     /// A deletion did not commit: what it deletes changed after it was
     /// planned, or the store failed.
     #[error(transparent)]
@@ -292,7 +295,7 @@ impl From<bae_records::IdentityWriteError> for LibraryError {
         use bae_records::IdentityWriteError as E;
         match error {
             E::Db(error) => Self::Database(error),
-            E::Unresolvable(detail) => Self::Refused(detail),
+            E::Refused(refusal) => Self::Identity(refusal),
             E::StoredName(error) => error.into(),
             E::Rollback { operation, rollback } => Self::Cleanup {
                 operation: Box::new((*operation).into()),
@@ -412,6 +415,12 @@ impl LibraryError {
             LibraryError::CreditName(error) => credit_name_category(error),
             LibraryError::Deletion(error) => deletion_category(error),
             LibraryError::ImageWrite(error) => image_write_category(error),
+            LibraryError::Identity(bae_records::IdentityRefusal::ArtistGone(_)) => {
+                C::ChangedMeanwhile
+            }
+            LibraryError::Identity(bae_records::IdentityRefusal::ConflictingSourceIds(_)) => {
+                C::ConflictingSourceIds
+            }
             LibraryError::Cleanup { operation, .. } => operation.category(),
             #[cfg(desktop)]
             LibraryError::ReleaseEditLoad(_) => C::Internal,

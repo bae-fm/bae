@@ -182,12 +182,10 @@ pub enum ImportError {
     #[error("{0}")]
     Refused(String),
 
-    /// The release's credits or labels cannot be written as the library
-    /// stands, for the reason the text gives: a picked artist no longer
-    /// exists, or the write's own statements contradict each other.
+    /// The release's credits cannot be written as the library stands.
     #[cfg(desktop)]
-    #[error("{detail}")]
-    Unresolvable { detail: String },
+    #[error(transparent)]
+    Identity(bae_records::IdentityRefusal),
 
     /// The library's artists changed between preparing the import's write
     /// and committing it, in a way that makes what was prepared wrong.
@@ -373,7 +371,7 @@ impl From<bae_records::IdentityWriteError> for ImportError {
     fn from(error: bae_records::IdentityWriteError) -> Self {
         use bae_records::IdentityWriteError as E;
         match error {
-            E::Unresolvable(detail) => Self::Unresolvable { detail },
+            E::Refused(refusal) => Self::Identity(refusal),
             E::StoredName(error) => Self::StoredName(error),
             E::Db(error) => Self::Database(error),
             E::Rollback { operation, rollback } => {
@@ -534,10 +532,13 @@ impl ImportError {
             #[cfg(desktop)]
             Self::GroupingBlocked { reason } => reason.category(),
             #[cfg(desktop)]
-            Self::Refused(_)
-            | Self::Unresolvable { .. }
-            | Self::LibraryChanged
-            | Self::CandidateMoved(_) => C::Import,
+            Self::Refused(_) | Self::LibraryChanged | Self::CandidateMoved(_) => C::Import,
+            #[cfg(desktop)]
+            Self::Identity(bae_records::IdentityRefusal::ArtistGone(_)) => C::ChangedMeanwhile,
+            #[cfg(desktop)]
+            Self::Identity(bae_records::IdentityRefusal::ConflictingSourceIds(_)) => {
+                C::ConflictingSourceIds
+            }
             #[cfg(desktop)]
             Self::Database(error) => bae_diagnostics::database_category(error),
             #[cfg(desktop)]

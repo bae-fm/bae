@@ -319,11 +319,11 @@ fn resolve_label_on(
     {
         Some(id) => id,
         None => {
-            let id = write.fresh_ids.get(decided.fresh_taken).cloned().ok_or_else(|| {
-                IdentityWriteError::Unresolvable(format!(
-                    "label '{name}' is one more new label than the write has ids for"
-                ))
-            })?;
+            let id = write
+                .fresh_ids
+                .get(decided.fresh_taken)
+                .cloned()
+                .expect("a write holds a fresh id for each label it names");
             decided.fresh_taken += 1;
             id
         }

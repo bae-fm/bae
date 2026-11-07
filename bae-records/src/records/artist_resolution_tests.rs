@@ -195,7 +195,10 @@ async fn a_picked_artist_that_is_gone_refuses_the_write() {
     let error =
         db.read_coven(move |sql| resolve_artists_on(&sql, &credits, &picked)).await.unwrap_err();
 
-    assert!(matches!(error, IdentityWriteError::Unresolvable(_)), "{error}");
+    assert!(
+        matches!(&error, IdentityWriteError::Refused(IdentityRefusal::ArtistGone(id)) if id == "gone"),
+        "{error}"
+    );
 }
 
 /// A credit whose MusicBrainz id and Discogs id name two library artists is
@@ -721,13 +724,13 @@ async fn check_two_devices_give_one_artist_id(devices: &bae_store::test_devices:
 #[test]
 fn a_refusal_keeps_its_type_when_its_rollback_or_cleanup_fails() {
     use coven::WriteFailure;
-    let refused = || IdentityWriteError::Unresolvable("the picked artist is gone".to_string());
+    let refused = || IdentityWriteError::from(IdentityRefusal::ArtistGone("gone".to_string()));
 
     let rolled_back = refused().with_rollback(rusqlite::Error::InvalidQuery);
     let IdentityWriteError::Rollback { operation, .. } = &rolled_back else {
         panic!("a failed rollback keeps the refusal under it, got {rolled_back:?}");
     };
-    assert!(matches!(**operation, IdentityWriteError::Unresolvable(_)), "{operation:?}");
+    assert!(matches!(**operation, IdentityWriteError::Refused(_)), "{operation:?}");
 
     let cleaned = IdentityWriteError::with_cleanup(
         refused(),
@@ -736,6 +739,6 @@ fn a_refusal_keeps_its_type_when_its_rollback_or_cleanup_fails() {
     let IdentityWriteError::FileCleanup { write, failures } = &cleaned else {
         panic!("a failed byte removal keeps the refusal under it, got {cleaned:?}");
     };
-    assert!(matches!(**write, IdentityWriteError::Unresolvable(_)), "{write:?}");
+    assert!(matches!(**write, IdentityWriteError::Refused(_)), "{write:?}");
     assert_eq!(failures.len(), 1);
 }

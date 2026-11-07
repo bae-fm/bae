@@ -22,6 +22,7 @@ fn every_failure_class_reads_back_as_itself() {
         C::TiedMediums { mediums: vec![2, 4] },
         C::ReleaseChangedSinceOpened,
         C::ChangedMeanwhile,
+        C::ConflictingSourceIds,
         C::GroupingBlocked(B::SourceChanged),
         C::GroupingBlocked(B::SourceGone),
         C::GroupingBlocked(B::FolderFilesTaken),

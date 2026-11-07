@@ -82,6 +82,7 @@ impl FailureColumns {
             | K::TiedMediums
             | K::ReleaseChangedSinceOpened
             | K::ChangedMeanwhile
+            | K::ConflictingSourceIds
             | K::GroupingBlocked
             | K::Export
             | K::Save

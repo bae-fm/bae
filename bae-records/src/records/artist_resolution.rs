@@ -29,17 +29,27 @@
 
 use super::*;
 
+/// Why a write's credits cannot be written as the library stands. Nothing of
+/// the write landed.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum IdentityRefusal {
+    /// An artist the person picked left the library after they picked it.
+    #[error("artist '{0}' no longer exists")]
+    ArtistGone(String),
+    /// A credit's catalog ids disagree with those of the library artist it
+    /// was matched to, by one of them or by name. Holds the credit's name.
+    #[error("artist '{0}' has conflicting source IDs")]
+    ConflictingSourceIds(String),
+}
+
 /// Why a write that decides which library artist each credit and which
 /// library label each release label names did not commit. Nothing of the
 /// write landed; the initiator sees this and may retry once the library or
 /// the statement changes.
 #[derive(Debug, thiserror::Error)]
 pub enum IdentityWriteError {
-    /// The statement cannot be written as the library stands, for the reason
-    /// the text gives: a picked artist no longer exists, or the write's own
-    /// statements contradict each other.
-    #[error("{0}")]
-    Unresolvable(String),
+    #[error(transparent)]
+    Refused(#[from] IdentityRefusal),
     #[error(transparent)]
     StoredName(#[from] crate::stored_name::StoredNameError),
     #[error(transparent)]
@@ -77,7 +87,7 @@ impl coven::task::CarriesBug for IdentityWriteError {
             Self::FileCleanup { write, failures } => {
                 write.bug().or_else(|| failures.iter().find_map(coven::task::CarriesBug::bug))
             }
-            Self::Unresolvable(_) | Self::StoredName(_) => None,
+            Self::Refused(_) | Self::StoredName(_) => None,
         }
     }
 }
@@ -263,10 +273,7 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
     for credit in credits {
         if picked.contains(&credit.id) {
             if artist_by_id_on(sql, &credit.id)?.is_none() {
-                return Err(IdentityWriteError::Unresolvable(format!(
-                    "artist '{}' no longer exists",
-                    credit.id
-                )));
+                return Err(IdentityRefusal::ArtistGone(credit.id.clone()).into());
             }
             ids.push(credit.id.clone());
             continue;
@@ -797,10 +804,7 @@ fn merge_artist_metadata(
     incoming: &DbArtist,
 ) -> Result<(), IdentityWriteError> {
     if !ids_agree(target, incoming) {
-        return Err(IdentityWriteError::Unresolvable(format!(
-            "artist '{}' has conflicting source IDs",
-            incoming.name
-        )));
+        return Err(IdentityRefusal::ConflictingSourceIds(incoming.name.clone()).into());
     }
     fill_missing(target, incoming);
     Ok(())

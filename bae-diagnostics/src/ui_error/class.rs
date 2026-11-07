@@ -22,6 +22,7 @@ pub enum UiErrorClass {
     TiedMediums,
     ReleaseChangedSinceOpened,
     ChangedMeanwhile,
+    ConflictingSourceIds,
     GroupingBlocked,
     Export,
     Save,
@@ -55,7 +56,7 @@ pub enum UiErrorClass {
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 44] = [
+    const ALL: [Self; 45] = [
         Self::Database,
         Self::Config,
         Self::Internal,
@@ -71,6 +72,7 @@ impl UiErrorClass {
         Self::TiedMediums,
         Self::ReleaseChangedSinceOpened,
         Self::ChangedMeanwhile,
+        Self::ConflictingSourceIds,
         Self::GroupingBlocked,
         Self::Export,
         Self::Save,
@@ -120,6 +122,7 @@ impl UiErrorClass {
             Self::TiedMediums => "tied_mediums",
             Self::ReleaseChangedSinceOpened => "release_changed_since_opened",
             Self::ChangedMeanwhile => "changed_meanwhile",
+            Self::ConflictingSourceIds => "conflicting_source_ids",
             Self::GroupingBlocked => "grouping_blocked",
             Self::Export => "export",
             Self::Save => "save",
@@ -198,8 +201,10 @@ impl UiErrorClass {
             | Self::KeyringLocked
             | Self::InviteJoining
             // What the line names without saying which: the folder a grouped
-            // release can't be read from, the bucket's versioning state.
+            // release can't be read from, the bucket's versioning state, the
+            // artist whose catalog ids disagree.
             | Self::GroupingBlocked
+            | Self::ConflictingSourceIds
             | Self::S3VersioningUnsupported
             // Why a storage setup was undone: bae stopping, or the failure
             // or refusal that ended it.
@@ -252,6 +257,7 @@ impl UiErrorCategory {
             Self::TiedMediums { .. } => K::TiedMediums,
             Self::ReleaseChangedSinceOpened => K::ReleaseChangedSinceOpened,
             Self::ChangedMeanwhile => K::ChangedMeanwhile,
+            Self::ConflictingSourceIds => K::ConflictingSourceIds,
             Self::GroupingBlocked(_) => K::GroupingBlocked,
             Self::Export => K::Export,
             Self::Save => K::Save,
@@ -302,6 +308,7 @@ impl UiErrorCategory {
             K::FilesAlreadyImported => Self::FilesAlreadyImported,
             K::ReleaseChangedSinceOpened => Self::ReleaseChangedSinceOpened,
             K::ChangedMeanwhile => Self::ChangedMeanwhile,
+            K::ConflictingSourceIds => Self::ConflictingSourceIds,
             K::Export => Self::Export,
             K::Save => Self::Save,
             K::StorageLocationChangeUnsupported => Self::StorageLocationChangeUnsupported,

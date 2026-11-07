@@ -147,6 +147,9 @@ pub enum BridgeErrorCategory {
     /// read and its write, and wrote nothing; asking again acts on what now
     /// stands.
     ChangedMeanwhile,
+    /// A credit's catalog ids disagree with those of the library artist it
+    /// matched; the detail names the artist.
+    ConflictingSourceIds,
     /// A queue reorder named an entry, or an entry to go before, that the
     /// queue no longer holds there, and moved nothing.
     QueueChanged,
@@ -366,6 +369,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             "core.release_edit.error.changed_since_opened"
         }
         BridgeErrorCategory::ChangedMeanwhile => "core.error.changed_meanwhile",
+        BridgeErrorCategory::ConflictingSourceIds => "core.error.conflicting_source_ids",
         BridgeErrorCategory::QueueChanged => "core.queue.error.changed",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
@@ -524,6 +528,7 @@ impl BridgeErrorCategory {
             Self::TiedMediums { .. } => K::TiedMediums,
             Self::ReleaseChangedSinceOpened => K::ReleaseChangedSinceOpened,
             Self::ChangedMeanwhile => K::ChangedMeanwhile,
+            Self::ConflictingSourceIds => K::ConflictingSourceIds,
             Self::GroupingBlocked { .. } => K::GroupingBlocked,
             Self::Export => K::Export,
             Self::Save => K::Save,
@@ -635,6 +640,7 @@ mirror_enum! {
         TiedMediums { mediums },
         ReleaseChangedSinceOpened,
         ChangedMeanwhile,
+        ConflictingSourceIds,
         GroupingBlocked(reason: (BridgeGroupingBlock)),
         Export,
         Save,

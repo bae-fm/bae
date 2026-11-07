@@ -88,6 +88,7 @@ impl From<LibraryError> for AutomationError {
             | LibraryError::PrimaryRelease(_)
             | LibraryError::CreditName(_)
             | LibraryError::Deletion(_)
+            | LibraryError::Identity(_)
             | LibraryError::ImageWrite(_)) => {
                 bae_diagnostics::UiError::diagnostic(error.category(), error).into()
             }
@@ -127,6 +128,7 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::TiedMediums { .. }
             | UiErrorCategory::ReleaseChangedSinceOpened
             | UiErrorCategory::ChangedMeanwhile
+            | UiErrorCategory::ConflictingSourceIds
             | UiErrorCategory::GroupingBlocked(_) => Self::Import(detail),
             UiErrorCategory::Config => Self::Validation(detail),
             UiErrorCategory::Internal => Self::Internal(detail),
