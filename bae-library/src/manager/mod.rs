@@ -609,6 +609,21 @@ impl From<bae_records::CreditNameError> for LibraryError {
     }
 }
 
+/// An edit session's save that found a track it rewrites gone found the
+/// release changed since the session opened, which another device's write
+/// did after the save checked it.
+#[cfg(desktop)]
+impl From<bae_records::ReleaseEditSaveError> for LibraryError {
+    fn from(error: bae_records::ReleaseEditSaveError) -> Self {
+        match error {
+            bae_records::ReleaseEditSaveError::TrackGone { release_id, .. } => {
+                Self::ReleaseEditStale { release_id }
+            }
+            bae_records::ReleaseEditSaveError::Write(error) => error.into(),
+        }
+    }
+}
+
 /// A pin's byte counts that make no progress are the store's to explain.
 impl From<bae_transfers::DownloadProgressError> for LibraryError {
     fn from(error: bae_transfers::DownloadProgressError) -> Self {

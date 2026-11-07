@@ -28,13 +28,13 @@ pub use records::AlbumFields;
 pub use records::ArtistCredits;
 #[cfg(desktop)]
 pub use records::RecordsChange;
-#[cfg(desktop)]
-pub use records::ReleaseEditWrite;
 pub use records::ReleaseMetadataRows;
 pub use records::{
     Deleted, DeletionError, IdentityWriteError, ImageWriteError, LabelParts, OtherDeviceError,
     PrimaryReleaseError, Records, ReleaseDeletion,
 };
+#[cfg(desktop)]
+pub use records::{ReleaseEditSaveError, ReleaseEditWrite};
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub use records::{SeededAlbum, SeededAudio};
 pub use resolved_track_audio::{

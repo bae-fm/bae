@@ -23,17 +23,52 @@ pub enum ReleaseEditWrite {
     },
 }
 
+/// Why a save of an edit session did not commit. Nothing of it landed.
+#[cfg(desktop)]
+#[derive(Debug, thiserror::Error)]
+pub enum ReleaseEditSaveError {
+    /// A track the applied rows rewrite is no longer the release's: another
+    /// device's write took it after the session was checked against the
+    /// release.
+    #[error("release {release_id} holds no track {track_id} to write")]
+    TrackGone { release_id: String, track_id: String },
+    #[error(transparent)]
+    Write(#[from] IdentityWriteError),
+}
+
+/// A store failure is the save's write failing in the store.
+#[cfg(desktop)]
+impl From<DbError> for ReleaseEditSaveError {
+    fn from(error: DbError) -> Self {
+        Self::Write(error.into())
+    }
+}
+
+/// The first track of `rows` the release no longer holds, if any.
+#[cfg(desktop)]
+fn track_gone_on(tx: &CovenWrite<'_>, rows: &ReleaseRows) -> Result<Option<String>, DbError> {
+    let held: HashSet<String> = tx
+        .query("SELECT id FROM tracks WHERE release_id = ?", params![rows.release.id], |row| {
+            row.get(0)
+        })?
+        .into_iter()
+        .collect();
+    Ok(rows.tracks.iter().find(|track| !held.contains(&track.id)).map(|track| track.id.clone()))
+}
+
 #[cfg(desktop)]
 impl Records {
     /// Save an edit session: move the release and replace its records where
     /// `change` says (see `set_records_on`), then write
-    /// `write`, in one transaction — all of it, or none.
+    /// `write`, in one transaction — all of it, or none. Applied rows
+    /// naming a track the release no longer holds are refused before
+    /// anything is written.
     pub async fn save_release_edit_atomic(
         &self,
         change: Option<RecordsChange>,
         write: ReleaseEditWrite,
         album_fields: AlbumFields,
-    ) -> Result<(), IdentityWriteError> {
+    ) -> Result<(), ReleaseEditSaveError> {
         let now_dt = self.store.now_utc();
         let labels = LabelParts::new(
             &*self.ids,
@@ -43,7 +78,16 @@ impl Records {
                 ReleaseEditWrite::Applied { rows, .. } => &rows.release.pressing.labels,
             },
         );
-        artist_resolution::write_resolving_identities(&self.store, move |sql| {
+        let release_id = match &write {
+            ReleaseEditWrite::Fields(metadata) => metadata.release.id.clone(),
+            ReleaseEditWrite::Applied { rows, .. } => rows.release.id.clone(),
+        };
+        let gone = artist_resolution::write_resolving_identities(&self.store, move |sql| {
+            if let ReleaseEditWrite::Applied { rows, .. } = &write {
+                if let Some(track_id) = track_gone_on(&sql, rows)? {
+                    return Ok(Some(track_id));
+                }
+            }
             if let Some(change) = &change {
                 super::release_records::set_records_on(&sql, change, now_dt)?;
             }
@@ -64,9 +108,14 @@ impl Records {
                     &now,
                     &label_write(&labels),
                 ),
-            }
+            }?;
+            Ok(None)
         })
-        .await
+        .await?;
+        match gone {
+            Some(track_id) => Err(ReleaseEditSaveError::TrackGone { release_id, track_id }),
+            None => Ok(()),
+        }
     }
 }
 
@@ -128,8 +177,10 @@ fn write_applied_rows_on(
             ],
         )?;
     }
+    // The save checked, in this write, that the release holds every track
+    // these rows name.
     for track in &rows.tracks {
-        let changed = tx.execute(
+        tx.execute(
             "UPDATE tracks SET title = ?, medium_id = ?, side = ?, track_number = ? \
              WHERE id = ? AND release_id = ?",
             params![
@@ -141,13 +192,6 @@ fn write_applied_rows_on(
                 release_id,
             ],
         )?;
-        if changed != 1 {
-            return Err(DbError::Message(format!(
-                "release {release_id} holds no track {} to write",
-                track.id
-            ))
-            .into());
-        }
     }
     let kept: Vec<&str> = rows.mediums.iter().map(|medium| medium.id.as_str()).collect();
     for stale in tx.query(
@@ -190,3 +234,7 @@ fn write_applied_rows_on(
     }
     Ok(())
 }
+
+#[cfg(all(test, desktop))]
+#[path = "release_edit_save_tests.rs"]
+mod tests;
