@@ -507,7 +507,7 @@ where
                 preferences,
                 records.clone(),
                 people.clone(),
-                membership,
+                membership.clone(),
                 sync_status.clone(),
                 #[cfg(desktop)]
                 release_reads,
@@ -590,6 +590,7 @@ where
                     store,
                     records,
                     people,
+                    membership,
                     #[cfg(desktop)]
                     catalogs,
                     #[cfg(desktop)]

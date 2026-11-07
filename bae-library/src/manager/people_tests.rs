@@ -132,7 +132,11 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         let mut changes = manager.subscribe_admin_changes();
         crate::followed::value_matching(&mut changes, Vec::is_empty).await;
 
-        manager.rename_library(&bae_store::EnteredName::parse("Home").unwrap()).await.unwrap();
+        manager
+            .membership
+            .rename_store(bae_store::EnteredName::parse("Home").unwrap().as_str())
+            .await
+            .unwrap();
         let waiting =
             crate::followed::value_matching(&mut changes, |changes| !changes.is_empty()).await;
         let [AdminChange {
@@ -146,7 +150,7 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         assert_eq!(name, "Home");
         let operation = *operation;
         assert_eq!(manager.store.store_name().await.unwrap(), "Two Devices");
-        assert!(manager.acknowledge_admin_change(operation).await.is_err());
+        assert!(manager.membership.acknowledge_admin_change(operation).await.is_err());
 
         laptop.store().start_sync().await.unwrap();
         crate::followed::value_matching(&mut changes, |changes| {
@@ -155,7 +159,7 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         .await;
         assert_eq!(manager.store.store_name().await.unwrap(), "Home");
 
-        manager.acknowledge_admin_change(operation).await.unwrap();
+        manager.membership.acknowledge_admin_change(operation).await.unwrap();
         crate::followed::value_matching(&mut changes, Vec::is_empty).await;
         let listed = laptop
             .store()
@@ -163,13 +167,12 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
             .await
             .unwrap();
         assert!(listed.is_empty(), "{listed:?}");
-        let again = manager.acknowledge_admin_change(operation).await;
+        let again = manager.membership.acknowledge_admin_change(operation).await;
         assert!(
             matches!(
                 again,
-                Err(crate::manager::LibraryError::AdminChangeDismiss(
-                    bae_people::admin_change::AdminChangeDismissError::NotAdminChange(again)
-                )) if again == operation
+                Err(bae_people::admin_change::AdminChangeDismissError::NotAdminChange(again))
+                    if again == operation
             ),
             "{again:?}"
         );
@@ -188,8 +191,8 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
         let (laptop_id, tablet_id) = (laptop.store().device_id(), tablet.store().device_id());
         let active = |device: coven::DeviceId| async move {
             laptop
-                .manager()
-                .get_members()
+                .membership()
+                .members()
                 .await
                 .unwrap()
                 .members
@@ -199,14 +202,14 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
         laptop.wait_until("the tablet's registration", || active(tablet_id)).await;
         laptop.stop_sync().await;
         let mut changes = laptop.manager().subscribe_admin_changes();
-        laptop.manager().remove_device(tablet_id).await.unwrap();
+        laptop.membership().remove_device(tablet_id).await.unwrap();
 
-        tablet.manager().remove_device(laptop_id).await.unwrap();
+        tablet.membership().remove_device(laptop_id).await.unwrap();
         tablet
             .wait_until("the laptop's removal", || async {
                 tablet
-                    .manager()
-                    .get_members()
+                    .membership()
+                    .members()
                     .await
                     .unwrap()
                     .members
@@ -245,7 +248,7 @@ fn a_removal_of_a_device_this_device_hasnt_read_is_refused_as_gone() {
         let mut changes = laptop.manager().subscribe_admin_changes();
         crate::followed::value_matching(&mut changes, Vec::is_empty).await;
         let unknown = coven::DeviceId(u64::MAX);
-        laptop.manager().remove_device(unknown).await.unwrap();
+        laptop.membership().remove_device(unknown).await.unwrap();
         let waiting =
             crate::followed::value_matching(&mut changes, |changes| !changes.is_empty()).await;
         let [AdminChange {
@@ -328,7 +331,7 @@ fn an_invite_is_listed_until_it_is_cancelled() {
 async fn membership_reads_committed_local_state_without_a_provider() {
     let (test, _temp) = setup_test_manager().await;
     let manager = test.library.manager();
-    let membership = manager.get_members().await.unwrap();
+    let membership = manager.membership.members().await.unwrap();
     assert!(!manager.is_sync_configured().await.unwrap());
     assert!(membership.members.iter().all(|member| member.is_self));
 }
@@ -359,8 +362,8 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
         let laptop = devices.a();
         let tablet_active = || async {
             laptop
-                .manager()
-                .get_members()
+                .membership()
+                .members()
                 .await
                 .unwrap()
                 .members
@@ -368,7 +371,7 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
                 .any(|member| member.active_devices.iter().any(|d| d.id == tablet_id))
         };
         laptop.wait_until("the tablet's registration", tablet_active).await;
-        laptop.manager().remove_device(tablet_id).await.unwrap();
+        laptop.membership().remove_device(tablet_id).await.unwrap();
         laptop.wait_until("the tablet's removal", || async { !tablet_active().await }).await;
 
         tablet.store().start_sync().await.unwrap();
@@ -398,8 +401,8 @@ fn confirming_a_cut_off_for_a_device_still_in_the_library_is_refused() {
         laptop
             .wait_until("the tablet's registration", || async {
                 laptop
-                    .manager()
-                    .get_members()
+                    .membership()
+                    .members()
                     .await
                     .unwrap()
                     .members

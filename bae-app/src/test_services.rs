@@ -21,6 +21,7 @@ pub async fn start_services_on(
         library.store().clone(),
         library.records().clone(),
         library.people().clone(),
+        library.membership().clone(),
         library.catalogs().clone(),
         library.import_tables().clone(),
         library.closing().clone(),

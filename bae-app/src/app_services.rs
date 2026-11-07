@@ -74,6 +74,9 @@ struct AppServicesInner {
     /// The library's people, profiles and personal collections, which the
     /// calls bae adds nothing to go to.
     people: bae_people::People,
+    /// The library's members and devices, whose administrator changes the
+    /// calls bae adds nothing to go to.
+    membership: bae_people::Membership,
     /// The library's views, for the reads a screen shows as they are.
     views: bae_views::LibraryViews,
     playback: PlaybackHandle,
@@ -131,6 +134,7 @@ impl AppServices {
         store: bae_store::Store,
         records: bae_records::Records,
         people: bae_people::People,
+        membership: bae_people::Membership,
         views: bae_views::LibraryViews,
         playback: PlaybackHandle,
         cast_picker: bae_playback::renderer::CastPicker,
@@ -143,6 +147,7 @@ impl AppServices {
                 store,
                 records,
                 people,
+                membership,
                 views,
                 playback,
                 cast_picker,
@@ -456,7 +461,12 @@ impl AppServices {
     delegate_async!(manager, set_save_presets => set_save_presets(presets: Vec<bae_preferences::SavePreset>) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
-    delegate_async!(manager, rename_library => rename_library(name: &bae_store::EnteredName) -> Result<(), bae_library::LibraryError>);
+    pub async fn rename_library(
+        &self,
+        name: &bae_store::EnteredName,
+    ) -> Result<(), bae_library::LibraryError> {
+        Ok(self.inner.membership.rename_store(name.as_str()).await?)
+    }
     delegate_lib!(store, forget_encryption_key => forget_store_keys() -> ());
     pub async fn unlock_store_key(&self) -> Result<(), bae_library::LibraryError> {
         self.inner.store.unlock_store_key().await?;
@@ -520,16 +530,16 @@ impl AppServices {
     delegate_async!(manager, delete_album => delete_album(album_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, save_s3_config => save_s3_config(data: bae_library::sync::S3ConfigData, device_name: &str, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
     delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<bae_library::sync::restore_code::RestoreCodeShare, bae_library::LibraryError>);
-    delegate_async!(manager, get_members => get_members() -> Result<bae_people::membership::Members, bae_library::LibraryError>);
-    delegate_async!(manager, remove_member => remove_member(member: &coven::MemberId) -> Result<(), bae_library::LibraryError>);
+    delegate_lib!(membership, get_members => members() -> bae_people::membership::Members);
+    delegate_lib!(membership, remove_member => remove_member(member: &coven::MemberId) -> ());
     delegate_values!(subscribe_members => subscribe_members() -> bae_people::membership::Members);
     delegate_async!(manager, add_device => add_device() -> Result<bae_library::sync::membership::AddingDevice, bae_library::LibraryError>);
     delegate_values!(subscribe_added_device => subscribe_added_device(watch: bae_library::sync::membership::AddedDeviceWatch) -> Option<bae_people::membership::ActiveDevice>);
-    delegate_async!(manager, remove_device => remove_device(device: coven::DeviceId) -> Result<Option<coven::ProviderSignOut>, bae_library::LibraryError>);
+    delegate_lib!(membership, remove_device => remove_device(device: coven::DeviceId) -> Option<coven::ProviderSignOut>);
     delegate_async!(manager, confirm_device_cut_off => confirm_device_cut_off(device: coven::DeviceId) -> Result<bae_library::DeviceCutOff, bae_library::LibraryError>);
-    delegate_async!(manager, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> Result<(), bae_library::LibraryError>);
+    delegate_lib!(membership, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> ());
     delegate_values!(subscribe_admin_changes => subscribe_admin_changes() -> Vec<bae_people::admin_change::AdminChange>);
-    delegate_async!(manager, acknowledge_admin_change => acknowledge_admin_change(operation: coven::OperationId) -> Result<(), bae_library::LibraryError>);
+    delegate_lib!(membership, acknowledge_admin_change => acknowledge_admin_change(operation: coven::OperationId) -> ());
     delegate_lib!(store, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, lifetime: coven::InviteLifetime) -> coven::InviteId);
     /// This device's open invites, each with the pending record of its
     /// operation when coven holds one.
@@ -538,7 +548,7 @@ impl AppServices {
     ) -> bae_store::live_query::LiveValues<Vec<bae_views::OpenInvite>> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_invites())
     }
-    delegate_async!(manager, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> Result<(), bae_library::LibraryError>);
+    delegate_lib!(membership, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> ());
     delegate_lib!(store, decline_join_request => decline_join_request(request: &coven::JoinRequest) -> ());
     delegate_async!(manager, cancel_invite => cancel_invite(invite: &coven::InviteId) -> Result<(), bae_library::LibraryError>);
 

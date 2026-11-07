@@ -36,6 +36,7 @@ pub async fn start_library_services(
     store: Store,
     records: bae_records::Records,
     people: bae_people::People,
+    membership: bae_people::Membership,
     #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
     #[cfg(desktop)] import_tables: bae_import::tables::ImportTables,
     #[cfg(desktop)] closing: CancellationToken,
@@ -117,6 +118,7 @@ pub async fn start_library_services(
             store,
             records,
             people,
+            membership,
             views,
             playback,
             cast_picker,
@@ -125,7 +127,7 @@ pub async fn start_library_services(
         ))
     }
     #[cfg(not(desktop))]
-    Ok(AppServices::new(manager, store, records, people, views, playback, cast_picker))
+    Ok(AppServices::new(manager, store, records, people, membership, views, playback, cast_picker))
 }
 
 /// Why the library's services did not start.

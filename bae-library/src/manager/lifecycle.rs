@@ -3,13 +3,6 @@
 use super::*;
 
 impl LibraryManager {
-    /// Coven checks administrator authority and records the rename on this
-    /// device at once, offline too; sync publishes the new name.
-    pub async fn rename_library(&self, name: &bae_store::EnteredName) -> Result<(), LibraryError> {
-        self.membership.rename_store(name.as_str()).await?;
-        Ok(())
-    }
-
     /// What removing this library from this device would lose, for the
     /// person to confirm before [`Self::remove_library`].
     pub async fn unsent_before_removal(&self) -> Result<coven::UnsentWork, LibraryError> {

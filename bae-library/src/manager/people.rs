@@ -55,10 +55,6 @@ impl LibraryManager {
             .map_err(LibraryError::TransferCode)
     }
 
-    pub async fn get_members(&self) -> Result<bae_people::membership::Members, LibraryError> {
-        Ok(self.membership.members().await?)
-    }
-
     pub fn subscribe_members(
         &self,
     ) -> coven::LiveQuery<bae_people::membership::Members, bae_store::DbError> {
@@ -70,7 +66,8 @@ impl LibraryManager {
     /// before the code is made, so a device restored from this code is never
     /// among them.
     pub async fn add_device(&self) -> Result<crate::sync::membership::AddingDevice, LibraryError> {
-        let watch = crate::sync::membership::AddedDeviceWatch::new(&self.get_members().await?);
+        let watch =
+            crate::sync::membership::AddedDeviceWatch::new(&self.membership.members().await?);
         let share = self.generate_restore_code().await?;
         Ok(crate::sync::membership::AddingDevice { share, watch })
     }
@@ -99,30 +96,6 @@ impl LibraryManager {
         self.membership.subscribe_admin_changes()
     }
 
-    /// Dismiss a finished admin change: coven's record of its outcome and
-    /// this device's row about it go together.
-    pub async fn acknowledge_admin_change(
-        &self,
-        operation: coven::OperationId,
-    ) -> Result<(), LibraryError> {
-        Ok(self.membership.acknowledge_admin_change(operation).await?)
-    }
-
-    /// Remove a member. The change is recorded on this device at once,
-    /// offline too, and takes effect once sync publishes it (§5.6).
-    pub async fn remove_member(&self, member: &coven::MemberId) -> Result<(), LibraryError> {
-        Ok(self.membership.remove_member(member).await?)
-    }
-
-    /// Remove a device, recorded as a removal is, and say what is left to
-    /// do at the provider.
-    pub async fn remove_device(
-        &self,
-        device: coven::DeviceId,
-    ) -> Result<Option<coven::ProviderSignOut>, LibraryError> {
-        Ok(self.membership.remove_device(device).await?)
-    }
-
     /// The person did the provider step for a device they removed, so
     /// nothing it sent can land any more (coven §14.2). While a provider
     /// request to one of the accounts it shared runs, nothing changes and
@@ -132,22 +105,6 @@ impl LibraryManager {
         device: coven::DeviceId,
     ) -> Result<DeviceCutOff, LibraryError> {
         device_cut_off(self.store.confirm_device_cut_off(device).await)
-    }
-
-    /// Change a member's role, recorded as a removal is.
-    pub async fn set_member_role(
-        &self,
-        member: &coven::MemberId,
-        role: coven::MemberRole,
-    ) -> Result<(), LibraryError> {
-        Ok(self.membership.set_member_role(member, role).await?)
-    }
-
-    pub async fn approve_join_request(
-        &self,
-        request: &coven::JoinRequest,
-    ) -> Result<(), LibraryError> {
-        Ok(self.membership.approve_join_request(request).await?)
     }
 
     /// Cancel an invite and take back its access. Once approval of its

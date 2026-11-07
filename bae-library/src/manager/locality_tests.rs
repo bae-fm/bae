@@ -268,7 +268,7 @@ fn a_release_on_a_removed_device_names_it_as_removed() {
             ReleasePlayability::OnOtherDevice(OtherDevice::Active { name: "Device B".to_string() })
         );
 
-        manager.remove_device(devices.b().store().device_id()).await.unwrap();
+        manager.membership.remove_device(devices.b().store().device_id()).await.unwrap();
         // The write journals the removal; a pass of this device claims it.
         devices
             .a()

@@ -79,6 +79,7 @@ impl Library {
             library.store().clone(),
             library.records().clone(),
             library.people().clone(),
+            library.membership().clone(),
             bae_views::LibraryViews::new(library.store().clone()),
             library.start_playback().await,
             library.cast_picker(),
