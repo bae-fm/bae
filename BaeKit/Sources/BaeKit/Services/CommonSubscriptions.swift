@@ -102,14 +102,13 @@ final class CommonSubscriptions {
             },
             onError: onError
         )
-        feeds = [
-            outboxStore.releaseProgress.feed(from: appHandle, onError: onError),
-            outboxStore.filesBeingSent.feed(from: appHandle, onError: onError),
-            downloadStore.releaseProgress.feed(from: appHandle),
-            playbackStore.trackPositions.feed(from: appHandle),
-            playbackStore.trackBuffered.feed(from: appHandle),
-            playbackStore.trackStorageWaits.feed(from: appHandle),
-        ]
+        feeds =
+            outboxStore.feedTransfers(from: appHandle, onError: onError) + [
+                downloadStore.releaseProgress.feed(from: appHandle),
+                playbackStore.trackPositions.feed(from: appHandle),
+                playbackStore.trackBuffered.feed(from: appHandle),
+                playbackStore.trackStorageWaits.feed(from: appHandle),
+            ]
         startSync()
     }
 

@@ -20,10 +20,10 @@ impl AppHandle {
 #[uniffi::export]
 impl AppHandle {
     /// Write how far each release with files being sent has got, and how
-    /// fast its files go, into a stream by release id. A failed read empties
-    /// the stream and is pulled as an error; the next read fills it again.
-    pub fn feed_release_upload_transfers(&self) -> Arc<KeyedValueStream> {
-        crate::screens::release_upload_transfers(self.runtime.clone(), self.run_feed())
+    /// fast its files go, into one stream by release id, and the files being
+    /// sent together into another, both from one read of the outbox.
+    pub fn feed_outbox_transfers(&self) -> crate::keyed_values::BridgeOutboxFeeds {
+        crate::screens::outbox_transfer_feeds(self.runtime.clone(), self.run_feed())
     }
 
     /// Write the files being sent together into a stream's one key, `""`,

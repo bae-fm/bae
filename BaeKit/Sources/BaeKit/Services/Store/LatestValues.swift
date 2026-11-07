@@ -266,14 +266,21 @@ extension LatestStream where Value == BridgeReleaseUploadTransfer {
             }
         }
     }
+}
 
-    /// Fill from core, telling `onError` each failed read.
-    public func feed(
+extension OutboxStore {
+    /// Fill the releases' and the total's streams from one read of the
+    /// outbox's transfers, telling `onError` each failed read.
+    public nonisolated func feedTransfers(
         from appHandle: AppHandle,
         onError: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> LatestFeed {
-        fed(onFailedRead: onError) {
-            appHandle.feedReleaseUploadTransfers()
+    ) -> [LatestFeed] {
+        switch appHandle.feedOutboxTransfers() {
+        case .streams(let releases, let total):
+            return [
+                releaseProgress.fed(onFailedRead: onError) { releases },
+                filesBeingSent.fed(onFailedRead: onError) { total },
+            ]
         }
     }
 }
@@ -291,14 +298,6 @@ extension LatestStream where Value == BridgeUploadTransfer {
                 nil
             }
         }
-    }
-
-    /// Fill from core, telling `onError` each failed read.
-    public func feed(
-        from appHandle: AppHandle,
-        onError: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> LatestFeed {
-        fed(onFailedRead: onError) { appHandle.feedUploadTotalTransfer() }
     }
 }
 

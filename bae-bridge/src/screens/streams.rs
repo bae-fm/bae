@@ -11,7 +11,7 @@ use std::sync::Arc;
 use bae_app::AppServices;
 use bae_library::CancellationToken;
 
-use crate::keyed_values::{KeyedValueStream, StreamValues, StreamWriter};
+use crate::keyed_values::{BridgeOutboxFeeds, KeyedValueStream, StreamValues, StreamWriter};
 use crate::operation_runtime::OperationRuntime;
 use crate::types::{BridgeError, BridgeFastValue};
 
@@ -93,38 +93,91 @@ fn write_file_changes(writer: &StreamWriter, changes: Vec<bae_library::FileTrans
     }
 }
 
-/// The stream [`AppHandle::feed_release_upload_transfers`](crate::AppHandle::feed_release_upload_transfers) hands out.
-pub(crate) fn release_upload_transfers(
+/// Write each batch of the outbox's transfers: the releases' into their
+/// stream and the files being sent together into theirs.
+fn write_outbox_changes(
+    releases: &StreamWriter,
+    total: &StreamWriter,
+    changes: Vec<bae_library::OutboxTransferChange>,
+) {
+    use bae_library::OutboxTransferChange;
+    let upload = |transfer| BridgeFastValue::ReleaseUpload {
+        transfer: crate::types::BridgeReleaseUploadTransfer::from_core(transfer),
+    };
+    let mut release_changes = Vec::new();
+    for change in changes {
+        match change {
+            OutboxTransferChange::Release(change) => release_changes.push(change),
+            OutboxTransferChange::Total(transfer) => match upload_total(transfer) {
+                Some(value) => total.set_only(value),
+                None => total.remove_only(),
+            },
+        }
+    }
+    write_release_changes(releases, release_changes, upload);
+}
+
+/// Two new streams written by one feed, which ends once the host has
+/// cancelled or dropped both, or the library closes. Each stream is cancelled
+/// on its own.
+fn feed_pair<Fut>(
     runtime: OperationRuntime,
     run: impl RunFeed,
-) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| {
+    writes: impl FnOnce(&AppServices, StreamWriter, StreamWriter) -> Fut + Send + 'static,
+) -> (Arc<KeyedValueStream>, Arc<KeyedValueStream>)
+where
+    Fut: Future<Output = ()> + Send + 'static,
+{
+    let (first_values, second_values) = (StreamValues::new(), StreamValues::new());
+    let (first_stop, second_stop) = (CancellationToken::new(), CancellationToken::new());
+    let writers =
+        (StreamWriter::new(first_values.clone()), StreamWriter::new(second_values.clone()));
+    let both_cancelled = (first_stop.clone(), second_stop.clone());
+    run(
+        CancellationToken::new(),
+        Box::new(move |services| {
+            let writing = writes(services, writers.0, writers.1);
+            Box::pin(async move {
+                tokio::select! {
+                    () = async {
+                        both_cancelled.0.cancelled().await;
+                        both_cancelled.1.cancelled().await;
+                    } => {}
+                    () = writing => {}
+                }
+            })
+        }),
+    );
+    (
+        Arc::new(KeyedValueStream::new(first_values, first_stop, runtime.clone())),
+        Arc::new(KeyedValueStream::new(second_values, second_stop, runtime)),
+    )
+}
+
+/// The streams [`AppHandle::feed_outbox_transfers`](crate::AppHandle::feed_outbox_transfers) hands out,
+/// written by one read of the outbox's transfers.
+pub(crate) fn outbox_transfer_feeds(
+    runtime: OperationRuntime,
+    run: impl RunFeed,
+) -> BridgeOutboxFeeds {
+    let (releases, total) = feed_pair(runtime, run, move |services, releases, total| {
         let mut transfers = services.watch_outbox_transfers();
         async move {
-            use bae_library::OutboxTransferChange;
-            let upload = |transfer| BridgeFastValue::ReleaseUpload {
-                transfer: crate::types::BridgeReleaseUploadTransfer::from_core(transfer),
-            };
             while let Some(changes) = transfers.next().await {
                 let changes = match changes {
                     Ok(changes) => changes,
                     Err(error) => {
-                        writer.fail(BridgeError::database_query(error));
+                        let error = BridgeError::database_query(error);
+                        releases.fail(error.clone());
+                        total.fail(error);
                         continue;
                     }
                 };
-                let releases = changes
-                    .into_iter()
-                    .filter_map(|change| match change {
-                        OutboxTransferChange::Release(change) => Some(change),
-                        // The total is its own stream.
-                        OutboxTransferChange::Total(_) => None,
-                    })
-                    .collect();
-                write_release_changes(&writer, releases, upload);
+                write_outbox_changes(&releases, &total, changes);
             }
         }
-    })
+    });
+    BridgeOutboxFeeds::Streams { releases, total }
 }
 
 /// The stream [`AppHandle::feed_upload_total_transfer`](crate::AppHandle::feed_upload_total_transfer) hands out.

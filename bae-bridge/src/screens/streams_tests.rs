@@ -99,3 +99,51 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
         ]
     );
 }
+
+/// One batch of the outbox's transfers writes both streams: the release's
+/// transfer into the releases' stream and the total into the total's, which
+/// holds nothing once no file is sent.
+#[test]
+fn one_batch_of_outbox_transfers_writes_both_streams() {
+    use bae_library::{OutboxTransferChange, ReleaseUploadTransfer, UploadBar, UploadTransfer};
+    use bae_transfers::ReleaseTransferChange;
+    let (release_values, total_values) = (StreamValues::new(), StreamValues::new());
+    let (releases, total) =
+        (StreamWriter::new(release_values.clone()), StreamWriter::new(total_values.clone()));
+    let release = ReleaseUploadTransfer {
+        bar: UploadBar { bytes_done: 5, bytes_total: 20 },
+        throughput_bps: 7,
+    };
+    let sending = UploadTransfer {
+        bar: Some(UploadBar { bytes_done: 5, bytes_total: 20 }),
+        throughput_bps: 7,
+    };
+    write_outbox_changes(
+        &releases,
+        &total,
+        vec![
+            OutboxTransferChange::Release(ReleaseTransferChange::Reset(
+                [("release-1".to_string(), release)].into(),
+            )),
+            OutboxTransferChange::Total(sending),
+        ],
+    );
+    assert!(matches!(
+        release_values.latest(b"release-1"),
+        Some(BridgeFastValue::ReleaseUpload { .. })
+    ));
+    assert!(matches!(total_values.latest(b""), Some(BridgeFastValue::UploadTotal { .. })));
+
+    write_outbox_changes(
+        &releases,
+        &total,
+        vec![
+            OutboxTransferChange::Release(ReleaseTransferChange::Removed {
+                release_id: "release-1".to_string(),
+            }),
+            OutboxTransferChange::Total(UploadTransfer { bar: None, throughput_bps: 0 }),
+        ],
+    );
+    assert_eq!(release_values.latest(b"release-1"), None);
+    assert_eq!(total_values.latest(b""), None);
+}

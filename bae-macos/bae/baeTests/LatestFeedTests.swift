@@ -81,8 +81,8 @@ private final class UploadTotalHandle: AppHandle, @unchecked Sendable {
         preconditionFailure("an upload-total handle is made by init()")
     }
 
-    override func feedUploadTotalTransfer() -> KeyedValueStream {
-        stream
+    override func feedOutboxTransfers() -> BridgeOutboxFeeds {
+        .streams(releases: QueuedKeyStream(), total: stream)
     }
 }
 
@@ -110,7 +110,8 @@ struct LatestFeedTests {
         let handle = UploadTotalHandle()
         let failed = FailedReads()
         let stream = LatestStream<BridgeUploadTransfer>.uploadTotal()
-        let feed = stream.feed(from: handle) { _ in failed.count += 1 }
+        let feeds = OutboxStore(uploadsPaused: false, filesBeingSent: stream)
+            .feedTransfers(from: handle) { _ in failed.count += 1 }
         let shown = Shown()
         let following = FrameFollowing<BridgeUploadTransfer>(view: NSView()) {
             shown.value = $0
@@ -128,6 +129,6 @@ struct LatestFeedTests {
         try await Wait.until { failed.count == 1 }
 
         following.stop()
-        feed.cancel()
+        for feed in feeds { feed.cancel() }
     }
 }

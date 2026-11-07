@@ -569,12 +569,11 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         SilentDownloadCounts()
     }
 
-    override func feedReleaseUploadTransfers() -> KeyedValueStream {
-        NoopKeyedValueStream()
-    }
-
-    override func feedUploadTotalTransfer() -> KeyedValueStream {
-        NoopKeyedValueStream()
+    override func feedOutboxTransfers() -> BridgeOutboxFeeds {
+        .streams(
+            releases: NoopKeyedValueStream(),
+            total: NoopKeyedValueStream()
+        )
     }
 
     override func subscribeCastDevices() -> CastDevicesSubscription {

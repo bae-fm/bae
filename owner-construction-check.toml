@@ -200,6 +200,8 @@ non_owner_types = [
     "PlaybackPreparedTrack",
     # What opening a library hands the app.
     "BridgeBootstrapResult",
+    # What the outbox feed hands the app: the two streams it writes.
+    "BridgeOutboxFeeds",
     # What a call was passed to follow it, if the app shows the call: the
     # app's object, held for the one call, and the call's writer made from it.
     "ClosingFeed",

@@ -68,7 +68,7 @@ impl StreamValues {
         })
     }
 
-    fn latest(&self, key: &[u8]) -> Option<BridgeFastValue> {
+    pub(crate) fn latest(&self, key: &[u8]) -> Option<BridgeFastValue> {
         match &lock(&self.held).values {
             Values::Open(values) => values.get(key).cloned(),
             Values::Cancelled => None,
@@ -194,6 +194,22 @@ impl Drop for KeyedValueStream {
     fn drop(&mut self) {
         self.cancel();
     }
+}
+
+/// What `feed_outbox_transfers` hands the host: the two streams one read of
+/// the outbox's transfers writes.
+#[derive(uniffi::Enum)]
+pub enum BridgeOutboxFeeds {
+    Streams {
+        /// Each release with files being sent, by release id. A failed read
+        /// empties the stream and is pulled as an error; the next read fills
+        /// it again.
+        releases: Arc<KeyedValueStream>,
+        /// The files being sent together, under the one key `""` while any
+        /// file is being sent; with none, it holds nothing. A failed read is
+        /// told as the releases' stream's is.
+        total: Arc<KeyedValueStream>,
+    },
 }
 
 /// The feed's writing of a stream. Dropping it, as the feed ends, empties

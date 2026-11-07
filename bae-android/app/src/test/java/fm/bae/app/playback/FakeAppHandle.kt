@@ -42,6 +42,7 @@ import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
+import uniffi.bae_bridge.BridgeOutboxFeeds
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackTimeline
@@ -180,7 +181,7 @@ internal open class FakeAppHandle(
 
     override fun subscribeUnmeteredOnly(): UnmeteredOnlySubscription = FakeUnmeteredOnlySubscription()
 
-    override fun feedReleaseUploadTransfers(): KeyedValueStream = FakeKeyedValueStream()
+    override fun feedOutboxTransfers(): BridgeOutboxFeeds = BridgeOutboxFeeds.Streams(FakeKeyedValueStream(), FakeKeyedValueStream())
 
     override fun feedUploadTotalTransfer(): KeyedValueStream = FakeKeyedValueStream()
 
