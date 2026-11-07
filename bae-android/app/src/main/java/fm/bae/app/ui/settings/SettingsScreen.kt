@@ -11,13 +11,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -35,13 +33,15 @@ import fm.bae.app.DisplayError
 import fm.bae.app.LibraryListing
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.LibraryEnding
 import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.components.RemovalLoss
+import fm.bae.app.ui.components.RemoveLibraryDialog
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CoroutineDispatcher
@@ -139,7 +139,8 @@ internal fun SettingsScreen(
         (model.storage as? Storage.At)?.let { home ->
             SettingsStoreSections(session = session, home = home, adminChanges = model.adminChanges, onPush = onPush)
         }
-        SettingsClosingSections(session = session, onRemove = actions.removeLibrary)
+        val ending = LibraryEnding.ofSyncs(syncs = model.storage !is Storage.None)
+        SettingsClosingSections(session, ending, onRemove = actions.removeLibrary)
     }
 }
 
@@ -202,22 +203,25 @@ private fun SettingsCastingRow(onOpen: () -> Unit) {
 @Composable
 private fun SettingsClosingSections(
     session: OpenLibrary,
+    ending: LibraryEnding,
     onRemove: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val scope = rememberScreenScope()
     var unsent by remember { mutableStateOf<BridgeUnsentWork?>(null) }
     SectionDivider()
-    SettingsRemoveSection(onRequestRemove = {
-        session.messages.perform("read what removing the library loses") {
-            unsent = session.appHandle.unsentBeforeRemoval()
-        }
-    })
+    SettingsRemoveSection(
+        ending = ending,
+        onRequestRemove = {
+            session.messages.perform("read what removing the library loses") {
+                unsent = session.appHandle.unsentBeforeRemoval()
+            }
+        },
+    )
     SectionDivider()
     SettingsAboutSection()
     unsent?.let { work ->
-        RemoveLibraryConfirmDialog(
-            unsent = work,
+        RemoveLibraryDialog(
+            ending = ending,
+            loss = RemovalLoss.Counted(work),
             onConfirm = {
                 unsent = null
                 onRemove()
@@ -230,40 +234,6 @@ private fun SettingsClosingSections(
 @Composable
 internal fun SectionDivider() {
     HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
-}
-
-/** The confirmation's text: what removing would lose, that removing loses it, then what removing does. */
-@Composable
-private fun RemoveLibraryConfirmDialog(
-    unsent: BridgeUnsentWork,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val context = LocalContext.current
-    val lost =
-        listOfNotNull(
-            unsent.writes.takeIf { it > 0u }?.let {
-                context.coreString("core.library.removal.unsent_writes", mapOf("count" to it.toLong()))
-            },
-            unsent.files.takeIf { it > 0u }?.let {
-                context.coreString("core.library.removal.unsent_files", mapOf("count" to it.toLong()))
-            },
-        )
-    val consequence = if (lost.isEmpty()) emptyList() else listOf(stringResource(R.string.unsent_edits_body))
-    val body = (lost + consequence + stringResource(R.string.settings_remove_library_confirm_body)).joinToString(" ")
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_remove_library_confirm_title)) },
-        text = { Text(body) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.settings_remove))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        },
-    )
 }
 
 @Composable
@@ -314,7 +284,10 @@ private fun SettingsPeopleSection(
 }
 
 @Composable
-private fun SettingsRemoveSection(onRequestRemove: () -> Unit) {
+private fun SettingsRemoveSection(
+    ending: LibraryEnding,
+    onRequestRemove: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
@@ -323,10 +296,23 @@ private fun SettingsRemoveSection(onRequestRemove: () -> Unit) {
             onClick = onRequestRemove,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
         ) {
-            Text(stringResource(R.string.settings_remove_library))
+            Text(
+                stringResource(
+                    when (ending) {
+                        LibraryEnding.REMOVE -> R.string.settings_remove_library
+                        LibraryEnding.DELETE -> R.string.settings_delete_library
+                    },
+                ),
+            )
         }
         Text(
-            text = stringResource(R.string.settings_remove_library_explanation),
+            text =
+                stringResource(
+                    when (ending) {
+                        LibraryEnding.REMOVE -> R.string.settings_remove_library_explanation
+                        LibraryEnding.DELETE -> R.string.library_delete_confirm_body
+                    },
+                ),
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

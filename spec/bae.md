@@ -2451,8 +2451,10 @@ do at the provider, titled as a removal still to happen.
 A new phone's first screen is bae's sheep and name over **Scan code** and
 **Enter code**, with no other words: the code says what it is for. An invite
 joins someone's library, and the person's own recovery code adds this device to
-theirs. An Android phone that has recovery codes saved on it lists them above
-the two buttons (below). A Mac's first screen offers **Join library** and **Add device**, which
+theirs. An Android phone that holds libraries lists them above the two buttons
+under **Your libraries**, each opening on a tap and ending in **Remove**, or in
+**Delete** for one that was never synced (§6.4), and one that has recovery codes
+saved on it lists them below those (below). A Mac's first screen offers **Join library** and **Add device**, which
 both lead to the same scan-or-type screen where the code decides the same way,
 and **Create new library**. A recovery code's screens call that adding this
 device: the button is **Add**, and the running restore says it is adding this
@@ -3260,18 +3262,25 @@ is an admin entry, so it needs storage. Offline, removal says so and waits
 rather than deleting the local copy and leaving a device listed that will
 never come back. A library that doesn't sync was never synced: it has no
 members to leave and exists only on this device, so it is deleted at once, and
-the Mac calls that **Delete**, never Remove. If the laptop has left but closing
+the apps call that **Delete**, never Remove. If the laptop has left but closing
 its copy then fails, coven discards the closed copy without opening it, and the
 removal goes on to delete bae's files for it. Only if that discard fails too does the removal
 fail, saying the laptop left the library and its files are still on it.
 
-- **The confirmation.** Remove asks "Remove library from this Mac?" and says
-  "The library will remain in storage and on your other devices." Delete asks
-  "Delete library?" and says the library isn't synced, so it will be deleted for
-  good, and that the audio files stay in their folders. The first screen's list and Library settings both ask this way; a
-  row whose library doesn't sync says "Not synced" and offers *Delete* in
-  place of *Remove*. Neither asks the person to unlock the Mac first: the
-  confirmation is the only step.
+- **The confirmation.** Remove asks "Remove library from this Mac?" ("this
+  device" on Android) and says "The library will remain in storage and on your
+  other devices." Delete asks "Delete library?" and says the library isn't
+  synced, so it will be deleted for good, and that the audio files stay in their
+  folders. A Mac's first screen and Library settings ask this way, and so do
+  Android's first screen and Settings. A row whose library doesn't sync
+  says "Not synced" and offers *Delete* in place of *Remove*. Neither platform
+  asks the person to unlock the device first: the confirmation is the only step.
+  On Android's first screen no library is open, so a library that opens is
+  opened to count what it hasn't sent and again to leave its store, its row
+  showing each step in place of its storage line, and a library that can't open
+  is removed without opening, as on a Mac. A removal that fails says why on the
+  row, with *Retry* in place of *Remove*; one that left the store but not this
+  device's files goes on to the screen that finishes deleting them.
 - **Unsent edits.** Dan's laptop still holds edits it hasn't sent. Before
   removing, bae asks coven what this device hasn't sent, and the confirmation
   counts it: the edits, and the files that haven't finished uploading, then

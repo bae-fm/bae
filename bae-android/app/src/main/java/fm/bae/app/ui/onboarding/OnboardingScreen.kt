@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,8 +34,10 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeApp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.data.LibrarySetupStatus
+import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -86,16 +89,19 @@ internal data class RestoreOver(
 
 /**
  * First run on a device: the person scans or types a code; a restore code from
- * one of the person's devices restores here, and an invite joins. With
- * [restoreOver], the person's current restore code restores that library over
- * this device's copy, after another of their devices replaced their keys, or
- * finishes such a restore that stopped partway.
+ * one of the person's devices restores here, and an invite joins. The welcome
+ * lists the libraries this device holds, which [libraryActions] opens or
+ * leaves to finish removing. With [restoreOver], the person's current restore
+ * code restores that library over this device's copy, after another of their
+ * devices replaced their keys, or finishes such a restore that stopped
+ * partway; that screen lists no libraries.
  */
 @Composable
 internal fun OnboardingScreen(
     oauthProvidersError: String?,
     onBootstrapped: (BridgeBootstrapResult) -> Unit,
     restoreOver: RestoreOver?,
+    libraryActions: WelcomeLibraryActions? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberScreenScope()
@@ -118,12 +124,38 @@ internal fun OnboardingScreen(
                 onBootstrapped,
             )
         }
-    OnboardingSteps(flow)
+    val actions by rememberUpdatedState(libraryActions)
+    val libraries =
+        remember(restoreOver?.libraryId) {
+            if (restoreOver != null) {
+                null
+            } else {
+                WelcomeLibraries(
+                    scope,
+                    WelcomeLibrariesCore.live(app.host, scope, app.bugs),
+                    errorDisplay = { context.displayError(it) },
+                    removalFailureLine = { failure ->
+                        failure.copy(line = "${context.coreString("ui.load_error.removal.title")}: ${failure.line}")
+                    },
+                    onFilesRemain = { actions?.onFilesRemain?.invoke(it) },
+                )
+            }
+        }
+    OnboardingSteps(
+        flow,
+        libraries = libraries?.let { model -> { WelcomeLibrariesSection(model) { actions?.onOpen?.invoke(it) } } },
+    )
 }
 
-/** The screen for where [flow] stands. */
+/**
+ * The screen for where [flow] stands. The welcome shows [libraries], the list
+ * of this device's libraries, above its actions.
+ */
 @Composable
-internal fun OnboardingSteps(flow: OnboardingFlow) {
+internal fun OnboardingSteps(
+    flow: OnboardingFlow,
+    libraries: (@Composable () -> Unit)? = null,
+) {
     var scanning by remember { mutableStateOf(false) }
     val requestScan = rememberScanRequest(onDenied = { flow.error = DisplayError(it) }, onOpen = { scanning = true })
 
@@ -141,7 +173,7 @@ internal fun OnboardingSteps(flow: OnboardingFlow) {
                 val text = codeScreenText(step.entry)
                 // The welcome screen leaves Back to the system.
                 text?.let { BackHandler(onBack = it.onBack) }
-                CodeScreen(flow = flow, step = step, text = text, onScan = requestScan)
+                CodeScreen(flow = flow, step = step, text = text, onScan = requestScan, libraries = libraries)
             }
         }
 

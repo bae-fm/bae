@@ -47,6 +47,8 @@ import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrary
+import uniffi.bae_bridge.BridgeLibraryClosing
+import uniffi.bae_bridge.BridgeLibraryOpening
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOpenProgress
@@ -727,6 +729,30 @@ object AppSessionHolder {
                 logger.error("library ${session.libraryId} left its store but its files remain", removal.removal.error)
                 onScreen(AppScreen.RemovalIncomplete(context.displayError(removal.removal.error)))
             }
+        }
+    }
+
+    /**
+     * Remove [libraryId], which no session has open: open it off the main
+     * thread, since core leaves the store from an open library, then remove it,
+     * writing the open's steps to [opening] and the removal's to [closing]. The
+     * handle is closed whatever the outcome; a removal that failed leaves the
+     * library on the device, and one whose files remain carries its own retry.
+     */
+    internal suspend fun removeClosedLibrary(
+        host: BridgeHost,
+        libraryId: String,
+        opening: BridgeLibraryOpening,
+        closing: BridgeLibraryClosing,
+    ): BridgeLibraryRemoval {
+        val handle =
+            withContext(Dispatchers.IO) {
+                initApp(libraryId, POSITION_UPDATE_INTERVAL_MS, false, host, opening)
+            }
+        try {
+            return handle.removeLibrary(closing)
+        } finally {
+            withContext(NonCancellable + Dispatchers.IO) { handle.close() }
         }
     }
 

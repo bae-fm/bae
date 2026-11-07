@@ -45,12 +45,14 @@ import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
 import fm.bae.app.ui.onboarding.RestoreOver
+import fm.bae.app.ui.onboarding.WelcomeLibraryActions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.bridgeErrorCategoryKey
@@ -161,6 +163,11 @@ private fun AppScreenRouter(
                     scope.launch { AppSessionHolder.openBootstrapped(context, result, onScreen) }
                 },
                 restoreOver = null,
+                libraryActions =
+                    WelcomeLibraryActions(
+                        onOpen = { library -> openListed(context, scope, library, onScreen) },
+                        onFilesRemain = { error -> onScreen(AppScreen.RemovalIncomplete(error)) },
+                    ),
             )
         }
 
@@ -306,6 +313,32 @@ private fun RestoreOverScreen(
     )
 }
 
+/**
+ * Go on with a library the list shows: open it, or finish the reset, restore
+ * or removal of this device's copy that stopped partway, which only then
+ * opens it.
+ */
+private fun openListed(
+    context: Context,
+    scope: CoroutineScope,
+    library: BridgeLibrary,
+    onScreen: (AppScreen) -> Unit,
+) {
+    when (val state = library.state) {
+        is BridgeLibraryState.ReplacementUnfinished -> {
+            scope.launch { AppSessionHolder.finish(context, library.id, state.by, onScreen) }
+        }
+
+        is BridgeLibraryState.DeletionUnfinished -> {
+            onScreen(AppScreen.DeletionUnfinished(library.id, error = null))
+        }
+
+        is BridgeLibraryState.Openable, is BridgeLibraryState.Unreadable -> {
+            scope.launch { AppSessionHolder.openLibrary(context, library.id, onScreen) }
+        }
+    }
+}
+
 /** What the open library's screens ask of the app, each running in [scope] and ending in a screen. */
 private fun sessionActions(
     context: Context,
@@ -315,21 +348,7 @@ private fun sessionActions(
     onScreen: (AppScreen) -> Unit,
 ) = SessionActions(
     oauthProviders = oauthProviders,
-    switchLibrary = { library ->
-        when (val state = library.state) {
-            is BridgeLibraryState.ReplacementUnfinished -> {
-                scope.launch { AppSessionHolder.finish(context, library.id, state.by, onScreen) }
-            }
-
-            is BridgeLibraryState.DeletionUnfinished -> {
-                onScreen(AppScreen.DeletionUnfinished(library.id, error = null))
-            }
-
-            is BridgeLibraryState.Openable, is BridgeLibraryState.Unreadable -> {
-                scope.launch { AppSessionHolder.openLibrary(context, library.id, onScreen) }
-            }
-        }
-    },
+    switchLibrary = { library -> openListed(context, scope, library, onScreen) },
     removeLibrary = {
         scope.launch { AppSessionHolder.removeActiveLibrary(context, onScreen) }
     },

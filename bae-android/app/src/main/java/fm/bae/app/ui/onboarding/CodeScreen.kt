@@ -89,6 +89,7 @@ internal fun CodeScreen(
     step: OnboardingStep.EnterCode,
     text: CodeScreenText?,
     onScan: () -> Unit,
+    libraries: (@Composable () -> Unit)?,
 ) {
     var showCodeDialog by remember { mutableStateOf(false) }
     var codeInput by remember { mutableStateOf("") }
@@ -96,6 +97,7 @@ internal fun CodeScreen(
     CodeScreenContent(
         text = text,
         error = flow.error,
+        libraries = libraries ?: {},
         savedCodes = {
             if (savedCodes != null) SavedCodesSection(codes = savedCodes, onOpen = flow::openSaved)
         },
@@ -125,19 +127,21 @@ internal fun CodeScreen(
 /**
  * A code screen: scan a code or type it. A restore over this device's copy
  * says what it does first and offers Back; a new device's welcome lists the
- * restore codes saved on this phone above, in [savedCodes], and says nothing
- * more.
+ * libraries on this device above, in [libraries], then the restore codes saved
+ * on this phone, in [savedCodes], and says nothing more.
  */
 @Composable
 private fun CodeScreenContent(
     text: CodeScreenText?,
     error: DisplayError?,
+    libraries: @Composable () -> Unit,
     savedCodes: @Composable () -> Unit,
     showCodeDialog: Boolean,
     codeInput: String,
     callbacks: CodeScreenCallbacks,
 ) {
     OnboardingStartColumn(title = text?.title, message = text?.message) {
+        libraries()
         savedCodes()
         PrimaryButton(onClick = callbacks.onScan, modifier = Modifier.width(actionWidth)) {
             Text(stringResource(R.string.onboarding_scan_code))
@@ -175,15 +179,17 @@ private fun CodeScreenContent(
 }
 
 /**
- * The first-run welcome screen, on a phone with no saved restore codes, in
- * the app chrome with inert callbacks, for the `welcome` screenshot scene.
+ * The welcome screen, on a phone with no saved restore codes, in the app
+ * chrome with inert callbacks, for the `welcome` screenshot scene, and for
+ * the one that lists the libraries on the phone, in [libraries].
  */
 @Composable
-internal fun WelcomeScene() {
+internal fun WelcomeScene(libraries: @Composable () -> Unit = {}) {
     BaeAppChrome {
         CodeScreenContent(
             text = null,
             error = null,
+            libraries = libraries,
             savedCodes = {},
             showCodeDialog = false,
             codeInput = "",

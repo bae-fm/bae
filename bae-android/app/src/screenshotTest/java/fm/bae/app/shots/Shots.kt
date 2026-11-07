@@ -27,6 +27,7 @@ import fm.bae.app.ui.library.ErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.library.LibraryHeaderMenu
 import fm.bae.app.ui.library.SceneGrid
+import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.playback.FullPlayerScene
 import fm.bae.app.ui.playback.MiniPlayerScene
@@ -46,7 +47,7 @@ import uniffi.bae_bridge.BridgeRendererKind
 // composition from the production UI (defined in main next to its @Preview) in
 // the app chrome — never a capture-only re-layout. Rendered at a current phone
 // size, with additional light and tinted appearance captures. Function name ⇒ scene id:
-//   Welcome ⇒ welcome, LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒
+//   Welcome ⇒ welcome, WelcomeLibraries ⇒ welcome-libraries, LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒
 //   library-grid-scrolled, LibraryGrouped ⇒ library-grouped, LibraryGroupedPinned ⇒
 //   library-grouped-pinned, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
 //   library-view-menu, AlbumDetail ⇒ album-detail, CastingSettingsFound ⇒
@@ -58,6 +59,13 @@ private const val PHONE_SPEC = "spec:width=411dp,height=914dp,dpi=420"
 @Composable
 fun Welcome() {
     WelcomeScene()
+}
+
+/** The welcome on a phone that holds libraries, one of them never synced. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun WelcomeLibraries() {
+    WelcomeLibrariesScene()
 }
 
 /** The library home at the top of the list: the full heading. */
