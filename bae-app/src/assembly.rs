@@ -116,6 +116,7 @@ pub async fn start_library_services(
             manager,
             store,
             records,
+            people,
             views,
             playback,
             cast_picker,
@@ -124,7 +125,7 @@ pub async fn start_library_services(
         ))
     }
     #[cfg(not(desktop))]
-    Ok(AppServices::new(manager, store, records, views, playback, cast_picker))
+    Ok(AppServices::new(manager, store, records, people, views, playback, cast_picker))
 }
 
 /// Why the library's services did not start.

@@ -7,16 +7,23 @@ use bae_people::people::PersonProfile;
 
 /// Ask for this device's person's profile named `name`, and sync until the
 /// manager has written it.
-pub async fn made_profile(manager: &LibraryManager, name: &str) -> PersonProfile {
-    manager.create_profile(name).await.unwrap();
-    requested_profile(manager).await
+pub async fn made_profile(
+    manager: &LibraryManager,
+    people: &bae_people::People,
+    name: &str,
+) -> PersonProfile {
+    people.create_profile(name).await.unwrap();
+    requested_profile(manager, people).await
 }
 
 /// The profile this device's person asked for, written by the manager once
 /// sync has made their private circle. Sync starts if it was stopped, and
 /// runs on once the profile is written.
-pub async fn requested_profile(manager: &LibraryManager) -> PersonProfile {
-    let member = manager
+pub async fn requested_profile(
+    manager: &LibraryManager,
+    people: &bae_people::People,
+) -> PersonProfile {
+    let member = people
         .own_person()
         .await
         .unwrap()

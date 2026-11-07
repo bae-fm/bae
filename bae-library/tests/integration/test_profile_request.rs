@@ -38,7 +38,7 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     played.set_played(std::time::Duration::from_secs(30));
     assert!(people.record_play(&played).await.unwrap());
 
-    library.manager().create_profile("Robin").await.unwrap();
+    library.people().create_profile("Robin").await.unwrap();
     assert!(people.profiles().await.unwrap().is_empty());
     let requested = db.query_texts_for_test("SELECT name FROM profile_request").await.unwrap();
     assert_eq!(requested, ["Robin"]);
@@ -55,11 +55,11 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
         [play.as_str()]
     );
     assert!(matches!(
-        library.manager().create_profile("Robin").await,
+        library.people().create_profile("Robin").await,
         Err(ProfileError::CirclePending(_))
     ));
 
-    let profile = requested_profile(library.manager()).await;
+    let profile = requested_profile(library.manager(), library.people()).await;
     assert_eq!(profile.name, "Robin");
     assert_eq!(profile.history_sharing, Sharing::Private);
     let members = db

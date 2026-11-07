@@ -78,6 +78,7 @@ impl Library {
             LibraryManager::clone(library.manager()),
             library.store().clone(),
             library.records().clone(),
+            library.people().clone(),
             bae_views::LibraryViews::new(library.store().clone()),
             library.start_playback().await,
             library.cast_picker(),

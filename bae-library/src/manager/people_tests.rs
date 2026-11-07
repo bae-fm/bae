@@ -345,7 +345,7 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
         tablet.stop_sync().await;
         let mut requested = tablet.manager().subscribe_requested_profile();
         crate::followed::value_matching(&mut requested, Option::is_none).await;
-        tablet.manager().create_profile("Robin").await.unwrap();
+        tablet.people().create_profile("Robin").await.unwrap();
         crate::followed::value_matching(&mut requested, |requested| {
             requested
                 == &Some(RequestedProfile {
@@ -380,7 +380,7 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
             requested.as_ref() == Some(&stopped)
         })
         .await;
-        assert!(tablet.manager().create_profile("Robin").await.is_err());
+        assert!(tablet.people().create_profile("Robin").await.is_err());
         let mut after = tablet.manager().subscribe_requested_profile();
         let first = after.next().await.unwrap().unwrap();
         assert_eq!(first, Some(stopped));

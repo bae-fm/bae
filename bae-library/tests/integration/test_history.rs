@@ -36,7 +36,9 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     assert!(people.record_play(&local).await.unwrap());
     assert_eq!(people.history().await.unwrap()[0].audience, HistoryAudience::DevicePrivate);
     connect_storage(library.manager(), &storage).await;
-    let person = bae_library::test_libraries::made_profile(library.manager(), "Robin").await;
+    let person =
+        bae_library::test_libraries::made_profile(library.manager(), library.people(), "Robin")
+            .await;
     let private = HistoryAudience::Person {
         person: person.id,
         audience: coven::Audience::Circle(person.private_circle),
@@ -47,7 +49,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     assert_eq!(rows[0].audience, private);
     assert_eq!(rows[0].started_at, started);
     assert!(store.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
-    library.manager().set_history_sharing(Sharing::Household).await.unwrap();
+    library.people().set_history_sharing(Sharing::Household).await.unwrap();
     local.set_played(Duration::from_secs(24));
     people.record_play(&local).await.unwrap();
     assert_eq!(people.history().await.unwrap()[0].audience, private);
@@ -55,7 +57,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
         .begin_play(uuid::Uuid::new_v4(), &track, Some(Duration::from_secs(100)), started)
         .await
         .unwrap();
-    library.manager().set_history_sharing(Sharing::Private).await.unwrap();
+    library.people().set_history_sharing(Sharing::Private).await.unwrap();
     shared.set_played(Duration::from_secs(29));
     assert!(!people.record_play(&shared).await.unwrap());
     shared.set_played(Duration::from_secs(30));
@@ -105,8 +107,12 @@ fn retrying_profile_setup_adopts_listening_from_before_the_profile_arrived() {
         awaiting_profile.set_played(Duration::from_secs(30));
         assert!(people.record_play(&awaiting_profile).await.unwrap());
 
-        let person =
-            bae_library::test_libraries::made_profile(devices.a().manager(), "Robin").await;
+        let person = bae_library::test_libraries::made_profile(
+            devices.a().manager(),
+            devices.a().people(),
+            "Robin",
+        )
+        .await;
         devices.b().store().start_sync().await.unwrap();
         devices
             .settle("the profile on both devices", async |_, store| {
@@ -116,7 +122,7 @@ fn retrying_profile_setup_adopts_listening_from_before_the_profile_arrived() {
         let b = devices.b().store();
         assert!(!b.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
 
-        devices.b().manager().create_profile("Robin").await.unwrap();
+        devices.b().people().create_profile("Robin").await.unwrap();
         let rows = people.history().await.unwrap();
         let private = HistoryAudience::Person {
             person: person.id,

@@ -8,23 +8,6 @@ use super::*;
 const ADD_DEVICE_SYNC_INTERVAL: std::time::Duration = std::time::Duration::from_secs(5);
 
 impl LibraryManager {
-    /// Create this person's profile: at once when their private circle
-    /// exists, otherwise once sync has made it (§5.4).
-    pub async fn create_profile(&self, name: &str) -> Result<(), bae_people::people::ProfileError> {
-        self.people.create_profile(name).await
-    }
-
-    pub async fn rename_profile(&self, name: &str) -> Result<(), bae_people::people::ProfileError> {
-        self.people.rename_profile(name).await
-    }
-
-    pub async fn set_history_sharing(
-        &self,
-        sharing: bae_people::people::Sharing,
-    ) -> Result<(), bae_people::people::ProfileError> {
-        self.people.set_history_sharing(sharing).await
-    }
-
     /// Set this person's avatar to the image in `bytes`, downscaled to the
     /// JPEG bae stores for covers and artist pictures, or clear it with `None`.
     pub async fn set_avatar(
@@ -48,13 +31,6 @@ impl LibraryManager {
         Ok(self.people.set_avatar(avatar).await?)
     }
 
-    pub async fn avatar(
-        &self,
-        person: coven::MemberId,
-    ) -> Result<Option<Vec<u8>>, bae_people::people::ProfileError> {
-        self.people.avatar(person).await
-    }
-
     /// The profile this person asked for, until it is written, live.
     pub fn subscribe_requested_profile(
         &self,
@@ -66,15 +42,6 @@ impl LibraryManager {
         &self,
     ) -> coven::LiveQuery<Vec<bae_people::people::PersonProfile>, bae_store::DbError> {
         self.people.subscribe_profiles()
-    }
-
-    pub async fn people(&self) -> Result<Vec<bae_people::people::Person>, LibraryError> {
-        Ok(self.people.people().await?)
-    }
-
-    /// The person using this device, once their registration has applied.
-    pub async fn own_person(&self) -> Result<Option<bae_people::people::Person>, LibraryError> {
-        Ok(self.people.own_person().await?)
     }
 
     /// This person's restore code, and for the QR code the one that holds, on

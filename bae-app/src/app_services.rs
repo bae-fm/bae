@@ -71,6 +71,9 @@ struct AppServicesInner {
     /// The library's records, which the reads and writes bae adds nothing to
     /// go to.
     records: bae_records::Records,
+    /// The library's people, profiles and personal collections, which the
+    /// calls bae adds nothing to go to.
+    people: bae_people::People,
     /// The library's views, for the reads a screen shows as they are.
     views: bae_views::LibraryViews,
     playback: PlaybackHandle,
@@ -127,6 +130,7 @@ impl AppServices {
         manager: LibraryManager,
         store: bae_store::Store,
         records: bae_records::Records,
+        people: bae_people::People,
         views: bae_views::LibraryViews,
         playback: PlaybackHandle,
         cast_picker: bae_playback::renderer::CastPicker,
@@ -138,6 +142,7 @@ impl AppServices {
                 manager,
                 store,
                 records,
+                people,
                 views,
                 playback,
                 cast_picker,

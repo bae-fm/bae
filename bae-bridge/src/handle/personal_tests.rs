@@ -15,8 +15,11 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         bae_util::http::Http::for_test(),
     ));
     runtime.block_on(bae_library::test_libraries::connect_storage(library.manager(), &storage));
-    let made =
-        runtime.block_on(bae_library::test_libraries::made_profile(library.manager(), "Robin"));
+    let made = runtime.block_on(bae_library::test_libraries::made_profile(
+        library.manager(),
+        library.people(),
+        "Robin",
+    ));
     let store = library.store().clone();
     let records = library.records().clone();
     let people = bae_people::People::new(store.clone());
