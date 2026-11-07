@@ -387,6 +387,9 @@ ImageHold = "RemoteImageHost"
     "BridgeHost::create_library",
     "BridgeHost::open_app",
     "BridgeHost::open_app_on_fixture",
+    "BridgeHost::new",
+    "BridgeHost::start",
+    "BridgeHost::with_test_keyring",
 ]
 # Restoring, joining and resetting a device open the library they leave.
 "bae-bridge/src/host/bootstrap.rs" = [
@@ -398,15 +401,21 @@ ImageHold = "RemoteImageHost"
     "BridgeHost::resume_replacement",
     "BridgeHost::resume_restore",
     "BridgeDeviceReset::confirm",
+    "BootstrapCancellation::new",
+    "BridgeJoinControl::new",
 ]
 # The sink the app built at launch, taken back as core's by the host the app
 # builds on it.
 "bae-bridge/src/init.rs" = ["BridgeDiagnostics::core"]
 # A library just set up opens.
-"bae-bridge/src/setup.rs" = ["OpenedLibrary::open"]
+"bae-bridge/src/setup.rs" = ["OpenedLibrary::open", "OpenedLibrary::new"]
 # A test's catalog fakes: the providers its library asks are built over
 # them, once per library the test opens.
-"bae-catalogs/src/fake_catalogs.rs" = ["FakeCatalogs::providers"]
+"bae-catalogs/src/fake_catalogs.rs" = [
+    "FakeCatalogs::providers",
+    "FakeCatalogs::offline",
+    "FakeCatalogs::over",
+]
 # The test fixtures below own what they hand their test, and their getters give
 # the test what the fixture holds: no production code reaches them, so they are
 # listed rather than reshaped.
@@ -414,7 +423,13 @@ ImageHold = "RemoteImageHost"
 # and restores the second from it, and hands the test, the final owner of
 # what it built, each store to write and read. It is test-utils code, which
 # the views' tests compile, so the checker reads it as production code.
-"bae-store/src/test_devices.rs" = ["TwoStores::a", "TwoStores::b"]
+"bae-store/src/test_devices.rs" = [
+    "TwoStores::a",
+    "TwoStores::b",
+    "StoreDevice::new",
+    "SyncCycles::follow",
+    "TwoStores::new",
+]
 # One person's devices of a test library, syncing over shared memory storage:
 # it creates the first device and restores more from its code, and hands the
 # test, the final owner of what it built, each device and the manager and
@@ -433,6 +448,9 @@ ImageHold = "RemoteImageHost"
     "TwoDevices::b_mut",
     "DeviceLibrary::first",
     "DeviceLibrary::restore",
+    "DeviceLibrary::new",
+    "RunningLibrary::new",
+    "TwoDevices::new",
 ]
 # A test's library: it opens the library as the app's opening step does, and
 # hands the test, the final owner of what it built, the manager, the parts the
@@ -456,17 +474,23 @@ ImageHold = "RemoteImageHost"
     "TestLibrary::cast_picker",
     "TestLibrary::start_playback",
     "TestLibrary::start_playback_on",
+    "TestLibrary::open",
+    "TestLibrary::open_with",
 ]
 # Starts a worker's thread: it opens the worker's channel and moves the
 # receiving end into the thread it starts, so the sender the worker keeps
 # is always the one paired with that thread. Its handle stops the thread.
-"bae-util/src/worker_thread.rs" = ["WorkerThread::spawn"]
+"bae-util/src/worker_thread.rs" = ["WorkerThread::spawn", "WorkerThread::clone"]
 # Starts the playback service's task; its handle stops it.
 "bae-playback/src/service/runtime.rs" = [
     "PlaybackService::start",
     "PlaybackService::start_with_audio_device",
 ]
-"bae-playback/src/service/thread.rs" = ["PlaybackService::start_inner"]
+"bae-playback/src/service/thread.rs" = [
+    "PlaybackService::start_inner",
+    "OwnCommands::first",
+    "OwnCommands::of_the_next_service",
+]
 # Starts the import service's worker and watcher threads and builds the parts
 # its handle holds; its handle stops them.
 "bae-import/src/service/worker.rs" = [
@@ -494,6 +518,225 @@ ImageHold = "RemoteImageHost"
 "bae-types/src/text_match/label.rs" = ["TAILS"]
 "bae-types/src/text_match/title.rs" = ["TRAILING_BRACKET"]
 
+# An owner's constructor, clone or inner struct builds the owner, and the
+# parts it holds that nothing else shares; a static holds what the process
+# shares. Each row is the owner's own construction.
+"bae-app/src/app_services.rs" = ["AppServices::new"]
+"bae-audio/src/avio.rs" = ["StreamingAvioContext::new"]
+"bae-audio/src/decode/output.rs" = [
+    "SinkOutput::new",
+    "TrackOutput::new",
+]
+"bae-audio/src/encode.rs" = [
+    "StreamingEncoder::new",
+    "StreamingEncoder::seekable",
+    "StreamingEncoder::streaming",
+]
+"bae-audio/src/sparse_buffer.rs" = ["NEXT_BUFFER_ID"]
+"bae-audio/src/stream_wake.rs" = ["StreamWake::new"]
+"bae-audio/src/test_reads.rs" = ["COUNTS"]
+"bae-audio/src/track_stream.rs" = ["StreamingState::new"]
+"bae-bridge/src/audio_focus.rs" = ["PlatformAudioFocus::new"]
+"bae-bridge/src/handle.rs" = ["AppHandle::start"]
+"bae-bridge/src/host/steps.rs" = [
+    "BridgeCatalogApply::new",
+    "BridgeLibraryClosing::new",
+    "BridgeLibraryOpening::new",
+    "BridgeLibrarySetup::new",
+]
+"bae-bridge/src/keyed_values.rs" = [
+    "ProgressStream::new",
+    "StreamValues::new",
+    "StreamWriter::new",
+]
+"bae-bridge/src/oauth.rs" = ["NativeOAuthPresenter::new"]
+"bae-bridge/src/operation_runtime.rs" = ["OperationRuntime::new"]
+"bae-bridge/src/screens/setup.rs" = ["SetupStateWatch::new"]
+"bae-bridge/src/signals.rs" = ["ArtworkAnalyzerAdapter::new"]
+"bae-cast/src/airplay/ap2_session.rs" = ["Ap2Session::start"]
+"bae-cast/src/airplay/discovery.rs" = ["AirPlayBrowse::start"]
+"bae-cast/src/airplay/session.rs" = ["RaopSession::start"]
+"bae-cast/src/airplay/sink.rs" = [
+    "Ap2Sink::new",
+    "RaopSink::new",
+]
+"bae-cast/src/airplay/stream.rs" = [
+    "PcmFeed::new",
+    "RaopStream::spawn",
+    "RaopStreamControl::new",
+]
+"bae-cast/src/cast/discovery.rs" = ["CastBrowse::start"]
+"bae-cast/src/dlna/discovery.rs" = ["DlnaSearch::start"]
+"bae-cast/src/lib.rs" = ["EphemeralServer::start"]
+"bae-cast/src/renderer/discovery.rs" = [
+    "RendererDiscovery::builtin",
+    "RendererDiscovery::for_host",
+    "RendererDiscovery::reported",
+    "ReportedDiscovery::new",
+]
+"bae-cast/src/renderer/protocol_discovery.rs" = ["ProtocolDiscovery::default"]
+"bae-cast/src/renderer/published_devices.rs" = ["PublishedDevices::new"]
+"bae-catalogs/src/discogs/client.rs" = [
+    "Discogs::for_test",
+    "Discogs::new",
+    "Discogs::with_limiter",
+]
+"bae-catalogs/src/musicbrainz/mod.rs" = [
+    "MusicBrainz::for_test",
+    "MusicBrainz::new",
+    "MusicBrainz::with_limiter",
+]
+"bae-catalogs/src/payloads/traversal.rs" = ["FetchDocuments::new"]
+"bae-catalogs/src/providers.rs" = [
+    "Providers::for_test",
+    "Providers::new",
+]
+"bae-catalogs/src/rate_limiter.rs" = [
+    "RateLimiter::build",
+    "RateLimiter::counted",
+    "RateLimiter::new",
+    "Ticket::take",
+]
+"bae-catalogs/src/test_image_host.rs" = ["RemoteImageHost::start"]
+"bae-catalogs/src/wikidata/mod.rs" = [
+    "Wikidata::for_test",
+    "Wikidata::new",
+    "Wikidata::with_interval",
+]
+"bae-desktop/src/lib.rs" = ["DesktopServices::start"]
+"bae-diagnostics/src/lib.rs" = [
+    "Diagnostics::noop",
+    "Diagnostics::with_transport",
+    "DiagnosticsWorker::new",
+    "RecordingTransport::new",
+]
+"bae-import/src/assemble.rs" = ["ArtistRows::new"]
+"bae-import/src/catalog_sessions.rs" = ["CatalogSessions::new"]
+"bae-import/src/event_bus.rs" = [
+    "EventDelivery::new",
+    "ImportEventBus::new",
+    "SendHold::default",
+]
+"bae-import/src/extraction/candidate_text.rs" = [
+    "BRACKET_RE",
+    "BY_RE",
+    "COLON_RE",
+    "GENERIC",
+    "RE",
+    "STOP",
+    "TRACK_NUM",
+    "TRACK_PREFIX",
+    "YEAR_PREFIX",
+]
+"bae-import/src/extraction/service.rs" = [
+    "Artwork::read",
+    "ExtractionService::new",
+]
+"bae-import/src/folder_scan_status.rs" = ["FolderScansLive::new"]
+"bae-import/src/folder_scanner/scan.rs" = [
+    "ScanCancellation::child",
+    "ScanCancellation::new",
+    "Walk::new",
+]
+"bae-import/src/identification/handle.rs" = ["IdentificationHandle::new"]
+"bae-import/src/identify_service.rs" = ["IdentifyService::new"]
+"bae-import/src/lib.rs" = ["ImportServices::new"]
+"bae-import/src/loudness.rs" = [
+    "LoudnessProgress::new",
+    "LoudnessProgressSink::new",
+]
+"bae-import/src/release_reads.rs" = ["ReleaseReads::new"]
+"bae-import/src/scan_passes.rs" = [
+    "RootScanTask::new",
+    "ScanServices::new",
+]
+"bae-import/src/tables.rs" = ["ImportTables::new"]
+"bae-import/src/watching/active_roots.rs" = ["ActiveRoots::new"]
+"bae-import/src/watching/coordinator.rs" = ["Coordinator::new"]
+"bae-import/src/watching/root_removal.rs" = ["ServiceRootRemovalBackend::new"]
+"bae-library/examples/bench_library/mod.rs" = ["BenchLibrary::create"]
+"bae-library/src/bootstrap.rs" = [
+    "JoinControl::default",
+    "JoinControl::new",
+]
+"bae-library/src/manager/service.rs" = ["BackgroundTasks::new"]
+"bae-library/src/storage/transfer.rs" = ["ReleaseTransfer::new"]
+"bae-mcp/src/lib.rs" = ["BaeMcpServer::new"]
+"bae-playback/src/airplay_output.rs" = [
+    "AirPlayControl::new",
+    "AirPlayOutput::new",
+    "DrainSource::new",
+    "PcmWake::unattached",
+]
+"bae-playback/src/audio_output.rs" = [
+    "AtomicF32::new",
+    "AudioDrain::new",
+    "AudioDrain::reporting",
+    "AudioDrain::reporting_every",
+    "AudioOutputControls::new",
+    "PlayerOutput::new",
+]
+"bae-playback/src/capture_output.rs" = [
+    "AudioClock::default",
+    "AudioClock::new",
+    "CaptureAudioDevice::new",
+    "CaptureAudioOutput::new",
+    "CaptureOutputCore::publishing_to",
+    "CaptureStream::spawn",
+    "CaptureStream::spawn_manual",
+    "ManualCaptureAudioOutput::new",
+    "ManualCaptureDevice::new",
+]
+"bae-playback/src/clock.rs" = ["ManualPlaybackClock::new"]
+"bae-playback/src/cpal_output.rs" = ["CpalAudioOutput::new"]
+"bae-playback/src/device_formats.rs" = [
+    "DeviceFormats::new",
+    "PlayerFormat::new",
+]
+"bae-playback/src/device_writer.rs" = ["DeviceWriter::new"]
+"bae-playback/src/preview_player.rs" = ["PreviewPlayer::new"]
+"bae-playback/src/progress/handle.rs" = ["PlaybackProgressHandle::new"]
+"bae-playback/src/renderer/media_source.rs" = ["RendererMediaSource::new"]
+"bae-playback/src/renderer/picker.rs" = ["CastPicker::new"]
+"bae-playback/src/renderer/session.rs" = ["RendererSession::start"]
+"bae-playback/src/resampling_drain.rs" = ["ResamplingDrain::new"]
+"bae-playback/src/service/api.rs" = ["PlaybackHandle::new"]
+"bae-playback/src/service/file_buffers.rs" = ["FileBuffers::new"]
+"bae-playback/src/service/library_follow.rs" = ["LibraryFollow::new"]
+"bae-playback/src/service/mod.rs" = ["SystemAudioOutputDevice::new"]
+"bae-playback/src/service/renderer.rs" = [
+    "AirPlayConnect::new",
+    "AirPlayRenderer::new",
+    "RemoteConnect::new",
+]
+"bae-playback/src/source.rs" = ["PlaybackSource::new"]
+"bae-playback/src/tables/now.rs" = ["PlaybackNowRow::new"]
+"bae-playback/src/tables/queue.rs" = ["PlaybackQueueTables::new"]
+"bae-playback/src/tables/timeline.rs" = ["PlaybackTimelineRow::new"]
+"bae-playback/src/track_buffered.rs" = ["PlayingBytes::new"]
+"bae-records/src/records.rs" = ["Records::new"]
+"bae-store/src/store.rs" = ["Store::new"]
+"bae-track-audio/src/data_source.rs" = [
+    "CovenFileReader::for_playback",
+    "CovenFileReader::new",
+]
+"bae-track-audio/src/data_source/local.rs" = ["LocalReader::new"]
+"bae-track-audio/src/storage_wait.rs" = ["StorageWaits::new"]
+"bae-track-audio/src/track_sources.rs" = ["SourceStream::start"]
+"bae-transfers/src/queued_releases.rs" = [
+    "QueuedReleases::clone",
+    "QueuedReleases::new",
+]
+"bae-transfers/src/release_transfers.rs" = [
+    "ReleaseTransfers::clone",
+    "ReleaseTransfers::default",
+    "ReleaseTransfers::new",
+    "ReleaseTransfers::report",
+]
+"bae-util/src/open_files_peak.rs" = ["OpenFilesPeak::start"]
+"bae-util/src/server.rs" = ["ServerController::new"]
+"bae-util/src/test_host.rs" = ["FakeHost::start"]
+
 # SQLite: the store and the crates whose domains keep tables in it. Only
 # these name a raw rusqlite handle.
 [[capabilities]]
@@ -504,8 +747,10 @@ homes = [
     "bae-people/src/",
     "bae-sync-status/src/",
     "bae-preferences/src/row.rs",
+    "bae-playback/src/tables.rs",
     "bae-playback/src/tables/",
     "bae-playback/src/renderer/picker.rs",
+    "bae-import/src/tables.rs",
     "bae-import/src/tables/",
     "bae-transfers/src/queued_releases/",
     "bae-transfers/src/release_storage_action.rs",
@@ -856,3 +1101,7 @@ tables = [
     "artist_credit_search",
     "library_list_versions",
 ]
+
+# coreaudio-rs is `coreaudio` in source.
+[library_names]
+"coreaudio-rs" = "coreaudio"
