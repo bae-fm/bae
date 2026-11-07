@@ -4068,7 +4068,7 @@ service when it can't be served: a call waiting on its answer fails with
 "Something went wrong", and the end's report is what tells of any other.
 Commands sent while a service ends or the next starts wait in the thread's
 channel and are served in order. What a service sent itself reaches no later
-one. Saving state with no service running has nothing to save and starts none,
+one, a decoder's failure included. Saving state with no service running has nothing to save and starts none,
 and a shutdown ends the thread.
 
 A fresh service holds what outlives a service, whether or not it restores on

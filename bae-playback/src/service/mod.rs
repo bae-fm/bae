@@ -620,6 +620,7 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::TrackReady { .. }
         | PlaybackCommand::HaltOnError
         | PlaybackCommand::ReadFailed { .. }
+        | PlaybackCommand::DecodeFailed { .. }
         | PlaybackCommand::AddToQueue(_)
         | PlaybackCommand::AddNext(_)
         | PlaybackCommand::InsertInQueue(_, _)
@@ -687,6 +688,7 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::TrackReady { .. }
         | PlaybackCommand::HaltOnError
         | PlaybackCommand::ReadFailed { .. }
+        | PlaybackCommand::DecodeFailed { .. }
         | PlaybackCommand::SetVolume(_)
         | PlaybackCommand::SetMuted(_)
         | PlaybackCommand::SetRepeatMode(_)

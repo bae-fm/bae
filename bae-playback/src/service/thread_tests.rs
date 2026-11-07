@@ -20,6 +20,21 @@ async fn a_service_reads_none_of_what_an_ended_service_sent_itself() {
     assert!(matches!(second, Some(PlaybackCommand::Stop)), "{second:?}");
 }
 
+/// A decoder left from an ended service can still fail after the restart; its
+/// failure reaches no later service, so it does not halt the fresh one.
+/// Sabotage: send the failure unnumbered, and the fresh service reads it.
+#[tokio::test]
+async fn a_decoder_left_by_an_ended_service_does_not_fail_the_fresh_one() {
+    let (ended, mut messages) = OwnCommands::channel();
+    let fresh = ended.of_the_next_service();
+    let leftover = crate::stream_pipeline::DecodeFailureReport::TellService { commands: ended };
+    leftover.decode_failed(&std::sync::atomic::AtomicBool::new(false), "the decode broke");
+    dispatch_command(&fresh, PlaybackCommand::Stop);
+
+    let first = next_command(&mut messages, fresh.service).await;
+    assert!(matches!(first, Some(PlaybackCommand::Stop)), "{first:?}");
+}
+
 /// A fresh service takes up the repeat mode and the level the tables and rows
 /// hold though the resume row is empty, as it is after a stop. Sabotage: read
 /// them only with a resume row, and it plays at full volume under a screen

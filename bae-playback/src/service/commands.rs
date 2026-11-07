@@ -84,6 +84,16 @@ impl PlaybackService {
             PlaybackCommand::HaltOnError => {
                 self.halt_on_error().await;
             }
+            PlaybackCommand::DecodeFailed { message } => {
+                emit_progress(
+                    &self.progress_tx,
+                    PlaybackProgress::PlaybackError {
+                        reason: crate::PlaybackErrorReason::internal(format!(
+                            "Playback decode failed: {message}"
+                        )),
+                    },
+                );
+            }
             PlaybackCommand::ReadFailed { buffer_id, error } => {
                 self.handle_read_failed(buffer_id, error).await;
             }

@@ -83,7 +83,7 @@ impl PlaybackService {
                 sample_rate,
                 channels,
                 "Streaming decode",
-                DecodeFailureReport::EmitPlaybackError { progress_tx: self.progress_tx.clone() },
+                DecodeFailureReport::TellService { commands: self.command_tx.clone() },
             ),
             |track_stream, handle, cancel_token, ready| (track_stream, handle, cancel_token, ready),
         );

@@ -146,6 +146,12 @@ pub(crate) enum PlaybackCommand {
     /// A read failure mid-track emitted a `PlaybackProgress::PlaybackError`; stop
     /// playback rather than leave it frozen in Playing.
     HaltOnError,
+    /// The playing track's decoder failed for `message`. The loop tells the UI
+    /// and, hearing itself tell it, halts playback. Sent as a service's own
+    /// command, so a decoder left from a dead service is not heard by the next.
+    DecodeFailed {
+        message: String,
+    },
     /// A track buffer's byte fill failed. Only the command loop knows which track
     /// the buffer serves right now, so it decides what breaks.
     ReadFailed {

@@ -14,8 +14,7 @@ use crate::audio_output::{
     audio_event_channel, AudioEvent, AudioEventReceiver, AudioStream, PlayerOutput,
 };
 use crate::error::PlaybackError;
-use crate::progress::{emit_progress, PlaybackProgress};
-use crate::service::log_streaming_decode_failure;
+use crate::service::{dispatch_command, log_streaming_decode_failure, PlaybackCommand};
 use crate::source::{PlaybackSource, TrackFmt};
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::track_stream::{create_track_stream_pair, ReadyReceiver, TrackStream};
@@ -23,7 +22,6 @@ use bae_diagnostics::{Diagnostics, ReportedThread};
 use bae_track_audio::StreamDecodeParams;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc as tokio_mpsc;
 use tracing::{debug, error, warn};
 
 /// One live decoded-audio pipeline: a decoder thread filling a ring, wrapped in
@@ -37,11 +35,15 @@ pub(crate) struct StreamPipeline {
     cancel_token: Arc<AtomicBool>,
 }
 
-/// What a decode failure does beyond the shared log: the main player surfaces it
-/// to the UI as a `PlaybackError`; preview only logs.
+/// What a decode failure does beyond the shared log: the main player's service
+/// is told, and surfaces it to the UI as a `PlaybackError`; preview only logs.
 #[derive(Clone)]
 pub(crate) enum DecodeFailureReport {
-    EmitPlaybackError { progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress> },
+    /// Sent as the service's own command, so a decoder that outlived its
+    /// service tells no later one.
+    TellService {
+        commands: crate::service::OwnCommands,
+    },
     LogOnly,
 }
 
@@ -49,16 +51,12 @@ impl DecodeFailureReport {
     /// The decode failed for the reason `message` states. Teardown (seek /
     /// stop / track change) sets `cancel` before the decoder exits, so a
     /// failure after it is no failure of the track's.
-    fn decode_failed(&self, cancel: &AtomicBool, message: impl std::fmt::Display) {
-        if let Self::EmitPlaybackError { progress_tx } = self {
+    pub(crate) fn decode_failed(&self, cancel: &AtomicBool, message: impl std::fmt::Display) {
+        if let Self::TellService { commands } = self {
             if !cancel.load(Ordering::Relaxed) {
-                emit_progress(
-                    progress_tx,
-                    PlaybackProgress::PlaybackError {
-                        reason: crate::PlaybackErrorReason::internal(format!(
-                            "Playback decode failed: {message}"
-                        )),
-                    },
+                dispatch_command(
+                    commands,
+                    PlaybackCommand::DecodeFailed { message: message.to_string() },
                 );
             }
         }
