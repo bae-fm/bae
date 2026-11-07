@@ -264,12 +264,13 @@
     <string name="storage_dropbox_choose">בחר תיקייה משותפת</string>
     <string name="storage_dropbox_reading">קורא את תיקיות ה-Dropbox המשותפות שלך…</string>
     <string name="storage_onedrive_reading">קורא את התיקיות ב-OneDrive שלך…</string>
-    <string name="storage_onedrive_creating">יוצר את התיקייה…</string>
+    <string name="storage_creating_folder">יוצר את התיקייה…</string>
     <string name="storage_dropbox_none">אין תיקיות שמשותפות עם חשבון ה-Dropbox הזה. שתף תיקייה ב-Dropbox ואז רענן.</string>
+    <string name="storage_dropbox_name_taken">כבר יש תיקייה בשם ״%1$s״ ב‑Dropbox שלך. בחר שם אחר.</string>
     <string name="storage_refresh">רענון</string>
-    <string name="storage_onedrive_new_folder">תיקייה חדשה</string>
-    <string name="storage_onedrive_folder_name">שם התיקייה</string>
-    <string name="storage_onedrive_create">יצירה</string>
+    <string name="storage_new_folder">תיקייה חדשה</string>
+    <string name="storage_folder_name">שם התיקייה</string>
+    <string name="storage_create_folder">יצירה</string>
     <string name="storage_onedrive_use_folder">שימוש בתיקייה הזו</string>
     <string name="storage_setup_cancelling">מבטל…</string>
     <string name="storage_setup_done">הסנכרון הוגדר. שמור את קוד השחזור שלך במקום פרטי: אם תאבד את כל המכשירים שלך, הוא מחזיר לך את הספרייה.</string>

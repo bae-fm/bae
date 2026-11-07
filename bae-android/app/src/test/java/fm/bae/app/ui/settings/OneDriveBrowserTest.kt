@@ -197,6 +197,11 @@ class OneDriveBrowserTest {
 
         override suspend fun dropboxSharedFolders(handle: AppHandleInterface): List<BridgeStorageFolder> = error("not used")
 
+        override suspend fun createDropboxSharedFolder(
+            handle: AppHandleInterface,
+            name: String,
+        ): BridgeStorageFolder = error("not used")
+
         override suspend fun setUpStorage(
             handle: AppHandleInterface,
             location: BridgeStorageLocation,

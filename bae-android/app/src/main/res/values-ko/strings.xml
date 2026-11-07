@@ -258,12 +258,13 @@
     <string name="storage_dropbox_choose">공유 폴더 선택</string>
     <string name="storage_dropbox_reading">공유된 Dropbox 폴더를 읽는 중…</string>
     <string name="storage_onedrive_reading">OneDrive의 폴더를 읽는 중…</string>
-    <string name="storage_onedrive_creating">폴더를 만드는 중…</string>
+    <string name="storage_creating_folder">폴더를 만드는 중…</string>
     <string name="storage_dropbox_none">이 Dropbox 계정과 공유된 폴더가 없습니다. Dropbox에서 폴더를 공유한 다음 새로 고치세요.</string>
+    <string name="storage_dropbox_name_taken">“%1$s”라는 폴더가 이미 Dropbox에 있습니다. 다른 이름을 선택하세요.</string>
     <string name="storage_refresh">새로 고침</string>
-    <string name="storage_onedrive_new_folder">새 폴더</string>
-    <string name="storage_onedrive_folder_name">폴더 이름</string>
-    <string name="storage_onedrive_create">만들기</string>
+    <string name="storage_new_folder">새 폴더</string>
+    <string name="storage_folder_name">폴더 이름</string>
+    <string name="storage_create_folder">만들기</string>
     <string name="storage_onedrive_use_folder">이 폴더 사용</string>
     <string name="storage_setup_cancelling">취소하는 중…</string>
     <string name="storage_setup_done">동기화가 설정되었습니다. 복구 코드를 다른 사람이 볼 수 없는 곳에 보관하세요. 모든 기기를 잃어버려도 이 코드로 라이브러리를 되찾을 수 있습니다.</string>

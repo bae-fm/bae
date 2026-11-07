@@ -267,12 +267,13 @@
     <string name="storage_dropbox_choose">Vyberte sdílenou složku</string>
     <string name="storage_dropbox_reading">Načítají se vaše sdílené složky Dropboxu…</string>
     <string name="storage_onedrive_reading">Načítají se složky na vašem OneDrivu…</string>
-    <string name="storage_onedrive_creating">Vytváří se složka…</string>
+    <string name="storage_creating_folder">Vytváří se složka…</string>
     <string name="storage_dropbox_none">S tímto účtem Dropbox nejsou sdíleny žádné složky. Nasdílejte složku v Dropboxu a pak obnovte.</string>
+    <string name="storage_dropbox_name_taken">Složka s názvem „%1$s“ už ve vašem Dropboxu je. Zvolte jiný název.</string>
     <string name="storage_refresh">Obnovit</string>
-    <string name="storage_onedrive_new_folder">Nová složka</string>
-    <string name="storage_onedrive_folder_name">Název složky</string>
-    <string name="storage_onedrive_create">Vytvořit</string>
+    <string name="storage_new_folder">Nová složka</string>
+    <string name="storage_folder_name">Název složky</string>
+    <string name="storage_create_folder">Vytvořit</string>
     <string name="storage_onedrive_use_folder">Použít tuto složku</string>
     <string name="storage_setup_cancelling">Ruší se…</string>
     <string name="storage_setup_done">Synchronizace je nastavená. Uchovávejte kód pro obnovení v soukromí: pokud přijdete o všechna svá zařízení, získáte s ním knihovnu zpět.</string>

@@ -258,12 +258,13 @@
     <string name="storage_dropbox_choose">選擇一個共用資料夾</string>
     <string name="storage_dropbox_reading">正在讀取你共享的 Dropbox 資料夾…</string>
     <string name="storage_onedrive_reading">正在讀取你的 OneDrive 上的資料夾…</string>
-    <string name="storage_onedrive_creating">正在建立資料夾…</string>
+    <string name="storage_creating_folder">正在建立資料夾…</string>
     <string name="storage_dropbox_none">沒有與此 Dropbox 帳號共用的資料夾。請在 Dropbox 中共用一個資料夾，然後重新整理。</string>
+    <string name="storage_dropbox_name_taken">你的 Dropbox 中已有名為「%1$s」的資料夾。請換一個名稱。</string>
     <string name="storage_refresh">重新整理</string>
-    <string name="storage_onedrive_new_folder">新增資料夾</string>
-    <string name="storage_onedrive_folder_name">資料夾名稱</string>
-    <string name="storage_onedrive_create">建立</string>
+    <string name="storage_new_folder">新增資料夾</string>
+    <string name="storage_folder_name">資料夾名稱</string>
+    <string name="storage_create_folder">建立</string>
     <string name="storage_onedrive_use_folder">使用此資料夾</string>
     <string name="storage_setup_cancelling">正在取消…</string>
     <string name="storage_setup_done">同步已設定。請將你的復原碼保存在私密的地方：如果你遺失了所有裝置，可以用它找回你的資料庫。</string>

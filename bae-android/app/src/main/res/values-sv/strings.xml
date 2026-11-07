@@ -260,12 +260,13 @@
     <string name="storage_dropbox_choose">Välj en delad mapp</string>
     <string name="storage_dropbox_reading">Läser dina delade Dropbox-mappar…</string>
     <string name="storage_onedrive_reading">Läser mapparna på din OneDrive…</string>
-    <string name="storage_onedrive_creating">Skapar mappen…</string>
+    <string name="storage_creating_folder">Skapar mappen…</string>
     <string name="storage_dropbox_none">Inga mappar delas med det här Dropbox-kontot. Dela en mapp i Dropbox och uppdatera sedan.</string>
+    <string name="storage_dropbox_name_taken">Det finns redan en mapp som heter ”%1$s” i din Dropbox. Välj ett annat namn.</string>
     <string name="storage_refresh">Uppdatera</string>
-    <string name="storage_onedrive_new_folder">Ny mapp</string>
-    <string name="storage_onedrive_folder_name">Mappnamn</string>
-    <string name="storage_onedrive_create">Skapa</string>
+    <string name="storage_new_folder">Ny mapp</string>
+    <string name="storage_folder_name">Mappnamn</string>
+    <string name="storage_create_folder">Skapa</string>
     <string name="storage_onedrive_use_folder">Använd den här mappen</string>
     <string name="storage_setup_cancelling">Avbryter…</string>
     <string name="storage_setup_done">Synkroniseringen är konfigurerad. Förvara din återställningskod på ett privat ställe: om du förlorar alla dina enheter får du tillbaka biblioteket med den.</string>

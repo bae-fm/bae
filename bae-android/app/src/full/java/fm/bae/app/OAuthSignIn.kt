@@ -96,6 +96,11 @@ class OAuthSignIn private constructor(
 
     override suspend fun dropboxSharedFolders(handle: AppHandleInterface): List<BridgeStorageFolder> = handle.dropboxSharedFolders()
 
+    override suspend fun createDropboxSharedFolder(
+        handle: AppHandleInterface,
+        name: String,
+    ): BridgeStorageFolder = handle.createDropboxSharedFolder(name)
+
     override suspend fun oneDriveRoot(handle: AppHandleInterface): BridgeStorageFolder = handle.onedriveRoot()
 
     override suspend fun oneDriveFolders(

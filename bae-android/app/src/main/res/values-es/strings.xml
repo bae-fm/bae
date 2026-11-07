@@ -263,12 +263,13 @@
     <string name="storage_dropbox_choose">Elige una carpeta compartida</string>
     <string name="storage_dropbox_reading">Leyendo tus carpetas compartidas de Dropbox…</string>
     <string name="storage_onedrive_reading">Leyendo las carpetas de tu OneDrive…</string>
-    <string name="storage_onedrive_creating">Creando la carpeta…</string>
+    <string name="storage_creating_folder">Creando la carpeta…</string>
     <string name="storage_dropbox_none">No hay carpetas compartidas con esta cuenta de Dropbox. Comparte una carpeta en Dropbox y actualiza.</string>
+    <string name="storage_dropbox_name_taken">Ya hay una carpeta llamada «%1$s» en tu Dropbox. Elige otro nombre.</string>
     <string name="storage_refresh">Actualizar</string>
-    <string name="storage_onedrive_new_folder">Nueva carpeta</string>
-    <string name="storage_onedrive_folder_name">Nombre de la carpeta</string>
-    <string name="storage_onedrive_create">Crear</string>
+    <string name="storage_new_folder">Nueva carpeta</string>
+    <string name="storage_folder_name">Nombre de la carpeta</string>
+    <string name="storage_create_folder">Crear</string>
     <string name="storage_onedrive_use_folder">Usar esta carpeta</string>
     <string name="storage_setup_cancelling">Cancelando…</string>
     <string name="storage_setup_done">La sincronización está configurada. Guarda tu código de recuperación en un lugar privado: si pierdes todos tus dispositivos, con él recuperas tu biblioteca.</string>

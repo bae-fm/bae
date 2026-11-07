@@ -313,12 +313,13 @@
     <string name="storage_dropbox_choose">Choose a shared folder</string>
     <string name="storage_dropbox_reading">Reading your shared Dropbox folders…</string>
     <string name="storage_onedrive_reading">Reading the folders on your OneDrive…</string>
-    <string name="storage_onedrive_creating">Making the folder…</string>
+    <string name="storage_creating_folder">Making the folder…</string>
     <string name="storage_dropbox_none">No folders are shared with this Dropbox account. Share a folder in Dropbox, then refresh.</string>
+    <string name="storage_dropbox_name_taken">A folder named “%1$s” is already in your Dropbox. Choose another name.</string>
     <string name="storage_refresh">Refresh</string>
-    <string name="storage_onedrive_new_folder">New folder</string>
-    <string name="storage_onedrive_folder_name">Folder name</string>
-    <string name="storage_onedrive_create">Create</string>
+    <string name="storage_new_folder">New folder</string>
+    <string name="storage_folder_name">Folder name</string>
+    <string name="storage_create_folder">Create</string>
     <string name="storage_onedrive_use_folder">Use this folder</string>
     <string name="storage_setup_cancelling">Cancelling…</string>
     <string name="storage_setup_done">Sync is set up. Keep your recovery code somewhere private: if you lose all your devices, it gets your library back.</string>

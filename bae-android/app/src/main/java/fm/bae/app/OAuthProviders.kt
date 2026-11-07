@@ -45,6 +45,15 @@ interface OAuthProviders {
     /** The Dropbox folders shared with the signed-in account, each a place a library can live. */
     suspend fun dropboxSharedFolders(handle: AppHandleInterface): List<BridgeStorageFolder>
 
+    /**
+     * A new folder named [name] at the top of the signed-in Dropbox, shared. A name already taken
+     * fails with the storage failure `AlreadyExists`, and nothing is made.
+     */
+    suspend fun createDropboxSharedFolder(
+        handle: AppHandleInterface,
+        name: String,
+    ): BridgeStorageFolder
+
     /** The top of the signed-in OneDrive. */
     suspend fun oneDriveRoot(handle: AppHandleInterface): BridgeStorageFolder
 

@@ -258,12 +258,13 @@
     <string name="storage_dropbox_choose">选择一个共享文件夹</string>
     <string name="storage_dropbox_reading">正在读取你共享的 Dropbox 文件夹…</string>
     <string name="storage_onedrive_reading">正在读取你的 OneDrive 上的文件夹…</string>
-    <string name="storage_onedrive_creating">正在创建文件夹…</string>
+    <string name="storage_creating_folder">正在创建文件夹…</string>
     <string name="storage_dropbox_none">没有与此 Dropbox 帐户共享的文件夹。请在 Dropbox 中共享一个文件夹，然后刷新。</string>
+    <string name="storage_dropbox_name_taken">你的 Dropbox 中已有名为“%1$s”的文件夹。请换一个名称。</string>
     <string name="storage_refresh">刷新</string>
-    <string name="storage_onedrive_new_folder">新建文件夹</string>
-    <string name="storage_onedrive_folder_name">文件夹名称</string>
-    <string name="storage_onedrive_create">创建</string>
+    <string name="storage_new_folder">新建文件夹</string>
+    <string name="storage_folder_name">文件夹名称</string>
+    <string name="storage_create_folder">创建</string>
     <string name="storage_onedrive_use_folder">使用此文件夹</string>
     <string name="storage_setup_cancelling">正在取消…</string>
     <string name="storage_setup_done">同步已设置。请将你的恢复码保存在私密的地方：如果你丢失了所有设备，可以用它找回你的库。</string>

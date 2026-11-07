@@ -263,12 +263,13 @@
     <string name="storage_dropbox_choose">Escolha uma pasta compartilhada</string>
     <string name="storage_dropbox_reading">Lendo suas pastas compartilhadas do Dropbox…</string>
     <string name="storage_onedrive_reading">Lendo as pastas do seu OneDrive…</string>
-    <string name="storage_onedrive_creating">Criando a pasta…</string>
+    <string name="storage_creating_folder">Criando a pasta…</string>
     <string name="storage_dropbox_none">Nenhuma pasta está compartilhada com esta conta do Dropbox. Compartilhe uma pasta no Dropbox e atualize.</string>
+    <string name="storage_dropbox_name_taken">Já existe uma pasta chamada “%1$s” no seu Dropbox. Escolha outro nome.</string>
     <string name="storage_refresh">Atualizar</string>
-    <string name="storage_onedrive_new_folder">Nova pasta</string>
-    <string name="storage_onedrive_folder_name">Nome da pasta</string>
-    <string name="storage_onedrive_create">Criar</string>
+    <string name="storage_new_folder">Nova pasta</string>
+    <string name="storage_folder_name">Nome da pasta</string>
+    <string name="storage_create_folder">Criar</string>
     <string name="storage_onedrive_use_folder">Usar esta pasta</string>
     <string name="storage_setup_cancelling">Cancelando…</string>
     <string name="storage_setup_done">A sincronização está configurada. Guarde seu código de recuperação em um lugar privado: se você perder todos os seus dispositivos, é com ele que recupera sua biblioteca.</string>

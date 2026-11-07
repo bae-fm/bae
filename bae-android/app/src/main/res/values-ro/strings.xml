@@ -263,12 +263,13 @@
     <string name="storage_dropbox_choose">Alege un dosar partajat</string>
     <string name="storage_dropbox_reading">Se citesc dosarele tale Dropbox partajate…</string>
     <string name="storage_onedrive_reading">Se citesc dosarele din OneDrive…</string>
-    <string name="storage_onedrive_creating">Se creează dosarul…</string>
+    <string name="storage_creating_folder">Se creează dosarul…</string>
     <string name="storage_dropbox_none">Niciun dosar nu este partajat cu acest cont Dropbox. Partajează un dosar în Dropbox, apoi reîmprospătează.</string>
+    <string name="storage_dropbox_name_taken">Există deja un dosar numit „%1$s” în Dropbox-ul tău. Alege alt nume.</string>
     <string name="storage_refresh">Reîmprospătează</string>
-    <string name="storage_onedrive_new_folder">Dosar nou</string>
-    <string name="storage_onedrive_folder_name">Numele dosarului</string>
-    <string name="storage_onedrive_create">Creează</string>
+    <string name="storage_new_folder">Dosar nou</string>
+    <string name="storage_folder_name">Numele dosarului</string>
+    <string name="storage_create_folder">Creează</string>
     <string name="storage_onedrive_use_folder">Folosește acest dosar</string>
     <string name="storage_setup_cancelling">Se anulează…</string>
     <string name="storage_setup_done">Sincronizarea este configurată. Păstrează codul de recuperare într-un loc privat: dacă pierzi toate dispozitivele, cu el îți recuperezi biblioteca.</string>

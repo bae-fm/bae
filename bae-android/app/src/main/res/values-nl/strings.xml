@@ -261,12 +261,13 @@
     <string name="storage_dropbox_choose">Kies een gedeelde map</string>
     <string name="storage_dropbox_reading">Je gedeelde Dropbox-mappen worden gelezen…</string>
     <string name="storage_onedrive_reading">Mappen op je OneDrive worden gelezen…</string>
-    <string name="storage_onedrive_creating">Map wordt gemaakt…</string>
+    <string name="storage_creating_folder">Map wordt gemaakt…</string>
     <string name="storage_dropbox_none">Er zijn geen mappen gedeeld met dit Dropbox-account. Deel een map in Dropbox en vernieuw daarna.</string>
+    <string name="storage_dropbox_name_taken">Er staat al een map met de naam “%1$s” in je Dropbox. Kies een andere naam.</string>
     <string name="storage_refresh">Vernieuwen</string>
-    <string name="storage_onedrive_new_folder">Nieuwe map</string>
-    <string name="storage_onedrive_folder_name">Mapnaam</string>
-    <string name="storage_onedrive_create">Maken</string>
+    <string name="storage_new_folder">Nieuwe map</string>
+    <string name="storage_folder_name">Mapnaam</string>
+    <string name="storage_create_folder">Maken</string>
     <string name="storage_onedrive_use_folder">Deze map gebruiken</string>
     <string name="storage_setup_cancelling">Wordt geannuleerd…</string>
     <string name="storage_setup_done">Synchronisatie is ingesteld. Bewaar je herstelcode op een privéplek: als je al je apparaten kwijtraakt, krijg je er je bibliotheek mee terug.</string>

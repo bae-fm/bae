@@ -260,12 +260,13 @@
     <string name="storage_dropbox_choose">Velg en delt mappe</string>
     <string name="storage_dropbox_reading">Leser de delte Dropbox-mappene dine…</string>
     <string name="storage_onedrive_reading">Leser mappene på OneDrive…</string>
-    <string name="storage_onedrive_creating">Oppretter mappen…</string>
+    <string name="storage_creating_folder">Oppretter mappen…</string>
     <string name="storage_dropbox_none">Ingen mapper er delt med denne Dropbox-kontoen. Del en mappe i Dropbox, og oppdater deretter.</string>
+    <string name="storage_dropbox_name_taken">Det finnes allerede en mappe som heter «%1$s» i Dropbox-en din. Velg et annet navn.</string>
     <string name="storage_refresh">Oppdater</string>
-    <string name="storage_onedrive_new_folder">Ny mappe</string>
-    <string name="storage_onedrive_folder_name">Mappenavn</string>
-    <string name="storage_onedrive_create">Opprett</string>
+    <string name="storage_new_folder">Ny mappe</string>
+    <string name="storage_folder_name">Mappenavn</string>
+    <string name="storage_create_folder">Opprett</string>
     <string name="storage_onedrive_use_folder">Bruk denne mappen</string>
     <string name="storage_setup_cancelling">Avbryter…</string>
     <string name="storage_setup_done">Synkroniseringen er konfigurert. Oppbevar gjenopprettingskoden din et privat sted: Hvis du mister alle enhetene dine, får du biblioteket tilbake med den.</string>

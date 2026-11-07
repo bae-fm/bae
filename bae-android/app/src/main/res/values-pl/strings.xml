@@ -267,12 +267,13 @@
     <string name="storage_dropbox_choose">Wybierz udostępniony folder</string>
     <string name="storage_dropbox_reading">Odczytywanie udostępnionych folderów Dropbox…</string>
     <string name="storage_onedrive_reading">Odczytywanie folderów w usłudze OneDrive…</string>
-    <string name="storage_onedrive_creating">Tworzenie folderu…</string>
+    <string name="storage_creating_folder">Tworzenie folderu…</string>
     <string name="storage_dropbox_none">Z tym kontem Dropbox nie udostępniono żadnych folderów. Udostępnij folder w Dropboxie, a potem odśwież.</string>
+    <string name="storage_dropbox_name_taken">Folder o nazwie „%1$s” już istnieje w Twoim Dropbox. Wybierz inną nazwę.</string>
     <string name="storage_refresh">Odśwież</string>
-    <string name="storage_onedrive_new_folder">Nowy folder</string>
-    <string name="storage_onedrive_folder_name">Nazwa folderu</string>
-    <string name="storage_onedrive_create">Utwórz</string>
+    <string name="storage_new_folder">Nowy folder</string>
+    <string name="storage_folder_name">Nazwa folderu</string>
+    <string name="storage_create_folder">Utwórz</string>
     <string name="storage_onedrive_use_folder">Użyj tego folderu</string>
     <string name="storage_setup_cancelling">Anulowanie…</string>
     <string name="storage_setup_done">Synchronizacja jest skonfigurowana. Przechowuj kod odzyskiwania w prywatnym miejscu: jeśli stracisz wszystkie swoje urządzenia, odzyskasz dzięki niemu bibliotekę.</string>

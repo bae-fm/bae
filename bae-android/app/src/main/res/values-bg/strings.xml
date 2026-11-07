@@ -261,12 +261,13 @@
     <string name="storage_dropbox_choose">Изберете споделена папка</string>
     <string name="storage_dropbox_reading">Четене на споделените ви папки в Dropbox…</string>
     <string name="storage_onedrive_reading">Четене на папките във вашия OneDrive…</string>
-    <string name="storage_onedrive_creating">Папката се създава…</string>
+    <string name="storage_creating_folder">Папката се създава…</string>
     <string name="storage_dropbox_none">Няма папки, споделени с този акаунт в Dropbox. Споделете папка в Dropbox и опреснете.</string>
+    <string name="storage_dropbox_name_taken">Папка с име „%1$s“ вече има във вашия Dropbox. Изберете друго име.</string>
     <string name="storage_refresh">Опресняване</string>
-    <string name="storage_onedrive_new_folder">Нова папка</string>
-    <string name="storage_onedrive_folder_name">Име на папката</string>
-    <string name="storage_onedrive_create">Създаване</string>
+    <string name="storage_new_folder">Нова папка</string>
+    <string name="storage_folder_name">Име на папката</string>
+    <string name="storage_create_folder">Създаване</string>
     <string name="storage_onedrive_use_folder">Използване на тази папка</string>
     <string name="storage_setup_cancelling">Отменя се…</string>
     <string name="storage_setup_done">Синхронизирането е настроено. Пазете кода си за възстановяване на поверително място: ако загубите всичките си устройства, с него си връщате библиотеката.</string>

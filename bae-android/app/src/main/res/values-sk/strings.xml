@@ -266,12 +266,13 @@
     <string name="storage_dropbox_choose">Vyber zdieľaný priečinok</string>
     <string name="storage_dropbox_reading">Načítavajú sa vaše zdieľané priečinky Dropboxu…</string>
     <string name="storage_onedrive_reading">Načítavajú sa priečinky na vašom OneDrive…</string>
-    <string name="storage_onedrive_creating">Vytvára sa priečinok…</string>
+    <string name="storage_creating_folder">Vytvára sa priečinok…</string>
     <string name="storage_dropbox_none">S týmto účtom Dropbox nie sú zdieľané žiadne priečinky. Zdieľaj priečinok v Dropboxe a potom obnov.</string>
+    <string name="storage_dropbox_name_taken">Priečinok s názvom „%1$s“ už vo vašom Dropboxe existuje. Zvoľte iný názov.</string>
     <string name="storage_refresh">Obnoviť</string>
-    <string name="storage_onedrive_new_folder">Nový priečinok</string>
-    <string name="storage_onedrive_folder_name">Názov priečinka</string>
-    <string name="storage_onedrive_create">Vytvoriť</string>
+    <string name="storage_new_folder">Nový priečinok</string>
+    <string name="storage_folder_name">Názov priečinka</string>
+    <string name="storage_create_folder">Vytvoriť</string>
     <string name="storage_onedrive_use_folder">Použiť tento priečinok</string>
     <string name="storage_setup_cancelling">Ruší sa…</string>
     <string name="storage_setup_done">Synchronizácia je nastavená. Uchovávaj kód na obnovenie na súkromnom mieste: ak prídeš o všetky svoje zariadenia, získaš s ním knižnicu späť.</string>

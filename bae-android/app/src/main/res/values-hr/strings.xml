@@ -264,12 +264,13 @@
     <string name="storage_dropbox_choose">Odaberite dijeljenu mapu</string>
     <string name="storage_dropbox_reading">Čitanje vaših dijeljenih mapa na Dropboxu…</string>
     <string name="storage_onedrive_reading">Čitanje mapa na vašem OneDriveu…</string>
-    <string name="storage_onedrive_creating">Izrada mape…</string>
+    <string name="storage_creating_folder">Izrada mape…</string>
     <string name="storage_dropbox_none">S ovim računom Dropbox nije dijeljena nijedna mapa. Podijelite mapu u Dropboxu, a zatim osvježite.</string>
+    <string name="storage_dropbox_name_taken">Mapa naziva „%1$s“ već postoji u vašem Dropboxu. Odaberite drugi naziv.</string>
     <string name="storage_refresh">Osvježi</string>
-    <string name="storage_onedrive_new_folder">Nova mapa</string>
-    <string name="storage_onedrive_folder_name">Naziv mape</string>
-    <string name="storage_onedrive_create">Stvori</string>
+    <string name="storage_new_folder">Nova mapa</string>
+    <string name="storage_folder_name">Naziv mape</string>
+    <string name="storage_create_folder">Stvori</string>
     <string name="storage_onedrive_use_folder">Koristi ovu mapu</string>
     <string name="storage_setup_cancelling">Otkazivanje…</string>
     <string name="storage_setup_done">Sinkronizacija je postavljena. Čuvajte svoj kod za oporavak na privatnom mjestu: ako izgubite sve svoje uređaje, njime vraćate svoju fonoteku.</string>

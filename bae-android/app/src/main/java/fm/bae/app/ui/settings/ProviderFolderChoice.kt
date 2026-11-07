@@ -37,13 +37,17 @@ import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeStorageFailure
 import uniffi.bae_bridge.BridgeStorageFolder
 
 private val logger = BaeLogger("bae.ProviderFolderChoice")
 
 /**
- * The Dropbox folders shared with the signed-in account; choosing one makes
- * it the library's cloud home, where the household's members can reach it.
+ * The Dropbox folders shared with the signed-in account, and a new one the person can name
+ * here; choosing one makes it the library's cloud home, where the household's members can
+ * reach it.
  * [setup] runs the setup, which the person can stop with Cancel, calling
  * [onCancel].
  */
@@ -89,12 +93,75 @@ internal fun DropboxFolderChoice(
                 }
             }
             StorageSetupRunLine(setup, onCancel)
+            NewDropboxFolder(
+                session = session,
+                providers = providers,
+                busy = busy,
+                onBusy = { busy = it },
+                onCreated = { folders = listed + it },
+                onError = onError,
+            )
             OutlinedButton(onClick = { scope.launch { load() } }, enabled = !busy) {
                 Text(stringResource(R.string.storage_refresh))
             }
         }
     }
 }
+
+/**
+ * Naming and making a Dropbox folder: its button and dialog, the wait while it is made, and the
+ * line a taken name gets. [onBusy] holds the choice's other actions off meanwhile, and
+ * [onCreated] gets the folder made.
+ */
+@Composable
+private fun NewDropboxFolder(
+    session: OpenLibrary,
+    providers: OAuthProviders,
+    busy: Boolean,
+    onBusy: (Boolean) -> Unit,
+    onCreated: (BridgeStorageFolder) -> Unit,
+    onError: (DisplayError?) -> Unit,
+) {
+    val scope = rememberScreenScope()
+    var naming by remember { mutableStateOf(false) }
+    var creating by remember { mutableStateOf(false) }
+    var takenName by remember { mutableStateOf<String?>(null) }
+    if (creating) {
+        WaitingIndicator(text = stringResource(R.string.storage_creating_folder))
+    }
+    takenName?.let { Text(stringResource(R.string.storage_dropbox_name_taken, it)) }
+    OutlinedButton(onClick = { naming = true }, enabled = !busy) {
+        Text(stringResource(R.string.storage_new_folder))
+    }
+    if (naming) {
+        NewFolderDialog(
+            onCreate = { name ->
+                naming = false
+                onBusy(true)
+                creating = true
+                takenName = null
+                onError(null)
+                scope.launch {
+                    performBridgeAction(logger, "create a Dropbox folder", session.errors, onError) {
+                        try {
+                            onCreated(providers.createDropboxSharedFolder(session.appHandle, name))
+                        } catch (e: BridgeException.Diagnostic) {
+                            if (!e.isNameTaken) throw e
+                            takenName = name
+                        }
+                    }
+                    creating = false
+                    onBusy(false)
+                }
+            },
+            onDismiss = { naming = false },
+        )
+    }
+}
+
+/** Dropbox refused the folder's name because one of that name is already at the top of the Dropbox. */
+private val BridgeException.Diagnostic.isNameTaken: Boolean
+    get() = (category as? BridgeErrorCategory.Storage)?.failure is BridgeStorageFailure.AlreadyExists
 
 /**
  * The signed-in OneDrive, browsed from its top: open a folder to go inside,
@@ -133,7 +200,7 @@ internal fun OneDriveFolderChoice(
     }
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         OutlinedButton(onClick = { naming = true }, enabled = !browser.busy) {
-            Text(stringResource(R.string.storage_onedrive_new_folder))
+            Text(stringResource(R.string.storage_new_folder))
         }
         PrimaryButton(
             enabled = !browser.busy,
@@ -175,7 +242,7 @@ private fun OneDriveWorkLine(
         }
 
         OneDriveWork.CREATING -> {
-            WaitingIndicator(text = stringResource(R.string.storage_onedrive_creating))
+            WaitingIndicator(text = stringResource(R.string.storage_creating_folder))
         }
 
         OneDriveWork.SETTING_UP -> {
@@ -232,19 +299,19 @@ private fun NewFolderDialog(
     var name by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.storage_onedrive_new_folder)) },
+        title = { Text(stringResource(R.string.storage_new_folder)) },
         text = {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text(stringResource(R.string.storage_onedrive_folder_name)) },
+                label = { Text(stringResource(R.string.storage_folder_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
         },
         confirmButton = {
             TextButton(onClick = { onCreate(name.trim()) }, enabled = name.isNotBlank()) {
-                Text(stringResource(R.string.storage_onedrive_create))
+                Text(stringResource(R.string.storage_create_folder))
             }
         },
         dismissButton = {

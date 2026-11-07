@@ -260,12 +260,13 @@
     <string name="storage_dropbox_choose">Válassz megosztott mappát</string>
     <string name="storage_dropbox_reading">A megosztott Dropbox-mappák beolvasása…</string>
     <string name="storage_onedrive_reading">A OneDrive-mappák beolvasása…</string>
-    <string name="storage_onedrive_creating">A mappa létrehozása…</string>
+    <string name="storage_creating_folder">A mappa létrehozása…</string>
     <string name="storage_dropbox_none">Ezzel a Dropbox-fiókkal nincs megosztva mappa. Ossz meg egy mappát a Dropboxban, majd frissíts.</string>
+    <string name="storage_dropbox_name_taken">A Dropboxodban már van „%1$s” nevű mappa. Válassz másik nevet.</string>
     <string name="storage_refresh">Frissítés</string>
-    <string name="storage_onedrive_new_folder">Új mappa</string>
-    <string name="storage_onedrive_folder_name">Mappa neve</string>
-    <string name="storage_onedrive_create">Létrehozás</string>
+    <string name="storage_new_folder">Új mappa</string>
+    <string name="storage_folder_name">Mappa neve</string>
+    <string name="storage_create_folder">Létrehozás</string>
     <string name="storage_onedrive_use_folder">Ennek a mappának a használata</string>
     <string name="storage_setup_cancelling">Megszakítás…</string>
     <string name="storage_setup_done">A szinkronizálás be van állítva. Őrizd a helyreállítási kódodat privát helyen: ha az összes eszközödet elveszíted, ezzel kapod vissza a könyvtáradat.</string>

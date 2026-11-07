@@ -267,12 +267,13 @@
     <string name="storage_dropbox_choose">Виберіть спільну папку</string>
     <string name="storage_dropbox_reading">Читання ваших спільних папок Dropbox…</string>
     <string name="storage_onedrive_reading">Читання папок у вашому OneDrive…</string>
-    <string name="storage_onedrive_creating">Створення папки…</string>
+    <string name="storage_creating_folder">Створення папки…</string>
     <string name="storage_dropbox_none">З цим обліковим записом Dropbox не поширено жодної папки. Поширте папку в Dropbox, а потім оновіть.</string>
+    <string name="storage_dropbox_name_taken">У вашому Dropbox уже є папка «%1$s». Виберіть іншу назву.</string>
     <string name="storage_refresh">Оновити</string>
-    <string name="storage_onedrive_new_folder">Нова папка</string>
-    <string name="storage_onedrive_folder_name">Назва папки</string>
-    <string name="storage_onedrive_create">Створити</string>
+    <string name="storage_new_folder">Нова папка</string>
+    <string name="storage_folder_name">Назва папки</string>
+    <string name="storage_create_folder">Створити</string>
     <string name="storage_onedrive_use_folder">Використати цю папку</string>
     <string name="storage_setup_cancelling">Скасування…</string>
     <string name="storage_setup_done">Синхронізацію налаштовано. Зберігайте свій код відновлення в приватному місці: якщо ви втратите всі свої пристрої, з ним ви повернете свою бібліотеку.</string>

@@ -260,12 +260,13 @@
     <string name="storage_dropbox_choose">Επιλέξτε έναν κοινόχρηστο φάκελο</string>
     <string name="storage_dropbox_reading">Ανάγνωση των κοινόχρηστων φακέλων σας στο Dropbox…</string>
     <string name="storage_onedrive_reading">Ανάγνωση των φακέλων στο OneDrive σας…</string>
-    <string name="storage_onedrive_creating">Δημιουργία του φακέλου…</string>
+    <string name="storage_creating_folder">Δημιουργία του φακέλου…</string>
     <string name="storage_dropbox_none">Δεν υπάρχουν φάκελοι κοινόχρηστοι με αυτόν τον λογαριασμό Dropbox. Μοιραστείτε έναν φάκελο στο Dropbox και ανανεώστε.</string>
+    <string name="storage_dropbox_name_taken">Υπάρχει ήδη φάκελος με το όνομα «%1$s» στο Dropbox σας. Επιλέξτε άλλο όνομα.</string>
     <string name="storage_refresh">Ανανέωση</string>
-    <string name="storage_onedrive_new_folder">Νέος φάκελος</string>
-    <string name="storage_onedrive_folder_name">Όνομα φακέλου</string>
-    <string name="storage_onedrive_create">Δημιουργία</string>
+    <string name="storage_new_folder">Νέος φάκελος</string>
+    <string name="storage_folder_name">Όνομα φακέλου</string>
+    <string name="storage_create_folder">Δημιουργία</string>
     <string name="storage_onedrive_use_folder">Χρήση αυτού του φακέλου</string>
     <string name="storage_setup_cancelling">Ακύρωση…</string>
     <string name="storage_setup_done">Ο συγχρονισμός ρυθμίστηκε. Φυλάξτε τον κωδικό ανάκτησής σας κάπου ιδιωτικά: αν χάσετε όλες τις συσκευές σας, με αυτόν ανακτάτε τη βιβλιοθήκη σας.</string>

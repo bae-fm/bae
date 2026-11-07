@@ -261,12 +261,13 @@
     <string name="storage_dropbox_choose">Geteilten Ordner wählen</string>
     <string name="storage_dropbox_reading">Deine geteilten Dropbox-Ordner werden gelesen…</string>
     <string name="storage_onedrive_reading">Ordner in deinem OneDrive werden gelesen…</string>
-    <string name="storage_onedrive_creating">Ordner wird erstellt…</string>
+    <string name="storage_creating_folder">Ordner wird erstellt…</string>
     <string name="storage_dropbox_none">Mit diesem Dropbox-Konto sind keine Ordner geteilt. Teile einen Ordner in Dropbox und aktualisiere dann.</string>
+    <string name="storage_dropbox_name_taken">In deinem Dropbox gibt es bereits einen Ordner namens „%1$s“. Wähle einen anderen Namen.</string>
     <string name="storage_refresh">Aktualisieren</string>
-    <string name="storage_onedrive_new_folder">Neuer Ordner</string>
-    <string name="storage_onedrive_folder_name">Ordnername</string>
-    <string name="storage_onedrive_create">Erstellen</string>
+    <string name="storage_new_folder">Neuer Ordner</string>
+    <string name="storage_folder_name">Ordnername</string>
+    <string name="storage_create_folder">Erstellen</string>
     <string name="storage_onedrive_use_folder">Diesen Ordner verwenden</string>
     <string name="storage_setup_cancelling">Wird abgebrochen…</string>
     <string name="storage_setup_done">Sync ist eingerichtet. Bewahre deinen Wiederherstellungscode an einem privaten Ort auf: Wenn du alle deine Geräte verlierst, bekommst du damit deine Bibliothek zurück.</string>

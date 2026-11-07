@@ -260,12 +260,13 @@
     <string name="storage_dropbox_choose">Valitse jaettu kansio</string>
     <string name="storage_dropbox_reading">Luetaan jaettuja Dropbox-kansioitasi…</string>
     <string name="storage_onedrive_reading">Luetaan OneDrivesi kansioita…</string>
-    <string name="storage_onedrive_creating">Luodaan kansiota…</string>
+    <string name="storage_creating_folder">Luodaan kansiota…</string>
     <string name="storage_dropbox_none">Tämän Dropbox-tilin kanssa ei ole jaettu kansioita. Jaa kansio Dropboxissa ja päivitä sitten.</string>
+    <string name="storage_dropbox_name_taken">Dropboxissasi on jo kansio nimeltä “%1$s”. Valitse toinen nimi.</string>
     <string name="storage_refresh">Päivitä</string>
-    <string name="storage_onedrive_new_folder">Uusi kansio</string>
-    <string name="storage_onedrive_folder_name">Kansion nimi</string>
-    <string name="storage_onedrive_create">Luo</string>
+    <string name="storage_new_folder">Uusi kansio</string>
+    <string name="storage_folder_name">Kansion nimi</string>
+    <string name="storage_create_folder">Luo</string>
     <string name="storage_onedrive_use_folder">Käytä tätä kansiota</string>
     <string name="storage_setup_cancelling">Peruutetaan…</string>
     <string name="storage_setup_done">Synkronointi on otettu käyttöön. Säilytä palautuskoodisi yksityisessä paikassa: jos menetät kaikki laitteesi, saat sillä kirjastosi takaisin.</string>
