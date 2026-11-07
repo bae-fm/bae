@@ -97,6 +97,13 @@ impl AppHandle {
     pub fn feed_import_percents(&self) -> Arc<KeyedValueStream> {
         crate::screens::import_percents(self.runtime.clone(), self.run_feed())
     }
+
+    /// Write how many folders each scan under way has stored into a stream
+    /// by watched folder path. A failed read empties the stream and is
+    /// pulled as an error; the next read fills it again.
+    pub fn feed_scan_found_counts(&self) -> Arc<KeyedValueStream> {
+        crate::screens::scan_found_counts(self.runtime.clone(), self.run_feed())
+    }
 }
 
 // Gated on the target, not on `desktop`: bae-library gates `mod export` itself on

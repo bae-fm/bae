@@ -10,8 +10,9 @@ fn only_outcome(scans: Vec<crate::StoredRootScan>) -> crate::StoredScanOutcome {
     scan.last_scan.expect("a scan opened the root's generation").outcome
 }
 
-/// An open generation counts the folders its walk has stored, and stores
-/// its outcome once the walk finishes.
+/// An open generation has no outcome until its walk finishes, and the
+/// walk's stored folders do not wake the stored scans, whose next value is
+/// the outcome: the count has a read of its own.
 #[tokio::test]
 async fn stored_scans_follow_the_walk_in_flight() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
@@ -23,15 +24,9 @@ async fn stored_scans_follow_the_walk_in_flight() {
 
     let mut live = tables.subscribe_stored_folder_scans();
     let initial = live.next().await.expect("the query stays open").unwrap();
-    assert_eq!(only_outcome(initial), crate::StoredScanOutcome::Unfinished { found_count: 1 });
+    assert_eq!(only_outcome(initial), crate::StoredScanOutcome::Unfinished);
 
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
-    let grown = tokio::time::timeout(HANG_GUARD, live.next())
-        .await
-        .expect("a scan item wakes the stored scans")
-        .expect("the query stays open")
-        .unwrap();
-    assert_eq!(only_outcome(grown), crate::StoredScanOutcome::Unfinished { found_count: 2 });
 
     tables.finish_folder_scan(root, generation, None).await.unwrap();
     let complete = tokio::time::timeout(HANG_GUARD, live.next())
@@ -60,11 +55,43 @@ async fn stored_scans_read_the_volume_their_scan_recorded() {
     assert!(scans[0].last_scan.as_ref().expect("the scan began").on_network_volume);
 }
 
+/// An open generation counts the folders its walk has stored, live, and
+/// holds no count once the walk finishes.
+#[tokio::test]
+async fn found_counts_follow_the_walk_in_flight() {
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let root = &crate::tables::watched_path::host_root("/music");
+    tables.add_watched_import_folder(root).await.unwrap();
+    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
+    tables.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
+
+    let mut live = tables.subscribe_scan_found_counts();
+    let initial = live.next().await.expect("the query stays open").unwrap();
+    assert_eq!(initial, crate::ScanFoundCounts::from([(root.clone(), 1)]));
+
+    tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
+    let grown = tokio::time::timeout(HANG_GUARD, live.next())
+        .await
+        .expect("a scan item wakes the found counts")
+        .expect("the query stays open")
+        .unwrap();
+    assert_eq!(grown, crate::ScanFoundCounts::from([(root.clone(), 2)]));
+
+    tables.finish_folder_scan(root, generation, None).await.unwrap();
+    let done = tokio::time::timeout(HANG_GUARD, live.next())
+        .await
+        .expect("finishing the scan wakes the found counts")
+        .expect("the query stays open")
+        .unwrap();
+    assert!(done.is_empty(), "a finished scan holds no count");
+}
+
 /// A rescan retains the previous generation until the new walk succeeds, but
 /// the found count is only the entries encountered by the generation in
 /// flight.
 #[tokio::test]
-async fn stored_scans_count_only_the_generation_in_flight() {
+async fn found_counts_count_only_the_generation_in_flight() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &crate::tables::watched_path::host_root("/music");
@@ -87,7 +114,11 @@ async fn stored_scans_count_only_the_generation_in_flight() {
 
     assert_eq!(
         only_outcome(tables.load_stored_folder_scans().await.unwrap()),
-        crate::StoredScanOutcome::Unfinished { found_count: 1 }
+        crate::StoredScanOutcome::Unfinished
+    );
+    assert_eq!(
+        tables.load_scan_found_counts().await.unwrap(),
+        crate::ScanFoundCounts::from([(root.clone(), 1)])
     );
 }
 
@@ -185,7 +216,9 @@ async fn reading_the_stored_scans_costs_the_same_as_the_scan_grows() {
         }
         counter.take();
         let scans = tables.load_stored_folder_scans().await.unwrap();
-        assert_eq!(only_outcome(scans), crate::StoredScanOutcome::Unfinished { found_count: size });
+        assert_eq!(only_outcome(scans), crate::StoredScanOutcome::Unfinished);
+        let found = tables.load_scan_found_counts().await.unwrap();
+        assert_eq!(found, crate::ScanFoundCounts::from([(root.clone(), size)]));
         steps.push(counter.take().app_read_steps);
     }
     assert_eq!(steps[0], steps[1], "steps per read at 10 and at 1,000 candidates");

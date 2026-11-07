@@ -709,8 +709,10 @@ it. Whether a scan is reading the folder is never stored: the coordinator
 that starts the passes holds it in memory, so it ends with the process and a
 folder never reads as scanning with nothing scanning it. A folder whose
 current scan stored an outcome shows it. One whose scan stored none reads as
-scanning, with how many folders the scan has found, while a scan of all of it
-runs or is owed, or a removal holds it. A pass whose failure the store won't
+scanning while a scan of all of it runs or is owed, or a removal holds it.
+How many folders the scan has stored moves with every folder it walks, so it
+is not part of that status: it has a stream of its own, keyed by the folder's
+path, which the scan indicator's list of folders reads each display frame. A pass whose failure the store won't
 take, a whole scan's or a changed folder's reading's, still shows as failed
 with its error: the coordinator holds that failure as the folder's status
 until the folder's next pass starts, with the volume the pass found the

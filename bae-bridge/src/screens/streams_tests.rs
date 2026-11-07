@@ -169,3 +169,17 @@ fn a_track_held_from_start_to_end_in_one_stretch_is_at_rest() {
     assert!(!track_is_fully_buffered(&held(vec![(0.0, 0.5), (0.75, 1.0)])));
     assert!(!track_is_fully_buffered(&held(vec![])));
 }
+
+/// A scan's stored folders are held under its root's path, and a scan that
+/// has ended holds nothing.
+#[cfg(desktop)]
+#[test]
+fn a_scans_found_count_is_held_under_its_root() {
+    let root = std::path::PathBuf::from("/music");
+    let held = scan_found_held(bae_import::ScanFoundCounts::from([(root.clone(), 7)]));
+    assert_eq!(
+        held,
+        HashMap::from([(coven::path_bytes(&root), BridgeFastValue::ScanFoundCount { count: 7 })])
+    );
+    assert!(scan_found_held(bae_import::ScanFoundCounts::new()).is_empty());
+}

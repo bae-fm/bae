@@ -146,15 +146,20 @@ struct FolderScanActivitySlot: View {
 
     var body: some View {
         if let activity = importStore.folderScans.activity {
-            FolderScanProgressIndicator(activity: activity)
+            FolderScanProgressIndicator(
+                activity: activity,
+                foundCounts: importStore.scanFoundCounts
+            )
         }
     }
 }
 
 /// The filter row's watched-folder scan indicator; clicking it lists each
-/// root's found count.
+/// root's found count, which a label reads from `foundCounts` each display
+/// frame.
 struct FolderScanProgressIndicator: View {
     let activity: BridgeFolderScanActivity
+    let foundCounts: LatestStream<UInt64>
 
     @State
     private var detailsShown = false
@@ -180,14 +185,13 @@ struct FolderScanProgressIndicator: View {
                         Text(verbatim: folder.watchedFolderName)
                             .lineLimit(1)
                         Spacer(minLength: ThemeSpace.group)
-                        Text(
-                            verbatim: localizedCoreString(
-                                "ui.import.scan.found",
-                                Int(folder.foundCount)
+                        StreamLabel(
+                            stream: .scanFoundCount(
+                                foundCounts.source(
+                                    for: folder.watchedFolderPath
+                                )
                             )
                         )
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -227,20 +231,21 @@ struct FolderScanProgressIndicator: View {
     #Preview("Folder scan progress") {
         FolderScanProgressIndicator(
             activity: BridgeFolderScanActivity(
-                foundCount: 179,
                 folders: [
                     BridgeActiveFolderScan(
                         watchedFolderPath: Data("/imports/one".utf8),
-                        watchedFolderName: "Incoming",
-                        foundCount: 124
+                        watchedFolderName: "Incoming"
                     ),
                     BridgeActiveFolderScan(
                         watchedFolderPath: Data("/imports/two".utf8),
-                        watchedFolderName: "Archive",
-                        foundCount: 55
+                        watchedFolderName: "Archive"
                     ),
                 ]
-            )
+            ),
+            foundCounts: .scanFoundCounts(holding: [
+                Data("/imports/one".utf8): 124,
+                Data("/imports/two".utf8): 55,
+            ])
         )
         .padding()
         .windowBackground()

@@ -156,7 +156,7 @@ private struct CandidateListMenuTrigger: NSViewRepresentable {
                     BridgeWatchedFolderScanStatus(
                         watchedFolderPath: Data("/Music/Rips".utf8),
                         watchedFolderName: "Rips",
-                        status: .scanning(foundCount: 8),
+                        status: .scanning,
                         onNetworkVolume: false
                     ),
                     BridgeWatchedFolderScanStatus(

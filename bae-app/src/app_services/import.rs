@@ -63,6 +63,7 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_track_artists => set_candidate_track_artists(candidate_key: &bae_import::CandidateKey, track_ids: Vec<String>, assignments: bae_import::TrackArtistAssignments) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, load_import_candidate => load_candidate(key: &bae_import::CandidateKey) -> Result<Option<ImportCandidateDetail>, bae_import::ImportError>);
     delegate_sync!(import, subscribe_folder_scans => subscribe_folder_scans() -> bae_store::live_query::LiveValues<bae_import::FolderScanProgress>);
+    delegate_sync!(import, subscribe_scan_found_counts => subscribe_scan_found_counts() -> bae_store::live_query::LiveValues<bae_import::ScanFoundCounts>);
     delegate_sync!(import, subscribe_import_counts => subscribe_counts() -> bae_store::live_query::LiveValues<bae_import::ImportCounts>);
     delegate_sync!(import, subscribe_candidate_runtime => subscribe_candidate_runtime(key: &bae_import::CandidateKey) -> bae_store::live_query::LiveValues<Option<bae_import::CandidateRuntimeSnapshot>>);
 

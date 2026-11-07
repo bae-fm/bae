@@ -139,27 +139,19 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         }
     });
 
-    // The stored scans' query, which is what reruns the screen's progress,
-    // each found count beside how often the query had run when it returned
-    // it: this scan is written straight to the tables, with no coordinator
-    // reading the root, so the progress itself would not show it running.
-    let mut progress = tables.subscribe_stored_folder_scans();
+    // The scans' found counts, each beside how often the query had run when
+    // it returned it: this scan is written straight to the tables, with no
+    // coordinator reading the root, so the progress itself would not show it
+    // running.
+    let mut progress = tables.subscribe_scan_found_counts();
     let (progress_tx, mut progress_seen) = tokio::sync::watch::channel(None::<(u64, Counted)>);
     let progress_reader = tokio::spawn(async move {
         while let Some(read) = progress.next().await {
-            let scans = read.expect("the stored scans read");
-            let [bae_import::StoredRootScan {
-                last_scan:
-                    Some(bae_import::StoredScan {
-                        outcome: bae_import::StoredScanOutcome::Unfinished { found_count },
-                        ..
-                    }),
-                ..
-            }] = scans.as_slice()
-            else {
-                panic!("the scan is running: {scans:?}");
+            let counts = read.expect("the found counts read");
+            let [found_count] = counts.values().copied().collect::<Vec<_>>()[..] else {
+                panic!("the scan is running: {counts:?}");
             };
-            progress_tx.send_replace(Some((*found_count, Counted::of(&progress.runs()))));
+            progress_tx.send_replace(Some((found_count, Counted::of(&progress.runs()))));
         }
     });
 

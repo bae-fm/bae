@@ -287,6 +287,10 @@ final class DesktopSubscriptions {
             downloadStore.makeLocalTransfers.feed(from: appHandle),
             importStore.previewPosition.feed(from: appHandle),
             importStore.importPercents.feed(from: appHandle),
+            importStore.scanFoundCounts.feed(
+                from: appHandle,
+                onError: { [uiStore] error in uiStore.showError(error) }
+            ),
         ]
         folderScans = ScreenSubscription(
             appHandle.subscribeFolderScans(),

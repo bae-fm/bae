@@ -25,14 +25,9 @@ fn load_folder_scan_snapshots_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<impl FnOnce() -> Result<Vec<DbFolderScanSnapshot>, DbError> + Send + 'static, DbError> {
     let roots = sql.query(
-        "SELECT roots.watched_folder_path, roots.generation, roots.status, roots.error, \
-                COUNT(candidate.path) \
-         FROM folder_scan_roots AS roots \
-         LEFT JOIN scan_candidate AS candidate \
-           ON candidate.watched_folder_path = roots.watched_folder_path \
-          AND candidate.generation = roots.generation \
-         GROUP BY roots.watched_folder_path, roots.generation, roots.status, roots.error \
-         ORDER BY roots.watched_folder_path",
+        "SELECT watched_folder_path, generation, status, error \
+         FROM folder_scan_roots \
+         ORDER BY watched_folder_path",
         [],
         |row| {
             Ok((
@@ -40,18 +35,15 @@ fn load_folder_scan_snapshots_on(
                 row.get::<_, i64>(1)?,
                 row.get::<_, Option<String>>(2)?,
                 row.get::<_, Option<String>>(3)?,
-                row.get::<_, i64>(4)?,
             ))
         },
     )?;
 
     let mut snapshots = Vec::with_capacity(roots.len());
-    for (watched_folder_path, generation, status, error, found_count) in roots {
+    for (watched_folder_path, generation, status, error) in roots {
         let generation = to_u64(generation, "folder_scan_roots.generation")?;
         let status = match (status.as_deref(), error) {
-            (None, None) => crate::StoredScanOutcome::Unfinished {
-                found_count: to_u64(found_count, "current folder-scan candidate count")?,
-            },
+            (None, None) => crate::StoredScanOutcome::Unfinished,
             (Some("complete"), None) => crate::StoredScanOutcome::Complete,
             (Some("failed"), Some(error)) => crate::StoredScanOutcome::Failed { error },
             (status, error) => {

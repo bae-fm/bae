@@ -430,6 +430,26 @@ pub(crate) fn import_percents(
     })
 }
 
+#[cfg(desktop)]
+/// The stream [`AppHandle::feed_scan_found_counts`](crate::AppHandle::feed_scan_found_counts) hands out.
+pub(crate) fn scan_found_counts(
+    runtime: OperationRuntime,
+    run: impl RunFeed,
+) -> Arc<KeyedValueStream> {
+    feed(runtime, run, move |services, writer| {
+        let counts = services.subscribe_scan_found_counts();
+        async move {
+            loop {
+                match counts.next().await {
+                    Ok(counts) => writer.reset(scan_found_held(counts)),
+                    Err(bae_store::live_query::LiveQueryError::Cancelled) => return,
+                    Err(error) => writer.fail(BridgeError::from(error)),
+                }
+            }
+        }
+    })
+}
+
 // Gated on the target, not on `desktop`: bae-library gates `mod export` itself on
 // the target.
 #[cfg(desktop)]
@@ -448,6 +468,16 @@ pub(crate) fn export_percents(
             }
         }
     })
+}
+
+/// Each scan under way's stored folders as their stream holds them: under
+/// its root's path.
+#[cfg(desktop)]
+fn scan_found_held(counts: bae_import::ScanFoundCounts) -> HashMap<Vec<u8>, BridgeFastValue> {
+    counts
+        .into_iter()
+        .map(|(root, count)| (coven::path_bytes(&root), BridgeFastValue::ScanFoundCount { count }))
+        .collect()
 }
 
 /// The playing track's position as its stream holds it: under its track's

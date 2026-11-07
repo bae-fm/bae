@@ -58,6 +58,19 @@ impl ImportServiceHandle {
         )
     }
 
+    /// How many folders each scan under way has stored, by its root: the
+    /// first value at once, then a value after each write that moves one.
+    /// Closing the library ends it.
+    pub fn subscribe_scan_found_counts(
+        &self,
+    ) -> bae_store::live_query::LiveValues<crate::ScanFoundCounts> {
+        bae_store::live_query::LiveValues::new(
+            self.services.tables.subscribe_scan_found_counts(),
+            self.services.closing.child_token(),
+            self.bugs(),
+        )
+    }
+
     /// How far the identifications and imports in flight have got: the
     /// first value at once, then a value after each write that moves them.
     /// Closing the library ends it.

@@ -467,10 +467,7 @@ async fn a_failure_the_store_refuses_is_the_roots_status_until_its_next_pass() {
     };
 
     assert_eq!(refresh(&commands, &root).await, Ok(()));
-    assert_eq!(
-        stored_outcome(&test.db).await,
-        crate::StoredScanOutcome::Unfinished { found_count: 0 }
-    );
+    assert_eq!(stored_outcome(&test.db).await, crate::StoredScanOutcome::Unfinished);
     let crate::FolderScanStatus::Failed { error } = progress().await else {
         panic!("the unstored failure is the root's status");
     };

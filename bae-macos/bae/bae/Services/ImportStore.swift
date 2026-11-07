@@ -180,6 +180,11 @@ class ImportStore {
     @ObservationIgnored
     let importPercents = LatestStream<UInt32>.importPercents()
 
+    /// How many folders each scan under way has stored, by the watched
+    /// folder's path, for the native labels that read it each display frame.
+    @ObservationIgnored
+    var scanFoundCounts = LatestStream<UInt64>.scanFoundCounts()
+
     /// Look up a candidate by key across both source dicts. Used when the
     /// caller doesn't know (or doesn't care about) the candidate's source —
     /// the shared search/confirmation flow.
@@ -292,18 +297,6 @@ class ImportStore {
     /// Kept as the rows land and leave, and written only when the set moves:
     /// a view reading it is not redrawn by a row whose cover is already in.
     private(set) var loadedCovers: Set<ImageContent> = []
-
-    private func updateLoadedCovers() {
-        let next = Set(
-            items.values.compactMap { item -> ImageContent? in
-                guard case .candidate(_, let row, _) = item else { return nil }
-                return sidebarCover(for: row)
-            }
-        )
-        if next != loadedCovers {
-            loadedCovers = next
-        }
-    }
 
     /// The effective cover resolved by core for this row.
     func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
@@ -453,6 +446,18 @@ class ImportStore {
 }
 
 extension ImportStore {
+    private func updateLoadedCovers() {
+        let next = Set(
+            items.values.compactMap { item -> ImageContent? in
+                guard case .candidate(_, let row, _) = item else { return nil }
+                return sidebarCover(for: row)
+            }
+        )
+        if next != loadedCovers {
+            loadedCovers = next
+        }
+    }
+
     private func mutateSelectedCandidate(
         key: Data,
         _ mutate: (inout Candidate) -> Void

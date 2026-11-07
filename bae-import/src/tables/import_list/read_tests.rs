@@ -271,19 +271,12 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
     let list = request.list;
     let mut subscription = tables.subscribe_import_list(request);
     let requests = subscription.requests();
-    let mut scans = tables.subscribe_stored_folder_scans();
+    let mut scans = tables.subscribe_scan_found_counts();
     let initial = subscription.next().await.expect("the query stays open");
     assert_eq!(initial.cause, coven::LiveQueryCause::Request);
-    let found = |scans: Vec<crate::StoredRootScan>| match &scans[..] {
-        [crate::StoredRootScan {
-            last_scan:
-                Some(crate::StoredScan {
-                    outcome: crate::StoredScanOutcome::Unfinished { found_count },
-                    ..
-                }),
-            ..
-        }] => *found_count,
-        scans => panic!("the rescan is in flight: {scans:?}"),
+    let found = |scans: crate::ScanFoundCounts| match scans.into_iter().collect::<Vec<_>>()[..] {
+        [(_, found_count)] => found_count,
+        ref scans => panic!("the rescan is in flight: {scans:?}"),
     };
     assert_eq!(found(scans.next().await.expect("the query stays open").unwrap()), 0);
 

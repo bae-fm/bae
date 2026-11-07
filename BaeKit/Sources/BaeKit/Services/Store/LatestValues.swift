@@ -434,6 +434,33 @@ extension LatestStream where Value == UInt32 {
     #endif
 }
 
+extension LatestStream where Value == UInt64 {
+    /// How many folders each scan under way has stored, by the watched
+    /// folder's path; a preview's holds `values` and nothing feeds it.
+    public static func scanFoundCounts(holding values: [Data: Value] = [:])
+        -> LatestStream
+    {
+        LatestStream(holding: values) {
+            if case .scanFoundCount(let count) = $0 {
+                count
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    #if os(macOS)
+        /// Fill from core, telling `onError` each failed read.
+        public func feed(
+            from appHandle: AppHandle,
+            onError: @escaping @MainActor @Sendable (any Error) -> Void
+        ) -> LatestFeed {
+            fed(onFailedRead: onError) { appHandle.feedScanFoundCounts() }
+        }
+    #endif
+}
+
 #if os(macOS)
     extension LatestStream where Value == BridgeSelectionActionProgress {
         /// How far a bulk action over an import list's selection has got,

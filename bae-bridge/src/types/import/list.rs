@@ -161,14 +161,13 @@ pub struct BridgeImportCounts {
 pub struct BridgeFolderScans {
     /// Every scanned root, in watched-folder order.
     pub statuses: Vec<BridgeWatchedFolderScanStatus>,
-    /// The current walks, totalled for the filter bar's activity control;
+    /// The roots being scanned, for the filter bar's activity control;
     /// absent while no root is scanning.
     pub activity: Option<BridgeFolderScanActivity>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderScanActivity {
-    pub found_count: u64,
     pub folders: Vec<BridgeActiveFolderScan>,
 }
 
@@ -176,7 +175,6 @@ pub struct BridgeFolderScanActivity {
 pub struct BridgeActiveFolderScan {
     pub watched_folder_path: Vec<u8>,
     pub watched_folder_name: String,
-    pub found_count: u64,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

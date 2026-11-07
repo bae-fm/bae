@@ -22,26 +22,23 @@ fn status(progress: &FolderScanProgress) -> &FolderScanStatus {
     &progress.statuses[0].status
 }
 
-/// A generation with no outcome is scanning while the root is being read,
-/// counting what it has found.
+/// A generation with no outcome is scanning while the root is being read.
 #[test]
 fn an_unfinished_scan_being_read_is_scanning() {
     let progress = FolderScanProgress::of(
-        stored(StoredScanOutcome::Unfinished { found_count: 3 }),
+        stored(StoredScanOutcome::Unfinished),
         &holding(RootScanInMemory::Running),
     );
-    assert_eq!(status(&progress), &FolderScanStatus::Scanning { found_count: 3 });
-    assert_eq!(progress.activity.map(|activity| activity.found_count), Some(3));
+    assert_eq!(status(&progress), &FolderScanStatus::Scanning);
+    assert_eq!(progress.activity.map(|activity| activity.folders.len()), Some(1));
 }
 
 /// A generation with no outcome that nothing reads ended without storing
 /// one, and says so: it never reads as scanning.
 #[test]
 fn an_unfinished_scan_nothing_reads_failed() {
-    let progress = FolderScanProgress::of(
-        stored(StoredScanOutcome::Unfinished { found_count: 3 }),
-        &FolderScansInMemory::new(),
-    );
+    let progress =
+        FolderScanProgress::of(stored(StoredScanOutcome::Unfinished), &FolderScansInMemory::new());
     assert_eq!(
         status(&progress),
         &FolderScanStatus::Failed { error: SCAN_STOPPED_UNSTORED.to_string() }

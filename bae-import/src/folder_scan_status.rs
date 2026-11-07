@@ -1,10 +1,10 @@
-//! Where each watched folder's scan stands: scanning (with how many releases
-//! it has found), complete, or failed; whether the folder is on a network
+//! Where each watched folder's scan stands: scanning, complete, or failed; whether the folder is on a network
 //! volume; and the walks under way, totalled for the list's chrome.
 //!
 //! Two sources make it. The table holds what a scan stored: the outcome of
-//! the root's current generation, or none while that scan has stored none,
-//! and how many folders it has found. The folder scan coordinator holds, in
+//! the root's current generation, or none while that scan has stored none.
+//! How many folders a scan has found is not here: it moves with every folder
+//! the scan walks, and has a stream of its own. The folder scan coordinator holds, in
 //! memory, which roots are being read and the failure of a root's last pass
 //! that the store would not take. Neither of those can outlive the process,
 //! so a root never reads as scanning with nothing scanning it.
@@ -27,10 +27,13 @@ pub struct WatchedFolderScanStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FolderScanStatus {
-    Scanning { found_count: u64 },
+    Scanning,
     Complete,
     Failed { error: String },
 }
+
+/// How many folders each scan under way has stored, by its root.
+pub type ScanFoundCounts = BTreeMap<PathBuf, u64>;
 
 /// What a root shows when its current generation stored no outcome, nothing
 /// is reading it, and no failure is held for it: the pass that read it ended
@@ -44,7 +47,9 @@ pub(crate) const SCAN_STOPPED_UNSTORED: &str = "the scan stopped before its resu
 /// to the scan's generation, which moves the found count and nothing the list
 /// shows. Counted inside the list's read, each of those writes cost a
 /// whole-queue read, and a rescan of a large folder kept the list reading back
-/// to back until it finished; sent with the list, each resent its page.
+/// to back until it finished; sent with the list, each resent its page. The
+/// found count is not read here: it has its own query and stream, so the
+/// writes that move it rerun neither this read nor reach the screen with it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FolderScanProgress {
     /// Every scanned root, in watched-folder order.
@@ -79,13 +84,12 @@ impl FolderScanProgress {
                             (_, StoredScanOutcome::Failed { error }) => {
                                 FolderScanStatus::Failed { error }
                             }
-                            (
-                                Some(RootScanInMemory::Running),
-                                StoredScanOutcome::Unfinished { found_count },
-                            ) => FolderScanStatus::Scanning { found_count },
+                            (Some(RootScanInMemory::Running), StoredScanOutcome::Unfinished) => {
+                                FolderScanStatus::Scanning
+                            }
                             (
                                 None | Some(RootScanInMemory::UnstoredFailure(_)),
-                                StoredScanOutcome::Unfinished { .. },
+                                StoredScanOutcome::Unfinished,
                             ) => FolderScanStatus::Failed {
                                 error: SCAN_STOPPED_UNSTORED.to_string(),
                             },
@@ -107,27 +111,21 @@ impl FolderScanProgress {
         let folders: Vec<ActiveFolderScan> = statuses
             .iter()
             .filter_map(|folder| match folder.status {
-                FolderScanStatus::Scanning { found_count } => Some(ActiveFolderScan {
+                FolderScanStatus::Scanning => Some(ActiveFolderScan {
                     watched_folder_path: folder.watched_folder_path.clone(),
                     watched_folder_name: folder.watched_folder_name.clone(),
-                    found_count,
                 }),
                 FolderScanStatus::Complete | FolderScanStatus::Failed { .. } => None,
             })
             .collect();
-        let activity = (!folders.is_empty()).then(|| FolderScanActivity {
-            found_count: folders.iter().map(|folder| folder.found_count).sum(),
-            folders,
-        });
+        let activity = (!folders.is_empty()).then_some(FolderScanActivity { folders });
         Self { statuses, activity }
     }
 }
 
-/// Live folder-scan activity for the list chrome. Counts come from each
-/// root's current generation, never from the list windows a UI has loaded.
+/// Live folder-scan activity for the list chrome: the roots being scanned.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FolderScanActivity {
-    pub found_count: u64,
     pub folders: Vec<ActiveFolderScan>,
 }
 
@@ -136,7 +134,6 @@ pub struct FolderScanActivity {
 pub struct ActiveFolderScan {
     pub watched_folder_path: std::path::PathBuf,
     pub watched_folder_name: String,
-    pub found_count: u64,
 }
 
 /// One watched root's scan as its table row stores it.
@@ -160,10 +157,8 @@ pub struct StoredScan {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StoredScanOutcome {
     /// Nothing: the scan is under way, or it ended without storing what
-    /// became of it. `found_count` is how many folders it has stored.
-    Unfinished {
-        found_count: u64,
-    },
+    /// became of it.
+    Unfinished,
     Complete,
     Failed {
         error: String,

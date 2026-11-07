@@ -14,15 +14,16 @@ struct ImportCandidateSelectionTests {
         try await SnapshotTestSupport.withHostedWindow(
             FolderScanProgressIndicator(
                 activity: BridgeFolderScanActivity(
-                    foundCount: 179,
                     folders: [
                         BridgeActiveFolderScan(
                             watchedFolderPath: Data("/imports/incoming".utf8),
-                            watchedFolderName: "Incoming",
-                            foundCount: 179
+                            watchedFolderName: "Incoming"
                         )
                     ]
-                )
+                ),
+                foundCounts: .scanFoundCounts(holding: [
+                    Data("/imports/incoming".utf8): 179
+                ])
             )
             .frame(width: size.width, height: size.height),
             size: size

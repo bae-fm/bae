@@ -502,23 +502,24 @@
                         BridgeWatchedFolderScanStatus(
                             watchedFolderPath: Data(releaseQueueRoot.utf8),
                             watchedFolderName: releaseQueueWatchedFolder.name,
-                            status: .scanning(foundCount: 27),
+                            status: .scanning,
                             onNetworkVolume: false
                         )
                     ],
                     activity: BridgeFolderScanActivity(
-                        foundCount: 27,
                         folders: [
                             BridgeActiveFolderScan(
                                 watchedFolderPath: Data(releaseQueueRoot.utf8),
                                 watchedFolderName: releaseQueueWatchedFolder
-                                    .name,
-                                foundCount: 27
+                                    .name
                             )
                         ]
                     )
                 )
             )
+            scene.store.scanFoundCounts = .scanFoundCounts(holding: [
+                Data(releaseQueueRoot.utf8): 27
+            ])
             scene.store.identificationProgress = (identified: 27, total: 40)
             return scene
         }

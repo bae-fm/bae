@@ -23,6 +23,12 @@ final class StreamLabelNSView: NSTextField {
     private lazy var uploads = FrameFollowing<BridgeUploadTransfer>(
         view: self
     ) { [weak self] transfer in self?.showRate(transfer?.throughputBps) }
+    private lazy var foundCounts = FrameFollowing<UInt64>(view: self) {
+        [weak self] count in
+        self?.stringValue =
+            count.map { localizedCoreString("ui.import.scan.found", Int($0)) }
+            ?? ""
+    }
 
     init() {
         super.init(frame: .zero)
@@ -50,22 +56,33 @@ final class StreamLabelNSView: NSTextField {
             releaseUploads.stop()
             downloads.stop()
             percents.stop()
+            foundCounts.stop()
             uploads.follow(total)
         case .uploadBytes(let source):
             uploads.stop()
             downloads.stop()
             percents.stop()
+            foundCounts.stop()
             releaseUploads.follow(source)
         case .pinRate(let source):
             uploads.stop()
             releaseUploads.stop()
             percents.stop()
+            foundCounts.stop()
             downloads.follow(source)
         case .exportPercent(let source):
             uploads.stop()
             releaseUploads.stop()
             downloads.stop()
+            foundCounts.stop()
             percents.follow(source)
+        case .scanFoundCount(let source):
+            uploads.stop()
+            releaseUploads.stop()
+            downloads.stop()
+            percents.stop()
+            alignment = .right
+            foundCounts.follow(source)
         }
     }
 
@@ -74,6 +91,7 @@ final class StreamLabelNSView: NSTextField {
         releaseUploads.stop()
         downloads.stop()
         percents.stop()
+        foundCounts.stop()
     }
 
     /// A zero or unknown rate shows nothing rather than a stalled speed.
@@ -99,6 +117,8 @@ struct StreamLabel: NSViewRepresentable {
         case pinRate(LatestSource<BridgeDownloadTransferProgress>)
         /// How far the export queue's running release has been written.
         case exportPercent(LatestSource<UInt8>)
+        /// How many folders the scan of one watched folder has stored.
+        case scanFoundCount(LatestSource<UInt64>)
     }
 
     let stream: Stream
@@ -134,6 +154,8 @@ struct StreamLabel: NSViewRepresentable {
                 .text
             case .exportPercent:
                 (1.0).formatted(.percent)
+            case .scanFoundCount:
+                localizedCoreString("ui.import.scan.found", 9_999_999)
             }
         let font = view.font ?? .systemFont(ofSize: NSFont.systemFontSize)
         let size = (widest as NSString).size(withAttributes: [.font: font])
