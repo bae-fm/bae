@@ -33,7 +33,8 @@ impl ExportFixture {
             bae_util::http::Http::for_test(),
         )
         .await;
-        bae_library::test_libraries::connect_storage(library.manager(), &cloud).await;
+        bae_library::test_libraries::connect_storage(library.manager(), library.store(), &cloud)
+            .await;
         let handle = library.start_import().await.expect("test import service starts");
 
         Self { library, handle, cloud, _temp: temp }

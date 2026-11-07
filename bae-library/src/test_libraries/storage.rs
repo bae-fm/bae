@@ -31,7 +31,11 @@ pub async fn storage_library(
 /// Set up storage and wait for its first pass to end synced, then pause
 /// uploads while the caller seeds its queue. Sync stays started: coven
 /// uploads only while it is.
-pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) {
+pub async fn connect_storage(
+    manager: &LibraryManager,
+    store: &bae_store::Store,
+    storage: &MemoryStorage,
+) {
     let coven::StorageConfig::S3 { bucket, region, endpoint, profile } = storage.config() else {
         panic!("the memory provider uses S3 configuration");
     };
@@ -52,7 +56,7 @@ pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) 
         .unwrap();
     let mut status = manager.subscribe_sync_status();
     value_matching(&mut status, |value| value.coven.state == coven::SyncState::Synced).await;
-    manager.set_sync_paused(true).await.unwrap();
+    store.set_uploads_paused(true).await.unwrap();
 }
 
 /// Remove the provider object read for this file, then discard the cached copy.

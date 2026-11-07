@@ -158,7 +158,8 @@ impl CloudOnlyPlaybackFixture {
             bae_util::http::Http::for_test(),
         )
         .await;
-        bae_library::test_libraries::connect_storage(library.manager(), &cloud).await;
+        bae_library::test_libraries::connect_storage(library.manager(), library.store(), &cloud)
+            .await;
 
         let discogs_release = create_test_album();
         let release_id_key = fakes.seed_discogs_test_release(discogs_release);

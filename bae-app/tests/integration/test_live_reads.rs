@@ -59,7 +59,8 @@ async fn queued_upload_library(
     folder: &str,
 ) -> (TestLibrary, Arc<MemoryStorage>, TempDir, DbRelease, String) {
     let (library, storage, dir) = open_library().await;
-    bae_library::test_libraries::connect_storage(library.manager(), &storage).await;
+    bae_library::test_libraries::connect_storage(library.manager(), library.store(), &storage)
+        .await;
     let release = insert_release_with_queued_uploads(
         &library,
         &dir.path().join(folder),
@@ -251,7 +252,8 @@ async fn release_detail_offers_storage_once_storage_is_set_up() {
             }
         };
     actions_until(|actions| actions.is_empty()).await;
-    bae_library::test_libraries::connect_storage(manager.manager(), &storage).await;
+    bae_library::test_libraries::connect_storage(manager.manager(), manager.store(), &storage)
+        .await;
     assert_eq!(
         actions_until(|actions| !actions.is_empty()).await,
         vec![bae_types::release_storage::ReleaseStorageAction::Upload]
@@ -263,7 +265,8 @@ async fn release_detail_offers_storage_once_storage_is_set_up() {
 #[tokio::test]
 async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     let (manager, storage, temp_dir) = open_library().await;
-    bae_library::test_libraries::connect_storage(manager.manager(), &storage).await;
+    bae_library::test_libraries::connect_storage(manager.manager(), manager.store(), &storage)
+        .await;
     let release = insert_local_release_with_files(
         &manager,
         &temp_dir.path().join("pin-watch"),

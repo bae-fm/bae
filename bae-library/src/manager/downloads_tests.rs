@@ -675,7 +675,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
     let idle = StorageQueues { uploads: None, pins: None, outputs: None };
     assert_eq!(listed_queues(manager).await, idle);
 
-    manager.set_sync_paused(true).await.unwrap();
+    manager.store.set_uploads_paused(true).await.unwrap();
     let uploading = insert_release_with_queued_uploads(
         manager,
         &temp_dir.path().join("upload"),

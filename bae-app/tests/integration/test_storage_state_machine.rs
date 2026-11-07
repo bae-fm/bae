@@ -34,7 +34,8 @@ async fn setup_with_cloud(
     tmp: &TempDir,
 ) -> (bae_library::test_libraries::TestLibrary, Arc<MemoryStorage>) {
     let (library, storage) = setup_manager(tmp).await;
-    bae_library::test_libraries::connect_storage(library.manager(), &storage).await;
+    bae_library::test_libraries::connect_storage(library.manager(), library.store(), &storage)
+        .await;
     (library, storage)
 }
 
@@ -163,7 +164,7 @@ async fn test_manage_refused_without_cloud_storage() {
         !mgr.manager().is_sync_ready().await.unwrap(),
         "precondition: no storage / sync loop not running"
     );
-    assert!(!mgr.manager().syncs().await.unwrap(), "precondition: the library does not sync");
+    assert!(!mgr.store().syncs().await.unwrap(), "precondition: the library does not sync");
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = crate::create_local_release(
         mgr.manager(),
@@ -455,7 +456,7 @@ async fn storage_subscription_delivers_actions_when_storage_is_set_up() {
     let before = next_storage_release(&values, &release_id).await;
     assert!(before.storage_actions.is_empty(), "no storage → no storage actions");
 
-    bae_library::test_libraries::connect_storage(mgr.manager(), &cloud).await;
+    bae_library::test_libraries::connect_storage(mgr.manager(), mgr.store(), &cloud).await;
     // The disk's answer for the release's originals is a value of its own,
     // and may land before or after storage's.
     tokio::time::timeout(HANG_GUARD, async {

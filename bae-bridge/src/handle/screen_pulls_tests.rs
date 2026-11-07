@@ -19,7 +19,11 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     ));
-    runtime.block_on(bae_library::test_libraries::connect_storage(library.manager(), &storage));
+    runtime.block_on(bae_library::test_libraries::connect_storage(
+        library.manager(),
+        library.store(),
+        &storage,
+    ));
     let syncing = bae_library::LibraryManager::clone(library.manager());
     let started = super::super::tests::start_test_handle(runtime, library, root);
     let handle = started.handle().clone();
@@ -92,6 +96,7 @@ fn the_sync_status_follows_storage_being_set_up() {
         bae_util::http::Http::for_test(),
     ));
     let setup = bae_library::LibraryManager::clone(library.manager());
+    let setup_store = library.store().clone();
     let started = super::super::tests::start_test_handle(runtime, library, root);
     let handle = started.handle().clone();
 
@@ -99,7 +104,11 @@ fn the_sync_status_follows_storage_being_set_up() {
     let unset = handle.runtime.block_on(status.clone().next()).unwrap();
     assert_eq!(unset.shown.status, crate::types::BridgeSyncStatusWord::NotSynced, "{unset:?}");
 
-    handle.runtime.block_on(bae_library::test_libraries::connect_storage(&setup, &storage));
+    handle.runtime.block_on(bae_library::test_libraries::connect_storage(
+        &setup,
+        &setup_store,
+        &storage,
+    ));
     pull_until(
         &handle,
         || Box::pin(status.clone().next()),

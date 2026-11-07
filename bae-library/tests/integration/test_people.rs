@@ -23,7 +23,7 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
         Err(ProfileError::NotRegistered)
     ));
     assert!(people.profiles().await.unwrap().is_empty());
-    connect_storage(library.manager(), &storage).await;
+    connect_storage(library.manager(), library.store(), &storage).await;
     let profile = made_profile(library.manager(), library.people(), "Robin").await;
     assert_eq!(profile.history_sharing, Sharing::Private);
     library.people().create_profile("Robin").await.unwrap();
@@ -65,7 +65,7 @@ async fn a_profile_names_each_new_avatar_at_once() {
     )
     .await;
     let people = library.people().clone();
-    connect_storage(library.manager(), &storage).await;
+    connect_storage(library.manager(), library.store(), &storage).await;
     let profile = made_profile(library.manager(), library.people(), "Rowan").await;
     assert_eq!(library.people().avatar(profile.id).await.unwrap(), None);
     let first_source = solid_png(16, 16, [120, 40, 200]);
@@ -130,7 +130,7 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    connect_storage(library.manager(), &storage).await;
+    connect_storage(library.manager(), library.store(), &storage).await;
     let profile = made_profile(library.manager(), library.people(), "Rowan").await;
     let edge = bae_util::stored_image::STORED_MAX_EDGE;
     let photo = png(image::RgbImage::from_fn(edge * 5, edge * 10 / 3, |x, y| {
@@ -163,7 +163,7 @@ async fn a_png_avatar_is_stored_as_covers_are() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    connect_storage(library.manager(), &storage).await;
+    connect_storage(library.manager(), library.store(), &storage).await;
     let profile = made_profile(library.manager(), library.people(), "Rowan").await;
     let picked = solid_png(16, 16, [120, 40, 200]);
 
@@ -186,7 +186,7 @@ async fn an_undecodable_avatar_is_refused() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    connect_storage(library.manager(), &storage).await;
+    connect_storage(library.manager(), library.store(), &storage).await;
     let profile = made_profile(library.manager(), library.people(), "Rowan").await;
 
     let error = library

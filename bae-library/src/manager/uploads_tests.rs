@@ -822,7 +822,7 @@ async fn retry_outbox_now_surfaces_a_missing_cloud_connection() {
 #[tokio::test]
 async fn upload_pause_survives_retry_and_resuming_allows_progress() {
     let (manager, _temp, _release, _) = queued_upload_fixture("paused").await;
-    manager.library.manager().set_sync_paused(true).await.unwrap();
+    manager.library.store().set_uploads_paused(true).await.unwrap();
     // Sync runs, so passes make requests of their own; the retry sends no
     // file.
     let before = manager.storage.request_trace().len();
@@ -839,8 +839,8 @@ async fn upload_pause_survives_retry_and_resuming_allows_progress() {
         .cloned()
         .collect();
     assert!(sent.is_empty(), "a paused retry sent {sent:?}");
-    assert!(manager.library.manager().is_sync_paused().await.unwrap());
-    manager.library.manager().set_sync_paused(false).await.unwrap();
+    assert!(manager.library.store().uploads_paused().await.unwrap());
+    manager.library.store().set_uploads_paused(false).await.unwrap();
     manager.library.manager().retry_outbox_now().await.unwrap();
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
 }
@@ -849,7 +849,7 @@ async fn upload_pause_survives_retry_and_resuming_allows_progress() {
 async fn retry_outbox_surfaces_a_provider_failure_and_can_be_retried() {
     let (manager, _temp, _release, _) = queued_upload_fixture("retry").await;
     manager.storage.set_online(false);
-    manager.library.manager().set_sync_paused(false).await.unwrap();
+    manager.library.store().set_uploads_paused(false).await.unwrap();
     manager.library.manager().retry_outbox_now().await.unwrap();
     assert!(!manager.library.store().pending().await.unwrap().is_empty());
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 1);

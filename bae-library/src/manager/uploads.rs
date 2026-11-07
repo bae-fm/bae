@@ -159,7 +159,7 @@ impl LibraryManager {
     /// upload drain immediately. Connection, queue-state, and provider failures
     /// are returned to the caller instead of reporting that a retry ran.
     pub async fn retry_outbox_now(&self) -> Result<(), LibraryError> {
-        if self.is_sync_paused().await? {
+        if self.store.uploads_paused().await? {
             return Err(LibraryError::Storage(
                 "upload retry cannot run while cloud sync is paused".to_string(),
             ));

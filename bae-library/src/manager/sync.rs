@@ -18,33 +18,6 @@ impl LibraryManager {
         Ok(self.store.storage_config().await?.is_some())
     }
 
-    /// Whether storage is set up on this device, as coven's sync status
-    /// says now.
-    pub async fn syncs(&self) -> Result<bool, LibraryError> {
-        Ok(self.store.syncs().await?)
-    }
-
-    pub async fn set_sync_paused(&self, paused: bool) -> Result<(), LibraryError> {
-        self.store.set_uploads_paused(paused).await?;
-        Ok(())
-    }
-
-    /// Have files move only on unmetered networks, or on any: uploads and
-    /// downloads of a release wait on a metered one while set.
-    pub async fn set_unmetered_only(&self, unmetered_only: bool) -> Result<(), LibraryError> {
-        self.store.set_unmetered_only(unmetered_only).await?;
-        Ok(())
-    }
-
-    /// Whether files move only on unmetered networks, as it stands now.
-    pub async fn is_unmetered_only(&self) -> Result<bool, LibraryError> {
-        Ok(self.store.unmetered_only().await?)
-    }
-
-    pub async fn is_sync_paused(&self) -> Result<bool, LibraryError> {
-        Ok(self.store.uploads_paused().await?)
-    }
-
     /// Whether coven's sync loop is running now: storage is set up and
     /// syncing isn't stopped.
     pub async fn is_sync_ready(&self) -> Result<bool, LibraryError> {
@@ -322,11 +295,7 @@ impl LibraryManager {
     }
 }
 
-impl LibraryManager {
-    pub async fn storage_location(&self) -> Result<Option<coven::StorageConfig>, LibraryError> {
-        Ok(self.store.storage_config().await?)
-    }
-}
+impl LibraryManager {}
 
 /// Cancels the storage setup a call runs when the call is dropped before it
 /// returns: see [`LibraryManager::heard_setup`].

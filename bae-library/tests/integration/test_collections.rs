@@ -14,7 +14,7 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     .await;
     let store = library.store().clone();
     let people = bae_people::People::new(store.clone());
-    connect_storage(library.manager(), &storage).await;
+    connect_storage(library.manager(), library.store(), &storage).await;
     let person = made_profile(library.manager(), library.people(), "Robin").await;
     let release = test_uuid("collection-release");
     let first = test_uuid("collection-first");

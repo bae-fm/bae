@@ -35,7 +35,8 @@ impl RemoteMultiWindowPlayback {
             bae_util::http::Http::for_test(),
         )
         .await;
-        bae_library::test_libraries::connect_storage(library.manager(), &cloud).await;
+        bae_library::test_libraries::connect_storage(library.manager(), library.store(), &cloud)
+            .await;
         generate_multi_window_cue_flac_files(&album_dir);
         let release_key = fakes.seed_discogs_test_release(create_multi_window_cue_album());
         let import_handle = library.start_discogs_import().await;

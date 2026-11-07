@@ -63,7 +63,12 @@ impl ImportFixture {
     /// No sync loop behind the connection: the remote-import tests drain the
     /// upload queue themselves and assert what that pass moved.
     async fn connect_cloud(&self) {
-        bae_library::test_libraries::connect_storage(self.library.manager(), &self.storage).await;
+        bae_library::test_libraries::connect_storage(
+            self.library.manager(),
+            self.library.store(),
+            &self.storage,
+        )
+        .await;
     }
 }
 

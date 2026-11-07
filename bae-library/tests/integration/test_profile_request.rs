@@ -20,7 +20,7 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     .await;
     let db = library.store().clone();
     let people = bae_people::People::new(db.clone());
-    connect_storage(library.manager(), &storage).await;
+    connect_storage(library.manager(), library.store(), &storage).await;
     library.manager().stop_sync().await.unwrap();
     let track = bae_util::test_ids::test_uuid("waiting-track");
     let release = bae_util::test_ids::test_uuid("waiting-release");

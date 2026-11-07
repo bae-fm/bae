@@ -809,8 +809,9 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         bae_util::http::Http::for_test(),
     ));
     runtime.block_on(async {
-        bae_library::test_libraries::connect_storage(library.manager(), &storage).await;
-        library.manager().set_sync_paused(false).await.expect("resume sync");
+        bae_library::test_libraries::connect_storage(library.manager(), library.store(), &storage)
+            .await;
+        library.store().set_uploads_paused(false).await.expect("resume sync");
         library.manager().attach_and_start_sync_at_startup().await;
         let mut status = library.manager().subscribe_sync_status();
         bae_library::followed::value_matching(&mut status, |value| {

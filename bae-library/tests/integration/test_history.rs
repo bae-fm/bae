@@ -35,7 +35,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     local.set_played(Duration::from_secs(20));
     assert!(people.record_play(&local).await.unwrap());
     assert_eq!(people.history().await.unwrap()[0].audience, HistoryAudience::DevicePrivate);
-    connect_storage(library.manager(), &storage).await;
+    connect_storage(library.manager(), library.store(), &storage).await;
     let person =
         bae_library::test_libraries::made_profile(library.manager(), library.people(), "Robin")
             .await;

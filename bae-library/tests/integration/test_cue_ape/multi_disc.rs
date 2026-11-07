@@ -138,7 +138,8 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     )
     .await;
     if let ImportDestination::Remote { .. } = destination {
-        bae_library::test_libraries::connect_storage(library.manager(), &storage).await;
+        bae_library::test_libraries::connect_storage(library.manager(), library.store(), &storage)
+            .await;
     }
 
     // Discogs multi-disc tracklist: positions "1-1".."1-3", "2-1".."2-3",

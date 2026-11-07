@@ -29,7 +29,8 @@ async fn setup_with_cloud(tmp: &TempDir) -> bae_library::test_libraries::TestLib
         bae_util::http::Http::for_test(),
     )
     .await;
-    bae_library::test_libraries::connect_storage(library.manager(), &storage).await;
+    bae_library::test_libraries::connect_storage(library.manager(), library.store(), &storage)
+        .await;
     library
 }
 

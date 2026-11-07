@@ -565,8 +565,8 @@ impl AppServices {
     delegate_async!(manager, retry_outbox_now => retry_outbox_now() -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, cancel_release_transition => cancel_release_transition(release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, cancel_all_release_uploads => cancel_all_release_uploads() -> Result<(), bae_library::LibraryError>);
-    delegate_async!(manager, set_sync_paused => set_sync_paused(paused: bool) -> Result<(), bae_library::LibraryError>);
-    delegate_async!(manager, set_unmetered_only => set_unmetered_only(unmetered_only: bool) -> Result<(), bae_library::LibraryError>);
+    delegate_lib!(store, set_sync_paused => set_uploads_paused(paused: bool) -> ());
+    delegate_lib!(store, set_unmetered_only => set_unmetered_only(unmetered_only: bool) -> ());
     delegate_async!(manager, enqueue_pins => enqueue_pins(release_ids: Vec<String>) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, use_cloudkit => use_cloudkit(device_name: &str, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
@@ -619,7 +619,7 @@ impl AppServices {
     delegate_async!(manager, cancel_output => cancel_output(release_id: &str) -> Result<(), bae_library::LibraryError>);
 
     #[cfg(any(test, feature = "test-utils"))]
-    delegate_async!(manager, syncs => syncs() -> Result<bool, bae_library::LibraryError>);
+    delegate_lib!(store, syncs => syncs() -> bool);
     #[cfg(any(test, feature = "test-utils"))]
     delegate_async!(manager, is_sync_configured => is_sync_configured() -> Result<bool, bae_library::LibraryError>);
 
@@ -764,8 +764,8 @@ impl AppServices {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_unmetered_only())
     }
 
-    delegate_async!(manager, is_unmetered_only => is_unmetered_only() -> Result<bool, bae_library::LibraryError>);
-    delegate_async!(manager, is_sync_paused => is_sync_paused() -> Result<bool, bae_library::LibraryError>);
+    delegate_lib!(store, is_unmetered_only => unmetered_only() -> bool);
+    delegate_lib!(store, is_sync_paused => uploads_paused() -> bool);
 
     delegate_sync!(manager, watch_outbox_transfers => watch_outbox_transfers() -> bae_library::OutboxTransfersWatch);
     delegate_sync!(manager, watch_outbox_total_transfer => watch_outbox_total_transfer() -> bae_library::OutboxTotalTransferWatch);
@@ -815,5 +815,5 @@ mod personal;
 mod removal;
 
 impl AppServices {
-    delegate_async!(manager, storage_location => storage_location() -> Result<Option<coven::StorageConfig>, bae_library::LibraryError>);
+    delegate_lib!(store, storage_location => storage_config() -> Option<coven::StorageConfig>);
 }
