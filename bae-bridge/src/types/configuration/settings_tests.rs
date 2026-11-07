@@ -39,11 +39,11 @@ fn store_internal_and_refused_failures_keep_their_category() {
     use bae_library::LibraryError;
     let cases: [(BridgeError, BridgeErrorCategory); 6] = [
         (
-            LibraryError::Database(bae_store::DbError::Message("read failed".into())).into(),
+            LibraryError::Database(bae_store::DbError::unreadable("a column", "a value")).into(),
             BridgeErrorCategory::Database,
         ),
         (
-            ImportError::Database(bae_store::DbError::Message("read failed".into())).into(),
+            ImportError::Database(bae_store::DbError::unreadable("a column", "a value")).into(),
             BridgeErrorCategory::Database,
         ),
         (

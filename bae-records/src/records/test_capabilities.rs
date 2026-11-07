@@ -28,25 +28,20 @@ impl Records {
         self.store.read(move |sql| Ok(sql.query_row(&statement, [], |row| row.get(0))?)).await
     }
 
-    pub async fn queued_upload_count_for_root_for_test(
+    pub async fn queued_upload_count_for_release_for_test(
         &self,
-        root_table: &str,
-        root_id: &str,
+        release_id: &str,
     ) -> Result<usize, DbError> {
-        Ok(self.queued_upload_rows_for_root_for_test(root_table, root_id).await?.len())
+        Ok(self.queued_upload_rows_for_release_for_test(release_id).await?.len())
     }
 
-    pub async fn queued_upload_rows_for_root_for_test(
+    pub async fn queued_upload_rows_for_release_for_test(
         &self,
-        root_table: &str,
-        root_id: &str,
+        release_id: &str,
     ) -> Result<Vec<(String, String)>, DbError> {
-        if root_table != "releases" {
-            return Err(DbError::Message(format!("unknown upload root {root_table}")));
-        }
         // The release's own files and its cover, whose row the release's id
         // keys.
-        let root_id = root_id.to_string();
+        let root_id = release_id.to_string();
         self.store
             .read(move |sql| {
                 Ok(sql.query(

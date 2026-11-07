@@ -228,11 +228,7 @@ pub(super) async fn insert_release_with_queued_uploads(
     let release = insert_local_release_with_files(manager, dir, album_title, files).await;
     manager.upload_release(&release.id, false).await.unwrap();
     assert_eq!(
-        manager
-            .records
-            .queued_upload_count_for_root_for_test("releases", &release.id)
-            .await
-            .unwrap(),
+        manager.records.queued_upload_count_for_release_for_test(&release.id).await.unwrap(),
         files.len(),
         "every file must be queued before the drain runs"
     );
@@ -537,8 +533,8 @@ pub(super) fn an_import_error_keeps_its_kind_through_a_library_error() {
         UiErrorCategory::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 }
     );
 
-    let from_db = LibraryError::from(ImportError::Database(bae_store::DbError::Message(
-        "read failed".into(),
+    let from_db = LibraryError::from(ImportError::Database(bae_store::DbError::unreadable(
+        "a column", "a value",
     )));
     assert!(matches!(from_db, LibraryError::Database(_)), "{from_db:?}");
 }

@@ -598,5 +598,5 @@ fn a_refused_scan_write_is_a_bug_unless_the_disk_or_the_store_failed() {
     assert!(refusal_is_a_bug(&sqlite(rusqlite::ffi::SQLITE_CONSTRAINT_TRIGGER)));
     assert!(refusal_is_a_bug(&coven(coven::DbError::Invariant { what: "a rule" })));
     assert!(refusal_is_a_bug(&coven(coven::DbError::StatementFailed)));
-    assert!(refusal_is_a_bug(&bae_store::DbError::Message("a newer scan took the root".into())));
+    assert!(refusal_is_a_bug(&bae_store::DbError::unreadable("a stored column", "a value")));
 }

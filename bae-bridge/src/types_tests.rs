@@ -516,19 +516,17 @@ fn every_kind_of_fact() -> bae_types::pressing::PressingFacts {
 /// already names the kind of failure, so the detail carries only the fault.
 #[test]
 fn a_database_fault_is_not_prefixed_twice() {
-    let error = bae_library::LibraryError::Database(bae_store::DbError::Message(
-        "invalid folder scan value".into(),
-    ));
+    let fault = || bae_store::DbError::unreadable("a folder scan column", "invalid");
+    let expected = fault().to_string();
+    let error = bae_library::LibraryError::Database(fault());
     let BridgeError::Diagnostic { detail, .. } = BridgeError::database_query(error) else {
         panic!("diagnostic")
     };
-    assert_eq!(detail, "invalid folder scan value");
-    let BridgeError::Diagnostic { detail, .. } =
-        BridgeError::from(bae_store::DbError::Message("invalid folder scan value".into()))
-    else {
+    assert_eq!(detail, expected);
+    let BridgeError::Diagnostic { detail, .. } = BridgeError::from(fault()) else {
         panic!("diagnostic")
     };
-    assert_eq!(detail, "invalid folder scan value", "a bare database failure reads the same");
+    assert_eq!(detail, expected, "a bare database failure reads the same");
     let error = coven::CovenError::Database(coven::DbError::DamagedDatabase);
     let expected = coven::DbError::DamagedDatabase.to_string();
     let BridgeError::Diagnostic { detail, .. } = BridgeError::database_query(error) else {

@@ -350,7 +350,7 @@ async fn upload_keeps_every_file_in_the_queue() {
     assert_eq!(
         manager
             .records
-            .queued_upload_rows_for_root_for_test("releases", &release.id)
+            .queued_upload_rows_for_release_for_test(&release.id)
             .await
             .unwrap()
             .into_iter()

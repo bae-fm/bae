@@ -50,8 +50,6 @@ pub enum DbError {
     /// too, each failure kept.
     #[error("file cleanup failed: {failures:?}; write: {write}")]
     FileCleanup { write: Box<DbError>, failures: Vec<coven::DbError> },
-    #[error("{0}")]
-    Message(String),
 }
 
 impl DbError {
@@ -127,8 +125,7 @@ impl bae_util::task_failure::ReportedBug for DbError {
             | Self::UnreadableJson { .. }
             | Self::Encode { .. }
             | Self::OutOfRange { .. }
-            | Self::StoredPath(_)
-            | Self::Message(_) => None,
+            | Self::StoredPath(_) => None,
         }
     }
 }
@@ -151,8 +148,7 @@ impl coven::task::CarriesBug for DbError {
             | Self::UnreadableJson { .. }
             | Self::Encode { .. }
             | Self::OutOfRange { .. }
-            | Self::StoredPath(_)
-            | Self::Message(_) => None,
+            | Self::StoredPath(_) => None,
         }
     }
 }

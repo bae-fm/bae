@@ -47,12 +47,7 @@ fn load_folder_scan_snapshots_on(
 
     let mut snapshots = Vec::with_capacity(roots.len());
     for (watched_folder_path, generation, status, error, found_count) in roots {
-        let generation = u64::try_from(generation).map_err(|error| {
-            DbError::Message(format!(
-                "folder scan root {} has a negative generation: {error}",
-                coven::path_text(&watched_folder_path)
-            ))
-        })?;
+        let generation = to_u64(generation, "folder_scan_roots.generation")?;
         let status = match (status.as_deref(), error) {
             (None, None) => crate::StoredScanOutcome::Unfinished {
                 found_count: to_u64(found_count, "current folder-scan candidate count")?,
@@ -60,10 +55,13 @@ fn load_folder_scan_snapshots_on(
             (Some("complete"), None) => crate::StoredScanOutcome::Complete,
             (Some("failed"), Some(error)) => crate::StoredScanOutcome::Failed { error },
             (status, error) => {
-                return Err(DbError::Message(format!(
-                    "folder scan root {} has invalid status {status:?} and error {error:?}",
-                    coven::path_text(&watched_folder_path)
-                )))
+                return Err(DbError::unreadable(
+                    format!(
+                        "the status and error of folder scan root {}",
+                        coven::path_text(&watched_folder_path)
+                    ),
+                    (status, error),
+                ))
             }
         };
         let items = load_folder_scan_items_on(sql, &watched_folder_path, RowSources::Any)?;
