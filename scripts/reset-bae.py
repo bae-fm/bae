@@ -47,21 +47,8 @@ import tomllib
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT_PROFILE = pathlib.Path.home() / ".config" / "bae-dev" / "profile.toml"
-# The app `bae-macos/run.sh` builds, and its bundle id.
-DEFAULT_APP = (
-    pathlib.Path(
-        subprocess.run(
-            [REPO / "scripts" / "xcode-trees.sh", "macos-run"],
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
-    )
-    / "Build"
-    / "Products"
-    / "Debug"
-    / "bae.app"
-)
+# The app `scripts/test-app.sh` copies out, and its bundle id.
+DEFAULT_APP = pathlib.Path.home() / "Applications" / "bae-test" / "bae.app"
 BUNDLE_ID = "fm.bae.desktop"
 
 
@@ -215,13 +202,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--app", type=pathlib.Path, default=DEFAULT_APP,
-        help="the Debug bae.app to launch (default: the one bae-macos/run.sh builds)",
+        help="the Debug bae.app to launch (default: the one scripts/test-app.sh copies out)",
     )
     args = parser.parse_args()
 
     profile = read_profile(args.profile)
     if not args.app.is_dir():
-        fail(f"no app at {args.app}; build it with bae-macos/run.sh --no-open")
+        fail(f"no app at {args.app}; build it with scripts/test-app.sh --no-open")
     s3 = profile.get("s3", {})
     for field in S3_FIELDS:
         if not isinstance(s3.get(field), str) or not s3[field].strip():

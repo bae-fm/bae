@@ -84,12 +84,12 @@ The app discovers libraries from `~/.bae/libraries/`. Run the app first to creat
 `scripts/reset-bae.py` wipes this Mac's bae state and recreates one library from
 `~/.config/bae-dev/profile.toml` (mode 600, never committed; the script's
 docstring lists its fields). It shows the plan and, on confirmation, quits the
-running app and empties the profile's S3 key prefix itself with boto3 (`pip
-install boto3`): it aborts every unfinished upload under the prefix and deletes
-every object under it, whatever wrote them, 1,000 keys per request, and prints
+running app and empties the profile's S3 bucket itself with boto3 (`pip
+install boto3`): it aborts every unfinished upload in the bucket and deletes
+every object in it, whatever wrote them, 1,000 keys per request, and prints
 how many of each went. Any failure there stops the script before the app
 launches. A versioned bucket keeps the deleted objects' earlier versions. It
-then launches the Debug app from `bae-macos/run.sh` with
+then launches the Debug app `scripts/test-app.sh` copied out with
 `--dev-reset <profile>`. Before any library opens, the app removes every library
 the way Remove Library does, deletes their saved restore codes, deletes
 `~/.bae`, then creates the profile's library and sets its Discogs token,
