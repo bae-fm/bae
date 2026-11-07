@@ -1,4 +1,4 @@
-<!-- @dsCard group="Logo" height=760 -->
+<!-- @dsCard group="Logo" height=940 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>Logo</title></head>
@@ -7,7 +7,7 @@
 <script>
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Pair', h(B.Logo, { kind: 'pair', size: 120 })), N('Inline', h(B.Logo, { kind: 'inline', size: 80 })), N('Inline, right to left', h('div', { dir: 'rtl' }, h(B.Logo, { kind: 'inline', size: 80 }))), N('Sheep', h(B.Logo, { kind: 'sheep', size: 120 })), N('Word', h(B.Logo, { kind: 'word', size: 120 })), N('Small, 32', h(B.Logo, { kind: 'small', size: 32 })), N('Small, 16', h(B.Logo, { kind: 'small', size: 16 }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Pair', h(B.Logo, { kind: 'pair', size: 120 })), N('Pair, bob and glow', h(B.Logo, { kind: 'pair', size: 120, bob: true, glow: true })), N('Inline', h(B.Logo, { kind: 'inline', size: 80 })), N('Inline, right to left', h('div', { dir: 'rtl' }, h(B.Logo, { kind: 'inline', size: 80 }))), N('Sheep', h(B.Logo, { kind: 'sheep', size: 120 })), N('Word', h(B.Logo, { kind: 'word', size: 120 })), N('Small, 32', h(B.Logo, { kind: 'small', size: 32 })), N('Small, 16', h(B.Logo, { kind: 'small', size: 16 }))));
 </script>
 </body>
 </html>
