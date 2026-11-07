@@ -267,13 +267,13 @@ fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
 }
 
 /// What the row's storage state shows: where its release's files are, from the
-/// listing's `storage_order`, with the transition and the download queue
-/// entry that go with it.
+/// listing's `storage_order`, with the transition, the download queue entry
+/// and the failed move's file that go with it.
 fn storage_status(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::StorageRowStatus> {
     use crate::album_detail::{StoragePlace, StorageRowStatus};
     let column = row.as_ref().column_index("storage_order")?;
     let place = match row.get::<_, i64>(column)? {
-        0 => StoragePlace::DownloadFailed,
+        0 => StoragePlace::Failed,
         1 => StoragePlace::Uploading,
         2 => StoragePlace::Pinning,
         3 => StoragePlace::OnOneDevice,
@@ -289,7 +289,8 @@ fn storage_status(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::Storag
     };
     let transfer = transfer_action_column(row, "transfer_action")?;
     let download = bae_transfers::download_entry_column(row)?;
-    StorageRowStatus::of(place, transfer, download)
+    let failed_move_file = bae_records::records::queued_uploads::changed_original_in_row(row)?;
+    StorageRowStatus::of(place, transfer, download, failed_move_file)
         .map_err(|reason| bae_store::read::column_conversion_error(row, column, reason))
 }
 

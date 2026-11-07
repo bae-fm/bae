@@ -14,6 +14,11 @@ struct StorageStateLabel: View {
         case .downloadFailed(let error):
             StatusChip("Download failed", tone: .danger)
                 .help(error)
+        case .moveFailed(let fileName):
+            StatusChip(
+                "Move failed: \(fileName) changed since import",
+                tone: .danger
+            )
         case .uploading:
             HStack(spacing: ThemeSpace.inline) {
                 StorageUploadingChip(releaseId: release.id)
@@ -41,6 +46,14 @@ struct StorageStateLabel: View {
         case .inStorage:
             StatusChip("In storage", symbol: "cloud")
         }
+    }
+}
+
+extension BridgeStorageRowStatus {
+    /// Whether the release's move to the cloud failed.
+    var isMoveFailed: Bool {
+        if case .moveFailed = self { return true }
+        return false
     }
 }
 
@@ -144,6 +157,14 @@ private struct StorageMakingLocalChip: View {
                 status: .downloadFailed(
                     error: "The network connection was lost"
                 )
+            )
+            // A move whose original changed.
+            StorageStateLabel(
+                release: PreviewData.storageRelease(
+                    id: "r-move-failed",
+                    storageState: .onOneDevice
+                ),
+                status: .moveFailed(fileName: "01 Opening.flac")
             )
             // A transition this process runs while the files rest.
             StorageStateLabel(

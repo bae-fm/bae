@@ -242,6 +242,7 @@ mirror_enum! {
     from_core: fn,
     variants: {
         DownloadFailed { error },
+        MoveFailed { file_name },
         Uploading,
         Pinning(step: (crate::types::BridgeDownloadEntryStep)),
         Transferring(action: (crate::types::BridgeReleaseStorageAction)),

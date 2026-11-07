@@ -13,9 +13,10 @@
 -- files' count and total size, `stored`, `pinned_count` and `queued_count`,
 -- copied from its `release_storage` row; `download_queued`, 1 while this
 -- device's download queue holds it waiting or downloading; `download_failed`,
--- 1 while that queue holds it failed; and `storage_order`, where it sorts by
--- storage, worked out from those in the same write: a failed download first
--- (0), uploading (1), pinning (2) while the download queue brings its files
+-- 1 while that queue holds it failed; `move_failed`, copied from its
+-- `release_storage` row; and `storage_order`, where it sorts by
+-- storage, worked out from those in the same write: a failed download or move
+-- first (0), uploading (1), pinning (2) while the download queue brings its files
 -- to this device, local (3), pinned (4), in the cloud only (5).
 CREATE TABLE IF NOT EXISTS release_listing (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
@@ -33,8 +34,9 @@ CREATE TABLE IF NOT EXISTS release_listing (
     queued_count INTEGER NOT NULL,
     download_queued INTEGER NOT NULL CHECK (download_queued IN (0, 1)),
     download_failed INTEGER NOT NULL CHECK (download_failed IN (0, 1)),
+    move_failed INTEGER NOT NULL CHECK (move_failed IN (0, 1)),
     storage_order INTEGER GENERATED ALWAYS AS (CASE
-        WHEN download_failed = 1 THEN 0
+        WHEN download_failed = 1 OR move_failed = 1 THEN 0
         WHEN queued_count > 0 THEN 1
         WHEN download_queued = 1 THEN 2
         WHEN stored = 0 THEN 3
@@ -131,7 +133,7 @@ BEGIN
     INSERT INTO release_listing (
         release_id, album_id, album_title, credit_sort_names, credit_artist_ids,
         media_empty, media_key, created_at, file_count, total_size, stored, pinned_count,
-        queued_count, download_queued, download_failed)
+        queued_count, download_queued, download_failed, move_failed)
     SELECT r.id, r.album_id, album.title, album.credit_sort_names, album.credit_artist_ids,
            media.media_empty,
            media.media_key,
@@ -144,7 +146,8 @@ BEGIN
            EXISTS (SELECT 1 FROM download_queue download
                    WHERE download.release_id = r.id AND download.state IN ('queued', 'active')),
            EXISTS (SELECT 1 FROM download_queue download
-                   WHERE download.release_id = r.id AND download.state = 'failed')
+                   WHERE download.release_id = r.id AND download.state = 'failed'),
+           storage.move_failed
     FROM releases r
     JOIN release_storage storage ON storage.release_id = r.id
     JOIN album_listing album ON album.album_id = r.album_id
@@ -163,7 +166,8 @@ BEGIN
         pinned_count = excluded.pinned_count,
         queued_count = excluded.queued_count,
         download_queued = excluded.download_queued,
-        download_failed = excluded.download_failed;
+        download_failed = excluded.download_failed,
+        move_failed = excluded.move_failed;
 END;
 
 -- A release arriving lists its album first. An album listed just now lists
@@ -262,10 +266,11 @@ BEGIN
         WHERE r.id = NEW.release_id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_storage_changed AFTER UPDATE OF file_count, total_size, stored, pinned_count, queued_count ON release_storage
+CREATE TRIGGER IF NOT EXISTS release_listing_storage_changed AFTER UPDATE OF file_count, total_size, stored, pinned_count, queued_count, move_failed ON release_storage
 BEGIN
     UPDATE release_listing SET file_count = NEW.file_count, total_size = NEW.total_size,
-        stored = NEW.stored, pinned_count = NEW.pinned_count, queued_count = NEW.queued_count
+        stored = NEW.stored, pinned_count = NEW.pinned_count, queued_count = NEW.queued_count,
+        move_failed = NEW.move_failed
     WHERE release_id = NEW.release_id;
 END;
 

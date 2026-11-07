@@ -12,8 +12,9 @@ use bae_transfers::{DownloadEntry, QueueWait};
 /// changes any of them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoragePlace {
-    /// This device's download queue holds it failed.
-    DownloadFailed,
+    /// This device's download queue holds it failed, or coven lists a file of
+    /// it in a failed move.
+    Failed,
     /// Files of it wait in this device's upload queue.
     Uploading,
     /// Its files are coming to this device: this device's download queue
@@ -44,6 +45,11 @@ pub enum StorageRowStatus {
     DownloadFailed {
         error: String,
     },
+    /// Its move to the cloud failed because a file's original changed since
+    /// import; the move stays until cancelled.
+    MoveFailed {
+        file_name: String,
+    },
     Uploading,
     Pinning(DownloadEntryStep),
     /// A transition under way while the files rest where they are: unpinning,
@@ -56,37 +62,39 @@ pub enum StorageRowStatus {
 
 impl StorageRowStatus {
     /// The status of a release at `place`, in the transition `transfer`
-    /// (when it rests) and with the download queue entry `download`. A place
-    /// that names the download queue without the entry that puts it there
-    /// is a row the queue and the listing disagree on: the reason it fails.
+    /// (when it rests), with the download queue entry `download` and, when
+    /// its move failed, the name of the file whose original changed. A failed
+    /// download reads first when both failed. A place that names a failure
+    /// without the entry or file that puts it there is a row the queue and
+    /// the listing disagree on: the reason it fails.
     pub(crate) fn of(
         place: StoragePlace,
         transfer: Option<ReleaseStorageAction>,
         download: Option<DownloadEntry>,
+        failed_move_file: Option<String>,
     ) -> Result<Self, String> {
-        Ok(match (place, transfer, download) {
-            (StoragePlace::DownloadFailed, _, Some(DownloadEntry::Failed { error })) => {
+        Ok(match (place, transfer, download, failed_move_file) {
+            (StoragePlace::Failed, _, Some(DownloadEntry::Failed { error }), _) => {
                 Self::DownloadFailed { error }
             }
-            (StoragePlace::DownloadFailed, ..) => {
-                return Err(
-                    "the listing says a download failed but the queue holds no failure".into()
-                )
+            (StoragePlace::Failed, _, _, Some(file_name)) => Self::MoveFailed { file_name },
+            (StoragePlace::Failed, ..) => {
+                return Err("the listing says a download or move failed but neither is held".into())
             }
             (StoragePlace::Uploading, ..) => Self::Uploading,
-            (StoragePlace::Pinning, _, Some(DownloadEntry::Queued { ahead, wait })) => {
+            (StoragePlace::Pinning, _, Some(DownloadEntry::Queued { ahead, wait }), _) => {
                 Self::Pinning(DownloadEntryStep::Queued { ahead, wait })
             }
-            (StoragePlace::Pinning, _, Some(DownloadEntry::Running { wait })) => {
+            (StoragePlace::Pinning, _, Some(DownloadEntry::Running { wait }), _) => {
                 Self::Pinning(DownloadEntryStep::Running { wait })
             }
             (StoragePlace::Pinning, ..) => {
                 return Err("the listing says a download waits but the queue holds none".into())
             }
-            (_, Some(action), _) => Self::Transferring(action),
-            (StoragePlace::OnOneDevice, None, _) => Self::OnOneDevice,
-            (StoragePlace::Pinned, None, _) => Self::Pinned,
-            (StoragePlace::InStorage, None, _) => Self::InStorage,
+            (_, Some(action), ..) => Self::Transferring(action),
+            (StoragePlace::OnOneDevice, None, ..) => Self::OnOneDevice,
+            (StoragePlace::Pinned, None, ..) => Self::Pinned,
+            (StoragePlace::InStorage, None, ..) => Self::InStorage,
         })
     }
 }

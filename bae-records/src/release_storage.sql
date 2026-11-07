@@ -5,7 +5,8 @@
 -- `coven_files` records as stored; `pinned_count`, how many of them coven's
 -- `coven_pins` lists as kept whole on this device; and `queued_count` and
 -- `first_queued_position`, how many of them coven's `coven_upload_queue`
--- lists and the place of the first (NULL with none). One row per release,
+-- lists and the place of the first (NULL with none); and `move_failed`, 1
+-- while coven's `coven_moves` lists a file of it in a failed move. One row per release,
 -- written by the triggers below in the write that changes its files, their
 -- coven records, pins or queue: this device's own, another device's applied,
 -- or coven's.
@@ -17,6 +18,7 @@ CREATE TABLE IF NOT EXISTS release_storage (
     pinned_count INTEGER NOT NULL,
     queued_count INTEGER NOT NULL,
     first_queued_position INTEGER,
+    move_failed INTEGER NOT NULL CHECK (move_failed IN (0, 1)),
     CHECK ((queued_count = 0) = (first_queued_position IS NULL))
 ) STRICT;
 
@@ -34,7 +36,7 @@ CREATE TRIGGER IF NOT EXISTS release_storage_refresh INSTEAD OF INSERT ON releas
 BEGIN
     INSERT INTO release_storage (
         release_id, file_count, total_size, stored, pinned_count, queued_count,
-        first_queued_position)
+        first_queued_position, move_failed)
     SELECT r.id,
            (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r.id),
            (SELECT COALESCE(SUM(coven.size), 0) FROM release_files f
@@ -52,7 +54,10 @@ BEGIN
             WHERE f.release_id = r.id),
            (SELECT MIN(queued.position) FROM release_files f
             JOIN coven_upload_queue queued ON queued.file = f.file
-            WHERE f.release_id = r.id)
+            WHERE f.release_id = r.id),
+           EXISTS (SELECT 1 FROM release_files f
+                   JOIN coven_moves moves ON moves.file = f.file
+                   WHERE f.release_id = r.id AND moves.state = 'failed')
     FROM releases r
     WHERE r.id = NEW.release_id
     ON CONFLICT (release_id) DO UPDATE SET
@@ -61,7 +66,8 @@ BEGIN
         stored = excluded.stored,
         pinned_count = excluded.pinned_count,
         queued_count = excluded.queued_count,
-        first_queued_position = excluded.first_queued_position;
+        first_queued_position = excluded.first_queued_position,
+        move_failed = excluded.move_failed;
 END;
 
 -- A release arrives with no files: its files name it, so none is written or
@@ -70,8 +76,8 @@ CREATE TRIGGER IF NOT EXISTS release_storage_release_added AFTER INSERT ON relea
 BEGIN
     INSERT INTO release_storage (
         release_id, file_count, total_size, stored, pinned_count, queued_count,
-        first_queued_position)
-    VALUES (NEW.id, 0, 0, 0, 0, 0, NULL);
+        first_queued_position, move_failed)
+    VALUES (NEW.id, 0, 0, 0, 0, 0, NULL, 0);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_storage_file_added AFTER INSERT ON release_files
@@ -150,4 +156,26 @@ BEGIN
                   WHERE f.release_id = release_storage.release_id)
             ELSE first_queued_position END
     WHERE release_id = (SELECT release_id FROM release_files WHERE file = OLD.file);
+END;
+
+-- A release file's move failing, or its list ending, moves its release's
+-- `move_failed`, in the transaction that changes the move: coven lists a
+-- failed move's files until the app cancels it. A file no release file names
+-- moves nothing.
+CREATE TRIGGER IF NOT EXISTS release_storage_file_moved AFTER INSERT ON coven_moves
+BEGIN
+    INSERT INTO release_storage_refresh (release_id)
+    SELECT release_id FROM release_files WHERE file = NEW.file;
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_storage_move_changed AFTER UPDATE OF state ON coven_moves
+BEGIN
+    INSERT INTO release_storage_refresh (release_id)
+    SELECT release_id FROM release_files WHERE file = NEW.file;
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_storage_move_ended AFTER DELETE ON coven_moves
+BEGIN
+    INSERT INTO release_storage_refresh (release_id)
+    SELECT release_id FROM release_files WHERE file = OLD.file;
 END;

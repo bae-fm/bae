@@ -240,8 +240,8 @@ impl LibraryManager {
     /// Making a release local is stopped by its token, which fires here; a
     /// pin is stopped through the download queue, which also holds the pins
     /// not yet started. Cancelling an upload cancels the release's move to
-    /// the cloud, and its files stay on this device only. An unpin can't be
-    /// stopped.
+    /// the cloud, and its files stay on this device only, as does ending a
+    /// failed move. An unpin can't be stopped.
     pub async fn cancel_release_transition(&self, release_id: &str) -> Result<(), LibraryError> {
         if self.detach_cancels.cancel(release_id) {
             return Ok(());
@@ -249,10 +249,7 @@ impl LibraryManager {
         if self.downloads.contains(release_id).await? {
             self.cancel_download(release_id).await?;
         }
-        if self.records.has_pending_uploads_for_release(release_id).await? {
-            return self.cancel_release_upload(release_id).await;
-        }
-        Ok(())
+        self.cancel_release_upload(release_id).await
     }
 
     /// Drain a transfer's progress channel until it says how the transfer

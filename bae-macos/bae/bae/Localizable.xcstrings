@@ -1019,6 +1019,179 @@
         }
       }
     },
+    "Move failed: %@ changed since import" : {
+      "comment" : "Storage Manager row: a release's move to the cloud failed because this file's original changed after import; %@ is the file's name",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فشل النقل: تغيّر %@ منذ الاستيراد"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Преместването е неуспешно: %@ е променен след импортирането"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Přesun selhal: %@ se od importu změnil"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flytning mislykkedes: %@ er ændret siden importen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move failed: %@ changed since import"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verschieben fehlgeschlagen: %@ wurde seit dem Import geändert"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Η μετακίνηση απέτυχε: το %@ άλλαξε μετά την εισαγωγή"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error al mover: %@ ha cambiado desde la importación"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siirto epäonnistui: %@ on muuttunut tuonnin jälkeen"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec du déplacement : %@ a été modifié depuis l’importation"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ההעברה נכשלה: %@ השתנה מאז הייבוא"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premještanje nije uspjelo: %@ je promijenjen od uvoza"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Az áthelyezés sikertelen: a(z) %@ megváltozott az importálás óta"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spostamento non riuscito: %@ è cambiato dopo l’importazione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移動に失敗しました: %@ は取り込み後に変更されました"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이동 실패: 가져온 이후 %@ 파일이 변경되었습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flyttingen mislyktes: %@ er endret siden importen"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verplaatsen mislukt: %@ is gewijzigd sinds het importeren"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przenoszenie nie powiodło się: plik %@ zmienił się od importu"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falha na mudança: %@ foi alterado desde a importação"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falha na mudança: %@ foi alterado desde a importação"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mutarea a eșuat: %@ s-a modificat de la import"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Presun zlyhal: %@ sa od importu zmenil"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flytten misslyckades: %@ har ändrats sedan importen"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taşıma başarısız: %@ içe aktarıldıktan sonra değişti"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося перемістити: %@ змінено після імпорту"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移动失败：%@ 自导入后已更改"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移動失敗：%@ 自匯入後已變更"
+          }
+        }
+      }
+    },
     "Put this catalog number back in the run" : {
       "comment" : "Find online band: help on a struck-out catalog-number chip; pressing it puts the number back, so it is searched and agreed with again",
       "localizations" : {

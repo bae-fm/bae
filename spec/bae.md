@@ -1857,7 +1857,7 @@ at a local release's track points at a row every device can read
 ([coven §15.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#153-references-stay-readable)).
 Where a file is changes in coven's own record of it, with no change to a row
 of bae's, so the release's storage row (`release_storage`) follows coven's `coven_files`, which also
-gives each file's size (Appendix B).
+gives each file's size, and `coven_moves`, which lists the files of a failed move (Appendix B).
 
 A release's cover is bound (§4.1), so it reaches other devices with the
 release, local or not: the write that imports the release, or sets its cover,
@@ -2020,7 +2020,8 @@ outlives the process that ran it, so the `release_storage_action` rows are
 emptied as the library opens.
 
 Each row's storage state is the place it sorts by, which core reads with the
-row: Download failed, with its error, first; Uploading, its chip filled as far
+row: Download failed, with its error, or Move failed, naming the file whose
+original changed since import, first; Uploading, its chip filled as far
 as its bytes have come while any file is being sent; Pinning, either queued,
 with the number of entries ahead of it that have not failed, or filled as far
 as its download has come once it starts, and in either case Paused while the
@@ -2028,7 +2029,11 @@ queue is paused or Waiting for network while the device has none (the network
 first, since it makes the pause moot); making local, filled as far as its copies have downloaded (§4.4);
 Local, Pinned or In storage at rest, or, while another transition this process
 runs leaves the files where they are, that transition's words. No rate shows
-beside it.
+beside it. A move fails when a file's original changed before its upload
+(coven lists the failed move's files in `coven_moves` until it is cancelled,
+and its pending record names the original, §6.4); the release stays on this
+device only, its row sorts first beside a failed download, and its Cancel ends
+the move.
 
 Under the list, beside its count and total size, each transfer queue
 holding files waiting or on the move shows while it does: uploads, pins
@@ -4811,7 +4816,7 @@ Beside them, device-local tables:
 | Table | One row per |
 |---|---|
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
-| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, and how many wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2) |
+| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, and whether coven lists a file of it in a failed move, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2) |
 
 What the library lists, bae-views' part, kept by its triggers:
 
@@ -4825,7 +4830,7 @@ What the library lists, bae-views' part, kept by its triggers:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; and where it sorts by storage, worked out from those: a failed download, uploading, pinning, local, pinned, in storage only |
+| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning, local, pinned, in storage only |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |

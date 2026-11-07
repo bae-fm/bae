@@ -542,8 +542,11 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
 
         // A release mid-transition (uploading, pinning, or becoming local) can't
         // start another storage action (those race the transition), so the only
-        // action it offers is cancelling — in every tab.
-        let transitioning = targets.filter(\.release.transitioning)
+        // action it offers is cancelling — in every tab. So does a release
+        // whose move failed: cancelling ends the move.
+        let transitioning = targets.filter {
+            $0.release.transitioning || $0.status.isMoveFailed
+        }
         if !transitioning.isEmpty {
             addMenuItem(
                 to: menu,

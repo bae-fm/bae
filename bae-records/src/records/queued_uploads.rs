@@ -11,6 +11,7 @@ pub(super) const RELEASE_QUEUED_FILE_COUNT: &str = "SELECT COUNT(*) FROM release
 
 /// Whether any of the release `?1`'s files waits in this device's upload
 /// queue.
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) const RELEASE_HAS_QUEUED_FILE: &str = "SELECT EXISTS (SELECT 1 FROM release_files AS f \
      JOIN coven_uploads AS upload ON upload.file = f.file \
      WHERE f.release_id = ?1)";
@@ -34,7 +35,9 @@ pub const RELEASES_SENDING: &str = "SELECT f.release_id, COUNT(*) AS files \
 /// stored, and, while none is being sent, why the waiting ones are not
 /// moving: whether any of their uploads is held by the pause or by a
 /// metered network, the earliest retry time, and whether coven says the
-/// network is usable. How far the files being sent have got is the
+/// network is usable; and the pending records of the release's moves, its
+/// failed move's among them, with its originals' paths and names, which name
+/// the original a move waits for or failed on. How far the files being sent have got is the
 /// release's transfer.
 pub const RELEASE_UPLOAD_COLUMNS: &str = "storage.queued_count AS queued_count, \
      storage.queued_count - COALESCE(sending.files, 0) AS waiting_files, \
@@ -50,13 +53,18 @@ pub const RELEASE_UPLOAD_COLUMNS: &str = "storage.queued_count AS queued_count, 
          JOIN coven_uploads AS upload ON upload.file = f.file \
          WHERE f.release_id = storage.release_id) AS uploads_retry_at, \
      (SELECT usable FROM coven_network) AS upload_network_usable, \
-     CASE WHEN storage.queued_count > 0 THEN \
+     CASE WHEN storage.queued_count > 0 OR storage.move_failed = 1 THEN \
          (SELECT json_group_array(json(CAST(pending.record AS TEXT))) \
           FROM coven_pending AS pending \
           WHERE pending.move IN (SELECT upload.move FROM release_files AS f \
               JOIN coven_uploads AS upload ON upload.file = f.file \
-              WHERE f.release_id = storage.release_id)) END AS upload_move_records, \
-     CASE WHEN storage.queued_count > 0 THEN \
+              WHERE f.release_id = storage.release_id \
+              UNION \
+              SELECT moves.move FROM release_files AS f \
+              JOIN coven_moves AS moves ON moves.file = f.file \
+              WHERE f.release_id = storage.release_id AND moves.state = 'failed')) \
+     END AS upload_move_records, \
+     CASE WHEN storage.queued_count > 0 OR storage.move_failed = 1 THEN \
          (SELECT json_group_array(json_object('path', hex(original.path), \
               'name', f.original_filename)) \
           FROM release_files AS f \
@@ -76,7 +84,7 @@ pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbRelease
         None
     } else {
         UploadWait::pick(
-            missing_original_in_row(row)?,
+            original_in_row(row, coven::FileSourceFailure::Missing)?,
             row.get("upload_network_usable")?,
             row.get::<_, Option<bool>>("uploads_paused")?.unwrap_or(false),
             row.get::<_, Option<bool>>("uploads_metered")?.unwrap_or(false),
@@ -91,9 +99,19 @@ pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbRelease
     }))
 }
 
+/// The name of the release file whose original changed and failed the
+/// release's move, as [`RELEASE_UPLOAD_COLUMNS`] read it.
+pub fn changed_original_in_row(row: &Row<'_>) -> rusqlite::Result<Option<String>> {
+    original_in_row(row, coven::FileSourceFailure::Changed)
+}
+
 /// The name of the release file whose original a move of the release waits
-/// for, as the move's pending record names the original by its path.
-fn missing_original_in_row(row: &Row<'_>) -> rusqlite::Result<Option<String>> {
+/// for (`Missing`) or failed on (`Changed`), as the move's pending record
+/// names the original by its path.
+fn original_in_row(
+    row: &Row<'_>,
+    wanted: coven::FileSourceFailure,
+) -> rusqlite::Result<Option<String>> {
     let Some(records) = row.get::<_, Option<String>>("upload_move_records")? else {
         return Ok(None);
     };
@@ -104,16 +122,16 @@ fn missing_original_in_row(row: &Row<'_>) -> rusqlite::Result<Option<String>> {
             format!("a pending record: {error}"),
         )
     })?;
-    let missing: Vec<String> = records
+    let paths: Vec<String> = records
         .iter()
         .filter_map(|record| match &record.reason {
-            coven::PendingReason::Original { path, failure: coven::FileSourceFailure::Missing } => {
+            coven::PendingReason::Original { path, failure } if *failure == wanted => {
                 Some(hex::encode(coven::path_bytes(path)))
             }
             _ => None,
         })
         .collect();
-    if missing.is_empty() {
+    if paths.is_empty() {
         return Ok(None);
     }
     let names: Vec<OriginalName> =
@@ -126,7 +144,7 @@ fn missing_original_in_row(row: &Row<'_>) -> rusqlite::Result<Option<String>> {
         })?;
     Ok(names
         .into_iter()
-        .find(|original| missing.contains(&original.path.to_lowercase()))
+        .find(|original| paths.contains(&original.path.to_lowercase()))
         .map(|original| original.name))
 }
 
@@ -216,6 +234,7 @@ impl Records {
 
     /// Whether any of the release's files still waits to upload from this
     /// device.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn has_pending_uploads_for_release(&self, release_id: &str) -> Result<bool, DbError> {
         let release_id = release_id.to_string();
         self.store

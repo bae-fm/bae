@@ -246,6 +246,11 @@ pub enum BridgeStorageRowStatus {
     DownloadFailed {
         error: String,
     },
+    /// Its move to the cloud failed because this file's original changed
+    /// since import; cancelling the release's transition ends the move.
+    MoveFailed {
+        file_name: String,
+    },
     Uploading,
     Pinning {
         step: BridgeDownloadEntryStep,

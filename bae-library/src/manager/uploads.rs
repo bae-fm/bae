@@ -145,8 +145,7 @@ impl LibraryManager {
     }
 
     /// Test-only observability: how many upload entries a release's files still have
-    /// queued (zero means every cloud copy is confirmed durable). Production paths
-    /// gate on the boolean `has_pending_uploads_for_release` instead.
+    /// queued (zero means every cloud copy is confirmed durable).
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn count_pending_uploads_for_release(
         &self,
