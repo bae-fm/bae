@@ -2,7 +2,7 @@
 -- import_candidate tables hang off it.
 CREATE TABLE IF NOT EXISTS import_candidate_state (
     content_hash      TEXT PRIMARY KEY,
-    -- The key the candidate was last seen under (`CandidateKey`): its
+    -- The key of a copy the scan holds (`CandidateKey`), the last seen: its
     -- folder's path, or its grouping's key. Not its identity.
     candidate_key     BLOB NOT NULL,
     -- Advances with every draft or cover change; commands return it so a
@@ -32,3 +32,36 @@ CREATE TABLE IF NOT EXISTS import_candidate_folder (
 -- forgets by the range of folders below it.
 CREATE INDEX IF NOT EXISTS idx_import_candidate_folder_folder
     ON import_candidate_folder (folder);
+
+-- A state names a copy of its files the scan holds. When the copy it names
+-- leaves the scan (its watched folder removed, its folder gone from disk) or
+-- is read as other files, while another copy stays, it names the one with
+-- the smallest key, in the same write. With no copy left it keeps its key: no
+-- reader reads a state the scan lists no copy of.
+CREATE TRIGGER IF NOT EXISTS import_candidate_state_follows_a_copy_that_leaves
+AFTER DELETE ON scan_candidate
+WHEN OLD.content_hash IS NOT NULL
+BEGIN
+    UPDATE import_candidate_state
+    SET candidate_key = (
+        SELECT MIN(kept.path) FROM scan_candidate AS kept
+        WHERE kept.content_hash = OLD.content_hash
+    )
+    WHERE content_hash = OLD.content_hash
+      AND candidate_key = OLD.path
+      AND EXISTS (SELECT 1 FROM scan_candidate AS kept WHERE kept.content_hash = OLD.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_candidate_state_follows_a_copy_read_again
+AFTER UPDATE OF content_hash ON scan_candidate
+WHEN OLD.content_hash IS NOT NULL AND NEW.content_hash IS NOT OLD.content_hash
+BEGIN
+    UPDATE import_candidate_state
+    SET candidate_key = (
+        SELECT MIN(kept.path) FROM scan_candidate AS kept
+        WHERE kept.content_hash = OLD.content_hash
+    )
+    WHERE content_hash = OLD.content_hash
+      AND candidate_key = OLD.path
+      AND EXISTS (SELECT 1 FROM scan_candidate AS kept WHERE kept.content_hash = OLD.content_hash);
+END;
