@@ -125,8 +125,7 @@ struct FindOnlineSectionGlyphView: View {
                     .foregroundStyle(.secondary)
             case .working:
                 ProgressView()
-                    .controlSize(.small)
-                    .scaleEffect(0.6)
+                    .controlSize(.mini)
             case .empty:
                 StatusChip(verbatim: 0.formatted())
             case .failed:

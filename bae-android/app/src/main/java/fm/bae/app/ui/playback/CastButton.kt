@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cast
@@ -18,7 +17,6 @@ import androidx.compose.material.icons.filled.CastConnected
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
@@ -47,11 +44,11 @@ import fm.bae.app.R
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.data.castingDevice
 import fm.bae.app.displayError
-import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.color
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.Job
@@ -232,18 +229,10 @@ private fun LookingForDevicesRow() {
 /** A picker row for a wait: a spinner and what it waits on. */
 @Composable
 private fun WaitingRow(text: String) {
-    Row(
+    WaitingIndicator(
+        text = text,
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium), strokeWidth = 2.dp)
-        Spacer(modifier = Modifier.width(ThemeSpace.group))
-        Text(
-            text = text,
-            style = ThemeText.body.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    )
 }
 
 @Composable

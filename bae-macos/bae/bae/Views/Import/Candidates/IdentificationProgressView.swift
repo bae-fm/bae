@@ -163,8 +163,7 @@ struct FolderScanProgressIndicator: View {
         Button {
             detailsShown = true
         } label: {
-            ProgressView()
-                .controlSize(.small)
+            WaitingIndicator()
                 .frame(
                     width: ImportFilterBarLayout.glyph.size,
                     height: ImportFilterBarLayout.glyph.size

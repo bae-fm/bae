@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -41,6 +40,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.countdownSecondsLeft
 import fm.bae.app.ui.rememberCountdownNow
 import fm.bae.app.ui.rememberScreenScope
@@ -259,7 +259,7 @@ internal fun OnboardingProgress(
                 modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
                 onStepping = { stepping = it },
             ) {
-                if (!counting) CircularProgressIndicator()
+                if (!counting) WaitingIndicator()
             }
             Spacer(modifier = Modifier.height(ThemeSpace.section))
         }

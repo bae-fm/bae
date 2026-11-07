@@ -78,10 +78,7 @@ struct S3SetupForm: View {
             Button("Detect settings") { fields.detect() }
                 .disabled(fields.isDetecting || !fields.ready)
             if fields.isDetecting {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Detecting the service's settings…")
-                    .foregroundStyle(.secondary)
+                WaitingIndicator("Detecting the service's settings…")
             }
         }
         if let detectError = fields.detectError {

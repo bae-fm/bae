@@ -2,7 +2,6 @@ package fm.bae.app.ui.components
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -47,7 +46,7 @@ private fun OpenProgressLineMigratingPreview() {
         OpenProgressLine(
             steps = LatestStream.openProgress(BridgeOpenProgress(BridgeOpenStep.MIGRATING, 1uL, 3uL)).only,
             modifier = Modifier.widthIn(max = 360.dp).padding(16.dp),
-        ) { CircularProgressIndicator() }
+        ) { WaitingIndicator() }
     }
 }
 
@@ -58,7 +57,7 @@ private fun OpenProgressLineRebuildingPreview() {
         OpenProgressLine(
             steps = LatestStream.openProgress(BridgeOpenProgress(BridgeOpenStep.REBUILDING, 4uL, 9uL)).only,
             modifier = Modifier.widthIn(max = 360.dp).padding(16.dp),
-        ) { CircularProgressIndicator() }
+        ) { WaitingIndicator() }
     }
 }
 
@@ -69,6 +68,6 @@ private fun OpenProgressLineBetweenStepsPreview() {
         OpenProgressLine(
             steps = LatestStream.openProgress().only,
             modifier = Modifier.widthIn(max = 360.dp).padding(16.dp),
-        ) { CircularProgressIndicator() }
+        ) { WaitingIndicator() }
     }
 }

@@ -182,16 +182,13 @@ struct DiscogsSettingsContent: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             statusRow
             if isValidating {
-                HStack(spacing: ThemeSpace.compact) {
-                    ProgressView()
-                        .controlSize(.small)
+                WaitingIndicator(
                     Text(
                         "Checking the key with Discogs…",
                         comment:
                             "Import settings, Discogs key: while bae asks Discogs whether the key works, after a save or a re-check."
                     )
-                    .foregroundStyle(.secondary)
-                }
+                )
             }
             if let saveError {
                 ErrorDetailDisclosure(error: saveError)

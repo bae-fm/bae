@@ -49,7 +49,7 @@ public struct HistorySharingSection: View {
             else if let requested = store.requestedProfile,
                 case .making = requested.state
             {
-                ProgressView("Making your profile…")
+                WaitingIndicator("Making your profile…")
                 Text("Your profile appears once this library syncs.")
                     .themeText(.detail)
                     .foregroundStyle(.secondary)

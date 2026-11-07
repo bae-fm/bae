@@ -251,7 +251,7 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
                 )
                 .only
         ) {
-            ProgressView(String(localized: AppScreen.LoadingWork.opening.title))
+            WaitingIndicator(Text(AppScreen.LoadingWork.opening.title))
         }
         .frame(width: 320)
         .padding()
@@ -269,7 +269,7 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
                 )
                 .only
         ) {
-            ProgressView(String(localized: AppScreen.LoadingWork.opening.title))
+            WaitingIndicator(Text(AppScreen.LoadingWork.opening.title))
         }
         .frame(width: 320)
         .padding()
@@ -295,7 +295,7 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
 
     #Preview("Between steps") {
         StepProgressLine(steps: LatestStream.openProgress().only) {
-            ProgressView(String(localized: AppScreen.LoadingWork.opening.title))
+            WaitingIndicator(Text(AppScreen.LoadingWork.opening.title))
         }
         .frame(width: 320)
         .padding()

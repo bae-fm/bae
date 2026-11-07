@@ -85,7 +85,7 @@ struct InviteCodeSheet: View {
                 }
             }
             else {
-                ProgressView(
+                WaitingIndicator(
                     "Sharing the library. The code shows once this library syncs."
                 )
             }

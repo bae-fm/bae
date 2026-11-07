@@ -43,7 +43,7 @@ public struct RecoveryCodeSection: View {
             case .hidden:
                 showButton
             case .loading:
-                ProgressView("Making your recovery code…")
+                WaitingIndicator("Making your recovery code…")
                     .frame(maxWidth: .infinity)
             case .shown(let code):
                 Text(code)

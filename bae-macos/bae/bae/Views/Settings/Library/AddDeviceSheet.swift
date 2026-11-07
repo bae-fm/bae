@@ -59,7 +59,7 @@ struct AddDeviceSheet: View {
         case nil:
             VStack {
                 Spacer()
-                ProgressView("Making a code for your new device…")
+                WaitingIndicator("Making a code for your new device…")
                 Spacer()
             }
         case .success(let adding):

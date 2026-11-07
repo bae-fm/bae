@@ -124,14 +124,8 @@ struct StorageSetupRunLine: View {
         case .running(let following):
             StepProgressLine(steps: following.steps) { EmptyView() }
         case .cancelling:
-            HStack(spacing: ThemeSpace.related) {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Cancelling…")
-                    .themeText(.body)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            WaitingIndicator("Cancelling…")
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

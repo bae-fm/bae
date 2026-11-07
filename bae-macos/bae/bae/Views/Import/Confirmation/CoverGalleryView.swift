@@ -98,15 +98,13 @@ struct CoverGalleryView: View {
                 Spacer(minLength: ThemeSpace.group)
                 // Saving can download a remote cover, or read a release's
                 // image from its storage.
-                HStack(spacing: ThemeSpace.compact) {
-                    ProgressView().controlSize(.small)
+                WaitingIndicator(
                     Text(
                         "Saving the cover…",
                         comment:
                             "Cover picker, while bae saves the cover picked, which can mean downloading it from a catalog or reading it from the release's storage."
                     )
-                    .foregroundStyle(.secondary)
-                }
+                )
                 .opacity(isSaving ? 1 : 0)
                 .accessibilityHidden(!isSaving)
                 Button("Use this cover") {
@@ -157,7 +155,7 @@ struct CoverGalleryView: View {
                     }
                     else {
                         if remoteItems.isLoading {
-                            ProgressView("Fetching covers…")
+                            WaitingIndicator("Fetching covers…")
                                 .frame(
                                     maxWidth: .infinity,
                                     maxHeight: .infinity
@@ -340,7 +338,7 @@ extension CoverGalleryView {
     private var remoteStatus: some View {
         switch remoteItems {
         case .loading:
-            ProgressView("Fetching covers…").controlSize(.small)
+            WaitingIndicator("Fetching covers…")
         case .unlinked:
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 Text("No linked release")

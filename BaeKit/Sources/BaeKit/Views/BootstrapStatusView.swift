@@ -14,8 +14,7 @@ public struct BootstrapStatusView: View {
         switch status {
         case .opening, .loading:
             // The step's own line takes over as soon as it draws.
-            ProgressView()
-                .controlSize(.small)
+            WaitingIndicator()
         case .connecting:
             progress("Connecting…")
         case .waitingForApproval(let confirmation, let nextCheck):
@@ -41,13 +40,7 @@ public struct BootstrapStatusView: View {
     }
 
     private func progress(_ title: LocalizedStringKey) -> some View {
-        HStack(spacing: ThemeSpace.related) {
-            ProgressView()
-                .controlSize(.small)
-            Text(title)
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-        }
+        WaitingIndicator(title)
     }
 }
 

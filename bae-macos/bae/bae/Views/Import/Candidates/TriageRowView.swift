@@ -235,8 +235,7 @@ extension TriageRowView {
             trailingIcon("clock", tint: .secondary)
                 .help(String(localized: "Waiting to be identified"))
         case .running:
-            ProgressView()
-                .controlSize(.small)
+            WaitingIndicator()
                 .help(String(localized: "Identifying\u{2026}"))
         }
     }

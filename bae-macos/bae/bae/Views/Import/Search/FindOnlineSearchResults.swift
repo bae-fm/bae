@@ -72,8 +72,7 @@ struct FindOnlineSearchResults: View {
                 case .searching:
                     HStack(spacing: ThemeSpace.compact) {
                         ProgressView()
-                            .controlSize(.small)
-                            .scaleEffect(0.6)
+                            .controlSize(.mini)
                             .frame(
                                 width: ThemeIcon.small.size,
                                 height: ThemeIcon.small.size

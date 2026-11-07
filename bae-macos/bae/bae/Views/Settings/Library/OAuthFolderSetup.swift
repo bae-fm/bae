@@ -135,19 +135,18 @@
         }
     }
 
-    /// The provider call folder choice is running, named under its spinner: the
+    /// The provider call folder choice is running, named beside its spinner: the
     /// person signing in, the provider listing folders, or OneDrive making one.
     struct FolderBrowserWorkLine: View {
         let work: StorageFolderBrowser.Work
         let provider: StorageFolderBrowser.Provider
 
         var body: some View {
-            ProgressView(String(localized: title))
-                .controlSize(.small)
+            WaitingIndicator(Text(title))
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
 
-        /// The words under the spinner, by the call running.
+        /// The words beside the spinner, by the call running.
         var title: LocalizedStringResource {
             switch (work, provider) {
             case (.signingIn, _):

@@ -23,12 +23,46 @@ struct ForcedAppearanceTests {
         mode: AppearanceMode,
         system: NSAppearance.Name
     ) async throws {
+        try await expectSpinnersIn(
+            mode: mode,
+            onSystem: system,
+            content: WaitingIndicator()
+        )
+    }
+
+    /// A table's cells host their views apart from the window's SwiftUI
+    /// tree, so the chosen mode reaches them only through the window.
+    @Test(
+        "a spinner in a table cell takes the chosen mode, not the system's",
+        arguments: [
+            (AppearanceMode.light, NSAppearance.Name.darkAqua),
+            (AppearanceMode.dark, NSAppearance.Name.aqua),
+        ]
+    )
+    func spinnerInACellTakesTheChosenMode(
+        mode: AppearanceMode,
+        system: NSAppearance.Name
+    ) async throws {
+        try await expectSpinnersIn(
+            mode: mode,
+            onSystem: system,
+            content: SpinnerCell()
+        )
+    }
+
+    /// Host `content` in `mode` as the app hosts a window, the system in
+    /// `system`, and expect its one spinner drawn in `mode`.
+    private func expectSpinnersIn(
+        mode: AppearanceMode,
+        onSystem system: NSAppearance.Name,
+        content: some View
+    ) async throws {
         let systemAppearance = NSApp.appearance
         NSApp.appearance = NSAppearance(named: system)
         defer { NSApp.appearance = systemAppearance }
         let controller = HostingWindowController(
-            content: ProgressView()
-                .controlSize(.small)
+            content:
+                content
                 .appearance(mode: mode, accent: .standard, tone: .standard),
             contentSize: CGSize(width: 100, height: 60),
             sizing: [],
@@ -43,17 +77,15 @@ struct ForcedAppearanceTests {
         window.animationBehavior = .none
         window.orderFront(nil)
         defer { controller.close() }
-        let content = try #require(window.contentView)
+        let root = try #require(window.contentView)
 
         try await Wait.untilSteady {
-            content.layoutSubtreeIfNeeded()
-            return Self.spinners(below: content)
-                .map {
-                    $0.effectiveAppearance.name
-                }
+            root.layoutSubtreeIfNeeded()
+            return Self.spinners(below: root)
+                .map { $0.effectiveAppearance.name }
         }
 
-        let spinners = Self.spinners(below: content)
+        let spinners = Self.spinners(below: root)
         #expect(spinners.count == 1)
         let chosen: NSAppearance.Name = mode == .light ? .aqua : .darkAqua
         for spinner in spinners {
@@ -70,4 +102,20 @@ struct ForcedAppearanceTests {
                 + spinners(below: subview)
         }
     }
+}
+
+/// A spinner in a `HostingTableCell`, drawn as a table's cells draw.
+private struct SpinnerCell: NSViewRepresentable {
+    func makeNSView(context _: Context) -> HostingTableCell {
+        let cell = HostingTableCell()
+        cell.host(
+            WaitingIndicator()
+                .hostedAppearance(
+                    HostedAppearance(tone: .standard, accent: .standard)
+                )
+        )
+        return cell
+    }
+
+    func updateNSView(_: HostingTableCell, context _: Context) {}
 }

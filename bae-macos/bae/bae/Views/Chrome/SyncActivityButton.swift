@@ -56,8 +56,7 @@ private struct SyncActivityGlyph: View {
     var body: some View {
         HStack(spacing: ThemeSpace.inline) {
             if moving {
-                ProgressView()
-                    .controlSize(.small)
+                WaitingIndicator()
             }
             if needsAttention {
                 Image(systemName: "exclamationmark.triangle.fill")

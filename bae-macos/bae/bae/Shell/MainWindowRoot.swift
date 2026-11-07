@@ -92,7 +92,7 @@ struct MainWindowRoot: View {
                         }
                     }
                     else {
-                        ProgressView(String(localized: work.title))
+                        WaitingIndicator(Text(work.title))
                     }
                 }
             }
@@ -207,7 +207,7 @@ struct MainWindowRoot: View {
                         }
                     }
                     else {
-                        ProgressView(String(localized: work.title))
+                        WaitingIndicator(Text(work.title))
                     }
                 }
             }
