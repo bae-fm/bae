@@ -200,7 +200,13 @@ async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {
     .await
     .err()
     .expect("a reading of a root that moved is refused");
-    assert!(error.to_string().contains("changed while it was being read again"), "{error}");
+    assert!(
+        matches!(
+            &error,
+            crate::ImportError::FolderReread(crate::tables::FolderRereadRefusal::RootMoved(_))
+        ),
+        "{error:?}"
+    );
     assert!(tables
         .load_folder_release_decisions(root)
         .await

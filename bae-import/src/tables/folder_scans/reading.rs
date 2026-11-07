@@ -7,6 +7,41 @@ use crate::folder_scanner::{FolderReading, FolderReleaseDecisionKey};
 use std::ffi::OsString;
 use std::path::Component;
 
+/// Why reading one folder of a watched folder again was refused. Nothing of
+/// it was written.
+#[derive(Debug, thiserror::Error)]
+pub enum FolderRereadRefusal {
+    /// The watched folder holds no reading to change: it was never read, or
+    /// it was removed.
+    #[error("{} has not been read, so none of its folders can be read again", coven::path_text(.0))]
+    NeverRead(PathBuf),
+    /// The watched folder's entries were written after the reading of the
+    /// folder began.
+    #[error(
+        "{} changed while it was being read again: the root's entries were written after \
+         the reading began",
+        coven::path_text(.0)
+    )]
+    RootMoved(PathBuf),
+    /// The reading names no one folder directly under its watched folder.
+    #[error(
+        "{} is not a folder directly under {}",
+        coven::path_text(folder),
+        coven::path_text(root)
+    )]
+    NotDirectlyUnder { folder: PathBuf, root: PathBuf },
+    /// A decision the reading carries is about a folder outside the one read.
+    #[error("folder release decision for {decision} is outside {}", coven::path_text(folder))]
+    DecisionOutside { decision: String, folder: PathBuf },
+    /// An entry the reading yields lies outside the folder read.
+    #[error(
+        "folder scan entry at {} is outside {}",
+        coven::path_text(entry),
+        coven::path_text(folder)
+    )]
+    EntryOutside { entry: PathBuf, folder: PathBuf },
+}
+
 /// Where the root stood when one folder's reading was taken, and the
 /// generation that reading is stored under.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,15 +87,13 @@ impl ImportTables {
     pub(crate) async fn begin_folder_reading(
         &self,
         watched_folder_path: &Path,
-    ) -> Result<FolderReadingStamp, DbError> {
+    ) -> Result<FolderReadingStamp, crate::ImportError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
         self.store
-            .call(move |sql| {
+            .write(move |sql| {
+                let sql = &sql;
                 let Some(read_under) = root_generation_on(sql, &watched_folder_path)? else {
-                    return Err(DbError::Message(format!(
-                        "{} has not been read, so none of its folders can be read again",
-                        coven::path_text(&watched_folder_path)
-                    )));
+                    return Err(FolderRereadRefusal::NeverRead(watched_folder_path).into());
                 };
                 let generation = next_folder_scan_generation(sql)?;
                 Ok(FolderReadingStamp {
@@ -94,11 +127,10 @@ impl ImportTables {
             (Some(Component::Normal(name)), None) if name == folder.as_os_str()
         );
         if !one_name {
-            return Err(DbError::Message(format!(
-                "{} is not a folder directly under {}",
-                coven::path_text(Path::new(&folder)),
-                coven::path_text(&watched_folder_path)
-            ))
+            return Err(FolderRereadRefusal::NotDirectlyUnder {
+                folder: PathBuf::from(folder),
+                root: watched_folder_path,
+            }
             .into());
         }
         let folder_path = watched_folder_path.join(&folder);
@@ -110,11 +142,10 @@ impl ImportTables {
             )
             .starts_with(&folder_path)
             {
-                return Err(DbError::Message(format!(
-                    "folder release decision for {} is outside {}",
-                    key.relative_folder.text(),
-                    coven::path_text(&folder_path)
-                ))
+                return Err(FolderRereadRefusal::DecisionOutside {
+                    decision: key.relative_folder.text().to_string(),
+                    folder: folder_path,
+                }
                 .into());
             }
         }
@@ -124,11 +155,10 @@ impl ImportTables {
                 FolderEntryToWrite::Sidecar(sidecar) => sidecar.coverage(),
             };
             if !coverage.folder.starts_with(&folder_path) {
-                return Err(DbError::Message(format!(
-                    "folder scan entry at {} is outside {}",
-                    coven::path_text(&coverage.folder),
-                    coven::path_text(&folder_path)
-                ))
+                return Err(FolderRereadRefusal::EntryOutside {
+                    entry: coverage.folder,
+                    folder: folder_path,
+                }
                 .into());
             }
         }
@@ -140,12 +170,7 @@ impl ImportTables {
                 let sql = &sql;
                 let root = coven::path_bytes(&watched_folder_path);
                 if root_generation_on(sql, &watched_folder_path)? != Some(read_under) {
-                    return Err(DbError::Message(format!(
-                        "{} changed while it was being read again: the root's entries were \
-                     written after the reading began",
-                        coven::path_text(&folder_path)
-                    ))
-                    .into());
+                    return Err(FolderRereadRefusal::RootMoved(folder_path).into());
                 }
                 for (key, reading) in decision.iter().chain(scanned_decisions.iter()) {
                     store_folder_reading(
@@ -219,14 +244,14 @@ impl ImportTables {
                             },
                         )?;
                         for (path, modified_at) in directories {
-                            if !path.starts_with(&folder_path) {
-                                return Err(DbError::Message(format!(
-                                    "recorded directory {} is outside {}",
-                                    coven::path_text(path),
-                                    coven::path_text(&folder_path)
-                                ))
-                                .into());
-                            }
+                            // The walk of the folder records only the
+                            // directories below it.
+                            assert!(
+                                path.starts_with(&folder_path),
+                                "recorded directory {} is outside {}",
+                                coven::path_text(path),
+                                coven::path_text(&folder_path)
+                            );
                             sql.execute(
                                 "INSERT INTO folder_scan_directory \
                                  (watched_folder_path, path, modified_at) VALUES (?, ?, ?)",

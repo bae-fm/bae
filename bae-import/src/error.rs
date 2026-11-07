@@ -137,6 +137,11 @@ pub enum ImportError {
     #[error(transparent)]
     FolderReading(#[from] crate::tables::FolderReadingRefusal),
 
+    /// Reading one folder of a watched folder again was refused.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    FolderReread(#[from] crate::tables::FolderRereadRefusal),
+
     /// Releases picked to be read as one could not be combined.
     #[cfg(desktop)]
     #[error(transparent)]
@@ -579,6 +584,17 @@ impl ImportError {
                 crate::tables::FolderReadingRefusal::WatchedElsewhere { .. }
                 | crate::tables::FolderReadingRefusal::GroupedElsewhere { .. } => C::Import,
                 crate::tables::FolderReadingRefusal::OtherRoot { .. } => C::Internal,
+            },
+            // The watched folder was removed, or read again, under the
+            // reading; a reading the walk could not have handed over is
+            // bae's own fault.
+            #[cfg(desktop)]
+            Self::FolderReread(refusal) => match refusal {
+                crate::tables::FolderRereadRefusal::NeverRead(_)
+                | crate::tables::FolderRereadRefusal::RootMoved(_) => C::Import,
+                crate::tables::FolderRereadRefusal::NotDirectlyUnder { .. }
+                | crate::tables::FolderRereadRefusal::DecisionOutside { .. }
+                | crate::tables::FolderRereadRefusal::EntryOutside { .. } => C::Internal,
             },
             // The import pane combines only what it lists, at least two, so
             // a short pick or one that made nothing is bae's own fault; a

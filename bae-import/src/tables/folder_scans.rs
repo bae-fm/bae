@@ -41,6 +41,7 @@ pub(super) use self::read::{load_item_by_key, require_current_candidate, RowSour
 /// Named only by a test that commits a reading under a stamp it took.
 #[cfg(test)]
 pub(crate) use self::reading::FolderReadingStamp;
+pub use self::reading::FolderRereadRefusal;
 pub(crate) use self::reading::{FolderReadingCommit, FolderReadingWrite};
 pub(super) use self::tag_snapshot::load_candidate_file_tag_snapshot;
 pub(crate) use self::tag_snapshot::DbCandidateFileTagSnapshot;

@@ -161,7 +161,13 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     drop(held);
 
     let error = reading.await.unwrap().unwrap_err();
-    assert!(error.to_string().contains("changed while it was being read again"), "{error}");
+    assert!(
+        matches!(
+            &error,
+            crate::ImportError::FolderReread(crate::tables::FolderRereadRefusal::RootMoved(_))
+        ),
+        "{error:?}"
+    );
     assert_eq!(fixture.stored_paths().await, before);
     assert_eq!(
         fixture
