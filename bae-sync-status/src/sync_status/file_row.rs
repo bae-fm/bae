@@ -88,11 +88,11 @@ impl FileRowColumns {
                 (Some(COVERS_NAMESPACE), _, _, _, None) => FileRow::DeletedReleaseFile,
                 (Some(ARTIST_IMAGES_NAMESPACE), ..) => FileRow::ArtistImage,
                 (Some(AVATARS_NAMESPACE), ..) => FileRow::Avatar,
-                (Some(namespace), _, file_name, file_album, _) => {
-                    return Err(DbError::Message(format!(
-                        "a file of namespace {namespace} names no row bae holds a file on: \
-                         {file_name:?} in {file_album:?}"
-                    )))
+                (Some(namespace), release_id, file_name, file_album, cover_album) => {
+                    return Err(DbError::unreadable(
+                        "coven_files.namespace with the release file or cover naming the file",
+                        (namespace, release_id, file_name, file_album, cover_album),
+                    ))
                 }
             },
         ))
