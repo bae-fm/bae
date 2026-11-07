@@ -332,7 +332,7 @@ async fn a_watch_report_over_unreadable_watched_folders_reports_the_failure() {
 
     let reports = harness.bugs.reports();
     assert_eq!(reports.len(), 1, "{reports:?}");
-    assert!(reports[0].1.contains("cannot overlap"), "{reports:?}");
+    assert!(reports[0].1.contains("two overlapping stored watched folders"), "{reports:?}");
     harness.shutdown().await;
 }
 
@@ -350,7 +350,7 @@ async fn a_rescan_of_unreadable_watched_folders_fails_to_its_caller() {
         .expect("the coordinator answers")
         .expect("the coordinator is running")
         .expect_err("the unreadable list fails the rescan");
-    assert!(error.to_string().contains("cannot overlap"), "{error}");
+    assert!(error.to_string().contains("two overlapping stored watched folders"), "{error}");
     harness.commands_handled().await;
     assert!(harness.scans.scans.lock().unwrap().is_empty());
     harness.shutdown().await;
