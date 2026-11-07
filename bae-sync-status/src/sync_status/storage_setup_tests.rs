@@ -145,7 +145,11 @@ async fn only_an_undone_setup_is_dismissed() {
         Some(StorageSetupState::Undone { operation, .. }) if operation == undone
     ));
 
-    assert!(sync_status.acknowledge_undone_storage_setup(finished).await.is_err());
+    let refused = sync_status.acknowledge_undone_storage_setup(finished).await;
+    assert!(
+        matches!(refused, Err(SetupDismissError::NotUndone(operation)) if operation == finished),
+        "{refused:?}"
+    );
     sync_status.acknowledge_undone_storage_setup(undone).await.unwrap();
     assert_eq!(state(&store).await, None);
     assert_eq!(listed(&store).await, vec![finished]);

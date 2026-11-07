@@ -184,6 +184,10 @@ pub enum LibraryError {
     /// store failed.
     #[error(transparent)]
     StorageTransition(bae_transfers::StorageTransitionError),
+    /// A dismissal of a storage setup that ended undone did not commit: the
+    /// operation is no such setup, or the store failed.
+    #[error(transparent)]
+    SetupDismiss(bae_sync_status::SetupDismissError),
     /// Making a release local again failed; coven removed what the call
     /// made, so the release stays in the cloud.
     #[error("make release local: {0}")]
@@ -330,6 +334,7 @@ impl bae_util::task_failure::ReportedBug for LibraryError {
             LibraryError::FileRead { error, .. } => error.reported_bug(),
             LibraryError::MakeLocal(error) => error.reported_bug(),
             LibraryError::StorageTransition(error) => error.reported_bug(),
+            LibraryError::SetupDismiss(error) => error.reported_bug(),
             LibraryError::Deletion(error) => error.reported_bug(),
             LibraryError::ImageWrite(error) => error.reported_bug(),
             LibraryError::Sync(error) | LibraryError::InviteJoining(error) => error.reported_bug(),
@@ -384,6 +389,7 @@ impl LibraryError {
             LibraryError::FileRead { error, .. } => file_read_category(error),
             LibraryError::MakeLocal(error) => device_only_category(error),
             LibraryError::StorageTransition(error) => storage_transition_category(error),
+            LibraryError::SetupDismiss(error) => setup_dismiss_category(error),
             LibraryError::Deletion(error) => deletion_category(error),
             LibraryError::ImageWrite(error) => image_write_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
@@ -486,6 +492,29 @@ impl From<bae_transfers::StorageTransitionError> for LibraryError {
         match error {
             bae_transfers::StorageTransitionError::Database(error) => Self::Database(error),
             error => Self::StorageTransition(error),
+        }
+    }
+}
+
+/// The class a surface words a refused dismissal of an undone storage setup
+/// in: the sync status offers only the setup that ended undone, so another
+/// is bae's own fault.
+fn setup_dismiss_category(
+    error: &bae_sync_status::SetupDismissError,
+) -> bae_diagnostics::UiErrorCategory {
+    use bae_sync_status::SetupDismissError as E;
+    match error {
+        E::Database(error) => bae_diagnostics::database_category(error),
+        E::NotUndone(_) => bae_diagnostics::UiErrorCategory::Internal,
+    }
+}
+
+/// A dismissal that failed in the store is the library's store failure.
+impl From<bae_sync_status::SetupDismissError> for LibraryError {
+    fn from(error: bae_sync_status::SetupDismissError) -> Self {
+        match error {
+            bae_sync_status::SetupDismissError::Database(error) => Self::Database(error),
+            error => Self::SetupDismiss(error),
         }
     }
 }

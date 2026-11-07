@@ -16,7 +16,7 @@ mod storage_setup;
 pub use file_row::FileRow;
 pub use pending::PendingRow;
 pub use start_failure::StartFailureRecordError;
-pub use storage_setup::StorageSetupState;
+pub use storage_setup::{SetupDismissError, StorageSetupState};
 
 /// Sync status's part of the schema: `sync_status.sql`.
 pub(crate) const SCHEMA: bae_store::SchemaPart =

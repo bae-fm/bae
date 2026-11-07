@@ -7,7 +7,7 @@ mod pending_item;
 pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
 mod sync_status;
 pub use sync_status::{
-    pending_action, sync_status_rows_on, FileRow, PendingAction, PendingRow,
+    pending_action, sync_status_rows_on, FileRow, PendingAction, PendingRow, SetupDismissError,
     StartFailureRecordError, StorageSetupState, SyncIndicator, SyncRetryOutcome, SyncStatus,
     SyncStatusRows, SyncStatusSnapshot,
 };

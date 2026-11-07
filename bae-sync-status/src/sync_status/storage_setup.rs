@@ -26,6 +26,29 @@ pub enum StorageSetupState {
     Undone { operation: coven::OperationId, why: UiError },
 }
 
+/// Why the person's dismissal of an undone storage setup was refused.
+#[derive(Debug, thiserror::Error)]
+pub enum SetupDismissError {
+    /// The operation is no storage setup that ended undone: it runs, it
+    /// settled, it was dismissed already, or it is no setup. Nothing was
+    /// acknowledged.
+    #[error("operation {0:?} is no undone storage setup")]
+    NotUndone(coven::OperationId),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+/// A bug the store's write carried back, which the store reported as it
+/// returned; a refusal holds none.
+impl bae_util::task_failure::ReportedBug for SetupDismissError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Database(error) => error.reported_bug(),
+            Self::NotUndone(_) => None,
+        }
+    }
+}
+
 /// How a storage setup's row in `coven_operations` reads.
 #[derive(Debug, Clone, PartialEq)]
 enum SetupRow {
@@ -135,8 +158,9 @@ impl SyncStatus {
     pub async fn acknowledge_undone_storage_setup(
         &self,
         operation: coven::OperationId,
-    ) -> Result<(), DbError> {
-        self.store
+    ) -> Result<(), SetupDismissError> {
+        let acknowledged = self
+            .store
             .call(move |sql| {
                 let outcome = sql
                     .query_row(
@@ -147,13 +171,18 @@ impl SyncStatus {
                     )
                     .optional()?;
                 match outcome.map(SetupRow::of) {
-                    Some(SetupRow::Undone(_)) => Ok(sql.acknowledge_operation(operation)?),
-                    other => Err(DbError::Message(format!(
-                        "operation {operation:?} is no undone storage setup: {other:?}"
-                    ))),
+                    Some(SetupRow::Undone(_)) => {
+                        sql.acknowledge_operation(operation)?;
+                        Ok(true)
+                    }
+                    Some(SetupRow::Running | SetupRow::Settled) | None => Ok(false),
                 }
             })
-            .await
+            .await?;
+        match acknowledged {
+            true => Ok(()),
+            false => Err(SetupDismissError::NotUndone(operation)),
+        }
     }
 
     async fn acknowledge_ended(&self, which: Ended) -> Result<(), DbError> {
