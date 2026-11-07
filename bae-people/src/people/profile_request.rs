@@ -32,6 +32,9 @@ pub(crate) enum ProfileRequestState {
 }
 
 impl ProfileRequest {
+    /// Where the request stands. Making a circle claims a slot, so its
+    /// operation is never satisfied, and only storage setup is cancelled or
+    /// undone: an outcome of those is one no writer stores for it.
     pub(crate) fn state(&self) -> Result<ProfileRequestState, DbError> {
         match &self.outcome {
             None => Ok(ProfileRequestState::Making),
@@ -40,16 +43,14 @@ impl ProfileRequest {
                 Ok(ProfileRequestState::Refused(reason.clone()))
             }
             Some(coven::OperationOutcome::Stopped(stop)) => Ok(ProfileRequestState::Stopped(*stop)),
-            Some(coven::OperationOutcome::Satisfied) => Err(DbError::Message(format!(
-                "making a circle claims a slot, but operation {:?} claimed none",
-                self.operation
-            ))),
-            Some(outcome @ (coven::OperationOutcome::Cancelled | coven::OperationOutcome::Undone(_))) => {
-                Err(DbError::Message(format!(
-                    "only storage setup is cancelled or undone, but making a circle in operation {:?} ended {outcome:?}",
-                    self.operation
-                )))
-            }
+            Some(
+                outcome @ (coven::OperationOutcome::Satisfied
+                | coven::OperationOutcome::Cancelled
+                | coven::OperationOutcome::Undone(_)),
+            ) => Err(DbError::unreadable(
+                "coven_operations.outcome of the profile request's circle",
+                (self.operation, outcome),
+            )),
         }
     }
 }
