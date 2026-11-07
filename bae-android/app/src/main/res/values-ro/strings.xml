@@ -183,6 +183,8 @@
     <string name="download">Descarcă</string>
     <string name="download_remove">Elimină descărcarea</string>
     <string name="download_downloaded">Descărcat</string>
+    <string name="download_copying_here">Se copiază aici</string>
+    <string name="download_stop_keeping_here">Nu mai păstra aici</string>
     <string name="download_waiting">Așteaptă descărcarea</string>
     <string name="download_ahead">%1$d înaintea sa</string>
     <string name="download_waiting_for_network">Așteaptă rețeaua</string>

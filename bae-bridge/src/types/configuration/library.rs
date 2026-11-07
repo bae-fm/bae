@@ -263,6 +263,9 @@ pub enum BridgeStorageRowStatus {
     MakingLocal {
         step: BridgeDownloadEntryStep,
     },
+    /// Coven is downloading the copies its move to the cloud asked to keep
+    /// here; the download queue holds no entry for it.
+    CopyingHere,
     OnOneDevice,
     Pinned,
     InStorage,

@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
@@ -35,8 +34,6 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.displayError
-import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -50,7 +47,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeMessage
-import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
@@ -82,7 +78,7 @@ internal fun ReleaseDownloadControl(
 
 /** Why this device can't play the release, as core's [message] words it. */
 @Composable
-private fun UnplayableLine(message: BridgeMessage) {
+internal fun UnplayableLine(message: BridgeMessage) {
     Text(
         text = LocalContext.current.coreString(message),
         style = ThemeText.detail.style,
@@ -153,7 +149,7 @@ private suspend fun runUnpin(
     }
 
 @Composable
-private fun DownloadControlBody(
+internal fun DownloadControlBody(
     status: BridgeReleaseDownloadStatus,
     releaseId: String,
     downloads: DownloadStore,
@@ -193,6 +189,10 @@ private fun DownloadControlBody(
 
         BridgeReleaseDownloadStatus.Downloaded -> {
             DownloadedControl(unpinning, onRemove)
+        }
+
+        BridgeReleaseDownloadStatus.CopyingHere -> {
+            CopyingHereControl(unpinning, onRemove)
         }
     }
 }
@@ -273,6 +273,32 @@ private fun DownloadedControl(
     }
 }
 
+/**
+ * A release moved to the cloud to be kept here, whose copies coven is still
+ * downloading: the download queue holds no entry for it, so it has no progress
+ * to show. Stopping unpins it, which ends coven's request.
+ */
+@Composable
+private fun CopyingHereControl(
+    unpinning: Boolean,
+    onStop: () -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        WaitingIndicator(size = ThemeIcon.medium)
+        Text(
+            text = stringResource(R.string.download_copying_here),
+            style = ThemeText.detail.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (!unpinning) {
+            DownloadActionButton(stringResource(R.string.download_stop_keeping_here), Icons.Filled.Close, onStop)
+        }
+    }
+}
+
 /** The bordered button every download action uses. */
 @Composable
 private fun DownloadActionButton(
@@ -284,84 +310,5 @@ private fun DownloadActionButton(
         Icon(icon, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
         Spacer(modifier = Modifier.width(ThemeSpace.related))
         Text(text)
-    }
-}
-
-@Composable
-private fun DownloadControlBodyStub(status: BridgeReleaseDownloadStatus) {
-    DownloadControlBody(
-        status = status,
-        releaseId = "rel-1",
-        downloads = PreviewData.downloadStore(),
-        unpinning = false,
-        onDownload = {},
-        onCancel = {},
-        onRetry = {},
-        onRemove = {},
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DownloadControlAvailablePreview() {
-    BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Available)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DownloadControlDownloadingPreview() {
-    BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloading(wait = null))
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DownloadControlQueuedPausedPreview() {
-    BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Queued(ahead = 2u, wait = BridgeQueueWait.PAUSED))
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DownloadControlQueuedOfflinePreview() {
-    BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Queued(ahead = 0u, wait = BridgeQueueWait.OFFLINE))
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DownloadControlDownloadedPreview() {
-    BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloaded)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DownloadControlFailedPreview() {
-    BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Failed("Network unreachable"))
-    }
-}
-
-/** A release on another device names it; the line is core's message, built here as core builds it. */
-@Preview(showBackground = true)
-@Composable
-private fun UnplayableOnAnotherDevicePreview() {
-    BaeTheme {
-        UnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana's Mac"))))
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun UnplayableOnARemovedDevicePreview() {
-    BaeTheme {
-        UnplayableLine(BridgeMessage("core.release.on_removed_device", listOf(BridgeMessageArg("device", "Ana's Mac"))))
     }
 }

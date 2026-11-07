@@ -188,6 +188,8 @@
     <string name="download">Stiahnuť</string>
     <string name="download_remove">Odstrániť stiahnuté</string>
     <string name="download_downloaded">Stiahnuté</string>
+    <string name="download_copying_here">Kopíruje sa sem</string>
+    <string name="download_stop_keeping_here">Prestať uchovávať tu</string>
     <string name="download_waiting">Čaká na stiahnutie</string>
     <string name="download_ahead">%1$d pred ním</string>
     <string name="download_waiting_for_network">Čaká na sieť</string>

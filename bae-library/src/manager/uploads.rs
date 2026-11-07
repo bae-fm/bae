@@ -194,13 +194,9 @@ impl LibraryManager {
     }
 
     async fn cancel_release_uploads(&self, releases: Vec<String>) -> Result<(), LibraryError> {
-        let manager = self.clone();
+        let records = self.records.clone();
         self.run_file_operation("cancel release uploads", move |_closing| async move {
-            let detached = manager.records.cancel_release_uploads(releases).await?;
-            for release in detached {
-                manager.cancel_download(&release).await?;
-            }
-            Ok(())
+            Ok(records.cancel_release_uploads(releases).await?)
         })
         .await
     }

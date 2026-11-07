@@ -40,6 +40,10 @@ pub struct ReleaseSummary {
     /// the release is `transitioning`. The UI renders these and never
     /// re-derives availability.
     pub storage_actions: Vec<ReleaseStorageAction>,
+    /// Whether coven is still copying the release's files to this device
+    /// because it was moved to the cloud to be kept here. Its Unpin then
+    /// reads Stop keeping here.
+    pub keeping_here: bool,
     /// What of the release waits in this device's upload queue; `None` when
     /// nothing does.
     pub upload: Option<ReleaseUpload>,
@@ -74,9 +78,11 @@ impl ReleaseSummary {
                 available_storage_actions(
                     storage_state,
                     &release_playability(&raw.unstored_audio),
+                    raw.keeping_here,
                     ctx.syncs,
                 )
             },
+            keeping_here: raw.keeping_here,
             upload,
             transitioning,
             file_count: raw.file_count,
@@ -259,6 +265,7 @@ impl ReleaseDetail {
                 media: release.pressing.facts.media.clone(),
                 remote,
                 pinned: raw.pinned,
+                keeping_here: raw.keeping_here,
                 upload: raw.upload,
                 download: download.clone(),
                 file_count,
@@ -271,6 +278,7 @@ impl ReleaseDetail {
         let download_status = release_download_status(
             summary.storage_state,
             &summary.storage_actions,
+            summary.keeping_here,
             download.as_ref(),
         );
         let make_local = release_make_local_status(download.as_ref());

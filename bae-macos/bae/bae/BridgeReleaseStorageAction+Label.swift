@@ -14,6 +14,15 @@ extension BridgeReleaseStorageAction {
         }
     }
 
+    /// `label`, except that Unpin of a release coven is still copying files of
+    /// to this Mac reads Stop keeping here: it ends the copying.
+    func label(keepingHere: Bool) -> String {
+        if self == .unpin && keepingHere {
+            return String(localized: "Stop keeping here")
+        }
+        return label
+    }
+
     /// SF Symbol name paired with `label`.
     var systemImage: String {
         switch self {

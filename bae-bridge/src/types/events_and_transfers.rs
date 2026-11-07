@@ -291,6 +291,9 @@ pub enum BridgeReleaseDownloadStatus {
     Failed {
         error: String,
     },
+    /// Coven is downloading the copies its move to the cloud asked to keep
+    /// here; the download queue holds no entry for it.
+    CopyingHere,
     Available,
 }
 
@@ -302,6 +305,7 @@ mirror_enum! {
         Queued { ahead, wait: (opt BridgeQueueWait) },
         Downloading { wait: (opt BridgeQueueWait) },
         Failed { error },
+        CopyingHere,
         Available,
     },
 }

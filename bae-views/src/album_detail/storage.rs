@@ -18,7 +18,8 @@ pub enum StoragePlace {
     /// Files of it wait in this device's upload queue.
     Uploading,
     /// Its files are coming to this device, or into the person's folder:
-    /// this device's download queue holds it, waiting or downloading.
+    /// this device's download queue holds it, waiting or downloading, or coven
+    /// is downloading the copies a move to the cloud asked it to keep here.
     Pinning,
     OnOneDevice,
     /// Uploaded, every file pinned on this device.
@@ -58,6 +59,9 @@ pub enum StorageRowStatus {
     Pinning(DownloadEntryStep),
     /// The download queue holds a make-local of it, waiting or downloading.
     MakingLocal(DownloadEntryStep),
+    /// Coven is downloading the copies of its files that its move to the
+    /// cloud asked to keep here. The download queue holds no entry for it.
+    CopyingHere,
     OnOneDevice,
     Pinned,
     InStorage,
@@ -65,15 +69,17 @@ pub enum StorageRowStatus {
 
 impl StorageRowStatus {
     /// The status of a release at `place` with the download queue entry
-    /// `download` and, when its move failed, the name of the file whose
-    /// original changed. A failed download reads first when both failed. A
-    /// place that names a failure or the download queue without the entry or
-    /// file that puts it there is a row the queue and the listing disagree
-    /// on: the reason it fails.
+    /// `download`, when its move failed the name of the file whose original
+    /// changed, and whether coven is `keeping` copies of its files here. A
+    /// failed download reads first when both failed, and a queue entry reads
+    /// before the copies coven keeps. A place that names a failure or a
+    /// download without the entry, file or copies that put it there is a row
+    /// the queue and the listing disagree on: the reason it fails.
     pub(crate) fn of(
         place: StoragePlace,
         download: Option<DownloadEntry>,
         failed_move_file: Option<String>,
+        keeping: bool,
     ) -> Result<Self, String> {
         Ok(match (place, download, failed_move_file) {
             (
@@ -107,6 +113,7 @@ impl StorageRowStatus {
                     DownloadKind::MakeLocal => Self::MakingLocal(step),
                 }
             }
+            (StoragePlace::Pinning, None, _) if keeping => Self::CopyingHere,
             (StoragePlace::Pinning, ..) => {
                 return Err("the listing says a download waits but the queue holds none".into())
             }

@@ -21,7 +21,8 @@ fn a_running_entry_shows_by_what_it_does() {
         StorageRowStatus::of(
             StoragePlace::Pinning,
             entry(DownloadKind::Pin, DownloadStep::Running { wait: None }),
-            None
+            None,
+            false
         ),
         Ok(StorageRowStatus::Pinning(DownloadEntryStep::Running { wait: None }))
     );
@@ -29,16 +30,17 @@ fn a_running_entry_shows_by_what_it_does() {
         StorageRowStatus::of(
             StoragePlace::Pinning,
             entry(DownloadKind::MakeLocal, DownloadStep::Running { wait: None }),
-            None
+            None,
+            false
         ),
         Ok(StorageRowStatus::MakingLocal(DownloadEntryStep::Running { wait: None }))
     );
     assert_eq!(
-        StorageRowStatus::of(StoragePlace::Uploading, None, None),
+        StorageRowStatus::of(StoragePlace::Uploading, None, None, false),
         Ok(StorageRowStatus::Uploading)
     );
     assert_eq!(
-        StorageRowStatus::of(StoragePlace::InStorage, None, None),
+        StorageRowStatus::of(StoragePlace::InStorage, None, None, false),
         Ok(StorageRowStatus::InStorage)
     );
 }
@@ -49,22 +51,33 @@ fn a_running_entry_shows_by_what_it_does() {
 fn a_download_shows_its_place_in_the_queue_and_its_failure() {
     let waiting = DownloadEntryStep::Queued { ahead: 2, wait: Some(QueueWait::Paused) };
     assert_eq!(
-        StorageRowStatus::of(StoragePlace::Pinning, queued(DownloadKind::Pin, 2), None),
+        StorageRowStatus::of(StoragePlace::Pinning, queued(DownloadKind::Pin, 2), None, false),
         Ok(StorageRowStatus::Pinning(waiting.clone()))
     );
     assert_eq!(
-        StorageRowStatus::of(StoragePlace::Pinning, queued(DownloadKind::MakeLocal, 2), None),
+        StorageRowStatus::of(
+            StoragePlace::Pinning,
+            queued(DownloadKind::MakeLocal, 2),
+            None,
+            false
+        ),
         Ok(StorageRowStatus::MakingLocal(waiting))
     );
     assert_eq!(
-        StorageRowStatus::of(StoragePlace::Failed, failed(DownloadKind::Pin, "offline"), None),
+        StorageRowStatus::of(
+            StoragePlace::Failed,
+            failed(DownloadKind::Pin, "offline"),
+            None,
+            false
+        ),
         Ok(StorageRowStatus::DownloadFailed { error: "offline".to_string() })
     );
     assert_eq!(
         StorageRowStatus::of(
             StoragePlace::Failed,
             failed(DownloadKind::MakeLocal, "disk full"),
-            None
+            None,
+            false
         ),
         Ok(StorageRowStatus::MakeLocalFailed { error: "disk full".to_string() })
     );
@@ -74,11 +87,16 @@ fn a_download_shows_its_place_in_the_queue_and_its_failure() {
 /// listing and the queue disagree on, not one to show.
 #[test]
 fn a_download_place_without_its_entry_is_refused() {
-    assert!(StorageRowStatus::of(StoragePlace::Pinning, None, None).is_err());
-    assert!(StorageRowStatus::of(StoragePlace::Failed, queued(DownloadKind::Pin, 0), None).is_err());
-    assert!(
-        StorageRowStatus::of(StoragePlace::Pinning, failed(DownloadKind::Pin, "x"), None).is_err()
-    );
+    assert!(StorageRowStatus::of(StoragePlace::Pinning, None, None, false).is_err());
+    assert!(StorageRowStatus::of(StoragePlace::Failed, queued(DownloadKind::Pin, 0), None, false)
+        .is_err());
+    assert!(StorageRowStatus::of(
+        StoragePlace::Pinning,
+        failed(DownloadKind::Pin, "x"),
+        None,
+        false
+    )
+    .is_err());
 }
 
 /// A failed move shows the file whose original changed; a failed download
@@ -86,16 +104,38 @@ fn a_download_place_without_its_entry_is_refused() {
 #[test]
 fn a_failed_move_names_the_file_that_changed() {
     assert_eq!(
-        StorageRowStatus::of(StoragePlace::Failed, None, Some("a.flac".to_string())),
+        StorageRowStatus::of(StoragePlace::Failed, None, Some("a.flac".to_string()), false),
         Ok(StorageRowStatus::MoveFailed { file_name: "a.flac".to_string() })
     );
     assert_eq!(
         StorageRowStatus::of(
             StoragePlace::Failed,
             failed(DownloadKind::Pin, "offline"),
-            Some("a.flac".to_string())
+            Some("a.flac".to_string()),
+            false
         ),
         Ok(StorageRowStatus::DownloadFailed { error: "offline".to_string() })
     );
-    assert!(StorageRowStatus::of(StoragePlace::Failed, None, None).is_err());
+    assert!(StorageRowStatus::of(StoragePlace::Failed, None, None, false).is_err());
+}
+
+/// Copies coven keeps here, with no entry in the download queue, read as
+/// Copying here; an entry reads before them, and a download place with
+/// neither is refused.
+#[test]
+fn copies_coven_keeps_read_as_copying_here() {
+    assert_eq!(
+        StorageRowStatus::of(StoragePlace::Pinning, None, None, true),
+        Ok(StorageRowStatus::CopyingHere)
+    );
+    assert_eq!(
+        StorageRowStatus::of(
+            StoragePlace::Pinning,
+            entry(DownloadKind::Pin, DownloadStep::Running { wait: None }),
+            None,
+            true
+        ),
+        Ok(StorageRowStatus::Pinning(DownloadEntryStep::Running { wait: None }))
+    );
+    assert!(StorageRowStatus::of(StoragePlace::Pinning, None, None, false).is_err());
 }

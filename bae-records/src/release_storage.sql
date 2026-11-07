@@ -3,7 +3,9 @@
 -- Where each release's files are on this device: their count and total
 -- size; `stored`, 1 when it has files and every one names a coven file
 -- `coven_files` records as stored; `pinned_count`, how many of them coven's
--- `coven_pins` lists as kept whole on this device; and `queued_count` and
+-- `coven_pins` lists as kept whole on this device; `keeping_count`, how many
+-- of them coven's `coven_pin_requests` lists, a request to keep the file whole
+-- here that coven has not yet made; and `queued_count` and
 -- `first_queued_position`, how many of them coven's `coven_upload_queue`
 -- lists and the place of the first (NULL with none); and `move_failed`, 1
 -- while coven's `coven_moves` lists a file of it in a failed move. One row per release,
@@ -16,6 +18,7 @@ CREATE TABLE IF NOT EXISTS release_storage (
     total_size INTEGER NOT NULL,
     stored INTEGER NOT NULL,
     pinned_count INTEGER NOT NULL,
+    keeping_count INTEGER NOT NULL,
     queued_count INTEGER NOT NULL,
     first_queued_position INTEGER,
     move_failed INTEGER NOT NULL CHECK (move_failed IN (0, 1)),
@@ -35,8 +38,8 @@ CREATE VIEW IF NOT EXISTS release_storage_refresh AS SELECT NULL AS release_id W
 CREATE TRIGGER IF NOT EXISTS release_storage_refresh INSTEAD OF INSERT ON release_storage_refresh
 BEGIN
     INSERT INTO release_storage (
-        release_id, file_count, total_size, stored, pinned_count, queued_count,
-        first_queued_position, move_failed)
+        release_id, file_count, total_size, stored, pinned_count, keeping_count,
+        queued_count, first_queued_position, move_failed)
     SELECT r.id,
            (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r.id),
            (SELECT COALESCE(SUM(coven.size), 0) FROM release_files f
@@ -48,6 +51,9 @@ BEGIN
                              WHERE f.release_id = r.id AND coven.hash IS NULL),
            (SELECT COUNT(*) FROM release_files f
             JOIN coven_pins pin ON pin.file = f.file
+            WHERE f.release_id = r.id),
+           (SELECT COUNT(*) FROM release_files f
+            JOIN coven_pin_requests request ON request.file = f.file
             WHERE f.release_id = r.id),
            (SELECT COUNT(*) FROM release_files f
             JOIN coven_upload_queue queued ON queued.file = f.file
@@ -65,6 +71,7 @@ BEGIN
         total_size = excluded.total_size,
         stored = excluded.stored,
         pinned_count = excluded.pinned_count,
+        keeping_count = excluded.keeping_count,
         queued_count = excluded.queued_count,
         first_queued_position = excluded.first_queued_position,
         move_failed = excluded.move_failed;
@@ -75,9 +82,9 @@ END;
 CREATE TRIGGER IF NOT EXISTS release_storage_release_added AFTER INSERT ON releases
 BEGIN
     INSERT INTO release_storage (
-        release_id, file_count, total_size, stored, pinned_count, queued_count,
-        first_queued_position, move_failed)
-    VALUES (NEW.id, 0, 0, 0, 0, 0, NULL, 0);
+        release_id, file_count, total_size, stored, pinned_count, keeping_count,
+        queued_count, first_queued_position, move_failed)
+    VALUES (NEW.id, 0, 0, 0, 0, 0, 0, NULL, 0);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_storage_file_added AFTER INSERT ON release_files
@@ -132,6 +139,23 @@ END;
 CREATE TRIGGER IF NOT EXISTS release_storage_file_unpinned AFTER DELETE ON coven_pins
 BEGIN
     UPDATE release_storage SET pinned_count = pinned_count - 1
+    WHERE release_id = (SELECT release_id FROM release_files WHERE file = OLD.file);
+END;
+
+-- A release file's request to be kept here moves its release's keeping count,
+-- in the transaction that changes the request: the write switching the file to
+-- the cloud with a copy kept here records it, and coven's own write making the
+-- pin, the app's unpin, or the file leaving ends it. A file no release file
+-- names moves nothing.
+CREATE TRIGGER IF NOT EXISTS release_storage_keep_requested AFTER INSERT ON coven_pin_requests
+BEGIN
+    UPDATE release_storage SET keeping_count = keeping_count + 1
+    WHERE release_id = (SELECT release_id FROM release_files WHERE file = NEW.file);
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_storage_keep_ended AFTER DELETE ON coven_pin_requests
+BEGIN
+    UPDATE release_storage SET keeping_count = keeping_count - 1
     WHERE release_id = (SELECT release_id FROM release_files WHERE file = OLD.file);
 END;
 

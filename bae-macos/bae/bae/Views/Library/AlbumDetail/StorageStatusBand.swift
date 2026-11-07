@@ -123,7 +123,8 @@ struct StorageStatusBand: View {
 
     /// Where the release stands in the download queue: waiting, with the
     /// entries ahead of it and what holds the queue back, held back while it
-    /// downloads, or failed with its error.
+    /// downloads, or failed with its error; or, with no entry, being copied
+    /// here by coven.
     @ViewBuilder
     private func downloadLine(_ status: BridgeReleaseDownloadStatus)
         -> some View
@@ -147,6 +148,8 @@ struct StorageStatusBand: View {
                 StatusChip("Download failed", tone: .danger)
                 ErrorText(error)
             }
+        case .copyingHere:
+            StatusChip("Copying here", tone: .activity)
         case .downloaded, .available:
             EmptyView()
         }
@@ -175,7 +178,12 @@ struct StorageStatusBand: View {
         Group {
             ForEach(release.storageActions, id: \.self) { action in
                 Button(action: { onAction(action) }) {
-                    Label(action.label, systemImage: action.systemImage)
+                    Label(
+                        action.label(
+                            keepingHere: release.summary.keepingHere
+                        ),
+                        systemImage: action.systemImage
+                    )
                 }
             }
             // Export and Save As change no state, so every release offers them.
@@ -252,6 +260,27 @@ struct StorageStatusBand: View {
             storageActions: [.pin, .detachAudio],
             playability: .playable
         )
+        .preferredColorScheme(.dark)
+    }
+
+    // Moved to the cloud to be kept here, its copies still downloading: can
+    // stop keeping it or pull it back local.
+    #Preview("Storage Band — Copying Here") {
+        StorageStatusBand(
+            release: PreviewData.storageRelease(
+                storageState: .inStorage(pinned: false),
+                storageActions: [.unpin, .detachAudio],
+                keepingHere: true,
+                playability: .playable
+            ),
+            onAction: { _ in },
+            onExport: {},
+            onSaveAs: {}
+        )
+        .frame(width: 560)
+        .background(Theme.background)
+        .environment(OutboxStore(uploadsPaused: false))
+        .environment(PreviewData.downloadStore())
         .preferredColorScheme(.dark)
     }
 

@@ -20,14 +20,9 @@ impl Records {
     /// the cloud, in one write: every file stays on this device only, as it
     /// was before, and plays from its original here. Nothing was switched,
     /// so no row changes. A release with no move to cancel is passed over.
-    /// Returns the releases whose moves it cancelled.
-    pub async fn cancel_release_uploads(
-        &self,
-        releases: Vec<String>,
-    ) -> Result<Vec<String>, DbError> {
+    pub async fn cancel_release_uploads(&self, releases: Vec<String>) -> Result<(), DbError> {
         self.store
             .call_sql(move |sql| {
-                let mut cancelled = Vec::with_capacity(releases.len());
                 for release in releases {
                     let moves: Vec<coven::MoveId> =
                         sql.query(RELEASE_MOVES, [&release], |row| row.get(0))?;
@@ -38,9 +33,8 @@ impl Records {
                     for id in moves {
                         sql.cancel_move(id)?;
                     }
-                    cancelled.push(release);
                 }
-                Ok(cancelled)
+                Ok(())
             })
             .await
     }

@@ -105,6 +105,7 @@ struct CoverPickerTests {
             pressingDetails: bridgePressingDetails(facts: facts),
             storageState: .inStorage(pinned: false),
             storageActions: [],
+            keepingHere: false,
             upload: nil,
             transitioning: false,
             tracks: [],

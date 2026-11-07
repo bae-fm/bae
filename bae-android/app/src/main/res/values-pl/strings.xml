@@ -183,6 +183,8 @@
     <string name="download">Pobierz</string>
     <string name="download_remove">Usuń pobrane</string>
     <string name="download_downloaded">Pobrano</string>
+    <string name="download_copying_here">Kopiowanie tutaj</string>
+    <string name="download_stop_keeping_here">Przestań przechowywać tutaj</string>
     <string name="download_waiting">Oczekuje na pobranie</string>
     <string name="download_ahead">Przed nim: %1$d</string>
     <string name="download_waiting_for_network">Czeka na sieć</string>

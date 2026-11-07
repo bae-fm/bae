@@ -171,6 +171,8 @@
     <string name="download">下載</string>
     <string name="download_remove">移除下載</string>
     <string name="download_downloaded">已下載</string>
+    <string name="download_copying_here">正在複製到此處</string>
+    <string name="download_stop_keeping_here">不再保留在此處</string>
     <string name="download_waiting">等待下載</string>
     <string name="download_ahead">前面還有 %1$d 項</string>
     <string name="download_waiting_for_network">等待網路</string>

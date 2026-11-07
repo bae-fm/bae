@@ -119,6 +119,7 @@ impl BridgeRelease {
             media_terms,
             storage_state,
             storage_actions,
+            keeping_here,
             upload,
             transitioning,
             file_count,
@@ -143,6 +144,7 @@ impl BridgeRelease {
             facts,
             storage_state,
             storage_actions,
+            keeping_here,
             upload,
             transitioning,
             total_duration: bae_util::duration::DurationUnits::from_millis(total_duration_ms)
@@ -247,6 +249,7 @@ mirror_enum! {
         Uploading,
         Pinning(step: (crate::types::BridgeDownloadEntryStep)),
         MakingLocal(step: (crate::types::BridgeDownloadEntryStep)),
+        CopyingHere,
         OnOneDevice,
         Pinned,
         InStorage,
@@ -263,6 +266,7 @@ impl BridgeReleaseSummary {
             media,
             storage_state,
             storage_actions,
+            keeping_here,
             upload,
             transitioning,
             file_count,
@@ -281,6 +285,7 @@ impl BridgeReleaseSummary {
                 .into_iter()
                 .map(crate::types::BridgeReleaseStorageAction::from_core)
                 .collect(),
+            keeping_here,
             upload: upload.map(crate::types::BridgeReleaseUpload::from_core),
             transitioning,
             file_count,

@@ -447,7 +447,7 @@ task_types = [
     "BridgeCatalogApply",
     "AbortOnDrop",
     # A guard that stops one save or one setup call's work when its call is
-    # dropped, one saved image's track, and one pin or detach transfer.
+    # dropped, one saved image's track, and one pin's transfer.
     "CancelSaveOnDrop",
     "CancelSetupOnDrop",
     "ImageTrack",

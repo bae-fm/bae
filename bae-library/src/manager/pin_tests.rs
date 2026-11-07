@@ -651,8 +651,8 @@ async fn a_kept_release_is_pinned_once_its_copy_lands() {
     );
 }
 
-/// A release whose kept copies haven't landed sorts with the releases in the
-/// cloud only, and as pinned once they land.
+/// A release whose kept copies haven't landed sorts with the releases being
+/// pinned, ahead of those in the cloud only, and as pinned once they land.
 #[tokio::test]
 async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     let (test, temp_dir) = setup_test_manager().await;
@@ -688,8 +688,8 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     assert_eq!(
         by_storage().await,
         [
+            (waiting.id.clone(), StorageRowStatus::CopyingHere),
             (cloud.clone(), StorageRowStatus::InStorage),
-            (waiting.id.clone(), StorageRowStatus::InStorage),
         ]
     );
 
@@ -707,4 +707,69 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
         rows.files.iter().all(|file| file.pin == Some(bae_views::album_detail::FilePin::Kept))
     })
     .await;
+}
+
+/// A release moved to the cloud to be kept here reads Copying here while
+/// coven's request to keep its files is open, and Stop keeping here, the
+/// release's unpin, ends the request in its write, so coven does not pin the
+/// file when its copy can be fetched.
+#[tokio::test]
+async fn stop_keeping_here_ends_the_request_a_release_reads_copying_here_for() {
+    use bae_views::album_detail::StorageRowStatus;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let home = connect_test_cloud(&test).await;
+    let release =
+        release_kept_here_waiting_for_its_copy(&test, &temp_dir.path().join("kept"), "Album Title")
+            .await;
+    let requests = || async {
+        manager.store.query_texts_for_test("SELECT file FROM coven_pin_requests").await.unwrap()
+    };
+    let row_status = || async {
+        bae_views::LibraryViews::new(manager.store.clone())
+            .get_storage_page(
+                &bae_views::StorageSortCriterion {
+                    field: bae_views::StorageSortField::Storage,
+                    direction: bae_store::SortDirection::Ascending,
+                },
+                bae_views::StorageFilter::All,
+                0,
+                100,
+            )
+            .await
+            .unwrap()
+            .rows
+            .into_iter()
+            .find(|row| row.release.id == release.id)
+            .map(|row| row.status)
+    };
+
+    assert_eq!(requests().await.len(), 1, "coven's request to keep the file is open");
+    assert_eq!(row_status().await, Some(StorageRowStatus::CopyingHere));
+    let summary = views(manager).find_release_detail(&release.id).await.unwrap().unwrap().summary;
+    assert!(summary.keeping_here);
+    assert_eq!(
+        summary.storage_actions,
+        [ReleaseStorageAction::Unpin, ReleaseStorageAction::DetachAudio]
+    );
+
+    manager.unpin_releases(std::slice::from_ref(&release.id)).await.unwrap();
+
+    assert!(requests().await.is_empty(), "the unpin ends coven's request");
+    assert_eq!(row_status().await, Some(StorageRowStatus::InStorage));
+    let detail = views(manager).find_release_detail(&release.id).await.unwrap().unwrap();
+    assert!(!detail.summary.keeping_here);
+    assert_eq!(
+        detail.summary.storage_actions,
+        [ReleaseStorageAction::Pin, ReleaseStorageAction::DetachAudio]
+    );
+
+    // Coven could now fetch the copy, and has no request to make a pin for.
+    home.set_faults(coven::Faults::none()).await;
+    let refs = release_file_refs(manager, &release.id).await;
+    assert_eq!(
+        manager.store.files_pinned(&[refs[0].id()]).await.unwrap(),
+        [Some(false)],
+        "the file stays unpinned"
+    );
 }

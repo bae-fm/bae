@@ -1889,7 +1889,13 @@ this device only and none is moving already; a release made local again
 (§4.4) moves like one imported here. The stored Pinned choice (Appendix C)
 asks coven to keep each file whole on this device once the move finishes:
 coven pins it itself and downloads its copy from storage, never reading the
-original for the cache, and retries a failed download by itself.
+original for the cache, and retries a failed download by itself. Until each
+file is pinned, coven lists a request to keep it in `coven_pin_requests`,
+which the release's storage row counts, so the release reads Copying here
+rather than In storage while the download queue holds nothing of it; its
+action is Stop keeping here, the release's unpin, which ends coven's
+requests in its own write so coven does not pin the files when their copies
+can be fetched.
 
 If an original goes missing before its upload, the move waits for it, the
 pending list and the release's row naming the file. If one changed, its upload stops before a
@@ -2023,7 +2029,10 @@ queue is paused or Waiting for network while the device has none (the network
 first, since it makes the pause moot); making local, either queued, with the entries ahead of it and what holds the
 queue back, as a pin is, or filled as far as its copies have downloaded
 (§4.4), or Couldn't make local with its error, in the first place with
-Download failed; Local, Pinned or In storage at rest. No rate shows beside it.
+Download failed; Copying here while coven downloads the copies a move to the
+cloud asked to keep here, in the place of Pinning, unless the download queue
+holds an entry for the release, which the row shows instead; Local, Pinned or
+In storage at rest. No rate shows beside it.
 A move fails when a file's original changed before its upload
 (coven lists the failed move's files in `coven_moves` until it is cancelled,
 and its pending record names the original, §6.4); the release stays on this
@@ -2103,7 +2112,8 @@ the encrypted object's. A file counts its share until the watch says how its
 download ended, and its whole size after only if the download finished, so the
 bytes never go back as a file lands; a download that failed, was held or was
 dropped counts none of its file. Its rate is what it has moved since it began over the time since. Unpinning moves the files into the
-cache, still readable, now evictable; unpinning a selection is one write for
+cache, still readable, now evictable, and ends any request coven still holds to
+keep them here ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)); unpinning a selection is one write for
 all its releases, and one that can't unpin is named while the rest unpin.
 
 Asking to pin several releases queues, in the order asked and in one write,
@@ -4830,7 +4840,7 @@ Beside them, device-local tables:
 | Table | One row per |
 |---|---|
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
-| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, and whether coven lists a file of it in a failed move, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2) |
+| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many coven still has a request to keep here, how many wait in this device's upload queue and the place of the first, and whether coven lists a file of it in a failed move, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2) |
 
 What the library lists, bae-views' part, kept by its triggers:
 
@@ -4844,7 +4854,7 @@ What the library lists, bae-views' part, kept by its triggers:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning, local, pinned, in storage only |
+| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned, requested to be kept here and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning (a download in the queue, or copies coven keeps here of a release not wholly pinned), local, pinned, in storage only |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
