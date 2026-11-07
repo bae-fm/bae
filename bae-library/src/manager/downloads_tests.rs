@@ -157,6 +157,38 @@ async fn download_queue_failed_pin_retries() {
     assert!(download_queue_now(manager).await.rows.is_empty(), "cancel removes the entry");
 }
 
+/// The download queue takes no entry while the device has no usable network,
+/// and goes on when the network returns.
+#[tokio::test]
+async fn a_pin_waits_while_the_network_is_down() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    let release_id =
+        uploaded_release(manager, &temp_dir.path().join("offline-pin"), "Offline Pin", false).await;
+    for file in release_files(manager, &release_id).await {
+        manager.evict_file_for_test(file.file).await.unwrap();
+    }
+    manager.start().unwrap();
+
+    test.installation.lose_network();
+    manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
+    // The worker has had every chance to take the entry.
+    for _ in 0..200 {
+        tokio::task::yield_now().await;
+    }
+    let queue = download_queue_now(manager).await;
+    assert_eq!(
+        queue.rows.iter().map(|row| &row.op.state).collect::<Vec<_>>(),
+        vec![&bae_transfers::DownloadPhase::Queued],
+        "the entry waits for the network"
+    );
+
+    test.installation.join_network(false);
+    wait_for_kept_release(manager, &release_id).await;
+    download_queue_until(manager, |queue| queue.rows.is_empty()).await;
+}
+
 /// Pinning a release whose download failed queues that entry again, in its
 /// place ahead of one queued after it, with its error gone.
 #[tokio::test]

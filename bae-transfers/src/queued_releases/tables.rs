@@ -37,6 +37,9 @@ pub trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
     const TABLE: &'static str;
     /// The payload's columns, in the order [`Self::values`] gives them.
     const COLUMNS: &'static [&'static str];
+    /// Whether the queue's entries need the network, so the worker takes none
+    /// while coven says the device has none.
+    const NEEDS_NETWORK: bool;
     /// Only the queues desktop fills by entry read it.
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError>;
@@ -49,6 +52,7 @@ impl QueuedPayload for () {
     const QUEUE: &'static str = "download";
     const TABLE: &'static str = "download_queue";
     const COLUMNS: &'static [&'static str] = &[];
+    const NEEDS_NETWORK: bool = true;
 
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError> {
@@ -66,6 +70,7 @@ impl QueuedPayload for OutputRequest {
     const QUEUE: &'static str = "output";
     const TABLE: &'static str = "output_queue";
     const COLUMNS: &'static [&'static str] = &["target_dir", "kind", "preset"];
+    const NEEDS_NETWORK: bool = false;
 
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError> {
@@ -380,9 +385,12 @@ pub(crate) fn release_queued_on<P: QueuedPayload>(
     )?)
 }
 
-/// The entry the worker takes next, unless the queue is paused: the active
+/// The entry the worker takes next, unless the queue is paused or, for a
+/// queue that needs the network, coven says the device has none: the active
 /// entry if there is one, else the first queued. An active entry is one the
-/// worker took and has not ended, so after a restart it is taken first.
+/// worker took and has not ended, so after a restart it is taken first. A
+/// network coven cannot tell about (`usable` is NULL, as on a platform with no
+/// network watch) does not hold the queue.
 pub(crate) fn next_queued_release_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<Option<ReleaseQueueEntry<P>>, DbError> {
@@ -391,12 +399,13 @@ pub(crate) fn next_queued_release_on<P: QueuedPayload>(
             &format!(
                 "SELECT {columns} FROM {table} \
                  WHERE state IN ('active', 'queued') \
-                   AND NOT (SELECT paused FROM release_queues WHERE queue = ?) \
+                   AND NOT (SELECT paused FROM release_queues WHERE queue = ?1) \
+                   AND (NOT ?2 OR (SELECT usable FROM coven_network) IS NOT 0) \
                  ORDER BY state = 'active' DESC, position LIMIT 1",
                 columns = entry_columns::<P>(""),
                 table = P::TABLE,
             ),
-            [P::QUEUE],
+            params![P::QUEUE, P::NEEDS_NETWORK],
             entry_from_row::<P>,
         )
         .optional()?)

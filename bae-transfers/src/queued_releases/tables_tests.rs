@@ -111,7 +111,8 @@ async fn a_queued_release_is_a_row_in_the_order_queued() {
     assert_eq!(next_queued_release::<()>(&db).await.unwrap(), Some(download(RELEASE_A)));
 }
 
-/// The worker's moves: the first queued entry starts, one at a time; a
+/// The worker's moves: the first queued entry starts, and an active one
+/// before any queued; a
 /// failure stays listed with its error until retried; a finished entry
 /// leaves. A move on an entry no longer there says so.
 #[tokio::test]
@@ -121,10 +122,14 @@ async fn an_entry_starts_fails_retries_and_finishes() {
 
     assert!(activate_queued_release::<()>(&db, RELEASE_A).await.unwrap());
     assert!(
-        !activate_queued_release::<()>(&db, RELEASE_A).await.unwrap(),
-        "an active entry does not start again"
+        activate_queued_release::<()>(&db, RELEASE_A).await.unwrap(),
+        "an active entry starts again, as it does after a restart"
     );
-    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), Some(download(RELEASE_B)));
+    assert_eq!(
+        next_queued_release::<()>(&db).await.unwrap(),
+        Some(download(RELEASE_A)),
+        "the active entry is taken before the queued one"
+    );
     assert!(fail_queued_release::<()>(&db, RELEASE_A, "the cloud refused".to_string())
         .await
         .unwrap());

@@ -38,6 +38,41 @@ impl<Fut> RunningOp<Fut> {
     }
 }
 
+/// Coven's word on whether the device has a usable network, followed for a
+/// queue whose entries need one. It wakes the worker parked on a queue it
+/// holds back; a queue that does not need the network never wakes on it.
+struct NetworkWatch {
+    usable: Option<coven::LiveQuery<Option<bool>, DbError>>,
+}
+
+impl NetworkWatch {
+    /// Follow `coven_network` if `Extra`'s queue needs the network, having
+    /// read its value now, since the worker reads the queue itself next.
+    async fn start<Extra: QueuedPayload>(store: &Store) -> Self {
+        if !Extra::NEEDS_NETWORK {
+            return Self { usable: None };
+        }
+        let mut usable = store.subscribe(|sql| {
+            Ok(sql.query_row("SELECT usable FROM coven_network", [], |row| row.get(0))?)
+        });
+        // The first result is the value as it stands.
+        let followed = usable.next().await.is_some();
+        Self { usable: followed.then_some(usable) }
+    }
+
+    /// Resolves when the network's usability changed; never when the queue
+    /// does not need the network, or once the store has closed.
+    async fn changed(&mut self) {
+        let Some(usable) = &mut self.usable else {
+            return std::future::pending().await;
+        };
+        if usable.next().await.is_none() {
+            self.usable = None;
+            std::future::pending::<()>().await;
+        }
+    }
+}
+
 /// The task running the active entry. It is registered before the entry
 /// starts in the table and dropped only after the entry has left `active`
 /// there, so an entry the table reads as active always has one, with its
@@ -357,6 +392,7 @@ where
             }
         };
         let store = &self.store;
+        let mut network = NetworkWatch::start::<Extra>(store).await;
         loop {
             let entry = match store.read(|sql| tables::next_queued_release_on::<Extra>(&sql)).await
             {
@@ -364,7 +400,13 @@ where
                 Ok(None) => {
                     #[cfg(test)]
                     self.shared.parks.send_modify(|parks| *parks += 1);
-                    self.shared.wake.notified().await;
+                    // Woken by a change to the queue, or, for a queue that
+                    // needs the network, by the network's change: the entry
+                    // it left waiting may be takeable now.
+                    tokio::select! {
+                        () = self.shared.wake.notified() => {}
+                        () = network.changed() => {}
+                    }
                     continue;
                 }
                 Err(error) => {

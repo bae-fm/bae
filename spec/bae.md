@@ -2062,7 +2062,9 @@ cancelled and retried. Pausing stops the download that is running at once
 rather than after its file, and its release stays queued in its place; resuming
 starts it again from the beginning, since a stopped download does not yet
 continue from the bytes it fetched, and its files' pins are put back as they
-were, as a cancel's are. A pin that fails stays in the queue with its error,
+were, as a cancel's are. The queue takes no entry while the device has no
+usable network, as coven's network watch says, and goes on when it returns; a
+platform that cannot tell holds nothing back. A pin that fails stays in the queue with its error,
 its files' pins put back as they were; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. Retrying
 queues every failed pin again, each in its place, so a release's own
