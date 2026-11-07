@@ -204,13 +204,26 @@ impl Store {
         directory: &Path,
         clock: ClockRef,
     ) -> Result<Self, DbError> {
+        Self::new_test_reporting_to(schema, directory, clock, coven::task::HeardBugs::shared())
+            .await
+    }
+
+    /// [`Self::new_test`], reporting each bug a call carries back to `bugs`,
+    /// where a test of a bug takes it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn new_test_reporting_to(
+        schema: crate::Schema,
+        directory: &Path,
+        clock: ClockRef,
+        bugs: BugSinkRef,
+    ) -> Result<Self, DbError> {
         let installation =
             coven::Coven::in_memory(bae_app_dir::AppDir::at(directory)?.coven_app_dir());
         let handle = crate::configure_store(installation.builder(), schema)
             .clock(clock.clone())
             .create_store("Test Library")
             .await?;
-        Ok(Self::new(handle, clock, coven::task::HeardBugs::shared()))
+        Ok(Self::new(handle, clock, bugs))
     }
 }
 

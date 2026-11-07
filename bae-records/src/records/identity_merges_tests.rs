@@ -1,6 +1,6 @@
 use super::*;
 use crate::test_fixtures::labels::{add_label, label, library, placed, read_labels, stored_label};
-use bae_store::test_fixtures::{empty_db, fixed_now, row_count};
+use bae_store::test_fixtures::{empty_db, fixed_now, row_count, temp_db_hearing_bugs};
 
 const AT: &str = "2026-01-15T12:00:00+00:00";
 
@@ -238,17 +238,30 @@ async fn a_merge_chain_ending_at_the_absorbed_artist_ends_at_the_survivor() {
     assert_eq!(merges(&db, "artist_merges").await, expected);
 }
 
+/// The one bug `heard` was reported, which `failed` carries back from the
+/// panic that failed its write: its message.
+fn reported_bug(heard: &coven::task::HeardBugs, failed: &DbError) -> String {
+    let reported = heard.take();
+    assert_eq!(reported.len(), 1, "{reported:?}");
+    assert_eq!(coven::task::CarriesBug::bug(failed), Some(&reported[0]));
+    reported[0].message.clone()
+}
+
+/// A merge's survivor is an artist its write just read, and no write deletes
+/// an artist, so a merge naming no artist is a bug of the code that built
+/// it: the write fails with that bug and records no merge.
 #[tokio::test]
-async fn an_artist_merge_into_a_missing_survivor_is_refused() {
-    let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
+async fn an_artist_merge_into_a_missing_survivor_is_a_bug() {
+    let (db, _tmp, heard) = temp_db_hearing_bugs(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
     let absorbed = artist("absorbed", None, Some("mb-1"));
     records.insert_artist(&absorbed).await.unwrap();
     let missing = bae_util::test_ids::test_uuid("missing");
 
-    let refused = merge_artist(&db, &missing, &absorbed.id, None).await.unwrap_err();
+    let failed = merge_artist(&db, &missing, &absorbed.id, None).await.unwrap_err();
 
-    assert!(refused.to_string().contains("expected exactly one"), "{refused}");
+    let bug = reported_bug(&heard, &failed);
+    assert!(bug.contains("exactly its surviving artist"), "{bug}");
     assert_eq!(row_count(&db, "artist_merges").await, 0);
 }
 
@@ -318,13 +331,16 @@ async fn a_label_merge_chain_ending_at_the_absorbed_label_ends_at_the_survivor()
     assert_eq!(merges(&db, "label_merges").await, expected);
 }
 
+/// A merge's survivor is a label its write just read, and no write deletes a
+/// label, so a merge naming no label is a bug of the code that built it.
 #[tokio::test]
-async fn a_label_merge_into_a_missing_survivor_is_refused() {
-    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
+async fn a_label_merge_into_a_missing_survivor_is_a_bug() {
+    let (db, _tmp, heard) = temp_db_hearing_bugs(crate::test_fixtures::TEST_SCHEMA).await;
     let by_musicbrainz = add_label(&db, "Label Name", Some("mb-label"), None).await;
 
-    let refused = merge_label(&db, "missing", &by_musicbrainz).await.unwrap_err();
+    let failed = merge_label(&db, "missing", &by_musicbrainz).await.unwrap_err();
 
-    assert!(refused.to_string().contains("expected exactly one"), "{refused}");
+    let bug = reported_bug(&heard, &failed);
+    assert!(bug.contains("exactly its surviving label"), "{bug}");
     assert_eq!(row_count(&db, "label_merges").await, 0);
 }

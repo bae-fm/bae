@@ -11,6 +11,24 @@ pub async fn temp_db(schema: crate::Schema) -> (crate::Store, tempfile::TempDir)
     (db, tmp)
 }
 
+/// `temp_db`, with the bugs its calls carry back heard by the sink it returns,
+/// for a test that takes them.
+pub async fn temp_db_hearing_bugs(
+    schema: crate::Schema,
+) -> (crate::Store, tempfile::TempDir, std::sync::Arc<coven::task::HeardBugs>) {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let heard = coven::task::HeardBugs::shared();
+    let db = crate::Store::new_test_reporting_to(
+        schema,
+        tmp.path(),
+        std::sync::Arc::new(coven::SystemClock),
+        heard.clone(),
+    )
+    .await
+    .unwrap();
+    (db, tmp, heard)
+}
+
 /// The instant the import fixtures pin their clock to.
 pub fn fixed_now() -> chrono::DateTime<chrono::Utc> {
     chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
