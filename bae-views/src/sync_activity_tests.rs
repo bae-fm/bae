@@ -165,14 +165,14 @@ fn a_blocked_slot_or_failed_operation_shows_once_as_its_record() {
     let mut blocked = status();
     blocked.coven.state = named(
         coven::LastPass::Blocked {
-            slot: coven::Slot(3),
+            slot: coven::Slot::new(3).unwrap(),
             reason: reason.clone(),
             error: Some(ANSWERED_S3.into()),
         },
         coven::SyncState::Failed,
     );
     blocked.pending = pending(coven::PendingRecord::new(
-        coven::PendingSubject::Slot(coven::Slot(3)),
+        coven::PendingSubject::Slot(coven::Slot::new(3).unwrap()),
         reason.clone(),
     ));
     assert_eq!(activity(&blocked).failure, None);

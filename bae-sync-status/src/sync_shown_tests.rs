@@ -218,7 +218,7 @@ fn sync_failed_says_why_and_offers_retry_now() {
         SyncCauseLine::FileMissingOrChanged { file: None }
     );
     assert_eq!(
-        cause(coven::PendingReason::Failed(coven::LocalFailure::Disk)),
+        cause(coven::PendingReason::Failed(coven::LocalFailure::DiskOther)),
         SyncCauseLine::DeviceDiskFailed
     );
     assert_eq!(

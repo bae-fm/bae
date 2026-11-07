@@ -158,7 +158,13 @@ fn local_failure_category(failure: coven::LocalFailure) -> C {
         // A runtime shutting down dropped the work; the next process runs
         // it again. A bug in coven, retried under backoff, is nothing the
         // person can change but report.
-        F::Disk | F::Crypto | F::Operation | F::Shutdown | F::Bug => C::Internal,
+        F::DiskFull
+        | F::DiskDenied
+        | F::DiskOther
+        | F::Crypto
+        | F::Operation
+        | F::Shutdown
+        | F::Bug => C::Internal,
     }
 }
 

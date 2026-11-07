@@ -51,22 +51,24 @@ fn refusal_is_a_bug(error: &bae_store::DbError) -> bool {
         E::Io(_) | E::FileRead(_) => false,
         E::Rollback { operation, .. } => refusal_is_a_bug(operation),
         E::FileCleanup { write, .. } => refusal_is_a_bug(write),
-        E::Sqlite(error) => !sqlite_is_the_disk(error),
+        E::Sqlite(error) => !coven::sqlite_error_is_disk(error),
         E::Coven(error) => match error.as_ref() {
             coven::CovenError::Rollback { .. } | coven::CovenError::Shutdown(_) => false,
-            coven::CovenError::Database(error) => match error {
-                coven::DbError::StoreClosed
-                | coven::DbError::Shutdown(_)
-                | coven::DbError::RollbackFailed
-                | coven::DbError::StoreFailed(_)
-                | coven::DbError::StatePersistence(_)
-                | coven::DbError::CheckpointFailed(_)
-                | coven::DbError::StatisticsFailed(_)
-                | coven::DbError::WallTimer(_)
-                | coven::DbError::DamagedDatabase => false,
-                coven::DbError::Sqlite(error) => !sqlite_is_the_disk(error),
-                _ => true,
-            },
+            coven::CovenError::Database(error) => {
+                !(error.is_disk()
+                    || matches!(
+                        error,
+                        coven::DbError::StoreClosed
+                            | coven::DbError::Shutdown(_)
+                            | coven::DbError::RollbackFailed
+                            | coven::DbError::StoreFailed(_)
+                            | coven::DbError::StatePersistence(_)
+                            | coven::DbError::CheckpointFailed(_)
+                            | coven::DbError::StatisticsFailed(_)
+                            | coven::DbError::WallTimer(_)
+                            | coven::DbError::DamagedDatabase
+                    ))
+            }
             _ => true,
         },
         E::Creation(_)
@@ -77,22 +79,6 @@ fn refusal_is_a_bug(error: &bae_store::DbError) -> bool {
         | E::EntryCancelled { .. }
         | E::StoredPath(_) => true,
     }
-}
-
-/// Whether SQLite failed because of the disk under it: full, failing, gone
-/// read-only, or damaged.
-fn sqlite_is_the_disk(error: &rusqlite::Error) -> bool {
-    matches!(
-        error.sqlite_error_code(),
-        Some(
-            rusqlite::ErrorCode::DiskFull
-                | rusqlite::ErrorCode::SystemIoFailure
-                | rusqlite::ErrorCode::CannotOpen
-                | rusqlite::ErrorCode::ReadOnly
-                | rusqlite::ErrorCode::DatabaseCorrupt
-                | rusqlite::ErrorCode::NotADatabase
-        )
-    )
 }
 
 /// Start `walk` on the blocking pool. A pass that stops waiting for it, on

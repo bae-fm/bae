@@ -321,7 +321,9 @@ impl SyncStatusSnapshot {
                 }
             }
             PendingReason::Refused(_) => SyncCauseLine::ChangeDamaged,
-            PendingReason::Failed(LocalFailure::Disk) => SyncCauseLine::DeviceDiskFailed,
+            PendingReason::Failed(
+                LocalFailure::DiskFull | LocalFailure::DiskDenied | LocalFailure::DiskOther,
+            ) => SyncCauseLine::DeviceDiskFailed,
             PendingReason::Failed(LocalFailure::KeyCustody) => SyncCauseLine::DeviceKeysUnreadable,
             PendingReason::Failed(LocalFailure::Database) => SyncCauseLine::LibraryUnreadable,
             PendingReason::Failed(

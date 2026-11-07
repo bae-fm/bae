@@ -574,6 +574,21 @@ async fn a_pass_records_the_directories_it_read() {
     assert_eq!(crate::volume::changed_directories(&recorded), Some(vec![album.clone()]));
 }
 
+/// A store file coven could not read or keep is the disk's failure, so the
+/// refused write that carried it is not a bug.
+#[test]
+fn a_refused_scan_write_with_a_store_file_the_disk_failed_on_is_not_a_bug() {
+    let disk = coven::FileError::Io {
+        operation: "write",
+        path: std::path::PathBuf::from("library.db"),
+        source: Box::new(std::io::Error::from(std::io::ErrorKind::StorageFull)),
+    };
+    let refused = bae_store::DbError::Coven(Box::new(coven::CovenError::Database(
+        coven::DbError::Disk(disk),
+    )));
+    assert!(!refusal_is_a_bug(&refused));
+}
+
 /// A refused write of a scan's state is a bug unless the disk under the
 /// store failed, the store failed as a whole, or the library is closing.
 #[test]

@@ -67,7 +67,11 @@ pub(crate) fn blocked(
     named: Names,
 ) -> coven::SyncState {
     ended(
-        coven::LastPass::Blocked { slot: coven::Slot(3), reason, error: error.map(str::to_string) },
+        coven::LastPass::Blocked {
+            slot: coven::Slot::new(3).unwrap(),
+            reason,
+            error: error.map(str::to_string),
+        },
         named,
     )
 }
@@ -352,7 +356,7 @@ fn a_failed_retry_answers_with_the_failure_the_status_shows() {
 fn a_retry_held_by_a_slot_blocked_before_opening_names_its_reason() {
     let blocked =
         SyncRetryOutcome::from(coven::RetryOutcome::Failed(coven::PassFailure::Blocked {
-            slot: coven::Slot(7),
+            slot: coven::Slot::new(7).unwrap(),
             reason: coven::PendingReason::Removed,
             error: None,
         }));
@@ -516,7 +520,7 @@ fn a_blocked_slot_is_not_logged_again() {
 fn a_record_keeps_the_error_coven_keeps_for_it() {
     let mut record = coven::PendingRecord::new(
         coven::PendingSubject::Audience(coven::Audience::Store),
-        coven::PendingReason::Failed(coven::LocalFailure::Disk),
+        coven::PendingReason::Failed(coven::LocalFailure::DiskOther),
     );
     record.cause = Some("disk full".into());
     let status = snapshot(offline(), vec![record], coven::RetryEffect::Pass);
@@ -606,7 +610,7 @@ fn a_failure_no_retry_clears_offers_none() {
 #[test]
 fn a_blocked_slot_offers_retry_only_for_a_retried_failure() {
     let slot = |reason: coven::PendingReason| {
-        coven::PendingRecord::new(coven::PendingSubject::Slot(coven::Slot(3)), reason)
+        coven::PendingRecord::new(coven::PendingSubject::Slot(coven::Slot::new(3).unwrap()), reason)
     };
     let named = |reason: coven::PendingReason, named: Names| {
         retried(blocked(reason.clone(), None, named), vec![slot(reason)])
@@ -614,7 +618,7 @@ fn a_blocked_slot_offers_retry_only_for_a_retried_failure() {
     let unnamed = |reason: coven::PendingReason| retried(synced(), vec![slot(reason)]);
     assert!(unnamed(storage(coven::StorageFailure::Network)));
     assert!(named(
-        coven::PendingReason::Failed(coven::LocalFailure::Disk),
+        coven::PendingReason::Failed(coven::LocalFailure::DiskOther),
         coven::SyncState::Failed
     ));
     assert!(!named(coven::PendingReason::Removed, coven::SyncState::Removed));
