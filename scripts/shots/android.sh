@@ -92,6 +92,11 @@ PeopleAndDevicesYours:people-and-devices-yours
 RestoreCodeMasked:restore-code-masked
 RestoreCodeShown:restore-code-shown
 S3SetupRegionMismatch:s3-setup-region-mismatch
+SyncStatusFailed:sync-status-failed
+SyncStatusOffline:sync-status-offline
+SyncStatusSignedOut:sync-status-signed-out
+SyncStatusSynced:sync-status-synced
+SyncStatusWaiting:sync-status-waiting
 Transfers:transfers
 TransfersWifiOnly:transfers-wifi-only
 Welcome:welcome
