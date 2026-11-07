@@ -314,14 +314,23 @@ async fn only_the_claiming_import_moves_its_claim() {
         "the ended import's report does not move the new claim"
     );
     assert!(runtime.percents().is_empty(), "nor is the ended import's percent drawn");
+    let not_owner = |moved: Result<(), crate::ImportError>| {
+        matches!(
+            moved,
+            Err(crate::ImportError::CandidateState(
+                crate::tables::CandidateStateRefusal::NotOwner { .. }
+            ))
+        )
+    };
     assert!(
-        runtime
-            .move_import(key, "imp-1", Some(ImportStep::Running(ImportPhase::ReadingFiles)),)
-            .await
-            .is_err(),
+        not_owner(
+            runtime
+                .move_import(key, "imp-1", Some(ImportStep::Running(ImportPhase::ReadingFiles)))
+                .await
+        ),
         "nor may the ended import move it"
     );
-    assert!(runtime.move_import(key, "imp-1", None).await.is_err());
+    assert!(not_owner(runtime.move_import(key, "imp-1", None).await));
     assert_eq!(
         runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.import),
         queued,

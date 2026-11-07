@@ -118,11 +118,9 @@ pub(super) fn replace_lookup_choices_on(
             content_hash,
         ],
     )?;
-    if affected == 0 {
-        return Err(DbError::Message(
-            "a candidate's lookup choices have no candidate state row to hang off".to_string(),
-        ));
-    }
+    // Written under the folder-state lock, after a read under it found the
+    // candidate listed, and a listed candidate holds a state row.
+    assert!(affected == 1, "a candidate's lookup choices have no candidate state row to hang off");
     sql.execute(
         "DELETE FROM import_candidate_excluded_barcode WHERE content_hash = ?",
         [content_hash],

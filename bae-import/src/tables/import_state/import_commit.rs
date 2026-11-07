@@ -133,7 +133,11 @@ fn end_import_attempt_of_commit(
     match guard {
         ImportCommitGuard::Candidate { candidate_key, expectation, import_id, .. } => {
             super::delete_failure_on(sql, &expectation.candidate.content_hash)?;
-            super::move_import_on(sql, candidate_key, import_id, None)
+            // The committing import holds its claim: a cancel no longer
+            // reaches an import writing its release.
+            let ended = super::move_import_on(sql, candidate_key, import_id, None)?;
+            assert!(ended, "the committing import {import_id} does not own {candidate_key}");
+            Ok(())
         }
     }
 }

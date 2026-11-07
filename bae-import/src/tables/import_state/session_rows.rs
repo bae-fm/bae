@@ -308,13 +308,13 @@ pub(super) fn load_session_on(
         .transpose()
 }
 
-/// Store `session` whole for `content_hash`, inside the caller's write.
 /// Forget where the pane of `content_hash` was.
 pub(super) fn delete_session(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_session WHERE content_hash = ?", [content_hash])?;
     Ok(())
 }
 
+/// Store `session` whole for `content_hash`, inside the caller's write.
 fn save_session_on(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -364,11 +364,9 @@ fn save_session_on(
             content_hash,
         ],
     )?;
-    if affected == 0 {
-        return Err(DbError::Message(
-            "the pane's session has no candidate state row to hang off".to_string(),
-        ));
-    }
+    // Written under the folder-state lock, after a read under it found the
+    // candidate listed, and a listed candidate holds a state row.
+    assert!(affected == 1, "the pane's session has no candidate state row to hang off");
     Ok(())
 }
 

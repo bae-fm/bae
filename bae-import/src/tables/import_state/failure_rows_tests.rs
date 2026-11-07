@@ -70,7 +70,7 @@ async fn a_late_import_failure_cannot_recreate_state_after_root_removal() {
     tables.save_folder_scan_item(&root, generation, &candidate).await.unwrap();
     tables.remove_watched_import_folders(vec![root.clone()], None).await.unwrap();
 
-    tables
+    let refused = tables
         .save_import_candidate_failure(
             &content_hash,
             0,
@@ -78,5 +78,42 @@ async fn a_late_import_failure_cannot_recreate_state_after_root_removal() {
         )
         .await
         .expect_err("a removed candidate cannot receive an import failure");
+    assert!(
+        matches!(
+            &refused,
+            crate::ImportError::CandidateState(crate::tables::CandidateStateRefusal::NoState(
+                hash
+            )) if *hash == content_hash
+        ),
+        "{refused:?}"
+    );
     assert!(tables.load_import_candidate_state(&content_hash).await.unwrap().is_none());
+}
+
+/// A failure recorded against file decisions the candidate has moved past is
+/// refused as that, and the candidate keeps no failure.
+#[tokio::test]
+async fn a_failure_against_moved_file_decisions_is_refused() {
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (_, hash) = stored_pane_candidate(&db).await;
+
+    let refused = tables
+        .save_import_candidate_failure(
+            &hash,
+            1,
+            &ImportFailure::error_only("the folder vanished", fixed_now()),
+        )
+        .await;
+
+    assert!(
+        matches!(
+            &refused,
+            Err(crate::ImportError::CandidateState(
+                crate::tables::CandidateStateRefusal::FilesChanged { revision: 1, .. }
+            ))
+        ),
+        "{refused:?}"
+    );
+    assert!(tables.load_import_candidate_pane_rows(&hash).await.unwrap().failure.is_none());
 }

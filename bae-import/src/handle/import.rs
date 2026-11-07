@@ -483,7 +483,7 @@ impl ImportServiceHandle {
         import_id: &str,
     ) -> Result<(), crate::ImportError> {
         let _commit = self.services.folder_state_commit.lock("release an import claim").await;
-        Ok(self.runtime.move_import(candidate_key, import_id, None).await?)
+        self.runtime.move_import(candidate_key, import_id, None).await
     }
 
     /// Claim a candidate the way committing an import does, for a test with no

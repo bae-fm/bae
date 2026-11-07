@@ -14,22 +14,6 @@ use bae_util::content_type::ContentType;
 
 const COVER_COLUMNS: &str = "content_hash, kind, file_id, url, source";
 
-/// Refuse a cover for a candidate with no state row: the row it hangs off.
-fn require_state_row(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    let present = sql
-        .query_row(
-            "SELECT 1 FROM import_candidate_state WHERE content_hash = ?",
-            [content_hash],
-            |_| Ok(()),
-        )
-        .optional()?
-        .is_some();
-    if present {
-        return Ok(());
-    }
-    Err(DbError::Message(format!("the cover choice for {content_hash} has no candidate state row")))
-}
-
 /// One cover selection as its row states it: the kind, and whichever of the
 /// file it names or the address and catalog it names that kind carries.
 fn cover_columns(
@@ -47,13 +31,13 @@ fn cover_columns(
 }
 
 /// Store `cover` as the candidate's: its row, with the bytes a remote one was
-/// fetched with, and the copies a catalog serves of a remote one.
+/// fetched with, and the copies a catalog serves of a remote one. Every caller
+/// writes it in the write that created or found the candidate's state row.
 pub(super) fn save_cover(
     sql: &CovenWrite<'_>,
     content_hash: &str,
     cover: &PreparedCover,
 ) -> Result<(), DbError> {
-    require_state_row(sql, content_hash)?;
     let selection = cover.selection();
     let (kind, file_id, url, source) = cover_columns(&selection);
     let fetched = match cover {

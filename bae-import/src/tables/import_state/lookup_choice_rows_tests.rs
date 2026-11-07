@@ -80,13 +80,15 @@ async fn a_candidate_with_no_stored_choices_reads_the_default() {
     );
 }
 
-/// Choices for a hash no candidate row stands under have nothing to belong
-/// to. The write says so rather than landing nowhere.
+/// Choices are written under the folder-state lock for a candidate a read
+/// under it found listed, so choices for a hash no candidate row stands under
+/// are a bug of bae's own: the write fails with the bug the store reports.
 #[tokio::test]
-async fn choices_for_an_unknown_candidate_are_refused() {
-    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+async fn choices_for_an_unknown_candidate_are_a_bug() {
+    let (db, _tmp, heard) =
+        bae_store::test_fixtures::temp_db_hearing_bugs(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let error = tables
+    let failed = tables
         .save_import_candidate_lookup_choices(
             "0000000000000000000000000000000000000000000000000000000000000000",
             &bae_identify::LookupChoices {
@@ -98,11 +100,10 @@ async fn choices_for_an_unknown_candidate_are_refused() {
             },
         )
         .await
-        .expect_err("a hash with no candidate row cannot hold lookup choices");
-    assert!(
-        error.to_string().contains("candidate state row"),
-        "the error names what is missing: {error}"
-    );
+        .unwrap_err();
+
+    let bug = crate::tables::tests::the_reported_bug(&heard, &failed);
+    assert!(bug.contains("no candidate state row"), "{bug}");
 }
 
 /// The numbers struck out of the candidate's text go down and come back

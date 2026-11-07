@@ -459,20 +459,22 @@ fn claim_import_on(
 }
 
 /// The step the import `import_id` that owns `candidate_key` is at now, or
-/// its end with `None`, inside the caller's write. Refused when that import
-/// does not own it: only the import holding a claim moves or ends it.
+/// its end with `None`, inside the caller's write; whether it moved. Only the
+/// import holding a claim moves or ends it, so it moves nothing when that
+/// import does not own the candidate.
 pub(crate) fn move_import_on(
     sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
     import_id: &str,
     next: Option<ImportStep>,
-) -> Result<(), DbError> {
+) -> Result<bool, DbError> {
     let mut standing = load_standing_on(sql, candidate_key)?;
     if standing.import.as_ref().is_none_or(|import| import.import_id != import_id) {
-        return Err(DbError::Message(format!("import {import_id} does not own {candidate_key}")));
+        return Ok(false);
     }
     standing.import = next.map(|step| StoredImport { import_id: import_id.to_string(), step });
-    write_on(sql, candidate_key, &standing)
+    write_on(sql, candidate_key, &standing)?;
+    Ok(true)
 }
 
 /// What claiming a candidate for an import did.
@@ -595,10 +597,19 @@ impl ImportTables {
         candidate_key: &CandidateKey,
         import_id: &str,
         next: Option<ImportStep>,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), crate::ImportError> {
         let candidate_key = candidate_key.clone();
         let import_id = import_id.to_string();
-        self.store.call(move |sql| move_import_on(sql, &candidate_key, &import_id, next)).await
+        let moved = {
+            let (candidate_key, import_id) = (candidate_key.clone(), import_id.clone());
+            self.store
+                .call(move |sql| move_import_on(sql, &candidate_key, &import_id, next))
+                .await?
+        };
+        match moved {
+            true => Ok(()),
+            false => Err(CandidateStateRefusal::NotOwner { import_id, candidate_key }.into()),
+        }
     }
 }
 

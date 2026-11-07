@@ -30,6 +30,30 @@ pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
 
 use super::*;
 
+/// Why a write about a candidate's state, or the read a run starts from, was
+/// refused: the candidate left the scan, was imported, or changed under the
+/// request. Nothing of it was written.
+#[derive(Debug, thiserror::Error)]
+pub enum CandidateStateRefusal {
+    /// The files hashed so hold no state: the scan holds no copy of them.
+    #[error("candidate {0} has no state row")]
+    NoState(String),
+    /// The candidate's file decisions moved past the revision the request
+    /// was made against.
+    #[error("candidate {content_hash}'s file decisions changed from revision {revision}")]
+    FilesChanged { content_hash: String, revision: u64 },
+    /// The key names no release the scan holds.
+    #[error("{0} is no candidate a search can be of")]
+    NotScanned(CandidateKey),
+    /// The import does not hold the candidate: it ended, or another holds it.
+    #[error("import {import_id} does not own {candidate_key}")]
+    NotOwner { import_id: String, candidate_key: CandidateKey },
+    /// The candidate holds no draft to identify from: it left the scan or was
+    /// imported.
+    #[error("candidate {0} holds no draft")]
+    NoDraft(String),
+}
+
 mod album_pick_rows;
 mod candidate_rows;
 mod cover_rows;
@@ -132,6 +156,50 @@ impl ImportTables {
                 Ok((load_states_rows_on(&sql, CandidateRows::One(&content_hash))?, content_hash))
             })
             .process(|(process, content_hash)| Ok(process()?.remove(&content_hash)))
+            .await
+    }
+
+    /// What a run of the candidate `content_hash` starts from: its state and
+    /// its draft, read together. `None` when it holds no draft: it left the
+    /// scan, or this device imported its files.
+    pub(crate) async fn load_candidate_run_start(
+        &self,
+        content_hash: &str,
+    ) -> Result<Option<(DbImportCandidateState, crate::CandidateDraft)>, DbError> {
+        let content_hash = content_hash.to_string();
+        self.store
+            .read(move |sql| {
+                let stated = sql
+                    .query_row(
+                        "SELECT 1 FROM import_candidate_state WHERE content_hash = ?",
+                        [&content_hash],
+                        |_| Ok(()),
+                    )
+                    .optional()?
+                    .is_some();
+                if !stated
+                    || crate::tables::import_origin::imported_release_on(&sql, &content_hash)?
+                        .is_some()
+                {
+                    return Ok(None);
+                }
+                let (draft, _) = pane_rows::load_draft_and_cover_on(&sql, &content_hash)?;
+                let states = load_states_rows_on(&sql, CandidateRows::One(&content_hash))?;
+                Ok(Some((states, draft, content_hash)))
+            })
+            .process(|read| {
+                let Some((states, draft, content_hash)) = read else {
+                    return Ok(None);
+                };
+                // Found stated in this read.
+                let state = states()?.remove(&content_hash).ok_or_else(|| {
+                    DbError::unreadable(
+                        "the stated candidate's import_candidate_state",
+                        &content_hash,
+                    )
+                })?;
+                Ok(Some((state, draft)))
+            })
             .await
     }
 }

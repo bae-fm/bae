@@ -59,3 +59,13 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
         "the row saved before the move must still be reachable after it"
     );
 }
+
+/// A run starts from no candidate the scan holds no state of: the read a run
+/// starts from answers that it holds no draft.
+#[tokio::test]
+async fn a_run_starts_from_no_candidate_without_state() {
+    let (db, _tmp) = bae_store::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db);
+
+    assert!(tables.load_candidate_run_start("unscanned").await.unwrap().is_none());
+}

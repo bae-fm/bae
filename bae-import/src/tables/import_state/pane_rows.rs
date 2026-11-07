@@ -283,7 +283,9 @@ pub(crate) fn load_pane_rows_on(
 }
 
 impl ImportTables {
-    /// Everything a person settled about one candidate through its pane.
+    /// Everything a person settled about one candidate through its pane, for
+    /// a caller that knows it holds a state row and no import of it.
+    #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub async fn load_import_candidate_pane_rows(
         &self,
         content_hash: &str,
@@ -312,8 +314,8 @@ pub(super) fn has_draft_row_on(
 /// blank draft of its files and the folder's own cover, which a scan seeds a
 /// new candidate with when it reads no tags. A candidate whose release this
 /// device deleted holds no draft row, and reads as that until a write stores
-/// one. A candidate this device imported holds no draft, so reading one
-/// fails.
+/// one. The caller found in the same read that the candidate holds a state
+/// row and was not imported, since one this device imported holds no draft.
 pub(super) fn load_draft_and_cover_on(
     sql: &impl coven::SqlRead,
     content_hash: &str,
@@ -322,11 +324,6 @@ pub(super) fn load_draft_and_cover_on(
     {
         return Ok((draft, super::cover_rows::load_cover_on(sql, content_hash)?));
     }
-    if crate::tables::import_origin::imported_release_on(sql, content_hash)?.is_some() {
-        return Err(DbError::Message(format!(
-            "candidate {content_hash} was imported, and holds no draft"
-        )));
-    }
     let key: CandidateKey = sql
         .query_row(
             "SELECT candidate_key FROM import_candidate_state WHERE content_hash = ?",
@@ -334,15 +331,21 @@ pub(super) fn load_draft_and_cover_on(
             |row| row.get(0),
         )
         .optional()?
-        .ok_or_else(|| DbError::Message(format!("candidate {content_hash} has no state")))?;
+        .ok_or_else(|| {
+            DbError::unreadable(
+                "import_candidate_state of a candidate its reader found stated",
+                content_hash,
+            )
+        })?;
+    // The state names a copy the scan holds of its files.
     let candidate = crate::tables::release_groupings::load_candidate_on(sql, &key)?
         .map(|stored| stored.candidate)
         .filter(|candidate| candidate.files.content_hash() == content_hash)
         .ok_or_else(|| {
-            DbError::Message(format!(
-                "candidate {content_hash} holds no draft row, and the scan holds no files of it \
-                 at {key} to read its blank one from"
-            ))
+            DbError::unreadable(
+                format!("import_candidate_state.candidate_key of {content_hash}"),
+                &key,
+            )
         })?;
     Ok((candidate.blank_draft(), candidate.blank_cover().as_ref().map(PreparedCover::selection)))
 }

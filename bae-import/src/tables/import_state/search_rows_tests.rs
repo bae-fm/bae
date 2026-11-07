@@ -456,3 +456,26 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     assert_eq!(search.groups.len(), 1, "the picked result joins the cards");
     assert_eq!(search.picked, vec![PickedResult { release_id: "mb-1".to_string(), links }]);
 }
+
+/// A search of a folder the scan no longer holds, as one removed after the
+/// pane showed it, is refused as that, and stores no search.
+#[tokio::test]
+async fn a_search_of_a_folder_the_scan_does_not_hold_is_refused() {
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = ImportTables::new(db);
+    let key = pane_candidate_key();
+
+    let refused = tables
+        .start_candidate_search(&key, &CandidateSearch::started(search_query(), &every_source_on()))
+        .await;
+
+    assert!(
+        matches!(
+            &refused,
+            Err(crate::ImportError::CandidateState(
+                crate::tables::CandidateStateRefusal::NotScanned(named)
+            )) if *named == key
+        ),
+        "{refused:?}"
+    );
+}

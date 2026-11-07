@@ -123,8 +123,7 @@ impl ImportService {
                     Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)),
                 ),
             )
-            .await
-            .map_err(crate::ImportError::from)?;
+            .await?;
 
         let stored_candidate = match self
             .tables
@@ -235,8 +234,7 @@ impl ImportService {
                         Some(ImportStep::Preparing(PrepareStep::FetchingArtistPictures)),
                     ),
                 )
-                .await
-                .map_err(crate::ImportError::from)?;
+                .await?;
         }
         let artist_images = self.fetch_discogs_artist_images(new_artists).await?;
 
@@ -378,8 +376,7 @@ impl ImportService {
                     Some(ImportStep::Running(ImportPhase::ReadingFiles)),
                 ),
             )
-            .await
-            .map_err(crate::ImportError::from)?;
+            .await?;
         let mut bytes_read = 0u128;
         let mut last_release_percent = 0u8;
         for (idx, entry) in discovered_files.iter().enumerate() {
@@ -522,8 +519,7 @@ impl ImportService {
                     Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
                 ),
             )
-            .await
-            .map_err(crate::ImportError::from)?;
+            .await?;
         let loudness = crate::loudness::measure_loudness(
             &self.event_tx,
             parallelism,
@@ -562,8 +558,7 @@ impl ImportService {
                     Some(ImportStep::Running(ImportPhase::Finalizing)),
                 ),
             )
-            .await
-            .map_err(crate::ImportError::from)?;
+            .await?;
 
         let commit_guard = crate::tables::ImportCommitGuard::Candidate {
             candidate_key: candidate_key.clone(),

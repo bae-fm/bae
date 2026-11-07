@@ -257,7 +257,7 @@ impl CandidateRuntime {
         key: &CandidateKey,
         import_id: &str,
         next: Option<ImportStep>,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), crate::ImportError> {
         self.tables.move_candidate_import(key, import_id, next).await?;
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(std::iter::once(key)).await;

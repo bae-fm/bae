@@ -48,8 +48,7 @@ fn save_failure_on(
     content_hash: &str,
     edit_revision: u64,
     failure: &ImportFailure,
-) -> Result<(), DbError> {
-    let edit_revision = to_i64(edit_revision, "candidate edit revision")?;
+) -> Result<(), crate::ImportError> {
     let current_revision = sql
         .query_row(
             "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
@@ -57,13 +56,13 @@ fn save_failure_on(
             |row| row.get::<_, i64>(0),
         )
         .optional()?
-        .ok_or_else(|| {
-            DbError::Message("import failure has no current candidate state row".to_string())
-        })?;
-    if current_revision != edit_revision {
-        return Err(DbError::Message(format!(
-            "candidate file decisions changed from revision {edit_revision}"
-        )));
+        .ok_or_else(|| CandidateStateRefusal::NoState(content_hash.to_string()))?;
+    if current_revision != to_i64(edit_revision, "candidate edit revision")? {
+        return Err(CandidateStateRefusal::FilesChanged {
+            content_hash: content_hash.to_string(),
+            revision: edit_revision,
+        }
+        .into());
     }
     let failed_at = failure.failed_at.to_rfc3339();
     sql.execute(
@@ -85,11 +84,11 @@ impl ImportTables {
         content_hash: &str,
         edit_revision: u64,
         failure: &ImportFailure,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), crate::ImportError> {
         let content_hash = content_hash.to_string();
         let failure = failure.clone();
         self.store
-            .call(move |sql| save_failure_on(sql, &content_hash, edit_revision, &failure))
+            .write(move |sql| save_failure_on(&sql, &content_hash, edit_revision, &failure))
             .await
     }
 
@@ -104,15 +103,20 @@ impl ImportTables {
         failure: &ImportFailure,
         candidate_key: &crate::CandidateKey,
         import_id: &str,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), crate::ImportError> {
         let content_hash = content_hash.to_string();
         let failure = failure.clone();
         let candidate_key = candidate_key.clone();
         let import_id = import_id.to_string();
         self.store
-            .call(move |sql| {
+            .write(move |sql| {
+                let sql = &sql;
                 save_failure_on(sql, &content_hash, edit_revision, &failure)?;
-                super::move_import_on(sql, &candidate_key, &import_id, None)
+                // The failing import is the worker's, which holds its claim
+                // until this write ends it.
+                let ended = super::move_import_on(sql, &candidate_key, &import_id, None)?;
+                assert!(ended, "the failing import {import_id} does not own {candidate_key}");
+                Ok(())
             })
             .await
     }

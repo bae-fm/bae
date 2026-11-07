@@ -68,12 +68,9 @@ pub(super) async fn candidate_run_start(
     candidate: &FolderCandidate,
 ) -> Result<CandidateRunStart, crate::ImportError> {
     let content_hash = candidate.files.content_hash();
-    let Some(state) = context.tables.load_import_candidate_state(&content_hash).await? else {
-        return Err(crate::ImportError::Internal {
-            detail: format!("candidate {} has no persisted state row", candidate.key()),
-        });
+    let Some((state, draft)) = context.tables.load_candidate_run_start(&content_hash).await? else {
+        return Err(crate::tables::CandidateStateRefusal::NoDraft(content_hash).into());
     };
-    let draft = context.tables.load_import_candidate_pane_rows(&content_hash).await?.draft;
     let artist = crate::credited_line(&draft.album_artist_assignments);
     let title_search = match &state.lookup_choices.search_words {
         Some(words) => TitleSearch::of(&words.album, &words.artist),

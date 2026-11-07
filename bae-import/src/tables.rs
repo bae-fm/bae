@@ -39,8 +39,8 @@ pub(crate) use import_state::{
     NewArtistImages, RunVerdictSaved, ScannedCandidateKey,
 };
 pub use import_state::{
-    DbCandidateIdentifyResult, DbCandidatePaneRows, DbImportCandidateState, ImportCommitError,
-    NewImportCandidateVerdict, PreparationRefusal, VerdictPick,
+    CandidateStateRefusal, DbCandidateIdentifyResult, DbCandidatePaneRows, DbImportCandidateState,
+    ImportCommitError, NewImportCandidateVerdict, PreparationRefusal, VerdictPick,
 };
 pub(crate) use release_groupings::GroupingFacts;
 pub use release_groupings::{FolderReadingRefusal, GroupingChanges, SeparationRefusal};

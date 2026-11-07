@@ -39,10 +39,10 @@ async fn pure_reads_use_the_read_connection() {
 
     // The tables the pane writes read back the same way.
     tables.load_import_candidate_state("missing").await.unwrap();
-    assert_eq!(
-        tables.load_import_candidate_pane_rows("missing").await.unwrap_err().to_string(),
-        "candidate missing has no state"
-    );
+    assert!(matches!(
+        tables.load_import_candidate_pane_rows("missing").await,
+        Err(bae_store::DbError::Unreadable { .. })
+    ));
 
     // Writers that already have the requested state decide before opening a
     // write transaction.

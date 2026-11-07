@@ -405,21 +405,23 @@ impl ImportTables {
         &self,
         key: &CandidateKey,
         search: &CandidateSearch,
-    ) -> Result<SearchRun, DbError> {
+    ) -> Result<SearchRun, crate::ImportError> {
         let key = key.clone();
         let search = search.clone();
         self.store
-            .call(move |sql| {
+            .write(move |sql| {
+                let sql = &sql;
                 let files = if key.names_release() {
                     None
                 } else {
-                    let stored = crate::tables::release_groupings::load_candidate_on(sql, &key)?
-                        .ok_or_else(|| {
-                            DbError::Message(format!("{key} is no candidate a search can be of"))
-                        })?;
+                    let Some(stored) =
+                        crate::tables::release_groupings::load_candidate_on(sql, &key)?
+                    else {
+                        return Err(CandidateStateRefusal::NotScanned(key).into());
+                    };
                     Some(CandidateFiles::of(&stored.candidate))
                 };
-                start_on(sql, &key, files.as_ref(), &search)
+                Ok(start_on(sql, &key, files.as_ref(), &search)?)
             })
             .await
     }

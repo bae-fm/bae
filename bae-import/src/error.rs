@@ -153,6 +153,12 @@ pub enum ImportError {
     #[error(transparent)]
     Separation(#[from] crate::tables::SeparationRefusal),
 
+    /// A write about a candidate's state, or the read its run starts from,
+    /// was refused.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    CandidateState(#[from] crate::tables::CandidateStateRefusal),
+
     /// Releases picked to be read as one could not be combined.
     #[cfg(desktop)]
     #[error(transparent)]
@@ -636,6 +642,16 @@ impl ImportError {
             // The release was read apart meanwhile.
             #[cfg(desktop)]
             Self::Separation(crate::tables::SeparationRefusal::NotPicked(_)) => C::Import,
+            // The candidate left, was imported or changed under the request,
+            // or the import asking ended meanwhile.
+            #[cfg(desktop)]
+            Self::CandidateState(
+                crate::tables::CandidateStateRefusal::NoState(_)
+                | crate::tables::CandidateStateRefusal::FilesChanged { .. }
+                | crate::tables::CandidateStateRefusal::NotScanned(_)
+                | crate::tables::CandidateStateRefusal::NotOwner { .. }
+                | crate::tables::CandidateStateRefusal::NoDraft(_),
+            ) => C::Import,
             #[cfg(desktop)]
             Self::DiscogsKey(error) => match **error {
                 crate::DiscogsKeyError::Keyring(_) | crate::DiscogsKeyError::Preferences(_) => {
