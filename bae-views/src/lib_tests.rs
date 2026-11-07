@@ -563,20 +563,21 @@ mod window_cost {
     /// each size, which every file of that size names.
     pub(crate) async fn seed(db: &Store, originals: &std::path::Path, start: u64, end: u64) {
         let records = bae_records::test_fixtures::test_records(db);
-        db.call(move |sql| {
-            bulk_library::insert_on(sql, start, end)?;
+        db.write(move |sql| {
+            bulk_library::insert_on(&sql, start, end)?;
             bae_transfers::tables::bulk::queue_downloads_on(
-                sql,
+                &sql,
                 start,
                 end,
                 &bulk_library::release_id_sql(),
             )?;
             bae_playback::tables::window_cost::fill_context_lane_on(
-                sql,
+                &sql,
                 start,
                 end,
                 &bulk_library::track_id_sql(),
-            )
+            )?;
+            Ok::<(), bae_records::IdentityWriteError>(())
         })
         .await
         .unwrap();
