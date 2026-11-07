@@ -8,7 +8,8 @@
 # hands out what it holds. A capability (the capability_types below) is built
 # only at a composition root or inside a task made for one operation
 # (capability-construction), and handed on only along the paths the policy
-# lists (capability-boundaries).
+# lists (capability-boundaries). Work that runs on after its caller returns
+# (the [[background_starts]] below) starts only at a listed root.
 rules = ["capability-boundaries", "capability-construction", "component-bundles", "crate-dependencies", "database-boundary", "owner-dependencies"]
 
 # The code generator for the bindings answers only to the conventions.
@@ -657,6 +658,8 @@ ImageHold = "RemoteImageHost"
 # The writer thread of an output stream: the stream's handle stops it and
 # joins it when dropped.
 "bae-playback/src/aaudio_output.rs" = ["AAudioOutput::create_stream"]
+# The relay thread: the drain keeps its handle and joins it when dropped.
+"bae-playback/src/event_relay.rs" = ["event_relay"]
 # The follow of the tracks a service holds, made for the service when it is
 # built.
 "bae-playback/src/service/advance.rs" = ["track_infos_follow"]
@@ -1091,6 +1094,22 @@ ImageHold = "RemoteImageHost"
     "ServerController::start",
 ]
 "bae-util/src/test_host.rs" = ["FakeHost::start"]
+
+# Work that runs on after its caller returns starts only at a listed root,
+# which keeps it and stops it: a runtime, the ambient runtime a task would
+# take without being handed one, and a thread or task spawn.
+[[background_starts]]
+kind = "runtime construction"
+paths = ["Runtime::new", "Builder::new_current_thread", "Builder::new_multi_thread"]
+
+[[background_starts]]
+kind = "ambient runtime acquisition"
+paths = ["Handle::current", "Handle::try_current"]
+
+[[background_starts]]
+kind = "thread or future spawn"
+paths = ["tokio::spawn", "task::spawn", "task::spawn_blocking", "task::spawn_local", "thread::spawn"]
+methods = ["spawn", "spawn_blocking", "spawn_local"]
 
 # SQLite: the store and the crates whose domains keep tables in it. Only
 # these name a raw rusqlite handle.
