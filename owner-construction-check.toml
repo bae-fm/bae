@@ -552,6 +552,9 @@ ImageHold = "RemoteImageHost"
     "BridgeHost::with_test_keyring",
     "BridgeHost::set_oauth_presenter",
     "start_handle",
+    # A released library's store closes on a thread the host records and waits for before the
+    # store opens or is removed.
+    "BridgeHost::close_released",
 ]
 # Restoring, joining and resetting a device open the library they leave.
 "bae-bridge/src/host/bootstrap.rs" = [
@@ -618,6 +621,9 @@ ImageHold = "RemoteImageHost"
 # Starts the identification queue with the services it runs on; its handle
 # stops it.
 "bae-import/src/identification.rs" = ["start"]
+# A settling answer runs in the queue's set, which the queue's loop joins
+# and, when it ends, drops and so aborts.
+"bae-import/src/identification/queue/reactions.rs" = ["advance"]
 # The imports a person can cancel are tracked in one shared set, built with the import
 # services.
 "bae-import/src/import_cancel.rs" = ["ImportCancels::new"]
@@ -637,12 +643,20 @@ ImageHold = "RemoteImageHost"
     "LibraryManager::store_fixture_verdict",
 ]
 "bae-library/src/manager/fixture/playing.rs" = ["LibraryManager::write_resume_point"]
+# The make-local's task: its running op holds the abort a cancel or a pause
+# uses.
+"bae-library/src/manager/locality.rs" = ["LibraryManager::start_make_local"]
+# An export's task: its running op holds the abort a cancel uses.
+"bae-library/src/manager/output.rs" = ["LibraryManager::run_output_worker"]
 "bae-library/src/test_libraries/playback.rs" = [
     "start_capture_playback",
     "start_manual_playback",
     "start_manual_playback_with_clock",
 ]
 "bae-library/src/test_libraries/storage.rs" = ["storage_library"]
+# The writer thread of an output stream: the stream's handle stops it and
+# joins it when dropped.
+"bae-playback/src/aaudio_output.rs" = ["AAudioOutput::create_stream"]
 # The follow of the tracks a service holds, made for the service when it is
 # built.
 "bae-playback/src/service/advance.rs" = ["track_infos_follow"]
@@ -983,7 +997,11 @@ ImageHold = "RemoteImageHost"
     "BackgroundTasks::new",
     "LibraryManager::open",
 ]
-"bae-library/src/storage/transfer.rs" = ["ReleaseTransfer::new"]
+"bae-library/src/storage/transfer.rs" = [
+    "ReleaseTransfer::new",
+    # A pin's task: its running op holds the abort a cancel uses.
+    "spawn_transfer",
+]
 "bae-mcp/src/lib.rs" = [
     "BaeMcpServer::new",
     "McpServerController::new",
@@ -1063,7 +1081,11 @@ ImageHold = "RemoteImageHost"
     "ReleaseTransfers::report",
 ]
 "bae-util/src/open_files_peak.rs" = ["OpenFilesPeak::start"]
-"bae-util/src/server.rs" = ["ServerController::new"]
+"bae-util/src/server.rs" = [
+    "ServerController::new",
+    # The server's task: the controller holds it, and shutdown cancels it and waits for it.
+    "ServerController::start",
+]
 "bae-util/src/test_host.rs" = ["FakeHost::start"]
 
 # SQLite: the store and the crates whose domains keep tables in it. Only
