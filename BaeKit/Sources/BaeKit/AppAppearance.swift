@@ -26,12 +26,14 @@ private struct AppearanceStyle: ViewModifier {
     private var colorScheme
 
     func body(content: Content) -> some View {
+        let scheme = mode.colorScheme ?? colorScheme
         content
-            .toned(
-                tone,
-                accent: accent,
-                accentColor: accent.color(in: mode.colorScheme ?? colorScheme)
-            )
+            .toned(tone, accent: accent, accentColor: accent.color(in: scheme))
+            // The AppKit controls SwiftUI draws with, such as a ProgressView's
+            // spinner, take their appearance from this, and a window AppKit
+            // hosts keeps it at the system's while the preference below
+            // turns the window itself light or dark.
+            .environment(\.colorScheme, scheme)
             .preferredColorScheme(mode.colorScheme)
     }
 }
