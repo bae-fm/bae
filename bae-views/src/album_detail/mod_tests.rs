@@ -14,12 +14,12 @@ fn storage_state_is_the_stored_fact_with_pinning_inside_it() {
 }
 
 #[test]
-fn no_cloud_home_has_no_actions() {
+fn no_storage_has_no_actions() {
     for state in [OnOneDevice, NOT_PINNED, PINNED] {
         assert_eq!(
             available_storage_actions(state, &Playable, false),
             Vec::<ReleaseStorageAction>::new(),
-            "no cloud home blocks all actions for {state:?}"
+            "no storage blocks all actions for {state:?}"
         );
     }
 }
@@ -92,7 +92,7 @@ fn unpinned_with_pin_offered_is_available() {
     );
 }
 
-/// No Pin on offer means there is nothing to show: no cloud home, or the
+/// No Pin on offer means there is nothing to show: no storage, or the
 /// release's audio is on one device.
 #[test]
 fn no_pin_on_offer_means_no_control() {

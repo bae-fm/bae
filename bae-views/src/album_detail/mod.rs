@@ -27,7 +27,7 @@
 //!
 //! Each resolved type owns its projection from the raw `Db*` aggregate as a
 //! `from_raw`. The library's views gather what the DB and coven's cache can tell
-//! them (covers, pin state, cloud-home presence) and hand that in, so the derivation
+//! them (covers, pin state, whether the library syncs) and hand that in, so the derivation
 //! lives with the type it produces.
 
 use bae_records::source_audio::{SourceAudioFile, SourceAudioSummary};
@@ -114,7 +114,7 @@ pub fn storage_state(stored: bool, pinned: bool) -> ReleaseStorageState {
     }
 }
 
-/// Storage requires a cloud home, so without one there are no transitions at
+/// Storage requires the library to sync, so without it there are no transitions at
 /// all.
 ///
 /// `Upload` uploads from this device's originals, so it is offered only
@@ -123,17 +123,17 @@ pub fn storage_state(stored: bool, pinned: bool) -> ReleaseStorageState {
 /// the move when it reads the file. It
 /// admits work to coven's durable outbox; a stopped loop leaves that work
 /// truthfully queued until a cycle can drain it, and does not remove the
-/// action. Pin / Unpin / DetachAudio gate on the connected cloud home alone.
+/// action. Pin / Unpin / DetachAudio gate on the library syncing alone.
 ///
 /// A release mid-transition offers none of these: its summary empties them
 /// while its files wait to upload or a transfer runs.
 pub fn available_storage_actions(
     state: ReleaseStorageState,
     playability: &ReleasePlayability,
-    has_cloud_home: bool,
+    syncs: bool,
 ) -> Vec<ReleaseStorageAction> {
     use ReleaseStorageAction::*;
-    if !has_cloud_home {
+    if !syncs {
         return Vec::new();
     }
     match state {
@@ -153,7 +153,7 @@ pub fn available_storage_actions(
 /// Lives here, next to [`available_storage_actions`], because two of the rules it
 /// encodes are properties of *that* gate rather than of any one app's control:
 /// `Unpin` appears exactly when the release is pinned, and `Pin` exactly when a
-/// release in storage is not and there is a cloud home to pin from.
+/// release in storage is not and the library syncs, to pin from.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReleaseDownloadStatus {
     /// Kept offline, and no download in flight.
@@ -169,7 +169,7 @@ pub enum ReleaseDownloadStatus {
 }
 
 /// The control's state for one release, or `None` when there is no control to
-/// show at all — no cloud home, or a release whose audio is already local.
+/// show at all — no storage, or a release whose audio is already local.
 ///
 /// **A live queue entry outranks `pinned`.** On pin success the pin marker
 /// coven watches (which flips `pinned`) and the entry leaving the download

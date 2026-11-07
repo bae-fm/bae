@@ -132,17 +132,13 @@ mod release_storage_action {
         );
     }
 
-    /// A library with no cloud home says so rather than listing no transitions.
+    /// A library with no storage says so rather than listing no transitions.
     #[test]
     fn a_release_with_no_transitions_says_why() {
         let error =
             require_action(&summary(Vec::new()), AutomationReleaseStorageAction::Upload, "upload")
-                .expect_err("a library with no cloud home cannot move anything to it");
-        assert!(
-            error.message().contains("no cloud home"),
-            "unexpected refusal: {}",
-            error.message()
-        );
+                .expect_err("a library with no storage cannot move anything to it");
+        assert!(error.message().contains("no storage"), "unexpected refusal: {}", error.message());
     }
 
     /// An upload reports the release whose uploads it queued.

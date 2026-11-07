@@ -235,9 +235,9 @@ mirror_enum! {
         Uploading,
         Pinning,
         Transferring(action: (crate::types::BridgeReleaseStorageAction)),
-        Local,
+        OnOneDevice,
         Pinned,
-        Cloud,
+        InStorage,
     },
 }
 

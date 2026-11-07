@@ -765,7 +765,7 @@ impl From<bae_library::LibraryError> for BridgeError {
         // its point of no return, which coven undid.
         if matches!(
             error,
-            bae_library::LibraryError::CloudSetup(
+            bae_library::LibraryError::StorageSetup(
                 coven::StorageSetupError::OAuth(coven::OAuthError::Cancelled)
                     | coven::StorageSetupError::Cancelled
             )

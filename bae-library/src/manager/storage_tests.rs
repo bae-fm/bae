@@ -335,7 +335,7 @@ async fn storage_page_sorts_album_title_descending() {
 /// Each storage-page row carries the state-appropriate `storage_actions`
 /// the Storage Manager row context menu renders — pinned offers unpin +
 /// audio detachment, cloud-only offers pin + audio detachment, local offers upload.
-/// With a cloud home present every remote/local transition is open.
+/// With storage set up every remote/local transition is open.
 #[tokio::test]
 async fn storage_page_rows_carry_state_appropriate_actions() {
     use bae_types::release_storage::ReleaseStorageAction::{DetachAudio, Pin, Unpin, Upload};
@@ -373,10 +373,10 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     assert_eq!(actions[&local.id], vec![Upload]);
 }
 
-/// With no cloud home, no remote storage exists, so the rows offer no
+/// With no storage, no remote storage exists, so the rows offer no
 /// transitions — the context menu is empty everywhere.
 #[tokio::test]
-async fn storage_page_rows_have_no_actions_without_cloud_home() {
+async fn storage_page_rows_have_no_actions_without_storage() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let album = create_test_album();
@@ -797,9 +797,9 @@ async fn storage_page_sort_by_storage_state() {
         vec![
             StorageRowStatus::Uploading,
             StorageRowStatus::Pinning,
-            StorageRowStatus::Local,
+            StorageRowStatus::OnOneDevice,
             StorageRowStatus::Pinned,
-            StorageRowStatus::Cloud,
+            StorageRowStatus::InStorage,
         ],
         "each row shows where it sorts"
     );

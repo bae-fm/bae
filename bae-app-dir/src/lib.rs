@@ -203,7 +203,7 @@ impl AppDir {
                         tracing::warn!(store = %store.id, %error, "a library's settings can't be read");
                         LibraryState::Unreadable(bae_diagnostics::UiError::diagnostic(
                             bae_diagnostics::sync_category(&error),
-                            format_args!("Cloud home error: {error}"),
+                            format_args!("Storage error: {error}"),
                         ))
                     }
                 },
@@ -250,7 +250,7 @@ pub struct LibraryInfo {
 /// Whether a library on this device opens, and where it is stored.
 #[derive(Clone, Debug)]
 pub enum LibraryState {
-    /// It opens: stored at its cloud home, or on this device only (`None`).
+    /// It opens: stored in its storage, or on this device only (`None`).
     Openable(Option<coven::StorageConfig>),
     /// Its storage settings can't be read, which keeps it from opening.
     Unreadable(bae_diagnostics::UiError),

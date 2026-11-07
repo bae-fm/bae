@@ -3,7 +3,7 @@ import os.log
 
 private let logger = Logger.bae("CloudProviderConnectedSection")
 
-/// The library's cloud home as coven records it, one row per field.
+/// The library's storage as coven records it, one row per field.
 public struct CloudProviderConnectedSection: View {
     public let location: BridgeStorageLocation
 

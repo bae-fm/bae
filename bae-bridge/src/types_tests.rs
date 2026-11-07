@@ -252,7 +252,7 @@ mod conversion_roundtrip {
     }
 
     #[test]
-    fn cloud_setup_failure_reason_crosses_the_bridge_unchanged() {
+    fn storage_setup_failure_reason_crosses_the_bridge_unchanged() {
         use bae_diagnostics::UiErrorCategory;
         use coven::StorageFailure as Core;
 

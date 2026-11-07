@@ -217,11 +217,11 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
     assert!(next_for(None).await.value.is_none());
 }
 
-/// A release's storage choices follow the cloud home within its one read:
+/// A release's storage choices follow whether the library syncs within its one read:
 /// a local release offers none until storage is set up, then offers its
 /// upload, with nothing asked of the subscription in between.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
+async fn release_detail_offers_storage_once_storage_is_set_up() {
     let (manager, storage, temp_dir) = open_library().await;
     let release = insert_local_release_with_files(
         &manager,
@@ -430,7 +430,7 @@ async fn a_transition_reaches_the_reads_from_its_row() {
 
     until("the album shows no transition", || album_detail.next(), album_shows(None)).await;
     until("the release shows no transition", || release_detail.next(), release_shows(None)).await;
-    until("the row rests", || storage.next(), row_shows(StorageRowStatus::Local)).await;
+    until("the row rests", || storage.next(), row_shows(StorageRowStatus::OnOneDevice)).await;
 
     assert!(bae_transfers::release_storage_action::begin_release_storage_action(
         manager.store(),
@@ -455,7 +455,7 @@ async fn a_transition_reaches_the_reads_from_its_row() {
         .unwrap();
     until("the album's transition ends", || album_detail.next(), album_shows(None)).await;
     until("the release's transition ends", || release_detail.next(), release_shows(None)).await;
-    until("the row rests again", || storage.next(), row_shows(StorageRowStatus::Local)).await;
+    until("the row rests again", || storage.next(), row_shows(StorageRowStatus::OnOneDevice)).await;
 }
 
 /// Follow the inspector until it shows a value `accept` takes.

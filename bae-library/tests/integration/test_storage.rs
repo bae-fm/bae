@@ -9,7 +9,7 @@ use std::path::Path;
 use tempfile::TempDir;
 use tracing::info;
 
-/// With no cloud home the files stay in place, and the chosen cover and audio
+/// With no storage the files stay in place, and the chosen cover and audio
 /// format records still land.
 #[tokio::test]
 async fn test_import_with_cover_selection() {
@@ -241,7 +241,7 @@ async fn run_import_with_cover_test() {
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
 
-    // With no cloud home the import is local and keeps the files in place.
+    // With no storage the import is local and keeps the files in place.
     let release = records
         .find_release_by_id(&release_id)
         .await
@@ -263,7 +263,7 @@ async fn run_import_with_cover_test() {
         .expect("local import should register its original path");
     assert!(
         local_path.starts_with(&album_dir),
-        "Import without cloud home should keep files in place under {album_dir:?}, got {local_path:?}"
+        "Import without storage should keep files in place under {album_dir:?}, got {local_path:?}"
     );
     info!("Release has device-local original paths");
 

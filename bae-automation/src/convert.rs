@@ -148,7 +148,7 @@ pub(super) fn require_action(
     }
     let available = summary.storage_actions.iter().map(storage_action_name).collect::<Vec<_>>();
     let available = if available.is_empty() {
-        "none (this library has no cloud home)".to_string()
+        "none (this library has no storage)".to_string()
     } else {
         available.join(", ")
     };

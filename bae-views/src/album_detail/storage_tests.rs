@@ -17,5 +17,5 @@ fn a_running_transition_shows_only_while_the_files_rest() {
         StorageRowStatus::of(StoragePlace::Uploading, Some(ReleaseStorageAction::Upload)),
         StorageRowStatus::Uploading
     );
-    assert_eq!(StorageRowStatus::of(StoragePlace::Cloud, None), StorageRowStatus::Cloud);
+    assert_eq!(StorageRowStatus::of(StoragePlace::InStorage, None), StorageRowStatus::InStorage);
 }

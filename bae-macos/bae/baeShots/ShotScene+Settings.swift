@@ -81,7 +81,7 @@ extension ShotScene {
         }
     }
 
-    /// The Library tab over a library whose cloud home is `storage`, once its
+    /// The Library tab over a library whose storage is `storage`, once its
     /// name and people have answered.
     private static func librarySettings(
         _ id: String,

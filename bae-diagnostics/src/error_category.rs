@@ -9,7 +9,7 @@ use super::UiErrorCategory as C;
 
 /// A storage failure keeps coven's exact reason: the line says the storage is
 /// full, this device's clock is off, the provider refused the credentials.
-pub fn cloud_home_category(error: &coven::StorageError) -> C {
+pub fn storage_error_category(error: &coven::StorageError) -> C {
     storage_category(error.failure())
 }
 
@@ -61,10 +61,10 @@ pub fn storage_category(failure: coven::StorageFailure) -> C {
     }
 }
 
-pub fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
+pub fn storage_setup_category(error: &coven::StorageSetupError) -> C {
     use coven::StorageSetupError as E;
     match error {
-        E::Storage(error) => cloud_home_category(error),
+        E::Storage(error) => storage_error_category(error),
         E::Check(error) => storage_check_category(error),
         E::LocationChangeUnsupported => C::StorageLocationChangeUnsupported,
         E::OAuth(_) => C::Credentials,
@@ -104,7 +104,7 @@ fn storage_check_category(error: &coven::StorageCheckError) -> C {
         }
         E::S3VersioningUnknown { source } => C::S3VersioningUnknown(source.failure()),
         E::S3VersioningUnsupported { state } => C::S3VersioningUnsupported(*state),
-        E::Storage(error) => cloud_home_category(error),
+        E::Storage(error) => storage_error_category(error),
     }
 }
 
@@ -112,7 +112,7 @@ pub fn cloud_unlock_category(error: &coven::StoreKeyUnlockError) -> C {
     use coven::StoreKeyUnlockError as E;
     match error {
         E::NoStorage => C::Config,
-        E::Storage(error) => cloud_home_category(error),
+        E::Storage(error) => storage_error_category(error),
         E::SecureStorage(error) => key_category(error),
         E::Removed => C::DeviceRemoved,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
@@ -167,7 +167,7 @@ pub fn sync_category(error: &coven::SyncError) -> C {
     match error {
         E::Pending(record) => pending_reason_category(&record.reason),
         E::Failed { failure, .. } => local_failure_category(*failure),
-        E::Storage(error) => cloud_home_category(error),
+        E::Storage(error) => storage_error_category(error),
         E::SecureStorage(error) => key_category(error),
         E::Database(error) => database_category(error),
         E::NoStorage => C::Config,
@@ -415,7 +415,7 @@ pub fn device_only_category(error: &coven::DeviceOnlyError) -> C {
 pub fn file_read_category(error: &coven::FileReadError) -> C {
     use coven::FileReadError as E;
     match error {
-        E::Storage(error) => cloud_home_category(error),
+        E::Storage(error) => storage_error_category(error),
         E::Sync(error) => sync_category(error),
         E::Database(error) => database_category(error),
         E::UpdateRequired(_) => C::SyncUpdateRequired,

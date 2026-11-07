@@ -411,7 +411,7 @@ async fn album_detail_releases_carry_their_own_pin_state() {
 /// A pin the provider refuses — bad credentials, a missing bucket — is about
 /// the cloud setup the person fixes, not an internal fault.
 #[tokio::test]
-async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
+async fn a_pin_the_provider_refuses_is_a_storage_setup_failure() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let home = connect_test_cloud(&test).await;
@@ -669,7 +669,10 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     use bae_views::album_detail::StorageRowStatus;
     assert_eq!(
         by_storage().await,
-        [(cloud.clone(), StorageRowStatus::Cloud), (waiting.id.clone(), StorageRowStatus::Cloud),]
+        [
+            (cloud.clone(), StorageRowStatus::InStorage),
+            (waiting.id.clone(), StorageRowStatus::InStorage),
+        ]
     );
 
     home.set_faults(coven::Faults::none()).await;
@@ -677,7 +680,10 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     manager.store.pin(&refs).await.unwrap();
     assert_eq!(
         by_storage().await,
-        [(waiting.id.clone(), StorageRowStatus::Pinned), (cloud.clone(), StorageRowStatus::Cloud),]
+        [
+            (waiting.id.clone(), StorageRowStatus::Pinned),
+            (cloud.clone(), StorageRowStatus::InStorage),
+        ]
     );
     inspector_rows_until(manager, &waiting.id, |rows| {
         rows.files.iter().all(|file| file.pin == Some(bae_views::album_detail::FilePin::Kept))

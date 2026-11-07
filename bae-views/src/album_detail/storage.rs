@@ -17,11 +17,11 @@ pub enum StoragePlace {
     /// holds it, waiting or downloading, or pins of its files wait for coven
     /// to fetch their copies.
     Pinning,
-    Local,
+    OnOneDevice,
     /// Uploaded, every file pinned on this device.
     Pinned,
     /// Uploaded, and not wholly pinned on this device.
-    Cloud,
+    InStorage,
 }
 
 /// What a Storage Manager row's storage state shows: where its files are,
@@ -33,9 +33,9 @@ pub enum StorageRowStatus {
     /// A transition under way while the files rest where they are: unpinning,
     /// making the release local, or admitting it for upload.
     Transferring(ReleaseStorageAction),
-    Local,
+    OnOneDevice,
     Pinned,
-    Cloud,
+    InStorage,
 }
 
 impl StorageRowStatus {
@@ -44,9 +44,9 @@ impl StorageRowStatus {
             (StoragePlace::Uploading, _) => Self::Uploading,
             (StoragePlace::Pinning, _) => Self::Pinning,
             (_, Some(action)) => Self::Transferring(action),
-            (StoragePlace::Local, None) => Self::Local,
+            (StoragePlace::OnOneDevice, None) => Self::OnOneDevice,
             (StoragePlace::Pinned, None) => Self::Pinned,
-            (StoragePlace::Cloud, None) => Self::Cloud,
+            (StoragePlace::InStorage, None) => Self::InStorage,
         }
     }
 }
@@ -83,10 +83,10 @@ impl StorageRow {
     /// The release and its album arrive pre-joined from SQL, each with its
     /// cover's version; each half maps to its own summary projection, so the
     /// release row carries its own art and the album its primary release's.
-    pub(crate) fn from_raw(raw: DbStorageRow, has_cloud_home: bool) -> StorageRow {
+    pub(crate) fn from_raw(raw: DbStorageRow, syncs: bool) -> StorageRow {
         let cover = cover_ref(&raw.release.id, raw.release_cover_version);
         let ctx = ReleaseResolveCtx {
-            has_cloud_home,
+            syncs,
             cover,
             // A storage row projects a `ReleaseSummary`, which has no tracks, so
             // the per-track compilation flag is never read on this path.

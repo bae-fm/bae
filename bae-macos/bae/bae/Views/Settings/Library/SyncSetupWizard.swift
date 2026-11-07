@@ -47,7 +47,7 @@ private struct ProviderRow: View {
 
 // MARK: - SyncSetupWizard
 
-/// Sets up the library's cloud home: pick a provider, then its short form or
+/// Sets up the library's storage: pick a provider, then its short form or
 /// sign-in and folder choice. Success records the location coven connected.
 struct SyncSetupWizard: View {
     let onDone: () -> Void

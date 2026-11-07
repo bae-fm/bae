@@ -35,7 +35,7 @@ public struct ReleaseSummary: Identifiable, Sendable {
     /// Where its files are, and whether this device keeps them offline.
     public let storageState: BridgeReleaseStorageState
     /// Storage transitions the user can take right now, pre-computed by core
-    /// from the release's state and cloud-home presence. The album-detail
+    /// from the release's state and whether the library syncs. The album-detail
     /// "Storage…" sheet and the Storage Manager row context menu render these;
     /// neither re-derives availability.
     public let storageActions: [BridgeReleaseStorageAction]

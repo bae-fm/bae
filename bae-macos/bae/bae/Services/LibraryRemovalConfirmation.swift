@@ -10,8 +10,8 @@ enum LibraryRemovalConfirmation {
     /// A synced library stays in storage, and this Mac leaves its members
     /// first, which needs storage. A never-synced library's catalog is gone,
     /// while indexed audio files stay in the user's folders.
-    static func message(hasCloudHome: Bool) -> String {
-        guard hasCloudHome else {
+    static func message(syncs: Bool) -> String {
+        guard syncs else {
             return String(
                 localized:
                     "This library has never been synced. Its catalog will be permanently deleted; audio files in your folders aren't deleted."
@@ -39,7 +39,7 @@ enum LibraryRemovalConfirmation {
             }
             return unsent.confirmation(
                 consequence: consequence,
-                message: message(hasCloudHome: storage != nil)
+                message: message(syncs: storage != nil)
             )
         case .uncounted:
             return String(

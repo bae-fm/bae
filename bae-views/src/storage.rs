@@ -34,9 +34,8 @@ impl LibraryViews {
     ) -> Result<StoragePage, DbError> {
         let raw_rows = self.get_db_storage_page(sort, filter, offset, limit).await?;
         let total_count = self.get_storage_count(filter).await?;
-        let has_cloud_home = self.store.cloud_home().await?;
-        let rows =
-            raw_rows.into_iter().map(|raw| StorageRow::from_raw(raw, has_cloud_home)).collect();
+        let syncs = self.store.syncs().await?;
+        let rows = raw_rows.into_iter().map(|raw| StorageRow::from_raw(raw, syncs)).collect();
         Ok(StoragePage { rows, total_count })
     }
 
@@ -119,7 +118,7 @@ impl LibraryViews {
                 let selected =
                     storage_selected_on(&sql, request.filter, search.as_ref(), &request.selected)?;
                 let queues = storage_queues_on(&sql)?;
-                let has_cloud_home = cloud_home_on(&sql)?;
+                let syncs = syncs_on(&sql)?;
                 let searching = search.is_some();
                 Ok((
                     request.clone(),
@@ -129,7 +128,7 @@ impl LibraryViews {
                     total_size,
                     selected,
                     queues,
-                    has_cloud_home,
+                    syncs,
                 ))
             })
             .process(
@@ -141,7 +140,7 @@ impl LibraryViews {
                     total_size,
                     selected,
                     queues,
-                    has_cloud_home,
+                    syncs,
                 )| {
                     let windows = windows
                         .into_iter()
@@ -162,7 +161,7 @@ impl LibraryViews {
                         total_size,
                         selected: process_storage_rows(selected)?,
                         queues,
-                        has_cloud_home,
+                        syncs,
                     })
                 },
             )
@@ -171,8 +170,8 @@ impl LibraryViews {
 
 /// One delivery of the Storage Manager list as it shows it.
 pub fn resolve_storage_browse(projection: StorageBrowseProjection) -> crate::StorageBrowseSnapshot {
-    let has_cloud_home = projection.has_cloud_home;
-    let resolve = |raw: DbStorageRow| StorageRow::from_raw(raw, has_cloud_home);
+    let syncs = projection.syncs;
+    let resolve = |raw: DbStorageRow| StorageRow::from_raw(raw, syncs);
     let windows = projection
         .windows
         .into_iter()
@@ -273,9 +272,9 @@ fn storage_place(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::Storage
     match row.get::<_, i64>(column)? {
         0 => Ok(crate::album_detail::StoragePlace::Uploading),
         1 => Ok(crate::album_detail::StoragePlace::Pinning),
-        2 => Ok(crate::album_detail::StoragePlace::Local),
+        2 => Ok(crate::album_detail::StoragePlace::OnOneDevice),
         3 => Ok(crate::album_detail::StoragePlace::Pinned),
-        4 => Ok(crate::album_detail::StoragePlace::Cloud),
+        4 => Ok(crate::album_detail::StoragePlace::InStorage),
         order => Err(bae_store::read::column_conversion_error(
             row,
             column,
@@ -750,7 +749,7 @@ pub struct StorageBrowseProjection {
     pub queues: crate::StorageQueues,
     /// Whether storage is set up on this device, as coven's sync status
     /// says.
-    pub has_cloud_home: bool,
+    pub syncs: bool,
 }
 
 #[cfg(test)]

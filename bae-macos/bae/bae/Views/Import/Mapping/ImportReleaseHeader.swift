@@ -236,7 +236,7 @@ struct ImportReleaseHeader: View {
                     .themeText(.detail)
                     .foregroundStyle(Theme.warning)
                 }
-                if configStore.hasCloudHome {
+                if configStore.syncs {
                     HStack(spacing: ThemeSpace.related) {
                         ImportCheckboxToggle(
                             "In storage",

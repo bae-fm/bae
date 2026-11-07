@@ -8,7 +8,7 @@ private let logger = Logger.bae("SyncStatusLine")
 /// and, opened, each thing coven is waiting on with its action where the
 /// person can act; under it the last failure (`SyncFailureLines`).
 struct SyncStatusLine: View {
-    /// The library's cloud home, whose S3 access key the key sheet replaces.
+    /// The library's storage, whose S3 access key the key sheet replaces.
     let location: BridgeStorageLocation
     /// Offered when sync found another copy of this device.
     let onResetDevice: () -> Void

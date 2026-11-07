@@ -245,9 +245,9 @@ pub enum BridgeStorageRowStatus {
     Uploading,
     Pinning,
     Transferring { action: crate::types::BridgeReleaseStorageAction },
-    Local,
+    OnOneDevice,
     Pinned,
-    Cloud,
+    InStorage,
 }
 
 /// Column the Storage Manager can sort by. Mirrors `StorageSortField`.

@@ -13995,7 +13995,7 @@ nb = "Synkroniseringen mislyktes"
 fi = "Synkronointi epäonnistui"
 
 [messages."core.sync.stopped"]
-comment = "The sync status line when the library has a cloud home but its sync loop isn't running."
+comment = "The sync status line when the library has storage but its sync loop isn't running."
 value = "Sync stopped"
 
 [messages."core.sync.stopped".translations]

@@ -445,7 +445,9 @@
                         transfer: pinning ? .pin : nil,
                         status: pinning
                             ? .pinning
-                            : isRemote ? (pinned ? .pinned : .cloud) : .local,
+                            : isRemote
+                                ? (pinned ? .pinned : .inStorage)
+                                : .onOneDevice,
                         fileCount: Int64(1 + index % 24),
                         totalSize: Int64(48_000_000 + index * 83_000_000)
                     )

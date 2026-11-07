@@ -1,7 +1,7 @@
 //! Export of cloud-only (unpinned remote) releases.
 //!
 //! Export must not require a local copy: when this device holds none, the
-//! bytes are downloaded from the cloud home and decrypted with the release's
+//! bytes are downloaded from storage and decrypted with the release's
 //! item key — the same verified read pin and unmanage use.
 
 use bae_preferences::{

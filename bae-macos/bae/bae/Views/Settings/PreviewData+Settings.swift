@@ -206,7 +206,7 @@
             )
         }
 
-        /// A `ConfigStore` whose library has its cloud home at `storage`, so
+        /// A `ConfigStore` whose library has its storage at `storage`, so
         /// the Library settings preview shows the storage, its sync and the
         /// people.
         @MainActor

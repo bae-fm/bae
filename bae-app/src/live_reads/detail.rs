@@ -6,8 +6,8 @@ use super::*;
 
 /// The detail view's album as it changes, read for the id the
 /// subscription is set to: its rows, with each release's pin marker,
-/// download-queue entry and storage transition, and whether a cloud home
-/// is connected — the state it is resolved against. Another album is a
+/// download-queue entry and storage transition, and whether the library syncs —
+/// the state it is resolved against. Another album is a
 /// new id on the same read.
 pub fn subscribe_album_detail(
     library: &LibraryManager,
@@ -22,7 +22,7 @@ pub fn subscribe_album_detail(
 
 /// The detail view's release as it changes, read for the id the
 /// subscription is set to: its rows, with its pin marker, download-queue
-/// entry and storage transition, and whether a cloud home is connected —
+/// entry and storage transition, and whether the library syncs —
 /// the state it is resolved against. Another release is a new id on the
 /// same read.
 pub fn subscribe_release_detail(

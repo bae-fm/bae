@@ -38,7 +38,7 @@ public struct ReleaseDetail: Identifiable, Sendable {
     }
 
     /// Storage transitions the user can take right now, pre-computed by core
-    /// from the release's state and cloud-home presence. Carried on the
+    /// from the release's state and whether the library syncs. Carried on the
     /// wrapped `summary`; the "Storage…" sheet renders one button per action
     /// and never derives availability.
     public var storageActions: [BridgeReleaseStorageAction] {

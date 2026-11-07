@@ -135,7 +135,7 @@ impl LibraryManager {
         .await
     }
 
-    /// Whether imports go to the cloud home, when the library has one.
+    /// Whether imports go to storage, when the library syncs.
     pub async fn set_import_to_cloud(
         &self,
         enabled: bool,

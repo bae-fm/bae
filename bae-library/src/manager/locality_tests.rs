@@ -671,7 +671,7 @@ async fn cancel_release_transition_fires_a_registered_transfer_token() {
     manager.cancel_release_transition(REL_NONE).await.unwrap();
 }
 
-// Needs the mock cloud home with uploads running: audio detachment is only
+// Needs the mock storage with uploads running: audio detachment is only
 // offered a release whose upload has been accepted, so the transition has
 // to run all the way through a cycle and retire its intent first.
 #[tokio::test]

@@ -1,7 +1,7 @@
 import Foundation
 
 public final class Sync: Sendable, Observable {
-    /// Connect an S3 bucket as this library's cloud home, registering this
+    /// Connect an S3 bucket as this library's storage, registering this
     /// device under its name, each step written into the setup's stream.
     public let saveSyncConfig:
         @Sendable (BridgeSaveSyncConfig, BridgeLibrarySetup) async throws ->

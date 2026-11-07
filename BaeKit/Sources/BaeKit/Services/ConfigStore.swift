@@ -7,7 +7,7 @@ public class ConfigStore {
     public var config: Config
     public private(set) var storage: BridgeStorageLocation?
 
-    public var hasCloudHome: Bool { storage != nil }
+    public var syncs: Bool { storage != nil }
 
     public func applyStorage(_ location: BridgeStorageLocation?) {
         storage = location

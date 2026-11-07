@@ -61,7 +61,7 @@ impl Home {
         handle
     }
 
-    /// Give `handle`'s library its cloud home, which saves the person's
+    /// Give `handle`'s library storage, which saves the person's
     /// restore code, and wait for it to sync.
     async fn connect(&self, handle: &coven::CovenHandle) {
         handle

@@ -31,7 +31,7 @@ fn detail(tracks: Vec<bae_records::DbTrackWithArtists>) -> ReleaseDetail {
         upload: None,
         cover_version: None,
     };
-    let ctx = ReleaseResolveCtx { has_cloud_home: false, cover: None, is_compilation: false };
+    let ctx = ReleaseResolveCtx { syncs: false, cover: None, is_compilation: false };
     ReleaseDetail::from_raw(
         raw,
         bae_transfers::ReleaseTransferState { download: None, action: None },

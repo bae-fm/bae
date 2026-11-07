@@ -172,7 +172,7 @@ pub struct BridgeLibrary {
 /// `LibraryState`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeLibraryState {
-    /// It opens: stored at its cloud home, or on this device only (`None`).
+    /// It opens: stored in its storage, or on this device only (`None`).
     Openable { storage: Option<super::BridgeStorageLocation> },
     /// Its storage settings can't be read, which keeps it from opening.
     Unreadable { error: super::BridgeError },
@@ -337,8 +337,8 @@ pub struct BridgeReleaseSummary {
     pub media_terms: Vec<crate::types::BridgeFactTerm>,
     /// Where its files are, and whether this device keeps them offline.
     pub storage_state: BridgeReleaseStorageState,
-    /// Storage transitions available right now, gated by the core on the
-    /// cloud home, and empty while the release is `transitioning`. The Storage
+    /// Storage transitions available right now, gated by the core on whether the library
+    /// syncs, and empty while the release is `transitioning`. The Storage
     /// Manager row context menu renders these.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
     pub transfer_action: Option<BridgeReleaseStorageAction>,
@@ -393,8 +393,8 @@ pub struct BridgeRelease {
     pub pressing_details: Vec<crate::types::BridgeFactTerm>,
     /// Where its files are, and whether this device keeps them offline.
     pub storage_state: BridgeReleaseStorageState,
-    /// Storage transitions available right now, gated by the core on the
-    /// cloud home, and empty while the release is `transitioning`.
+    /// Storage transitions available right now, gated by the core on whether the library
+    /// syncs, and empty while the release is `transitioning`.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
     pub transfer_action: Option<BridgeReleaseStorageAction>,
     /// What of the release waits in this device's upload queue; `None` when

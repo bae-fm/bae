@@ -2,7 +2,7 @@
     import BaeKit
     import Observation
 
-    /// Full-edition cloud-home setup: provider sign-in, folder choice and
+    /// Full-edition storage setup: provider sign-in, folder choice and
     /// connecting the chosen location. It owns the feature-gated bridge calls
     /// so the shared package never compiles against APIs absent from the
     /// baeium bridge. coven presents the sign-in and keeps the tokens.

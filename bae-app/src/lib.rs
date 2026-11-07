@@ -94,7 +94,7 @@ pub enum BootstrapError {
     KeychainEntitlementMissing(coven::KeychainError),
 }
 
-/// Why reading the cloud-home key state failed, as a bootstrap outcome.
+/// Why reading the storage key state failed, as a bootstrap outcome.
 ///
 /// Coven types a keychain that refused *right now* apart from every other
 /// keyring failure precisely so a host can ask again after unlock. Flattening it

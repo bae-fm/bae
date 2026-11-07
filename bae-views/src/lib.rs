@@ -80,11 +80,11 @@ use bae_records::records::query::*;
 use bae_records::records::read::*;
 use bae_records::records::{release_detail_rows_on, unstored_audio_on, DbReleaseDetailRows};
 use bae_records::*;
-use bae_store::cloud_home_on;
 use bae_store::list_windows::{
     list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm, WindowsRead,
 };
 use bae_store::read::*;
+use bae_store::syncs_on;
 use bae_store::*;
 use bae_transfers::release_storage_action::{transfer_action_column, transfer_action_sql};
 use bae_util::search_text::search_pattern;

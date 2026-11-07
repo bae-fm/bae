@@ -16,8 +16,8 @@ impl LibraryViews {
         let Some(context) = self.find_release_detail_context(release_id).await? else {
             return Ok(None);
         };
-        let has_cloud_home = self.store.cloud_home().await?;
-        Ok(Some(resolve_release_detail(release_id, context, has_cloud_home)))
+        let syncs = self.store.syncs().await?;
+        Ok(Some(resolve_release_detail(release_id, context, syncs)))
     }
 
     /// The release's rows as its detail reads them, unresolved; `None` when
@@ -59,17 +59,17 @@ impl LibraryViews {
     {
         self.store
             .subscribe_reconfigurable(initial, |release_id, sql| {
-                let has_cloud_home = cloud_home_on(&sql)?;
+                let syncs = syncs_on(&sql)?;
                 let context = match release_id {
                     Some(release_id) => find_release_detail_context_on(&sql, release_id)?,
                     None => None,
                 };
-                Ok((context, has_cloud_home))
+                Ok((context, syncs))
             })
-            .process(|(context, has_cloud_home)| {
+            .process(|(context, syncs)| {
                 Ok(ReleaseDetailProjection {
                     context: context.map(ReleaseContextRows::process),
-                    has_cloud_home,
+                    syncs,
                 })
             })
     }
@@ -80,8 +80,8 @@ pub fn resolve_release_detail_projection(
     release_id: &str,
     projection: ReleaseDetailProjection,
 ) -> Option<ReleaseDetail> {
-    let has_cloud_home = projection.has_cloud_home;
-    projection.context.map(|context| resolve_release_detail(release_id, context, has_cloud_home))
+    let syncs = projection.syncs;
+    projection.context.map(|context| resolve_release_detail(release_id, context, syncs))
 }
 
 /// The release's detail as its view shows it, against whether storage is
@@ -89,11 +89,11 @@ pub fn resolve_release_detail_projection(
 fn resolve_release_detail(
     release_id: &str,
     context: ReleaseDetailContext,
-    has_cloud_home: bool,
+    syncs: bool,
 ) -> ReleaseDetail {
     let ReleaseDetailContext { detail, transfers, release_index, is_compilation } = context;
     let ctx = ReleaseResolveCtx {
-        has_cloud_home,
+        syncs,
         cover: bae_records::cover_ref(release_id, detail.cover_version.clone()),
         is_compilation,
     };
@@ -105,7 +105,7 @@ pub struct ReleaseDetailProjection {
     pub context: Option<ReleaseDetailContext>,
     /// Whether storage is set up on this device, as coven's sync status
     /// says.
-    pub has_cloud_home: bool,
+    pub syncs: bool,
 }
 
 /// How many releases of its album come before the release `?1` in the

@@ -573,7 +573,7 @@ impl AppServices {
     delegate_async!(manager, cancel_output => cancel_output(release_id: &str) -> Result<(), bae_library::LibraryError>);
 
     #[cfg(any(test, feature = "test-utils"))]
-    delegate_async!(manager, has_cloud_home => has_cloud_home() -> Result<bool, bae_library::LibraryError>);
+    delegate_async!(manager, syncs => syncs() -> Result<bool, bae_library::LibraryError>);
     #[cfg(any(test, feature = "test-utils"))]
     delegate_async!(manager, is_sync_configured => is_sync_configured() -> Result<bool, bae_library::LibraryError>);
 

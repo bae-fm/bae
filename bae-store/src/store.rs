@@ -8,7 +8,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 mod coven_capabilities;
-pub use coven_capabilities::{cloud_home_on, StorageSetupSteps, UPLOADS_PAUSED};
+pub use coven_capabilities::{syncs_on, StorageSetupSteps, UPLOADS_PAUSED};
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;
 

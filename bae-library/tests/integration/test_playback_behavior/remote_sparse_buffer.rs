@@ -308,7 +308,7 @@ const SEEK_LARGEST_RANGE_BOUND: u64 = 5 * 1024 * 1024;
 /// race and well below the file.
 const SEEK_RANGE_BYTES_BOUND: u64 = 16 * 1024 * 1024;
 
-/// A seek over a remote cloud home costs the chunks its range touches, not the
+/// A seek over remote storage costs the chunks its range touches, not the
 /// whole file. coven seals a file per chunk and authenticates each chunk on its
 /// own, so a ranged read fetches only the chunks covering it: seeking near the end
 /// of the last track moves 4,195,328 bytes — the fill's one 4 MiB window and a

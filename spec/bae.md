@@ -2186,8 +2186,8 @@ from wherever they are: the person's own path, the cache, or storage.
   write (a release moves, comes or goes, or its files or cover change), the
   deletion is refused and writes nothing, and asking again deletes what now
   stands.
-- **A device with no cloud home** has only local releases; moving to storage
-  needs one.
+- **A device with no storage** has only local releases; moving to storage
+  needs it set up.
 
 ---
 
@@ -2291,7 +2291,7 @@ once this device is no longer that person, such as one removed from the
 library during the play, saving it is refused.
 
 **Plays before a profile.** A device can play before its person has a profile:
-Ana's new library has no cloud home yet, so she is no member and has no circle
+Ana's new library has no storage yet, so she is no member and has no circle
 (§5.4). Her plays are kept in the device-local table `local_history`, and
 stay there until her profile exists. When her profile is created, the same
 write moves every one of them into her private circle. They never go to the household on their own: she hadn't chosen to share
@@ -2642,7 +2642,7 @@ The code to type holds no key, and asks for it separately.
 
 **Where the code shows.** The recovery code is coven's *restore code*.
 Carol adds a device from **Add device…** under her own row in People, shown
-only for a library with a cloud home. Its sheet tells her to choose **Add
+only for a library with storage. Its sheet tells her to choose **Add
 device** on the new device, then scan its QR code or type the code it shows;
 on S3 it says the QR code carries her key. While it shows the code it watches
 her devices, as People's list of them does: once a device of hers joins that
@@ -2652,7 +2652,7 @@ read before the code is made, so a device that restores from it is never
 counted among them, whenever this device learns that it joined. While the
 sheet watches, Carol's device syncs every 5 seconds instead of every 30, so it
 says the new device was added within seconds of it joining. A quiet sync is two
-requests to the cloud home, about 24 a minute, only while the sheet is open
+requests to the storage, about 24 a minute, only while the sheet is open
 ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
 Settings keeps
 the code under **Your recovery code**, for the day she loses every device:
@@ -2703,13 +2703,13 @@ its files, each naming the device it is on; only its audio, and the paths coven
 records for its originals, stay on that device until the person moves it to
 storage (§4.2).
 
-### 6.2 Cloud homes
+### 6.2 Storage
 
-A library's *cloud home* is where coven stores it: an S3-compatible bucket,
+A library's *storage* is where coven stores it: an S3-compatible bucket,
 Dropbox, OneDrive, or iCloud on Apple devices. A library can
 also have none and stay on one device. The baeium edition offers S3 only.
 
-Every cloud home holds the same thing: encrypted objects under random names
+Every kind of storage holds the same thing: encrypted objects under random names
 (§4.5). coven's
 [Part VI](https://github.com/bae-fm/coven/blob/main/spec/coven.md#part-vi-storage)
 says what each provider needs.
@@ -2726,8 +2726,8 @@ Region; a bucket that isn't there, or that holds other files, under Bucket;
 any other reason at the top of the form. The reason sits in its field's own
 row on macOS, and under the field on Android.
 
-**What setup shows while it runs.** Setting a cloud home up, or reconnecting
-one after signing in again or with a new S3 key, waits on the provider, at
+**What setup shows while it runs.** Setting storage up, or reconnecting
+it after signing in again or with a new S3 key, waits on the provider, at
 most a minute of rate limits, and on a reconnect loading what other devices
 published. So each setup call is handed a stream of its own, of the kind a
 setup call reports in (§9.1), and writes into it the steps coven reports
@@ -2925,7 +2925,7 @@ Syncing while a pass moves or a file is sent or downloaded; Offline, with or
 without changes waiting to go out; Sync failed for any failure coven names
 (signed out, no access, storage full, the folder gone, the clock wrong, an
 update needed, removed, a reset needed, or any other); and Synced, or Sync
-stopped when the library has a cloud home but isn't syncing, for synced or
+stopped when the library has storage but isn't syncing, for synced or
 waiting to sync. A failure shows above activity, as coven ranks its own sync
 state, and the line never works out that state again from coven's tables.
 While a storage setup runs, the line says Setting up storage in place of
@@ -3218,7 +3218,7 @@ Household from it first removes the laptop from the library, then deletes its
 directory and the secrets the laptop keeps for it; the library stays in storage. Leaving
 is an admin entry, so it needs storage. Offline, removal says so and waits
 rather than deleting the local copy and leaving a device listed that will
-never come back. A library with no cloud home has no members to leave, and is
+never come back. A library with no storage has no members to leave, and is
 deleted at once. If the laptop has left but closing its copy then fails,
 coven discards the closed copy without opening it, and the removal goes on
 to delete bae's files for it. Only if that discard fails too does the removal
@@ -4096,7 +4096,7 @@ last saved of it.
 ### 9.5 Storage and sync
 
 Through `AppServices`: move releases to storage and make them local again,
-pin and unpin, cancel a transition, export and save; set up a cloud home,
+pin and unpin, cancel a transition, export and save; set up storage,
 cancel a running setup and dismiss one that ended undone (§6.2),
 reconnect, pause, read the pending list and act on its records; list people
 and their devices, watch for a device of this person's that joins after the
@@ -4988,7 +4988,7 @@ The `Bridge*` types live in `bae-bridge/src/types/`, by area:
 |---|---|
 | `library_playback.rs` | albums, releases, tracks, files, audio formats, covers and galleries, records, catalogs, cloud providers, libraries |
 | `configuration/library.rs` | search results, artists, composers and works, the storage table, the queue and its additions, sync status and pending records |
-| `configuration/services.rs` | settings, the MCP and Subsonic servers, receivers, cloud-home setup |
+| `configuration/services.rs` | settings, the MCP and Subsonic servers, receivers, storage setup |
 | `configuration/settings.rs` | sorting, recovery codes, people and devices, save presets, errors |
 | `playback_values.rs` | the playing track, position, side-pause prompt, media controls, preview |
 | `events_and_transfers.rs` | the artwork reader, uploads, downloads, exports and saves |

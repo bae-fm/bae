@@ -217,17 +217,14 @@ async fn test_multiple_releases_independent_completion() {
 #[tokio::test]
 async fn test_manage_refused_without_cloud_storage() {
     let tmp = TempDir::new().unwrap();
-    // No cloud home connected, so the sync loop is NOT running.
+    // No storage connected, so the sync loop is NOT running.
     let (mgr, _cloud) = setup_manager(&tmp).await;
     let db = mgr.store().clone();
     assert!(
         !mgr.manager().is_sync_ready().await.unwrap(),
-        "precondition: no cloud home / sync loop not running"
+        "precondition: no storage / sync loop not running"
     );
-    assert!(
-        !mgr.manager().has_cloud_home().await.unwrap(),
-        "precondition: no cloud home connected"
-    );
+    assert!(!mgr.manager().syncs().await.unwrap(), "precondition: the library does not sync");
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(
         mgr.manager(),
@@ -465,7 +462,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
 }
 
 // ---------------------------------------------------------------------------
-// Cloud-home reactivity: the storage value joins the database row with the
+// Storage reactivity: the storage value joins the database row with the
 // current sync state, so connecting a home delivers the changed actions.
 // ---------------------------------------------------------------------------
 
@@ -490,7 +487,7 @@ async fn next_storage_release(
 }
 
 #[tokio::test]
-async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
+async fn storage_subscription_delivers_actions_when_storage_is_set_up() {
     use bae_types::release_storage::ReleaseStorageAction;
 
     let tmp = TempDir::new().unwrap();
@@ -517,11 +514,11 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
         },
     );
     let before = next_storage_release(&values, &release_id).await;
-    assert!(before.storage_actions.is_empty(), "no cloud home → no storage actions");
+    assert!(before.storage_actions.is_empty(), "no storage → no storage actions");
 
     bae_library::test_libraries::connect_storage(mgr.manager(), &cloud).await;
     // The disk's answer for the release's originals is a value of its own,
-    // and may land before or after the cloud home's.
+    // and may land before or after storage's.
     tokio::time::timeout(HANG_GUARD, async {
         while !next_storage_release(&values, &release_id)
             .await
@@ -530,5 +527,5 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
         {}
     })
     .await
-    .expect("cloud home present → upload available");
+    .expect("storage set up → upload available");
 }

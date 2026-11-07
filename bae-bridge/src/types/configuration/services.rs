@@ -110,7 +110,7 @@ mirror_enum! {
 /// The import storage choice. Mirrors `bae_preferences::ImportStoragePreferences`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeImportStorage {
-    /// Whether imports go to the cloud home, when the library has one.
+    /// Whether imports go to storage, when the library syncs.
     pub cloud: bool,
     /// Whether a release that goes to the cloud stays downloaded here.
     pub pinned: bool,

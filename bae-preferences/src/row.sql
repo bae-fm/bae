@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS preferences (
     max_concurrent_downloads INTEGER NOT NULL CHECK (max_concurrent_downloads BETWEEN 1 AND 8),
     show_remaining_time INTEGER NOT NULL CHECK (show_remaining_time IN (0, 1)),
     library_full_width  INTEGER NOT NULL CHECK (library_full_width IN (0, 1)),
-    -- Where an import goes: to the cloud home when the library has one, and
+    -- Where an import goes: to storage when the library syncs, and
     -- whether it stays downloaded here.
     import_to_cloud INTEGER NOT NULL CHECK (import_to_cloud IN (0, 1)),
     import_pinned   INTEGER NOT NULL CHECK (import_pinned IN (0, 1)),

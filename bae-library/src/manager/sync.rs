@@ -20,8 +20,8 @@ impl LibraryManager {
 
     /// Whether storage is set up on this device, as coven's sync status
     /// says now.
-    pub async fn has_cloud_home(&self) -> Result<bool, LibraryError> {
-        Ok(self.store.cloud_home().await?)
+    pub async fn syncs(&self) -> Result<bool, LibraryError> {
+        Ok(self.store.syncs().await?)
     }
 
     pub async fn set_sync_paused(&self, paused: bool) -> Result<(), LibraryError> {

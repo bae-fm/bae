@@ -86,7 +86,7 @@ fn sync_failure_category(error: &coven::SyncFailure) -> bae_diagnostics::UiError
         coven::SyncFailure::UpdateRequired(_) => C::SyncUpdateRequired,
         coven::SyncFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
         coven::SyncFailure::Removed => C::DeviceRemoved,
-        coven::SyncFailure::Storage(error) => bae_diagnostics::cloud_home_category(error),
+        coven::SyncFailure::Storage(error) => bae_diagnostics::storage_error_category(error),
         coven::SyncFailure::Operation(_) | coven::SyncFailure::Other(_) => C::Internal,
     }
 }

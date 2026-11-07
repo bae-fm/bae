@@ -50,7 +50,7 @@ forward! { async this => {
         Ok(this.services.set_import_when_identified(enabled).await?)
     }
 
-    /// Whether an import goes to the cloud home, when the library has one.
+    /// Whether an import goes to storage, when the library syncs.
     fn set_import_to_cloud(enabled: bool) -> () {
         Ok(this.services.set_import_to_cloud(enabled).await?)
     }

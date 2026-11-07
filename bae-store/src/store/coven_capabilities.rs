@@ -9,7 +9,7 @@ pub const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 /// Whether storage is set up on this device, as coven's sync status says:
 /// what a release's storage choices and markers are read against, beside the
 /// library's own rows.
-pub fn cloud_home_on(sql: &SqlReadContext<'_>) -> Result<bool, DbError> {
+pub fn syncs_on(sql: &SqlReadContext<'_>) -> Result<bool, DbError> {
     Ok(sql.query_row("SELECT storage = 'connected' FROM coven_sync_status", [], |row| row.get(0))?)
 }
 
@@ -375,8 +375,8 @@ impl Store {
     }
 
     /// Whether storage is set up on this device now.
-    pub async fn cloud_home(&self) -> Result<bool, DbError> {
-        self.read(|sql| cloud_home_on(&sql)).await
+    pub async fn syncs(&self) -> Result<bool, DbError> {
+        self.read(|sql| syncs_on(&sql)).await
     }
 
     pub async fn set_uploads_paused(&self, paused: bool) -> Result<(), DbError> {

@@ -804,7 +804,7 @@ extension Importer {
         try await operations.setImportWhenIdentified(enabled)
     }
 
-    /// Whether an import goes to the cloud home, when there is one.
+    /// Whether an import goes to storage, when there is any.
     @MainActor
     func setImportToCloud(_ enabled: Bool) async throws {
         try await operations.setImportToCloud(enabled)

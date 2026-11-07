@@ -6,7 +6,7 @@
 /// available; the UI renders them and never re-derives availability.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseStorageAction {
-    /// Local -> Remote (upload to the cloud home).
+    /// Local -> Remote (upload to storage).
     Upload,
     /// Keep a remote release offline: fetch its files into coven's pinned cache.
     Pin,

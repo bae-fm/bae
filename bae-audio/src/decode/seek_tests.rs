@@ -181,7 +181,7 @@ fn test_seek_to_stereo_96000_16bit() {
 ///
 /// Without `AVFMT_FLAG_FAST_SEEK`, FFmpeg ignores the FLAC seektable and seeks by
 /// binary search: it reads the file's *end* to find the last timestamp, then
-/// bisects frame by frame. Over a cloud home every one of those reads is a
+/// bisects frame by frame. Over storage every one of those reads is a
 /// separate ranged fetch (~15 of them), so a single CUE/FLAC track start or
 /// in-track seek stalls for seconds. With the flag set, a seektable-bearing FLAC
 /// jumps straight to the seekpoint at or before the target.

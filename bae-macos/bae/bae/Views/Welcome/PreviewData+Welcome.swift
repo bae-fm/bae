@@ -1,7 +1,7 @@
 #if DEBUG
     import BaeKit
 
-    // Preview fixtures for the Welcome flow: a library with a cloud home, one
+    // Preview fixtures for the Welcome flow: a library with storage, one
     // without, one that can't be read, one whose restore stopped partway, and
     // restore codes saved in iCloud Keychain for libraries not on this Mac,
     // one of them unreadable.

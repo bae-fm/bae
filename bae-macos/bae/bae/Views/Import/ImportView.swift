@@ -21,7 +21,7 @@ struct ImportView: View {
     @Environment(ConfigStore.self)
     var configStore
 
-    /// The stored import storage choice; shown only when a cloud home exists.
+    /// The stored import storage choice; shown only when the library syncs.
     var storageCloud: Binding<Bool> {
         Binding(
             get: { configStore.config.importStorage.cloud },

@@ -80,8 +80,8 @@ pub(crate) use save::SaveWindow;
 mod storage;
 mod sync;
 use bae_diagnostics::{
-    cloud_home_category, cloud_setup_category, cloud_unlock_category, device_only_category,
-    file_read_category, key_category, sync_category,
+    cloud_unlock_category, device_only_category, file_read_category, key_category,
+    storage_error_category, storage_setup_category, sync_category,
 };
 pub use sync::storage_setup_finishing;
 mod track;
@@ -227,7 +227,7 @@ pub enum LibraryError {
     /// a provider used through the wrong entry point).
     #[error("{0}")]
     Internal(String),
-    /// The OS keyring couldn't be read or written (encryption key, cloud-home
+    /// The OS keyring couldn't be read or written (encryption key, storage
     /// credentials, Discogs/MCP tokens).
     #[error("Keyring error: {0}")]
     Keyring(#[from] coven::KeyError),
@@ -239,12 +239,12 @@ pub enum LibraryError {
     /// them was refused.
     #[error("Config error: {0}")]
     Preferences(#[from] bae_preferences::PreferencesError),
-    /// Building or probing a cloud home failed — bad credentials/config
+    /// Building or probing storage failed — bad credentials/config
     /// (`Configuration`) or an unreachable backend (`Transport`).
-    #[error("Cloud home error: {0}")]
-    CloudHome(#[from] coven::StorageError),
-    #[error("Cloud setup error: {0}")]
-    CloudSetup(#[from] coven::StorageSetupError),
+    #[error("Storage error: {0}")]
+    StorageAccess(#[from] coven::StorageError),
+    #[error("Storage setup error: {0}")]
+    StorageSetup(#[from] coven::StorageSetupError),
     #[error("Cloud unlock error: {0}")]
     CloudUnlock(#[from] coven::StoreKeyUnlockError),
     /// A sync-manager connection or membership operation failed.
@@ -370,8 +370,8 @@ impl bae_util::task_failure::ReportedBug for LibraryError {
             LibraryError::Sync(error) | LibraryError::InviteJoining(error) => error.reported_bug(),
             LibraryError::Keyring(error) => error.bug(),
             LibraryError::AppDir(error) => error.bug(),
-            LibraryError::CloudHome(error) => error.bug(),
-            LibraryError::CloudSetup(error) => error.bug(),
+            LibraryError::StorageAccess(error) => error.bug(),
+            LibraryError::StorageSetup(error) => error.bug(),
             LibraryError::CloudUnlock(error) => error.bug(),
             LibraryError::Cleanup { operation, cleanup } => {
                 operation.reported_bug().or_else(|| cleanup.reported_bug())
@@ -394,8 +394,8 @@ impl LibraryError {
             LibraryError::Preferences(error) => error.category(),
             LibraryError::Validation(_) => C::Config,
             LibraryError::Keyring(error) => key_category(error),
-            LibraryError::CloudHome(e) => cloud_home_category(e),
-            LibraryError::CloudSetup(error) => cloud_setup_category(error),
+            LibraryError::StorageAccess(e) => storage_error_category(e),
+            LibraryError::StorageSetup(error) => storage_setup_category(error),
             LibraryError::CloudUnlock(error) => cloud_unlock_category(error),
             LibraryError::Sync(e) => sync_category(e),
             LibraryError::InviteJoining(_) => C::InviteJoining,

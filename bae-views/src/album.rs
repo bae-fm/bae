@@ -297,8 +297,8 @@ impl LibraryViews {
         else {
             return Ok(None);
         };
-        let has_cloud_home = self.store.cloud_home().await?;
-        Ok(Some(resolve_album_detail(raw, has_cloud_home)))
+        let syncs = self.store.syncs().await?;
+        Ok(Some(resolve_album_detail(raw, syncs)))
     }
 
     /// Follow the album `initial` names, or none. The detail view moves to
@@ -310,18 +310,15 @@ impl LibraryViews {
     {
         self.store
             .subscribe_reconfigurable(initial, |album_id, sql| {
-                let has_cloud_home = cloud_home_on(&sql)?;
+                let syncs = syncs_on(&sql)?;
                 let detail = match album_id {
                     Some(album_id) => find_album_detail_on(&sql, album_id)?,
                     None => None,
                 };
-                Ok((detail, has_cloud_home))
+                Ok((detail, syncs))
             })
-            .process(|(detail, has_cloud_home)| {
-                Ok(AlbumDetailProjection {
-                    detail: detail.map(AlbumDetailRows::process),
-                    has_cloud_home,
-                })
+            .process(|(detail, syncs)| {
+                Ok(AlbumDetailProjection { detail: detail.map(AlbumDetailRows::process), syncs })
             })
     }
 }
@@ -359,8 +356,8 @@ pub fn resolve_album_browse(
 pub fn resolve_album_detail_projection(
     projection: AlbumDetailProjection,
 ) -> Option<crate::album_detail::AlbumDetail> {
-    let has_cloud_home = projection.has_cloud_home;
-    projection.detail.map(|raw| resolve_album_detail(raw, has_cloud_home))
+    let syncs = projection.syncs;
+    projection.detail.map(|raw| resolve_album_detail(raw, syncs))
 }
 
 /// One delivery of a library search as its results show it.
@@ -373,10 +370,7 @@ pub fn resolve_library_search_projection(
 /// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`,
 /// against whether storage is set up: joins artist names, formats labels,
 /// groups tracks by side, and builds galleries.
-fn resolve_album_detail(
-    raw: DbAlbumDetail,
-    has_cloud_home: bool,
-) -> crate::album_detail::AlbumDetail {
+fn resolve_album_detail(raw: DbAlbumDetail, syncs: bool) -> crate::album_detail::AlbumDetail {
     let artist_names = bae_records::credits::library_line(&raw.artists);
     let primary_release_id = raw.primary_release_id;
 
@@ -384,7 +378,7 @@ fn resolve_album_detail(
     let mut releases = Vec::with_capacity(raw.releases.len());
     for (i, ReleaseDetailRead { detail, transfers }) in raw.releases.into_iter().enumerate() {
         let ctx = crate::album_detail::ReleaseResolveCtx {
-            has_cloud_home,
+            syncs,
             cover: bae_records::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
         };
@@ -621,7 +615,7 @@ pub struct AlbumDetailProjection {
     pub detail: Option<DbAlbumDetail>,
     /// Whether storage is set up on this device, as coven's sync status
     /// says.
-    pub has_cloud_home: bool,
+    pub syncs: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]

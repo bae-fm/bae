@@ -123,8 +123,8 @@ struct ImportCandidateBulkSelectionPaneTests {
     /// Where imported files go is a question only for a library with a cloud
     /// home, and it belongs to the import row: the choices sit inside the card,
     /// lined up with the rows' names.
-    @Test("the storage choices are drawn only for a library with a cloud home")
-    func theStorageChoicesFollowTheCloudHome() async throws {
+    @Test("the storage choices are drawn only for a library that syncs")
+    func theStorageChoicesFollowWhetherTheLibrarySyncs() async throws {
         try await Self.withHostedPane(
             configStore: PreviewData.configStore()
         ) { _, host in

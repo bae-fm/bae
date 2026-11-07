@@ -26,7 +26,7 @@ fn unreachable_s3_config() -> S3ConfigData {
 }
 
 #[test]
-fn probe_failure_persists_nothing_and_surfaces_as_cloud_setup_network() {
+fn probe_failure_persists_nothing_and_surfaces_as_storage_setup_network() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (library, _tmp) = setup_fresh_library(&runtime);
 

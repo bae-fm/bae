@@ -19,11 +19,11 @@ struct StorageStateLabel: View {
             StorageMakingLocalChip(releaseId: release.id)
         case .transferring(let action):
             StatusChip(verbatim: action.transferLabel, tone: .activity)
-        case .local:
+        case .onOneDevice:
             StatusChip("Local", symbol: "folder")
         case .pinned:
             StatusChip("Pinned", symbol: "pin.fill")
-        case .cloud:
+        case .inStorage:
             StatusChip("In storage", symbol: "cloud")
         }
     }
@@ -87,14 +87,14 @@ private struct StorageMakingLocalChip: View {
                     id: "r-local",
                     storageState: .onOneDevice
                 ),
-                status: .local
+                status: .onOneDevice
             )
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-cloud",
                     storageState: .inStorage(pinned: false)
                 ),
-                status: .cloud
+                status: .inStorage
             )
             StorageStateLabel(
                 release: PreviewData.storageRelease(

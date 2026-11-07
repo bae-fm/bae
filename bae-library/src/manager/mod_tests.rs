@@ -179,7 +179,7 @@ pub(super) async fn manager_with_release() -> (TestManager, TempDir, DbAlbum, Db
 }
 
 // Fixtures for the cloud-backed release states the storage, upload, pin and
-// download tests assert over: connecting a manager to an in-memory cloud home,
+// download tests assert over: connecting a manager to an in-memory storage,
 // putting a release through upload at each stage it can be caught in, and
 // reading back what coven kept on this device.
 
@@ -667,10 +667,10 @@ pub(super) fn setup_failure_classes_retain_the_actionable_category() {
             coven::SyncError::SecureStorage(coven::KeyError::SavedEntryTooLarge).into(),
             C::SavedRestoreCodeTooLarge,
         ),
-        (LibraryError::CloudSetup(coven::StorageSetupError::Removed), C::DeviceRemoved),
+        (LibraryError::StorageSetup(coven::StorageSetupError::Removed), C::DeviceRemoved),
         (LibraryError::CloudUnlock(coven::StoreKeyUnlockError::Removed), C::DeviceRemoved),
         (
-            LibraryError::CloudSetup(coven::StorageSetupError::UpdateRequired(
+            LibraryError::StorageSetup(coven::StorageSetupError::UpdateRequired(
                 coven::RequiredUpdate::AppSchema { version: 9 },
             )),
             C::SyncUpdateRequired,
@@ -737,7 +737,7 @@ pub(super) fn every_storage_setup_failure_keeps_its_exact_user_action() {
         F::InvalidConfiguration,
         F::Network,
     ] {
-        let error = LibraryError::CloudSetup(coven::StorageSetupError::Storage(failure.into()));
+        let error = LibraryError::StorageSetup(coven::StorageSetupError::Storage(failure.into()));
         assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Storage(failure));
     }
 }

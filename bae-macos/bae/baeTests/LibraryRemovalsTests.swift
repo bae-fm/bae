@@ -274,7 +274,7 @@ struct LibraryRemovalConfirmationTests {
         #expect(
             text.hasSuffix(
                 LibraryRemovalConfirmation.consequence + " "
-                    + LibraryRemovalConfirmation.message(hasCloudHome: false)
+                    + LibraryRemovalConfirmation.message(syncs: false)
             )
         )
     }

@@ -28,7 +28,7 @@ struct ImportCandidateBulkSelectionPane: View {
                             selection.summary
                         ),
                         isRunning: selection.isRunning,
-                        showsStorageChoices: configStore.hasCloudHome,
+                        showsStorageChoices: configStore.syncs,
                         storageCloud: $storageCloud,
                         storagePinned: $storagePinned,
                         onPerform: onPerform
@@ -61,7 +61,7 @@ struct ImportCandidateBulkSelectionCard: View {
     let selectedCount: Int
     let offers: [ImportCandidateActionOffer]
     let isRunning: Bool
-    /// Whether the library has a cloud home, which is what gives Import its
+    /// Whether the library syncs, which is what gives Import its
     /// storage choices.
     let showsStorageChoices: Bool
     @Binding

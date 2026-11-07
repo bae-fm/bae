@@ -6,12 +6,12 @@ use crate::DbReleaseSummary;
 use bae_records::DbReleaseDetail;
 
 /// The per-release inputs the library's views read beside the release's rows and
-/// threads into the release projections: whether a cloud home exists at all
+/// threads into the release projections: whether the library syncs at all
 /// (which gates `storage_actions`), and the release's own cover reference.
 /// Bundled so the constructors take one context rather than a pile of parameters.
 #[derive(Debug, Clone)]
 pub(crate) struct ReleaseResolveCtx {
-    pub(crate) has_cloud_home: bool,
+    pub(crate) syncs: bool,
     pub(crate) cover: Option<ImageRef>,
     /// Whether the owning album is a compilation. Decides `TrackDetail::display_artist`
     /// — the one album-level fact the per-track artist decision needs.
@@ -36,7 +36,7 @@ pub struct ReleaseSummary {
     pub storage_state: ReleaseStorageState,
     /// The transitions available right now, derived by the core from
     /// `storage_state`, whether this device holds the originals an upload reads,
-    /// and whether a cloud home exists; empty without one, and while
+    /// and whether the library syncs; empty without it, and while
     /// the release is `transitioning`. The UI renders these and never
     /// re-derives availability.
     pub storage_actions: Vec<ReleaseStorageAction>,
@@ -74,7 +74,7 @@ impl ReleaseSummary {
                 available_storage_actions(
                     storage_state,
                     &release_playability(&raw.unstored_audio),
-                    ctx.has_cloud_home,
+                    ctx.syncs,
                 )
             },
             transfer_action: raw.transfer_action,

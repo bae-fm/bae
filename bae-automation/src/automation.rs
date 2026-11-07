@@ -358,7 +358,7 @@ impl Automation {
     /// rather than handed to a transfer. Which transitions are available is
     /// core's answer, read off the release's own `storage_actions` — the list the
     /// desktop renders its menu from — so this refuses exactly what the UI hides
-    /// (no cloud home, already local, already pinned) without deciding anything
+    /// (not syncing, already local, already pinned) without deciding anything
     /// itself. Cancel is not gated: core dispatches it to whichever transition is
     /// running and does nothing when none is.
     pub async fn release_storage_action(

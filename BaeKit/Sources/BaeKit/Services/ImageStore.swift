@@ -118,7 +118,7 @@ public final class ImageStore: Sendable, Observable {
     private let fetchLibraryImageBytes:
         @Sendable (_ image: BridgeImageRef) async throws -> Data?
     /// Bytes of one of a release's image-strip slots, downloaded from the
-    /// release's cloud home (and decrypted) when it isn't on disk here.
+    /// release's storage (and decrypted) when it isn't on disk here.
     private let fetchReleaseImageBytes:
         @Sendable (_ releaseId: String, _ source: BridgeGallerySource)
             async throws -> Data

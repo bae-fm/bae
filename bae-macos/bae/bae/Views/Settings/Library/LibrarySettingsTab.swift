@@ -103,7 +103,7 @@ struct LibrarySettingsTab: View {
                 }
             }
 
-            if configStore.hasCloudHome {
+            if configStore.syncs {
                 MembersSection()
                 AdminChangesSection()
                 HistorySharingSection()
@@ -155,7 +155,7 @@ struct LibrarySettingsTab: View {
                 unsent.confirmation(
                     consequence: LibraryRemovalConfirmation.consequence,
                     message: LibraryRemovalConfirmation.message(
-                        hasCloudHome: configStore.hasCloudHome
+                        syncs: configStore.syncs
                     )
                 )
             )
@@ -196,7 +196,7 @@ struct LibrarySettingsTab: View {
 
     /// The remove section's footer, which depends on whether the library syncs.
     private var removeFooter: String {
-        if configStore.hasCloudHome {
+        if configStore.syncs {
             return String(
                 localized:
                     "Removes this Mac from the library's members, then deletes the library and its downloaded files from this Mac. The library will remain in storage and on your other devices. Removing needs a connection to your storage."
@@ -242,11 +242,11 @@ private struct UploadPauseToggle: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// The Library tab's preview stores over a library whose cloud home is
+    /// The Library tab's preview stores over a library whose storage is
     /// `storage`, or none: its configuration, and what the tab reads off the
     /// main thread, the library's name and its people, each answered a step
     /// after the tab first draws. The people reach the library as `storage`'s
-    /// members do; a library with no cloud home has none.
+    /// members do; a library with no storage has none.
     @MainActor
     struct LibrarySettingsTabPreviewFixture {
         let configStore: ConfigStore
@@ -310,7 +310,7 @@ private struct UploadPauseToggle: View {
         .environment(fixture.libraryName)
     }
 
-    #Preview("No cloud home") {
+    #Preview("No storage") {
         librarySettingsTabPreview(
             LibrarySettingsTabPreviewFixture(storage: nil),
             indicator: nil

@@ -24,7 +24,7 @@ impl LibraryManager {
     }
 
     /// Bytes of one of a release's image files, read from the local copy when it
-    /// exists here and otherwise downloaded from the release's cloud home (and
+    /// exists here and otherwise downloaded from the release's storage (and
     /// decrypted). The `ReleaseFile` arm of [`read_gallery_bytes`](Self::read_gallery_bytes).
     async fn load_gallery_image(
         &self,

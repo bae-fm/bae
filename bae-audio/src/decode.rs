@@ -163,7 +163,7 @@ unsafe fn allocate_input_format_context(
 /// (`AVFMT_FLAG_FAST_SEEK`). FLAC loads its SEEKTABLE only with the flag;
 /// without it a seek ignores the table and binary-searches the file --
 /// reading the end, then bisecting frame by frame, each read a ranged fetch
-/// over a cloud home (~15 of them, ~1s each). With it a seektable-bearing
+/// over storage (~15 of them, ~1s each). With it a seektable-bearing
 /// FLAC seeks in one fetch; APE, MP4 and WAV, already indexed, ignore it (see
 /// notes/ffmpeg-seek-behavior.md). An MP3 opens without it: its header's index
 /// (a Xing table of contents, or its bitrate) only estimates where a sample
