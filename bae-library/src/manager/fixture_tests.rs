@@ -51,8 +51,8 @@ async fn fixture_albums_land_in_the_order_they_were_added() {
     let artists = manager.get_artists_for_album(&third.id).await.unwrap();
     assert_eq!(artists.len(), 1);
     assert_eq!(artists[0].artist.name, "Artist B");
-    let release_id = manager.get_releases_for_album(&third.id).await.unwrap()[0].id.clone();
-    let tracks = manager.get_tracks_for_release(&release_id).await.unwrap();
+    let release_id = manager.records.get_releases_for_album(&third.id).await.unwrap()[0].id.clone();
+    let tracks = manager.records.get_tracks_for_release(&release_id).await.unwrap();
     let track_titles: Vec<&str> = tracks.iter().map(|track| track.title.as_str()).collect();
     assert_eq!(track_titles, ["Opening", "Closing"]);
 }
@@ -126,7 +126,8 @@ async fn a_fixture_albums_cover_is_its_releases_cover() {
     manager.write_fixture(&fixture_of_albums(vec![album])).await.unwrap();
 
     let albums = views(manager).get_albums(&[]).await.unwrap();
-    let release_id = manager.get_releases_for_album(&albums[0].id).await.unwrap()[0].id.clone();
+    let release_id =
+        manager.records.get_releases_for_album(&albums[0].id).await.unwrap()[0].id.clone();
     let stored = manager
         .read_cover_image_bytes(&release_id)
         .await
@@ -407,13 +408,15 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
         albums.iter().map(|album| album.title.as_str()).collect::<Vec<_>>(),
         ["Album Title"]
     );
-    let release_id = manager.get_releases_for_album(&albums[0].id).await.unwrap()[0].id.clone();
-    let tracks = manager.get_tracks_for_release(&release_id).await.unwrap();
+    let release_id =
+        manager.records.get_releases_for_album(&albums[0].id).await.unwrap()[0].id.clone();
+    let tracks = manager.records.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(
         tracks.iter().map(|track| (track.title.as_str(), track.duration_ms)).collect::<Vec<_>>(),
         [("Opening Track", 3_000), ("Pregap Track", 5_000)]
     );
-    let pregap = manager.resolve_track_audio(&tracks[1].id).await.unwrap();
+    let pregap =
+        bae_records::ResolvedTrackAudio::resolve(&manager.records, &tracks[1].id).await.unwrap();
     assert_eq!(pregap.pregap(), std::time::Duration::from_secs(2));
     assert_eq!(
         pregap
@@ -457,8 +460,9 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
         .await
         .unwrap();
     let album_id = views(manager).get_albums(&[]).await.unwrap()[0].id.clone();
-    let release_id = manager.get_releases_for_album(&album_id).await.unwrap()[0].id.clone();
-    let pregap_track = manager.get_tracks_for_release(&release_id).await.unwrap()[1].id.clone();
+    let release_id = manager.records.get_releases_for_album(&album_id).await.unwrap()[0].id.clone();
+    let pregap_track =
+        manager.records.get_tracks_for_release(&release_id).await.unwrap()[1].id.clone();
 
     let (device, _capture, _audio_clock) = bae_playback::test_capture::manual_capture_device();
     let playback = test

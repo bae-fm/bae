@@ -16,7 +16,7 @@ impl LibraryManager {
     /// empty, for the reason in `vacate_album_on`. An album holding no
     /// release is not in the library, and deleting it is refused.
     pub async fn delete_album(&self, album_id: &str) -> Result<(), LibraryError> {
-        let releases = self.get_releases_for_album(album_id).await?;
+        let releases = self.records.get_releases_for_album(album_id).await?;
         if releases.is_empty() {
             return Err(LibraryError::AlbumMissing { album_id: album_id.to_string() });
         }

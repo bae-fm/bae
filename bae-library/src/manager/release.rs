@@ -3,17 +3,6 @@
 use super::*;
 
 impl LibraryManager {
-    /// Every catalog's description of a release. Empty when no catalog
-    /// describes it. A read every platform makes: the mobile apps draw a
-    /// release's records too, so it lives outside the desktop-only import
-    /// operations.
-    pub async fn get_release_records(
-        &self,
-        release_id: &str,
-    ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, LibraryError> {
-        Ok(self.records.get_release_records(release_id).await?)
-    }
-
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_audio_format_with_segments_for_test(
         &self,
@@ -57,21 +46,6 @@ impl LibraryManager {
         release_id: &str,
     ) -> Result<Option<DbRelease>, LibraryError> {
         Ok(self.records.find_release_by_id(release_id).await?)
-    }
-
-    pub async fn get_tracks_for_release(
-        &self,
-        release_id: &str,
-    ) -> Result<Vec<DbTrack>, LibraryError> {
-        Ok(self.records.get_tracks_for_release(release_id).await?)
-    }
-
-    /// A release's mediums, in order, which its tracks' places read against.
-    pub async fn get_release_mediums(
-        &self,
-        release_id: &str,
-    ) -> Result<bae_records::DbReleaseMediums, LibraryError> {
-        Ok(self.records.get_release_mediums(release_id).await?)
     }
 
     /// The audio a catalog release is read against for the library release
@@ -134,20 +108,6 @@ impl LibraryManager {
         Ok(())
     }
 
-    pub async fn get_releases_for_album(
-        &self,
-        album_id: &str,
-    ) -> Result<Vec<DbRelease>, LibraryError> {
-        Ok(self.records.get_releases_for_album(album_id).await?)
-    }
-
-    pub async fn check_releases_in_library(
-        &self,
-        checks: &[bae_records::LibraryCheck],
-    ) -> Result<Vec<bae_records::LibraryStatus>, LibraryError> {
-        Ok(self.records.check_releases_in_library(checks).await?)
-    }
-
     pub fn subscribe_library_statuses(
         &self,
         initial: bae_records::LibraryChecks,
@@ -175,17 +135,6 @@ impl LibraryManager {
                 LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
             })?;
         Ok(album_id)
-    }
-
-    /// Set which of an album's releases provides its cover art.
-    pub async fn set_album_primary_release(
-        &self,
-        album_id: &str,
-        primary_release_id: &str,
-    ) -> Result<(), LibraryError> {
-        self.records.set_album_primary_release(album_id, primary_release_id).await?;
-
-        Ok(())
     }
 
     /// Delete a release and its data. The rows go in one transaction, taking the

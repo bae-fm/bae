@@ -101,6 +101,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     assert_eq!(stored_after.tracks[0].track.track_number, track.track_number);
     assert_eq!(
         manager
+            .records
             .get_shown_artists_for_track(&track.id)
             .await
             .unwrap()
@@ -261,11 +262,11 @@ async fn changing_one_track_credit_writes_only_that_credit() {
     assert_eq!(credit_rows, ["track_artists"], "the one place whose artist changed");
     assert_eq!(rows[writes].iter().filter(|row| *row == "artists").count(), 1, "the new artist");
     let first_track =
-        &manager.library.manager().get_tracks_for_release(&release.id).await.unwrap()[0];
+        &manager.library.records().get_tracks_for_release(&release.id).await.unwrap()[0];
     assert_eq!(
         manager
             .library
-            .manager()
+            .records()
             .get_shown_artists_for_track(&first_track.id)
             .await
             .unwrap()

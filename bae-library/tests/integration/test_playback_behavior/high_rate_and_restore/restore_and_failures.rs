@@ -195,7 +195,7 @@ impl CloudOnlyPlaybackFixture {
         // Delete the import originals so file resolution can't fall back to them.
         std::fs::remove_dir_all(&album_dir)?;
 
-        let tracks = library.manager().get_tracks_for_release(&release_id).await?;
+        let tracks = library.records().get_tracks_for_release(&release_id).await?;
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert!(!track_ids.is_empty(), "Should have imported tracks");
 

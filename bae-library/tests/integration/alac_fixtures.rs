@@ -102,7 +102,7 @@ async fn import_standalone_alac_m4a() {
     let (library, release_id) =
         import_single_m4a_fixture("silence-alac.m4a", temp_root.path()).await;
 
-    let tracks = library.manager().get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.records().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 1, "standalone .m4a produces one track");
 
     let track = &tracks[0];
@@ -118,8 +118,9 @@ async fn import_standalone_alac_m4a() {
     assert_eq!(af.channels.get(), 2);
     assert_eq!(af.bits_per_sample.map(|bits| bits.get()), Some(16));
 
-    let resolved =
-        library.manager().resolve_track_audio(&track.id).await.expect("resolve track audio");
+    let resolved = bae_records::ResolvedTrackAudio::resolve(library.records(), &track.id)
+        .await
+        .expect("resolve track audio");
     assert_eq!(resolved.segments.len(), 1);
     let segment = &resolved.segments[0];
 
@@ -136,7 +137,7 @@ async fn import_standalone_aac_m4a() {
     let (library, release_id) =
         import_single_m4a_fixture("silence-aac.m4a", temp_root.path()).await;
 
-    let tracks = library.manager().get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.records().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 1);
 
     let track = &tracks[0];
@@ -151,8 +152,9 @@ async fn import_standalone_aac_m4a() {
     assert_eq!(af.sample_rate.get(), 44100);
     assert_eq!(af.channels.get(), 2);
 
-    let resolved =
-        library.manager().resolve_track_audio(&track.id).await.expect("resolve track audio");
+    let resolved = bae_records::ResolvedTrackAudio::resolve(library.records(), &track.id)
+        .await
+        .expect("resolve track audio");
 
     assert_eq!(resolved.segments.len(), 1);
     assert_eq!(resolved.segments[0].span.start_sample, 0);
@@ -240,7 +242,7 @@ async fn import_cue_alac_pair() {
 
     let release_id = library.import_folder(album_dir, release_id_key).await;
 
-    let tracks = library.manager().get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.records().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3);
 
     // CUE INDEX 01 times: 00:00:00, 00:03:00, 00:06:00.
@@ -261,8 +263,9 @@ async fn import_cue_alac_pair() {
 
         assert_eq!(af.content_type, ContentType::Alac, "track {} content type", i + 1);
 
-        let resolved =
-            library.manager().resolve_track_audio(&track.id).await.expect("resolve track audio");
+        let resolved = bae_records::ResolvedTrackAudio::resolve(library.records(), &track.id)
+            .await
+            .expect("resolve track audio");
         assert_eq!(resolved.segments.len(), 1);
         let segment = &resolved.segments[0];
 

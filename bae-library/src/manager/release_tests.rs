@@ -212,7 +212,8 @@ async fn delete_release_removes_its_cover_image() {
 
     // Row removed (the `covers` FK to `releases` cascade-deletes it).
     assert!(manager
-        .get_library_image(&release1.id, &LibraryImageType::Cover)
+        .records
+        .find_library_image(&release1.id, &LibraryImageType::Cover)
         .await
         .unwrap()
         .is_none());
@@ -285,8 +286,8 @@ async fn check_converging_primaries(devices: &mut crate::test_libraries::TwoDevi
     assert_eq!(primary_of(devices.b().store(), &album.id).await, releases[0].id);
 
     devices.pause().await;
-    devices.a().manager().set_album_primary_release(&album.id, &releases[1].id).await.unwrap();
-    devices.b().manager().set_album_primary_release(&album.id, &releases[2].id).await.unwrap();
+    devices.a().records().set_album_primary_release(&album.id, &releases[1].id).await.unwrap();
+    devices.b().records().set_album_primary_release(&album.id, &releases[2].id).await.unwrap();
     devices.resume().await;
     devices.converge(&orders).await;
 

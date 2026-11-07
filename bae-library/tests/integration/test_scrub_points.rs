@@ -9,7 +9,6 @@
 //! on, an earlier frame a decode can start at and play it exactly.
 
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_library::LibraryManager;
 use bae_records::ResolvedTrackAudio;
 use bae_records::ScrubPoint;
 use std::path::Path;
@@ -197,14 +196,11 @@ fn assert_points_every_ten_seconds(
     assert_eq!(points, expected.as_slice());
 }
 
-async fn tracks(library_manager: &LibraryManager, release_id: &str) -> Vec<ResolvedTrackAudio> {
+async fn tracks(records: &bae_records::Records, release_id: &str) -> Vec<ResolvedTrackAudio> {
     let mut resolved = Vec::new();
-    for track in
-        library_manager.get_tracks_for_release(release_id).await.expect("the release's tracks")
-    {
+    for track in records.get_tracks_for_release(release_id).await.expect("the release's tracks") {
         resolved.push(
-            library_manager
-                .resolve_track_audio(&track.id)
+            ResolvedTrackAudio::resolve(records, &track.id)
                 .await
                 .expect("resolve the track's audio"),
         );
@@ -238,7 +234,7 @@ async fn import(release: DiscogsRelease, write_files: impl FnOnce(&Path)) -> Imp
     .await
     .expect("import the release");
     Imported {
-        tracks: tracks(library.manager(), &imported.release_id).await,
+        tracks: tracks(library.records(), &imported.release_id).await,
         album_dir: imported.album_dir,
         _temp_dir: imported.temp_dir,
     }
@@ -467,7 +463,7 @@ async fn a_served_mp3_decode_holds_the_files_samples() {
     )
     .await
     .expect("import the release");
-    let audio = tracks(library.manager(), &imported.release_id).await.remove(0);
+    let audio = tracks(library.records(), &imported.release_id).await.remove(0);
     let decode = library.manager().open_track_decode(&audio);
     let served = bae_util::test_blocking::on_blocking_pool(move || {
         let mut sink = Collected::default();

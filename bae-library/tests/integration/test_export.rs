@@ -106,7 +106,7 @@ async fn export_track_from_cloud_only_release() {
         bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
     let (release_id, _) = import_then_strand_in_cloud(&f, &album_dir).await;
 
-    let tracks = f.library.manager().get_tracks_for_release(&release_id).await.unwrap();
+    let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 1);
 
     let out = f.temp_path().join("exported.flac");
@@ -145,7 +145,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
     fs::create_dir_all(&album_dir).unwrap();
     bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
     let release_id = import_unknown_local(&f, &album_dir).await;
-    let tracks = f.library.manager().get_tracks_for_release(&release_id).await.unwrap();
+    let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
 
     let mut presets = f.library.manager().save_presets().await.unwrap();
     presets.push(SavePreset {
@@ -553,7 +553,7 @@ async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
         );
     }
     let release_id = import_unknown_local(&f, &album_dir).await;
-    assert_eq!(f.library.manager().get_tracks_for_release(&release_id).await.unwrap().len(), 24);
+    assert_eq!(f.library.records().get_tracks_for_release(&release_id).await.unwrap().len(), 24);
 
     let per_track = peak_sources_open_saving(
         &f,
@@ -605,7 +605,7 @@ async fn a_release_save_reads_a_cue_image_through_one_open_file() {
     }
     fs::write(album_dir.join("Test Album.cue"), cue).unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
-    assert_eq!(f.library.manager().get_tracks_for_release(&release_id).await.unwrap().len(), 12);
+    assert_eq!(f.library.records().get_tracks_for_release(&release_id).await.unwrap().len(), 12);
 
     for preset in [
         flac_save_preset("tracks", SavePregapPlacement::AppendToPreviousExceptHtoa),

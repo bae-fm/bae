@@ -3,21 +3,6 @@
 use super::*;
 
 impl LibraryManager {
-    /// Every track id in the library, in a deterministic base order, for a
-    /// listing that pages through every song.
-    pub async fn get_all_track_ids(&self) -> Result<Vec<String>, LibraryError> {
-        Ok(self.records.get_all_track_ids().await?)
-    }
-
-    /// The subset of `ids` that still exist in the tracks table, in one query
-    /// rather than one per track.
-    pub async fn filter_existing_track_ids(
-        &self,
-        ids: &[String],
-    ) -> Result<Vec<String>, LibraryError> {
-        Ok(self.records.filter_existing_track_ids(ids).await?)
-    }
-
     /// Resolve a mix of album and track IDs into track IDs. An album expands to the
     /// tracks of its primary release, its lowest-ordered one.
     pub async fn resolve_to_track_ids(&self, ids: &[String]) -> Result<Vec<String>, LibraryError> {
@@ -64,12 +49,6 @@ impl LibraryManager {
         bae_playback::tables::subscribe_queue_upcoming(&self.store, initial)
     }
 
-    /// The file record for a file id — streaming looks the id up on the track's
-    /// audio segments, then fetches the row here.
-    pub async fn get_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, LibraryError> {
-        Ok(self.records.find_file_by_id(file_id).await?)
-    }
-
     /// Test-only. Production reads audio format as part of the resolved track-audio
     /// / playback-info aggregates below, never standalone.
     #[cfg(any(test, feature = "test-utils"))]
@@ -78,15 +57,6 @@ impl LibraryManager {
         track_id: &str,
     ) -> Result<Option<bae_records::DbAudioFormat>, LibraryError> {
         Ok(self.records.find_audio_format_by_track_id(track_id).await?)
-    }
-
-    /// Resolve a track's audio into a `ResolvedTrackAudio` with its sample window
-    /// resolved and all raw `Db*` fields hidden.
-    pub async fn resolve_track_audio(
-        &self,
-        track_id: &str,
-    ) -> Result<bae_records::ResolvedTrackAudio, LibraryError> {
-        Ok(bae_records::ResolvedTrackAudio::resolve(&self.records, track_id).await?)
     }
 
     /// What playback decides a side or disc pause with about a track: its

@@ -516,7 +516,7 @@ where
     let (release_id, _album_id) = library
         .import_folder_as(album_dir.clone(), release_id_key, candidate_key, import_id)
         .await?;
-    let tracks = library.manager().get_tracks_for_release(&release_id).await?;
+    let tracks = library.records().get_tracks_for_release(&release_id).await?;
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
 
     Ok((library, ImportedRelease { track_ids, release_id, album_dir, temp_dir }))

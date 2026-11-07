@@ -55,11 +55,11 @@ macro_rules! delegate_view {
     };
 }
 
-/// A call to the library's store, its failure told as a library error.
-macro_rules! delegate_store {
-    ($name:ident => $target:ident($($arg:ident: $ty:ty),* $(,)?) -> $ok:ty) => {
+/// A call to one of the library's parts, its failure told as a library error.
+macro_rules! delegate_lib {
+    ($field:ident, $name:ident => $target:ident($($arg:ident: $ty:ty),* $(,)?) -> $ok:ty) => {
         pub async fn $name(&self, $($arg: $ty),*) -> Result<$ok, bae_library::LibraryError> {
-            Ok(self.inner.store.$target($($arg),*).await?)
+            Ok(self.inner.$field.$target($($arg),*).await?)
         }
     };
 }
@@ -68,6 +68,9 @@ struct AppServicesInner {
     manager: LibraryManager,
     /// The library's store, which the calls bae adds nothing to go to.
     store: bae_store::Store,
+    /// The library's records, which the reads and writes bae adds nothing to
+    /// go to.
+    records: bae_records::Records,
     /// The library's views, for the reads a screen shows as they are.
     views: bae_views::LibraryViews,
     playback: PlaybackHandle,
@@ -123,6 +126,7 @@ impl AppServices {
     pub fn new(
         manager: LibraryManager,
         store: bae_store::Store,
+        records: bae_records::Records,
         views: bae_views::LibraryViews,
         playback: PlaybackHandle,
         cast_picker: bae_playback::renderer::CastPicker,
@@ -133,6 +137,7 @@ impl AppServices {
             inner: Arc::new(AppServicesInner {
                 manager,
                 store,
+                records,
                 views,
                 playback,
                 cast_picker,
@@ -447,13 +452,13 @@ impl AppServices {
     delegate_async!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, rename_library => rename_library(name: &bae_store::EnteredName) -> Result<(), bae_library::LibraryError>);
-    delegate_store!(forget_encryption_key => forget_store_keys() -> ());
+    delegate_lib!(store, forget_encryption_key => forget_store_keys() -> ());
     pub async fn unlock_store_key(&self) -> Result<(), bae_library::LibraryError> {
         self.inner.store.unlock_store_key().await?;
         Ok(())
     }
     delegate_sync!(store, trigger_sync => sync_now() -> ());
-    delegate_store!(release_memory => release_memory() -> ());
+    delegate_lib!(store, release_memory => release_memory() -> ());
     delegate_async!(manager, retry_now => retry_now() -> Result<impl std::future::Future<Output = bae_sync_status::SyncRetryOutcome> + Send + 'static, bae_library::LibraryError>);
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), bae_library::LibraryError>);
     delegate_sync!(store, cancel_storage_setup => cancel_storage_setup() -> coven::SetupCancellation);
@@ -466,37 +471,42 @@ impl AppServices {
     delegate_view!(get_artist_detail => get_artist_detail(artist_id: &str) -> Option<bae_views::album_detail::ArtistDetail>);
     delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), bae_library::LibraryError>);
-    delegate_async!(manager, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> Result<(), bae_library::LibraryError>);
+    delegate_lib!(records, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> ());
     delegate_view!(get_album_index => get_album_index(sort: &[bae_views::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Option<u64>);
-    delegate_async!(manager, check_releases_in_library => check_releases_in_library(checks: &[bae_records::LibraryCheck]) -> Result<Vec<bae_records::LibraryStatus>, bae_library::LibraryError>);
+    delegate_lib!(records, check_releases_in_library => check_releases_in_library(checks: &[bae_records::LibraryCheck]) -> Vec<bae_records::LibraryStatus>);
     delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[bae_views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<bae_views::album_detail::AlbumSummary>);
     delegate_view!(find_album_detail => find_album_detail(album_id: &str) -> Option<bae_views::album_detail::AlbumDetail>);
     delegate_view!(find_release_detail => find_release_detail(release_id: &str) -> Option<bae_views::album_detail::ReleaseDetail>);
     delegate_view!(get_albums => get_albums(sort: &[bae_views::AlbumSortCriterion]) -> Vec<bae_records::DbAlbum>);
-    delegate_async!(manager, get_releases_for_album => get_releases_for_album(album_id: &str) -> Result<Vec<bae_records::DbRelease>, bae_library::LibraryError>);
+    delegate_lib!(records, get_releases_for_album => get_releases_for_album(album_id: &str) -> Vec<bae_records::DbRelease>);
     delegate_async!(manager, get_release_by_id => get_release_by_id(release_id: &str) -> Result<Option<bae_records::DbRelease>, bae_library::LibraryError>);
 
-    delegate_async!(manager, get_release_records => get_release_records(release_id: &str) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, bae_library::LibraryError>);
-    delegate_async!(manager, get_tracks_for_release => get_tracks_for_release(release_id: &str) -> Result<Vec<bae_records::DbTrack>, bae_library::LibraryError>);
-    delegate_async!(manager, get_release_mediums => get_release_mediums(release_id: &str) -> Result<bae_records::DbReleaseMediums, bae_library::LibraryError>);
+    delegate_lib!(records, get_release_records => get_release_records(release_id: &str) -> Vec<bae_catalogs::records::ReleaseRecord>);
+    delegate_lib!(records, get_tracks_for_release => get_tracks_for_release(release_id: &str) -> Vec<bae_records::DbTrack>);
+    delegate_lib!(records, get_release_mediums => get_release_mediums(release_id: &str) -> bae_records::DbReleaseMediums);
     delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<bae_records::DbFile>, bae_library::LibraryError>);
-    delegate_async!(manager, get_file_by_id => get_file_by_id(file_id: &str) -> Result<Option<bae_records::DbFile>, bae_library::LibraryError>);
-    delegate_async!(manager, get_library_image => get_library_image(id: &str, image_type: &bae_records::LibraryImageType) -> Result<Option<bae_records::DbLibraryImage>, bae_library::LibraryError>);
+    delegate_lib!(records, get_file_by_id => find_file_by_id(file_id: &str) -> Option<bae_records::DbFile>);
+    delegate_lib!(records, get_library_image => find_library_image(id: &str, image_type: &bae_records::LibraryImageType) -> Option<bae_records::DbLibraryImage>);
     delegate_async!(manager, cover_ref => cover_ref(release_id: &str) -> Result<Option<bae_records::ImageRef>, bae_library::LibraryError>);
     delegate_async!(manager, read_image_bytes => read_image_bytes(image: &bae_records::ImageRef) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
     delegate_async!(manager, read_library_image_bytes => read_library_image_bytes(id: &str, image_type: &bae_records::LibraryImageType) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
     delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &bae_records::GallerySource) -> Result<Vec<u8>, bae_library::LibraryError>);
     delegate_async!(manager, read_cover_image_bytes => read_cover_image_bytes(release_id: &str) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
-    delegate_async!(manager, get_shown_artists_for_track => get_shown_artists_for_track(track_id: &str) -> Result<Vec<bae_records::credits::LibraryCredit>, bae_library::LibraryError>);
-    delegate_async!(manager, get_all_track_ids => get_all_track_ids() -> Result<Vec<String>, bae_library::LibraryError>);
-    delegate_async!(manager, filter_existing_track_ids => filter_existing_track_ids(ids: &[String]) -> Result<Vec<String>, bae_library::LibraryError>);
-    delegate_async!(manager, resolve_track_audio => resolve_track_audio(track_id: &str) -> Result<bae_records::ResolvedTrackAudio, bae_library::LibraryError>);
+    delegate_lib!(records, get_shown_artists_for_track => get_shown_artists_for_track(track_id: &str) -> Vec<bae_records::credits::LibraryCredit>);
+    delegate_lib!(records, get_all_track_ids => get_all_track_ids() -> Vec<String>);
+    delegate_lib!(records, filter_existing_track_ids => filter_existing_track_ids(ids: &[String]) -> Vec<String>);
+    pub async fn resolve_track_audio(
+        &self,
+        track_id: &str,
+    ) -> Result<bae_records::ResolvedTrackAudio, bae_library::LibraryError> {
+        Ok(bae_records::ResolvedTrackAudio::resolve(&self.inner.records, track_id).await?)
+    }
     delegate_async!(manager, resolve_to_track_ids => resolve_to_track_ids(ids: &[String]) -> Result<Vec<String>, bae_library::LibraryError>);
     delegate_async!(manager, get_playback_track_info => get_playback_track_info(track_id: &str) -> Result<bae_playback::PlaybackTrackInfo, bae_library::LibraryError>);
     delegate_async!(manager, get_track_display => get_track_display(track_id: &str) -> Result<bae_playback::TrackDisplay, bae_library::LibraryError>);
     #[cfg(desktop)]
     delegate_async!(manager, change_cover => change_cover(release_id: &str, selection: bae_library::CoverSelection) -> Result<(), bae_library::LibraryError>);
-    delegate_async!(manager, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> Result<(), bae_library::LibraryError>);
+    delegate_lib!(records, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> ());
     delegate_async!(manager, unpin_releases => unpin_releases(release_ids: &[String]) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, upload_releases => upload_releases(release_ids: &[String]) -> Result<bae_library::UploadReleasesOutcome, bae_library::LibraryError>);
     #[cfg(desktop)]
@@ -515,7 +525,7 @@ impl AppServices {
     delegate_async!(manager, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> Result<(), bae_library::LibraryError>);
     delegate_values!(subscribe_admin_changes => subscribe_admin_changes() -> Vec<bae_people::admin_change::AdminChange>);
     delegate_async!(manager, acknowledge_admin_change => acknowledge_admin_change(operation: coven::OperationId) -> Result<(), bae_library::LibraryError>);
-    delegate_store!(invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, lifetime: coven::InviteLifetime) -> coven::InviteId);
+    delegate_lib!(store, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, lifetime: coven::InviteLifetime) -> coven::InviteId);
     /// This device's open invites, each with the pending record of its
     /// operation when coven holds one.
     pub fn subscribe_invites(
@@ -524,7 +534,7 @@ impl AppServices {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_invites())
     }
     delegate_async!(manager, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> Result<(), bae_library::LibraryError>);
-    delegate_store!(decline_join_request => decline_join_request(request: &coven::JoinRequest) -> ());
+    delegate_lib!(store, decline_join_request => decline_join_request(request: &coven::JoinRequest) -> ());
     delegate_async!(manager, cancel_invite => cancel_invite(invite: &coven::InviteId) -> Result<(), bae_library::LibraryError>);
 
     delegate_async!(manager, retry_outbox_now => retry_outbox_now() -> Result<(), bae_library::LibraryError>);
@@ -541,15 +551,15 @@ impl AppServices {
     #[cfg(feature = "oauth-providers")]
     delegate_async!(manager, setup_oauth_storage => setup_oauth_storage(storage: coven::StorageConfig, device_name: &str, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
-    delegate_store!(onedrive_root => onedrive_root() -> coven::StorageFolder);
+    delegate_lib!(store, onedrive_root => onedrive_root() -> coven::StorageFolder);
     #[cfg(feature = "oauth-providers")]
-    delegate_store!(onedrive_folders => onedrive_folders(parent: &coven::StorageConfig) -> Vec<coven::StorageFolder>);
+    delegate_lib!(store, onedrive_folders => onedrive_folders(parent: &coven::StorageConfig) -> Vec<coven::StorageFolder>);
     #[cfg(feature = "oauth-providers")]
-    delegate_store!(create_onedrive_folder => create_onedrive_folder(parent: &coven::StorageConfig, name: &str) -> coven::StorageFolder);
+    delegate_lib!(store, create_onedrive_folder => create_onedrive_folder(parent: &coven::StorageConfig, name: &str) -> coven::StorageFolder);
     #[cfg(feature = "oauth-providers")]
-    delegate_store!(dropbox_shared_folders => dropbox_shared_folders() -> Vec<coven::StorageFolder>);
+    delegate_lib!(store, dropbox_shared_folders => dropbox_shared_folders() -> Vec<coven::StorageFolder>);
     #[cfg(feature = "oauth-providers")]
-    delegate_store!(create_dropbox_shared_folder => create_dropbox_shared_folder(name: &str) -> coven::StorageFolder);
+    delegate_lib!(store, create_dropbox_shared_folder => create_dropbox_shared_folder(name: &str) -> coven::StorageFolder);
     delegate_async!(manager, get_album_id_for_release => get_album_id_for_release(release_id: &str) -> Result<String, bae_library::LibraryError>);
     #[cfg(desktop)]
     delegate_async!(manager, open_release_edit => open_release_edit(release_id: &str) -> Result<bae_library::ReleaseEdit, bae_library::LibraryError>);
@@ -692,7 +702,7 @@ impl AppServices {
     // The sync status, each value read from its tables in one go.
     delegate_values!(subscribe_sync_status => subscribe_sync_status() -> bae_sync_status::SyncStatusSnapshot);
 
-    delegate_store!(retry_pending_operation => retry_pending_operation(id: coven::OperationId) -> ());
+    delegate_lib!(store, retry_pending_operation => retry_pending_operation(id: coven::OperationId) -> ());
 
     /// End a release's failed move to the cloud, `id`, as its pending
     /// record offers: the release stays on this device only, as it was.
@@ -711,8 +721,8 @@ impl AppServices {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_sync_activity())
     }
 
-    delegate_store!(pending => pending() -> Vec<coven::PendingRecord>);
-    delegate_store!(library_name => store_name() -> String);
+    delegate_lib!(store, pending => pending() -> Vec<coven::PendingRecord>);
+    delegate_lib!(store, library_name => store_name() -> String);
     pub fn subscribe_library_name(&self) -> bae_store::live_query::LiveValues<String> {
         self.inner.manager.values_until_closed(self.inner.store.subscribe_store_name())
     }

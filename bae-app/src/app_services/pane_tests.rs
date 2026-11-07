@@ -77,6 +77,7 @@ impl Library {
         let services = AppServices::new(
             LibraryManager::clone(library.manager()),
             library.store().clone(),
+            library.records().clone(),
             bae_views::LibraryViews::new(library.store().clone()),
             library.start_playback().await,
             library.cast_picker(),

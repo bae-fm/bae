@@ -40,14 +40,6 @@ impl LibraryManager {
         self.read_release_file(&file).await
     }
 
-    pub async fn get_library_image(
-        &self,
-        id: &str,
-        image_type: &LibraryImageType,
-    ) -> Result<Option<DbLibraryImage>, LibraryError> {
-        Ok(self.records.find_library_image(id, image_type).await?)
-    }
-
     /// Change the cover art for an album's release. A `ReleaseImage` selection
     /// reads an image file already in the library by file id; a `RemoteCover` one
     /// downloads it from a URL. Either way the bytes are resized and stored as the
@@ -62,7 +54,7 @@ impl LibraryManager {
         // JPEG below, so only the bytes carry through.
         let bytes = match selection {
             CoverSelection::ReleaseImage { file_id } => {
-                let file = self.get_file_by_id(&file_id).await?.ok_or_else(|| {
+                let file = self.records.find_file_by_id(&file_id).await?.ok_or_else(|| {
                     LibraryError::FileMissing {
                         release_id: release_id.to_string(),
                         file_id: file_id.clone(),

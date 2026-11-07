@@ -64,7 +64,8 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
         .expect_err("bytes that are no image make no cover");
     assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::ImportData, "{error}");
     assert!(manager
-        .get_library_image(&release.id, &LibraryImageType::Cover)
+        .records
+        .find_library_image(&release.id, &LibraryImageType::Cover)
         .await
         .unwrap()
         .is_none());
@@ -111,7 +112,8 @@ async fn assert_changed_cover(
     // The row describes the stored thumbnail, a JPEG, and its coven file
     // holds the thumbnail's bytes.
     let row = manager
-        .get_library_image(&release.id, &LibraryImageType::Cover)
+        .records
+        .find_library_image(&release.id, &LibraryImageType::Cover)
         .await
         .unwrap()
         .expect("cover row stored");
@@ -165,7 +167,8 @@ async fn change_cover_twice_replaces_the_cover_file() {
     };
     let cover_row = async || {
         manager
-            .get_library_image(&release.id, &LibraryImageType::Cover)
+            .records
+            .find_library_image(&release.id, &LibraryImageType::Cover)
             .await
             .unwrap()
             .expect("cover row stored")

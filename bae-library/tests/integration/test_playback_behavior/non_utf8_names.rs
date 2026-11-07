@@ -45,7 +45,7 @@ async fn a_track_in_a_folder_whose_name_is_not_utf8_plays() {
     write_first_test_track(&album_dir, b"01 Track.flac");
 
     let release_id = library.import_folder(album_dir, release_key).await;
-    let tracks = library.manager().get_tracks_for_release(&release_id).await.unwrap();
+    let tracks = library.records().get_tracks_for_release(&release_id).await.unwrap();
     let [track] = tracks.as_slice() else {
         panic!("one track: {tracks:?}");
     };

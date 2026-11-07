@@ -73,7 +73,7 @@ impl RemoteMultiWindowPlayback {
         }
         std::fs::remove_dir_all(album_dir)?;
         let track_ids = library
-            .manager()
+            .records()
             .get_tracks_for_release(&release_id)
             .await?
             .into_iter()

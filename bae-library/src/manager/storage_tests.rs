@@ -225,7 +225,7 @@ async fn storage_page_rows_carry_each_releases_own_cover() {
     insert_release(manager, &release1).await;
     insert_release(manager, &release2).await;
     // release1 is the album's primary, so its cover is the album-level cover.
-    manager.set_album_primary_release(&album.id, &release1.id).await.unwrap();
+    manager.records.set_album_primary_release(&album.id, &release1.id).await.unwrap();
 
     store_test_cover(manager, &release1.id, b"cover").await;
     store_test_cover(manager, &release2.id, b"cover").await;

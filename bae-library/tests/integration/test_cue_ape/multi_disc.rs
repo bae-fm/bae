@@ -186,7 +186,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         wait_for_multi_disc_cue_ape_import_ready(library.manager(), destination, &mut progress_rx)
             .await;
 
-    let tracks = library.manager().get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.records().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 6, "should have 6 tracks (2 discs × 3 tracks)");
 
     // `original_filename` in release_files must be the full relative path
@@ -210,8 +210,9 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         files.iter().map(|f| (f.id.clone(), f.original_filename.clone())).collect();
 
     for track in &tracks {
-        let resolved =
-            library.manager().resolve_track_audio(&track.id).await.expect("resolve track audio");
+        let resolved = bae_records::ResolvedTrackAudio::resolve(library.records(), &track.id)
+            .await
+            .expect("resolve track audio");
         let segment = resolved
             .segments
             .iter()

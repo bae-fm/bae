@@ -88,7 +88,7 @@ async fn test_get_all_track_ids_returns_library_in_base_order() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     seed_two_release_library(manager).await;
-    let all = manager.get_all_track_ids().await.unwrap();
+    let all = manager.records.get_all_track_ids().await.unwrap();
     assert_eq!(
         all,
         vec![
@@ -290,7 +290,7 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
     manager.records.insert_track(&p1).await.unwrap();
     manager.records.insert_track(&p2).await.unwrap();
 
-    manager.set_album_primary_release(&album.id, &release2.id).await.unwrap();
+    manager.records.set_album_primary_release(&album.id, &release2.id).await.unwrap();
 
     let resolved = manager.resolve_to_track_ids(std::slice::from_ref(&album.id)).await.unwrap();
     assert!(resolved.contains(&"cc4180bc-58f5-456f-8116-f9b2099f5b7f".to_string()));
@@ -362,7 +362,8 @@ async fn check_scrub_points_sync(devices: &mut crate::test_libraries::TwoDevices
              FROM audio_segment_scrub_points",
         )
         .await;
-    let resolved = devices.b().manager().resolve_track_audio(&track.id).await.unwrap();
+    let resolved =
+        bae_records::ResolvedTrackAudio::resolve(devices.b().records(), &track.id).await.unwrap();
     assert_eq!(resolved.segments[0].scrub_points.as_slice(), points);
 }
 

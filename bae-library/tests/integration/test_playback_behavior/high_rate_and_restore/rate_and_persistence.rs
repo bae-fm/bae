@@ -53,8 +53,8 @@ impl HighSampleRateTestFixture {
         library.import_folder(album_dir, release_id_key).await;
 
         let albums = bae_views::LibraryViews::new(library.store().clone()).get_albums(&[]).await?;
-        let releases = library.manager().get_releases_for_album(&albums[0].id).await?;
-        let tracks = library.manager().get_tracks_for_release(&releases[0].id).await?;
+        let releases = library.records().get_releases_for_album(&albums[0].id).await?;
+        let tracks = library.records().get_tracks_for_release(&releases[0].id).await?;
         let track_id = tracks[0].id.clone();
 
         // Verify the audio format was correctly detected as 96kHz
@@ -395,7 +395,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
     // Build a library + import tracks, but do NOT start a playback service.
     let (library, _temp_dir) = imported_library_without_playback().await;
     let releases = library
-        .manager()
+        .records()
         .get_releases_for_album(
             &bae_views::LibraryViews::new(library.store().clone()).get_albums(&[]).await.unwrap()
                 [0]
@@ -403,7 +403,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
         )
         .await
         .unwrap();
-    let tracks = library.manager().get_tracks_for_release(&releases[0].id).await.unwrap();
+    let tracks = library.records().get_tracks_for_release(&releases[0].id).await.unwrap();
     let track_id = tracks[0].id.clone();
 
     // Write a snapshot before the service starts, so no one can consume it
@@ -436,7 +436,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
 
     let (library, _temp_dir) = imported_library_without_playback().await;
     let release_id = library
-        .manager()
+        .records()
         .get_releases_for_album(
             &bae_views::LibraryViews::new(library.store().clone()).get_albums(&[]).await.unwrap()
                 [0]
@@ -447,7 +447,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         .id
         .clone();
     let first_track =
-        library.manager().get_tracks_for_release(&release_id).await.unwrap()[0].id.clone();
+        library.records().get_tracks_for_release(&release_id).await.unwrap()[0].id.clone();
 
     let (handle, _capture_rx, _audio_clock) = start_capture_service(&library).await;
 

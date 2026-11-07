@@ -26,12 +26,12 @@ fn handle_over_one_album(
             .await
             .expect("read the albums");
         let releases = library
-            .manager()
+            .records()
             .get_releases_for_album(&albums[0].id)
             .await
             .expect("read the releases");
         library
-            .manager()
+            .records()
             .get_tracks_for_release(&releases[0].id)
             .await
             .expect("read the tracks")

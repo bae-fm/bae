@@ -25,7 +25,8 @@ async fn delete_album_removes_release_covers() {
     manager.delete_album(&release.album_id).await.unwrap();
 
     assert!(manager
-        .get_library_image(&release.id, &LibraryImageType::Cover)
+        .records
+        .find_library_image(&release.id, &LibraryImageType::Cover)
         .await
         .unwrap()
         .is_none());
@@ -149,10 +150,11 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
 
     for release_id in [&kept, &local] {
         assert!(find_release(manager, release_id).await.is_none());
-        assert!(manager.get_tracks_for_release(release_id).await.unwrap().is_empty());
+        assert!(manager.records.get_tracks_for_release(release_id).await.unwrap().is_empty());
         assert!(release_files(manager, release_id).await.is_empty());
         assert!(manager
-            .get_library_image(release_id, &LibraryImageType::Cover)
+            .records
+            .find_library_image(release_id, &LibraryImageType::Cover)
             .await
             .unwrap()
             .is_none());
@@ -165,9 +167,10 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     assert_eq!(std::fs::read(temp.path().join("kept").join("track.flac")).unwrap(), b"track-bytes");
 
     assert!(find_release(manager, &other.id).await.is_some());
-    assert_eq!(manager.get_tracks_for_release(&other.id).await.unwrap().len(), 1);
+    assert_eq!(manager.records.get_tracks_for_release(&other.id).await.unwrap().len(), 1);
     assert!(manager
-        .get_library_image(&other.id, &LibraryImageType::Cover)
+        .records
+        .find_library_image(&other.id, &LibraryImageType::Cover)
         .await
         .unwrap()
         .is_some());

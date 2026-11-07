@@ -46,10 +46,10 @@ async fn test_delete_album_integration() {
         bae_views::LibraryViews::new(db.clone()).find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
 
-    let releases = library.manager().get_releases_for_album(&album.id).await.unwrap();
+    let releases = library.records().get_releases_for_album(&album.id).await.unwrap();
     assert!(releases.is_empty());
 
-    let tracks = library.manager().get_tracks_for_release(&release.id).await.unwrap();
+    let tracks = library.records().get_tracks_for_release(&release.id).await.unwrap();
     assert!(tracks.is_empty());
 }
 
@@ -82,14 +82,14 @@ async fn test_delete_release_integration() {
     let album_result = library.manager().get_album_by_id(&album.id).await.unwrap();
     assert!(album_result.is_some());
 
-    let releases = library.manager().get_releases_for_album(&album.id).await.unwrap();
+    let releases = library.records().get_releases_for_album(&album.id).await.unwrap();
     assert_eq!(releases.len(), 1);
     assert_eq!(releases[0].id, release2.id);
 
-    let tracks1 = library.manager().get_tracks_for_release(&release1.id).await.unwrap();
+    let tracks1 = library.records().get_tracks_for_release(&release1.id).await.unwrap();
     assert!(tracks1.is_empty());
 
-    let tracks2 = library.manager().get_tracks_for_release(&release2.id).await.unwrap();
+    let tracks2 = library.records().get_tracks_for_release(&release2.id).await.unwrap();
     assert_eq!(tracks2.len(), 1);
 }
 
@@ -114,7 +114,7 @@ async fn test_delete_last_release_empties_album() {
         bae_views::LibraryViews::new(db.clone()).find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
 
-    let releases = library.manager().get_releases_for_album(&album.id).await.unwrap();
+    let releases = library.records().get_releases_for_album(&album.id).await.unwrap();
     assert!(releases.is_empty());
 }
 
@@ -153,7 +153,7 @@ async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
         release1.id,
         "an album's first release is its primary"
     );
-    library.manager().set_album_primary_release(&album.id, &release3.id).await.unwrap();
+    library.records().set_album_primary_release(&album.id, &release3.id).await.unwrap();
     assert_eq!(primary_release_of(&db, &album.id).await, release3.id);
 
     library.manager().delete_release(&release3.id).await.unwrap();
@@ -186,7 +186,7 @@ async fn test_deleting_another_release_keeps_the_primary() {
         .await
         .unwrap();
 
-    library.manager().set_album_primary_release(&album.id, &release2.id).await.unwrap();
+    library.records().set_album_primary_release(&album.id, &release2.id).await.unwrap();
 
     library.manager().delete_release(&release1.id).await.unwrap();
 
@@ -216,7 +216,11 @@ async fn test_a_release_of_another_album_cannot_be_made_primary() {
         .await
         .unwrap();
 
-    let refused = library.manager().set_album_primary_release(&album.id, &elsewhere.id).await;
+    let refused = library
+        .records()
+        .set_album_primary_release(&album.id, &elsewhere.id)
+        .await
+        .map_err(bae_library::LibraryError::from);
     assert!(
         matches!(
             &refused,

@@ -378,7 +378,7 @@ async fn renaming_or_removing_a_credit_name_reaches_every_credit_printing_it() {
         .unwrap();
     assert_eq!(printed_lines(&library).await.album_page, "Artist A & B Other");
 
-    manager.library.manager().remove_artist_credit_name(CREDIT_ARTIST_B, "b other").await.unwrap();
+    manager.library.records().remove_artist_credit_name(CREDIT_ARTIST_B, "b other").await.unwrap();
     assert_eq!(printed_lines(&library).await.album_page, "Artist A & Artist B");
     let detail = views(manager.library.manager())
         .get_artist_detail(CREDIT_ARTIST_B)

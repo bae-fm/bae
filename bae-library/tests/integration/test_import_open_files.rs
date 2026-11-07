@@ -160,7 +160,7 @@ async fn import_a_box_set_under_a_lowered_limit() {
         max_sources_open()
     );
     let tracks =
-        library.manager().get_tracks_for_release(&release_id).await.expect("read imported tracks");
+        library.records().get_tracks_for_release(&release_id).await.expect("read imported tracks");
     assert_eq!(tracks.len(), DISCS * TRACKS_PER_DISC);
 
     // Every source file the import opened is closed once it is done.

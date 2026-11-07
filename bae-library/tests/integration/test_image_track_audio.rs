@@ -93,9 +93,7 @@ fn loudness_of(samples: &[i32]) -> f64 {
 /// track 2's own.
 async fn check_track2_loudness(extension: &str, format: EncodeFormat) {
     let (library, track2, image, _dir) = import_image(extension, format).await;
-    let measured = library
-        .manager()
-        .resolve_track_audio(&track2)
+    let measured = bae_records::ResolvedTrackAudio::resolve(library.records(), &track2)
         .await
         .expect("resolve track 2")
         .track_loudness_lufs
