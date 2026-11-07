@@ -163,7 +163,7 @@ struct ImportReleaseHeader: View {
                         Button("Unlink") {
                             sourceActions.unlink()
                         }
-                        .buttonStyle(.link)
+                        .buttonStyle(.borderless)
                         .help(
                             "Stop treating the folder as this release. The metadata stays as it is."
                         )

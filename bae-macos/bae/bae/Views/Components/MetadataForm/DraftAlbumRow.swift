@@ -63,7 +63,7 @@ struct DraftAlbumRow: View {
             } label: {
                 Text(verbatim: title).lineLimit(1)
             }
-            .buttonStyle(.link)
+            .buttonStyle(.borderless)
         }
     }
 
@@ -74,7 +74,7 @@ struct DraftAlbumRow: View {
                     actions.pick(nil)
                     isPresented = false
                 }
-                .buttonStyle(.link)
+                .buttonStyle(.borderless)
             }
             TextField("Search", text: $query)
                 .textFieldStyle(.roundedBorder)

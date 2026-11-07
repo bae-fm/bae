@@ -123,7 +123,7 @@ struct ImportSearchResultRow: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: ThemeSpace.related)
             Button("Retry") { rowFailure?.retry() }
-                .buttonStyle(.link)
+                .buttonStyle(.borderless)
                 .disabled(!isPickable)
         }
         .themeText(.body)

@@ -85,7 +85,7 @@ struct ImportedReleasePane: View {
             Label("Imported", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(Theme.success)
             Button("View in library") { onViewInLibrary(albumId) }
-                .buttonStyle(.link)
+                .buttonStyle(.borderless)
         }
     }
 

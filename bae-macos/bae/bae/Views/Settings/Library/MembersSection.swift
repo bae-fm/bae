@@ -333,8 +333,6 @@ private struct MemberRow: View {
             // A row's person never changes, so including this only in one's
             // own row never changes a row's size after it first lays out.
             if member.isSelf {
-                // Borderless takes the window's accent; a link button draws
-                // in the system's link blue whatever the accent.
                 Button("Add device…", action: onAddDevice)
                     .buttonStyle(.borderless)
                     .padding(.leading, ThemeSpace.group)

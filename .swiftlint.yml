@@ -44,3 +44,14 @@ custom_rules:
       - ".*/DisplayErrorTests\\.swift$"
     message: "Hold the DisplayError (DisplayError(error)) and render ErrorDetailDisclosure instead of keeping only its localizedDescription"
     severity: error
+
+  # A link-style button draws in the system's link blue whatever accent the
+  # person chose, so an action drawn with it reads as the one blue control on
+  # its screen; the boards draw every action in the accent. An action is a
+  # borderless button, which takes the window's accent; a web address is a
+  # `Link`.
+  actions_draw_in_the_accent:
+    name: "Actions draw in the accent"
+    regex: '\.buttonStyle\(\s*\.link\s*\)'
+    message: "Use .buttonStyle(.borderless) for an action, or Link for a web address: a link-style button ignores the accent"
+    severity: error

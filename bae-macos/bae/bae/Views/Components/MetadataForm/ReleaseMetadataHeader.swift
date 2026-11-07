@@ -652,7 +652,7 @@ private struct ArtistAssignmentsEditor: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             if let onUseAlbumArtists {
                 Button("Album artist", action: onUseAlbumArtists)
-                    .buttonStyle(.link)
+                    .buttonStyle(.borderless)
             }
             ForEach(Array(assignments.enumerated()), id: \.offset) {
                 index,
@@ -797,7 +797,7 @@ struct ArtistSearchResultRow: View {
                 Button("View in library") {
                     onViewArtist(result.artist.artistId)
                 }
-                .buttonStyle(.link)
+                .buttonStyle(.borderless)
                 .themeText(.detail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

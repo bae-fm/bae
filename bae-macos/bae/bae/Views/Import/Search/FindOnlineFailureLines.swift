@@ -18,7 +18,7 @@ struct FindOnlineFailureLines: View {
                 }
             }
             Button("Retry", action: onRetry)
-                .buttonStyle(.link)
+                .buttonStyle(.borderless)
         }
         .themeText(.body)
         .padding(.horizontal, ThemeSpace.edge)
