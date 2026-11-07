@@ -52,9 +52,17 @@ struct StorageTransferControls: View {
             // its cancel.
             DownloadRow(
                 op: operation,
-                transfer: downloadStore.downloadProgress(
-                    forRelease: operation.releaseId
-                ),
+                transfer: operation.kind == .pin
+                    ? .pin(
+                        downloadStore.downloadProgress(
+                            forRelease: operation.releaseId
+                        )
+                    )
+                    : .makeLocal(
+                        downloadStore.makeLocalProgress(
+                            forRelease: operation.releaseId
+                        )
+                    ),
                 onRetry: {
                     run { try await downloads.retryDownloads() }
                 },

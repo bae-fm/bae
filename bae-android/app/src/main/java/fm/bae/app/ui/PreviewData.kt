@@ -15,6 +15,7 @@ import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDownloadCounts
+import uniffi.bae_bridge.BridgeDownloadKind
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadState
@@ -161,7 +162,6 @@ object PreviewData {
             pressingDetails = emptyList(),
             storageState = BridgeReleaseStorageState.OnOneDevice,
             storageActions = emptyList(),
-            transferAction = null,
             upload = null,
             transitioning = false,
             tracks = trackGroups.flatMap { it.tracks },
@@ -171,6 +171,7 @@ object PreviewData {
             coverFiles = emptyList(),
             galleryItems = emptyList(),
             playability = BridgeReleasePlayability.Playable,
+            makeLocal = null,
             downloadStatus = null,
             records = emptyList(),
             totalDuration = null,
@@ -274,6 +275,7 @@ object PreviewData {
     ): BridgeDownloadOp =
         BridgeDownloadOp(
             releaseId = releaseId,
+            kind = BridgeDownloadKind.PIN,
             release = BridgeQueuedRelease(title = title, fileCount = 10, totalSize = 300_000_000),
             createdAt = 0,
             state = state,

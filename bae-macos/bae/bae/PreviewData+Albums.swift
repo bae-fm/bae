@@ -181,7 +181,6 @@
                 pressingDetails: bridgePressingDetails(facts: facts),
                 storageState: .onOneDevice,
                 storageActions: [],
-                transferAction: nil,
                 upload: nil,
                 transitioning: false,
                 tracks: tracks,
@@ -191,6 +190,7 @@
                 coverFiles: [],
                 galleryItems: [],
                 playability: .playable,
+                makeLocal: nil,
                 downloadStatus: nil,
                 // Every catalog on the first album's first pressing, so the
                 // expansion preview shows what a release a MusicBrainz pick

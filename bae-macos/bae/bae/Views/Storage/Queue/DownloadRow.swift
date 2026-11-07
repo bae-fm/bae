@@ -3,19 +3,20 @@ import SwiftUI
 
 /// One download-queue row: album title, file count, size, a state badge, and a
 /// cancel button; once the download failed, a button that queues every failed
-/// download again.
+/// download again. A pin and a release being made local read alike but for
+/// their words and the progress they follow.
 struct DownloadRow: View {
     let op: BridgeDownloadOp
     /// The latest progress of the download, which the row's native readout
     /// reads each display frame while the download runs.
-    let transfer: LatestSource<BridgeDownloadTransferProgress>
+    let transfer: ReleaseProgressSource
     /// Core retries the queue's failures together, not this entry alone.
     let onRetry: () -> Void
     let onCancel: () -> Void
 
     var body: some View {
         QueueRow(
-            icon: "arrow.down.circle",
+            icon: op.kind == .pin ? "arrow.down.circle" : "internaldrive",
             createdAt: op.createdAt,
             cancel: .init(help: "Cancel this download", action: onCancel)
         ) {
@@ -40,23 +41,27 @@ struct DownloadRow: View {
 
     @ViewBuilder
     private var stateBadge: some View {
-        switch op.state {
-        case .queued:
+        switch (op.kind, op.state) {
+        case (.pin, .queued):
             StatusChip("Queued", symbol: "clock")
-        case .active:
+        case (.makeLocal, .queued):
+            StatusChip("Queued to make local", symbol: "clock")
+        case (.pin, .active):
             StatusChip(
                 "Downloading",
                 tone: .activity,
                 symbol: "arrow.down.circle.fill"
             )
-        case .failed(let error):
+        case (.makeLocal, .active):
+            StatusChip(
+                verbatim: BridgeReleaseStorageAction.detachAudio.transferLabel,
+                tone: .activity,
+                symbol: "arrow.down.circle.fill"
+            )
+        case (let kind, .failed(let error)):
             HStack(spacing: ThemeSpace.related) {
-                StatusChip(
-                    "Failed",
-                    tone: .danger,
-                    symbol: StatusTone.danger.symbol
-                )
-                .help(error)
+                failedChip(kind)
+                    .help(error)
                 Button("Retry", action: onRetry)
                     .controlSize(.small)
             }
@@ -64,9 +69,27 @@ struct DownloadRow: View {
     }
 
     @ViewBuilder
+    private func failedChip(_ kind: BridgeDownloadKind) -> some View {
+        switch kind {
+        case .pin:
+            StatusChip(
+                "Failed",
+                tone: .danger,
+                symbol: StatusTone.danger.symbol
+            )
+        case .makeLocal:
+            StatusChip(
+                "Couldn't make local",
+                tone: .danger,
+                symbol: StatusTone.danger.symbol
+            )
+        }
+    }
+
+    @ViewBuilder
     private var progressView: some View {
         if case .active = op.state {
-            TransferReadout(stream: .pin(transfer), kind: .pin)
+            TransferReadout(stream: transfer, kind: .pin)
         }
     }
 }
@@ -77,8 +100,10 @@ struct DownloadRow: View {
             ForEach(PreviewData.downloadOps, id: \.releaseId) { op in
                 DownloadRow(
                     op: op,
-                    transfer: PreviewData.downloadStore()
-                        .downloadProgress(forRelease: op.releaseId),
+                    transfer: .pin(
+                        PreviewData.downloadStore()
+                            .downloadProgress(forRelease: op.releaseId)
+                    ),
                     onRetry: {},
                     onCancel: {}
                 )

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The streams of how far each downloading release, each file a pin
-/// downloads, and each release being made local, has got. The bridge holds each latest value, and the native
+/// The streams of how far each pinning release, each file a pin downloads,
+/// and each release being made local, has got. The bridge holds each latest value, and the native
 /// view drawing that release or file reads it once per display frame, so
 /// arriving bytes run no SwiftUI update and no main-thread hop. The queue's
 /// entries are the Storage Manager inspector's, read for one release in core.

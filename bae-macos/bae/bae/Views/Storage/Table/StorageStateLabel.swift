@@ -3,8 +3,7 @@ import SwiftUI
 
 /// The storage state chip: what core says the row's storage shows. Files on
 /// the move fill their chip as far as they have come, as does a release
-/// being made local; another transition this process runs while the files
-/// rest shows its own words.
+/// being made local.
 struct StorageStateLabel: View {
     let release: ReleaseSummary
     let status: BridgeStorageRowStatus
@@ -35,10 +34,26 @@ struct StorageStateLabel: View {
                     QueueWaitChip(wait: wait)
                 }
             }
-        case .transferring(.detachAudio):
-            StorageMakingLocalChip(releaseId: release.id)
-        case .transferring(let action):
-            StatusChip(verbatim: action.transferLabel, tone: .activity)
+        case .makeLocalFailed(let error):
+            StatusChip("Couldn't make local", tone: .danger)
+                .help(error)
+        case .makingLocal(.queued(let ahead, let wait)):
+            HStack(spacing: ThemeSpace.inline) {
+                StatusChip("Queued to make local", tone: .activity)
+                if ahead > 0 {
+                    StatusChip("\(Int(ahead)) ahead")
+                }
+                if let wait {
+                    QueueWaitChip(wait: wait)
+                }
+            }
+        case .makingLocal(.running(let wait)):
+            HStack(spacing: ThemeSpace.inline) {
+                StorageMakingLocalChip(releaseId: release.id)
+                if let wait {
+                    QueueWaitChip(wait: wait)
+                }
+            }
         case .onOneDevice:
             StatusChip("Local", symbol: "folder")
         case .pinned:
@@ -136,7 +151,7 @@ private struct StorageMakingLocalChip: View {
                 release: PreviewData.storageRelease(
                     id: "rel-row-5",
                     storageState: .inStorage(pinned: false),
-                    transfer: .pin
+                    transitioning: true
                 ),
                 status: .pinning(step: .running(wait: nil))
             )
@@ -166,14 +181,31 @@ private struct StorageMakingLocalChip: View {
                 ),
                 status: .moveFailed(fileName: "01 Opening.flac")
             )
-            // A transition this process runs while the files rest.
+            // A release downloading into the person's folder to be made local.
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-detach",
                     storageState: .inStorage(pinned: false),
-                    transfer: .detachAudio
+                    transitioning: true
                 ),
-                status: .transferring(action: .detachAudio)
+                status: .makingLocal(step: .running(wait: nil))
+            )
+            // A make-local waiting its turn in a paused queue.
+            StorageStateLabel(
+                release: PreviewData.storageRelease(
+                    id: "r-make-local-queued",
+                    storageState: .inStorage(pinned: false),
+                    transitioning: true
+                ),
+                status: .makingLocal(step: .queued(ahead: 1, wait: .paused))
+            )
+            // A make-local that failed.
+            StorageStateLabel(
+                release: PreviewData.storageRelease(
+                    id: "r-make-local-failed",
+                    storageState: .inStorage(pinned: false)
+                ),
+                status: .makeLocalFailed(error: "The disk is full")
             )
             // Files being sent.
             StorageStateLabel(

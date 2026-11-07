@@ -352,8 +352,9 @@ extension LatestStream where Value == BridgeDownloadTransferProgress {
 }
 
 extension LatestStream where Value == BridgeMakeLocalProgress {
-    /// How far each release being made local has downloaded, by release id;
-    /// a preview's holds `values` and nothing feeds it.
+    /// How far each release being made local has downloaded, by release id,
+    /// from the download stream, which carries it beside the pins' bytes; a
+    /// preview's holds `values` and nothing feeds it.
     public static func makeLocals(holding values: [String: Value] = [:])
         -> LatestStream
     {
@@ -367,12 +368,10 @@ extension LatestStream where Value == BridgeMakeLocalProgress {
         }
     }
 
-    #if os(macOS)
-        /// Fill from core.
-        public func feed(from appHandle: AppHandle) -> LatestFeed {
-            fed { appHandle.feedMakeLocalTransfers() }
-        }
-    #endif
+    /// Fill from core.
+    public func feed(from appHandle: AppHandle) -> LatestFeed {
+        fed { appHandle.feedDownloadTransfers() }
+    }
 }
 
 extension LatestStream where Value == UInt8 {

@@ -457,9 +457,9 @@ extension AlbumDetailView {
 
     private func pinRelease(releaseId: String) {
         // Pinning enqueues on the download queue rather than awaiting
-        // a per-release transition. The sheet's existing `release.summary.transfer`
-        // bar tracks the action from subscribed release values; the storage state
-        // flips when the live album detail delivers the worker's database commit.
+        // a per-release transition. The sheet's download status tracks the
+        // entry from subscribed release values; the storage state flips when
+        // the live album detail delivers the worker's database commit.
         // Queueing itself can fail, and shows why where the other transitions do.
         let downloads = downloads
         runStorageTransition {
@@ -490,7 +490,7 @@ extension AlbumDetailView {
         }
         let releaseEditor = releaseEditor
         runStorageTransition {
-            try await releaseEditor.makeReleaseLocal(releaseId, newPath)
+            try await releaseEditor.makeReleasesLocal([releaseId], newPath)
         }
     }
 

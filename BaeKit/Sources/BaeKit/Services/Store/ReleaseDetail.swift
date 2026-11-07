@@ -35,6 +35,9 @@ public struct ReleaseDetail: Identifiable, Sendable {
     /// Where the release stands in this device's download queue, and what
     /// holds the queue back; nil when core offers no download control.
     public var downloadStatus: BridgeReleaseDownloadStatus?
+    /// Where the release stands in being made local, in the same queue; nil
+    /// when it is not being made local.
+    public var makeLocal: BridgeMakeLocalStatus?
 
     public var id: String {
         summary.id
@@ -66,6 +69,7 @@ public struct ReleaseDetail: Identifiable, Sendable {
         labelsLine = Self.labelsLine(bridge.labels, separator: separator)
         totalDuration = bridge.totalDuration
         downloadStatus = bridge.downloadStatus
+        makeLocal = bridge.makeLocal
         tracks = bridge.tracks.map(Track.init(from:))
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))
         imageFiles = bridge.imageFiles

@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// A release's storage state, transfer or upload progress, and storage
+/// A release's storage state, download or upload progress, and storage
 /// actions. An upload's and a make-local's bar and bytes are native views
 /// that read the release's latest progress each frame, so moving bytes run
 /// no SwiftUI update.
@@ -48,15 +48,8 @@ struct StorageStatusBand: View {
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
-            // Read off the identity-stable summary so the bar updates in place.
-            if let transfer = release.summary.transfer {
-                if transfer.action == .detachAudio {
-                    makeLocalLine(transfer)
-                }
-                else {
-                    ProgressLine(transfer.label, progress: nil)
-                        .themeText(.body)
-                }
+            if let makeLocal = release.makeLocal {
+                makeLocalLine(makeLocal)
             }
             else if !release.summary.transitioning {
                 transferActions
@@ -82,22 +75,49 @@ struct StorageStatusBand: View {
         }
     }
 
-    /// The transition's words over the bytes the release and the file being
-    /// downloaded hold, and a bar of the release's, read from how far its
-    /// files have downloaded into the person's folder each frame.
-    private func makeLocalLine(_ transfer: TransferState) -> some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            Text(transfer.label)
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-            TransferReadout(
-                stream: .makeLocal(
-                    downloadStore.makeLocalProgress(
-                        forRelease: release.summary.id
-                    )
-                ),
-                kind: .pin
-            )
+    /// Where the release stands in being made local: waiting its turn, with
+    /// the entries ahead of it and what holds the queue back; downloading,
+    /// the transition's words over the bytes the release and the file being
+    /// downloaded hold and a bar of the release's, read from how far its
+    /// files have downloaded into the person's folder each frame; or failed
+    /// with its error.
+    @ViewBuilder
+    private func makeLocalLine(_ status: BridgeMakeLocalStatus) -> some View {
+        switch status {
+        case .queued(let ahead, let wait):
+            HStack(spacing: ThemeSpace.inline) {
+                StatusChip("Queued to make local", tone: .activity)
+                if ahead > 0 {
+                    StatusChip("\(Int(ahead)) ahead")
+                }
+                if let wait {
+                    QueueWaitChip(wait: wait)
+                }
+            }
+        case .making(let wait):
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+                HStack(spacing: ThemeSpace.inline) {
+                    Text(BridgeReleaseStorageAction.detachAudio.transferLabel)
+                        .themeText(.body)
+                        .foregroundStyle(.secondary)
+                    if let wait {
+                        QueueWaitChip(wait: wait)
+                    }
+                }
+                TransferReadout(
+                    stream: .makeLocal(
+                        downloadStore.makeLocalProgress(
+                            forRelease: release.summary.id
+                        )
+                    ),
+                    kind: .pin
+                )
+            }
+        case .failed(let error):
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                StatusChip("Couldn't make local", tone: .danger)
+                ErrorText(error)
+            }
         }
     }
 
@@ -111,14 +131,23 @@ struct StorageStatusBand: View {
         switch status {
         case .queued(let ahead, let wait):
             QueuedPinChips(ahead: ahead, wait: wait)
-        case .downloading(let wait?):
-            QueueWaitChip(wait: wait)
+        case .downloading(let wait):
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+                ProgressLine(
+                    BridgeReleaseStorageAction.pin.transferLabel,
+                    progress: nil
+                )
+                .themeText(.body)
+                if let wait {
+                    QueueWaitChip(wait: wait)
+                }
+            }
         case .failed(let error):
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 StatusChip("Download failed", tone: .danger)
                 ErrorText(error)
             }
-        case .downloading(.none), .downloaded, .available:
+        case .downloaded, .available:
             EmptyView()
         }
     }

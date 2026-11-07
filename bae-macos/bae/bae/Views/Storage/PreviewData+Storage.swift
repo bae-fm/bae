@@ -41,6 +41,7 @@
         static let downloadOps: [BridgeDownloadOp] = [
             BridgeDownloadOp(
                 releaseId: "rel-row-1",
+                kind: .pin,
                 release: BridgeQueuedRelease(
                     title:
                         "Album Title with an Intentionally Long Descriptive Subtitle",
@@ -52,6 +53,7 @@
             ),
             BridgeDownloadOp(
                 releaseId: "rel-row-2",
+                kind: .pin,
                 release: BridgeQueuedRelease(
                     title: "B",
                     fileCount: 9,
@@ -62,6 +64,7 @@
             ),
             BridgeDownloadOp(
                 releaseId: "rel-row-3",
+                kind: .pin,
                 release: BridgeQueuedRelease(
                     title: "Album Title C",
                     fileCount: 15,
@@ -77,6 +80,7 @@
             [
                 BridgeDownloadOp(
                     releaseId: "rel-row-5",
+                    kind: .pin,
                     release: nil,
                     createdAt: queuedAt(minutesAgo: 1),
                     state: .active
@@ -90,6 +94,7 @@
             [
                 BridgeDownloadOp(
                     releaseId: "rel-row-5",
+                    kind: .pin,
                     release: nil,
                     createdAt: queuedAt(minutesAgo: 1),
                     state: .queued
@@ -361,15 +366,15 @@
         // MARK: - Storage table rows
 
         /// A release summary in a chosen storage state, built through the wire
-        /// type so `ReleaseSummary`'s real projection runs. `transfer` seeds an
-        /// in-flight transition badge.
+        /// type so `ReleaseSummary`'s real projection runs. `transitioning` seeds a
+        /// download that holds the release.
         @MainActor
         static func storageRelease(
             id: String = "rel-store-1",
             albumId: String = "album-store-1",
             media: [BridgeMediaCount] = PreviewData.media(.cd),
             storageState: BridgeReleaseStorageState = .inStorage(pinned: false),
-            transfer: BridgeReleaseStorageAction? = nil,
+            transitioning: Bool = false,
             upload: BridgeReleaseUpload? = nil,
             fileCount: Int64 = 12,
             totalSize: Int64 = 367_000_000
@@ -382,9 +387,8 @@
                     mediaTerms: bridgeMediaTerms(media: media),
                     storageState: storageState,
                     storageActions: [],
-                    transferAction: transfer,
                     upload: upload,
-                    transitioning: upload != nil || transfer != nil,
+                    transitioning: upload != nil || transitioning,
                     fileCount: fileCount,
                     totalSize: totalSize,
                     cover: nil
@@ -447,7 +451,7 @@
                         media: media[(index - 1) % media.count],
                         storageState: isRemote
                             ? .inStorage(pinned: pinned) : .onOneDevice,
-                        transfer: pinning ? .pin : nil,
+                        transitioning: pinning,
                         status: pinning
                             ? .pinning(step: .running(wait: nil))
                             : queued
@@ -476,7 +480,7 @@
             year: Int32? = 2021,
             media: [BridgeMediaCount] = PreviewData.media(.cd),
             storageState: BridgeReleaseStorageState,
-            transfer: BridgeReleaseStorageAction? = nil,
+            transitioning: Bool = false,
             status: BridgeStorageRowStatus,
             upload: BridgeReleaseUpload? = nil,
             fileCount: Int64 = 12,
@@ -492,9 +496,8 @@
                     mediaTerms: bridgeMediaTerms(media: media),
                     storageState: storageState,
                     storageActions: [],
-                    transferAction: transfer,
                     upload: upload,
-                    transitioning: upload != nil || transfer != nil,
+                    transitioning: upload != nil || transitioning,
                     fileCount: fileCount,
                     totalSize: totalSize,
                     cover: nil
@@ -760,7 +763,6 @@
                 pressingDetails: bridgePressingDetails(facts: facts),
                 storageState: row.release.storageState,
                 storageActions: row.release.storageActions,
-                transferAction: row.release.transferAction,
                 upload: row.release.upload,
                 transitioning: row.release.transitioning,
                 tracks: [],
@@ -775,6 +777,7 @@
                 coverFiles: [imageFile],
                 galleryItems: [],
                 playability: .playable,
+                makeLocal: nil,
                 downloadStatus: nil,
                 records: [],
                 totalDuration: nil,

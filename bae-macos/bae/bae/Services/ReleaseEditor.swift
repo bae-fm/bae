@@ -16,8 +16,10 @@ final class ReleaseEditor: Observable {
     private let moveReleasesToCloudAction:
         @Sendable (_ releaseIds: [String]) async throws ->
             BridgeUploadReleasesOutcome
-    let makeReleaseLocal:
-        @Sendable (_ releaseId: String, _ newPath: URL) async throws -> Void
+    /// Queue the releases to be made local into a folder of their own each
+    /// below `folder`.
+    let makeReleasesLocal:
+        @Sendable (_ releaseIds: [String], _ folder: URL) async throws -> Void
     let deleteRelease: @Sendable (_ releaseId: String) async throws -> Void
     /// Delete an album: every release it holds and what each owns.
     let deleteAlbum: @Sendable (_ albumId: String) async throws -> Void
@@ -42,8 +44,8 @@ final class ReleaseEditor: Observable {
             @escaping @Sendable ([String]) async throws ->
             BridgeUploadReleasesOutcome =
             { _ in throw StubError.notImplemented },
-        makeReleaseLocal:
-            @escaping @Sendable (String, URL) async throws -> Void = {
+        makeReleasesLocal:
+            @escaping @Sendable ([String], URL) async throws -> Void = {
                 _,
                 _ in
             },
@@ -70,7 +72,7 @@ final class ReleaseEditor: Observable {
     ) {
         self.changeCover = changeCover
         moveReleasesToCloudAction = moveReleasesToCloud
-        self.makeReleaseLocal = makeReleaseLocal
+        self.makeReleasesLocal = makeReleasesLocal
         self.deleteRelease = deleteRelease
         self.deleteAlbum = deleteAlbum
         self.setPrimaryRelease = setPrimaryRelease
@@ -90,10 +92,10 @@ final class ReleaseEditor: Observable {
             moveReleasesToCloud: {
                 try await handle.uploadReleases(releaseIds: $0)
             },
-            makeReleaseLocal: {
-                try await handle.detachReleaseAudio(
-                    releaseId: $0,
-                    newPath: $1.pathBytes
+            makeReleasesLocal: {
+                try await handle.makeReleasesLocal(
+                    releaseIds: $0,
+                    folder: $1.pathBytes
                 )
             },
             deleteRelease: { try await handle.deleteRelease(releaseId: $0) },

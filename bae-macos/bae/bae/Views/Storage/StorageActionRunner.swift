@@ -113,8 +113,9 @@ final class StorageActionRunner {
     }
 
     /// Run `action` against every release in `releaseIds`. Moving to cloud
-    /// defers to the confirm sheet; detaching audio asks for a destination folder
-    /// once and moves each release into it; pin enqueues the whole batch on the
+    /// defers to the confirm sheet; making local asks for a destination folder
+    /// once and queues the whole batch on the download queue, each release in
+    /// a folder of its own below it; pin enqueues the whole batch on the
     /// download queue; unpin releases the whole batch's pins in one call.
     func run(_ action: BridgeReleaseStorageAction, releaseIds: [String]) {
         switch action {
@@ -200,24 +201,11 @@ final class StorageActionRunner {
         guard let newPath = Self.promptDetachAudioDestination() else {
             return
         }
-        runEach(listed(releaseIds)) {
-            releaseId in
-            try await self.releaseEditor.makeReleaseLocal(releaseId, newPath)
-        }
-    }
-
-    /// Run an async per-release transition for each id, surfacing the first
-    /// failure. Each bridge call descends into the cloud future chain on a
-    /// runtime worker; progress renders from subscribed release values.
-    private func runEach(
-        _ releaseIds: [String],
-        _ transition: @escaping @Sendable (String) async throws -> Void
-    ) {
+        let releaseIds = listed(releaseIds)
+        guard !releaseIds.isEmpty else { return }
         Task {
             do {
-                for releaseId in releaseIds {
-                    try await transition(releaseId)
-                }
+                try await releaseEditor.makeReleasesLocal(releaseIds, newPath)
             }
             catch {
                 uiStore.showError(error)

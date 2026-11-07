@@ -287,7 +287,6 @@
                 pressingDetails: bridgePressingDetails(facts: facts),
                 storageState: storageState,
                 storageActions: storageActions,
-                transferAction: nil,
                 upload: nil,
                 transitioning: false,
                 tracks: [],
@@ -302,6 +301,7 @@
                 coverFiles: [previewReleaseCoverFile],
                 galleryItems: [],
                 playability: playability,
+                makeLocal: nil,
                 downloadStatus: nil,
                 // Every catalog, so the expansion's facts-line popover shows
                 // what a release a MusicBrainz pick linked all the way out

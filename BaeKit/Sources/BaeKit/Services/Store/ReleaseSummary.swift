@@ -11,19 +11,10 @@ import Foundation
 /// What of the release waits in the upload queue is `upload`, read with the
 /// row; how fast its files go is its transfer in `OutboxStore`.
 ///
-/// Per-release TRANSFER progress (the synchronous pin/unpin/cloud/local
-/// transition the user triggers) IS a field here: `transfer`. Core includes the
-/// current action in subscribed release values. The two concerns are distinct —
-/// uploads are background queue work, a transfer is a foregrounded action with
-/// its own determinate bar.
-
-/// An in-flight storage transition for a release.
-public struct TransferState: Equatable, Sendable {
-    public let action: BridgeReleaseStorageAction
-
-    /// The transition's words while it runs.
-    public var label: String { action.transferLabel }
-}
+/// Where a release stands in the download queue (a pin, or being made local)
+/// is not here: it arrives with the release's detail
+/// (`ReleaseDetail.downloadStatus`, `ReleaseDetail.makeLocal`) and the
+/// Storage Manager row's status.
 
 public struct ReleaseSummary: Identifiable, Sendable {
     public let id: String
@@ -46,15 +37,12 @@ public struct ReleaseSummary: Identifiable, Sendable {
     /// renders its own art; `ImageView` fetches the bytes by id and caches the
     /// decoded image under the version.
     public let cover: BridgeImageRef?
-    /// Non-nil while a pin/unpin/cloud/local transition runs. Core includes
-    /// the current action in release subscriptions, so later values carry it
-    /// the same way they carry storage state.
-    public let transfer: TransferState?
     /// What of the release waits in this device's upload queue; `nil` when
     /// nothing does.
     public let upload: BridgeReleaseUpload?
-    /// Whether an upload or a transfer is under way: the release then offers
-    /// only cancelling, and `storageActions` is empty.
+    /// Whether an upload or a download that holds the release is under way:
+    /// the release then offers only cancelling, and `storageActions` is
+    /// empty.
     public let transitioning: Bool
 
     /// The media in the current locale's words: "2×CD", "Vinyl".
@@ -78,7 +66,6 @@ public struct ReleaseSummary: Identifiable, Sendable {
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
         cover = bridge.cover
-        transfer = Self.transferState(from: bridge.transferAction)
         upload = bridge.upload
         transitioning = bridge.transitioning
     }
@@ -95,14 +82,7 @@ public struct ReleaseSummary: Identifiable, Sendable {
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
         cover = bridge.cover
-        transfer = Self.transferState(from: bridge.transferAction)
         upload = bridge.upload
         transitioning = bridge.transitioning
-    }
-
-    private static func transferState(
-        from action: BridgeReleaseStorageAction?
-    ) -> TransferState? {
-        action.map { TransferState(action: $0) }
     }
 }

@@ -34,7 +34,7 @@ func makeBridgeRelease(
     media: [BridgeMediaCount] = PreviewData.media(.cd),
     storageState: BridgeReleaseStorageState = .inStorage(pinned: false),
     storageActions: [BridgeReleaseStorageAction] = [],
-    transferAction: BridgeReleaseStorageAction? = nil,
+    transitioning: Bool = false,
     totalDuration: BridgeDurationUnits? = .hoursAndMinutes(
         hours: 1,
         minutes: 45
@@ -56,9 +56,8 @@ func makeBridgeRelease(
         pressingDetails: bridgePressingDetails(facts: facts),
         storageState: storageState,
         storageActions: storageActions,
-        transferAction: transferAction,
         upload: nil,
-        transitioning: transferAction != nil,
+        transitioning: transitioning,
         tracks: [],
         trackGroups: [],
         sourceAudio: nil,
@@ -66,6 +65,7 @@ func makeBridgeRelease(
         coverFiles: [],
         galleryItems: [],
         playability: .playable,
+        makeLocal: nil,
         downloadStatus: nil,
         records: [],
         totalDuration: totalDuration,
@@ -92,7 +92,6 @@ private func makeBridgeReleaseSummary(
         mediaTerms: bridgeMediaTerms(media: media),
         storageState: storageState,
         storageActions: storageActions,
-        transferAction: nil,
         upload: nil,
         transitioning: false,
         fileCount: fileCount,
@@ -308,13 +307,13 @@ struct ReleaseSummaryTests {
     }
 
     @MainActor
-    @Test("a release mid-transition carries its transfer")
-    func carriesTransfer() {
+    @Test("a release a download holds carries that it is transitioning")
+    func carriesTransitioning() {
         let summary = ReleaseSummary(
-            from: makeBridgeRelease(transferAction: .unpin)
+            from: makeBridgeRelease(transitioning: true)
         )
 
-        #expect(summary.transfer != nil)
+        #expect(summary.transitioning)
     }
 }
 
