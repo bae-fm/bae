@@ -428,7 +428,7 @@ impl BridgeHost {
         closing: Option<Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<crate::BridgeLibraryRemoval, BridgeError> {
         let store = crate::from_app::store(&library_id)?;
-        let steps = crate::screens::ClosingSteps::of(closing);
+        let steps = crate::BridgeLibraryClosing::steps(closing);
         self.operations
             .clone()
             .run_to_completion(
@@ -454,7 +454,7 @@ impl BridgeHost {
         closing: Option<Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<crate::BridgeLibraryRemoval, BridgeError> {
         let store = crate::from_app::store(&library_id)?;
-        let steps = crate::screens::ClosingSteps::of(closing);
+        let steps = crate::BridgeLibraryClosing::steps(closing);
         self.operations
             .clone()
             .run_to_completion(self.clone(), "finish removing a library", move || async move {

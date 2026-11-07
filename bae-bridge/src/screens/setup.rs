@@ -230,6 +230,21 @@ impl BridgeLibrarySetup {
     pub(crate) fn written(&self) -> Vec<Option<BridgeFastValue>> {
         self.written.lock().unwrap().clone()
     }
+
+    /// Where a call writes its steps: `setup`'s stream, or nowhere when the
+    /// app doesn't show the call.
+    pub(crate) fn steps(setup: Option<Arc<Self>>) -> SetupSteps {
+        match setup {
+            Some(setup) => setup.writer(),
+            None => SetupSteps {
+                writer: ProgressStream::unread(),
+                states: None,
+                storage_finishing: None,
+                #[cfg(test)]
+                written: Arc::default(),
+            },
+        }
+    }
 }
 
 /// A setup call's writing of its stream.
@@ -246,21 +261,6 @@ pub(crate) struct SetupSteps {
 }
 
 impl SetupSteps {
-    /// Where a call writes its steps: `setup`'s stream, or nowhere when the
-    /// app doesn't show the call.
-    pub(crate) fn of(setup: Option<Arc<BridgeLibrarySetup>>) -> Self {
-        match setup {
-            Some(setup) => setup.writer(),
-            None => Self {
-                writer: ProgressWriter::unread(),
-                states: None,
-                storage_finishing: None,
-                #[cfg(test)]
-                written: Arc::default(),
-            },
-        }
-    }
-
     /// The call runs `step`, `done` of its `total` units; a total of 0 has
     /// nothing to count.
     pub(crate) fn step(&self, step: BridgeSetupStep, done: u64, total: u64) {

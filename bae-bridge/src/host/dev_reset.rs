@@ -55,7 +55,7 @@ impl BridgeHost {
             tracing::info!(library = %library.id, "dev reset: removing a library");
             let store = crate::from_app::store(&library.id)?;
             self.closed(store).await?;
-            self.remove_unopenable_library_now(store, &crate::screens::ClosingSteps::unread())
+            self.remove_unopenable_library_now(store, &crate::BridgeLibraryClosing::unread_steps())
                 .await
                 .map_err(|error| {
                     BridgeError::categorized(

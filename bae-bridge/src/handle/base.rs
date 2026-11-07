@@ -151,7 +151,7 @@ forward! { async this => {
     /// Set S3 up as the library's storage, each step coven runs written into
     /// `setup`'s stream when the app shows the setup.
     fn save_sync_config(config_data: BridgeSaveSyncConfig, device_name: String, setup: Option<std::sync::Arc<crate::BridgeLibrarySetup>>) -> crate::types::BridgeStorageSetup {
-        let steps = crate::screens::SetupSteps::of(setup);
+        let steps = crate::BridgeLibrarySetup::steps(setup);
         Ok(this
             .services
             .save_s3_config(config_data.into_core()?, &device_name, &|progress| steps.storage(progress))

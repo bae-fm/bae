@@ -235,15 +235,16 @@ struct EveryEvent {
 }
 
 impl EventDelivery {
-    fn new() -> Self {
-        let (feed_reader, feed) = mpsc::unbounded_channel();
+    /// Delivery to `feed_reader`, whose receiving end `feed` the bus's first
+    /// taker gets.
+    fn new(feed_reader: mpsc::UnboundedSender<ImportEvent>, feed: ImportEvents) -> Self {
         Self {
             every_event: Arc::new(std::sync::Mutex::new(EveryEvent {
                 readers: vec![feed_reader],
                 #[cfg(any(test, feature = "test-utils"))]
                 delivered: Vec::new(),
             })),
-            feed: Arc::new(std::sync::Mutex::new(Some(ImportEvents(feed)))),
+            feed: Arc::new(std::sync::Mutex::new(Some(feed))),
         }
     }
 
@@ -302,8 +303,9 @@ impl ImportEventBus {
 
     /// A bus recording into `runtime`.
     pub fn new(runtime: CandidateRuntime) -> Self {
+        let (feed_reader, feed) = mpsc::unbounded_channel();
         Self {
-            delivery: EventDelivery::new(),
+            delivery: EventDelivery::new(feed_reader, ImportEvents(feed)),
             runtime,
             #[cfg(any(test, feature = "test-utils"))]
             send_hold: Arc::default(),

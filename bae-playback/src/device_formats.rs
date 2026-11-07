@@ -159,12 +159,12 @@ impl<C: DeviceFormatControl> Drop for FormatLease<C> {
 /// The lease of a player's last stream, kept after the stream ends until the
 /// player's playback does (see the module docs). One per player output.
 pub(crate) struct PlayerFormat<C: DeviceFormatControl> {
-    kept: Arc<Mutex<Option<FormatLease<C>>>>,
+    kept: Arc<KeptLease<C>>,
 }
 
 impl<C: DeviceFormatControl> PlayerFormat<C> {
     pub(crate) fn new() -> Self {
-        Self { kept: Arc::new(Mutex::new(None)) }
+        Self { kept: Arc::new(KeptLease(Mutex::new(None))) }
     }
 
     /// The lease of the stream just built, which comes back here when the
@@ -172,37 +172,44 @@ impl<C: DeviceFormatControl> PlayerFormat<C> {
     /// device already runs in the new stream's format when it is the same one,
     /// and goes back to its own when it isn't.
     pub(crate) fn stream_started(&self, lease: FormatLease<C>) -> StreamFormat<C> {
-        drop(kept(&self.kept).take());
+        self.kept.release();
         StreamFormat { lease: Some(lease), kept: self.kept.clone() }
     }
 
     /// The player's playback ended: let the kept lease go, putting its device
     /// back.
     pub(crate) fn playback_ended(&self) {
-        drop(kept(&self.kept).take());
+        self.kept.release();
     }
 }
 
 /// A stream's lease, handed back to its player when the stream ends.
 pub(crate) struct StreamFormat<C: DeviceFormatControl> {
     lease: Option<FormatLease<C>>,
-    kept: Arc<Mutex<Option<FormatLease<C>>>>,
+    kept: Arc<KeptLease<C>>,
 }
 
 impl<C: DeviceFormatControl> Drop for StreamFormat<C> {
     fn drop(&mut self) {
-        let lease = self.lease.take();
-        drop(std::mem::replace(&mut *kept(&self.kept), lease));
+        self.kept.replace_with(self.lease.take());
     }
 }
 
-/// A player's kept lease. Taking or replacing it is one step, so a panic
-/// while it was held — in the CoreAudio set a lease's drop makes — leaves it
-/// whole, and it stands.
-fn kept<C: DeviceFormatControl>(
-    kept: &Mutex<Option<FormatLease<C>>>,
-) -> MutexGuard<'_, Option<FormatLease<C>>> {
-    kept.lock().unwrap_or_else(PoisonError::into_inner)
+/// A player's kept lease. Letting it go or replacing it is one step, so a
+/// panic while it was held — in the CoreAudio set a lease's drop makes — leaves
+/// it whole, and it stands.
+struct KeptLease<C: DeviceFormatControl>(Mutex<Option<FormatLease<C>>>);
+
+impl<C: DeviceFormatControl> KeptLease<C> {
+    /// Let the kept lease go.
+    fn release(&self) {
+        self.replace_with(None);
+    }
+
+    /// Keep `lease` in place of the kept one, which goes.
+    fn replace_with(&self, lease: Option<FormatLease<C>>) {
+        drop(std::mem::replace(&mut *self.0.lock().unwrap_or_else(PoisonError::into_inner), lease));
+    }
 }
 
 /// An output device's physical format, read and set through CoreAudio. The

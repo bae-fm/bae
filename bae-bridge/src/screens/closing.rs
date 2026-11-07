@@ -54,6 +54,21 @@ impl BridgeLibraryClosing {
         }
     }
 
+    /// Where nothing reads a close's steps.
+    pub(crate) fn unread_steps() -> ClosingSteps {
+        ClosingSteps {
+            writer: ProgressStream::unread(),
+            #[cfg(test)]
+            written: None,
+        }
+    }
+
+    /// Where `closing`, the close the app shows, reads the steps; where
+    /// nothing does without it.
+    pub(crate) fn steps(closing: Option<Arc<Self>>) -> ClosingSteps {
+        closing.map_or_else(Self::unread_steps, |closing| closing.writer())
+    }
+
     /// What the close wrote, in order, `None` where its writing ended.
     #[cfg(test)]
     pub(crate) fn written(&self) -> Vec<Option<BridgeClosingStep>> {
@@ -69,21 +84,6 @@ pub(crate) struct ClosingSteps {
 }
 
 impl ClosingSteps {
-    /// Where nothing reads a close's steps.
-    pub(crate) fn unread() -> Self {
-        Self {
-            writer: ProgressWriter::unread(),
-            #[cfg(test)]
-            written: None,
-        }
-    }
-
-    /// Where `closing`, the close the app shows, reads the steps; where
-    /// nothing does without it.
-    pub(crate) fn of(closing: Option<Arc<BridgeLibraryClosing>>) -> Self {
-        closing.map_or_else(Self::unread, |closing| closing.writer())
-    }
-
     /// Stop the desktop services, the step every close starts with.
     #[cfg(desktop)]
     pub(crate) async fn stop_servers(&self, desktop: &bae_desktop::DesktopServices) {
