@@ -591,6 +591,7 @@ where
                     records,
                     people,
                     membership,
+                    sync_status,
                     #[cfg(desktop)]
                     catalogs,
                     #[cfg(desktop)]

@@ -214,15 +214,6 @@ impl LibraryManager {
         Ok(self.sync_status.acknowledge_settled_storage_setups().await?)
     }
 
-    /// The person dismissed the undone storage setup `operation` the sync
-    /// status showed.
-    pub async fn dismiss_undone_storage_setup(
-        &self,
-        operation: coven::OperationId,
-    ) -> Result<(), LibraryError> {
-        Ok(self.sync_status.acknowledge_undone_storage_setup(operation).await?)
-    }
-
     /// Start coven's sync loop with the store keys this session unlocked. Its
     /// first pass connects, and a pass that can't reach storage backs off and
     /// retries like any other; starting fails only when the session lacks a
