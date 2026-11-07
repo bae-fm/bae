@@ -31,6 +31,7 @@ import fm.bae.app.ui.playback.FullPlayerScene
 import fm.bae.app.ui.playback.MiniPlayerScene
 import fm.bae.app.ui.playback.PlayerSceneState
 import fm.bae.app.ui.settings.AppearanceSection
+import fm.bae.app.ui.settings.S3SetupFormScene
 import fm.bae.app.ui.sync.SyncActivityList
 
 // Screenshot scenes captured by scripts/shots/android.sh. Each function is one
@@ -205,6 +206,13 @@ private fun AppearanceScene(
             }
         }
     }
+}
+
+/** Set up sync's S3 form after a failed region check: the reason under Region. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun S3SetupRegionMismatch() {
+    S3SetupFormScene()
 }
 
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)

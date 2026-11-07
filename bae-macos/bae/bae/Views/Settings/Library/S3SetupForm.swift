@@ -46,10 +46,8 @@ struct S3SetupForm: View {
                 Section("Location") {
                     TextField("Endpoint", text: $fields.endpoint)
                         .textContentType(.URL)
-                    TextField("Region", text: $fields.region)
-                    failure(under: .region)
-                    TextField("Bucket", text: $fields.bucket)
-                    failure(under: .bucket)
+                    field("Region", text: $fields.region, under: .region)
+                    field("Bucket", text: $fields.bucket, under: .bucket)
                 }
                 Section("Key") {
                     TextField("Access key ID", text: $fields.accessKey)
@@ -59,14 +57,25 @@ struct S3SetupForm: View {
         )
     }
 
-    /// The reason a failed setup gives for `field`, under it.
-    @ViewBuilder
-    private func failure(under field: S3SetupFields.Field) -> some View {
-        if let failure = fields.fieldFailure, failure.field == field {
-            Text(failure.error.line)
-                .themeText(.detail)
-                .foregroundStyle(Theme.danger)
-                .frame(maxWidth: .infinity, alignment: .leading)
+    /// A text field whose row also holds the reason a failed setup gives for
+    /// `field`, under the text.
+    private func field(
+        _ title: LocalizedStringKey,
+        text: Binding<String>,
+        under field: S3SetupFields.Field
+    ) -> some View {
+        LabeledContent(title) {
+            VStack(alignment: .trailing, spacing: ThemeSpace.line) {
+                TextField(title, text: text)
+                    .labelsHidden()
+                    .multilineTextAlignment(.trailing)
+                if let failure = fields.fieldFailure, failure.field == field {
+                    Text(failure.error.line)
+                        .themeText(.detail)
+                        .foregroundStyle(Theme.danger)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
         }
     }
 }

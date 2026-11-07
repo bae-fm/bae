@@ -1,7 +1,10 @@
 package fm.bae.app.ui.settings
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -16,6 +19,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ui.BaeAppChrome
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
@@ -96,24 +101,7 @@ internal fun S3SetupForm(
     val input = remember { S3FormInput() }
     var busy by remember { mutableStateOf(false) }
 
-    TextInput(
-        input.endpoint,
-        R.string.settings_endpoint,
-        hint = R.string.storage_s3_endpoint_hint,
-        keyboardType = KeyboardType.Uri,
-    ) { input.endpoint = it.trim() }
-    TextInput(input.region, R.string.settings_region, error = input.failureUnder(S3Field.REGION)) {
-        input.region = it.trim()
-    }
-    TextInput(input.bucket, R.string.settings_bucket, error = input.failureUnder(S3Field.BUCKET)) {
-        input.bucket = it.trim()
-    }
-    S3KeyFields(
-        accessKeyId = input.accessKeyId,
-        secretAccessKey = input.secretAccessKey,
-        onAccessKeyIdChange = { input.accessKeyId = it.trim() },
-        onSecretAccessKeyChange = { input.secretAccessKey = it.trim() },
-    )
+    S3FormFields(input)
     StorageSetupRunLine(setup, onCancel)
     PrimaryButton(
         enabled = input.complete && !busy,
@@ -133,6 +121,54 @@ internal fun S3SetupForm(
         },
     ) {
         Text(stringResource(R.string.storage_set_up))
+    }
+}
+
+/** The form's fields, each with the reason a failed setup gave for it. */
+@Composable
+private fun S3FormFields(input: S3FormInput) {
+    TextInput(
+        input.endpoint,
+        R.string.settings_endpoint,
+        hint = R.string.storage_s3_endpoint_hint,
+        keyboardType = KeyboardType.Uri,
+    ) { input.endpoint = it.trim() }
+    TextInput(input.region, R.string.settings_region, error = input.failureUnder(S3Field.REGION)) {
+        input.region = it.trim()
+    }
+    TextInput(input.bucket, R.string.settings_bucket, error = input.failureUnder(S3Field.BUCKET)) {
+        input.bucket = it.trim()
+    }
+    S3KeyFields(
+        accessKeyId = input.accessKeyId,
+        secretAccessKey = input.secretAccessKey,
+        onAccessKeyIdChange = { input.accessKeyId = it.trim() },
+        onSecretAccessKeyChange = { input.secretAccessKey = it.trim() },
+    )
+}
+
+/** The S3 form as a failed region check leaves it: the fields as typed, the reason under Region. */
+@Composable
+internal fun S3SetupFormScene() {
+    val input =
+        remember {
+            S3FormInput().apply {
+                endpoint = "https://s3.home.lan"
+                region = "us-east-1"
+                bucket = "my-bucket"
+                accessKeyId = "a1b2c3d4e5f6"
+                secretAccessKey = "abcdefghijkl"
+                failedField = S3Field.REGION
+                failure = DisplayError("The region or endpoint doesn't match this bucket.")
+            }
+        }
+    BaeAppChrome {
+        Column(
+            modifier = Modifier.padding(ThemeSpace.edge),
+            verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        ) {
+            S3FormFields(input)
+        }
     }
 }
 

@@ -2723,7 +2723,8 @@ in how to talk to it
 When coven refuses a setup, bae says why in plain words, and the form stays as
 typed. A region or endpoint that doesn't match the bucket shows its reason under
 Region; a bucket that isn't there, or that holds other files, under Bucket;
-any other reason at the top of the form. macOS and Android both do this.
+any other reason at the top of the form. The reason sits in its field's own
+row on macOS, and under the field on Android.
 
 **What setup shows while it runs.** Setting a cloud home up, or reconnecting
 one after signing in again or with a new S3 key, waits on the provider, at
