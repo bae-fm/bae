@@ -4,3 +4,9 @@
 # pin the working-tree encoding so a checkout is identical on every OS.
 *.cs text eol=lf
 *.axaml text eol=lf
+
+# String catalogs merge by key (scripts/merge-xcstrings.py), so parallel
+# branches adding strings don't conflict. The driver itself is set in each
+# checkout's git config: scripts/hooks/post-checkout does it for new worktrees,
+# and an existing one needs `scripts/hooks/setup-merge-drivers.sh` once.
+*.xcstrings merge=xcstrings
