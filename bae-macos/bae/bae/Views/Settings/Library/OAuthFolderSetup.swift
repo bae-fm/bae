@@ -2,10 +2,12 @@
     import BaeKit
     import SwiftUI
 
-    /// Dropbox or OneDrive setup: sign in through the browser, then choose the
+    /// Dropbox or OneDrive setup: sign in through the browser, opened as the
+    /// screen opens, then choose the
     /// folder the library lives in — a Dropbox shared folder, so the household
     /// can be invited, or any OneDrive folder; either can be made here.
     struct OAuthFolderSetup: View {
+        let leave: () -> Void
         let onConnected: (BridgeStorageSetup) -> Void
 
         @Environment(CloudSyncSetup.self)
@@ -16,57 +18,103 @@
 
         init(
             browser: StorageFolderBrowser,
+            leave: @escaping () -> Void,
             onConnected: @escaping (BridgeStorageSetup) -> Void
         ) {
             _browser = State(initialValue: browser)
+            self.leave = leave
             self.onConnected = onConnected
         }
 
         var body: some View {
+            Group {
+                if let listing = browser.listing {
+                    folderChoice(listing)
+                }
+                else {
+                    signIn
+                }
+            }
+            .onDisappear { browser.cancel() }
+        }
+
+        /// The browser opens as the screen does, on the Continue that chose
+        /// the provider; the screen waits for the sign-in, and a failed one
+        /// is tried again from here.
+        private var signIn: some View {
+            VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: ThemeSpace.related) {
+                    if let work = browser.working {
+                        FolderBrowserWorkLine(
+                            work: work,
+                            provider: browser.provider
+                        )
+                        if work == .signingIn {
+                            Text(
+                                "Finish signing in in the browser window that opened, then come back here."
+                            )
+                            .themeText(.detail)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    if let error = browser.error {
+                        ErrorDetailDisclosure(error: error)
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 0)
+                MacSheetFooter {
+                    Button("Cancel") { leave() }
+                    if !browser.isWorking {
+                        Button("Sign in…") { browser.signIn() }
+                            .buttonStyle(PrimaryButtonStyle())
+                            .keyboardShortcut(.defaultAction)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, ThemeSpace.section)
+            }
+            .onAppear {
+                if !browser.isWorking && browser.error == nil {
+                    browser.signIn()
+                }
+            }
+        }
+
+        private func folderChoice(
+            _ listing: StorageFolderBrowser.Listing
+        ) -> some View {
             SetupStep(
-                actionTitle: "Connect",
                 ready: browser.target != nil,
                 operation: { [cloudSyncSetup, browser] setup in
                     guard let target = browser.target else {
-                        preconditionFailure("Connect needs a chosen folder")
+                        preconditionFailure("Set up needs a chosen folder")
                     }
                     return try await cloudSyncSetup.connect(
                         target.location,
                         setup
                     )
                 },
-                onConnected: onConnected
-            ) {
-                if let listing = browser.listing {
+                leave: leave,
+                onConnected: onConnected,
+                fields: {
                     folders(listing)
-                }
-                else {
-                    Section {
-                        Text(
-                            "Opens your browser to authorize bae with \(browser.provider.cloudProvider.displayName)."
-                        )
-                        .themeText(.body)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        Button("Sign in…") { browser.signIn() }
-                            .disabled(browser.isWorking)
+                    if let work = browser.working {
+                        Section {
+                            FolderBrowserWorkLine(
+                                work: work,
+                                provider: browser.provider
+                            )
+                        }
+                    }
+                    if let error = browser.error {
+                        Section {
+                            ErrorDetailDisclosure(error: error)
+                        }
                     }
                 }
-                if let work = browser.working {
-                    Section {
-                        FolderBrowserWorkLine(
-                            work: work,
-                            provider: browser.provider
-                        )
-                    }
-                }
-                if let error = browser.error {
-                    Section {
-                        ErrorDetailDisclosure(error: error)
-                    }
-                }
-            }
-            .onDisappear { browser.cancel() }
+            )
         }
 
         @ViewBuilder
@@ -151,9 +199,9 @@
             switch (work, provider) {
             case (.signingIn, _):
                 LocalizedStringResource(
-                    "Signing in…",
+                    "Signing in to \(provider.cloudProvider.displayName) in your browser…",
                     comment:
-                        "Cloud setup's folder step, while the person signs in to Dropbox or OneDrive in their browser."
+                        "Dropbox or OneDrive setup, while the person signs in in their browser; the argument is the provider's name."
                 )
             case (.listing, .dropbox):
                 LocalizedStringResource(

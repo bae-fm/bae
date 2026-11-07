@@ -41,6 +41,16 @@ final class StorageSetupRun {
         }
     }
 
+    /// Whether the person cancelled the running setup, which coven is undoing.
+    var isCancelling: Bool {
+        if case .cancelling = state {
+            true
+        }
+        else {
+            false
+        }
+    }
+
     /// Whether Cancel can still stop the running setup: until it is past
     /// its point of no return, and not once the person has cancelled it.
     var cancelOffered: Bool {

@@ -128,7 +128,10 @@
                     .title
                 )
             }
-            #expect(title(.signingIn, .dropbox) == "Signing in…")
+            #expect(
+                title(.signingIn, .dropbox)
+                    == "Signing in to Dropbox in your browser…"
+            )
             #expect(
                 title(.listing, .dropbox)
                     == "Reading your shared Dropbox folders…"

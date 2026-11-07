@@ -90,8 +90,18 @@
 
         #if DEBUG
             /// Previews: every operation throws.
-            init() {
-                signIn = { _ in throw StubError.notImplemented }
+            convenience init() {
+                self.init(signIn: { _ in throw StubError.notImplemented })
+            }
+
+            /// Previews and shots: every operation throws but the sign-in,
+            /// which is `signIn`.
+            init(
+                signIn:
+                    @escaping @Sendable (BridgeCloudProvider) async throws
+                    -> Void
+            ) {
+                self.signIn = signIn
                 signInAgain = { _ in throw StubError.notImplemented }
                 connect = { _, _ in throw StubError.notImplemented }
                 oneDriveRoot = { throw StubError.notImplemented }

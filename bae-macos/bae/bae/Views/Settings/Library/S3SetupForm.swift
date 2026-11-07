@@ -6,6 +6,7 @@ import SwiftUI
 /// takes the whole bucket. A failed setup leaves the fields as typed, with the
 /// reason under the field it names.
 struct S3SetupForm: View {
+    let leave: () -> Void
     let onConnected: (BridgeStorageSetup) -> Void
 
     @Environment(Sync.self)
@@ -14,8 +15,12 @@ struct S3SetupForm: View {
     @State
     private var fields: S3SetupFields
 
-    init(onConnected: @escaping (BridgeStorageSetup) -> Void) {
+    init(
+        leave: @escaping () -> Void,
+        onConnected: @escaping (BridgeStorageSetup) -> Void
+    ) {
         _fields = State(initialValue: S3SetupFields())
+        self.leave = leave
         self.onConnected = onConnected
     }
 
@@ -23,9 +28,11 @@ struct S3SetupForm: View {
         /// A form whose fields are staged, for a preview or a shot.
         init(
             staged fields: S3SetupFields,
+            leave: @escaping () -> Void,
             onConnected: @escaping (BridgeStorageSetup) -> Void
         ) {
             _fields = State(initialValue: fields)
+            self.leave = leave
             self.onConnected = onConnected
         }
     #endif
@@ -34,12 +41,12 @@ struct S3SetupForm: View {
         @Bindable
         var fields = fields
         SetupStep(
-            actionTitle: "Connect",
             ready: fields.ready,
             operation: { [sync, fields] setup in
                 fields.clearFailure()
                 return try await sync.saveSyncConfig(fields.config, setup)
             },
+            leave: leave,
             onConnected: onConnected,
             claim: { fields.place($0) },
             fields: {

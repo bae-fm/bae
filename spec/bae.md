@@ -2726,6 +2726,20 @@ Region; a bucket that isn't there, or that holds other files, under Bucket;
 any other reason at the top of the form. The reason sits in its field's own
 row on macOS, and under the field on Android.
 
+**Choosing where, on macOS.** *Set up sync…* opens a sheet that lists the
+providers this build offers, one row each with a line saying what it is (iCloud
+uses the Apple Account the Mac is signed in to; Dropbox, a shared folder in the
+person's Dropbox; OneDrive, a folder in their OneDrive; S3, a bucket they
+manage), and choosing a row only selects it. *Continue* opens the selected
+provider's screen: the S3 form, iCloud's one line, or, for Dropbox and OneDrive,
+the browser's sign-in, which opens as that screen does and has no button of its
+own to press. Every screen has *Cancel* and no Back: on the list it closes the
+sheet, and on a provider's screen it goes back one screen, to the list. A
+screen that waits says what it waits on, in place of the form: signing in to
+the provider in the browser, with a line saying to finish there and come back,
+reading the folders, or the setup's own step over its bar; only *Cancel*
+stays under it. Setting up is the form's one action, *Set up*.
+
 **What setup shows while it runs.** Setting storage up, or reconnecting
 it after signing in again or with a new S3 key, waits on the provider, at
 most a minute of rate limits, and on a reconnect loading what other devices
@@ -2752,9 +2766,9 @@ core tells the sheet, beside the setup's steps, whether the setup is past it,
 and from then the sheet hides Cancel and stays to show the setup finishing.
 Cancel asks core to cancel the setup. coven undoes it between setup's steps,
 not in the middle of a request, so the sheet says "Cancelling…" in place of
-the step, and the macOS setup sheet's button, which reads "Connecting…" while
-the setup runs, reads the same, until the call ends as cancelled, which shows nothing; then the macOS
-sheet closes and Android goes back to choosing a provider. On Android, Back
+the step until the call ends as cancelled, which shows nothing; then the macOS
+sheet shows the provider's screen again as it was entered, and Android goes
+back to choosing a provider. On Android, Back
 while a setup runs is its Cancel, and does nothing once Cancel isn't offered.
 A setup call that is dropped, as closing its screen drops it, cancels its
 setup the same way: coven would otherwise run it to its end with nobody

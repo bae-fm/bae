@@ -15,15 +15,15 @@ private enum WizardStep: Equatable {
 /// The providers this build offers, in the bridge's display order.
 private let providerOptions: [BridgeCloudProvider] = availableCloudProviders()
 
-/// A provider in the wizard's list: its icon, name and blurb.
+/// A provider in the wizard's list: its radio, name and what it is.
 private struct ProviderRow: View {
     let provider: BridgeCloudProvider
+    let chosen: Bool
 
     var body: some View {
-        HStack(spacing: ThemeSpace.group) {
-            Image(systemName: provider.setupSymbol)
-                .frame(width: 24)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: ThemeSpace.group) {
+            Image(systemName: chosen ? "largecircle.fill.circle" : "circle")
+                .foregroundStyle(chosen ? Color.accentColor : .secondary)
 
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(provider.displayName)
@@ -34,21 +34,15 @@ private struct ProviderRow: View {
             }
 
             Spacer()
-
-            Image(systemName: "chevron.right")
-                .themeIcon(.small)
-                .foregroundStyle(.tertiary)
         }
         .contentShape(Rectangle())
-        .padding(.horizontal, ThemeSpace.edge)
-        .padding(.vertical, ThemeSpace.related)
     }
 }
 
 // MARK: - SyncSetupWizard
 
-/// Sets up the library's storage: pick a provider, then its short form or
-/// sign-in and folder choice. Success records the location coven connected.
+/// Sets up the library's storage: choose a provider and Continue, then its
+/// short form or sign-in and folder choice. Success records the location coven connected.
 struct SyncSetupWizard: View {
     let onDone: () -> Void
 
@@ -63,6 +57,9 @@ struct SyncSetupWizard: View {
 
     @State
     private var step: WizardStep = .selectProvider
+    /// The provider the list has selected, which Continue opens.
+    @State
+    private var choice: BridgeCloudProvider = providerOptions.first ?? .s3
     /// The setup a step runs; a cancelled one closes the wizard once its
     /// call ends.
     @State
@@ -74,7 +71,7 @@ struct SyncSetupWizard: View {
 
     init(onDone: @escaping () -> Void) {
         self.onDone = onDone
-        _run = State(initialValue: StorageSetupRun(onCancelled: onDone))
+        _run = State(initialValue: StorageSetupRun(onCancelled: {}))
     }
 
     var body: some View {
@@ -101,40 +98,17 @@ struct SyncSetupWizard: View {
 
     private var header: some View {
         HStack {
-            if case .configure = step, !run.isRunning {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        step = .selectProvider
-                    }
-                } label: {
-                    Image(systemName: "chevron.left")
-                }
-                .buttonStyle(.borderless)
-            }
-
             Text(headerTitle)
                 .themeText(.heading)
-
             Spacer()
-
-            if !run.isRunning || run.cancelOffered {
-                Button("Cancel") {
-                    cancel()
-                }
-                .buttonStyle(.borderless)
-            }
         }
         .padding()
     }
 
-    /// Close the wizard. A running setup is cancelled first, and the wizard
-    /// closes once coven has undone it.
-    private func cancel() {
-        if run.isRunning {
-            run.cancel(sync)
-        }
-        else {
-            onDone()
+    /// One screen back: from a provider's screen to the list of providers.
+    private func leave() {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            step = .selectProvider
         }
     }
 
@@ -143,27 +117,57 @@ struct SyncSetupWizard: View {
         case .selectProvider:
             String(localized: "Set up sync")
         case .configure(let provider):
-            provider.displayName
+            String(
+                localized: "Set up sync: \(provider.displayName)",
+                comment:
+                    "Set up sync's sheet title once a provider is chosen; the argument is the provider's name"
+            )
         }
     }
 
     // MARK: - Provider List
 
     private var providerList: some View {
-        ScrollView {
-            VStack(spacing: ThemeSpace.hairline) {
-                ForEach(providerOptions, id: \.self) { provider in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            step = .configure(provider)
+        VStack(spacing: 0) {
+            Form {
+                Section {
+                    Text(
+                        "Choose where this library is kept. Everything is encrypted on this Mac before it's uploaded."
+                    )
+                    .themeText(.body)
+                    .foregroundStyle(.secondary)
+                }
+                Section {
+                    ForEach(providerOptions, id: \.self) { provider in
+                        Button {
+                            choice = provider
+                        } label: {
+                            ProviderRow(
+                                provider: provider,
+                                chosen: provider == choice
+                            )
                         }
-                    } label: {
-                        ProviderRow(provider: provider)
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(
+                            provider == choice ? .isSelected : []
+                        )
                     }
-                    .buttonStyle(.plain)
                 }
             }
-            .padding(.vertical, ThemeSpace.related)
+            .formStyle(.grouped)
+
+            MacSheetFooter {
+                Button("Cancel") { onDone() }
+                Button("Continue") {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        step = .configure(choice)
+                    }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .keyboardShortcut(.defaultAction)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, ThemeSpace.section)
         }
     }
 
@@ -179,6 +183,7 @@ struct SyncSetupWizard: View {
             #if BAE_OAUTH_PROVIDERS
                 OAuthFolderSetup(
                     browser: cloudSyncSetup.folderBrowser(.dropbox),
+                    leave: leave,
                     onConnected: connected
                 )
             #else
@@ -188,6 +193,7 @@ struct SyncSetupWizard: View {
             #if BAE_OAUTH_PROVIDERS
                 OAuthFolderSetup(
                     browser: cloudSyncSetup.folderBrowser(.oneDrive),
+                    leave: leave,
                     onConnected: connected
                 )
             #else
@@ -195,7 +201,7 @@ struct SyncSetupWizard: View {
             #endif
         case .cloudKit:
             #if BAE_CLOUDKIT
-                CloudKitSetup(onConnected: connected)
+                CloudKitSetup(leave: leave, onConnected: connected)
             #else
                 EmptyView()
             #endif
@@ -205,10 +211,14 @@ struct SyncSetupWizard: View {
     private var s3Form: S3SetupForm {
         #if DEBUG
             if let stagedS3 {
-                return S3SetupForm(staged: stagedS3, onConnected: connected)
+                return S3SetupForm(
+                    staged: stagedS3,
+                    leave: leave,
+                    onConnected: connected
+                )
             }
         #endif
-        return S3SetupForm(onConnected: connected)
+        return S3SetupForm(leave: leave, onConnected: connected)
     }
 
     private func connected(_ setup: BridgeStorageSetup) {
@@ -220,6 +230,7 @@ struct SyncSetupWizard: View {
 #if BAE_CLOUDKIT
     /// Uses the Apple Account this Mac is signed in to.
     private struct CloudKitSetup: View {
+        let leave: () -> Void
         let onConnected: (BridgeStorageSetup) -> Void
 
         @Environment(CloudSyncSetup.self)
@@ -227,14 +238,14 @@ struct SyncSetupWizard: View {
 
         var body: some View {
             SetupStep(
-                actionTitle: "Use iCloud",
                 ready: true,
                 operation: { try await cloudSyncSetup.useCloudKit($0) },
+                leave: leave,
                 onConnected: onConnected,
                 fields: {
                     Section {
                         Text(
-                            "Uses iCloud for sync. Requires iCloud to be enabled in System Settings."
+                            "This library will be kept in bae's iCloud storage, using the Apple Account this Mac is signed in to."
                         )
                         .themeText(.body)
                         .foregroundStyle(.secondary)
@@ -246,15 +257,17 @@ struct SyncSetupWizard: View {
     }
 #endif
 
-/// A setup step's fields above its one action: the error and the button stay
-/// below the fields while they scroll. While the connection is set up, the
-/// step it runs shows over its bar above the button, and a cancel under way
-/// shows there in its place.
+/// A setup step's fields above its footer: Cancel, which goes back one screen
+/// and, while the connection is set up, stops it, and the one action. The
+/// error stays below the fields while they scroll. While the connection is set
+/// up, the step it runs shows over its bar in place of the fields, with only
+/// Cancel under it, and a cancel under way shows there in its place.
 struct SetupStep<Fields: View>: View {
-    let actionTitle: LocalizedStringKey
     let ready: Bool
     /// Set the storage up, writing each step into the setup's stream.
     let operation: (BridgeLibrarySetup) async throws -> BridgeStorageSetup
+    /// Go back one screen, when no setup runs.
+    let leave: () -> Void
     let onConnected: (BridgeStorageSetup) -> Void
     /// Offered a failed setup before the step shows it at the top: true when
     /// a field shows it instead.
@@ -271,30 +284,37 @@ struct SetupStep<Fields: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Form {
-                fields
-            }
-            .formStyle(.grouped)
-            .disabled(run.isRunning)
-
-            if let error {
-                ErrorDetailDisclosure(error: error)
-                    .padding(.horizontal)
-                    .padding(.bottom, ThemeSpace.related)
-            }
-
             if run.isRunning {
                 StorageSetupRunLine(run: run)
-                    .padding(.horizontal)
-                    .padding(.bottom, ThemeSpace.related)
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 0)
+            }
+            else {
+                Form {
+                    fields
+                }
+                .formStyle(.grouped)
+
+                if let error {
+                    ErrorDetailDisclosure(error: error)
+                        .padding(.horizontal)
+                        .padding(.bottom, ThemeSpace.related)
+                }
             }
             MacSheetFooter {
-                Button(actionLabel) {
-                    connect()
+                if let cancel {
+                    Button("Cancel") { cancel() }
+                        .disabled(run.isCancelling)
                 }
-                .buttonStyle(PrimaryButtonStyle())
-                .keyboardShortcut(.defaultAction)
-                .disabled(run.isRunning || !ready)
+                if !run.isRunning {
+                    Button("Set up") {
+                        connect()
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!ready)
+                }
             }
             .padding(.horizontal)
             .padding(.bottom, ThemeSpace.section)
@@ -302,14 +322,12 @@ struct SetupStep<Fields: View>: View {
         .onDisappear { run.leave() }
     }
 
-    /// The action's words: its title, then what the running setup does,
-    /// connecting or, once the person cancelled it, cancelling.
-    private var actionLabel: LocalizedStringKey {
-        switch run.state {
-        case .idle: actionTitle
-        case .running: "Connecting…"
-        case .cancelling: "Cancelling…"
-        }
+    /// What Cancel does: stop the setup that runs, or go back. Nothing while
+    /// the setup is past its point of no return.
+    private var cancel: (() -> Void)? {
+        if !run.isRunning { return leave }
+        guard run.cancelOffered || run.isCancelling else { return nil }
+        return { run.cancel(sync) }
     }
 
     private func connect() {
@@ -405,6 +423,39 @@ struct SetupStep<Fields: View>: View {
             self.onDone = onDone
             _step = State(initialValue: .configure(provider))
             _run = State(initialValue: run)
+        }
+    }
+
+    extension SyncSetupWizard {
+        #if BAE_OAUTH_PROVIDERS
+            /// The wizard on Dropbox's screen while the person signs in in
+            /// their browser, which never answers.
+            static func signingInToDropbox() -> some View {
+                SyncSetupWizard(
+                    provider: .dropbox,
+                    run: StorageSetupRun(onCancelled: {}),
+                    onDone: {}
+                )
+                .environment(PreviewData.configStore())
+                .environment(PreviewData.previewSync(storage: nil))
+                .environment(
+                    CloudSyncSetup(signIn: { _ in
+                        try await Task.neverAnswers()
+                    })
+                )
+            }
+        #endif
+    }
+
+    extension SyncSetupWizard {
+        /// The wizard as it opens, on its list of providers.
+        static func choosing() -> some View {
+            SyncSetupWizard(onDone: {})
+                .environment(PreviewData.configStore())
+                .environment(PreviewData.previewSync(storage: nil))
+                #if BAE_OAUTH_PROVIDERS
+                    .environment(CloudSyncSetup())
+                #endif
         }
     }
 

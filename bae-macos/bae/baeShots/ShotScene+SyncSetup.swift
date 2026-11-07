@@ -8,20 +8,47 @@ extension ShotScene {
     /// creating the library, past its point of no return, without it; and a
     /// cancel under way until coven has undone the setup. Then the form as
     /// typed after a failure, with the reason under its field.
-    static let syncSetupScenes: [ShotScene] = [
-        syncSetup("sync-setup-s3-connecting", .running(.connecting)),
-        syncSetup("sync-setup-s3-creating", .finishing(.creatingStore)),
-        syncSetup("sync-setup-s3-cancelling", .cancelling),
-        syncSetup("sync-setup-s3-region-mismatch", .failed(.regionMismatch)),
-        syncSetup(
-            "sync-setup-s3-bucket-not-found",
-            .failed(.containerNotFound)
-        ),
-        syncSetup(
-            "sync-setup-s3-bucket-not-empty",
-            .failed(.ownLocationRequired)
-        ),
-    ]
+    static let syncSetupScenes: [ShotScene] =
+        signingInScenes + [
+            ShotScene(
+                id: "sync-setup-choose",
+                size: CGSize(width: 460, height: 560)
+            ) {
+                ShotStage(SyncSetupWizard.choosing())
+            },
+            syncSetup("sync-setup-s3-connecting", .running(.connecting)),
+            syncSetup("sync-setup-s3-creating", .finishing(.creatingStore)),
+            syncSetup("sync-setup-s3-cancelling", .cancelling),
+            syncSetup(
+                "sync-setup-s3-region-mismatch",
+                .failed(.regionMismatch)
+            ),
+            syncSetup(
+                "sync-setup-s3-bucket-not-found",
+                .failed(.containerNotFound)
+            ),
+            syncSetup(
+                "sync-setup-s3-bucket-not-empty",
+                .failed(.ownLocationRequired)
+            ),
+        ]
+
+    /// Dropbox's screen while the person signs in in their browser, which
+    /// only the full edition has.
+    private static var signingInScenes: [ShotScene] {
+        #if BAE_OAUTH_PROVIDERS
+            [
+                ShotScene(
+                    id: "sync-setup-dropbox-signing-in",
+                    size: CGSize(width: 460, height: 560)
+                ) {
+                    ShotStage(SyncSetupWizard.signingInToDropbox())
+                }
+            ]
+        #else
+            []
+        #endif
+    }
 
     private static func syncSetup(
         _ id: String,
