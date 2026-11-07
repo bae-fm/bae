@@ -107,14 +107,9 @@ impl TestService {
 
 pub(crate) async fn setup_import_service() -> TestService {
     let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let db = Store::new_test(
-        crate::TEST_SCHEMA,
-        db_path.to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db = Store::new_test(crate::TEST_SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
 
     let preparations = crate::tables::ImportTables::new(db.clone());
     // The runtime writes its standings into the library the import commits

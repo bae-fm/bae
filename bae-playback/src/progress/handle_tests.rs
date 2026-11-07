@@ -11,13 +11,10 @@ async fn started() -> (
     tempfile::TempDir,
 ) {
     let tmp = tempfile::TempDir::new().unwrap();
-    let db = bae_store::Store::new_test(
-        crate::TEST_SCHEMA,
-        tmp.path().join("test.db").to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db =
+        bae_store::Store::new_test(crate::TEST_SCHEMA, tmp.path(), Arc::new(coven::SystemClock))
+            .await
+            .unwrap();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let handle = PlaybackProgressHandle::new(
         progress_rx,

@@ -5,13 +5,9 @@
 /// The `TempDir` owns the file, so it must outlive the handle.
 pub async fn temp_db(schema: crate::Schema) -> (crate::Store, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
-    let db = crate::Store::new_test(
-        schema,
-        tmp.path().join("test.db").to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db = crate::Store::new_test(schema, tmp.path(), std::sync::Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
     (db, tmp)
 }
 
@@ -27,7 +23,7 @@ pub async fn empty_db(schema: crate::Schema) -> (crate::Store, tempfile::TempDir
     let tmp = tempfile::TempDir::new().unwrap();
     let db = crate::Store::new_test(
         schema,
-        tmp.path().join("test.db").to_str().unwrap(),
+        tmp.path(),
         std::sync::Arc::new(coven::FixedClock::new((fixed_now()).into())),
     )
     .await

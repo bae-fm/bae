@@ -24,14 +24,9 @@ pub(super) async fn setup_inner_reporting_to(
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     let temp_dir = tempfile::TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let db = Store::new_test(
-        crate::TEST_SCHEMA,
-        db_path.to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db = Store::new_test(crate::TEST_SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
 
     let catalogs = crate::CatalogSessions::new(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),

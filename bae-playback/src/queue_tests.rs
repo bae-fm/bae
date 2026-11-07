@@ -21,13 +21,10 @@ pub(super) struct Fixture {
 pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
     use bae_records::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseMedium, DbTrack};
     let home = tempfile::TempDir::new().unwrap();
-    let db = Store::new_test(
-        crate::TEST_SCHEMA,
-        home.path().join("queue.db").to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db =
+        Store::new_test(crate::TEST_SCHEMA, home.path(), std::sync::Arc::new(coven::SystemClock))
+            .await
+            .unwrap();
     let records = bae_records::test_fixtures::test_records(&db);
     let artist = DbArtist {
         id: uuid::Uuid::new_v4().to_string(),

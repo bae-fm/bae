@@ -12,13 +12,9 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
 
     let library_root = root.join("library");
     std::fs::create_dir_all(&library_root).unwrap();
-    let db = Store::new_test(
-        crate::TEST_SCHEMA,
-        library_root.join("test.db").to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db = Store::new_test(crate::TEST_SCHEMA, &library_root, Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
     let records = bae_records::test_fixtures::test_records(&db);
     let artist = DbArtist {
         id: bae_util::test_ids::test_uuid("artist-1"),

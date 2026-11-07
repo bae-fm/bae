@@ -36,7 +36,7 @@ impl ImportingLibrary {
         let temp = TempDir::new().unwrap();
         let database = bae_store::Store::new_test(
             bae_library::SCHEMA,
-            temp.path().join("test.db").to_str().unwrap(),
+            temp.path(),
             Arc::new(coven::SystemClock),
         )
         .await

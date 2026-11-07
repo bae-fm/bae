@@ -29,13 +29,10 @@ pub(super) fn scan_projected_items_with_decisions(
 /// finished.
 pub(super) async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions) -> Vec<ScanItem> {
     let store = tempfile::TempDir::new().unwrap();
-    let db = bae_store::Store::new_test(
-        crate::TEST_SCHEMA,
-        store.path().join("test.db").to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db =
+        bae_store::Store::new_test(crate::TEST_SCHEMA, store.path(), Arc::new(coven::SystemClock))
+            .await
+            .unwrap();
     let tables = crate::tables::ImportTables::new(db.clone());
     tables.add_watched_import_folder(&root).await.unwrap();
     for (folder, reading) in decisions.iter() {

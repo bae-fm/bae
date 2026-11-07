@@ -15,14 +15,9 @@ use tempfile::TempDir;
 /// doesn't touch the queue the `PlayRelease` command already set.
 async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let db = Store::new_test(
-        bae_library::SCHEMA,
-        db_path.to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db = Store::new_test(bae_library::SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
     let records = bae_records::test_fixtures::test_records(&db);
 
     let artist = DbArtist {

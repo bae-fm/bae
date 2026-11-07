@@ -195,21 +195,17 @@ impl Store {
         .await
     }
 
-    /// Create an isolated installation on `schema`, with bae's declarations.
-    /// A bug one of its calls carries back fails the test as the store drops.
+    /// Create an isolated installation on `schema` in `directory`, with
+    /// bae's declarations. A bug one of its calls carries back fails the
+    /// test as the store drops.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn new_test(
         schema: crate::Schema,
-        database_path: &str,
+        directory: &Path,
         clock: ClockRef,
     ) -> Result<Self, DbError> {
-        let root = Path::new(database_path)
-            .parent()
-            .filter(|parent| !parent.as_os_str().is_empty())
-            .ok_or_else(|| {
-                DbError::Message(format!("database path has no parent: {database_path}"))
-            })?;
-        let installation = coven::Coven::in_memory(bae_app_dir::AppDir::at(root)?.coven_app_dir());
+        let installation =
+            coven::Coven::in_memory(bae_app_dir::AppDir::at(directory)?.coven_app_dir());
         let handle = crate::configure_store(installation.builder(), schema)
             .clock(clock.clone())
             .create_store("Test Library")

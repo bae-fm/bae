@@ -160,13 +160,7 @@ impl Fixture {
         bae_util::test_logs::install();
         let temp = TempDir::new().unwrap();
         let clock: coven::ClockRef = Arc::new(coven::FixedClock::new((fixed_now()).into()));
-        let db = Store::new_test(
-            crate::TEST_SCHEMA,
-            temp.path().join("test.db").to_str().unwrap(),
-            clock.clone(),
-        )
-        .await
-        .unwrap();
+        let db = Store::new_test(crate::TEST_SCHEMA, temp.path(), clock.clone()).await.unwrap();
 
         let provider = bae_util::test_host::FakeHost::start().await;
         let request_time = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));

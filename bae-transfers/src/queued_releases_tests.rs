@@ -7,13 +7,9 @@ const RELEASE_B: &str = "64e79a1f-404a-4c34-809a-a3cb44bf1942";
 
 async fn queue() -> (QueuedReleases<(), u8>, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
-    let db = Store::new_test(
-        crate::TEST_SCHEMA,
-        tmp.path().join("test.db").to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db = Store::new_test(crate::TEST_SCHEMA, tmp.path(), Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
     (QueuedReleases::new(db), tmp)
 }
 

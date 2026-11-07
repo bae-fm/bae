@@ -111,13 +111,10 @@ pub(super) async fn collect_snapshots(
 /// A throwaway library records over a temp dir, which must outlive it.
 pub(super) async fn make_database() -> (bae_store::Store, TempDir) {
     let tmp = TempDir::new().unwrap();
-    let db = bae_store::Store::new_test(
-        crate::TEST_SCHEMA,
-        tmp.path().join("test.db").to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db =
+        bae_store::Store::new_test(crate::TEST_SCHEMA, tmp.path(), Arc::new(coven::SystemClock))
+            .await
+            .unwrap();
     (db, tmp)
 }
 

@@ -6,10 +6,9 @@ use bae_util::test_channels::HANG_GUARD;
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_follow_ends_once_its_store_closes() {
     let directory = tempfile::TempDir::new().unwrap();
-    let path = directory.path().join("library.db");
     let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
-        path.to_str().unwrap(),
+        directory.path(),
         std::sync::Arc::new(coven::SystemClock),
     )
     .await
@@ -44,10 +43,9 @@ async fn follow_ends<Request, Value>(follow: &mut LibraryFollow<Request, Value>)
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn an_ended_follow_takes_a_new_request() {
     let directory = tempfile::TempDir::new().unwrap();
-    let path = directory.path().join("library.db");
     let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
-        path.to_str().unwrap(),
+        directory.path(),
         std::sync::Arc::new(coven::SystemClock),
     )
     .await
@@ -82,10 +80,9 @@ impl bae_diagnostics::BugReporter for HeardBugs {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_failed_read_is_reported_as_a_bug() {
     let directory = tempfile::TempDir::new().unwrap();
-    let path = directory.path().join("library.db");
     let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
-        path.to_str().unwrap(),
+        directory.path(),
         std::sync::Arc::new(coven::SystemClock),
     )
     .await

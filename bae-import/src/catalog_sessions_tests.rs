@@ -5,13 +5,9 @@ use tempfile::TempDir;
 /// providers that reach nothing.
 pub(crate) async fn test_sessions() -> (CatalogSessions, Store, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let db = Store::new_test(
-        crate::TEST_SCHEMA,
-        temp_dir.path().join("test.db").to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db = Store::new_test(crate::TEST_SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
     let sessions = CatalogSessions::new(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         db.clone(),
@@ -158,13 +154,9 @@ async fn sessions_over(
     bugs: Arc<bae_diagnostics::RecordingBugReporter>,
 ) -> (CatalogSessions, Store, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let db = Store::new_test(
-        crate::TEST_SCHEMA,
-        temp_dir.path().join("test.db").to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let db = Store::new_test(crate::TEST_SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
     let http = bae_util::http::Http::for_test().serve("api.discogs.com", host.base_url());
     let providers = Providers::for_test(
         http.clone(),

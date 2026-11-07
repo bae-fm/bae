@@ -338,15 +338,11 @@ impl TestLibrary {
     }
 }
 
-/// Open `dir/test.db` under the real clock and real UUID provider.
+/// Open a test library in `dir` under the real clock and real UUID provider.
 async fn open_test_db(dir: &std::path::Path) -> Store {
-    Store::new_test(
-        crate::SCHEMA,
-        dir.join("test.db").to_str().expect("test database path is valid UTF-8"),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .expect("open the test database")
+    Store::new_test(crate::SCHEMA, dir, Arc::new(coven::SystemClock))
+        .await
+        .expect("open the test database")
 }
 
 /// Open `dir/test.db` as a library, through the app's own opening step, with

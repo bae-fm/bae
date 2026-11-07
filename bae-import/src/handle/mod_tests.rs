@@ -45,10 +45,9 @@ pub(super) async fn setup_test_import_over(
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (TestImport, Store, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
     let db = Store::new_test(
         crate::TEST_SCHEMA,
-        db_path.to_str().unwrap(),
+        temp_dir.path(),
         std::sync::Arc::new(coven::SystemClock),
     )
     .await

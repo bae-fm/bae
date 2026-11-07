@@ -236,10 +236,9 @@ impl CandidateRuntime {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn for_test() -> Self {
         let directory = tempfile::TempDir::new().expect("a test runtime has a directory");
-        let path = directory.path().join("library.db");
         let database = bae_store::Store::new_test(
             crate::TEST_SCHEMA,
-            path.to_str().expect("a temporary path is UTF-8"),
+            directory.path(),
             Arc::new(coven::SystemClock),
         )
         .await
