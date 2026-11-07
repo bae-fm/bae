@@ -443,6 +443,16 @@ forward! {
                 .await?)
         }
 
+        /// The bytes of the artwork embedded in one of a candidate's audio
+        /// files, as its tag snapshot stored them: what an embedded cover
+        /// source names, fetched when a slot draws it.
+        fn read_embedded_cover(candidate_key: Vec<u8>, source_file_id: String) -> Vec<u8> {
+            Ok(this
+                .services
+                .import_read_embedded_cover(&candidate_key.into(), &source_file_id)
+                .await?)
+        }
+
         /// The text of a candidate's document (a log, a text file, a track
         /// sheet) named by its file id, decoded from the encoding it was
         /// written in.

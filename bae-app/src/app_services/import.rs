@@ -52,6 +52,7 @@ impl AppServices {
     delegate_async!(import, import_fetch_remote_covers => fetch_remote_covers(target: bae_import::CoverTarget) -> Result<bae_import::RemoteCoverGallery, bae_import::ImportError>);
     delegate_async!(import, import_fetch_remote_image_bytes => fetch_remote_image_bytes(image: bae_catalogs::remote_image::RemoteImageSet, pixels: Option<u32>) -> Result<Option<bae_catalogs::remote_image::RemoteImage>, bae_import::ImportError>);
     delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &bae_import::CandidateKey, cover: bae_import::CoverSelection) -> Result<(), bae_import::ImportError>);
+    delegate_async!(import, import_read_embedded_cover => read_embedded_cover(candidate_key: &bae_import::CandidateKey, source_file_id: &str) -> Result<Vec<u8>, bae_import::ImportError>);
     delegate_async!(import, import_read_candidate_document => read_candidate_document(candidate_key: &bae_import::CandidateKey, file_id: &str) -> Result<String, bae_import::ImportError>);
     delegate_async!(import, import_set_candidate_album => set_candidate_album(candidate_key: &bae_import::CandidateKey, album_id: Option<String>) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_move_candidate_pane => move_candidate_pane(candidate_key: &bae_import::CandidateKey, pane_move: bae_import::PaneMove) -> Result<(), bae_import::ImportError>);

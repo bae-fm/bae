@@ -27,9 +27,13 @@ pub enum CoverImageSource {
     },
     /// Artwork embedded in an audio file's tags, as the file-tag snapshot
     /// stored it, with the version of that file the snapshot read it from.
+    /// The bytes are not here: a list row names the artwork, and the reader
+    /// that draws it fetches them from the candidate's snapshot by
+    /// `candidate` and `source_file_id`.
     Embedded {
         source: crate::folder_scanner::FileVersion,
-        data: Vec<u8>,
+        candidate: crate::CandidateKey,
+        source_file_id: String,
     },
 }
 
@@ -110,8 +114,13 @@ pub enum CoverChoice {
     Local { file_id: String, file: crate::folder_scanner::FileVersion },
     /// Artwork stored in the candidate's file-tag snapshot, named by the file
     /// it came from and drawn from the bytes the snapshot holds, which both
-    /// the pane and the sidebar render.
-    Embedded { source_file_id: String, source: crate::folder_scanner::FileVersion, data: Vec<u8> },
+    /// the pane and the list render. The choice names the artwork without
+    /// holding its bytes.
+    Embedded {
+        candidate: crate::CandidateKey,
+        source_file_id: String,
+        source: crate::folder_scanner::FileVersion,
+    },
 }
 
 impl CoverChoice {
@@ -131,7 +140,9 @@ impl CoverChoice {
         match self {
             Self::Remote { image, .. } => CoverImageSource::Remote { image },
             Self::Local { file, .. } => CoverImageSource::Local { file },
-            Self::Embedded { source, data, .. } => CoverImageSource::Embedded { source, data },
+            Self::Embedded { candidate, source_file_id, source } => {
+                CoverImageSource::Embedded { source, candidate, source_file_id }
+            }
         }
     }
 }

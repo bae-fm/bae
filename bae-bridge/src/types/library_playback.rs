@@ -963,11 +963,11 @@ pub enum BridgeCoverImageSource {
     Local {
         file: BridgeFileVersion,
     },
-    /// Artwork embedded in an audio file's tags, with the version of that
-    /// file it was read from.
+    /// Tag artwork at its source file's version; `read_embedded_cover` has its bytes.
     Embedded {
         source: BridgeFileVersion,
-        data: Vec<u8>,
+        candidate_key: Vec<u8>,
+        source_file_id: String,
     },
 }
 

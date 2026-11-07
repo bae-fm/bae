@@ -98,8 +98,12 @@ impl BridgeCoverImageSource {
             bae_import::CoverImageSource::Local { file } => {
                 Self::Local { file: BridgeFileVersion::from_core(file) }
             }
-            bae_import::CoverImageSource::Embedded { source, data } => {
-                Self::Embedded { source: BridgeFileVersion::from_core(source), data }
+            bae_import::CoverImageSource::Embedded { source, candidate, source_file_id } => {
+                Self::Embedded {
+                    source: BridgeFileVersion::from_core(source),
+                    candidate_key: candidate.into(),
+                    source_file_id,
+                }
             }
         }
     }

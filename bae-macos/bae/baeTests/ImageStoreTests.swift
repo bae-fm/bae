@@ -290,7 +290,8 @@ struct ImageStoreBucketTests {
                 libraryImage: 4 * 1024 * 1024,
                 releaseImage: 64 * 64 * 4,
                 remote: 1024,
-                localFile: 1024
+                localFile: 1024,
+                embeddedCover: 1024
             )
         )
         let libraryContent = ImageContent.libraryImage(coverRef(version: "1"))
@@ -456,8 +457,8 @@ struct ImageStoreContentIdentityTests {
         )
     }
 
-    @Test("embedded artwork is cached under its source file's version")
-    func embeddedCoverIsCachedByItsSourceVersion() async throws {
+    @Test("embedded artwork is fetched once per source file version")
+    func embeddedCoverIsFetchedOncePerVersion() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
         // No file exists at this path: the store never looks at it.
         let source = BridgeFileVersion(
@@ -465,8 +466,16 @@ struct ImageStoreContentIdentityTests {
             size: 1_000,
             modifiedAtNs: 1_000
         )
-        let store = ImageStore()
-        let content = ImageContent.embeddedCover(source: source, data: bytes)
+        let fetches = FetchCounter()
+        let store = ImageStore(fetchEmbeddedCover: { _, _ in
+            fetches.increment()
+            return bytes
+        })
+        let content = ImageContent.embeddedCover(
+            source: source,
+            candidateKey: Data("/candidate".utf8),
+            sourceFileId: "01.flac"
+        )
 
         let loaded = try #require(
             try await store.image(content, pointSize: 56, displayScale: 2)
@@ -475,6 +484,8 @@ struct ImageStoreContentIdentityTests {
             store.cachedImage(content, pointSize: 56, displayScale: 2)
                 === loaded
         )
+        _ = try await store.image(content, pointSize: 56, displayScale: 2)
+        #expect(fetches.count == 1, "the second draw is the cached decode")
 
         let retagged = ImageContent.embeddedCover(
             source: BridgeFileVersion(
@@ -482,7 +493,8 @@ struct ImageStoreContentIdentityTests {
                 size: source.size,
                 modifiedAtNs: 2_000
             ),
-            data: bytes
+            candidateKey: Data("/candidate".utf8),
+            sourceFileId: "01.flac"
         )
         #expect(
             store.cachedImage(retagged, pointSize: 56, displayScale: 2) == nil,
@@ -497,6 +509,15 @@ struct ImageStoreContentIdentityTests {
             "the file's embedded artwork is not the file"
         )
     }
+}
+
+private final class FetchCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var fetched = 0
+
+    var count: Int { lock.withLock { fetched } }
+
+    func increment() { lock.withLock { fetched += 1 } }
 }
 
 private func temporaryDirectory() throws -> URL {

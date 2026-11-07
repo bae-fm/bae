@@ -4949,7 +4949,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_medium` | the draft's mediums |
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
-| `import_candidate_cover`, `import_candidate_cover_copy` | the chosen cover, a catalog's with the bytes it served on the same row, so a catalog's cover is never stored without them and no other cover holds any; reading a candidate whose cover names a file or embedded artwork its scan did not store fails as a damaged row; the pane and the list row read a stored cover the same way and draw the same image |
+| `import_candidate_cover`, `import_candidate_cover_copy` | the chosen cover, a catalog's with the bytes it served on the same row, so a catalog's cover is never stored without them and no other cover holds any; reading a candidate whose cover names a file or embedded artwork its scan did not store fails as a damaged row; the pane and the list row read a stored cover the same way and draw the same image; for embedded artwork a row carries the source file's version and names the artwork by candidate and file, never its bytes, which the slot fetches when it draws |
 | `import_candidate_album_pick` | the library album the person picked for it to join |
 | `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |

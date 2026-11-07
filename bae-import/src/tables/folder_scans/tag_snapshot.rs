@@ -174,6 +174,20 @@ fn tag_values_json<T: serde::Serialize>(values: &[T]) -> Result<String, DbError>
 }
 
 impl ImportTables {
+    /// The bytes of the embedded cover the candidate's snapshot stored from
+    /// `source_file_id`, when it stored one from that file.
+    pub(crate) async fn load_embedded_cover_bytes(
+        &self,
+        candidate_path: &CandidateKey,
+        source_file_id: &str,
+    ) -> Result<Option<Vec<u8>>, DbError> {
+        let candidate_path = candidate_path.clone();
+        let source_file_id = source_file_id.to_string();
+        self.store
+            .read(move |sql| stored_embedded_cover_bytes(&sql, &candidate_path, &source_file_id))
+            .await
+    }
+
     /// The candidate's current scan generation and whatever file-tag snapshot
     /// is stored for it, even an outdated one, so a caller can tell a
     /// candidate never read from one whose reading is out of date.
@@ -395,20 +409,19 @@ pub(super) fn load_root_file_tags(
         .collect()
 }
 
-/// The embedded cover the candidate selects from `source_file_id`: the bytes
-/// its file-tag snapshot stored, and the version of the source file the
-/// snapshot read them from.
-pub(super) fn stored_embedded_cover(
+/// The version of the file the candidate's selected embedded cover was read
+/// from, which `source_file_id` names. A row reads this and never the bytes:
+/// [`stored_embedded_cover_bytes`] reads those when the cover is drawn.
+pub(super) fn stored_embedded_cover_version(
     sql: &SqlReadContext<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     source_file_id: &str,
-) -> Result<(FileVersion, Vec<u8>), DbError> {
-    type CoverColumns =
-        (Option<String>, Option<Vec<u8>>, Option<i64>, Option<i64>, Option<Vec<u8>>);
-    let (stored_source, data, size, modified_at_ns, path): CoverColumns = sql
+) -> Result<FileVersion, DbError> {
+    type CoverColumns = (Option<String>, Option<i64>, Option<i64>, Option<Vec<u8>>);
+    let (stored_source, size, modified_at_ns, path): CoverColumns = sql
         .query_row(
-            "SELECT snapshot.embedded_cover_source_relative_path, snapshot.embedded_cover_data, \
+            "SELECT snapshot.embedded_cover_source_relative_path, \
                     tags.file_size, tags.modified_at_ns, files.absolute_path \
              FROM scan_candidate_tag_snapshot AS snapshot \
              LEFT JOIN scan_candidate_file_tag AS tags \
@@ -425,7 +438,7 @@ pub(super) fn stored_embedded_cover(
                 ":path": candidate_path,
                 ":source": source_file_id,
             },
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
         .optional()?
         .ok_or_else(|| {
@@ -434,7 +447,8 @@ pub(super) fn stored_embedded_cover(
                 None::<String>,
             )
         })?;
-    let (Some(stored_source), Some(data)) = (stored_source, data) else {
+    // The table holds a source and its bytes together or neither.
+    let Some(stored_source) = stored_source else {
         return Err(DbError::unreadable(
             format!("the embedded cover of {candidate_path}'s tag snapshot, which it chose"),
             None::<String>,
@@ -458,14 +472,28 @@ pub(super) fn stored_embedded_cover(
             source_file_id,
         )
     })?;
-    Ok((
-        FileVersion {
-            path: path_column::decode(path)?,
-            size: to_u64(size, "a file-tag reading's size")?,
-            modified_at_ns,
-        },
-        data,
-    ))
+    Ok(FileVersion {
+        path: path_column::decode(path)?,
+        size: to_u64(size, "a file-tag reading's size")?,
+        modified_at_ns,
+    })
+}
+
+/// The bytes of the embedded cover the candidate's tag snapshot stored from
+/// `source_file_id`, or `None` when it stored none from that file.
+pub(crate) fn stored_embedded_cover_bytes(
+    sql: &impl coven::SqlRead,
+    candidate_path: &CandidateKey,
+    source_file_id: &str,
+) -> Result<Option<Vec<u8>>, DbError> {
+    Ok(sql
+        .query_row(
+            "SELECT embedded_cover_data FROM scan_candidate_tag_snapshot \
+             WHERE candidate_path = ? AND embedded_cover_source_relative_path = ?",
+            params![candidate_path, source_file_id],
+            |row| row.get(0),
+        )
+        .optional()?)
 }
 
 /// The `scan_candidate_file_tag` columns a query selects, in this order.

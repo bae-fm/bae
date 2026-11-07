@@ -1,7 +1,7 @@
 //! A candidate's cover against what its scan stored: the cover a save may
-//! store, and the choice a stored selection names, with the image its scan
-//! stored for it. The pane and the list's row both read a candidate's cover
-//! through it, so the two draw the same image under the same identity.
+//! store, and the choice a stored selection names, with the version its scan
+//! read the artwork from. The pane and the list's row both read a candidate's
+//! cover through it, so the two draw the same image under the same identity.
 
 use super::*;
 use crate::cover_art::{CoverChoice, CoverRefusal, PreparedCover};
@@ -87,13 +87,17 @@ pub(crate) fn stored_cover_choice(
             file: read::scanned_file_version(sql, watched_folder_path, candidate_path, file_id)?,
         },
         CoverSelection::Embedded(source_file_id) => {
-            let (source, data) = tag_snapshot::stored_embedded_cover(
+            let source = tag_snapshot::stored_embedded_cover_version(
                 sql,
                 watched_folder_path,
                 candidate_path,
                 source_file_id,
             )?;
-            CoverChoice::Embedded { source_file_id: source_file_id.clone(), source, data }
+            CoverChoice::Embedded {
+                candidate: candidate_path.clone(),
+                source_file_id: source_file_id.clone(),
+                source,
+            }
         }
     })
 }

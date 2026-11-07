@@ -34,9 +34,16 @@ public enum ImageContent: Equatable, Hashable, Sendable {
     /// read. A file replaced at the same path is a new version, so it is new
     /// content; nothing here reads the file to find that out.
     case localFile(BridgeFileVersion)
-    /// Artwork embedded in an audio file's tags, as core stored it, with the
-    /// version of that file core read it from — the identity of these bytes.
-    case embeddedCover(source: BridgeFileVersion, data: Data)
+    /// Artwork embedded in an audio file's tags, as core stored it in the
+    /// candidate's tag snapshot, with the version of that file core read it
+    /// from — the identity of these bytes. A list row names the artwork and
+    /// carries none of it: the bytes are fetched, by candidate and source
+    /// file, when a slot draws it.
+    case embeddedCover(
+        source: BridgeFileVersion,
+        candidateKey: Data,
+        sourceFileId: String
+    )
 
     /// The render content for a cover the import flow draws: a candidate file
     /// on disk, artwork its tags carry, provider art at a URL, or the cover of
@@ -49,8 +56,12 @@ public enum ImageContent: Equatable, Hashable, Sendable {
             self = .localFile(file)
         case .remote(let image):
             self = .remote(image)
-        case .embedded(let source, let data):
-            self = .embeddedCover(source: source, data: data)
+        case .embedded(let source, let candidateKey, let sourceFileId):
+            self = .embeddedCover(
+                source: source,
+                candidateKey: candidateKey,
+                sourceFileId: sourceFileId
+            )
         }
     }
 
@@ -65,7 +76,7 @@ public enum ImageContent: Equatable, Hashable, Sendable {
             return "remote image: \(image.url)"
         case .localFile(let file):
             return "image at path: \(file.url.path)"
-        case .embeddedCover(let source, _):
+        case .embeddedCover(let source, _, _):
             return "image embedded in: \(source.url.path)"
         }
     }
@@ -78,17 +89,20 @@ public struct ImageStoreBudgets: Equatable, Sendable {
     public var releaseImage: Int
     public var remote: Int
     public var localFile: Int
+    public var embeddedCover: Int
 
     public init(
         libraryImage: Int,
         releaseImage: Int,
         remote: Int,
-        localFile: Int
+        localFile: Int,
+        embeddedCover: Int
     ) {
         self.libraryImage = libraryImage
         self.releaseImage = releaseImage
         self.remote = remote
         self.localFile = localFile
+        self.embeddedCover = embeddedCover
     }
 
     private static let megabyte = 1024 * 1024
@@ -97,7 +111,8 @@ public struct ImageStoreBudgets: Equatable, Sendable {
         libraryImage: 192 * megabyte,
         releaseImage: 48 * megabyte,
         remote: 16 * megabyte,
-        localFile: 16 * megabyte
+        localFile: 16 * megabyte,
+        embeddedCover: 16 * megabyte
     )
 }
 
@@ -129,6 +144,11 @@ public final class ImageStore: Sendable, Observable {
     private let fetchRemoteImage:
         @Sendable (_ image: BridgeRemoteImageSet, _ pixels: UInt32?)
             async throws -> Data?
+    /// Bytes of the artwork embedded in one audio file of an import
+    /// candidate, as the candidate's tag snapshot stored them.
+    private let fetchEmbeddedCover:
+        @Sendable (_ candidateKey: Data, _ sourceFileId: String)
+            async throws -> Data
 
     private let buckets: Buckets
     private let inFlightLoads = InFlightImageLoads()
@@ -168,11 +188,16 @@ public final class ImageStore: Sendable, Observable {
         fetchRemoteImage:
             @escaping @Sendable (BridgeRemoteImageSet, UInt32?) async throws ->
             Data? = { _, _ in throw ImageStoreUnavailable() },
+        fetchEmbeddedCover:
+            @escaping @Sendable (Data, String) async throws -> Data = { _, _ in
+                throw ImageStoreUnavailable()
+            },
         budgets: ImageStoreBudgets = .default
     ) {
         self.fetchLibraryImageBytes = fetchLibraryImageBytes
         self.fetchReleaseImageBytes = fetchReleaseImageBytes
         self.fetchRemoteImage = fetchRemoteImage
+        self.fetchEmbeddedCover = fetchEmbeddedCover
         buckets = Buckets(budgets: budgets)
     }
 
@@ -199,6 +224,14 @@ public final class ImageStore: Sendable, Observable {
                         return nil
                     }
                     return Data(bytes)
+                },
+                fetchEmbeddedCover: {
+                    Data(
+                        try await handle.readEmbeddedCover(
+                            candidateKey: $0,
+                            sourceFileId: $1
+                        )
+                    )
                 }
             )
         }
@@ -382,8 +415,10 @@ public final class ImageStore: Sendable, Observable {
             return .data(bytes)
         case .localFile(let file):
             return .local(file.url)
-        case .embeddedCover(_, let data):
-            return .data(data)
+        case .embeddedCover(_, let candidateKey, let sourceFileId):
+            return .data(
+                try await fetchEmbeddedCover(candidateKey, sourceFileId)
+            )
         }
     }
 
@@ -425,7 +460,7 @@ extension ImageStore {
             return "remote:\(image.url)"
         case .localFile(let file):
             return "local:\(Self.versionToken(file))"
-        case .embeddedCover(let source, _):
+        case .embeddedCover(let source, _, _):
             return "embedded:\(Self.versionToken(source))"
         }
     }
@@ -465,20 +500,22 @@ extension ImageContent {
         case .libraryImage: .libraryImage
         case .releaseImage: .releaseImage
         case .remote: .remote
-        case .localFile, .embeddedCover: .localFile
+        case .localFile: .localFile
+        case .embeddedCover: .embeddedCover
         }
     }
 }
 
-/// The decoded cache's four independent budgets, one per content kind.
+/// The decoded cache's five independent budgets, one per content kind.
 enum DecodedImageBucket: CaseIterable, Hashable, Sendable {
     case libraryImage
     case releaseImage
     case remote
     case localFile
+    case embeddedCover
 }
 
-/// The four per-kind caches, addressed by bucket.
+/// The five per-kind caches, addressed by bucket.
 private struct Buckets: Sendable {
     private let caches: [DecodedImageBucket: DecodedImageCache]
 
@@ -492,6 +529,9 @@ private struct Buckets: Sendable {
             ),
             .remote: DecodedImageCache(totalCostLimit: budgets.remote),
             .localFile: DecodedImageCache(totalCostLimit: budgets.localFile),
+            .embeddedCover: DecodedImageCache(
+                totalCostLimit: budgets.embeddedCover
+            ),
         ]
     }
 

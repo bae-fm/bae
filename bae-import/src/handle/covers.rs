@@ -39,6 +39,26 @@ impl ImportServiceHandle {
         Ok(self.services.remote_images.fetch(image.url_covering(pixels)).await?)
     }
 
+    /// The bytes of the artwork embedded in one of the candidate's audio
+    /// files, as its tag snapshot stored them: what a list row or the pane
+    /// draws when its cover is [`crate::CoverImageSource::Embedded`], which
+    /// names the artwork without carrying it. Refused when the snapshot holds
+    /// none from `source_file_id`.
+    pub async fn read_embedded_cover(
+        &self,
+        candidate_key: &crate::CandidateKey,
+        source_file_id: &str,
+    ) -> Result<Vec<u8>, crate::ImportError> {
+        self.services
+            .tables
+            .load_embedded_cover_bytes(candidate_key, source_file_id)
+            .await?
+            .ok_or_else(|| {
+                crate::CoverRefusal::NoTagArtwork { source_file_id: source_file_id.to_string() }
+                    .into()
+            })
+    }
+
     /// Fetch complete artwork galleries when the picker opens. Dispatch on
     /// the owner: library identities and candidate release links are different
     /// records, never interchangeable string identifiers.

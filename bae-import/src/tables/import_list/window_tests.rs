@@ -420,21 +420,32 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
 
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     rows(&projection).remove(0).metadata_summary.expect("the row carries its file-metadata draft");
-    // The bytes carry the version of the file the snapshot read them from.
+    // The row names the artwork by the version of the file the snapshot read
+    // it from and holds no bytes; the bytes are read apart, by the same name.
     assert_pane_and_row_draw(
         &tables,
         &candidate,
         crate::CoverChoice::Embedded {
+            candidate: candidate.key(),
             source_file_id: "01.flac".to_string(),
             source: FileVersion {
                 path: root.join("Album").join("01.flac"),
                 size: 1_000,
                 modified_at_ns: 5,
             },
-            data: bytes,
         },
     )
     .await;
+    assert_eq!(
+        tables.load_embedded_cover_bytes(&candidate.key(), "01.flac").await.unwrap(),
+        Some(bytes),
+        "the artwork's bytes are read when a slot draws them"
+    );
+    assert_eq!(
+        tables.load_embedded_cover_bytes(&candidate.key(), "02.flac").await.unwrap(),
+        None,
+        "a file the snapshot stored no artwork from has none"
+    );
 }
 
 /// The pane reads the candidate's cover as `expected`, and its list row draws
