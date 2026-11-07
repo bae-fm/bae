@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The same pale pink as the macOS icon's tile (bae-macos/bae/bae/AppIcon.icon). -->
+    <color name="ic_launcher_background">#FFD6E7</color>
+</resources>
