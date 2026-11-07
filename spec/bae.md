@@ -2412,7 +2412,7 @@ the role, the person, the device, or for an approval the person it lets in
 and the name the invite gave them. Coven's list says what kind of change it
 is and how it ended, so the row holds neither. Each change shows, under
 **Changes from this Mac** in Library settings on a Mac and **Changes from this
-phone** in Settings and People on Android, as what it asks ("Remove Ben",
+device** in Settings and People on Android, as what it asks ("Remove Ben",
 "Rename the library to “Home”", "Let Dan in"), named from the person's profile or the
 device's name as they stand ("Remove a device" for one this device hasn't
 read yet): waiting to sync, then done, refused or
@@ -2598,14 +2598,14 @@ an Android phone a tap restores at once, as a scanned code does; only an S3
 code with no key saved beside it stops first, on a screen that shows both and
 asks for the key, and a failed restore returns to that screen, to try again. A
 code deleted since the list was read returns to the first screen, saying it is
-no longer saved on this phone. A typed or
+no longer saved on this device. A typed or
 scanned code carries no name, so its screens show only where the library is
 stored until the tablet has loaded it, then the library's current name.
 
 **Deleting a saved code.** Carol once tried a library on S3, then deleted its
 bucket, and her new tablet still offers it. Each code in the saved-code list
 has **Delete**. It asks first, saying that it removes the saved code from
-iCloud Keychain on all her Apple devices, or on Android from this phone only,
+iCloud Keychain on all her Apple devices, or on Android from this device only,
 and doesn't delete the library, or anything on this device or in her storage;
 then the list is read again, without the code. Her other Android phones keep
 their own. The S3 key saved beside it goes with it. A delete that fails says so, keeps the
@@ -3795,8 +3795,8 @@ library is registered there by id.
 |---|---|
 | `create_library` | creates a new library's store and gives this device its identity; given no name, the bridge generates one |
 | `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a recovery code, typed or scanned, or saved in iCloud Keychain or the phone's Block Store (§5.6) |
-| `saved_restore_codes` | lists the recovery codes coven saved in iCloud Keychain, or in this phone's Block Store on Android, for libraries not already on this device, each with its library's saved name, its location and the provider sign-in restoring it needs; an entry coven can't restore from is listed with its library id and why, for deleting only; a device with no Block Store lists none |
-| `forget_saved_restore_code` | deletes a saved recovery code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this phone's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
+| `saved_restore_codes` | lists the recovery codes coven saved in iCloud Keychain, or in this device's Block Store on Android, for libraries not already on this device, each with its library's saved name, its location and the provider sign-in restoring it needs; an entry coven can't restore from is listed with its library id and why, for deleting only; a device with no Block Store lists none |
+| `forget_saved_restore_code` | deletes a saved recovery code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this device's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, keeping this device's settings, which a restore failing before its record leaves as it was; called again, finishes a restore that stopped after its record (§6.4) |
 | `resume_replacement` | finishes this device's reset or restore of a library that stopped after its record, from what coven kept: no code, and no sign-in unless the provider refuses the kept one; told which call the listing names, so a restore's finishing can be cancelled and a reset's can't (§6.4) |
 | `join_with_invite` | joins a library from an invite and writes the person's profile with the name the invite carries (§5.6) |
