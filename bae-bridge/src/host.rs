@@ -428,7 +428,7 @@ impl BridgeHost {
         closing: Option<Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<crate::BridgeLibraryRemoval, BridgeError> {
         let store = crate::from_app::store(&library_id)?;
-        let steps = crate::BridgeLibraryClosing::steps(closing);
+        let steps = crate::screens::ClosingFeed::new(closing).steps();
         self.operations
             .clone()
             .run_to_completion(
@@ -454,7 +454,7 @@ impl BridgeHost {
         closing: Option<Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<crate::BridgeLibraryRemoval, BridgeError> {
         let store = crate::from_app::store(&library_id)?;
-        let steps = crate::BridgeLibraryClosing::steps(closing);
+        let steps = crate::screens::ClosingFeed::new(closing).steps();
         self.operations
             .clone()
             .run_to_completion(self.clone(), "finish removing a library", move || async move {
@@ -475,7 +475,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run_to_completion(self.clone(), "finish library removals", move || async move {
-                let steps = setup.writer();
+                let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
                 // Uncounted until the removal records are read.
                 steps.uncounted(crate::types::BridgeSetupStep::FinishingRemovals);
                 self.finish_removals_now(&steps).await
@@ -491,7 +491,7 @@ impl BridgeHost {
         setup: Arc<crate::BridgeLibrarySetup>,
     ) -> Result<Arc<crate::OpenedLibrary>, BridgeError> {
         let builder = self.builder();
-        let steps = setup.writer();
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         let name = match name {
             Some(name) => crate::from_app::name(&name)?,
             None => bae_library::library_name::generate_library_name(),

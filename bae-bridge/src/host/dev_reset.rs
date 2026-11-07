@@ -23,7 +23,7 @@ impl BridgeHost {
         device_name: String,
         setup: Arc<crate::BridgeLibrarySetup>,
     ) -> Result<String, BridgeError> {
-        let steps = setup.writer();
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         let host = self.clone();
         self.operations
             .clone()
@@ -55,14 +55,17 @@ impl BridgeHost {
             tracing::info!(library = %library.id, "dev reset: removing a library");
             let store = crate::from_app::store(&library.id)?;
             self.closed(store).await?;
-            self.remove_unopenable_library_now(store, &crate::BridgeLibraryClosing::unread_steps())
-                .await
-                .map_err(|error| {
-                    BridgeError::categorized(
-                        error.category(),
-                        format!("dev reset: removing library {store} didn't finish: {error}"),
-                    )
-                })?;
+            self.remove_unopenable_library_now(
+                store,
+                &crate::screens::ClosingFeed::new(None).steps(),
+            )
+            .await
+            .map_err(|error| {
+                BridgeError::categorized(
+                    error.category(),
+                    format!("dev reset: removing library {store} didn't finish: {error}"),
+                )
+            })?;
             removed.insert(store);
         }
 

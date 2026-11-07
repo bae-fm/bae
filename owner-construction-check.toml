@@ -197,6 +197,10 @@ non_owner_types = [
     "PlaybackPreparedTrack",
     # What opening a library hands the app.
     "BridgeBootstrapResult",
+    # What a call was passed to follow it, if the app shows the call: the
+    # app's object, held for the one call, and the call's writer made from it.
+    "ClosingFeed",
+    "SetupFeed",
 ]
 
 # Values an owner makes for its caller's one operation, view or read and
@@ -313,9 +317,9 @@ task_types = [
 [handles]
 # Where one close or removal writes its steps: the send end of the stream
 # the app pulls from the closing it made.
-ClosingSteps = "BridgeLibraryClosing"
+ClosingSteps = "ClosingFeed"
 # Where one setup call writes its steps, the same way.
-SetupSteps = "BridgeLibrarySetup"
+SetupSteps = "SetupFeed"
 # Where one call writes how far it has got: the send end of the progress
 # stream the app last took.
 ProgressWriter = "ProgressStream"

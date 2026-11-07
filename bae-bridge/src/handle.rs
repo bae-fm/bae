@@ -372,7 +372,7 @@ impl Drop for AppHandle {
     fn drop(&mut self) {
         let services = self.services.clone();
         self.session.end_released(
-            self.closing(crate::BridgeLibraryClosing::unread_steps()),
+            self.closing(crate::screens::ClosingFeed::new(None).steps()),
             move |error: &dyn std::fmt::Display| {
                 services.report_bug("close the library its handle released", error)
             },
@@ -398,13 +398,13 @@ impl AppHandle {
         &self,
         closing: Option<std::sync::Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<(), BridgeError> {
-        self.session.end(self.closing(crate::BridgeLibraryClosing::steps(closing))).ok_or_else(
-            || {
+        self.session
+            .end(self.closing(crate::screens::ClosingFeed::new(closing).steps()))
+            .ok_or_else(|| {
                 BridgeError::from(bae_library::LibraryError::Internal(
                     "the library is already closed".to_string(),
                 ))
-            },
-        )??;
+            })??;
         info!("Closed library");
         Ok(())
     }

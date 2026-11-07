@@ -44,31 +44,6 @@ impl BridgeLibraryClosing {
 }
 
 impl BridgeLibraryClosing {
-    /// Where the close writes its steps; dropping it, as the close ends,
-    /// empties the stream. A closing nobody reads writes nothing.
-    pub(crate) fn writer(&self) -> ClosingSteps {
-        ClosingSteps {
-            writer: self.steps.writer(),
-            #[cfg(test)]
-            written: Some(self.written.clone()),
-        }
-    }
-
-    /// Where nothing reads a close's steps.
-    pub(crate) fn unread_steps() -> ClosingSteps {
-        ClosingSteps {
-            writer: ProgressStream::unread(),
-            #[cfg(test)]
-            written: None,
-        }
-    }
-
-    /// Where `closing`, the close the app shows, reads the steps; where
-    /// nothing does without it.
-    pub(crate) fn steps(closing: Option<Arc<Self>>) -> ClosingSteps {
-        closing.map_or_else(Self::unread_steps, |closing| closing.writer())
-    }
-
     /// What the close wrote, in order, `None` where its writing ended.
     #[cfg(test)]
     pub(crate) fn written(&self) -> Vec<Option<BridgeClosingStep>> {
@@ -76,9 +51,37 @@ impl BridgeLibraryClosing {
     }
 }
 
+/// The close the app shows, if it shows one: what the app passed to the call.
+/// A close the app doesn't show is the empty feed, and writes nowhere.
+pub(crate) struct ClosingFeed(Option<Arc<BridgeLibraryClosing>>);
+
+impl ClosingFeed {
+    /// The feed of `BridgeLibraryClosing`, the object the app passed, or the empty feed.
+    pub(crate) fn new(shown: Option<Arc<BridgeLibraryClosing>>) -> Self {
+        Self(shown)
+    }
+
+    /// Where the close writes its steps; dropping it, as the close ends,
+    /// empties the stream. A closing nobody reads writes nothing.
+    pub(crate) fn steps(&self) -> ClosingSteps {
+        match &self.0 {
+            Some(closing) => ClosingSteps {
+                writer: Some(closing.steps.writer()),
+                #[cfg(test)]
+                written: Some(closing.written.clone()),
+            },
+            None => ClosingSteps {
+                writer: None,
+                #[cfg(test)]
+                written: None,
+            },
+        }
+    }
+}
+
 /// A close's writing of its stream; a close no app follows writes nowhere.
 pub(crate) struct ClosingSteps {
-    writer: ProgressWriter,
+    writer: Option<ProgressWriter>,
     #[cfg(test)]
     written: Option<Arc<Mutex<Vec<Option<BridgeClosingStep>>>>>,
 }
@@ -102,7 +105,9 @@ impl ClosingSteps {
         if let Some(written) = &self.written {
             written.lock().unwrap().push(Some(step));
         }
-        self.writer.set(BridgeFastValue::ClosingStep { step });
+        if let Some(writer) = &self.writer {
+            writer.set(BridgeFastValue::ClosingStep { step });
+        }
     }
 }
 

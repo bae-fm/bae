@@ -86,7 +86,7 @@ impl AppHandle {
         self: std::sync::Arc<Self>,
         closing: Option<std::sync::Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<BridgeLibraryRemoval, BridgeError> {
-        let steps = crate::BridgeLibraryClosing::steps(closing);
+        let steps = crate::screens::ClosingFeed::new(closing).steps();
         self.runtime
             .clone()
             .run_to_completion(self.clone(), "remove library", move || async move {

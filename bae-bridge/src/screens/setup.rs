@@ -213,31 +213,36 @@ pulled_read! {
 }
 
 impl BridgeLibrarySetup {
-    /// Where the call writes its steps; dropping it, as the call ends,
-    /// empties the stream. A setup nobody reads writes nothing.
-    pub(crate) fn writer(&self) -> SetupSteps {
-        SetupSteps {
-            writer: self.steps.writer(),
-            states: Some(self.states.writer()),
-            storage_finishing: Some(self.storage_finishing.writer()),
-            #[cfg(test)]
-            written: self.written.clone(),
-        }
-    }
-
     /// What calls wrote, in order, `None` where each one's writing ended.
     #[cfg(test)]
     pub(crate) fn written(&self) -> Vec<Option<BridgeFastValue>> {
         self.written.lock().unwrap().clone()
     }
+}
 
-    /// Where a call writes its steps: `setup`'s stream, or nowhere when the
-    /// app doesn't show the call.
-    pub(crate) fn steps(setup: Option<Arc<Self>>) -> SetupSteps {
-        match setup {
-            Some(setup) => setup.writer(),
+/// The setup call the app shows, if it shows one: what the app passed to the
+/// call. A call the app doesn't show is the empty feed, and writes nowhere.
+pub(crate) struct SetupFeed(Option<Arc<BridgeLibrarySetup>>);
+
+impl SetupFeed {
+    /// The feed of `BridgeLibrarySetup`, the object the app passed, or the empty feed.
+    pub(crate) fn new(shown: Option<Arc<BridgeLibrarySetup>>) -> Self {
+        Self(shown)
+    }
+
+    /// Where the call writes its steps; dropping it, as the call ends,
+    /// empties the stream. A setup nobody reads writes nothing.
+    pub(crate) fn steps(&self) -> SetupSteps {
+        match &self.0 {
+            Some(setup) => SetupSteps {
+                writer: Some(setup.steps.writer()),
+                states: Some(setup.states.writer()),
+                storage_finishing: Some(setup.storage_finishing.writer()),
+                #[cfg(test)]
+                written: setup.written.clone(),
+            },
             None => SetupSteps {
-                writer: ProgressStream::unread(),
+                writer: None,
                 states: None,
                 storage_finishing: None,
                 #[cfg(test)]
@@ -249,7 +254,7 @@ impl BridgeLibrarySetup {
 
 /// A setup call's writing of its stream.
 pub(crate) struct SetupSteps {
-    writer: ProgressWriter,
+    writer: Option<ProgressWriter>,
     /// Where the call says where it stands; `None` when the app doesn't show
     /// the call.
     states: Option<SetupStateWriter<BridgeBootstrapState>>,
@@ -304,12 +309,16 @@ impl SetupSteps {
     fn set(&self, value: BridgeFastValue) {
         #[cfg(test)]
         self.written.lock().unwrap().push(Some(value.clone()));
-        self.writer.set(value);
+        if let Some(writer) = &self.writer {
+            writer.set(value);
+        }
     }
 
     /// The stream holds nothing until the next step that counts.
     fn clear(&self) {
-        self.writer.clear();
+        if let Some(writer) = &self.writer {
+            writer.clear();
+        }
     }
 }
 

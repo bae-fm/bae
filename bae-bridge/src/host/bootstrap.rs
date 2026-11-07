@@ -109,7 +109,7 @@ impl BridgeHost {
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
-        let steps = setup.writer();
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
             .run_to_completion(self.clone(), "restore library", move || async move {
@@ -152,7 +152,7 @@ impl BridgeHost {
         let report = opening.report();
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
-        let steps = setup.writer();
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
             .run_to_completion(
@@ -199,7 +199,7 @@ impl BridgeHost {
         let cancellable = bae_library::replacement_cancellable(by.into_core());
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
-        let steps = setup.writer();
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
             .run_to_completion(
@@ -233,7 +233,7 @@ impl BridgeHost {
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
-        let steps = setup.writer();
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
             .run_to_completion(self.clone(), "restore saved library", move || async move {
@@ -266,7 +266,7 @@ impl BridgeHost {
         setup: Arc<crate::BridgeLibrarySetup>,
         control: Arc<BridgeJoinControl>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
-        let steps = setup.writer();
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
             .run("BridgeHost.join_with_invite", move || async move {
@@ -317,7 +317,7 @@ impl BridgeHost {
         setup: Arc<crate::BridgeLibrarySetup>,
         control: Arc<BridgeJoinControl>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
-        let steps = setup.writer();
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
             .run("BridgeHost.resume_join", move || async move {
@@ -372,7 +372,7 @@ impl BridgeHost {
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
-        let steps = setup.writer();
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
             .run_to_completion(self.clone(), "finish restoring library", move || async move {
@@ -427,7 +427,7 @@ impl BridgeDeviceReset {
         self: Arc<Self>,
         setup: Arc<crate::BridgeLibrarySetup>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
-        let steps = setup.writer();
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.host
             .operations
             .clone()

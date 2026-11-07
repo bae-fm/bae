@@ -286,11 +286,6 @@ impl ProgressStream {
         Arc::new(KeyedValueStream::new(values, CancellationToken::new(), self.runtime.clone()))
     }
 
-    /// Where nothing reads the call's progress.
-    pub(crate) fn unread() -> ProgressWriter {
-        ProgressWriter { writer: None }
-    }
-
     /// Where one call writes: the stream last handed out, or nowhere before
     /// the host took one.
     pub(crate) fn writer(&self) -> ProgressWriter {

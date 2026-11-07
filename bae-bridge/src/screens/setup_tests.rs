@@ -17,7 +17,7 @@ fn the_stream_holds_the_running_step_until_the_call_ends() {
         bae_diagnostics::Diagnostics::noop(),
     ));
     let stream = setup.feed_setup_steps();
-    let steps = setup.writer();
+    let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
 
     steps.step(BridgeSetupStep::RemovingLibraries, 1, 3);
     assert_eq!(
@@ -72,7 +72,7 @@ fn a_restore_s_states_are_pulled_and_its_counts_are_streamed() {
     ));
     let stream = setup.feed_setup_steps();
     let states = setup.subscribe_states();
-    let steps = setup.writer();
+    let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
     let next_state = || {
         runtime.block_on(async {
             tokio::time::timeout(HANG_GUARD, states.clone().next())
@@ -134,7 +134,7 @@ fn a_storage_setup_s_finishing_is_pulled_as_it_changes() {
         bae_diagnostics::Diagnostics::noop(),
     ));
     let finishing = setup.subscribe_storage_finishing();
-    let steps = setup.writer();
+    let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
     let next = || {
         runtime.block_on(async {
             tokio::time::timeout(HANG_GUARD, finishing.clone().next())
