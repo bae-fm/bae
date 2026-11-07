@@ -342,6 +342,43 @@ private struct RestoreCodeSettingsPage: View {
         .environment(fixture.libraryName)
     }
 
+    /// The Sync page over `fixture`'s library, its sync as `shown` says.
+    @MainActor
+    func syncSettingsPagePreview(
+        _ fixture: LibrarySettingsTabPreviewFixture,
+        shown: BridgeSyncShown
+    ) -> some View {
+        NavigationStack {
+            SyncSettingsPage(
+                storageReadError: nil,
+                onResetDevice: {},
+                onRestoreFromCode: {},
+                onCheckForUpdates: {},
+                onRemoveLibrary: {}
+            )
+        }
+        .frame(width: 500, height: 640)
+        .environment(
+            PreviewData.previewSync(storage: fixture.configStore.storage)
+        )
+        #if BAE_OAUTH_PROVIDERS
+            .environment(CloudSyncSetup())
+        #endif
+        .environment(fixture.configStore)
+        .environment(
+            SyncStatusStore(
+                snapshot: BridgeSyncStatusSnapshot(
+                    shown: shown,
+                    pending: [],
+                    setupRunning: false,
+                    undoneSetup: nil
+                )
+            )
+        )
+        .environment(SyncActivityStore.preview(needsAttention: false))
+        .environment(UiStore())
+    }
+
     #Preview("No storage") {
         librarySettingsTabPreview(
             LibrarySettingsTabPreviewFixture(storage: nil),

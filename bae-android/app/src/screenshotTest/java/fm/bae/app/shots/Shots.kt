@@ -42,12 +42,21 @@ import fm.bae.app.ui.settings.PeopleScene
 import fm.bae.app.ui.settings.RestoreCodeScene
 import fm.bae.app.ui.settings.S3SetupFormScene
 import fm.bae.app.ui.settings.SyncRowSummary
+import fm.bae.app.ui.settings.SyncStatusScene
 import fm.bae.app.ui.settings.TransfersContent
 import fm.bae.app.ui.settings.sceneOtherPerson
 import fm.bae.app.ui.sync.SyncActivityList
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
+import uniffi.bae_bridge.BridgeCloudProvider
+import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeRendererKind
+import uniffi.bae_bridge.BridgeSyncCause
+import uniffi.bae_bridge.BridgeSyncFix
+import uniffi.bae_bridge.BridgeSyncShown
+import uniffi.bae_bridge.BridgeSyncStatusWord
+import uniffi.bae_bridge.BridgeSyncTone
+import java.time.Instant
 
 // Screenshot scenes captured by scripts/shots/android.sh. Each function is one
 // scene: the plugin renders it to a PNG named after the function, and the script
@@ -62,7 +71,8 @@ import uniffi.bae_bridge.BridgeRendererKind
 //   settings-casting, CastingSettingsLooking ⇒ settings-casting-looking, LibrarySettings ⇒ settings-library,
 //   LibrarySettingsProblem ⇒ settings-library-problem, LibrarySettingsNotSynced ⇒ settings-library-not-synced,
 //   PeopleAndDevices ⇒ people-and-devices, PeopleAndDevicesMember ⇒ people-and-devices-member,
-//   PeopleAndDevicesPerson ⇒ people-and-devices-person, PeopleAndDevicesYours ⇒ people-and-devices-yours.
+//   PeopleAndDevicesPerson ⇒ people-and-devices-person, PeopleAndDevicesYours ⇒ people-and-devices-yours,
+//   SyncStatusSynced/Waiting/Offline/SignedOut/Failed ⇒ sync-status-synced, -waiting, -offline, -signed-out, -failed.
 
 private const val PHONE_SPEC = "spec:width=411dp,height=914dp,dpi=420"
 
@@ -309,6 +319,72 @@ fun SyncUpdateRequired() {
         ErrorBanner(error = DisplayError(LocalContext.current.coreString("core.error.sync_update_required")))
     }
 }
+
+/** The Sync page's status block: nothing wrong. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun SyncStatusSynced() {
+    SyncStatusScene(syncShown(BridgeSyncStatusWord.SYNCED, BridgeSyncTone.SUCCESS))
+}
+
+/** The Sync page's status block: sync held back, no problem. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun SyncStatusWaiting() {
+    SyncStatusScene(syncShown(BridgeSyncStatusWord.WAITING_TO_SYNC, BridgeSyncTone.NEUTRAL))
+}
+
+/** The Sync page's status block: the storage can't be reached, and when sync last finished. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun SyncStatusOffline() {
+    SyncStatusScene(syncShown(BridgeSyncStatusWord.OFFLINE, BridgeSyncTone.WARNING, lastSynced = true))
+}
+
+/** The Sync page's status block: signed out of Dropbox, with its sign-in. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun SyncStatusSignedOut() {
+    SyncStatusScene(
+        syncShown(
+            BridgeSyncStatusWord.SIGNED_OUT_OF_DROPBOX,
+            BridgeSyncTone.WARNING,
+            fix = BridgeSyncFix.SignIn(BridgeCloudProvider.DROPBOX),
+            lastSynced = true,
+        ),
+    )
+}
+
+/** The Sync page's status block: the last pass failed, with its cause and Retry now. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun SyncStatusFailed() {
+    SyncStatusScene(
+        syncShown(
+            BridgeSyncStatusWord.SYNC_FAILED,
+            BridgeSyncTone.DANGER,
+            cause = BridgeSyncCause(BridgeMessage("core.sync.cause.disk_failed", emptyList()), null),
+            fix = BridgeSyncFix.RetryNow,
+            lastSynced = true,
+        ),
+    )
+}
+
+private const val TWO_HOURS_SECONDS = 7_200L
+
+private fun syncShown(
+    status: BridgeSyncStatusWord,
+    tone: BridgeSyncTone,
+    cause: BridgeSyncCause? = null,
+    fix: BridgeSyncFix? = null,
+    lastSynced: Boolean = false,
+) = BridgeSyncShown(
+    status = status,
+    tone = tone,
+    cause = cause,
+    fix = fix,
+    lastSynced = if (lastSynced) Instant.now().minusSeconds(TWO_HOURS_SECONDS) else null,
+)
 
 /** The Library page of a synced library, for an admin. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)

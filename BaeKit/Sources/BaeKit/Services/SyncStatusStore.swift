@@ -47,6 +47,24 @@ public final class SyncStatusStore {
             lastSynced: nil
         )
 
+        /// A library whose sync holds back without a problem.
+        public static let previewWaiting = BridgeSyncShown(
+            status: .waitingToSync,
+            tone: .neutral,
+            cause: nil,
+            fix: nil,
+            lastSynced: nil
+        )
+
+        /// A library whose storage this device can't reach.
+        public static let previewOffline = BridgeSyncShown(
+            status: .offline,
+            tone: .warning,
+            cause: nil,
+            fix: nil,
+            lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
+        )
+
         /// A library whose last pass failed because a file it uploads is
         /// gone.
         public static let previewFailed = BridgeSyncShown(

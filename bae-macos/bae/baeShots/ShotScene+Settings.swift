@@ -7,7 +7,8 @@ extension ShotScene {
     /// Settings panes: Playback with pausing between sides on, so its
     /// countdown shows under the switch; Casting on, with the receivers it
     /// found and still looking for the first; and the Library tab of a synced
-    /// library, one whose sync failed, and one only on this Mac.
+    /// library, one whose sync failed, and one only on this Mac; then the Sync
+    /// page in each state the boards draw.
     static let settingsScenes: [ShotScene] = [
         ShotScene(
             id: "settings-playback",
@@ -65,6 +66,11 @@ extension ShotScene {
             storage: nil,
             shown: .previewNotSynced
         ),
+        syncPage("sync-status-synced", .previewSynced),
+        syncPage("sync-status-waiting", .previewWaiting),
+        syncPage("sync-status-offline", .previewOffline),
+        syncPage("sync-status-signed-out", .previewSignedOut),
+        syncPage("sync-status-failed", .previewFailed),
     ]
 
     /// The Casting tab with casting on and `devices` found.
@@ -105,6 +111,20 @@ extension ShotScene {
                     .environment(Sync.stub())
                     .environment(UiStore())
             )
+        }
+    }
+
+    /// The Sync page of a library in S3 storage, its status block showing
+    /// `shown`.
+    private static func syncPage(
+        _ id: String,
+        _ shown: BridgeSyncShown
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 500, height: 640)) {
+            let fixture = LibrarySettingsTabPreviewFixture(
+                storage: PreviewData.previewStorage
+            )
+            return ShotStage(syncSettingsPagePreview(fixture, shown: shown))
         }
     }
 
