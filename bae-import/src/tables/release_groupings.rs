@@ -30,6 +30,16 @@ use std::path::{Path, PathBuf};
 pub(super) mod folder_readings;
 pub use folder_readings::FolderReadingRefusal;
 
+/// Why reading a release of folders picked together apart again was
+/// refused. Nothing of it was written.
+#[derive(Debug, thiserror::Error)]
+pub enum SeparationRefusal {
+    /// The key names no grouping of picked folders: it was read apart
+    /// already.
+    #[error("{0} is not a release read from folders picked together")]
+    NotPicked(CandidateKey),
+}
+
 /// A stored release, whether it may be worked on, and why not when it is a
 /// grouping's release that is blocked.
 pub(super) struct StoredReleaseCandidate {
@@ -793,10 +803,11 @@ impl ImportTables {
     pub(crate) async fn separate_picked_grouping(
         &self,
         key: &CandidateKey,
-    ) -> Result<(Vec<ScanItem>, GroupingChanges), DbError> {
+    ) -> Result<(Vec<ScanItem>, GroupingChanges), crate::ImportError> {
         let key = key.clone();
         self.store
-            .call(move |sql| {
+            .write(move |sql| {
+                let sql = &sql;
                 let members: Vec<CandidateKey> = sql.query(
                     "SELECT member_key FROM release_grouping_member \
                  WHERE grouping_key = ? ORDER BY position",
@@ -815,10 +826,8 @@ impl ImportTables {
                     "DELETE FROM release_grouping WHERE key = ? AND anchor_folder IS NULL",
                     [&key],
                 )?;
-                if removed != 1 {
-                    return Err(DbError::Message(format!(
-                        "{key} is not a release read from folders picked together"
-                    )));
+                if removed == 0 {
+                    return Err(SeparationRefusal::NotPicked(key).into());
                 }
                 // The release the grouping read leaves the scan with it, and its
                 // identification with it.

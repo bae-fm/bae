@@ -123,6 +123,29 @@ async fn a_grouping_missing_one_of_its_releases_says_so_and_can_be_undone() {
     assert!(stored(&db, &crate::CandidateKey::grouping("test")).await.is_none());
 }
 
+/// A release read apart again already is no grouping to read apart: the
+/// second separation is refused and writes nothing.
+#[tokio::test]
+async fn a_release_read_apart_already_is_refused_a_second_separation() {
+    let (db, _temp, members) = scanned(&["Volume A", "Volume B"]).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let key = crate::CandidateKey::grouping("test");
+    tables.combine_releases(key.clone(), members).await.unwrap();
+    tables.separate_picked_grouping(&key).await.unwrap();
+
+    let refused = tables.separate_picked_grouping(&key).await;
+
+    assert!(
+        matches!(
+            &refused,
+            Err(crate::ImportError::Separation(crate::tables::SeparationRefusal::NotPicked(
+                named
+            ))) if *named == key
+        ),
+        "{refused:?}"
+    );
+}
+
 /// Two folders whose names show the same once escaped — a Latin-1 `Café`
 /// and a folder spelled `Caf\xE9` — combine into a release two of whose
 /// files show one name, which no release can hold: it is stored as one that

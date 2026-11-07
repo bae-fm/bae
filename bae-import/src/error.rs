@@ -148,6 +148,11 @@ pub enum ImportError {
     #[error("import list {0:?} closed under the read that opened it")]
     ListClosed(crate::ImportListId),
 
+    /// A release of folders picked together could not be read apart again.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    Separation(#[from] crate::tables::SeparationRefusal),
+
     /// Releases picked to be read as one could not be combined.
     #[cfg(desktop)]
     #[error(transparent)]
@@ -628,6 +633,9 @@ impl ImportError {
                 | crate::grouping::CombineRefusal::MemberChanged(_)
                 | crate::grouping::CombineRefusal::MemberTaken(_) => C::Import,
             },
+            // The release was read apart meanwhile.
+            #[cfg(desktop)]
+            Self::Separation(crate::tables::SeparationRefusal::NotPicked(_)) => C::Import,
             #[cfg(desktop)]
             Self::DiscogsKey(error) => match **error {
                 crate::DiscogsKeyError::Keyring(_) | crate::DiscogsKeyError::Preferences(_) => {

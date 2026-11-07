@@ -43,7 +43,7 @@ pub use import_state::{
     NewImportCandidateVerdict, PreparationRefusal, VerdictPick,
 };
 pub(crate) use release_groupings::GroupingFacts;
-pub use release_groupings::{FolderReadingRefusal, GroupingChanges};
+pub use release_groupings::{FolderReadingRefusal, GroupingChanges, SeparationRefusal};
 pub use watched_folders::watched_path;
 pub use watched_folders::{WatchedFolderRefusal, WatchedFoldersRemoved};
 
