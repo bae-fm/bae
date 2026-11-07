@@ -224,6 +224,9 @@ non_owner_types = [
     "RootScanSchedule",
     "RootRemovalSchedule",
     "RootWatch",
+    # What the Subsonic router's handlers share, copied into each request: the
+    # server's services, credential and diagnostics.
+    "AppState",
 ]
 
 # Values an owner makes for its caller's one operation, view or read and
@@ -413,6 +416,8 @@ task_types = [
     "SendHold",
     # The folder scans' live read, built for each screen that shows them.
     "FolderScansLive",
+    # A streamed track's encoded chunks on their way to the response.
+    "ChannelSink",
 ]
 
 # Handles (Appendix F.3): what an owner makes from its own state to hand out.
@@ -633,6 +638,9 @@ ImageHold = "RemoteImageHost"
     "TestLibrary::open",
     "TestLibrary::open_with",
 ]
+# An owner's constructor builds the owner and the parts it holds that nothing
+# else shares.
+"bae-subsonic/src/controller.rs" = ["SubsonicServerController::new"]
 # Starts a worker's thread: it opens the worker's channel and moves the
 # receiving end into the thread it starts, so the sender the worker keeps
 # is always the one paired with that thread. Its handle stops the thread.
