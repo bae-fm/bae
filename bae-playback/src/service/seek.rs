@@ -132,7 +132,8 @@ impl PlaybackService {
         {
             Ok(()) => {}
             Err(error) => {
-                let reason = self.output_start_failed(
+                let reason = output::output_start_failed(
+                    &self.diagnostics,
                     &format!("restart the audio output for track {track_id} after a seek"),
                     &error,
                 );

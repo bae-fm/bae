@@ -549,18 +549,26 @@ impl crate::audio_output::AudioOutputDevice for OpenPanicsDevice {
     }
 }
 
-/// A panic that ends the playback thread ends the player with it: whoever
-/// follows playback hears it stopped with an error, a play sent after it
-/// fails with the thread's bug, and the bug is reported once. Sabotage: leave
-/// the thread's end unheard by its handle, and the followers hear nothing.
-#[tokio::test]
-async fn a_panic_that_ends_the_playback_thread_ends_the_player() {
-    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
-    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
-    let store = seeded_store(&[]).await;
+/// An audio device whose opening waits for the test, then fails: the device
+/// is unavailable.
+struct OpenFailsDevice(std::sync::mpsc::Receiver<()>);
+
+impl crate::audio_output::AudioOutputDevice for OpenFailsDevice {
+    fn open_output(&self) -> Result<Box<dyn crate::audio_output::AudioOutput>, AudioError> {
+        self.0.recv().expect("the test lets the device open");
+        Err(AudioError::DeviceUnavailable)
+    }
+}
+
+/// The playback service over `store`, reporting to `diagnostics`, playing on
+/// `device`.
+fn start_playback_on(
+    store: &SeededStore,
+    diagnostics: bae_diagnostics::Diagnostics,
+    device: Box<dyn crate::audio_output::AudioOutputDevice>,
+) -> PlaybackHandle {
     let db = store.store();
-    let (open, opening) = std::sync::mpsc::channel();
-    let playback = PlaybackService::start_with_audio_device(
+    PlaybackService::start_with_audio_device(
         db.clone(),
         bae_records::test_fixtures::test_records(db),
         bae_people::People::new(db.clone()),
@@ -572,13 +580,14 @@ async fn a_panic_that_ends_the_playback_thread_ends_the_player() {
         tokio::runtime::Handle::current(),
         50,
         false,
-        Box::new(OpenPanicsDevice(opening)),
+        device,
         Arc::new(crate::ManualPlaybackClock::new(test_clock_start())),
-    );
-    let mut progress = playback.subscribe_progress();
-    open.send(()).unwrap();
+    )
+}
 
-    let heard = tokio::time::timeout(HANG_GUARD, async {
+/// Every event `progress` hears up to playback stopping.
+async fn heard_until_stopped(progress: &mut crate::PlaybackProgressFeed) -> Vec<PlaybackProgress> {
+    tokio::time::timeout(HANG_GUARD, async {
         let mut heard = Vec::new();
         while let Some(event) = progress.recv().await {
             let stopped =
@@ -591,7 +600,24 @@ async fn a_panic_that_ends_the_playback_thread_ends_the_player() {
         heard
     })
     .await
-    .expect("the player's followers hear it stopped");
+    .expect("the player's followers hear it stopped")
+}
+
+/// A panic that ends the playback thread ends the player with it: whoever
+/// follows playback hears it stopped with an error, a play sent after it
+/// fails with the thread's bug, and the bug is reported once. Sabotage: leave
+/// the thread's end unheard by its handle, and the followers hear nothing.
+#[tokio::test]
+async fn a_panic_that_ends_the_playback_thread_ends_the_player() {
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let store = seeded_store(&[]).await;
+    let (open, opening) = std::sync::mpsc::channel();
+    let playback = start_playback_on(&store, diagnostics, Box::new(OpenPanicsDevice(opening)));
+    let mut progress = playback.subscribe_progress();
+    open.send(()).unwrap();
+
+    let heard = heard_until_stopped(&mut progress).await;
     let bug = Bug {
         operation: "playback service thread",
         message: "the device would not open".to_string(),
@@ -621,4 +647,47 @@ async fn a_panic_that_ends_the_playback_thread_ends_the_player() {
             "playback service thread panicked: the device would not open".to_string()
         )]
     );
+}
+
+/// An audio device that won't open as playback starts ends the player: whoever
+/// follows playback hears it stopped because the device isn't available, a
+/// play sent after it fails with the device's failure, and nothing is reported
+/// as a bug, since the device's failure isn't bae's. Sabotage: let the thread
+/// return without its failure, and the followers hear nothing.
+#[tokio::test]
+async fn an_audio_device_that_will_not_open_ends_the_player() {
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let store = seeded_store(&[]).await;
+    let (open, opening) = std::sync::mpsc::channel();
+    let playback = start_playback_on(&store, diagnostics, Box::new(OpenFailsDevice(opening)));
+    let mut progress = playback.subscribe_progress();
+    open.send(()).unwrap();
+
+    let heard = heard_until_stopped(&mut progress).await;
+    assert!(
+        matches!(
+            heard.as_slice(),
+            [
+                PlaybackProgress::PlaybackError {
+                    reason: crate::PlaybackErrorReason::AudioOutput {
+                        problem: crate::AudioOutputProblem::DeviceUnavailable
+                    }
+                },
+                PlaybackProgress::StateChanged { state: PlaybackState::Stopped },
+            ]
+        ),
+        "{heard:?}"
+    );
+    let played = playback.play_library_shuffled().await;
+    assert!(
+        matches!(
+            &played,
+            Err(PlayError::Ended(bae_util::worker_thread::WorkerEnd::Failed(
+                AudioError::DeviceUnavailable
+            )))
+        ),
+        "{played:?}"
+    );
+    assert_eq!(bugs.reports(), Vec::new());
 }

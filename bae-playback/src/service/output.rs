@@ -62,24 +62,6 @@ impl PlaybackService {
         self.build_output_over(source, sample_rate, channels, Vec::new())
     }
 
-    /// What the person is told when `operation` couldn't start the audio
-    /// output: the device's or the speaker's problem by name, or bae's own
-    /// failure, which goes to the crash reporter. Either way the log keeps the
-    /// whole error with its causes.
-    pub(super) fn output_start_failed(
-        &self,
-        operation: &str,
-        error: &PlaybackError,
-    ) -> crate::PlaybackErrorReason {
-        let detail = bae_util::error_text::CauseChain(error);
-        if error.is_bug() {
-            self.diagnostics.report_bug(operation, &detail);
-        } else {
-            warn!("{operation}: the audio output didn't start: {detail}");
-        }
-        error.ui_reason()
-    }
-
     /// The output stopped sending partway through a track — a conversion for
     /// the AirPlay receiver failed, or the Android device stream failed or
     /// couldn't be reopened on a new default device. That is bae's own
@@ -214,7 +196,8 @@ impl PlaybackService {
         );
         if let Err(error) = self.build_output_over(source, sample_rate, channels, pending) {
             self.telemetry_playback_failed(PlaybackOperation::DeviceRebuild);
-            let reason = self.output_start_failed(
+            let reason = output_start_failed(
+                &self.diagnostics,
                 "rebuild the audio output on the current default device",
                 &error,
             );
@@ -222,6 +205,24 @@ impl PlaybackService {
             self.stop().await;
         }
     }
+}
+
+/// What the person is told when `operation` couldn't start the audio output:
+/// the device's or the speaker's problem by name, or bae's own failure, which
+/// goes to `diagnostics`' crash reporter. Either way the log keeps the whole
+/// error with its causes.
+pub(super) fn output_start_failed(
+    diagnostics: &Diagnostics,
+    operation: &str,
+    error: &PlaybackError,
+) -> crate::PlaybackErrorReason {
+    let detail = bae_util::error_text::CauseChain(error);
+    if error.is_bug() {
+        diagnostics.report_bug(operation, &detail);
+    } else {
+        warn!("{operation}: the audio output didn't start: {detail}");
+    }
+    error.ui_reason()
 }
 
 #[cfg(test)]

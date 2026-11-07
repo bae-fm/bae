@@ -42,9 +42,10 @@ pub enum PlayError {
     #[error("the playback service stopped before it answered the play")]
     Stopped(#[source] oneshot::error::RecvError),
     /// The service's thread had ended before the play was sent: shut down,
-    /// or ended on a bug reported as it happened.
+    /// ended because the audio output wouldn't open, or ended on a bug
+    /// reported as it happened.
     #[error("the playback service had ended")]
-    Ended(#[source] WorkerEnd),
+    Ended(#[source] WorkerEnd<crate::AudioError>),
 }
 
 /// Where a play command's answer goes.
@@ -63,9 +64,10 @@ pub enum QueueEditError {
     #[error("the playback service stopped before it answered the queue command")]
     Stopped(#[source] oneshot::error::RecvError),
     /// The service's thread had ended before the command was sent: shut
-    /// down, or ended on a bug reported as it happened.
+    /// down, ended because the audio output wouldn't open, or ended on a bug
+    /// reported as it happened.
     #[error("the playback service had ended")]
-    Ended(#[source] WorkerEnd),
+    Ended(#[source] WorkerEnd<crate::AudioError>),
 }
 
 impl QueueEditError {
@@ -337,7 +339,7 @@ pub struct PlaybackHandle {
     /// its `Database`, and with it the store's exclusive lock, is released
     /// before teardown returns; the service holds its own sender, so only
     /// `Shutdown` ends it. Clones share one take-once join handle.
-    worker: WorkerThread<PlaybackCommand>,
+    worker: WorkerThread<PlaybackCommand, crate::AudioError>,
     progress_handle: PlaybackProgressHandle,
     /// The arbiter the service's reads run under, which hears whether the
     /// playing track's load waits on storage.
@@ -346,7 +348,7 @@ pub struct PlaybackHandle {
 }
 impl PlaybackHandle {
     pub(super) fn new(
-        worker: WorkerThread<PlaybackCommand>,
+        worker: WorkerThread<PlaybackCommand, crate::AudioError>,
         progress_handle: PlaybackProgressHandle,
         arbiter: std::sync::Arc<bae_track_audio::data_source::FetchArbiter>,
         playing_bytes: tokio::sync::watch::Receiver<Option<crate::track_buffered::PlayingBytes>>,

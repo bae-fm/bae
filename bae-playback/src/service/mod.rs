@@ -586,26 +586,18 @@ impl AudioOutputDevice for SystemAudioOutputDevice {
 
 /// Open the main player's output from the caller's device, or the system's,
 /// which tells `report` when a stream's device reports the stream can't go
-/// on, at full volume until playback restores the level the person set.
-/// `None` means there is no output, so the service thread returns.
+/// on, at full volume until playback restores the level the person set; or
+/// why the device wouldn't open, which ends the service thread.
 fn open_audio_device_and_output(
     custom_device: Option<Box<dyn AudioOutputDevice>>,
     report: crate::audio_output::InvalidationReport,
-) -> Option<(Box<dyn AudioOutputDevice>, PlayerOutput)> {
+) -> Result<(Box<dyn AudioOutputDevice>, PlayerOutput), crate::AudioError> {
     let audio_device: Box<dyn AudioOutputDevice> = match custom_device {
         Some(device) => device,
         None => Box::new(SystemAudioOutputDevice::new(report)),
     };
-    match audio_device.open_output() {
-        Ok(output) => Some((
-            audio_device,
-            PlayerOutput::new(output, AudioOutputControls::new(crate::Volume::FULL)),
-        )),
-        Err(e) => {
-            error!("Failed to initialize audio output: {:?}", e);
-            None
-        }
-    }
+    let output = audio_device.open_output()?;
+    Ok((audio_device, PlayerOutput::new(output, AudioOutputControls::new(crate::Volume::FULL))))
 }
 
 /// Map a command to its telemetry kind, or `None` for one not recorded:

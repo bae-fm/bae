@@ -732,6 +732,7 @@ impl PlaybackService {
         let progress_handle_for_completion = progress_handle.clone();
         let progress_tx_for_end = progress_tx.clone();
         let runtime_handle_for_end = runtime_handle.clone();
+        let diagnostics_for_end = diagnostics.clone();
         let service_arbiter = arbiter.clone();
         let worker = WorkerThread::spawn(
             "playback service thread",
@@ -757,16 +758,13 @@ impl PlaybackService {
                     .build()
                     .expect("Failed to create runtime");
                 rt.block_on(async move {
-                    let Some((audio_device, audio_output)) =
+                    let (audio_device, audio_output) =
                         open_audio_device_and_output(custom_device, {
                             let command_tx = command_tx.clone();
                             crate::audio_output::InvalidationReport::new(move || {
                                 dispatch_command(&command_tx, PlaybackCommand::OutputInvalidated)
                             })
-                        })
-                    else {
-                        return;
-                    };
+                        })?;
                     let preview = PreviewPlayer::new(
                         progress_tx.clone(),
                         command_tx.clone(),
@@ -826,10 +824,16 @@ impl PlaybackService {
                         debug!("restore on launch is off; starting with nothing in playback");
                     }
                     service.run(command_rx).await;
-                });
+                    Ok(())
+                })
             },
         );
-        follow_the_thread_s_end(&worker, progress_tx_for_end, &runtime_handle_for_end);
+        follow_the_thread_s_end(
+            &worker,
+            progress_tx_for_end,
+            diagnostics_for_end,
+            &runtime_handle_for_end,
+        );
         PlaybackHandle::new(worker, progress_handle, arbiter, playing_bytes_rx)
     }
 
@@ -911,29 +915,32 @@ impl PlaybackService {
     }
 }
 
-/// When the service thread ends on a panic, playback ends with it: whoever
-/// follows playback hears it stopped with the thread's bug, as a panic the
-/// loop caught stops it. A thread that returned was shut down, and says
-/// nothing more.
+/// When the service thread ends on a panic, or because the audio output
+/// won't open, playback ends with it: whoever follows playback hears it
+/// stopped with why, as a failure or a panic the loop caught stops it. A
+/// thread that returned was shut down, and says nothing more.
 fn follow_the_thread_s_end(
-    worker: &WorkerThread<PlaybackCommand>,
+    worker: &WorkerThread<PlaybackCommand, crate::AudioError>,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
+    diagnostics: Diagnostics,
     runtime_handle: &tokio::runtime::Handle,
 ) {
     let worker = worker.clone();
     runtime_handle.spawn(async move {
-        if let WorkerEnd::Panicked(bug) = worker.ended().await {
-            emit_progress(
-                &progress_tx,
-                PlaybackProgress::PlaybackError {
-                    reason: crate::PlaybackErrorReason::internal(&bug),
-                },
-            );
-            emit_progress(
-                &progress_tx,
-                PlaybackProgress::StateChanged { state: PlaybackState::Stopped },
-            );
-        }
+        let reason = match worker.ended().await {
+            WorkerEnd::Returned => return,
+            WorkerEnd::Failed(error) => super::output::output_start_failed(
+                &diagnostics,
+                "open the audio output",
+                &PlaybackError::AudioOutput(error),
+            ),
+            WorkerEnd::Panicked(bug) => crate::PlaybackErrorReason::internal(&bug),
+        };
+        emit_progress(&progress_tx, PlaybackProgress::PlaybackError { reason });
+        emit_progress(
+            &progress_tx,
+            PlaybackProgress::StateChanged { state: PlaybackState::Stopped },
+        );
     });
 }
 

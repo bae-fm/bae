@@ -384,7 +384,7 @@ impl AudioDrain {
 /// Why an audio output couldn't start or keep playing. The first three are the
 /// device's or the speaker's doing, which the person can act on; `Unexpected`
 /// is bae's own failure, a bug.
-#[derive(Debug, thiserror::Error)]
+#[derive(Clone, Debug, thiserror::Error)]
 pub enum AudioError {
     /// There is no output device, or the one there was went away: unplugged,
     /// switched off, or taken by the system or another app.

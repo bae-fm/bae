@@ -100,7 +100,8 @@ impl ImportService {
         let bugs = diagnostics.bug_sink();
         let watcher =
             WorkerThread::spawn("folder scan coordinator", bugs.clone(), move |_, watcher_rx| {
-                run_watcher(watcher_rx, fs_rx, watched, folder_watcher, scans_in_memory_tx)
+                run_watcher(watcher_rx, fs_rx, watched, folder_watcher, scans_in_memory_tx);
+                Ok(())
             });
 
         let worker = WorkerThread::spawn("import worker thread", bugs, move |_, commands_rx| {
@@ -133,6 +134,7 @@ impl ImportService {
                     }
                 }
             });
+            Ok(())
         });
 
         let release_reads =

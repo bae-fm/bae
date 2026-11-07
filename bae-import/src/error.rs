@@ -419,6 +419,7 @@ impl From<bae_util::worker_thread::WorkerEnd> for ImportError {
     fn from(end: bae_util::worker_thread::WorkerEnd) -> Self {
         match end {
             bae_util::worker_thread::WorkerEnd::Returned => Self::Stopped,
+            bae_util::worker_thread::WorkerEnd::Failed(never) => match never {},
             bae_util::worker_thread::WorkerEnd::Panicked(bug) => Self::WorkerFailed(bug),
         }
     }

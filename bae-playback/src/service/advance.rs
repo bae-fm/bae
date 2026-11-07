@@ -820,7 +820,8 @@ impl PlaybackService {
                 segment.buffer.wake_readers();
             }
             drop(decoder_handle);
-            let reason = self.output_start_failed(
+            let reason = output::output_start_failed(
+                &self.diagnostics,
                 &format!("start the audio output for track {}", next_prepared.track_id),
                 &error,
             );

@@ -3677,7 +3677,9 @@ this device or a receiver — stops and says why: the audio device was
 disconnected or isn't available, it can't play the track's sample rate, or the
 AirPlay speaker didn't accept the connection. These are the device's or the
 speaker's doing. Any other failure is bae's own: it shows as an error, is
-reported as a bug, and the log keeps the whole error with its causes.
+reported as a bug, and the log keeps the whole error with its causes. When
+this device's output won't open as playback starts, playback says why the
+same way and ends: a later play or queue change fails with that reason.
 
 **Sharing the speaker.** Android lets one app play at a time, through audio
 focus. Every start of playback asks the system first — Play, playing a release
