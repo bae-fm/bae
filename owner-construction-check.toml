@@ -380,6 +380,9 @@ ImageHold = "RemoteImageHost"
 # A test's catalog fakes: the providers its library asks are built over
 # them, once per library the test opens.
 "bae-catalogs/src/fake_catalogs.rs" = ["FakeCatalogs::providers"]
+# The test fixtures below own what they hand their test, and their getters give
+# the test what the fixture holds: no production code reaches them, so they are
+# listed rather than reshaped.
 # Two stores a test syncs over shared memory storage: it creates the first
 # and restores the second from it, and hands the test, the final owner of
 # what it built, each store to write and read. It is test-utils code, which
