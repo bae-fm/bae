@@ -86,6 +86,7 @@ impl Library {
             library.cast_picker(),
             import.clone(),
             identification.clone(),
+            library.catalogs().clone(),
         );
         let root = temp.path().join("watched");
         std::fs::create_dir_all(&root).unwrap();

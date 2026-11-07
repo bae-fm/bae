@@ -14,7 +14,7 @@ use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsKeySignal};
 use bae_catalogs::providers::{CatalogSession, DiscogsCheck, Providers};
 use bae_catalogs::rate_limiter::{CallClass, CallWork};
-use bae_diagnostics::Diagnostics;
+use bae_diagnostics::{lock_or_crash, Diagnostics};
 use bae_preferences::DiscogsValidation;
 use bae_store::DbError;
 use bae_store::Store;
@@ -68,9 +68,10 @@ pub struct CatalogSessions {
     /// The stored key's client and generation, under the one lock every
     /// write of the key and its validation holds.
     discogs: Arc<tokio::sync::Mutex<DiscogsKey>>,
-    /// The observer writes in flight, for a test to wait on.
-    #[cfg(test)]
-    signal_writes: tokio_util::task::TaskTracker,
+    /// The writes of what calls prove about the key, in flight: each runs as
+    /// a task of its own, which closing the library waits for
+    /// ([`Self::wait_for_writes`]) before the store closes under it.
+    writes: Arc<std::sync::Mutex<tokio::task::JoinSet<()>>>,
 }
 
 /// The stored Discogs key as the sessions hold it.
@@ -102,8 +103,7 @@ impl CatalogSessions {
             diagnostics,
             runtime_handle,
             discogs: Arc::default(),
-            #[cfg(test)]
-            signal_writes: tokio_util::task::TaskTracker::new(),
+            writes: Arc::default(),
         }
     }
 
@@ -144,8 +144,8 @@ impl CatalogSessions {
             let preferences = self.preferences.clone();
             let diagnostics = self.diagnostics.clone();
             let runtime = self.runtime_handle.clone();
-            #[cfg(test)]
-            let signal_writes = self.signal_writes.clone();
+            let writes = self.writes.clone();
+            let reporter = self.diagnostics.clone();
             let observer = Arc::new(move |signal| {
                 let (held, preferences, diagnostics) =
                     (held.clone(), preferences.clone(), diagnostics.clone());
@@ -165,9 +165,11 @@ impl CatalogSessions {
                         }
                     }
                 };
-                #[cfg(test)]
-                let recording = signal_writes.track_future(recording);
-                runtime.spawn(recording);
+                let mut writes = lock_or_crash(&reporter, "the Discogs signal writes", &writes);
+                // Writes that ended since the last are reaped here; a panic in
+                // one was caught and reported inside it.
+                while writes.try_join_next().is_some() {}
+                writes.spawn_on(recording, &runtime);
             });
             key.client = self
                 .store
@@ -177,16 +179,26 @@ impl CatalogSessions {
         Ok(CatalogSession::new(key.client.clone(), asked, self.providers.clone()))
     }
 
-    /// Wait until every signal write started so far has ended, for a test.
-    #[cfg(test)]
-    pub(crate) async fn signals_recorded(&self) {
-        // A tracker's wait ends only once it is closed and empty; closing it
-        // changes nothing else, and the next test call reopens it.
-        self.signal_writes.close();
-        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, self.signal_writes.wait())
-            .await
-            .expect("every Discogs signal is recorded");
-        self.signal_writes.reopen();
+    /// Wait until every signal write started so far has ended: what closing
+    /// the library does after the calls that make them have stopped, before
+    /// the store closes under them. A write started after this takes the set
+    /// is waited for by the next call.
+    pub async fn wait_for_writes(&self) {
+        let mut writes = std::mem::take(&mut *lock_or_crash(
+            &self.diagnostics,
+            "the Discogs signal writes",
+            &self.writes,
+        ));
+        while let Some(ended) = writes.join_next().await {
+            if let Err(error) = ended {
+                if error.is_panic() {
+                    self.diagnostics.bug(bae_util::task_failure::TaskFailed::of_join(
+                        "record a Discogs validation signal",
+                        error,
+                    ));
+                }
+            }
+        }
     }
 
     /// The session a search of `catalog` asks with, holding only what that

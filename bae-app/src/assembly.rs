@@ -102,7 +102,7 @@ pub async fn start_library_services(
             runtime_handle,
             store.clone(),
             records.clone(),
-            catalogs,
+            catalogs.clone(),
             remote_images,
             diagnostics,
             import_tables,
@@ -126,6 +126,7 @@ pub async fn start_library_services(
             cast_picker,
             import,
             identification,
+            catalogs,
         ))
     }
     #[cfg(not(desktop))]

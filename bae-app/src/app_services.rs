@@ -94,6 +94,10 @@ struct AppServicesInner {
     /// opening a view is not what starts it.
     #[cfg(desktop)]
     identification: IdentificationHandle,
+    /// The catalogs import asks, whose Discogs signal writes closing the
+    /// library waits for before its store closes.
+    #[cfg(desktop)]
+    catalogs: bae_import::CatalogSessions,
 }
 
 impl Drop for AppServicesInner {
@@ -144,6 +148,7 @@ impl AppServices {
         cast_picker: bae_playback::renderer::CastPicker,
         #[cfg(desktop)] import: ImportServiceHandle,
         #[cfg(desktop)] identification: IdentificationHandle,
+        #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
     ) -> Self {
         AppServices {
             inner: Arc::new(AppServicesInner {
@@ -160,6 +165,8 @@ impl AppServices {
                 import,
                 #[cfg(desktop)]
                 identification,
+                #[cfg(desktop)]
+                catalogs,
             }),
         }
     }
@@ -238,6 +245,8 @@ impl AppServices {
                     import.stop_and_join();
                 })
                 .await?;
+            // The calls that make them have stopped; the store is still open.
+            self.inner.catalogs.wait_for_writes().await;
         }
         Ok(())
     }

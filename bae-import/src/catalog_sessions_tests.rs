@@ -213,7 +213,7 @@ async fn a_signal_about_a_replaced_key_leaves_the_new_key_alone() {
     host.route("/masters/", 401, REJECTED);
 
     old.master_covers("909", CallClass::REQUESTED).await.unwrap_err();
-    sessions.signals_recorded().await;
+    sessions.wait_for_writes().await;
 
     assert_eq!(host.count_containing("/masters/"), 1, "the old client asked");
     assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Valid));
@@ -236,9 +236,39 @@ async fn a_signal_that_cannot_be_recorded_is_reported() {
     .await;
 
     session.master_covers("909", CallClass::REQUESTED).await.unwrap_err();
-    sessions.signals_recorded().await;
+    sessions.wait_for_writes().await;
 
     let reports = bugs.reports();
     assert_eq!(reports.len(), 1, "{reports:?}");
     assert_eq!(reports[0].0, "record a Discogs validation signal");
+}
+
+/// Closing the library waits for a signal write in flight, so the store does
+/// not close under it. The write waits here for the key's lock, which the
+/// test holds, and the wait does not end before the write does.
+#[tokio::test(flavor = "multi_thread")]
+async fn waiting_for_writes_waits_for_a_write_in_flight() {
+    let host = bae_util::test_host::FakeHost::start().await;
+    let (sessions, db, _temp_dir) = sessions_over(&host, Arc::default()).await;
+    sessions.store_discogs_key("the-key", DiscogsValidation::Valid).await.unwrap();
+    let session = sessions.session().await.unwrap();
+    host.route("/masters/", 401, REJECTED);
+
+    let held = sessions.discogs.lock().await;
+    session.master_covers("909", CallClass::REQUESTED).await.unwrap_err();
+    let waiting = tokio::spawn({
+        let sessions = sessions.clone();
+        async move { sessions.wait_for_writes().await }
+    });
+    for _ in 0..100 {
+        tokio::task::yield_now().await;
+    }
+    assert!(!waiting.is_finished(), "the write is still waiting for the key's lock");
+
+    drop(held);
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, waiting)
+        .await
+        .expect("the wait ends once the write has")
+        .unwrap();
+    assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Rejected));
 }
