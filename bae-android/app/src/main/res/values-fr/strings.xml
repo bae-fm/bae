@@ -95,6 +95,18 @@
     <string name="image_load_failed">Impossible de charger l\'image</string>
     <string name="gallery_loading_image">Chargement de l’image…</string>
     <string name="settings_library">Bibliothèque</string>
+    <string name="library_name_row">Nom</string>
+    <string name="restore_code_summary">Récupère votre bibliothèque si vous perdez tous vos appareils</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d personne</item>
+        <item quantity="many">%1$d de personnes</item>
+        <item quantity="other">%1$d personnes</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d appareil</item>
+        <item quantity="many">%1$d d’appareils</item>
+        <item quantity="other">%1$d appareils</item>
+    </plurals>
     <string name="settings_sync">Synchronisation</string>
     <string name="settings_local_only">Local uniquement</string>
     <string name="settings_sync_checking">Vérification de la synchronisation…</string>
@@ -111,7 +123,6 @@
     <string name="copy">Copier</string>
     <string name="hide">Masquer</string>
     <string name="settings_remove_library">Supprimer cette bibliothèque de cet appareil</string>
-    <string name="settings_remove_library_explanation">Retire cette bibliothèque de cet appareil : l’appareil quitte la bibliothèque, puis sa copie et les fichiers téléchargés sont supprimés. La bibliothèque reste dans le stockage et sur vos autres appareils.</string>
     <string name="settings_remove_library_confirm_title">Supprimer la bibliothèque de cet appareil ?</string>
     <string name="settings_remove_library_confirm_body">La bibliothèque reste dans le stockage et sur vos autres appareils.</string>
     <string name="unsent_edits_body">Supprimer la bibliothèque de cet appareil les efface.</string>
@@ -121,7 +132,6 @@
     <string name="library_delete_confirm_body">Cette bibliothèque n’est pas synchronisée, elle sera donc supprimée définitivement. Vos fichiers audio restent dans leurs dossiers.</string>
     <string name="library_delete">Supprimer</string>
     <string name="library_not_synced">Non synchronisée</string>
-    <string name="settings_delete_library">Supprimer cette bibliothèque</string>
     <string name="removal_uncounted_body">Cette bibliothèque ne peut pas être ouverte : les modifications de cet appareil qui n’ont pas été envoyées sont donc perdues. Sa copie sur cet appareil est supprimée ; si la bibliothèque est conservée dans le stockage, elle y reste.</string>
     <string name="settings_provider">Fournisseur</string>
     <string name="settings_account">Compte</string>
@@ -292,7 +302,6 @@
     <string name="restore_code_printed">Imprimé le %1$s</string>
     <string name="restore_code_print_keep">Si vous perdez tous vos appareils, choisissez Ajouter un appareil dans bae sur un nouvel appareil, puis scannez ceci ou saisissez le code. Toute personne qui a cette page et l’accès à votre stockage peut ouvrir votre bibliothèque : gardez-la en lieu sûr.</string>
     <string name="done">Terminé</string>
-    <string name="settings_people">Personnes</string>
     <string name="members_you">Vous</string>
     <string name="members_unnamed">Pas encore de nom</string>
     <string name="members_invited">Invité</string>

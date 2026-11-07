@@ -95,6 +95,18 @@
     <string name="image_load_failed">לא ניתן לטעון את התמונה.</string>
     <string name="gallery_loading_image">טוען את התמונה…</string>
     <string name="settings_library">ספרייה</string>
+    <string name="library_name_row">שם</string>
+    <string name="restore_code_summary">משחזר את הספרייה שלך אם איבדת את כל המכשירים</string>
+    <plurals name="people_count">
+        <item quantity="one">אדם אחד</item>
+        <item quantity="two">שני אנשים</item>
+        <item quantity="other">%1$d אנשים</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">מכשיר אחד</item>
+        <item quantity="two">שני מכשירים</item>
+        <item quantity="other">%1$d מכשירים</item>
+    </plurals>
     <string name="settings_sync">סנכרון</string>
     <string name="settings_local_only">מקומי בלבד</string>
     <string name="settings_sync_checking">בודק סנכרון…</string>
@@ -111,7 +123,6 @@
     <string name="copy">העתקה</string>
     <string name="hide">הסתרה</string>
     <string name="settings_remove_library">הסר ספרייה זו מהמכשיר הזה</string>
-    <string name="settings_remove_library_explanation">מסיר את הספרייה הזו מהמכשיר הזה: המכשיר עוזב את הספרייה, ואז העותק שלו והקבצים שהורדו נמחקים. הספרייה תישאר באחסון ובמכשירים האחרים שלך.</string>
     <string name="settings_remove_library_confirm_title">להסיר את הספרייה מהמכשיר הזה?</string>
     <string name="settings_remove_library_confirm_body">הספרייה תישאר באחסון ובמכשירים האחרים שלך.</string>
     <string name="unsent_edits_body">הסרת הספרייה מהמכשיר הזה תמחק אותם.</string>
@@ -121,7 +132,6 @@
     <string name="library_delete_confirm_body">הספרייה הזו אינה מסונכרנת, ולכן היא תימחק לצמיתות. קובצי האודיו שלך יישארו בתיקיות שלהם.</string>
     <string name="library_delete">מחיקה</string>
     <string name="library_not_synced">לא מסונכרנת</string>
-    <string name="settings_delete_library">מחק את הספרייה הזו</string>
     <string name="removal_uncounted_body">לא ניתן לפתוח את הספרייה הזו, ולכן שינויים במכשיר הזה שלא נשלחו יאבדו. העותק שלה במכשיר הזה יימחק; אם הספרייה שמורה באחסון, היא נשארת שם.</string>
     <string name="settings_provider">ספק</string>
     <string name="settings_account">חשבון</string>
@@ -293,7 +303,6 @@
     <string name="restore_code_printed">הודפס ב-%1$s</string>
     <string name="restore_code_print_keep">אם איבדת את כל המכשירים שלך, בחר ב“הוספת מכשיר” ב-bae במכשיר חדש, ואז סרוק את הקוד הזה או הקלד אותו. כל מי שיש לו את הדף הזה וגישה לאחסון שלך יכול לפתוח את הספרייה שלך: שמור אותו במקום פרטי.</string>
     <string name="done">סיום</string>
-    <string name="settings_people">אנשים</string>
     <string name="members_you">את/ה</string>
     <string name="members_unnamed">עדיין ללא שם</string>
     <string name="members_invited">הוזמן</string>

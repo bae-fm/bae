@@ -11,7 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,40 +20,30 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.DisplayError
 import fm.bae.app.LibraryListing
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.Eyebrow
-import fm.bae.app.ui.components.LibraryEnding
-import fm.bae.app.ui.components.PrimaryButton
-import fm.bae.app.ui.components.RemovalLoss
-import fm.bae.app.ui.components.RemoveLibraryDialog
+import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
-import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeTelemetryEvent
-import uniffi.bae_bridge.BridgeUnsentWork
 
 /** Where the open library is stored, as Settings knows it. */
 internal sealed interface Storage {
@@ -89,19 +78,11 @@ internal fun SettingsScreen(
 
     LaunchedEffect(session) {
         session.diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.SETTINGS))
-        model.load()
+        model.loadSelf()
     }
     DisposableEffect(model) {
-        model.watch()
-        onDispose { model.stopWatching() }
-    }
-    // A storage setup records the library's location as it ends, and one can end with no setup screen to hear it: one
-    // sync finishes after a relaunch, or one whose screen closed past its point of no return.
-    val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
-    var setupWasRunning by remember { mutableStateOf(setupRunning) }
-    LaunchedEffect(setupRunning) {
-        if (setupWasRunning && !setupRunning) model.loadStorage()
-        setupWasRunning = setupRunning
+        model.watchRequestedProfile()
+        onDispose { model.stopWatchingRequestedProfile() }
     }
 
     val self = model.self
@@ -109,23 +90,12 @@ internal fun SettingsScreen(
         SettingsTopBar(title = stringResource(R.string.settings), onBack = onBack)
         AppearanceSection()
         SectionDivider()
-        SettingsLibrarySection(
+        SettingsLibraryEntry(onOpen = { onPush(LibraryDestination.Library) })
+        SettingsLibrarySwitcher(
             session = session,
             listing = listing,
             onReloadLibraries = actions.reloadLibraries,
-            name = model.name,
-            self = self,
-            onRetryName = model::watchName,
-            onRetrySelf = { scope.launch { model.loadSelf() } },
             onSwitchLibrary = actions.switchLibrary,
-        )
-        SectionDivider()
-        SettingsSyncSection(
-            onResetDevice = actions.resetDevice,
-            session = session,
-            storage = model.storage,
-            oauthProviders = actions.oauthProviders,
-            onPush = onPush,
         )
         SelfHistorySharing(
             session = session,
@@ -136,39 +106,19 @@ internal fun SettingsScreen(
         SettingsPlaybackSections(session = session, config = config, ioDispatcher = ioDispatcher, onPush = onPush)
         SectionDivider()
         SettingsTransfersEntry(onOpen = { onPush(LibraryDestination.Transfers) })
-        // People, devices and the restore code live in the library's store, which only storage has.
-        (model.storage as? Storage.At)?.let { home ->
-            SettingsStoreSections(session = session, home = home, adminChanges = model.adminChanges, onPush = onPush)
-        }
-        val ending = LibraryEnding.ofSyncs(syncs = model.storage !is Storage.None)
-        SettingsClosingSections(session, ending, onRemove = actions.removeLibrary)
+        SectionDivider()
+        SettingsAboutSection()
     }
 }
 
-/** What lives in the library's store: its people and the changes this phone asked of them, and the restore code. */
+/** The row that opens the Library page. */
 @Composable
-private fun SettingsStoreSections(
-    session: OpenLibrary,
-    home: Storage.At,
-    adminChanges: List<BridgeAdminChange>,
-    onPush: (LibraryDestination) -> Unit,
-) {
-    SectionDivider()
-    SettingsPeopleSection(
-        adminChanges = adminChanges,
-        onDismissChange = { change ->
-            session.messages.perform("dismiss an admin change") {
-                session.appHandle.acknowledgeAdminChange(change.operation)
-            }
-        },
-        onManagePeople = { onPush(LibraryDestination.Members) },
-    )
-    SectionDivider()
-    RestoreCodeSection(
-        needsS3Key = home.location is BridgeStorageLocation.S3,
-        location = storageLocationLabel(home.location),
-        generate = { session.appHandle.generateRestoreCode().code },
-    )
+private fun SettingsLibraryEntry(onOpen: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge)) {
+        RowCard {
+            CardRow(title = stringResource(R.string.settings_library), onClick = onOpen)
+        }
+    }
 }
 
 /** How this device plays: sides and discs, restoring on launch, and casting. */
@@ -194,42 +144,6 @@ private fun SettingsCastingRow(onOpen: () -> Unit) {
     ) {
         Text(text = stringResource(R.string.settings_casting), modifier = Modifier.weight(1f))
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-    }
-}
-
-/**
- * Removing the library from this device, once confirmed, and what is
- * installed. What removal would lose is read first, while the library keeps
- * running; cancelling leaves it as it was.
- */
-@Composable
-private fun SettingsClosingSections(
-    session: OpenLibrary,
-    ending: LibraryEnding,
-    onRemove: () -> Unit,
-) {
-    var unsent by remember { mutableStateOf<BridgeUnsentWork?>(null) }
-    SectionDivider()
-    SettingsRemoveSection(
-        ending = ending,
-        onRequestRemove = {
-            session.messages.perform("read what removing the library loses") {
-                unsent = session.appHandle.unsentBeforeRemoval()
-            }
-        },
-    )
-    SectionDivider()
-    SettingsAboutSection()
-    unsent?.let { work ->
-        RemoveLibraryDialog(
-            ending = ending,
-            loss = RemovalLoss.Counted(work),
-            onConfirm = {
-                unsent = null
-                onRemove()
-            },
-            onDismiss = { unsent = null },
-        )
     }
 }
 
@@ -263,68 +177,5 @@ private fun SettingsAboutSection() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-/** The library's people and their devices, where this person also adds their own devices. */
-@Composable
-private fun SettingsPeopleSection(
-    adminChanges: List<BridgeAdminChange>,
-    onDismissChange: (BridgeAdminChange) -> Unit,
-    onManagePeople: () -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-    ) {
-        Eyebrow(text = stringResource(R.string.settings_people))
-        PrimaryButton(onClick = onManagePeople) {
-            Text(stringResource(R.string.members_title))
-        }
-        AdminChangesList(changes = adminChanges, onDismiss = onDismissChange)
-    }
-}
-
-@Composable
-private fun SettingsRemoveSection(
-    ending: LibraryEnding,
-    onRequestRemove: () -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-    ) {
-        PrimaryButton(
-            onClick = onRequestRemove,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-        ) {
-            Text(
-                stringResource(
-                    when (ending) {
-                        LibraryEnding.REMOVE -> R.string.settings_remove_library
-                        LibraryEnding.DELETE -> R.string.settings_delete_library
-                    },
-                ),
-            )
-        }
-        Text(
-            text =
-                stringResource(
-                    when (ending) {
-                        LibraryEnding.REMOVE -> R.string.settings_remove_library_explanation
-                        LibraryEnding.DELETE -> R.string.library_delete_confirm_body
-                    },
-                ),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun SettingsPeopleSectionPreview() {
-    BaeTheme {
-        SettingsPeopleSection(adminChanges = emptyList(), onDismissChange = {}, onManagePeople = {})
     }
 }

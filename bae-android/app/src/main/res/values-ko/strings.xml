@@ -93,6 +93,14 @@
     <string name="image_load_failed">이미지를 불러올 수 없습니다</string>
     <string name="gallery_loading_image">이미지를 불러오는 중…</string>
     <string name="settings_library">라이브러리</string>
+    <string name="library_name_row">이름</string>
+    <string name="restore_code_summary">모든 기기를 잃어버려도 라이브러리를 되찾을 수 있습니다</string>
+    <plurals name="people_count">
+        <item quantity="other">%1$d명</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="other">기기 %1$d대</item>
+    </plurals>
     <string name="settings_sync">동기화</string>
     <string name="settings_local_only">로컬 전용</string>
     <string name="settings_sync_checking">동기화 확인 중…</string>
@@ -109,7 +117,6 @@
     <string name="copy">복사</string>
     <string name="hide">가리기</string>
     <string name="settings_remove_library">이 기기에서 이 라이브러리 제거</string>
-    <string name="settings_remove_library_explanation">이 기기에서 라이브러리를 제거합니다. 기기가 라이브러리에서 나간 다음 복사본과 다운로드한 파일이 삭제됩니다. 라이브러리는 스토리지와 다른 기기에 그대로 남습니다.</string>
     <string name="settings_remove_library_confirm_title">이 기기에서 라이브러리를 제거할까요?</string>
     <string name="settings_remove_library_confirm_body">라이브러리는 스토리지와 다른 기기에 그대로 남습니다.</string>
     <string name="unsent_edits_body">이 기기에서 라이브러리를 제거하면 이 변경 사항은 삭제됩니다.</string>
@@ -119,7 +126,6 @@
     <string name="library_delete_confirm_body">이 라이브러리는 동기화되지 않았으므로 영구적으로 삭제됩니다. 오디오 파일은 폴더에 그대로 남습니다.</string>
     <string name="library_delete">삭제</string>
     <string name="library_not_synced">동기화되지 않음</string>
-    <string name="settings_delete_library">이 라이브러리 삭제</string>
     <string name="removal_uncounted_body">이 라이브러리를 열 수 없으므로 이 기기에서 전송되지 않은 변경 사항은 모두 사라집니다. 이 기기의 사본은 삭제되며, 라이브러리가 스토리지에 있다면 그대로 남습니다.</string>
     <string name="settings_provider">제공자</string>
     <string name="settings_account">계정</string>
@@ -287,7 +293,6 @@
     <string name="restore_code_printed">인쇄일: %1$s</string>
     <string name="restore_code_print_keep">모든 기기를 잃어버렸다면, 새 기기의 bae에서 ‘기기 추가’를 선택한 다음 이것을 스캔하거나 코드를 입력하세요. 이 페이지와 저장소 접근 권한이 있는 사람은 누구나 라이브러리를 열 수 있으니 안전한 곳에 보관하세요.</string>
     <string name="done">완료</string>
-    <string name="settings_people">사람</string>
     <string name="members_you">나</string>
     <string name="members_unnamed">아직 이름 없음</string>
     <string name="members_invited">초대됨</string>

@@ -96,6 +96,20 @@
     <string name="image_load_failed">Nelze načíst obrázek</string>
     <string name="gallery_loading_image">Načítání obrázku…</string>
     <string name="settings_library">Knihovna</string>
+    <string name="library_name_row">Název</string>
+    <string name="restore_code_summary">Vrátí vaši knihovnu, když ztratíte všechna zařízení</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d osoba</item>
+        <item quantity="few">%1$d osoby</item>
+        <item quantity="many">%1$d osoby</item>
+        <item quantity="other">%1$d osob</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d zařízení</item>
+        <item quantity="few">%1$d zařízení</item>
+        <item quantity="many">%1$d zařízení</item>
+        <item quantity="other">%1$d zařízení</item>
+    </plurals>
     <string name="settings_sync">Synchronizace</string>
     <string name="settings_local_only">Pouze místně</string>
     <string name="settings_sync_checking">Kontrola synchronizace…</string>
@@ -112,7 +126,6 @@
     <string name="copy">Kopírovat</string>
     <string name="hide">Skrýt</string>
     <string name="settings_remove_library">Odebrat tuto knihovnu z tohoto zařízení</string>
-    <string name="settings_remove_library_explanation">Odebere tuto knihovnu z tohoto zařízení: zařízení knihovnu opustí a pak se smaže jeho kopie a stažené soubory. Knihovna zůstane v úložišti a na vašich dalších zařízeních.</string>
     <string name="settings_remove_library_confirm_title">Odebrat knihovnu z tohoto zařízení?</string>
     <string name="settings_remove_library_confirm_body">Knihovna zůstane v úložišti a na vašich dalších zařízeních.</string>
     <string name="unsent_edits_body">Odebráním knihovny z tohoto zařízení se zahodí.</string>
@@ -122,7 +135,6 @@
     <string name="library_delete_confirm_body">Tato knihovna není synchronizovaná, takže se smaže natrvalo. Vaše zvukové soubory zůstanou ve svých složkách.</string>
     <string name="library_delete">Smazat</string>
     <string name="library_not_synced">Nesynchronizovaná</string>
-    <string name="settings_delete_library">Smazat tuto knihovnu</string>
     <string name="removal_uncounted_body">Tuto knihovnu nelze otevřít, takže všechny změny na tomto zařízení, které nebyly odeslány, budou ztraceny. Její kopie na tomto zařízení se smaže; pokud je knihovna uložena v úložišti, zůstane tam.</string>
     <string name="settings_provider">Poskytovatel</string>
     <string name="settings_account">Účet</string>
@@ -296,7 +308,6 @@
     <string name="restore_code_printed">Vytištěno %1$s</string>
     <string name="restore_code_print_keep">Pokud přijdete o všechna zařízení, zvolte v bae na novém zařízení Přidat zařízení a pak tento kód naskenujte nebo ho opište. Kdokoli, kdo má tuto stránku a přístup k vašemu úložišti, může otevřít vaši knihovnu: uschovejte ji na soukromém místě.</string>
     <string name="done">Hotovo</string>
-    <string name="settings_people">Lidé</string>
     <string name="members_you">Vy</string>
     <string name="members_unnamed">Zatím bez jména</string>
     <string name="members_invited">Pozván</string>

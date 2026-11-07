@@ -129,6 +129,16 @@
 
     <!-- Settings -->
     <string name="settings_library">Library</string>
+    <string name="library_name_row">Name</string>
+    <string name="restore_code_summary">Gets your library back if you lose every device</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d person</item>
+        <item quantity="other">%1$d people</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d device</item>
+        <item quantity="other">%1$d devices</item>
+    </plurals>
     <string name="settings_sync">Sync</string>
     <string name="settings_local_only">Local only</string>
     <string name="settings_sync_checking">Checking sync…</string>
@@ -145,7 +155,6 @@
     <string name="copy">Copy</string>
     <string name="hide">Hide</string>
     <string name="settings_remove_library">Remove this library from this device</string>
-    <string name="settings_remove_library_explanation">Removes this library from this device: this device leaves the library, then its copy and downloaded files are deleted. The library will remain in storage and on your other devices.</string>
     <string name="settings_remove_library_confirm_title">Remove library from this device?</string>
     <string name="settings_remove_library_confirm_body">The library will remain in storage and on your other devices.</string>
     <string name="unsent_edits_body">Removing the library from this device discards them.</string>
@@ -155,7 +164,6 @@
     <string name="library_delete_confirm_body">This library isn\'t synced, so it will be deleted for good. Your audio files stay in their folders.</string>
     <string name="library_delete">Delete</string>
     <string name="library_not_synced">Not synced</string>
-    <string name="settings_delete_library">Delete this library</string>
     <string name="removal_uncounted_body">This library can\'t be opened, so any changes on this device that weren\'t sent are lost. Its copy on this device is deleted; if the library is kept in storage, it stays there.</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>
@@ -342,7 +350,6 @@
     <string name="restore_code_printed">Printed %1$s</string>
     <string name="restore_code_print_keep">If you lose all your devices, choose Add device in bae on a new one, then scan this or type the code. Anyone who has this page and access to your storage can open your library: keep it somewhere private.</string>
     <string name="done">Done</string>
-    <string name="settings_people">People</string>
     <string name="members_you">You</string>
     <string name="members_unnamed">No name yet</string>
     <string name="members_invited">Invited</string>

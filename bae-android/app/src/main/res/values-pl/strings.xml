@@ -96,6 +96,20 @@
     <string name="image_load_failed">Nie udało się wczytać obrazu</string>
     <string name="gallery_loading_image">Wczytywanie obrazu…</string>
     <string name="settings_library">Biblioteka</string>
+    <string name="library_name_row">Nazwa</string>
+    <string name="restore_code_summary">Przywraca bibliotekę, jeśli utracisz wszystkie urządzenia</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d osoba</item>
+        <item quantity="few">%1$d osoby</item>
+        <item quantity="many">%1$d osób</item>
+        <item quantity="other">%1$d osoby</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d urządzenie</item>
+        <item quantity="few">%1$d urządzenia</item>
+        <item quantity="many">%1$d urządzeń</item>
+        <item quantity="other">%1$d urządzenia</item>
+    </plurals>
     <string name="settings_sync">Synchronizacja</string>
     <string name="settings_local_only">Tylko lokalnie</string>
     <string name="settings_sync_checking">Sprawdzanie synchronizacji…</string>
@@ -112,7 +126,6 @@
     <string name="copy">Kopiuj</string>
     <string name="hide">Ukryj</string>
     <string name="settings_remove_library">Usuń tę bibliotekę z tego urządzenia</string>
-    <string name="settings_remove_library_explanation">Usuwa tę bibliotekę z tego urządzenia: urządzenie opuszcza bibliotekę, a potem jego kopia i pobrane pliki są usuwane. Biblioteka pozostanie w magazynie i na twoich innych urządzeniach.</string>
     <string name="settings_remove_library_confirm_title">Usunąć bibliotekę z tego urządzenia?</string>
     <string name="settings_remove_library_confirm_body">Biblioteka pozostanie w magazynie i na twoich innych urządzeniach.</string>
     <string name="unsent_edits_body">Usunięcie biblioteki z tego urządzenia spowoduje ich odrzucenie.</string>
@@ -122,7 +135,6 @@
     <string name="library_delete_confirm_body">Ta biblioteka nie jest zsynchronizowana, więc zostanie usunięta na stałe. Twoje pliki audio zostaną w swoich folderach.</string>
     <string name="library_delete">Usuń</string>
     <string name="library_not_synced">Niezsynchronizowana</string>
-    <string name="settings_delete_library">Usuń tę bibliotekę</string>
     <string name="removal_uncounted_body">Nie można otworzyć tej biblioteki, więc wszystkie niewysłane zmiany na tym urządzeniu zostaną utracone. Jej kopia na tym urządzeniu zostanie usunięta; jeśli biblioteka jest w magazynie, tam pozostanie.</string>
     <string name="settings_provider">Dostawca</string>
     <string name="settings_account">Konto</string>
@@ -296,7 +308,6 @@
     <string name="restore_code_printed">Wydrukowano %1$s</string>
     <string name="restore_code_print_keep">Jeśli stracisz wszystkie urządzenia, wybierz w bae na nowym urządzeniu Dodaj urządzenie, a potem zeskanuj to lub wpisz kod. Każdy, kto ma tę stronę i dostęp do Twojego magazynu danych, może otworzyć Twoją bibliotekę: przechowuj ją w prywatnym miejscu.</string>
     <string name="done">Gotowe</string>
-    <string name="settings_people">Osoby</string>
     <string name="members_you">Ty</string>
     <string name="members_unnamed">Jeszcze bez nazwy</string>
     <string name="members_invited">Zaproszono</string>

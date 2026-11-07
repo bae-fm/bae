@@ -349,9 +349,6 @@ private fun sessionActions(
 ) = SessionActions(
     oauthProviders = oauthProviders,
     switchLibrary = { library -> openListed(context, scope, library, onScreen) },
-    removeLibrary = {
-        scope.launch { AppSessionHolder.removeActiveLibrary(context, onScreen) }
-    },
     resetDevice = { reset ->
         scope.launch {
             AppSessionHolder.resetDevice(context, session.libraryId, reset, onScreen) { failure ->

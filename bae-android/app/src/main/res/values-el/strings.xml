@@ -98,6 +98,16 @@
     <string name="image_load_failed">Δεν ήταν δυνατή η φόρτωση της εικόνας</string>
     <string name="gallery_loading_image">Φόρτωση της εικόνας…</string>
     <string name="settings_library">Βιβλιοθήκη</string>
+    <string name="library_name_row">Όνομα</string>
+    <string name="restore_code_summary">Επαναφέρει τη βιβλιοθήκη σας αν χάσετε όλες τις συσκευές σας</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d άτομο</item>
+        <item quantity="other">%1$d άτομα</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d συσκευή</item>
+        <item quantity="other">%1$d συσκευές</item>
+    </plurals>
     <string name="settings_sync">Συγχρονισμός</string>
     <string name="settings_local_only">Μόνο τοπικά</string>
     <string name="settings_sync_checking">Έλεγχος συγχρονισμού…</string>
@@ -114,7 +124,6 @@
     <string name="copy">Αντιγραφή</string>
     <string name="hide">Απόκρυψη</string>
     <string name="settings_remove_library">Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή</string>
-    <string name="settings_remove_library_explanation">Αφαιρεί αυτή τη βιβλιοθήκη από αυτή τη συσκευή: η συσκευή αποχωρεί από τη βιβλιοθήκη και μετά διαγράφονται το αντίγραφό της και τα ληφθέντα αρχεία. Η βιβλιοθήκη παραμένει στον χώρο αποθήκευσης και στις άλλες συσκευές σας.</string>
     <string name="settings_remove_library_confirm_title">Αφαίρεση της βιβλιοθήκης από αυτή τη συσκευή;</string>
     <string name="settings_remove_library_confirm_body">Η βιβλιοθήκη παραμένει στον χώρο αποθήκευσης και στις άλλες συσκευές σας.</string>
     <string name="unsent_edits_body">Η αφαίρεση της βιβλιοθήκης από αυτή τη συσκευή τις απορρίπτει.</string>
@@ -124,7 +133,6 @@
     <string name="library_delete_confirm_body">Αυτή η βιβλιοθήκη δεν είναι συγχρονισμένη, οπότε θα διαγραφεί οριστικά. Τα αρχεία ήχου σας παραμένουν στους φακέλους τους.</string>
     <string name="library_delete">Διαγραφή</string>
     <string name="library_not_synced">Δεν είναι συγχρονισμένη</string>
-    <string name="settings_delete_library">Διαγραφή αυτής της βιβλιοθήκης</string>
     <string name="removal_uncounted_body">Αυτή η βιβλιοθήκη δεν μπορεί να ανοίξει, οπότε όσες αλλαγές σε αυτή τη συσκευή δεν στάλθηκαν χάνονται. Το αντίγραφό της σε αυτή τη συσκευή διαγράφεται· αν η βιβλιοθήκη φυλάσσεται στον χώρο αποθήκευσης, παραμένει εκεί.</string>
     <string name="settings_provider">Πάροχος</string>
     <string name="settings_account">Λογαριασμός</string>
@@ -289,7 +297,6 @@
     <string name="restore_code_printed">Εκτυπώθηκε στις %1$s</string>
     <string name="restore_code_print_keep">Αν χάσετε όλες τις συσκευές σας, επιλέξτε «Προσθήκη συσκευής» στο bae σε μια νέα συσκευή και έπειτα σαρώστε αυτό ή πληκτρολογήστε τον κωδικό. Όποιος έχει αυτή τη σελίδα και πρόσβαση στον αποθηκευτικό σας χώρο μπορεί να ανοίξει τη βιβλιοθήκη σας: φυλάξτε τη σε ιδιωτικό μέρος.</string>
     <string name="done">Τέλος</string>
-    <string name="settings_people">Άτομα</string>
     <string name="members_you">Εσείς</string>
     <string name="members_unnamed">Χωρίς όνομα ακόμη</string>
     <string name="members_invited">Προσκλήθηκε</string>

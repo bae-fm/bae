@@ -98,6 +98,16 @@
     <string name="image_load_failed">Bilden kunde inte läsas in</string>
     <string name="gallery_loading_image">Läser in bilden…</string>
     <string name="settings_library">Bibliotek</string>
+    <string name="library_name_row">Namn</string>
+    <string name="restore_code_summary">Får tillbaka ditt bibliotek om du förlorar alla enheter</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d person</item>
+        <item quantity="other">%1$d personer</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d enhet</item>
+        <item quantity="other">%1$d enheter</item>
+    </plurals>
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_local_only">Endast lokalt</string>
     <string name="settings_sync_checking">Kontrollerar synkronisering…</string>
@@ -114,7 +124,6 @@
     <string name="copy">Kopiera</string>
     <string name="hide">Dölj</string>
     <string name="settings_remove_library">Ta bort det här biblioteket från den här enheten</string>
-    <string name="settings_remove_library_explanation">Tar bort det här biblioteket från den här enheten: enheten lämnar biblioteket, sedan raderas dess kopia och nedladdade filer. Biblioteket finns kvar i lagringen och på dina andra enheter.</string>
     <string name="settings_remove_library_confirm_title">Ta bort biblioteket från den här enheten?</string>
     <string name="settings_remove_library_confirm_body">Biblioteket finns kvar i lagringen och på dina andra enheter.</string>
     <string name="unsent_edits_body">Om biblioteket tas bort från den här enheten går de förlorade.</string>
@@ -124,7 +133,6 @@
     <string name="library_delete_confirm_body">Det här biblioteket är inte synkroniserat, så det raderas för alltid. Dina ljudfiler ligger kvar i sina mappar.</string>
     <string name="library_delete">Radera</string>
     <string name="library_not_synced">Inte synkroniserat</string>
-    <string name="settings_delete_library">Radera det här biblioteket</string>
     <string name="removal_uncounted_body">Det här biblioteket kan inte öppnas, så ändringar på den här enheten som inte har skickats går förlorade. Dess kopia på den här enheten raderas; om biblioteket finns i lagringen ligger det kvar där.</string>
     <string name="settings_provider">Leverantör</string>
     <string name="settings_account">Konto</string>
@@ -289,7 +297,6 @@
     <string name="restore_code_printed">Utskriven %1$s</string>
     <string name="restore_code_print_keep">Om du förlorar alla dina enheter väljer du Lägg till enhet i bae på en ny och skannar sedan koden eller skriver in den. Alla som har den här sidan och åtkomst till din lagring kan öppna ditt bibliotek: förvara den privat.</string>
     <string name="done">Klar</string>
-    <string name="settings_people">Personer</string>
     <string name="members_you">Du</string>
     <string name="members_unnamed">Inget namn än</string>
     <string name="members_invited">Inbjuden</string>

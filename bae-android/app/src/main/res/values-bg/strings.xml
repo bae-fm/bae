@@ -94,6 +94,16 @@
     <string name="image_load_failed">Изображението не може да бъде заредено</string>
     <string name="gallery_loading_image">Зареждане на изображението…</string>
     <string name="settings_library">Библиотека</string>
+    <string name="library_name_row">Име</string>
+    <string name="restore_code_summary">Връща библиотеката ви, ако загубите всички устройства</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d човек</item>
+        <item quantity="other">%1$d души</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d устройство</item>
+        <item quantity="other">%1$d устройства</item>
+    </plurals>
     <string name="settings_sync">Синхронизиране</string>
     <string name="settings_local_only">Само локално</string>
     <string name="settings_sync_checking">Проверка на синхронизирането…</string>
@@ -110,7 +120,6 @@
     <string name="copy">Копиране</string>
     <string name="hide">Скриване</string>
     <string name="settings_remove_library">Премахване на тази библиотека от това устройство</string>
-    <string name="settings_remove_library_explanation">Премахва тази библиотека от това устройство: устройството напуска библиотеката, след което копието му и изтеглените файлове се изтриват. Библиотеката остава в хранилището и на другите ви устройства.</string>
     <string name="settings_remove_library_confirm_title">Премахване на библиотеката от това устройство?</string>
     <string name="settings_remove_library_confirm_body">Библиотеката остава в хранилището и на другите ви устройства.</string>
     <string name="unsent_edits_body">Премахването на библиотеката от това устройство ги отхвърля.</string>
@@ -120,7 +129,6 @@
     <string name="library_delete_confirm_body">Тази библиотека не е синхронизирана, затова ще бъде изтрита завинаги. Аудиофайловете ви остават в папките си.</string>
     <string name="library_delete">Изтриване</string>
     <string name="library_not_synced">Не е синхронизирана</string>
-    <string name="settings_delete_library">Изтриване на тази библиотека</string>
     <string name="removal_uncounted_body">Тази библиотека не може да бъде отворена, затова всички промени на това устройство, които не са изпратени, се губят. Копието ѝ на това устройство се изтрива; ако библиотеката се пази в хранилище, тя остава там.</string>
     <string name="settings_provider">Доставчик</string>
     <string name="settings_account">Акаунт</string>
@@ -290,7 +298,6 @@
     <string name="restore_code_printed">Отпечатано на %1$s</string>
     <string name="restore_code_print_keep">Ако загубите всичките си устройства, изберете „Добавяне на устройство“ в bae на ново устройство, после сканирайте това или въведете кода. Всеки, който има тази страница и достъп до хранилището ви, може да отвори библиотеката ви: пазете я на скрито място.</string>
     <string name="done">Готово</string>
-    <string name="settings_people">Хора</string>
     <string name="members_you">Вие</string>
     <string name="members_unnamed">Още без име</string>
     <string name="members_invited">Поканен</string>

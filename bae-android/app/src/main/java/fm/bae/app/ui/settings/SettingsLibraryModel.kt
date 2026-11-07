@@ -12,7 +12,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
-import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeRequestedProfile
@@ -73,13 +72,7 @@ internal class SettingsLibraryModel(
     var requestedProfile by mutableStateOf<BridgeRequestedProfile?>(null)
         private set
 
-    /** The admin changes this device asked for, each until the person dismisses its outcome. */
-    var adminChanges by mutableStateOf<List<BridgeAdminChange>>(emptyList())
-        private set
-
     private var nameSubscription: ScreenSubscription<String>? = null
-
-    private var adminChangesSubscription: ScreenSubscription<List<BridgeAdminChange>>? = null
 
     private var requestedProfileSubscription: ScreenSubscription<BridgeRequestedProfile?>? = null
 
@@ -112,32 +105,6 @@ internal class SettingsLibraryModel(
             logger.error("reading the library's people failed", e)
             errors.display(e)?.let { self = SelfRead.Failed(it) }
         }
-    }
-
-    /**
-     * Follow the library's name, the profile this device's person asked for and the admin changes this device asked
-     * for, while Settings shows.
-     */
-    fun watch() {
-        watchName()
-        watchRequestedProfile()
-        adminChangesSubscription =
-            ScreenSubscription(
-                appHandle.subscribeAdminChanges().let { pulled(it::next, it::cancel) },
-                scope,
-                onValue = { value -> adminChanges = value },
-                onError = { error ->
-                    logger.error("reading the library's admin changes failed", error)
-                    errors.display(error)?.let { self = SelfRead.Failed(it) }
-                },
-            )
-    }
-
-    fun stopWatching() {
-        stopWatchingName()
-        stopWatchingRequestedProfile()
-        adminChangesSubscription?.stop()
-        adminChangesSubscription = null
     }
 
     /** Follow the library's name, replacing any subscription already running. */

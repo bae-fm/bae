@@ -93,6 +93,14 @@
     <string name="image_load_failed">画像を読み込めませんでした</string>
     <string name="gallery_loading_image">画像を読み込み中…</string>
     <string name="settings_library">ライブラリ</string>
+    <string name="library_name_row">名前</string>
+    <string name="restore_code_summary">すべてのデバイスを失っても、ライブラリを取り戻せます</string>
+    <plurals name="people_count">
+        <item quantity="other">%1$d人</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="other">%1$d台のデバイス</item>
+    </plurals>
     <string name="settings_sync">同期</string>
     <string name="settings_local_only">ローカルのみ</string>
     <string name="settings_sync_checking">同期を確認中…</string>
@@ -109,7 +117,6 @@
     <string name="copy">コピー</string>
     <string name="hide">非表示</string>
     <string name="settings_remove_library">このライブラリをこのデバイスから削除</string>
-    <string name="settings_remove_library_explanation">このデバイスからライブラリを削除します。デバイスがライブラリから退出したあと、そのコピーとダウンロード済みファイルが削除されます。ライブラリはストレージとほかのデバイスに残ります。</string>
     <string name="settings_remove_library_confirm_title">ライブラリをこのデバイスから削除しますか？</string>
     <string name="settings_remove_library_confirm_body">ライブラリはストレージとほかのデバイスに残ります。</string>
     <string name="unsent_edits_body">このデバイスからライブラリを削除すると、これらは破棄されます。</string>
@@ -119,7 +126,6 @@
     <string name="library_delete_confirm_body">このライブラリは同期されていないため、完全に削除されます。オーディオファイルはそれぞれのフォルダに残ります。</string>
     <string name="library_delete">削除</string>
     <string name="library_not_synced">未同期</string>
-    <string name="settings_delete_library">このライブラリを削除</string>
     <string name="removal_uncounted_body">このライブラリは開けないため、このデバイス上で送信されていない変更はすべて失われます。このデバイス上のコピーは削除されます。ライブラリがストレージにある場合は、そのまま残ります。</string>
     <string name="settings_provider">プロバイダ</string>
     <string name="settings_account">アカウント</string>
@@ -287,7 +293,6 @@
     <string name="restore_code_printed">プリント日: %1$s</string>
     <string name="restore_code_print_keep">すべてのデバイスを失ったら、新しいデバイスの bae で「デバイスを追加」を選び、これをスキャンするかコードを入力してください。このページとストレージへのアクセスがあれば誰でもライブラリを開けます。人目につかない場所に保管してください。</string>
     <string name="done">完了</string>
-    <string name="settings_people">メンバー</string>
     <string name="members_you">あなた</string>
     <string name="members_unnamed">名前はまだありません</string>
     <string name="members_invited">招待済み</string>

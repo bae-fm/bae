@@ -2435,7 +2435,7 @@ the role, the person, the device, or for an approval the person it lets in
 and the name the invite gave them. Coven's list says what kind of change it
 is and how it ended, so the row holds neither. Each change shows, under
 **Changes from this Mac** under People and devices in Library settings on a Mac and **Changes from this
-device** in Settings and People on Android, as what it asks ("Remove Ben",
+device** in People and devices on Android, as what it asks ("Remove Ben",
 "Rename the library to “Home”", "Let Dan in"), named from the person's profile or the
 device's name as they stand ("Remove a device" for one this device hasn't
 read yet): waiting to sync, then done, refused or
@@ -2681,7 +2681,8 @@ says the new device was added within seconds of it joining. A quiet sync is two
 requests to the storage, about 24 a minute, only while the sheet is open
 ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
 Settings keeps
-the code under **Restore code**, on a Mac on Library settings' **Restore code** page, for the day she loses every device. It is
+the code on the **Restore code** page of Library settings on a Mac and of
+Settings' Library page on Android, for the day she loses every device. It is
 made when Settings opens, one local read of her keys that the section names
 while it runs, never a bare spinner: the sheet says it is making a code for her
 new device, and the section that it is making her restore code. It shows
@@ -3296,8 +3297,8 @@ fail, saying the laptop left the library and its files are still on it.
   device" on Android) and says "The library will remain in storage and on your
   other devices." Delete asks "Delete library?" and says the library isn't
   synced, so it will be deleted for good, and that the audio files stay in their
-  folders. A Mac's first screen asks this way, and so do
-  Android's first screen and Settings. A row whose library doesn't sync
+  folders. The first screens on a Mac and on Android ask this way,
+  and neither platform's Settings removes the library. A row whose library doesn't sync
   says "Not synced" and offers *Delete* in place of *Remove*. Neither platform
   asks the person to unlock the device first: the confirmation is the only step.
   On Android's first screen no library is open, so a library that opens is
@@ -4203,6 +4204,14 @@ devices". A library with no storage has one row in place of those three,
 **Sync** saying "Not synced" with *Set up sync…* and a note that the library
 is only on this Mac. Removing the library is not in Settings; it is on the
 first screen's list (§6.4).
+
+On Android, Settings has one **Library** row that opens the Library page. Its
+card holds **Name**, with an edit mark and *Rename* for an admin, **Sync**
+with the same state, and for a library with storage **People and devices** and
+**Restore code** ("Gets your library back if you lose every device"); a
+library with no storage shows "Not synced" on the Sync row, which opens the
+page that sets sync up. Each row opens its page. Settings keeps the switch to
+another library on this device under the Library row.
 
 ### 9.7 Errors
 

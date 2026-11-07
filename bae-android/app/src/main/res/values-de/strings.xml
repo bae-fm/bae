@@ -94,6 +94,16 @@
     <string name="image_load_failed">Bild konnte nicht geladen werden</string>
     <string name="gallery_loading_image">Bild wird geladen…</string>
     <string name="settings_library">Bibliothek</string>
+    <string name="library_name_row">Name</string>
+    <string name="restore_code_summary">Holt deine Bibliothek zurück, wenn du alle Geräte verlierst</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d Person</item>
+        <item quantity="other">%1$d Personen</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d Gerät</item>
+        <item quantity="other">%1$d Geräte</item>
+    </plurals>
     <string name="settings_sync">Synchronisierung</string>
     <string name="settings_local_only">Nur lokal</string>
     <string name="settings_sync_checking">Synchronisierung wird geprüft…</string>
@@ -110,7 +120,6 @@
     <string name="copy">Kopieren</string>
     <string name="hide">Ausblenden</string>
     <string name="settings_remove_library">Diese Bibliothek von diesem Gerät entfernen</string>
-    <string name="settings_remove_library_explanation">Entfernt diese Bibliothek von diesem Gerät: Das Gerät verlässt die Bibliothek, dann werden seine Kopie und die geladenen Dateien gelöscht. Die Bibliothek bleibt im Speicher und auf deinen anderen Geräten erhalten.</string>
     <string name="settings_remove_library_confirm_title">Bibliothek von diesem Gerät entfernen?</string>
     <string name="settings_remove_library_confirm_body">Die Bibliothek bleibt im Speicher und auf deinen anderen Geräten erhalten.</string>
     <string name="unsent_edits_body">Wenn du die Bibliothek von diesem Gerät entfernst, werden sie verworfen.</string>
@@ -120,7 +129,6 @@
     <string name="library_delete_confirm_body">Diese Bibliothek ist nicht synchronisiert und wird daher endgültig gelöscht. Deine Audiodateien bleiben in ihren Ordnern.</string>
     <string name="library_delete">Löschen</string>
     <string name="library_not_synced">Nicht synchronisiert</string>
-    <string name="settings_delete_library">Diese Bibliothek löschen</string>
     <string name="removal_uncounted_body">Diese Bibliothek lässt sich nicht öffnen, daher gehen alle nicht gesendeten Änderungen auf diesem Gerät verloren. Ihre Kopie auf diesem Gerät wird gelöscht; liegt die Bibliothek im Speicher, bleibt sie dort.</string>
     <string name="settings_provider">Anbieter</string>
     <string name="settings_account">Konto</string>
@@ -290,7 +298,6 @@
     <string name="restore_code_printed">Gedruckt am %1$s</string>
     <string name="restore_code_print_keep">Wenn du alle deine Geräte verlierst, wähle in bae auf einem neuen Gerät „Gerät hinzufügen“ und scanne dann diesen Code oder tippe ihn ein. Jeder, der diese Seite und Zugriff auf deinen Speicher hat, kann deine Bibliothek öffnen: Bewahre sie an einem privaten Ort auf.</string>
     <string name="done">Fertig</string>
-    <string name="settings_people">Personen</string>
     <string name="members_you">Du</string>
     <string name="members_unnamed">Noch kein Name</string>
     <string name="members_invited">Eingeladen</string>

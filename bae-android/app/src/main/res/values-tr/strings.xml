@@ -94,6 +94,16 @@
     <string name="image_load_failed">Görüntü yüklenemedi</string>
     <string name="gallery_loading_image">Görsel yükleniyor…</string>
     <string name="settings_library">Kitaplık</string>
+    <string name="library_name_row">Ad</string>
+    <string name="restore_code_summary">Tüm cihazlarınızı kaybederseniz kitaplığınızı geri getirir</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d kişi</item>
+        <item quantity="other">%1$d kişi</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d cihaz</item>
+        <item quantity="other">%1$d cihaz</item>
+    </plurals>
     <string name="settings_sync">Eşitleme</string>
     <string name="settings_local_only">Yalnızca yerel</string>
     <string name="settings_sync_checking">Eşitleme denetleniyor…</string>
@@ -110,7 +120,6 @@
     <string name="copy">Kopyala</string>
     <string name="hide">Gizle</string>
     <string name="settings_remove_library">Bu kitaplığı bu cihazdan kaldır</string>
-    <string name="settings_remove_library_explanation">Bu kitaplığı bu cihazdan kaldırır: cihaz önce kitaplıktan ayrılır, ardından kopyası ve indirilen dosyalar silinir. Kitaplık depolamada ve diğer cihazlarınızda kalır.</string>
     <string name="settings_remove_library_confirm_title">Kitaplık bu cihazdan kaldırılsın mı?</string>
     <string name="settings_remove_library_confirm_body">Kitaplık depolamada ve diğer cihazlarınızda kalır.</string>
     <string name="unsent_edits_body">Kitaplığı bu cihazdan kaldırmak bunları siler.</string>
@@ -120,7 +129,6 @@
     <string name="library_delete_confirm_body">Bu kitaplık eşitlenmediği için kalıcı olarak silinecek. Ses dosyalarınız klasörlerinde kalır.</string>
     <string name="library_delete">Sil</string>
     <string name="library_not_synced">Eşitlenmedi</string>
-    <string name="settings_delete_library">Bu kitaplığı sil</string>
     <string name="removal_uncounted_body">Bu kitaplık açılamıyor, bu nedenle bu cihazda gönderilmemiş tüm değişiklikler kaybolur. Bu cihazdaki kopyası silinir; kitaplık depolamada tutuluyorsa orada kalır.</string>
     <string name="settings_provider">Sağlayıcı</string>
     <string name="settings_account">Hesap</string>
@@ -290,7 +298,6 @@
     <string name="restore_code_printed">Yazdırılma tarihi: %1$s</string>
     <string name="restore_code_print_keep">Tüm cihazlarınızı kaybederseniz yeni bir cihazda bae\'de Cihaz ekle\'yi seçin, ardından bunu tarayın veya kodu yazın. Bu sayfaya ve depolama alanınıza erişimi olan herkes kitaplığınızı açabilir: özel bir yerde saklayın.</string>
     <string name="done">Bitti</string>
-    <string name="settings_people">Kişiler</string>
     <string name="members_you">Siz</string>
     <string name="members_unnamed">Henüz ad yok</string>
     <string name="members_invited">Davet edildi</string>

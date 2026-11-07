@@ -98,6 +98,16 @@
     <string name="image_load_failed">A képet nem sikerült betölteni</string>
     <string name="gallery_loading_image">Kép betöltése…</string>
     <string name="settings_library">Könyvtár</string>
+    <string name="library_name_row">Név</string>
+    <string name="restore_code_summary">Visszaadja a könyvtáradat, ha elveszíted az összes eszközödet</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d személy</item>
+        <item quantity="other">%1$d személy</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d eszköz</item>
+        <item quantity="other">%1$d eszköz</item>
+    </plurals>
     <string name="settings_sync">Szinkronizálás</string>
     <string name="settings_local_only">Csak helyi</string>
     <string name="settings_sync_checking">Szinkronizálás ellenőrzése…</string>
@@ -114,7 +124,6 @@
     <string name="copy">Másolás</string>
     <string name="hide">Elrejtés</string>
     <string name="settings_remove_library">Könyvtár eltávolítása erről az eszközről</string>
-    <string name="settings_remove_library_explanation">Eltávolítja ezt a könyvtárat erről az eszközről: az eszköz kilép a könyvtárból, majd törlődik a másolata és a letöltött fájlok. A könyvtár megmarad a tárhelyen és a többi eszközödön.</string>
     <string name="settings_remove_library_confirm_title">Eltávolítod a könyvtárat erről az eszközről?</string>
     <string name="settings_remove_library_confirm_body">A könyvtár megmarad a tárhelyen és a többi eszközödön.</string>
     <string name="unsent_edits_body">Ha eltávolítod a könyvtárat erről az eszközről, elvesznek.</string>
@@ -124,7 +133,6 @@
     <string name="library_delete_confirm_body">Ez a könyvtár nincs szinkronizálva, ezért véglegesen törlődik. A hangfájljaid a mappáikban maradnak.</string>
     <string name="library_delete">Törlés</string>
     <string name="library_not_synced">Nincs szinkronizálva</string>
-    <string name="settings_delete_library">Könyvtár törlése</string>
     <string name="removal_uncounted_body">Ez a könyvtár nem nyitható meg, ezért az ezen az eszközön lévő, el nem küldött módosítások elvesznek. A könyvtár másolata törlődik erről az eszközről; ha a könyvtár tárhelyen van, ott is marad.</string>
     <string name="settings_provider">Szolgáltató</string>
     <string name="settings_account">Fiók</string>
@@ -289,7 +297,6 @@
     <string name="restore_code_printed">Nyomtatva: %1$s</string>
     <string name="restore_code_print_keep">Ha elveszíted az összes eszközödet, válaszd a bae-ben egy új eszközön az Eszköz hozzáadása lehetőséget, majd olvasd be ezt, vagy írd be a kódot. Bárki, aki birtokolja ezt az oldalt és hozzáfér a tárhelyedhez, megnyithatja a könyvtáradat: tartsd magánál.</string>
     <string name="done">Kész</string>
-    <string name="settings_people">Személyek</string>
     <string name="members_you">Te</string>
     <string name="members_unnamed">Még nincs neve</string>
     <string name="members_invited">Meghívva</string>

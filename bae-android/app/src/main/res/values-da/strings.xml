@@ -98,6 +98,16 @@
     <string name="image_load_failed">Billedet kunne ikke indlæses</string>
     <string name="gallery_loading_image">Indlæser billedet…</string>
     <string name="settings_library">Bibliotek</string>
+    <string name="library_name_row">Navn</string>
+    <string name="restore_code_summary">Henter dit bibliotek tilbage, hvis du mister alle dine enheder</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d person</item>
+        <item quantity="other">%1$d personer</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d enhed</item>
+        <item quantity="other">%1$d enheder</item>
+    </plurals>
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_local_only">Kun lokalt</string>
     <string name="settings_sync_checking">Kontrollerer synkronisering…</string>
@@ -114,7 +124,6 @@
     <string name="copy">Kopier</string>
     <string name="hide">Skjul</string>
     <string name="settings_remove_library">Fjern dette bibliotek fra denne enhed</string>
-    <string name="settings_remove_library_explanation">Fjerner dette bibliotek fra denne enhed: enheden forlader biblioteket, og derefter slettes dens kopi og downloadede filer. Biblioteket forbliver i lageret og på dine andre enheder.</string>
     <string name="settings_remove_library_confirm_title">Vil du fjerne biblioteket fra denne enhed?</string>
     <string name="settings_remove_library_confirm_body">Biblioteket forbliver i lageret og på dine andre enheder.</string>
     <string name="unsent_edits_body">Hvis biblioteket fjernes fra denne enhed, kasseres de.</string>
@@ -124,7 +133,6 @@
     <string name="library_delete_confirm_body">Dette bibliotek er ikke synkroniseret, så det slettes for altid. Dine lydfiler bliver liggende i deres mapper.</string>
     <string name="library_delete">Slet</string>
     <string name="library_not_synced">Ikke synkroniseret</string>
-    <string name="settings_delete_library">Slet dette bibliotek</string>
     <string name="removal_uncounted_body">Dette bibliotek kan ikke åbnes, så alle ændringer på denne enhed, der ikke er sendt, går tabt. Dets kopi på denne enhed slettes; hvis biblioteket ligger i lageret, bliver det der.</string>
     <string name="settings_provider">Udbyder</string>
     <string name="settings_account">Konto</string>
@@ -289,7 +297,6 @@
     <string name="restore_code_printed">Udskrevet %1$s</string>
     <string name="restore_code_print_keep">Hvis du mister alle dine enheder, skal du vælge Tilføj enhed i bae på en ny enhed og derefter scanne dette eller skrive koden. Alle, der har denne side og adgang til dit lager, kan åbne dit bibliotek: opbevar den et privat sted.</string>
     <string name="done">Færdig</string>
-    <string name="settings_people">Personer</string>
     <string name="members_you">Dig</string>
     <string name="members_unnamed">Intet navn endnu</string>
     <string name="members_invited">Inviteret</string>

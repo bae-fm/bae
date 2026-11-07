@@ -95,6 +95,18 @@
     <string name="image_load_failed">Impossibile caricare l\'immagine</string>
     <string name="gallery_loading_image">Caricamento dell’immagine…</string>
     <string name="settings_library">Libreria</string>
+    <string name="library_name_row">Nome</string>
+    <string name="restore_code_summary">Ripristina la tua libreria se perdi tutti i dispositivi</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d persona</item>
+        <item quantity="many">%1$d di persone</item>
+        <item quantity="other">%1$d persone</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d dispositivo</item>
+        <item quantity="many">%1$d di dispositivi</item>
+        <item quantity="other">%1$d dispositivi</item>
+    </plurals>
     <string name="settings_sync">Sincronizzazione</string>
     <string name="settings_local_only">Solo locale</string>
     <string name="settings_sync_checking">Verifica della sincronizzazione…</string>
@@ -111,7 +123,6 @@
     <string name="copy">Copia</string>
     <string name="hide">Nascondi</string>
     <string name="settings_remove_library">Rimuovi questa libreria da questo dispositivo</string>
-    <string name="settings_remove_library_explanation">Rimuove questa libreria da questo dispositivo: il dispositivo lascia la libreria, poi la sua copia e i file scaricati vengono eliminati. La libreria resta nello spazio di archiviazione e sugli altri tuoi dispositivi.</string>
     <string name="settings_remove_library_confirm_title">Rimuovere la libreria da questo dispositivo?</string>
     <string name="settings_remove_library_confirm_body">La libreria resta nello spazio di archiviazione e sugli altri tuoi dispositivi.</string>
     <string name="unsent_edits_body">Rimuovendo la libreria da questo dispositivo verranno eliminate.</string>
@@ -121,7 +132,6 @@
     <string name="library_delete_confirm_body">Questa libreria non è sincronizzata, quindi verrà eliminata per sempre. I tuoi file audio restano nelle loro cartelle.</string>
     <string name="library_delete">Elimina</string>
     <string name="library_not_synced">Non sincronizzata</string>
-    <string name="settings_delete_library">Elimina questa libreria</string>
     <string name="removal_uncounted_body">Questa libreria non può essere aperta, quindi le modifiche su questo dispositivo non inviate vanno perse. La sua copia su questo dispositivo viene eliminata; se la libreria è nello spazio di archiviazione, resta lì.</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>
@@ -292,7 +302,6 @@
     <string name="restore_code_printed">Stampato il %1$s</string>
     <string name="restore_code_print_keep">Se perdi tutti i tuoi dispositivi, scegli Aggiungi dispositivo in bae su uno nuovo, poi scansiona questo o digita il codice. Chiunque abbia questa pagina e l’accesso al tuo spazio di archiviazione può aprire la tua libreria: conservala in un luogo privato.</string>
     <string name="done">Fine</string>
-    <string name="settings_people">Persone</string>
     <string name="members_you">Tu</string>
     <string name="members_unnamed">Ancora senza nome</string>
     <string name="members_invited">Invitato</string>

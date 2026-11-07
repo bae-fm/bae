@@ -78,6 +78,9 @@ LibraryGridScrolled:library-grid-scrolled
 LibraryGrouped:library-grouped
 LibraryGroupedPinned:library-grouped-pinned
 LibraryMoreMenu:library-more-menu
+LibrarySettings:settings-library
+LibrarySettingsNotSynced:settings-library-not-synced
+LibrarySettingsProblem:settings-library-problem
 LibraryViewMenu:library-view-menu
 MiniPlayerAllHere:mini-player-all-here
 MiniPlayerPlayingWithAGap:mini-player-playing-with-a-gap

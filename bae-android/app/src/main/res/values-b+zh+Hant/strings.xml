@@ -93,6 +93,14 @@
     <string name="image_load_failed">無法載入影像</string>
     <string name="gallery_loading_image">正在載入圖片…</string>
     <string name="settings_library">資料庫</string>
+    <string name="library_name_row">名稱</string>
+    <string name="restore_code_summary">遺失所有裝置後，可用它找回你的資料庫</string>
+    <plurals name="people_count">
+        <item quantity="other">%1$d 人</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="other">%1$d 部裝置</item>
+    </plurals>
     <string name="settings_sync">同步</string>
     <string name="settings_local_only">僅本機</string>
     <string name="settings_sync_checking">正在檢查同步…</string>
@@ -109,7 +117,6 @@
     <string name="copy">複製</string>
     <string name="hide">隱藏</string>
     <string name="settings_remove_library">從此裝置移除此資料庫</string>
-    <string name="settings_remove_library_explanation">從此裝置移除此資料庫：此裝置先退出資料庫，然後刪除它的副本和已下載的檔案。資料庫會保留在儲存空間和你的其他裝置上。</string>
     <string name="settings_remove_library_confirm_title">要從此裝置移除資料庫嗎？</string>
     <string name="settings_remove_library_confirm_body">資料庫會保留在儲存空間和你的其他裝置上。</string>
     <string name="unsent_edits_body">從此裝置移除該資料庫會捨棄這些變更。</string>
@@ -119,7 +126,6 @@
     <string name="library_delete_confirm_body">此資料庫未同步，因此會被永久刪除。你的音訊檔案會保留在原資料夾中。</string>
     <string name="library_delete">刪除</string>
     <string name="library_not_synced">未同步</string>
-    <string name="settings_delete_library">刪除此資料庫</string>
     <string name="removal_uncounted_body">此資料庫無法開啟，因此此裝置上尚未傳送的變更都會遺失。此裝置上的副本將被刪除；如果該資料庫保存在儲存空間中，它會留在那裡。</string>
     <string name="settings_provider">提供者</string>
     <string name="settings_account">帳號</string>
@@ -287,7 +293,6 @@
     <string name="restore_code_printed">列印日期：%1$s</string>
     <string name="restore_code_print_keep">如果你遺失了所有裝置，請在新裝置的 bae 中選擇「新增裝置」，然後掃描此碼或輸入代碼。任何拿到此頁面並能存取你儲存空間的人都可以打開你的資料庫，請妥善保管。</string>
     <string name="done">完成</string>
-    <string name="settings_people">成員</string>
     <string name="members_you">你</string>
     <string name="members_unnamed">尚無名字</string>
     <string name="members_invited">已邀請</string>

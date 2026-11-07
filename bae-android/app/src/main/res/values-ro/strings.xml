@@ -100,6 +100,18 @@
     <string name="image_load_failed">Imaginea nu a putut fi încărcată</string>
     <string name="gallery_loading_image">Se încarcă imaginea…</string>
     <string name="settings_library">Bibliotecă</string>
+    <string name="library_name_row">Nume</string>
+    <string name="restore_code_summary">Îți recuperează biblioteca dacă pierzi toate dispozitivele</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d persoană</item>
+        <item quantity="few">%1$d persoane</item>
+        <item quantity="other">%1$d de persoane</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d dispozitiv</item>
+        <item quantity="few">%1$d dispozitive</item>
+        <item quantity="other">%1$d de dispozitive</item>
+    </plurals>
     <string name="settings_sync">Sincronizare</string>
     <string name="settings_local_only">Doar local</string>
     <string name="settings_sync_checking">Se verifică sincronizarea…</string>
@@ -116,7 +128,6 @@
     <string name="copy">Copiază</string>
     <string name="hide">Ascunde</string>
     <string name="settings_remove_library">Elimină această bibliotecă de pe acest dispozitiv</string>
-    <string name="settings_remove_library_explanation">Elimină această bibliotecă de pe acest dispozitiv: dispozitivul părăsește biblioteca, apoi copia lui și fișierele descărcate sunt șterse. Biblioteca rămâne în stocare și pe celelalte dispozitive ale tale.</string>
     <string name="settings_remove_library_confirm_title">Elimini biblioteca de pe acest dispozitiv?</string>
     <string name="settings_remove_library_confirm_body">Biblioteca rămâne în stocare și pe celelalte dispozitive ale tale.</string>
     <string name="unsent_edits_body">Eliminarea bibliotecii de pe acest dispozitiv le elimină.</string>
@@ -126,7 +137,6 @@
     <string name="library_delete_confirm_body">Această bibliotecă nu este sincronizată, așa că va fi ștearsă definitiv. Fișierele tale audio rămân în dosarele lor.</string>
     <string name="library_delete">Șterge</string>
     <string name="library_not_synced">Nesincronizată</string>
-    <string name="settings_delete_library">Șterge această bibliotecă</string>
     <string name="removal_uncounted_body">Această bibliotecă nu poate fi deschisă, așa că modificările de pe acest dispozitiv care nu au fost trimise se pierd. Copia ei de pe acest dispozitiv este ștearsă; dacă biblioteca este păstrată în stocare, rămâne acolo.</string>
     <string name="settings_provider">Furnizor</string>
     <string name="settings_account">Cont</string>
@@ -292,7 +302,6 @@
     <string name="restore_code_printed">Imprimat pe %1$s</string>
     <string name="restore_code_print_keep">Dacă pierzi toate dispozitivele, alege Adaugă dispozitiv în bae pe unul nou, apoi scanează acest cod sau tastează-l. Oricine are această pagină și acces la spațiul tău de stocare îți poate deschide biblioteca: păstreaz-o într-un loc privat.</string>
     <string name="done">Gata</string>
-    <string name="settings_people">Persoane</string>
     <string name="members_you">Tu</string>
     <string name="members_unnamed">Încă fără nume</string>
     <string name="members_invited">Invitat</string>

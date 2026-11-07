@@ -94,7 +94,6 @@ class SyncPendingScreenTest {
         SessionActions(
             oauthProviders = null,
             switchLibrary = {},
-            removeLibrary = {},
             resetDevice = {},
             restoreFromCode = {},
             reloadLibraries = {},

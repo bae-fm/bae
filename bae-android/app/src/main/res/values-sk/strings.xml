@@ -102,6 +102,20 @@
     <string name="image_load_failed">Obrázok sa nepodarilo načítať</string>
     <string name="gallery_loading_image">Načítava sa obrázok…</string>
     <string name="settings_library">Knižnica</string>
+    <string name="library_name_row">Názov</string>
+    <string name="restore_code_summary">Obnoví vašu knižnicu, ak stratíte všetky zariadenia</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d osoba</item>
+        <item quantity="few">%1$d osoby</item>
+        <item quantity="many">%1$d osoby</item>
+        <item quantity="other">%1$d osôb</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d zariadenie</item>
+        <item quantity="few">%1$d zariadenia</item>
+        <item quantity="many">%1$d zariadenia</item>
+        <item quantity="other">%1$d zariadení</item>
+    </plurals>
     <string name="settings_sync">Synchronizácia</string>
     <string name="settings_local_only">Len lokálne</string>
     <string name="settings_sync_checking">Kontrola synchronizácie…</string>
@@ -118,7 +132,6 @@
     <string name="copy">Kopírovať</string>
     <string name="hide">Skryť</string>
     <string name="settings_remove_library">Odstrániť túto knižnicu z tohto zariadenia</string>
-    <string name="settings_remove_library_explanation">Odstráni túto knižnicu z tohto zariadenia: zariadenie knižnicu opustí a potom sa odstráni jeho kópia a stiahnuté súbory. Knižnica zostane v úložisku a na tvojich ďalších zariadeniach.</string>
     <string name="settings_remove_library_confirm_title">Odstrániť knižnicu z tohto zariadenia?</string>
     <string name="settings_remove_library_confirm_body">Knižnica zostane v úložisku a na tvojich ďalších zariadeniach.</string>
     <string name="unsent_edits_body">Odstránením knižnice z tohto zariadenia sa zahodia.</string>
@@ -128,7 +141,6 @@
     <string name="library_delete_confirm_body">Táto knižnica nie je synchronizovaná, preto sa natrvalo odstráni. Tvoje zvukové súbory zostanú vo svojich priečinkoch.</string>
     <string name="library_delete">Odstrániť</string>
     <string name="library_not_synced">Nesynchronizovaná</string>
-    <string name="settings_delete_library">Odstrániť túto knižnicu</string>
     <string name="removal_uncounted_body">Túto knižnicu nemožno otvoriť, takže všetky zmeny na tomto zariadení, ktoré neboli odoslané, sa stratia. Jej kópia na tomto zariadení sa vymaže; ak je knižnica uložená v úložisku, zostane tam.</string>
     <string name="settings_provider">Poskytovateľ</string>
     <string name="settings_account">Účet</string>
@@ -295,7 +307,6 @@
     <string name="restore_code_printed">Vytlačené %1$s</string>
     <string name="restore_code_print_keep">Ak prídete o všetky zariadenia, vyberte v bae na novom zariadení Pridať zariadenie a potom tento kód naskenujte alebo ho prepíšte. Ktokoľvek, kto má túto stranu a prístup k vášmu úložisku, môže otvoriť vašu knižnicu: uschovajte ju na súkromnom mieste.</string>
     <string name="done">Hotovo</string>
-    <string name="settings_people">Ľudia</string>
     <string name="members_you">Ty</string>
     <string name="members_unnamed">Zatiaľ bez mena</string>
     <string name="members_invited">Pozvaný</string>

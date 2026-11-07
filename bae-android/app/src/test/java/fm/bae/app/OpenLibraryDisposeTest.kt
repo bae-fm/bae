@@ -10,10 +10,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeErrorCategory
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryClosing
-import uniffi.bae_bridge.BridgeLibraryRemoval
 
 /**
  * The switch path relies on [OpenLibrary.dispose] closing the library — which
@@ -61,38 +58,13 @@ class OpenLibraryDisposeTest {
         assertEquals(listOf("closeLibrary", "close"), handle.calls)
     }
 
-    @Test
-    fun removalDiscardsUnsentWorkThenReleasesTheHandle() {
-        val (session, handle) = openLibrary()
-
-        val removal = runBlocking { session.removeFromDevice(null) }
-
-        assertEquals(BridgeLibraryRemoval.Removed, removal)
-        assertEquals(listOf("removeLibrary", "close"), handle.calls)
-    }
-
-    @Test
-    fun aFailedRemovalStillClosesTheHandle() {
-        val (session, handle) = openLibrary(failRemoval = true)
-
-        assertThrows(BridgeException.Diagnostic::class.java) {
-            runBlocking { session.removeFromDevice(null) }
-        }
-
-        assertEquals(listOf("removeLibrary", "close"), handle.calls)
-    }
-
-    private fun openLibrary(
-        failClose: Boolean = false,
-        failRemoval: Boolean = false,
-    ): Pair<OpenLibrary, RecordingHandle> {
-        val handle = RecordingHandle(failClose, failRemoval)
+    private fun openLibrary(failClose: Boolean = false): Pair<OpenLibrary, RecordingHandle> {
+        val handle = RecordingHandle(failClose)
         return openTestLibrary(handle) to handle
     }
 
     private class RecordingHandle(
         private val failClose: Boolean,
-        private val failRemoval: Boolean,
     ) : FakeAppHandle() {
         val calls = mutableListOf<String>()
 
@@ -105,14 +77,6 @@ class OpenLibraryDisposeTest {
 
         override fun close() {
             calls.add("close")
-        }
-
-        override suspend fun removeLibrary(closing: BridgeLibraryClosing?): BridgeLibraryRemoval {
-            calls.add("removeLibrary")
-            if (failRemoval) {
-                throw BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
-            }
-            return BridgeLibraryRemoval.Removed
         }
     }
 }

@@ -96,6 +96,20 @@
     <string name="image_load_failed">Не вдалося завантажити зображення</string>
     <string name="gallery_loading_image">Завантаження зображення…</string>
     <string name="settings_library">Бібліотека</string>
+    <string name="library_name_row">Назва</string>
+    <string name="restore_code_summary">Повертає вашу бібліотеку, якщо ви втратите всі пристрої</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d людина</item>
+        <item quantity="few">%1$d людини</item>
+        <item quantity="many">%1$d людей</item>
+        <item quantity="other">%1$d людини</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d пристрій</item>
+        <item quantity="few">%1$d пристрої</item>
+        <item quantity="many">%1$d пристроїв</item>
+        <item quantity="other">%1$d пристрою</item>
+    </plurals>
     <string name="settings_sync">Синхронізація</string>
     <string name="settings_local_only">Лише локально</string>
     <string name="settings_sync_checking">Перевірка синхронізації…</string>
@@ -112,7 +126,6 @@
     <string name="copy">Копіювати</string>
     <string name="hide">Сховати</string>
     <string name="settings_remove_library">Вилучити цю бібліотеку з цього пристрою</string>
-    <string name="settings_remove_library_explanation">Вилучає цю бібліотеку з цього пристрою: пристрій виходить із бібліотеки, а потім його копію та завантажені файли видаляють. Бібліотека залишиться у сховищі та на інших ваших пристроях.</string>
     <string name="settings_remove_library_confirm_title">Вилучити бібліотеку з цього пристрою?</string>
     <string name="settings_remove_library_confirm_body">Бібліотека залишиться у сховищі та на інших ваших пристроях.</string>
     <string name="unsent_edits_body">Вилучення бібліотеки з цього пристрою відкине їх.</string>
@@ -122,7 +135,6 @@
     <string name="library_delete_confirm_body">Цю бібліотеку не синхронізовано, тому її буде видалено назавжди. Ваші аудіофайли залишаться у своїх теках.</string>
     <string name="library_delete">Видалити</string>
     <string name="library_not_synced">Не синхронізовано</string>
-    <string name="settings_delete_library">Видалити цю бібліотеку</string>
     <string name="removal_uncounted_body">Цю бібліотеку не вдається відкрити, тому всі не надіслані зміни на цьому пристрої буде втрачено. Її копію на цьому пристрої буде видалено; якщо бібліотека зберігається у сховищі, вона там і залишиться.</string>
     <string name="settings_provider">Постачальник</string>
     <string name="settings_account">Обліковий запис</string>
@@ -296,7 +308,6 @@
     <string name="restore_code_printed">Надруковано %1$s</string>
     <string name="restore_code_print_keep">Якщо ви втратите всі пристрої, на новому пристрої виберіть у bae «Додати пристрій», а потім відскануйте це або введіть код. Будь-хто, у кого є ця сторінка й доступ до вашого сховища, може відкрити вашу бібліотеку: зберігайте її в приватному місці.</string>
     <string name="done">Готово</string>
-    <string name="settings_people">Люди</string>
     <string name="members_you">Ви</string>
     <string name="members_unnamed">Ще без імені</string>
     <string name="members_invited">Запрошено</string>

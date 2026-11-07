@@ -687,52 +687,6 @@ object AppSessionHolder {
     }
 
     /**
-     * Remove the open library from this device, once the person confirmed
-     * what it loses. Core leaves the store first; offline, that fails and the
-     * library stays, reopened with the failure shown, or with nothing when
-     * the removal was cancelled. Then the next library opens, or onboarding
-     * when none remain.
-     */
-    suspend fun removeActiveLibrary(
-        context: Context,
-        onScreen: (AppScreen) -> Unit,
-    ) {
-        val session = checkNotNull(current) { "removing a library needs one open" }
-        current = null
-        val app = context.applicationContext as BaeApp
-        val removal =
-            try {
-                LibraryClosingSteps(app.host, appScope, app.bugs).use { removal ->
-                    onScreen(AppScreen.Closing(removal.steps, AppScreen.LoadingWork.REMOVING))
-                    session.removeFromDevice(removal.closing)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: BridgeException) {
-                logger.error("removing library ${session.libraryId} failed", e)
-                val message =
-                    context.displayError(e)?.let { failure ->
-                        failure.copy(line = "${context.coreString("ui.load_error.removal.title")}: ${failure.line}")
-                    }
-                openLibrary(context, session.libraryId) { screen ->
-                    if (screen is AppScreen.LibraryOpen) screen.session.messages.show(message)
-                    onScreen(screen)
-                }
-                return
-            }
-        when (removal) {
-            BridgeLibraryRemoval.Removed -> {
-                openDiscoveredOrOnboard(context, onScreen)
-            }
-
-            is BridgeLibraryRemoval.Unfinished -> {
-                logger.error("library ${session.libraryId} left its store but its files remain", removal.removal.error)
-                onScreen(AppScreen.RemovalIncomplete(context.displayError(removal.removal.error)))
-            }
-        }
-    }
-
-    /**
      * Remove [libraryId], which no session has open: open it off the main
      * thread, since core leaves the store from an open library, then remove it,
      * writing the open's steps to [opening] and the removal's to [closing]. The

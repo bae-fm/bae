@@ -42,7 +42,6 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeDiagnosticsInterface
 import uniffi.bae_bridge.BridgeLibraryClosing
-import uniffi.bae_bridge.BridgeLibraryRemoval
 
 private val logger = BaeLogger("bae.OpenLibrary")
 
@@ -326,24 +325,6 @@ class OpenLibrary internal constructor(
         stopSessionServices()
         try {
             withContext(Dispatchers.IO) { appHandle.closeLibrary(closing) }
-        } finally {
-            release()
-        }
-    }
-
-    /**
-     * Stop this session and remove its library from the device, once the
-     * person confirmed what it loses: core leaves the store before deleting
-     * the local copy, discarding what this device hasn't sent. The handle is
-     * closed whatever the outcome; a removal that failed leaves the library on
-     * the device to be opened again, and one whose files remain carries its
-     * own retry. Each step it runs is written to [closing]'s stream, when a
-     * screen shows the removal.
-     */
-    suspend fun removeFromDevice(closing: BridgeLibraryClosing?): BridgeLibraryRemoval {
-        stopSessionServices()
-        try {
-            return appHandle.removeLibrary(closing)
         } finally {
             release()
         }

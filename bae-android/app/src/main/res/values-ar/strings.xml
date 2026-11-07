@@ -98,6 +98,24 @@
     <string name="image_load_failed">تعذّر تحميل الصورة</string>
     <string name="gallery_loading_image">جارٍ تحميل الصورة…</string>
     <string name="settings_library">المكتبة</string>
+    <string name="library_name_row">الاسم</string>
+    <string name="restore_code_summary">يستعيد مكتبتك إذا فقدت كل أجهزتك</string>
+    <plurals name="people_count">
+        <item quantity="zero">%1$d أشخاص</item>
+        <item quantity="one">شخص واحد</item>
+        <item quantity="two">شخصان</item>
+        <item quantity="few">%1$d أشخاص</item>
+        <item quantity="many">%1$d شخصًا</item>
+        <item quantity="other">%1$d شخص</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="zero">%1$d أجهزة</item>
+        <item quantity="one">جهاز واحد</item>
+        <item quantity="two">جهازان</item>
+        <item quantity="few">%1$d أجهزة</item>
+        <item quantity="many">%1$d جهازًا</item>
+        <item quantity="other">%1$d جهاز</item>
+    </plurals>
     <string name="settings_sync">المزامنة</string>
     <string name="settings_local_only">محلي فقط</string>
     <string name="settings_sync_checking">جارٍ التحقق من المزامنة…</string>
@@ -114,7 +132,6 @@
     <string name="copy">نسخ</string>
     <string name="hide">إخفاء</string>
     <string name="settings_remove_library">إزالة هذه المكتبة من هذا الجهاز</string>
-    <string name="settings_remove_library_explanation">يزيل هذه المكتبة من هذا الجهاز: يغادر الجهاز المكتبة، ثم تُحذف نسخته والملفات التي نزّلها. تبقى المكتبة في التخزين وعلى أجهزتك الأخرى.</string>
     <string name="settings_remove_library_confirm_title">إزالة المكتبة من هذا الجهاز؟</string>
     <string name="settings_remove_library_confirm_body">تبقى المكتبة في التخزين وعلى أجهزتك الأخرى.</string>
     <string name="unsent_edits_body">تؤدي إزالة المكتبة من هذا الجهاز إلى تجاهلها.</string>
@@ -124,7 +141,6 @@
     <string name="library_delete_confirm_body">هذه المكتبة غير متزامنة، لذا ستُحذف نهائيًا. تبقى ملفاتك الصوتية في مجلداتها.</string>
     <string name="library_delete">حذف</string>
     <string name="library_not_synced">غير متزامنة</string>
-    <string name="settings_delete_library">حذف هذه المكتبة</string>
     <string name="removal_uncounted_body">لا يمكن فتح هذه المكتبة، لذا تُفقد أي تغييرات على هذا الجهاز لم تُرسل. تُحذف نسختها على هذا الجهاز؛ وإن كانت المكتبة محفوظة في التخزين فهي تبقى هناك.</string>
     <string name="settings_provider">المزوّد</string>
     <string name="settings_account">الحساب</string>
@@ -302,7 +318,6 @@
     <string name="restore_code_printed">تمت الطباعة في %1$s</string>
     <string name="restore_code_print_keep">إذا فقدت جميع أجهزتك، فاختر «إضافة جهاز» في bae على جهاز جديد، ثم امسح هذا الرمز ضوئيًا أو اكتبه. يمكن لأي شخص يملك هذه الصفحة وصولًا إلى مساحة التخزين لديك أن يفتح مكتبتك، فاحتفظ بها في مكان خاص.</string>
     <string name="done">تم</string>
-    <string name="settings_people">الأشخاص</string>
     <string name="members_you">أنت</string>
     <string name="members_unnamed">بلا اسم بعد</string>
     <string name="members_invited">مدعو</string>

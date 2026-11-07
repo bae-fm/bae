@@ -95,6 +95,18 @@
     <string name="image_load_failed">No se pudo cargar la imagen</string>
     <string name="gallery_loading_image">Cargando la imagen…</string>
     <string name="settings_library">Biblioteca</string>
+    <string name="library_name_row">Nombre</string>
+    <string name="restore_code_summary">Recupera tu biblioteca si pierdes todos tus dispositivos</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d persona</item>
+        <item quantity="many">%1$d de personas</item>
+        <item quantity="other">%1$d personas</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d dispositivo</item>
+        <item quantity="many">%1$d de dispositivos</item>
+        <item quantity="other">%1$d dispositivos</item>
+    </plurals>
     <string name="settings_sync">Sincronización</string>
     <string name="settings_local_only">Solo local</string>
     <string name="settings_sync_checking">Comprobando sincronización…</string>
@@ -111,7 +123,6 @@
     <string name="copy">Copiar</string>
     <string name="hide">Ocultar</string>
     <string name="settings_remove_library">Quitar esta biblioteca de este dispositivo</string>
-    <string name="settings_remove_library_explanation">Quita esta biblioteca de este dispositivo: el dispositivo sale de la biblioteca y después se borran su copia y los archivos descargados. La biblioteca seguirá en el almacenamiento y en tus otros dispositivos.</string>
     <string name="settings_remove_library_confirm_title">¿Quitar la biblioteca de este dispositivo?</string>
     <string name="settings_remove_library_confirm_body">La biblioteca seguirá en el almacenamiento y en tus otros dispositivos.</string>
     <string name="unsent_edits_body">Al quitar la biblioteca de este dispositivo, se descartan.</string>
@@ -121,7 +132,6 @@
     <string name="library_delete_confirm_body">Esta biblioteca no está sincronizada, así que se eliminará para siempre. Tus archivos de audio se quedan en sus carpetas.</string>
     <string name="library_delete">Eliminar</string>
     <string name="library_not_synced">Sin sincronizar</string>
-    <string name="settings_delete_library">Eliminar esta biblioteca</string>
     <string name="removal_uncounted_body">Esta biblioteca no se puede abrir, así que se pierden los cambios de este dispositivo que no se enviaron. Se elimina su copia en este dispositivo; si la biblioteca se guarda en el almacenamiento, sigue ahí.</string>
     <string name="settings_provider">Proveedor</string>
     <string name="settings_account">Cuenta</string>
@@ -292,7 +302,6 @@
     <string name="restore_code_printed">Impreso el %1$s</string>
     <string name="restore_code_print_keep">Si pierdes todos tus dispositivos, elige Añadir dispositivo en bae en uno nuevo y luego escanea esto o escribe el código. Cualquiera que tenga esta página y acceso a tu almacenamiento puede abrir tu biblioteca: guárdala en un lugar privado.</string>
     <string name="done">Listo</string>
-    <string name="settings_people">Personas</string>
     <string name="members_you">Tú</string>
     <string name="members_unnamed">Aún sin nombre</string>
     <string name="members_invited">Invitado</string>

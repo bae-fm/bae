@@ -98,6 +98,16 @@
     <string name="image_load_failed">Kuvaa ei voitu ladata</string>
     <string name="gallery_loading_image">Ladataan kuvaa…</string>
     <string name="settings_library">Kirjasto</string>
+    <string name="library_name_row">Nimi</string>
+    <string name="restore_code_summary">Palauttaa kirjastosi, jos menetät kaikki laitteesi</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d henkilö</item>
+        <item quantity="other">%1$d henkilöä</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d laite</item>
+        <item quantity="other">%1$d laitetta</item>
+    </plurals>
     <string name="settings_sync">Synkronointi</string>
     <string name="settings_local_only">Vain paikallisesti</string>
     <string name="settings_sync_checking">Tarkistetaan synkronointia…</string>
@@ -114,7 +124,6 @@
     <string name="copy">Kopioi</string>
     <string name="hide">Piilota</string>
     <string name="settings_remove_library">Poista tämä kirjasto tältä laitteelta</string>
-    <string name="settings_remove_library_explanation">Poistaa tämän kirjaston tästä laitteesta: laite eroaa kirjastosta, minkä jälkeen sen kopio ja ladatut tiedostot poistetaan. Kirjasto säilyy tallennustilassa ja muilla laitteillasi.</string>
     <string name="settings_remove_library_confirm_title">Poistetaanko kirjasto tältä laitteelta?</string>
     <string name="settings_remove_library_confirm_body">Kirjasto säilyy tallennustilassa ja muilla laitteillasi.</string>
     <string name="unsent_edits_body">Kirjaston poistaminen tältä laitteelta hylkää ne.</string>
@@ -124,7 +133,6 @@
     <string name="library_delete_confirm_body">Tätä kirjastoa ei ole synkronoitu, joten se poistetaan pysyvästi. Äänitiedostosi pysyvät kansioissaan.</string>
     <string name="library_delete">Poista</string>
     <string name="library_not_synced">Ei synkronoitu</string>
-    <string name="settings_delete_library">Poista tämä kirjasto</string>
     <string name="removal_uncounted_body">Tätä kirjastoa ei voi avata, joten kaikki tämän laitteen muutokset, joita ei ole lähetetty, menetetään. Sen kopio poistetaan tältä laitteelta; jos kirjasto on tallennustilassa, se säilyy siellä.</string>
     <string name="settings_provider">Palveluntarjoaja</string>
     <string name="settings_account">Tili</string>
@@ -289,7 +297,6 @@
     <string name="restore_code_printed">Tulostettu %1$s</string>
     <string name="restore_code_print_keep">Jos menetät kaikki laitteesi, valitse baessa uudella laitteella Lisää laite ja skannaa sitten tämä tai kirjoita koodi. Jokainen, jolla on tämä sivu ja pääsy tallennustilaasi, voi avata kirjastosi: säilytä sitä yksityisessä paikassa.</string>
     <string name="done">Valmis</string>
-    <string name="settings_people">Ihmiset</string>
     <string name="members_you">Sinä</string>
     <string name="members_unnamed">Ei vielä nimeä</string>
     <string name="members_invited">Kutsuttu</string>

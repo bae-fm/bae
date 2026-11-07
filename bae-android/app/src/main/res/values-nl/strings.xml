@@ -94,6 +94,16 @@
     <string name="image_load_failed">Kan afbeelding niet laden</string>
     <string name="gallery_loading_image">Afbeelding laden…</string>
     <string name="settings_library">Bibliotheek</string>
+    <string name="library_name_row">Naam</string>
+    <string name="restore_code_summary">Haalt je bibliotheek terug als je al je apparaten kwijtraakt</string>
+    <plurals name="people_count">
+        <item quantity="one">%1$d persoon</item>
+        <item quantity="other">%1$d personen</item>
+    </plurals>
+    <plurals name="device_count">
+        <item quantity="one">%1$d apparaat</item>
+        <item quantity="other">%1$d apparaten</item>
+    </plurals>
     <string name="settings_sync">Synchronisatie</string>
     <string name="settings_local_only">Alleen lokaal</string>
     <string name="settings_sync_checking">Synchronisatie controleren…</string>
@@ -110,7 +120,6 @@
     <string name="copy">Kopiëren</string>
     <string name="hide">Verbergen</string>
     <string name="settings_remove_library">Verwijder deze bibliotheek van dit apparaat</string>
-    <string name="settings_remove_library_explanation">Verwijdert deze bibliotheek van dit apparaat: het apparaat verlaat de bibliotheek, daarna worden de kopie en de gedownloade bestanden verwijderd. De bibliotheek blijft in de opslag en op je andere apparaten.</string>
     <string name="settings_remove_library_confirm_title">De bibliotheek van dit apparaat verwijderen?</string>
     <string name="settings_remove_library_confirm_body">De bibliotheek blijft in de opslag en op je andere apparaten.</string>
     <string name="unsent_edits_body">Als je de bibliotheek van dit apparaat verwijdert, worden ze weggegooid.</string>
@@ -120,7 +129,6 @@
     <string name="library_delete_confirm_body">Deze bibliotheek is niet gesynchroniseerd en wordt daarom definitief verwijderd. Je audiobestanden blijven in hun mappen.</string>
     <string name="library_delete">Verwijderen</string>
     <string name="library_not_synced">Niet gesynchroniseerd</string>
-    <string name="settings_delete_library">Deze bibliotheek verwijderen</string>
     <string name="removal_uncounted_body">Deze bibliotheek kan niet worden geopend, dus wijzigingen op dit apparaat die niet zijn verzonden, gaan verloren. De kopie op dit apparaat wordt verwijderd; staat de bibliotheek in de opslag, dan blijft die daar.</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>
@@ -290,7 +298,6 @@
     <string name="restore_code_printed">Geprint op %1$s</string>
     <string name="restore_code_print_keep">Als je al je apparaten kwijtraakt, kies je in bae op een nieuw apparaat Apparaat toevoegen en scan je dit of typ je de code. Iedereen die deze pagina heeft en toegang tot je opslag, kan je bibliotheek openen: bewaar hem op een privéplek.</string>
     <string name="done">Klaar</string>
-    <string name="settings_people">Personen</string>
     <string name="members_you">Jij</string>
     <string name="members_unnamed">Nog geen naam</string>
     <string name="members_invited">Uitgenodigd</string>

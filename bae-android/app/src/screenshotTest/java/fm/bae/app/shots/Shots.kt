@@ -23,6 +23,7 @@ import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
+import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.ErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.library.LibraryHeaderMenu
@@ -36,7 +37,9 @@ import fm.bae.app.ui.settings.AppearanceSection
 import fm.bae.app.ui.settings.CastingPage
 import fm.bae.app.ui.settings.FolderChoiceScene
 import fm.bae.app.ui.settings.RestoreCodeScene
+import fm.bae.app.ui.settings.LibrarySettingsContent
 import fm.bae.app.ui.settings.S3SetupFormScene
+import fm.bae.app.ui.settings.SyncRowSummary
 import fm.bae.app.ui.settings.TransfersContent
 import fm.bae.app.ui.sync.SyncActivityList
 import uniffi.bae_bridge.BridgeCastDevice
@@ -53,7 +56,8 @@ import uniffi.bae_bridge.BridgeRendererKind
 //   library-grid-scrolled, LibraryGrouped ⇒ library-grouped, LibraryGroupedPinned ⇒
 //   library-grouped-pinned, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
 //   library-view-menu, AlbumDetail ⇒ album-detail, CastingSettingsFound ⇒
-//   settings-casting, CastingSettingsLooking ⇒ settings-casting-looking.
+//   settings-casting, CastingSettingsLooking ⇒ settings-casting-looking, LibrarySettings ⇒ settings-library,
+//   LibrarySettingsProblem ⇒ settings-library-problem, LibrarySettingsNotSynced ⇒ settings-library-not-synced.
 
 private const val PHONE_SPEC = "spec:width=411dp,height=914dp,dpi=420"
 
@@ -298,6 +302,50 @@ fun SyncActivityNeedingAttention() {
 fun SyncUpdateRequired() {
     BaeTheme {
         ErrorBanner(error = DisplayError(LocalContext.current.coreString("core.error.sync_update_required")))
+    }
+}
+
+/** The Library page of a synced library, for an admin. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun LibrarySettings() {
+    LibrarySettingsScene(sync = SyncRowSummary("Synced", StatusTone.SUCCESS), hasStorage = true)
+}
+
+/** The Library page of a library whose sync failed. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun LibrarySettingsProblem() {
+    LibrarySettingsScene(sync = SyncRowSummary("Sync failed", StatusTone.DANGER), hasStorage = true)
+}
+
+/** The Library page of a library that is only on this phone. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun LibrarySettingsNotSynced() {
+    LibrarySettingsScene(sync = SyncRowSummary("Not synced", null), hasStorage = false)
+}
+
+@Composable
+private fun LibrarySettingsScene(
+    sync: SyncRowSummary,
+    hasStorage: Boolean,
+) {
+    BaeTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            LibrarySettingsContent(
+                name = "Library Name",
+                canRename = true,
+                sync = sync,
+                peopleAndDevices = "2 people · 3 devices",
+                hasStorage = hasStorage,
+                onBack = {},
+                onRename = {},
+                onOpenSync = {},
+                onOpenPeople = {},
+                onOpenRestoreCode = {},
+            )
+        }
     }
 }
 

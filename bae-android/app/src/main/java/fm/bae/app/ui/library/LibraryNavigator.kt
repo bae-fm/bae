@@ -8,10 +8,13 @@ import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.albumdetail.AlbumDetailScreen
 import fm.bae.app.ui.downloads.DownloadsScreen
 import fm.bae.app.ui.settings.CastingSettingsScreen
+import fm.bae.app.ui.settings.LibrarySettingsScreen
 import fm.bae.app.ui.settings.MembersScreen
+import fm.bae.app.ui.settings.RestoreCodeScreen
 import fm.bae.app.ui.settings.SettingsScreen
 import fm.bae.app.ui.settings.StorageSetupScreen
 import fm.bae.app.ui.settings.SyncPendingScreen
+import fm.bae.app.ui.settings.SyncSettingsScreen
 import fm.bae.app.ui.settings.TransfersScreen
 import kotlinx.coroutines.flow.StateFlow
 
@@ -43,6 +46,15 @@ internal sealed interface LibraryDestination {
     data object Casting : Setting
 
     data object Members : Setting
+
+    /** The open library: its name, sync, people and devices, and restore code. */
+    data object Library : Setting
+
+    /** Where the library is stored and how its sync stands. */
+    data object Sync : Setting
+
+    /** The recovery code that restores the library. */
+    data object RestoreCode : Setting
 
     data object Settings : Setting
 
@@ -183,6 +195,18 @@ private fun SettingsDestinationScreen(
 
         LibraryDestination.Members -> {
             MembersScreen(session = session, onBack = onBack)
+        }
+
+        LibraryDestination.Library -> {
+            LibrarySettingsScreen(session = session, onBack = onBack, onPush = onPush)
+        }
+
+        LibraryDestination.Sync -> {
+            SyncSettingsScreen(session = session, actions = actions, onBack = onBack, onPush = onPush)
+        }
+
+        LibraryDestination.RestoreCode -> {
+            RestoreCodeScreen(session = session, onBack = onBack)
         }
 
         LibraryDestination.SyncPending -> {
