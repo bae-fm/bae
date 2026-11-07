@@ -107,6 +107,17 @@ pub struct DbArtistSummary {
     pub album_count: i64,
 }
 
+impl DbArtistSummary {
+    /// The line under the artist's name in its list, its detail and search:
+    /// how many albums credit it.
+    pub fn count_line(&self) -> bae_types::count_label::CountLabel {
+        bae_types::count_label::CountLabel {
+            key: "core.library.album_count".to_string(),
+            count: u32::try_from(self.album_count).expect("an album count is never negative"),
+        }
+    }
+}
+
 /// Raw artist-detail aggregate, which the artist views resolve into the
 /// display-ready `crate::album_detail::ArtistDetail`.
 #[derive(Debug, Clone, PartialEq)]
@@ -115,6 +126,17 @@ pub struct DbArtistDetail {
     /// The artist's other printed names, its merged artists' too.
     pub credit_names: Vec<bae_records::credits::ArtistCreditName>,
     pub albums: Vec<DbAlbumSummary>,
+}
+
+impl DbComposerSummary {
+    /// The line under the composer's name in its list, its detail and
+    /// search: how many works it is credited on.
+    pub fn count_line(&self) -> bae_types::count_label::CountLabel {
+        bae_types::count_label::CountLabel {
+            key: "core.library.work_count".to_string(),
+            count: u32::try_from(self.work_count).expect("a work count is never negative"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

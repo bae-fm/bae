@@ -37,7 +37,7 @@ async fn artists(db: &Store) -> Vec<(String, i64)> {
         .await
         .unwrap()
         .into_iter()
-        .map(|artist| (artist.raw.artist.id, artist.raw.album_count))
+        .map(|artist| (artist.artist.id, artist.album_count))
         .collect()
 }
 

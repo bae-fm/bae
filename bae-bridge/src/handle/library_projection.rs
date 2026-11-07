@@ -348,9 +348,8 @@ mirror_struct! {
 }
 
 impl BridgeComposerSummary {
-    pub(crate) fn from_core(s: bae_views::album_detail::ComposerSummary) -> Self {
+    pub(crate) fn from_core(s: bae_views::DbComposerSummary) -> Self {
         let count_line = crate::types::BridgeCountLabel::from_core(s.count_line());
-        let bae_views::album_detail::ComposerSummary { raw } = s;
         let bae_views::DbComposerSummary {
             artist,
             image,
@@ -358,7 +357,7 @@ impl BridgeComposerSummary {
             work_count: _,
             linked_release_count,
             unlinked_credit_count,
-        } = raw;
+        } = s;
         let bae_records::DbArtist {
             id: artist_id,
             name,
@@ -381,11 +380,10 @@ impl BridgeComposerSummary {
 }
 
 impl BridgeArtistSummary {
-    pub(crate) fn from_core(s: bae_views::album_detail::ArtistSummary) -> Self {
+    pub(crate) fn from_core(s: bae_views::DbArtistSummary) -> Self {
         let count_line = crate::types::BridgeCountLabel::from_core(s.count_line());
-        let bae_views::album_detail::ArtistSummary { raw } = s;
         // The album count is read as the count line above.
-        let bae_views::DbArtistSummary { artist, image, album_count: _ } = raw;
+        let bae_views::DbArtistSummary { artist, image, album_count: _ } = s;
         let bae_records::DbArtist {
             id: artist_id,
             name,
@@ -416,15 +414,14 @@ mirror_struct! {
 }
 
 impl BridgeWorkSummary {
-    pub(super) fn from_core(s: bae_views::album_detail::WorkSummary) -> Self {
-        let bae_views::album_detail::WorkSummary { raw } = s;
+    pub(super) fn from_core(s: bae_views::DbWorkSummary) -> Self {
         let bae_views::DbWorkSummary {
             work,
             representative_release_id,
             representative_cover,
             composer_names,
             linked_release_count,
-        } = raw;
+        } = s;
         let bae_records::DbWork {
             id: work_id,
             title,
@@ -449,7 +446,7 @@ impl BridgeWorkSummary {
 }
 
 impl BridgeReleaseRoleSummary {
-    pub(super) fn from_core(s: bae_views::album_detail::ReleaseRoleSummary) -> Self {
+    pub(super) fn from_core(s: bae_views::DbReleaseRoleSummary) -> Self {
         let bae_views::DbReleaseRoleSummary { role, album } = s;
         let bae_records::DbReleaseArtistRole {
             release_id,
@@ -478,7 +475,7 @@ impl BridgeReleaseRoleSummary {
 }
 
 impl BridgeTrackRoleSummary {
-    pub(super) fn from_core(s: bae_views::album_detail::TrackRoleSummary) -> Self {
+    pub(super) fn from_core(s: bae_views::DbTrackRoleSummary) -> Self {
         let bae_views::DbTrackRoleSummary { role, track, album, artist } = s;
         let bae_records::DbTrackArtistRole {
             track_id,
@@ -529,7 +526,7 @@ impl BridgeTrackRoleSummary {
 }
 
 impl BridgeWorkTrackSummary {
-    pub(super) fn from_core(s: bae_views::album_detail::WorkTrackSummary) -> Self {
+    pub(super) fn from_core(s: bae_views::DbWorkTrackSummary) -> Self {
         let bae_views::DbWorkTrackSummary { link, track, album } = s;
         let bae_records::DbTrackWork {
             track_id,

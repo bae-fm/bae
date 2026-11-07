@@ -6,45 +6,11 @@ use crate::{
     DbWorkSummary, DbWorkTrackSummary,
 };
 
-#[derive(Debug, Clone)]
-pub struct ComposerSummary {
-    pub raw: DbComposerSummary,
-}
-
-impl ComposerSummary {
-    /// The composer as its row reads it, image and all.
-    pub(crate) fn from_raw(raw: DbComposerSummary) -> Self {
-        Self { raw }
-    }
-
-    /// The line under the composer's name in its list, its detail and
-    /// search: how many works it is credited on.
-    pub fn count_line(&self) -> bae_types::count_label::CountLabel {
-        bae_types::count_label::CountLabel {
-            key: "core.library.work_count".to_string(),
-            count: u32::try_from(self.raw.work_count).expect("a work count is never negative"),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct WorkSummary {
-    pub raw: DbWorkSummary,
-}
-
-impl WorkSummary {
-    /// The work as its row reads it, its representative release's cover and
-    /// all.
-    pub(crate) fn from_raw(raw: DbWorkSummary) -> Self {
-        Self { raw }
-    }
-}
-
 /// A composer's page above its rows: the composer, and the work the page
 /// opens first, the first its rows list.
 #[derive(Debug, Clone)]
 pub struct ComposerDetail {
-    pub composer: ComposerSummary,
+    pub composer: DbComposerSummary,
     pub default_work_id: Option<String>,
 }
 
@@ -73,19 +39,19 @@ pub enum ComposerHeading {
 pub enum ComposerDetailItem {
     /// A work, `part` when it is listed under the work heading its group.
     Work {
-        work: WorkSummary,
+        work: DbWorkSummary,
         part: bool,
     },
-    ReleaseCredit(ReleaseRoleSummary),
-    TrackCredit(TrackRoleSummary),
+    ReleaseCredit(DbReleaseRoleSummary),
+    TrackCredit(DbTrackRoleSummary),
 }
 
 #[derive(Debug, Clone)]
 pub struct WorkDetail {
-    pub work: WorkSummary,
-    pub child_works: Vec<WorkSummary>,
+    pub work: DbWorkSummary,
+    pub child_works: Vec<DbWorkSummary>,
     pub releases: Vec<WorkReleaseSummary>,
-    pub tracks: Vec<WorkTrackSummary>,
+    pub tracks: Vec<DbWorkTrackSummary>,
 }
 
 #[derive(Debug, Clone)]
@@ -113,7 +79,3 @@ impl WorkReleaseSummary {
         }
     }
 }
-
-pub type ReleaseRoleSummary = DbReleaseRoleSummary;
-pub type TrackRoleSummary = DbTrackRoleSummary;
-pub type WorkTrackSummary = DbWorkTrackSummary;

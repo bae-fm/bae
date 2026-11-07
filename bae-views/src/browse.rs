@@ -43,10 +43,8 @@ pub struct AlbumBrowseSnapshot {
 pub type LiveLibraryBrowse<Snapshot> = LiveRead<LibraryPageWindows, Snapshot>;
 
 pub type LiveAlbumBrowse = LiveLibraryBrowse<AlbumBrowseSnapshot>;
-pub type LiveArtistBrowse =
-    LiveLibraryBrowse<LibraryBrowseSnapshot<crate::album_detail::ArtistSummary>>;
-pub type LiveComposerBrowse =
-    LiveLibraryBrowse<LibraryBrowseSnapshot<crate::album_detail::ComposerSummary>>;
+pub type LiveArtistBrowse = LiveLibraryBrowse<LibraryBrowseSnapshot<crate::DbArtistSummary>>;
+pub type LiveComposerBrowse = LiveLibraryBrowse<LibraryBrowseSnapshot<crate::DbComposerSummary>>;
 /// A composer's page's rows, in the windows its screen shows.
 pub type LiveComposerDetailRows =
     LiveLibraryBrowse<LibraryBrowseSnapshot<crate::album_detail::ComposerDetailRow>>;

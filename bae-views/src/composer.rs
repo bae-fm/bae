@@ -4,7 +4,7 @@
 //! Its tables and the triggers keeping them are `composer.sql`.
 
 use super::*;
-use crate::album_detail::{ComposerSummary, WorkDetail, WorkReleaseSummary, WorkSummary};
+use crate::album_detail::{WorkDetail, WorkReleaseSummary};
 
 /// The SQL creating this part's tables and triggers.
 pub(super) const SQL: &str = include_str!("composer.sql");
@@ -96,14 +96,14 @@ pub fn resolve_composer_browse(
     projection: ComposerBrowseProjection,
     request_revision: u64,
     cause: coven::LiveQueryCause,
-) -> crate::LibraryBrowseSnapshot<ComposerSummary> {
+) -> crate::LibraryBrowseSnapshot<DbComposerSummary> {
     crate::LibraryBrowseSnapshot {
         windows: projection
             .windows
             .into_iter()
             .map(|window| bae_store::LibraryBrowseWindow {
                 window: window.window,
-                rows: window.rows.into_iter().map(ComposerSummary::from_raw).collect(),
+                rows: window.rows,
             })
             .collect(),
         total_count: projection.total_count,
@@ -120,8 +120,8 @@ pub fn resolve_work_detail_projection(projection: WorkDetailProjection) -> Optio
 /// A work's page as its rows read it, each with its cover's version.
 fn work_detail_of(raw: DbWorkDetail) -> WorkDetail {
     WorkDetail {
-        work: WorkSummary::from_raw(raw.work),
-        child_works: raw.child_works.into_iter().map(WorkSummary::from_raw).collect(),
+        work: raw.work,
+        child_works: raw.child_works,
         releases: raw.releases.into_iter().map(WorkReleaseSummary::from_raw).collect(),
         tracks: raw.tracks,
     }

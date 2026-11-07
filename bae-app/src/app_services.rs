@@ -452,7 +452,7 @@ impl AppServices {
     delegate_async!(manager, cancel_download => cancel_download(release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, retry_downloads => retry_downloads() -> Result<(), bae_library::LibraryError>);
     delegate_view!(get_artist_count => get_artist_count() -> u64);
-    delegate_view!(get_artist_page => get_artist_page(sort: &[bae_views::ArtistSortCriterion], offset: u64, limit: u64) -> Vec<bae_views::album_detail::ArtistSummary>);
+    delegate_view!(get_artist_page => get_artist_page(sort: &[bae_views::ArtistSortCriterion], offset: u64, limit: u64) -> Vec<bae_views::DbArtistSummary>);
     delegate_view!(get_artist_detail => get_artist_detail(artist_id: &str) -> Option<bae_views::album_detail::ArtistDetail>);
     delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), bae_library::LibraryError>);

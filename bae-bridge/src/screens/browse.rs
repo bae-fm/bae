@@ -124,7 +124,7 @@ browse_subscription! {
 browse_snapshot! {
     snapshot: BridgeArtistBrowseSnapshot,
     window: BridgeArtistBrowseWindow,
-    row: bae_views::album_detail::ArtistSummary => crate::types::BridgeArtistSummary,
+    row: bae_views::DbArtistSummary => crate::types::BridgeArtistSummary,
 }
 
 browse_subscription! {
@@ -137,7 +137,7 @@ browse_subscription! {
 browse_snapshot! {
     snapshot: BridgeComposerBrowseSnapshot,
     window: BridgeComposerBrowseWindow,
-    row: bae_views::album_detail::ComposerSummary => crate::types::BridgeComposerSummary,
+    row: bae_views::DbComposerSummary => crate::types::BridgeComposerSummary,
 }
 
 browse_subscription! {

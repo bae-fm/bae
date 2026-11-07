@@ -95,7 +95,7 @@ async fn listed_artists(db: &bae_store::Store) -> Vec<String> {
         .await
         .unwrap()
         .into_iter()
-        .map(|summary| summary.raw.artist.id)
+        .map(|summary| summary.artist.id)
         .collect()
 }
 

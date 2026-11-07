@@ -3,7 +3,7 @@
 //! Its tables and the triggers keeping them are `artist.sql`.
 
 use super::*;
-use crate::album_detail::{AlbumSummary, ArtistDetail, ArtistSummary};
+use crate::album_detail::{AlbumSummary, ArtistDetail};
 
 /// The SQL creating this part's tables and triggers.
 pub(super) const SQL: &str = include_str!("artist.sql");
@@ -18,18 +18,16 @@ impl LibraryViews {
         sort: &[ArtistSortCriterion],
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<ArtistSummary>, DbError> {
+    ) -> Result<Vec<DbArtistSummary>, DbError> {
         let order = artist_order(sort);
-        let rows: Vec<DbArtistSummary> = self
-            .store
+        self.store
             .read(move |sql| {
                 Ok(artist_rows_on(&sql, &order, &order.everything(), limit, offset)?
                     .into_iter()
                     .map(|(row, _)| row)
                     .collect())
             })
-            .await?;
-        Ok(rows.into_iter().map(ArtistSummary::from_raw).collect())
+            .await
     }
 
     /// Follow the artist list under `sort` in the windows its request
@@ -116,14 +114,14 @@ pub fn resolve_artist_browse(
     projection: ArtistBrowseProjection,
     request_revision: u64,
     cause: coven::LiveQueryCause,
-) -> crate::LibraryBrowseSnapshot<ArtistSummary> {
+) -> crate::LibraryBrowseSnapshot<DbArtistSummary> {
     crate::LibraryBrowseSnapshot {
         windows: projection
             .windows
             .into_iter()
             .map(|window| bae_store::LibraryBrowseWindow {
                 window: window.window,
-                rows: window.rows.into_iter().map(ArtistSummary::from_raw).collect(),
+                rows: window.rows,
             })
             .collect(),
         total_count: projection.total_count,
@@ -142,7 +140,7 @@ pub fn resolve_artist_detail_projection(
 /// An artist's page as its rows read it.
 fn artist_detail_of(raw: DbArtistDetail) -> ArtistDetail {
     ArtistDetail {
-        artist: ArtistSummary::from_raw(raw.artist),
+        artist: raw.artist,
         credit_names: raw.credit_names,
         albums: raw.albums.into_iter().map(AlbumSummary::from_raw).collect(),
     }

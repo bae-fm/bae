@@ -40,7 +40,7 @@ async fn artist_index(
     // Bucket by first sort letter, keeping buckets ordered.
     let mut buckets: BTreeMap<String, Vec<ArtistId3>> = BTreeMap::new();
     for summary in summaries {
-        let artist = &summary.raw.artist;
+        let artist = &summary.artist;
         // Album count is this artist's release total (a Subsonic album is a
         // release), summed over the artist's bae albums.
         let release_count = crate::library_map::artist_release_count(services, &artist.id).await?;
@@ -49,7 +49,7 @@ async fn artist_index(
             &artist.name,
             release_count,
             artist.musicbrainz_artist_id.clone(),
-            summary.raw.image.as_ref(),
+            summary.image.as_ref(),
         );
         buckets.entry(index_letter(&artist.name)).or_default().push(id3);
     }
@@ -89,7 +89,7 @@ pub(crate) async fn get_artist(
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
 
-    let artist = &detail.artist.raw.artist;
+    let artist = &detail.artist.artist;
     let release_ids = artist_release_ids(&detail);
 
     let mut element = artist_id3(
@@ -97,7 +97,7 @@ pub(crate) async fn get_artist(
         &artist.name,
         release_ids.len() as i64,
         artist.musicbrainz_artist_id.clone(),
-        detail.artist.raw.image.as_ref(),
+        detail.artist.image.as_ref(),
     )
     .to_element();
 

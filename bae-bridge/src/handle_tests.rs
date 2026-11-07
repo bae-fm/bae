@@ -1,7 +1,7 @@
 use bae_records::{DbArtist, DbWork};
 use bae_views::album_detail::{
-    ComposerDetail, ComposerDetailItem, ComposerDetailRow, ComposerHeading, ComposerSummary,
-    WorkDetail, WorkReleaseSummary, WorkSummary,
+    ComposerDetail, ComposerDetailItem, ComposerDetailRow, ComposerHeading, WorkDetail,
+    WorkReleaseSummary,
 };
 use bae_views::{DbComposerSummary, DbWorkSummary};
 use std::sync::Arc;
@@ -413,21 +413,19 @@ fn upload_progress_keeps_the_counts_and_their_phase() {
 fn composer_detail_conversion_carries_the_composer_and_its_first_work() {
     let created_at = "2026-01-01T00:00:00Z".parse().unwrap();
     let detail = ComposerDetail {
-        composer: ComposerSummary {
-            raw: DbComposerSummary {
-                artist: DbArtist {
-                    id: "artist-composer-a".to_string(),
-                    name: "Composer Name A".to_string(),
-                    sort_name: Some("Composer Name Sort A".to_string()),
-                    discogs_artist_id: None,
-                    musicbrainz_artist_id: None,
-                    created_at,
-                },
-                image: None,
-                work_count: 2,
-                linked_release_count: 1,
-                unlinked_credit_count: 0,
+        composer: DbComposerSummary {
+            artist: DbArtist {
+                id: "artist-composer-a".to_string(),
+                name: "Composer Name A".to_string(),
+                sort_name: Some("Composer Name Sort A".to_string()),
+                discogs_artist_id: None,
+                musicbrainz_artist_id: None,
+                created_at,
             },
+            image: None,
+            work_count: 2,
+            linked_release_count: 1,
+            unlinked_credit_count: 0,
         },
         default_work_id: Some("work-parent-a".to_string()),
     };
@@ -449,21 +447,19 @@ fn composer_detail_row_conversion_carries_its_heading_and_part() {
         id: 7,
         heading: Some(ComposerHeading::Works),
         item: ComposerDetailItem::Work {
-            work: WorkSummary {
-                raw: DbWorkSummary {
-                    work: DbWork {
-                        id: "work-child-a".to_string(),
-                        title: "Child Work A".to_string(),
-                        disambiguation: None,
-                        work_type: Some("part".to_string()),
-                        musicbrainz_work_id: "mb-work-child-a".to_string(),
-                        created_at,
-                    },
-                    composer_names: Some("Composer Name A".to_string()),
-                    linked_release_count: 1,
-                    representative_release_id: Some("release-a".to_string()),
-                    representative_cover: None,
+            work: DbWorkSummary {
+                work: DbWork {
+                    id: "work-child-a".to_string(),
+                    title: "Child Work A".to_string(),
+                    disambiguation: None,
+                    work_type: Some("part".to_string()),
+                    musicbrainz_work_id: "mb-work-child-a".to_string(),
+                    created_at,
                 },
+                composer_names: Some("Composer Name A".to_string()),
+                linked_release_count: 1,
+                representative_release_id: Some("release-a".to_string()),
+                representative_cover: None,
             },
             part: true,
         },
@@ -484,21 +480,19 @@ fn composer_detail_row_conversion_carries_its_heading_and_part() {
 #[test]
 fn work_detail_conversion_preserves_work_release_rows() {
     let created_at = "2026-01-01T00:00:00Z".parse().unwrap();
-    let work = WorkSummary {
-        raw: DbWorkSummary {
-            work: DbWork {
-                id: "work-a".to_string(),
-                title: "Work Title A".to_string(),
-                disambiguation: None,
-                work_type: Some("work".to_string()),
-                musicbrainz_work_id: "mb-work-a".to_string(),
-                created_at,
-            },
-            composer_names: Some("Composer Name A".to_string()),
-            linked_release_count: 1,
-            representative_release_id: Some("release-a".to_string()),
-            representative_cover: None,
+    let work = DbWorkSummary {
+        work: DbWork {
+            id: "work-a".to_string(),
+            title: "Work Title A".to_string(),
+            disambiguation: None,
+            work_type: Some("work".to_string()),
+            musicbrainz_work_id: "mb-work-a".to_string(),
+            created_at,
         },
+        composer_names: Some("Composer Name A".to_string()),
+        linked_release_count: 1,
+        representative_release_id: Some("release-a".to_string()),
+        representative_cover: None,
     };
     let detail = WorkDetail {
         work,

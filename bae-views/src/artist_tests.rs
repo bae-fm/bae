@@ -116,10 +116,10 @@ async fn artist_page_lists_album_artists_with_distinct_album_counts() {
         [ArtistSortCriterion { field: ArtistSortField::Name, direction: SortDirection::Ascending }];
     let page = LibraryViews::new(db.clone()).get_artist_page(&sort, 0, 10).await.unwrap();
 
-    let ids: Vec<&str> = page.iter().map(|a| a.raw.artist.id.as_str()).collect();
+    let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
     assert_eq!(ids, vec![ARTIST_EXTRA, ARTIST_PRIMARY, ARTIST_VARIOUS]);
 
-    let counts: Vec<i64> = page.iter().map(|a| a.raw.album_count).collect();
+    let counts: Vec<i64> = page.iter().map(|a| a.album_count).collect();
     assert_eq!(counts, vec![1, 2, 1]);
 
     assert_eq!(LibraryViews::new(db.clone()).get_artist_count().await.unwrap(), 3);
@@ -135,7 +135,7 @@ async fn artist_page_sorts_by_album_count() {
     }];
     let page = LibraryViews::new(db.clone()).get_artist_page(&sort, 0, 10).await.unwrap();
 
-    let ids: Vec<&str> = page.iter().map(|a| a.raw.artist.id.as_str()).collect();
+    let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
     assert_eq!(ids, vec![ARTIST_PRIMARY, ARTIST_EXTRA, ARTIST_VARIOUS]);
 }
 
@@ -181,7 +181,7 @@ async fn artist_page_uses_id_tiebreaker() {
     for offset in 0..3 {
         let page = LibraryViews::new(db.clone()).get_artist_page(&sort, offset, 1).await.unwrap();
         assert_eq!(page.len(), 1);
-        page_ids.push(page[0].raw.artist.id.clone());
+        page_ids.push(page[0].artist.id.clone());
     }
 
     // Equal album counts, so the id breaks the tie ascending. The ids are
@@ -248,7 +248,7 @@ async fn artist_page_applies_secondary_criterion() {
         ArtistSortCriterion { field: ArtistSortField::Name, direction: SortDirection::Descending },
     ];
     let page = LibraryViews::new(db.clone()).get_artist_page(&sort, 0, 10).await.unwrap();
-    let ids: Vec<&str> = page.iter().map(|a| a.raw.artist.id.as_str()).collect();
+    let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
 
     // artist-a and artist-b tie on album_count (2 each); the secondary
     // Name DESC criterion orders artist-b before artist-a.

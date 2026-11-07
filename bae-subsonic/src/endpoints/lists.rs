@@ -237,16 +237,16 @@ fn page<'a, T>(items: &'a [T], window: &Window) -> impl Iterator<Item = &'a T> {
 /// it is read here rather than by the caller assembling the list.
 async fn artist_summary_child(
     services: &AppServices,
-    summary: &bae_views::album_detail::ArtistSummary,
+    summary: &bae_views::DbArtistSummary,
 ) -> Result<Element, SubError> {
-    let artist = &summary.raw.artist;
+    let artist = &summary.artist;
     let count = artist_release_count(services, &artist.id).await?;
     Ok(artist_id3(
         &artist.id,
         &artist.name,
         count,
         artist.musicbrainz_artist_id.clone(),
-        summary.raw.image.as_ref(),
+        summary.image.as_ref(),
     )
     .to_element())
 }

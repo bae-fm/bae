@@ -6,10 +6,7 @@
 //! Its tables and the triggers keeping them are `composer_detail.sql`.
 
 use super::*;
-use crate::album_detail::{
-    ComposerDetail, ComposerDetailItem, ComposerDetailRow, ComposerHeading, ComposerSummary,
-    WorkSummary,
-};
+use crate::album_detail::{ComposerDetail, ComposerDetailItem, ComposerDetailRow, ComposerHeading};
 use crate::composer::work_summary_columns;
 
 /// The SQL creating this part's tables and triggers.
@@ -107,10 +104,9 @@ impl LibraryViews {
 pub fn resolve_composer_detail_projection(
     projection: ComposerDetailProjection,
 ) -> Option<ComposerDetail> {
-    projection.detail.map(|raw| ComposerDetail {
-        composer: ComposerSummary::from_raw(raw.composer),
-        default_work_id: raw.default_work_id,
-    })
+    projection
+        .detail
+        .map(|raw| ComposerDetail { composer: raw.composer, default_work_id: raw.default_work_id })
 }
 
 /// One delivery of a composer's page's rows as the page shows them.
@@ -139,9 +135,7 @@ pub fn resolve_composer_detail_rows(
 fn composer_detail_row_of(raw: DbComposerDetailRow) -> ComposerDetailRow {
     let DbComposerDetailRow { entry, opens_heading, item } = raw;
     let item = match item {
-        DbComposerDetailItem::Work { work, part } => {
-            ComposerDetailItem::Work { work: WorkSummary::from_raw(work), part }
-        }
+        DbComposerDetailItem::Work { work, part } => ComposerDetailItem::Work { work, part },
         DbComposerDetailItem::ReleaseCredit(credit) => ComposerDetailItem::ReleaseCredit(credit),
         DbComposerDetailItem::TrackCredit(credit) => ComposerDetailItem::TrackCredit(credit),
     };

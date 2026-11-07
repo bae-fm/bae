@@ -3,15 +3,15 @@
 //! that produce them.
 
 use super::*;
-use crate::DbLibrarySearchResults;
+use crate::{DbArtistSummary, DbComposerSummary, DbLibrarySearchResults, DbWorkSummary};
 
 #[derive(Debug, Clone, Default)]
 pub struct SearchResults {
     pub albums: Vec<AlbumSearchResult>,
-    pub artists: Vec<ArtistSummary>,
+    pub artists: Vec<DbArtistSummary>,
     pub tracks: Vec<TrackSearchResult>,
-    pub composers: Vec<ComposerSummary>,
-    pub works: Vec<WorkSummary>,
+    pub composers: Vec<DbComposerSummary>,
+    pub works: Vec<DbWorkSummary>,
 }
 
 impl SearchResults {
@@ -49,9 +49,9 @@ impl SearchResults {
                     }
                 })
                 .collect(),
-            artists: raw.artists.into_iter().map(ArtistSummary::from_raw).collect(),
-            composers: raw.composers.into_iter().map(ComposerSummary::from_raw).collect(),
-            works: raw.works.into_iter().map(WorkSummary::from_raw).collect(),
+            artists: raw.artists,
+            composers: raw.composers,
+            works: raw.works,
         }
     }
 }
