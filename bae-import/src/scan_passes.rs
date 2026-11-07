@@ -21,7 +21,9 @@ use folder_reading::{change_folder_reading, read_changed_folders};
 pub(crate) use scan_items::scan_item_seed;
 #[cfg(any(test, feature = "test-utils"))]
 pub use scan_items::store_scan_item;
-use scan_items::{announce_regrouped, announce_scan_write, store_scan_items};
+use scan_items::{
+    announce_regrouped, announce_scan_write, identifies_automatically, store_scan_items,
+};
 #[cfg(test)]
 use scanning::ScanEnded;
 use scanning::{record_scan_failure, report_refused_scan_write, rescan_and_reconcile};

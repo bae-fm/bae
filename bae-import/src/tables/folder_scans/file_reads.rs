@@ -6,7 +6,8 @@ use super::read::{load_items, RowSources};
 use super::tag_snapshot::load_root_file_tags;
 use super::*;
 use crate::file_tag_reader::FileTagReader;
-use crate::folder_scanner::{Coverage, FileReads};
+use crate::file_tag_snapshot::FileTagSnapshot;
+use crate::folder_scanner::{Coverage, FileReads, ScanItem};
 use std::sync::Arc;
 
 impl ImportTables {
@@ -39,26 +40,72 @@ impl ImportTables {
             .await
     }
 
-    /// Whether a settled entry the scans stored under `watched_folder_path`
-    /// reads any of the files `coverage` reads.
-    pub(crate) async fn settled_entry_reads(
+    /// What the store holds that seeds each of `items`, in their order, all
+    /// in one read.
+    pub(crate) async fn load_scan_batch_readings(
         &self,
-        watched_folder_path: &Path,
-        coverage: &Coverage,
-    ) -> Result<bool, DbError> {
-        let watched_folder_path = watched_folder_path.to_path_buf();
-        let coverage = coverage.clone();
-        self.store
-            .read(move |sql| {
-                Ok(!read::entries_reading(
-                    &sql,
-                    &watched_folder_path,
-                    &coverage,
-                    read::Readers::Settled,
-                )?
-                .is_empty())
-            })
-            .await
+        items: &[ScanItem],
+    ) -> Result<Vec<ScanItemReadings>, DbError> {
+        let wanted: Vec<_> = items.iter().map(ReadingsWanted::of).collect();
+        self.store.read(move |sql| wanted.iter().map(|wanted| wanted.load(&sql)).collect()).await
+    }
+}
+
+/// What the store holds that seeds one scan item.
+#[derive(Default)]
+pub(crate) struct ScanItemReadings {
+    /// A tentative item whose files a settled entry already reads.
+    pub(crate) settled: bool,
+    /// The tag reading stored for the item's candidate, when it reads the
+    /// same files. None for an item that is settled or has no files.
+    pub(crate) stored: Option<FileTagSnapshot>,
+}
+
+/// What [`ImportTables::load_scan_batch_readings`] asks of the store for one
+/// item.
+struct ReadingsWanted {
+    /// The candidate the item is, with its coverage; none for an item with no
+    /// files to read tags from.
+    candidate: Option<(PathBuf, CandidateKey, PathBuf, Coverage)>,
+    /// Whether the item is tentative, so a settled entry may already read it.
+    tentative: bool,
+}
+
+impl ReadingsWanted {
+    fn of(item: &ScanItem) -> Self {
+        let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
+            return Self { candidate: None, tentative: false };
+        };
+        Self {
+            candidate: Some((
+                candidate.watched_folder_path.clone(),
+                candidate.key(),
+                candidate.file_root.clone(),
+                item.coverage(),
+            )),
+            tentative: matches!(item, ScanItem::Discovered(_)),
+        }
+    }
+
+    fn load(&self, sql: &SqlReadContext<'_>) -> Result<ScanItemReadings, DbError> {
+        let Some((watched_folder_path, key, file_root, coverage)) = &self.candidate else {
+            return Ok(ScanItemReadings::default());
+        };
+        if self.tentative
+            && !read::entries_reading(sql, watched_folder_path, coverage, read::Readers::Settled)?
+                .is_empty()
+        {
+            return Ok(ScanItemReadings { settled: true, stored: None });
+        }
+        Ok(ScanItemReadings {
+            settled: false,
+            stored: super::tag_snapshot::load_stored_file_tag_reading_on(
+                sql,
+                watched_folder_path,
+                key,
+                file_root,
+            )?,
+        })
     }
 }
 

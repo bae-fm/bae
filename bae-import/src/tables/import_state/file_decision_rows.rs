@@ -225,6 +225,63 @@ impl ImportTables {
             .process(|process| process())
             .await
     }
+
+    /// The file decisions of each of `content_hashes`, in one read. A hash
+    /// nothing is stored for reads as no decisions at revision zero, as
+    /// [`Self::load_candidate_file_edits`] reads it.
+    pub async fn load_candidate_file_edits_of(
+        &self,
+        content_hashes: &[String],
+    ) -> Result<HashMap<String, CandidateFileEdits>, DbError> {
+        let hashes = serde_json::to_string(content_hashes)
+            .map_err(|error| DbError::encode("the content hashes to read decisions of", error))?;
+        self.store
+            .read(move |sql| {
+                let rows = sql.query(
+                    &format!(
+                        "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
+                         FROM import_candidate_state AS state \
+                         WHERE state.content_hash IN (SELECT value FROM json_each(?))"
+                    ),
+                    [hashes],
+                    read_file_edits,
+                )?;
+                Ok(Box::new(move || {
+                    rows.into_iter()
+                        .map(|stored| Ok((stored.content_hash().to_string(), stored.edits()?)))
+                        .collect::<Result<HashMap<_, _>, DbError>>()
+                }) as FinishRead<HashMap<String, CandidateFileEdits>>)
+            })
+            .process(|process| process())
+            .await
+    }
+
+    /// The revision the file decisions of each of `content_hashes` stand at,
+    /// in one read; a hash nothing is stored for stands at revision zero.
+    pub async fn load_candidate_file_edit_revisions(
+        &self,
+        content_hashes: &[String],
+    ) -> Result<HashMap<String, u64>, DbError> {
+        let hashes = serde_json::to_string(content_hashes)
+            .map_err(|error| DbError::encode("the content hashes to read revisions of", error))?;
+        self.store
+            .read(move |sql| {
+                let rows = sql.query(
+                    "SELECT content_hash, edit_revision FROM import_candidate_state \
+                     WHERE content_hash IN (SELECT value FROM json_each(?))",
+                    [hashes],
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+                )?;
+                rows.into_iter()
+                    .map(|(content_hash, revision)| {
+                        let revision =
+                            to_u64(revision, &format!("{content_hash}'s file edit revision"))?;
+                        Ok((content_hash, revision))
+                    })
+                    .collect()
+            })
+            .await
+    }
 }
 
 /// The file decisions of every candidate a decision was made for, each at its

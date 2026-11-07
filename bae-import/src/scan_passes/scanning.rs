@@ -427,7 +427,8 @@ async fn walk_and_reconcile(
     else {
         return Ok(());
     };
-    announce_regrouped(&regrouped, services).await?;
+    let automatic = identifies_automatically(services).await?;
+    announce_regrouped(&regrouped, automatic, services).await?;
     info!(
         "folder scan of {} wrote {} entries; displaced {:?}; pruned {:?}",
         root.display(),

@@ -30,6 +30,10 @@ struct StoreInner {
     /// awaits every call it makes on its handle, so it is the one that
     /// reports such a bug, once.
     bugs: BugSinkRef,
+    /// How many reads the store has been asked for, so a test can hold a code
+    /// path to the reads it should make.
+    #[cfg(any(test, feature = "test-utils"))]
+    reads: std::sync::atomic::AtomicU64,
 }
 
 /// The library's store over coven's owned connection. Writes to synced tables
@@ -59,7 +63,15 @@ impl Store {
     /// The store over `handle`, stamping its writes by `clock`, reporting a
     /// bug a call carries back to `bugs`, the app's crash reporter.
     pub fn new(handle: CovenHandle, clock: ClockRef, bugs: BugSinkRef) -> Self {
-        Store { inner: Arc::new(StoreInner { handle, clock, bugs }) }
+        Store {
+            inner: Arc::new(StoreInner {
+                handle,
+                clock,
+                bugs,
+                #[cfg(any(test, feature = "test-utils"))]
+                reads: std::sync::atomic::AtomicU64::new(0),
+            }),
+        }
     }
 
     /// `result`, once the bug its coven call carried back, if any, has gone
@@ -78,7 +90,15 @@ impl Store {
         F: for<'conn> FnOnce(SqlReadContext<'conn>) -> Result<R, DbError> + Send + 'static,
         R: Send + 'static,
     {
+        #[cfg(any(test, feature = "test-utils"))]
+        self.inner.reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         StoreRead::new(self.inner.handle.read(f), self.inner.bugs.as_ref())
+    }
+
+    /// How many reads have been asked of this store since it was made.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn reads_asked(&self) -> u64 {
+        self.inner.reads.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Run a write with a borrowed transaction context.

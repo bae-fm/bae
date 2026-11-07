@@ -335,15 +335,16 @@ async fn read_folder_again(
     }
     let changed = writes.iter().filter(|(_, write)| write.changed()).count();
     let unchanged = writes.len() - changed;
+    let automatic = identifies_automatically(services).await?;
     for (entry, write) in writes {
-        announce_scan_write(entry, &write, services).await?;
+        announce_scan_write(entry, &write, automatic, services).await?;
     }
     for candidate_key in &pruned {
         services.event_tx.send(crate::ImportEvent::Scan(ScanEvent::CandidateRemoved {
             candidate_key: candidate_key.clone(),
         }));
     }
-    announce_regrouped(&regrouped, services).await?;
+    announce_regrouped(&regrouped, automatic, services).await?;
     debug!(
         "{} under {} read again{} in {:?}: read in {read_at:?}, dates and tags by \
          {prepared_at:?}, commit lock by {locked_at:?}, stored by {committed_at:?}; \

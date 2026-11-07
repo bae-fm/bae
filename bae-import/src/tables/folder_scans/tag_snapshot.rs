@@ -174,41 +174,6 @@ fn tag_values_json<T: serde::Serialize>(values: &[T]) -> Result<String, DbError>
 }
 
 impl ImportTables {
-    /// The tag reading stored for the release at `candidate_path` under
-    /// `watched_folder_path`, when the release stored there reads its files
-    /// from `file_root`: each of its facts is then of the file at the same
-    /// path below that folder.
-    pub(crate) async fn load_stored_file_tag_reading(
-        &self,
-        watched_folder_path: &Path,
-        candidate_path: &CandidateKey,
-        file_root: &Path,
-    ) -> Result<Option<FileTagSnapshot>, DbError> {
-        let watched_folder_path = watched_folder_path.to_path_buf();
-        let candidate_path = candidate_path.clone();
-        let file_root = coven::path_bytes(file_root);
-        self.store
-            .read(move |sql| {
-                let stored_root: Option<Vec<u8>> = sql
-                    .query_row(
-                        "SELECT file_root FROM scan_candidate \
-                     WHERE watched_folder_path = ? AND path = ?",
-                        params![coven::path_bytes(&watched_folder_path), candidate_path],
-                        |row| row.get(0),
-                    )
-                    .optional()?;
-                if stored_root.as_ref() != Some(&file_root) {
-                    return Ok(None);
-                }
-                super::tag_snapshot::load_file_tag_snapshot(
-                    &sql,
-                    &watched_folder_path,
-                    &candidate_path,
-                )
-            })
-            .await
-    }
-
     /// The candidate's current scan generation and whatever file-tag snapshot
     /// is stored for it, even an outdated one, so a caller can tell a
     /// candidate never read from one whose reading is out of date.
@@ -254,6 +219,29 @@ struct StoredEmbeddedCoverColumns {
     source_relative_path: Option<String>,
     content_type: Option<String>,
     data: Option<Vec<u8>>,
+}
+
+/// The tag reading stored for the release at `candidate_path` under
+/// `watched_folder_path`, when the release stored there reads its files from
+/// `file_root`: each of its facts is then of the file at the same path below
+/// that folder.
+pub(super) fn load_stored_file_tag_reading_on(
+    sql: &impl coven::SqlRead,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
+    file_root: &Path,
+) -> Result<Option<FileTagSnapshot>, DbError> {
+    let stored_root: Option<Vec<u8>> = sql
+        .query_row(
+            "SELECT file_root FROM scan_candidate WHERE watched_folder_path = ? AND path = ?",
+            params![coven::path_bytes(watched_folder_path), candidate_path],
+            |row| row.get(0),
+        )
+        .optional()?;
+    if stored_root.as_ref() != Some(&coven::path_bytes(file_root)) {
+        return Ok(None);
+    }
+    load_file_tag_snapshot(sql, watched_folder_path, candidate_path)
 }
 
 /// The candidate's current scan stamp and any snapshot stored under it. The
