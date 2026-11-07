@@ -22,6 +22,9 @@ bae-store = { workspace = true }
 # The store: its connection, schema migrations, sync, files and live queries.
 coven = { workspace = true }
 rusqlite = { workspace = true }
+# How a failure to record a failed start says it holds a bug already reported.
+bae-util = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 bae-store = { workspace = true, features = ["test-utils"] }

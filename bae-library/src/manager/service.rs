@@ -61,7 +61,7 @@ impl LibraryManager {
         store.call(bae_transfers::tables::clear_transfers_on).await?;
         // Nor does an attempt to start sync: a failed start stands only in
         // the process that made it.
-        sync_status.record_sync_start_failure(None).await?;
+        sync_status.clear_sync_start_failure().await?;
         let manager = LibraryManager {
             #[cfg(desktop)]
             release_reads,

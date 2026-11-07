@@ -285,7 +285,7 @@ impl LibraryManager {
                 let error = LibraryError::from(failed);
                 let recorded = failed_start.spawn_supervised_task(
                     "record the failed sync start",
-                    async move { manager.set_sync_error(Some(&error)).await },
+                    async move { manager.set_sync_error(&error).await },
                     |_| {},
                 );
                 if let Err(error) = recorded {
@@ -308,7 +308,7 @@ impl LibraryManager {
         tracing::info!("startup sync attachment started");
         if let Err(error) = self.attach_and_start_sync().await {
             warn!("startup sync connect failed; opening library not connected: {error}");
-            self.set_sync_error(Some(&error)).await;
+            self.set_sync_error(&error).await;
         }
         tracing::info!(
             attachment_ms = started.elapsed().as_millis(),
@@ -341,23 +341,22 @@ impl LibraryManager {
         if !self.is_sync_ready().await? {
             if let Err(error) = self.attach_and_start_sync().await {
                 warn!("sync reconnect failed: {error}");
-                self.set_sync_error(Some(&error)).await;
+                self.set_sync_error(&error).await;
                 return Err(error);
             }
         }
-        self.sync_status.record_sync_start_failure(None).await?;
+        self.sync_status.clear_sync_start_failure().await?;
         drop(self.retry_now().await?);
         Ok(())
     }
 
     /// Record the failed start the status line reads, in the failure's own
     /// category, as the sync loop's failures are: a locked keychain reads as
-    /// locked, a refused sign-in as credentials. `None` clears it. A failure
-    /// to record it is logged and reported as a bug: the status line can't
-    /// say why sync didn't start.
-    async fn set_sync_error(&self, error: Option<&LibraryError>) {
-        let failure =
-            error.map(|error| bae_diagnostics::UiError::diagnostic(error.category(), error));
+    /// locked, a refused sign-in as credentials. A failure to record it is
+    /// logged and reported as a bug: the status line can't say why sync
+    /// didn't start.
+    async fn set_sync_error(&self, error: &LibraryError) {
+        let failure = bae_diagnostics::UiError::diagnostic(error.category(), error);
         if let Err(error) = self.sync_status.record_sync_start_failure(failure).await {
             self.diagnostics.report_failure("record why sync failed to start", &error);
         }

@@ -15,6 +15,7 @@ mod start_failure;
 mod storage_setup;
 pub use file_row::FileRow;
 pub use pending::PendingRow;
+pub use start_failure::StartFailureRecordError;
 pub use storage_setup::StorageSetupState;
 
 /// Sync status's part of the schema: `sync_status.sql`.

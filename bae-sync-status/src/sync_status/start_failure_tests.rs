@@ -79,10 +79,10 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
     .into_iter()
     .chain(storage.into_iter().map(C::Storage));
     for category in categories {
-        sync_status.record_sync_start_failure(Some(failure(category.clone()))).await.unwrap();
+        sync_status.record_sync_start_failure(failure(category.clone())).await.unwrap();
         assert_eq!(read_back(&db).await, Some(failure(category)));
     }
-    sync_status.record_sync_start_failure(None).await.unwrap();
+    sync_status.clear_sync_start_failure().await.unwrap();
     assert_eq!(read_back(&db).await, None);
 }
 
@@ -93,10 +93,13 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
 async fn a_class_no_start_fails_in_is_refused() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let sync_status = crate::test_fixtures::test_sync_status(&db);
-    sync_status.record_sync_start_failure(Some(failure(C::KeyringLocked))).await.unwrap();
+    sync_status.record_sync_start_failure(failure(C::KeyringLocked)).await.unwrap();
     for category in [C::ReleaseChangedSinceOpened, C::Storage(F::Bug)] {
-        let refused = sync_status.record_sync_start_failure(Some(failure(category))).await;
-        assert!(refused.is_err(), "{refused:?}");
+        let refused = sync_status.record_sync_start_failure(failure(category.clone())).await;
+        assert!(
+            matches!(&refused, Err(StartFailureRecordError::NotAStartFailure(refused)) if *refused == category),
+            "{refused:?}"
+        );
         assert_eq!(read_back(&db).await, Some(failure(C::KeyringLocked)));
     }
 }

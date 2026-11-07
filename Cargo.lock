@@ -1236,9 +1236,11 @@ dependencies = [
  "bae-people",
  "bae-records",
  "bae-store",
+ "bae-util",
  "coven",
  "rusqlite",
  "tempfile",
+ "thiserror 2.0.18",
  "tokio",
  "uuid",
 ]

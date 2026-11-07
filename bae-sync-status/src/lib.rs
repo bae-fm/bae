@@ -7,8 +7,9 @@ mod pending_item;
 pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
 mod sync_status;
 pub use sync_status::{
-    pending_action, sync_status_rows_on, FileRow, PendingAction, PendingRow, StorageSetupState,
-    SyncIndicator, SyncRetryOutcome, SyncStatus, SyncStatusRows, SyncStatusSnapshot,
+    pending_action, sync_status_rows_on, FileRow, PendingAction, PendingRow,
+    StartFailureRecordError, StorageSetupState, SyncIndicator, SyncRetryOutcome, SyncStatus,
+    SyncStatusRows, SyncStatusSnapshot,
 };
 
 #[cfg(any(test, feature = "test-utils"))]

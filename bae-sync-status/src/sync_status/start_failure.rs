@@ -6,6 +6,29 @@ use super::*;
 use bae_diagnostics::{UiError, UiErrorCategory, UiErrorClass};
 use coven::{DropboxAccess, OAuthAccess, StorageFailure};
 
+/// Why a failed start could not be recorded.
+#[derive(Debug, thiserror::Error)]
+pub enum StartFailureRecordError {
+    /// A start fails only in the classes coven's `SyncError` maps to, or as
+    /// a panic (`Internal`, which coven's storage bug is too): the caller
+    /// handed a failure in another, a bug of bae's.
+    #[error("a sync start can't fail as {0:?}")]
+    NotAStartFailure(UiErrorCategory),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+/// A bug the store's write carried back, which the store reported as it
+/// returned; a failure handed in the wrong class holds none.
+impl bae_util::task_failure::ReportedBug for StartFailureRecordError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Database(error) => error.reported_bug(),
+            Self::NotAStartFailure(_) => None,
+        }
+    }
+}
+
 /// A failed start's class in `sync_start_failure`'s columns.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct FailureColumns {
@@ -30,7 +53,7 @@ impl FailureColumns {
     /// The columns of `category`. A start fails only in the classes coven's
     /// `SyncError` maps to, or as a panic (`Internal`); any other is a bug
     /// in the caller, refused rather than kept.
-    fn of(category: &UiErrorCategory) -> Result<Self, DbError> {
+    fn of(category: &UiErrorCategory) -> Result<Self, StartFailureRecordError> {
         use UiErrorClass as K;
         if let UiErrorCategory::Storage(failure) = category {
             return Self::storage(*failure);
@@ -80,12 +103,12 @@ impl FailureColumns {
             | K::StorageSetupFinishing
             | K::DeletionUnfinished
             | K::DeletionSignInRequired => {
-                Err(DbError::Message(format!("a sync start can't fail as {category:?}")))
+                Err(StartFailureRecordError::NotAStartFailure(category.clone()))
             }
         }
     }
 
-    fn storage(failure: StorageFailure) -> Result<Self, DbError> {
+    fn storage(failure: StorageFailure) -> Result<Self, StartFailureRecordError> {
         use StorageFailure as F;
         let mut columns = Self::plain(UiErrorClass::Storage.name());
         let name = match failure {
@@ -141,9 +164,9 @@ impl FailureColumns {
             // `storage_category` classes coven's storage bug `internal`, and
             // the row keeps it as that class: never as a storage reason.
             F::Bug => {
-                return Err(DbError::Message(
-                    "a storage failure that is coven's bug is kept as internal".into(),
-                ))
+                return Err(StartFailureRecordError::NotAStartFailure(UiErrorCategory::Storage(
+                    failure,
+                )))
             }
         };
         columns.storage_failure = Some(name);
@@ -287,19 +310,17 @@ pub(super) fn start_failure_on(sql: &SqlReadContext<'_>) -> Result<Option<UiErro
 }
 
 impl SyncStatus {
-    /// Record why starting sync failed, or with `None` that no failed start
-    /// stands any more.
-    pub async fn record_sync_start_failure(&self, failure: Option<UiError>) -> Result<(), DbError> {
-        let row = failure
-            .map(|UiError::Diagnostic { category, detail }| {
-                FailureColumns::of(&category).map(|columns| (columns, detail))
-            })
-            .transpose()?;
+    /// Record why starting sync failed.
+    pub async fn record_sync_start_failure(
+        &self,
+        failure: UiError,
+    ) -> Result<(), StartFailureRecordError> {
+        let UiError::Diagnostic { category, detail } = failure;
+        let columns = FailureColumns::of(&category)?;
         self.store
             .call(move |sql| {
-                match &row {
-                    Some((columns, detail)) => sql.execute(
-                        "INSERT INTO sync_start_failure (singleton, category, storage_failure, \
+                sql.execute(
+                    "INSERT INTO sync_start_failure (singleton, category, storage_failure, \
                      required_access, size_bytes, limit_bytes, detail) \
                      VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6) \
                      ON CONFLICT (singleton) DO UPDATE SET \
@@ -307,17 +328,26 @@ impl SyncStatus {
                      required_access = excluded.required_access, \
                      size_bytes = excluded.size_bytes, limit_bytes = excluded.limit_bytes, \
                      detail = excluded.detail",
-                        params![
-                            columns.category,
-                            columns.storage_failure,
-                            columns.required_access,
-                            columns.size_bytes,
-                            columns.limit_bytes,
-                            detail
-                        ],
-                    )?,
-                    None => sql.execute("DELETE FROM sync_start_failure", [])?,
-                };
+                    params![
+                        columns.category,
+                        columns.storage_failure,
+                        columns.required_access,
+                        columns.size_bytes,
+                        columns.limit_bytes,
+                        detail
+                    ],
+                )?;
+                Ok(())
+            })
+            .await?;
+        Ok(())
+    }
+
+    /// Record that no failed start stands any more.
+    pub async fn clear_sync_start_failure(&self) -> Result<(), DbError> {
+        self.store
+            .call(|sql| {
+                sql.execute("DELETE FROM sync_start_failure", [])?;
                 Ok(())
             })
             .await
