@@ -69,7 +69,11 @@ extension ShotScene {
         syncPage("sync-status-synced", .previewSynced),
         syncPage("sync-status-waiting", .previewWaiting),
         syncPage("sync-status-offline", .previewOffline),
-        syncPage("sync-status-signed-out", .previewSignedOut),
+        syncPage(
+            "sync-status-signed-out",
+            .previewSignedOut,
+            storage: PreviewData.previewDropboxStorage
+        ),
         syncPage("sync-status-failed", .previewFailed),
     ]
 
@@ -114,16 +118,15 @@ extension ShotScene {
         }
     }
 
-    /// The Sync page of a library in S3 storage, its status block showing
+    /// The Sync page of a library in `storage`, its status block showing
     /// `shown`.
     private static func syncPage(
         _ id: String,
-        _ shown: BridgeSyncShown
+        _ shown: BridgeSyncShown,
+        storage: BridgeStorageLocation = PreviewData.previewStorage
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 500, height: 640)) {
-            let fixture = LibrarySettingsTabPreviewFixture(
-                storage: PreviewData.previewStorage
-            )
+            let fixture = LibrarySettingsTabPreviewFixture(storage: storage)
             return ShotStage(syncSettingsPagePreview(fixture, shown: shown))
         }
     }
