@@ -412,7 +412,7 @@ impl AppHandle {
 
 #[cfg(test)]
 #[path = "handle_tests.rs"]
-mod tests;
+pub(crate) mod tests;
 
 #[cfg(test)]
 mod session_tests;

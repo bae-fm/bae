@@ -46,11 +46,7 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
     use crate::types::{BridgeFastValue, BridgeSetupProgress, BridgeSetupStep as Step};
 
     let root = tempfile::tempdir().unwrap();
-    let host = crate::BridgeHost::with_test_keyring(
-        crate::BridgeDiagnostics::noop(),
-        crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
-    )
-    .unwrap();
+    let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     for name in ["First", "Second"] {
         caller

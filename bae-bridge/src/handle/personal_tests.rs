@@ -1,5 +1,4 @@
 use super::*;
-use std::sync::Arc;
 
 #[test]
 fn profiles_ratings_playlists_and_history_use_the_same_store() {
@@ -21,20 +20,8 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
     let store = library.store().clone();
     let records = library.records().clone();
     let people = bae_people::People::new(store.clone());
-    let services = runtime.block_on(async move {
-        bae_app::test_services::start_services(&library)
-            .await
-            .expect("the test library's services start")
-    });
-    let app = Arc::new(
-        AppHandle::start(
-            services,
-            runtime,
-            bae_diagnostics::Diagnostics::noop(),
-            crate::handle::tests::test_host(root.path()),
-        )
-        .unwrap(),
-    );
+    let started = super::super::tests::start_test_handle(runtime, library, root);
+    let app = started.handle().clone();
     app.runtime.block_on(async {
         let share = app.clone().generate_restore_code().await.unwrap();
         assert!(share.qr_carries_s3_key);

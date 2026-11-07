@@ -1,6 +1,6 @@
 use super::*;
 use bae_util::test_channels::HANG_GUARD;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc};
 
 /// A library created in `root` and opened, as a host opens one.
 fn open_library(root: &tempfile::TempDir) -> Arc<AppHandle> {
@@ -17,11 +17,8 @@ fn open_library_reporting(
         crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
     )
     .unwrap();
-    let setup = crate::BridgeLibrarySetup::new(host.clone());
-    let opened = tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(host.create_library(Some("Subscribed Library".into()), setup))
-        .unwrap();
+    let caller = tokio::runtime::Runtime::new().unwrap();
+    let opened = crate::handle::tests::create_opened_library(&host, &caller, "Subscribed Library");
     opened.open(50, false).unwrap()
 }
 
@@ -122,34 +119,27 @@ fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
     );
 }
 
-/// Sends the operation of each bug reported, for a test to wait on.
-struct HeardBugs(Mutex<mpsc::Sender<String>>);
-
-impl bae_diagnostics::BugReporter for HeardBugs {
-    fn report(&self, operation: &str, _detail: &str) {
-        self.0.lock().unwrap().send(operation.to_string()).expect("the test hears the report");
-    }
-}
-
 /// A feed that panics — as a host callback that throws does, through
 /// uniffi — ends with its panic reported, and the library's other feeds go
 /// on.
 #[test]
 fn a_feed_that_panics_is_reported_and_others_go_on() {
     let root = tempfile::tempdir().unwrap();
-    let (reported, reports) = mpsc::channel();
-    let app = open_library_reporting(
-        &root,
-        crate::BridgeDiagnostics::reporting_bugs_to(Arc::new(HeardBugs(Mutex::new(reported)))),
-    );
+    let reports = Arc::new(bae_diagnostics::HeardBugReports::default());
+    let app =
+        open_library_reporting(&root, crate::BridgeDiagnostics::reporting_bugs_to(reports.clone()));
 
     app.deliver_until(bae_library::CancellationToken::new(), |_| async {
         panic!("Callback interface failure: the host threw");
     });
-    assert_eq!(reports.recv_timeout(HANG_GUARD).expect("the panic is reported"), "feed a stream");
+    let (operation, _) = app
+        .runtime
+        .block_on(async { tokio::time::timeout(HANG_GUARD, reports.next()).await })
+        .expect("the panic is reported");
+    assert_eq!(operation, "feed a stream");
 
     let (_stop, started, _ended) = waiting_feed(&app);
     started.recv_timeout(HANG_GUARD).expect("another feed still starts");
     app.close_library(None).unwrap();
-    assert!(reports.try_recv().is_err(), "the panic is reported once");
+    assert!(reports.all_taken(), "the panic is reported once");
 }

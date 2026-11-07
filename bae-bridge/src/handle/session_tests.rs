@@ -46,11 +46,7 @@ fn a_released_close_that_panics_on_its_thread_is_told_not_raised_into_the_next_o
     });
 
     let root = tempfile::tempdir().unwrap();
-    let host = crate::BridgeHost::with_test_keyring(
-        crate::BridgeDiagnostics::noop(),
-        crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
-    )
-    .unwrap();
+    let host = crate::handle::tests::test_host(root.path());
     let store = coven::StoreId("00000000-0000-0000-0000-000000000001".parse().expect("a store id"));
     host.library_closing(store, thread_rx.recv().expect("the close ran on a thread"));
     host.wait_for_closing(store);

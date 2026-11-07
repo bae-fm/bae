@@ -692,6 +692,11 @@ pub struct HeardBugReports {
 
 #[cfg(any(test, feature = "test-utils"))]
 impl HeardBugReports {
+    /// Whether every report heard so far has been taken.
+    pub fn all_taken(&self) -> bool {
+        self.heard.lock().expect("bug reports mutex poisoned").is_empty()
+    }
+
     /// Wait for the first `(operation, detail)` not yet taken, and take it.
     pub async fn next(&self) -> (String, String) {
         loop {

@@ -6,17 +6,13 @@ use bae_app::live_reads::LiveStorageBrowse;
 use bae_library::storage::transfer::TransferProgress;
 use bae_library::{CancellationToken, LibraryManager};
 use bae_records::GallerySource;
-use bae_records::{DbAlbum, DbRelease, NewReleaseFile};
 use bae_store::SortDirection;
-use bae_util::content_type::ContentType;
 use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::ReleaseStorageState;
 use bae_views::StorageBrowseRequest;
 use bae_views::{StorageFilter, StorageSortCriterion, StorageSortField};
-use chrono::Utc;
 use std::path::Path;
 use tempfile::TempDir;
-use uuid::Uuid;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -37,52 +33,6 @@ async fn setup_with_cloud(tmp: &TempDir) -> bae_library::test_libraries::TestLib
     library
 }
 
-/// Insert a Local release: its originals under `source_dir`, one `DbFile` per
-/// file, and each original path in bae's device-local table.
-async fn create_local_release(
-    mgr: &LibraryManager,
-    source_dir: &Path,
-    files: &[(&str, &[u8])],
-) -> (String, String, Vec<(String, Vec<u8>)>) {
-    let now = Utc::now();
-    let album = DbAlbum {
-        id: Uuid::new_v4().to_string(),
-        title: "Album Title".to_string(),
-        year: Some(2024),
-        is_compilation: false,
-        created_at: now,
-    };
-    let release = DbRelease {
-        id: Uuid::new_v4().to_string(),
-        album_id: album.id.clone(),
-        release_name: None,
-        pressing: bae_types::pressing::Pressing::blank(),
-        source_folder_name: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: now,
-    };
-    let (album_id, release_id) = (album.id.clone(), release.id.clone());
-    mgr.insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[]).await.unwrap();
-
-    tokio::fs::create_dir_all(source_dir).await.unwrap();
-    let mut result = Vec::new();
-    for (name, data) in files {
-        let path = source_dir.join(name);
-        tokio::fs::write(&path, data).await.unwrap();
-        let file = NewReleaseFile::new(
-            &release_id,
-            name,
-            ContentType::Flac,
-            Uuid::new_v4().to_string(),
-            now,
-        );
-        mgr.add_external_file_for_test(&file, &path).await.unwrap();
-        result.push((name.to_string(), data.to_vec()));
-    }
-    (album_id, release_id, result)
-}
-
 /// Get a Remote (cloud-only, not pinned) release whose files sit in `cloud`:
 /// create it Local, attach its files, and finish the uploads.
 async fn create_remote_release(
@@ -91,7 +41,7 @@ async fn create_remote_release(
     source_dir: &Path,
     files: &[(&str, &[u8])],
 ) -> String {
-    let (_album_id, release_id, named) = create_local_release(mgr, source_dir, files).await;
+    let (release_id, named) = crate::create_local_release(mgr, source_dir, files).await;
     mgr.upload_release(&release_id, false).await.unwrap();
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, named.len(), "all files uploaded");
@@ -158,7 +108,7 @@ async fn uploads_are_counted_before_drain() {
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
     let source = tmp.path().join("src");
-    let (_album_id, release_id, named) = create_local_release(
+    let (release_id, named) = crate::create_local_release(
         mgr.manager(),
         &source,
         &[("01.flac", b"aaaaaaaa"), ("02.flac", b"bbbbbbbbbbbb")],
@@ -188,8 +138,8 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
-    let (_a, release_id, _f) =
-        create_local_release(mgr.manager(), &tmp.path().join("src"), &[]).await;
+    let (release_id, _f) =
+        crate::create_local_release(mgr.manager(), &tmp.path().join("src"), &[]).await;
 
     // No cover row yet → no bytes.
     assert!(
@@ -232,8 +182,9 @@ async fn test_pin_rejects_local_release() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
-    let (_a, release_id, _f) =
-        create_local_release(mgr.manager(), &tmp.path().join("src"), &[("a.flac", b"a")]).await;
+    let (release_id, _f) =
+        crate::create_local_release(mgr.manager(), &tmp.path().join("src"), &[("a.flac", b"a")])
+            .await;
 
     let events =
         mgr.manager()
@@ -252,8 +203,9 @@ async fn test_unpin_rejects_local_release() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
-    let (_a, release_id, _f) =
-        create_local_release(mgr.manager(), &tmp.path().join("src"), &[("a.flac", b"a")]).await;
+    let (release_id, _f) =
+        crate::create_local_release(mgr.manager(), &tmp.path().join("src"), &[("a.flac", b"a")])
+            .await;
 
     assert!(
         mgr.manager().unpin_release(&release_id).await.is_err(),
@@ -475,8 +427,8 @@ async fn test_missing_external_source_maps_to_error() {
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
     let source_dir = tmp.path().join("src");
-    let (_a, release_id, _f) =
-        create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"present")]).await;
+    let (release_id, _f) =
+        crate::create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"present")]).await;
     let file =
         mgr.manager().get_files_for_release(&release_id).await.unwrap().into_iter().next().unwrap();
 
@@ -502,8 +454,9 @@ async fn transition_completions_deliver_storage_values() {
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
-    let (_a, release_id, _named) =
-        create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
+    let (release_id, _named) =
+        crate::create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"round-trip-bytes")])
+            .await;
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     let values = bae_app::live_reads::subscribe_storage_browse(
         mgr.manager(),
@@ -545,12 +498,18 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
-    let (_a, first, _) =
-        create_local_release(mgr.manager(), &tmp.path().join("first"), &[("a.flac", b"first")])
-            .await;
-    let (_b, second, _) =
-        create_local_release(mgr.manager(), &tmp.path().join("second"), &[("b.flac", b"second")])
-            .await;
+    let (first, _) = crate::create_local_release(
+        mgr.manager(),
+        &tmp.path().join("first"),
+        &[("a.flac", b"first")],
+    )
+    .await;
+    let (second, _) = crate::create_local_release(
+        mgr.manager(),
+        &tmp.path().join("second"),
+        &[("b.flac", b"second")],
+    )
+    .await;
     mgr.manager().upload_release(&first, false).await.unwrap();
     mgr.manager().upload_release(&second, false).await.unwrap();
 

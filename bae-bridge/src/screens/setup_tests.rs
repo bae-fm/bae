@@ -41,11 +41,7 @@ fn the_stream_holds_the_running_step_until_the_call_ends() {
 #[test]
 fn creating_a_library_reports_its_step() {
     let root = tempfile::tempdir().unwrap();
-    let host = crate::BridgeHost::with_test_keyring(
-        crate::BridgeDiagnostics::noop(),
-        crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
-    )
-    .unwrap();
+    let host = crate::handle::tests::test_host(root.path());
     let setup = BridgeLibrarySetup::new(host.clone());
     let caller = tokio::runtime::Runtime::new().unwrap();
     caller.block_on(host.create_library(Some("Created".into()), setup.clone())).unwrap();

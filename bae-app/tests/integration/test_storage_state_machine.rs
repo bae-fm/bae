@@ -5,19 +5,15 @@
 
 use bae_app::live_reads::LiveStorageBrowse;
 use bae_library::{CancellationToken, LibraryManager};
-use bae_records::{DbAlbum, DbRelease, NewReleaseFile};
 use bae_store::SortDirection;
 use bae_store::Store;
-use bae_util::content_type::ContentType;
 use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::ReleaseStorageState;
 use bae_views::StorageBrowseRequest;
 use bae_views::{StorageFilter, StorageSortCriterion, StorageSortField};
-use chrono::Utc;
 use coven::MemoryStorage;
 use std::sync::Arc;
 use tempfile::TempDir;
-use uuid::Uuid;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -42,71 +38,6 @@ async fn setup_with_cloud(
     (library, storage)
 }
 
-/// Insert an artist + album + a Local release, write its originals under
-/// `source_dir`, register the `DbFile` rows and bae's device-local paths. No uploads
-/// queued — the test drives the transition itself. Returns (release_id, files).
-async fn create_local_release(
-    mgr: &LibraryManager,
-    source_dir: &std::path::Path,
-    files: &[(&str, &[u8])],
-) -> (String, Vec<(String, Vec<u8>)>) {
-    let now = Utc::now();
-    // Shared across every release this helper seeds, so only the first call
-    // inserts it.
-    let artist_id = bae_util::test_ids::test_uuid("test-storage-artist");
-    if mgr.get_artist_by_id(&artist_id).await.unwrap().is_none() {
-        mgr.insert_artist(&bae_records::DbArtist {
-            id: artist_id.to_string(),
-            name: "Artist Name".to_string(),
-            sort_name: None,
-            discogs_artist_id: None,
-            musicbrainz_artist_id: None,
-            created_at: now,
-        })
-        .await
-        .unwrap();
-    }
-    let album = DbAlbum {
-        id: Uuid::new_v4().to_string(),
-        title: "Album Title".to_string(),
-        year: Some(2024),
-        is_compilation: false,
-        created_at: now,
-    };
-    let release = DbRelease {
-        id: Uuid::new_v4().to_string(),
-        album_id: album.id.clone(),
-        release_name: None,
-        pressing: bae_types::pressing::Pressing::blank(),
-        source_folder_name: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: now,
-    };
-    let release_id = release.id.clone();
-    let credit = bae_records::DbAlbumArtist::new_test(&album.id, &artist_id);
-    mgr.insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
-        .await
-        .unwrap();
-
-    tokio::fs::create_dir_all(source_dir).await.unwrap();
-    let mut result = Vec::new();
-    for (name, data) in files {
-        let path = source_dir.join(name);
-        tokio::fs::write(&path, data).await.unwrap();
-        let db_file = NewReleaseFile::new(
-            &release_id,
-            name,
-            ContentType::Flac,
-            uuid::Uuid::new_v4().to_string(),
-            now,
-        );
-        mgr.add_external_file_for_test(&db_file, &path).await.unwrap();
-        result.push((name.to_string(), data.to_vec()));
-    }
-    (release_id, result)
-}
-
 /// A Remote (cloud-only, not pinned) release whose files sit in `cloud`: create it
 /// Local, attach its files, and finish the uploads. Returns (release_id,
 /// [(file_id, original_filename, plaintext)]).
@@ -116,7 +47,7 @@ async fn create_remote_cloud_only_release(
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
 ) -> (String, Vec<(String, String, Vec<u8>)>) {
-    let (release_id, _named) = create_local_release(mgr, source_dir, files).await;
+    let (release_id, _named) = crate::create_local_release(mgr, source_dir, files).await;
 
     let mut captured = Vec::new();
     for file in mgr.get_files_for_release(&release_id).await.unwrap() {
@@ -148,10 +79,18 @@ async fn test_multiple_releases_independent_completion() {
     let tmp = TempDir::new().unwrap();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
 
-    let (release_a, _a) =
-        create_local_release(mgr.manager(), &tmp.path().join("a"), &[("track.flac", b"aaa")]).await;
-    let (release_b, _b) =
-        create_local_release(mgr.manager(), &tmp.path().join("b"), &[("track.flac", b"bbb")]).await;
+    let (release_a, _a) = crate::create_local_release(
+        mgr.manager(),
+        &tmp.path().join("a"),
+        &[("track.flac", b"aaa")],
+    )
+    .await;
+    let (release_b, _b) = crate::create_local_release(
+        mgr.manager(),
+        &tmp.path().join("b"),
+        &[("track.flac", b"bbb")],
+    )
+    .await;
     mgr.manager().upload_release(&release_a, true).await.unwrap();
     mgr.manager().upload_release(&release_b, true).await.unwrap();
 
@@ -226,7 +165,7 @@ async fn test_manage_refused_without_cloud_storage() {
     );
     assert!(!mgr.manager().syncs().await.unwrap(), "precondition: the library does not sync");
     let source_dir = tmp.path().join("originals");
-    let (release_id, _files) = create_local_release(
+    let (release_id, _files) = crate::create_local_release(
         mgr.manager(),
         &source_dir,
         &[("a.flac", b"cloud-only-a"), ("b.flac", b"cloud-only-b")],
@@ -261,7 +200,7 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
-    let (release_id, files) = create_local_release(
+    let (release_id, files) = crate::create_local_release(
         mgr.manager(),
         &source_dir,
         &[("a.flac", b"cloud-only-a"), ("b.flac", b"cloud-only-b")],
@@ -290,7 +229,7 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
     let (mgr, cloud) = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
-    let (release_id, _files) = create_local_release(
+    let (release_id, _files) = crate::create_local_release(
         mgr.manager(),
         &source_dir,
         &[("a.flac", b"survive-a"), ("b.flac", b"survive-b")],
@@ -319,7 +258,7 @@ async fn truncated_source_fails_its_move_without_sending() {
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
-    let (release_id, files) = create_local_release(
+    let (release_id, files) = crate::create_local_release(
         mgr.manager(),
         &source_dir,
         &[("a.flac", b"full-length-bytes"), ("b.flac", b"second-file")],
@@ -496,7 +435,7 @@ async fn storage_subscription_delivers_actions_when_storage_is_set_up() {
     // sync values the storage view re-resolves on.
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) =
-        create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"a")]).await;
+        crate::create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"a")]).await;
 
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     let values = bae_app::live_reads::subscribe_storage_browse(

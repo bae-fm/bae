@@ -8,31 +8,17 @@ use chrono::Utc;
 
 /// An album with a fresh id, titled "Test Album".
 pub fn test_album() -> DbAlbum {
-    DbAlbum {
-        id: uuid::Uuid::new_v4().to_string(),
-        title: "Test Album".to_string(),
-        year: Some(2024),
-        is_compilation: false,
-        created_at: Utc::now(),
-    }
+    DbAlbum { year: Some(2024), ..DbAlbum::new_test("Test Album") }
 }
 
 /// A release of `album_id` with a fresh id and nothing on it.
 pub fn test_release(album_id: &str) -> DbRelease {
     DbRelease {
-        id: uuid::Uuid::new_v4().to_string(),
-        album_id: album_id.to_string(),
-        release_name: None,
         pressing: bae_types::pressing::Pressing {
             year: Some(2024),
-            labels: Vec::new(),
-            facts: Default::default(),
-            barcodes: Vec::new(),
+            ..bae_types::pressing::Pressing::blank()
         },
-        source_folder_name: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: Utc::now(),
+        ..DbRelease::new_test(album_id, &uuid::Uuid::new_v4().to_string())
     }
 }
 

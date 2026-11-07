@@ -2,18 +2,9 @@ use super::*;
 #[test]
 fn an_opened_store_keeps_its_original_custody() {
     let root = tempfile::tempdir().unwrap();
-    let host = BridgeHost::with_test_keyring(
-        BridgeDiagnostics::noop(),
-        BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
-    )
-    .unwrap();
+    let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
-    let opened = caller
-        .block_on(host.clone().create_library(
-            Some("Session Library".into()),
-            crate::BridgeLibrarySetup::new(host.clone()),
-        ))
-        .unwrap();
+    let opened = crate::handle::tests::create_opened_library(&host, &caller, "Session Library");
     let app = opened.open(50, false).unwrap();
     let id = opened.library_id();
     drop(opened);
@@ -144,11 +135,7 @@ fn another_call_under_way_crosses_as_that_call() {
             coven::BootstrapDirectoryError::Lock(coven::StoreLockError::BootstrapPending(store)),
         )));
 
-    let host = crate::BridgeHost::with_test_keyring(
-        crate::BridgeDiagnostics::noop(),
-        crate::BridgeAppDir::new(home.path().to_str().unwrap().into()).unwrap(),
-    )
-    .unwrap();
+    let host = crate::handle::tests::test_host(home.path());
 
     let crossed = crate::types::BridgeBootstrapResult::failure(refused, host);
 

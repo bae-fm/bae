@@ -7,18 +7,9 @@ use super::*;
 #[test]
 fn a_close_writes_each_step_it_runs() {
     let root = tempfile::tempdir().unwrap();
-    let host = crate::BridgeHost::with_test_keyring(
-        crate::BridgeDiagnostics::noop(),
-        crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
-    )
-    .unwrap();
+    let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
-    let opened = caller
-        .block_on(host.clone().create_library(
-            Some("Closed Library".into()),
-            crate::BridgeLibrarySetup::new(host.clone()),
-        ))
-        .unwrap();
+    let opened = crate::handle::tests::create_opened_library(&host, &caller, "Closed Library");
     let app = opened.open(50, false).unwrap();
     let closing = BridgeLibraryClosing::new(host);
     let stream = closing.feed_closing_steps();
@@ -47,18 +38,9 @@ fn a_close_writes_each_step_it_runs() {
 #[test]
 fn a_removal_writes_each_step_it_runs() {
     let root = tempfile::tempdir().unwrap();
-    let host = crate::BridgeHost::with_test_keyring(
-        crate::BridgeDiagnostics::noop(),
-        crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
-    )
-    .unwrap();
+    let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
-    let opened = caller
-        .block_on(host.clone().create_library(
-            Some("Removed Library".into()),
-            crate::BridgeLibrarySetup::new(host.clone()),
-        ))
-        .unwrap();
+    let opened = crate::handle::tests::create_opened_library(&host, &caller, "Removed Library");
     let app = opened.open(50, false).unwrap();
     let closing = BridgeLibraryClosing::new(host);
     let stream = closing.feed_closing_steps();
@@ -88,18 +70,9 @@ fn a_removal_writes_each_step_it_runs() {
 #[test]
 fn an_unopened_removal_writes_each_step_it_runs() {
     let root = tempfile::tempdir().unwrap();
-    let host = crate::BridgeHost::with_test_keyring(
-        crate::BridgeDiagnostics::noop(),
-        crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
-    )
-    .unwrap();
+    let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
-    let opened = caller
-        .block_on(host.clone().create_library(
-            Some("Unopened Library".into()),
-            crate::BridgeLibrarySetup::new(host.clone()),
-        ))
-        .unwrap();
+    let opened = crate::handle::tests::create_opened_library(&host, &caller, "Unopened Library");
     let id = opened.library_id();
     drop(opened);
     let closing = BridgeLibraryClosing::new(host.clone());

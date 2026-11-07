@@ -31,3 +31,56 @@ pub(crate) async fn release_storage(
         .summary;
     summary.storage_state
 }
+
+/// Insert an artist + album + a Local release, write its originals under
+/// `source_dir`, register the `DbFile` rows and bae's device-local paths. No uploads
+/// queued — the test drives the transition itself. Returns (release_id, files).
+pub(crate) async fn create_local_release(
+    mgr: &bae_library::LibraryManager,
+    source_dir: &std::path::Path,
+    files: &[(&str, &[u8])],
+) -> (String, Vec<(String, Vec<u8>)>) {
+    let now = chrono::Utc::now();
+    // Shared across every release this helper seeds, so only the first call
+    // inserts it.
+    let artist_id = bae_util::test_ids::test_uuid("test-storage-artist");
+    if mgr.get_artist_by_id(&artist_id).await.unwrap().is_none() {
+        mgr.insert_artist(&bae_records::DbArtist {
+            id: artist_id.to_string(),
+            name: "Artist Name".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: now,
+        })
+        .await
+        .unwrap();
+    }
+    let album = bae_records::DbAlbum {
+        title: "Album Title".to_string(),
+        ..bae_library::test_libraries::test_album()
+    };
+    let release = bae_library::test_libraries::test_release(&album.id);
+    let release_id = release.id.clone();
+    let credit = bae_records::DbAlbumArtist::new_test(&album.id, &artist_id);
+    mgr.insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
+        .await
+        .unwrap();
+
+    tokio::fs::create_dir_all(source_dir).await.unwrap();
+    let mut result = Vec::new();
+    for (name, data) in files {
+        let path = source_dir.join(name);
+        tokio::fs::write(&path, data).await.unwrap();
+        let db_file = bae_records::NewReleaseFile::new(
+            &release_id,
+            name,
+            bae_util::content_type::ContentType::Flac,
+            uuid::Uuid::new_v4().to_string(),
+            now,
+        );
+        mgr.add_external_file_for_test(&db_file, &path).await.unwrap();
+        result.push((name.to_string(), data.to_vec()));
+    }
+    (release_id, result)
+}

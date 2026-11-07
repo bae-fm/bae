@@ -150,24 +150,15 @@ async fn a_panicking_operation_fails_as_internal_and_is_reported() {
     owned.shutdown_background();
 }
 
-/// Sends the operation of each bug reported, for a test to wait on.
-struct HeardBugs(std::sync::Mutex<mpsc::Sender<String>>);
-
-impl bae_diagnostics::BugReporter for HeardBugs {
-    fn report(&self, operation: &str, _detail: &str) {
-        self.0.lock().unwrap().send(operation.to_string()).expect("the test hears the report");
-    }
-}
-
 /// A lifecycle operation that panics after its caller left is still
 /// reported: nobody else will hear of it.
 #[tokio::test]
 async fn a_persistent_operation_panicking_after_its_caller_left_is_reported() {
     let owned = owned_runtime();
-    let (reported, reports) = mpsc::channel();
+    let reports = Arc::new(bae_diagnostics::HeardBugReports::default());
     let operations = OperationRuntime::new(
         owned.handle().clone(),
-        Diagnostics::noop().reporting_bugs_to(Arc::new(HeardBugs(std::sync::Mutex::new(reported)))),
+        Diagnostics::noop().reporting_bugs_to(reports.clone()),
     );
     let (started_tx, started_rx) = oneshot::channel();
     let (continue_tx, continue_rx) = oneshot::channel::<()>();
@@ -188,10 +179,8 @@ async fn a_persistent_operation_panicking_after_its_caller_left_is_reported() {
     caller.abort();
     continue_tx.send(()).expect("release owned operation");
 
-    let operation =
-        bae_util::test_blocking::on_blocking_pool(move || reports.recv_timeout(HANG_GUARD))
-            .await
-            .expect("the panic is reported");
+    let (operation, _) =
+        tokio::time::timeout(HANG_GUARD, reports.next()).await.expect("the panic is reported");
     assert_eq!(operation, "test persistent operation");
     owned.shutdown_background();
 }

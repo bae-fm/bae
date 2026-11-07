@@ -206,6 +206,21 @@ pub(crate) fn test_host(home: &std::path::Path) -> Arc<crate::BridgeHost> {
     .unwrap()
 }
 
+/// A library named `name` created through `host`, run on `caller`, as a host
+/// app creates one.
+pub(crate) fn create_opened_library(
+    host: &Arc<crate::BridgeHost>,
+    caller: &tokio::runtime::Runtime,
+    name: &str,
+) -> Arc<crate::OpenedLibrary> {
+    caller
+        .block_on(
+            host.clone()
+                .create_library(Some(name.into()), crate::BridgeLibrarySetup::new(host.clone())),
+        )
+        .unwrap()
+}
+
 /// Start a handle over `library` on `runtime`, for a host over the bae
 /// directory under `root`, as the app starts one.
 pub(super) fn start_test_handle(
@@ -804,18 +819,7 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         .await;
     });
     let db = library.store().clone();
-    let services = runtime.block_on(async move {
-        bae_app::test_services::start_services(&library)
-            .await
-            .expect("the test library's services start")
-    });
-    let app = super::AppHandle::start(
-        services,
-        runtime,
-        bae_diagnostics::Diagnostics::noop(),
-        test_host(directory.path()),
-    )
-    .expect("the bridge handle starts");
+    let app = start_test_handle(runtime, library, directory);
 
     drop(app);
 
@@ -841,18 +845,9 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
 #[test]
 fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     let root = tempfile::tempdir().unwrap();
-    let host = crate::BridgeHost::with_test_keyring(
-        crate::BridgeDiagnostics::noop(),
-        crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
-    )
-    .unwrap();
+    let host = test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
-    let opened = caller
-        .block_on(host.clone().create_library(
-            Some("Released Library".into()),
-            crate::BridgeLibrarySetup::new(host.clone()),
-        ))
-        .unwrap();
+    let opened = create_opened_library(&host, &caller, "Released Library");
     let app = opened.open(50, false).unwrap();
     let id = opened.library_id();
     drop(opened);

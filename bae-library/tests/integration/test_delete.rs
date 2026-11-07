@@ -1,34 +1,8 @@
-use bae_records::{DbAlbum, DbRelease, DbTrack};
+use bae_records::DbTrack;
 use chrono::Utc;
 use uuid::Uuid;
 
-fn create_test_album() -> DbAlbum {
-    DbAlbum {
-        id: Uuid::new_v4().to_string(),
-        title: "Test Album".to_string(),
-        year: Some(2024),
-        is_compilation: false,
-        created_at: Utc::now(),
-    }
-}
-
-fn create_test_release(album_id: &str) -> DbRelease {
-    DbRelease {
-        id: Uuid::new_v4().to_string(),
-        album_id: album_id.to_string(),
-        release_name: None,
-        pressing: bae_types::pressing::Pressing {
-            year: Some(2024),
-            labels: Vec::new(),
-            facts: Default::default(),
-            barcodes: Vec::new(),
-        },
-        source_folder_name: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: Utc::now(),
-    }
-}
+use bae_library::test_libraries::{test_album, test_release};
 
 fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
     let now = Utc::now();
@@ -52,8 +26,8 @@ async fn test_delete_album_integration() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let db = library.store().clone();
     let records = library.records().clone();
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
+    let album = test_album();
+    let release = test_release(&album.id);
     let track1 = create_test_track(&release.id, 1);
     let track2 = create_test_track(&release.id, 2);
 
@@ -83,9 +57,9 @@ async fn test_delete_album_integration() {
 async fn test_delete_release_integration() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let records = library.records().clone();
-    let album = create_test_album();
-    let release1 = create_test_release(&album.id);
-    let release2 = create_test_release(&album.id);
+    let album = test_album();
+    let release1 = test_release(&album.id);
+    let release2 = test_release(&album.id);
     let track1 = create_test_track(&release1.id, 1);
     let track2 = create_test_track(&release2.id, 1);
 
@@ -124,8 +98,8 @@ async fn test_delete_last_release_empties_album() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let db = library.store().clone();
     let records = library.records().clone();
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
+    let album = test_album();
+    let release = test_release(&album.id);
 
     records.insert_album(&album).await.unwrap();
     records.insert_release(&release).await.unwrap();
@@ -161,10 +135,10 @@ async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let db = library.store().clone();
     let records = library.records().clone();
-    let album = create_test_album();
-    let release1 = create_test_release(&album.id);
-    let release2 = create_test_release(&album.id);
-    let release3 = create_test_release(&album.id);
+    let album = test_album();
+    let release1 = test_release(&album.id);
+    let release2 = test_release(&album.id);
+    let release3 = test_release(&album.id);
 
     records.insert_album(&album).await.unwrap();
     for release in [&release1, &release2, &release3] {
@@ -196,9 +170,9 @@ async fn test_deleting_another_release_keeps_the_primary() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let db = library.store().clone();
     let records = library.records().clone();
-    let album = create_test_album();
-    let release1 = create_test_release(&album.id);
-    let release2 = create_test_release(&album.id);
+    let album = test_album();
+    let release1 = test_release(&album.id);
+    let release2 = test_release(&album.id);
 
     records.insert_album(&album).await.unwrap();
     records.insert_release(&release1).await.unwrap();
@@ -225,10 +199,10 @@ async fn test_a_release_of_another_album_cannot_be_made_primary() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let db = library.store().clone();
     let records = library.records().clone();
-    let album = create_test_album();
-    let other = create_test_album();
-    let release = create_test_release(&album.id);
-    let elsewhere = create_test_release(&other.id);
+    let album = test_album();
+    let other = test_album();
+    let release = test_release(&album.id);
+    let elsewhere = test_release(&other.id);
     records.insert_album(&album).await.unwrap();
     records.insert_album(&other).await.unwrap();
     records.insert_release(&release).await.unwrap();
