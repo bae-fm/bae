@@ -4,18 +4,20 @@
 
 use super::*;
 use crate::DbStorageRow;
+use bae_transfers::{DownloadEntry, QueueWait};
 
 /// Where a release's files are, as the Storage Manager sorts its rows by
 /// storage, in that order: its listing works it out from the upload queue,
-/// the download queue, and its stored, pinned and waiting pinned files, in
-/// the write that changes any of them.
+/// the download queue, and its stored and pinned files, in the write that
+/// changes any of them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoragePlace {
+    /// This device's download queue holds it failed.
+    DownloadFailed,
     /// Files of it wait in this device's upload queue.
     Uploading,
     /// Its files are coming to this device: this device's download queue
-    /// holds it, waiting or downloading, or pins of its files wait for coven
-    /// to fetch their copies.
+    /// holds it, waiting or downloading.
     Pinning,
     OnOneDevice,
     /// Uploaded, every file pinned on this device.
@@ -24,12 +26,26 @@ pub enum StoragePlace {
     InStorage,
 }
 
+/// Where a release stands in the download queue while its files are coming to
+/// this device, and what holds the queue back.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DownloadEntryStep {
+    /// Waiting, with `ahead` entries before it that have not failed.
+    Queued { ahead: u32, wait: Option<QueueWait> },
+    /// Downloading.
+    Running { wait: Option<QueueWait> },
+}
+
 /// What a Storage Manager row's storage state shows: where its files are,
 /// and while they rest, a transition this process runs for it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorageRowStatus {
+    /// The download queue holds it failed, with the error.
+    DownloadFailed {
+        error: String,
+    },
     Uploading,
-    Pinning,
+    Pinning(DownloadEntryStep),
     /// A transition under way while the files rest where they are: unpinning,
     /// making the release local, or admitting it for upload.
     Transferring(ReleaseStorageAction),
@@ -39,15 +55,39 @@ pub enum StorageRowStatus {
 }
 
 impl StorageRowStatus {
-    fn of(place: StoragePlace, transfer: Option<ReleaseStorageAction>) -> Self {
-        match (place, transfer) {
-            (StoragePlace::Uploading, _) => Self::Uploading,
-            (StoragePlace::Pinning, _) => Self::Pinning,
-            (_, Some(action)) => Self::Transferring(action),
-            (StoragePlace::OnOneDevice, None) => Self::OnOneDevice,
-            (StoragePlace::Pinned, None) => Self::Pinned,
-            (StoragePlace::InStorage, None) => Self::InStorage,
-        }
+    /// The status of a release at `place`, in the transition `transfer`
+    /// (when it rests) and with the download queue entry `download`. A place
+    /// that names the download queue without the entry that puts it there
+    /// is a row the queue and the listing disagree on: the reason it fails.
+    pub(crate) fn of(
+        place: StoragePlace,
+        transfer: Option<ReleaseStorageAction>,
+        download: Option<DownloadEntry>,
+    ) -> Result<Self, String> {
+        Ok(match (place, transfer, download) {
+            (StoragePlace::DownloadFailed, _, Some(DownloadEntry::Failed { error })) => {
+                Self::DownloadFailed { error }
+            }
+            (StoragePlace::DownloadFailed, ..) => {
+                return Err(
+                    "the listing says a download failed but the queue holds no failure".into()
+                )
+            }
+            (StoragePlace::Uploading, ..) => Self::Uploading,
+            (StoragePlace::Pinning, _, Some(DownloadEntry::Queued { ahead, wait })) => {
+                Self::Pinning(DownloadEntryStep::Queued { ahead, wait })
+            }
+            (StoragePlace::Pinning, _, Some(DownloadEntry::Running { wait })) => {
+                Self::Pinning(DownloadEntryStep::Running { wait })
+            }
+            (StoragePlace::Pinning, ..) => {
+                return Err("the listing says a download waits but the queue holds none".into())
+            }
+            (_, Some(action), _) => Self::Transferring(action),
+            (StoragePlace::OnOneDevice, None, _) => Self::OnOneDevice,
+            (StoragePlace::Pinned, None, _) => Self::Pinned,
+            (StoragePlace::InStorage, None, _) => Self::InStorage,
+        })
     }
 }
 
@@ -92,11 +132,10 @@ impl StorageRow {
             // the per-track compilation flag is never read on this path.
             is_compilation: false,
         };
-        let status = StorageRowStatus::of(raw.place, raw.release.transfer_action);
         StorageRow {
             release: ReleaseSummary::from_raw(raw.release, &ctx),
             album: AlbumSummary::from_raw(raw.album),
-            status,
+            status: raw.status,
             date_added: raw.date_added,
         }
     }

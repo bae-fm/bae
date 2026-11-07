@@ -1947,9 +1947,9 @@ filter field narrows that to the releases whose album library search finds
 the shown list's count and total size, and says there are no matches when the
 text narrows it to none. It sorts by album title (ignoring ASCII
 case), artist (§2.3), media (a release stating none last), file count, size,
-storage — uploading, then pinning: files coming to this device, waiting
-or downloading in the download queue (§4.3), then local, pinned, and in
-storage only — or when the release was added, either way, ties going by album
+storage — a failed download first, then uploading, then pinning: files
+coming to this device, waiting or downloading in the download queue (§4.3),
+then local, pinned, and in storage only — or when the release was added, either way, ties going by album
 title, then when the release was added, then id. On macOS the list is a table
 with a column for each of these; a column can be dragged wider or narrower or
 to another place, sized to its header and the rows in view by double-clicking
@@ -1971,8 +1971,8 @@ the same way from
 coven's `coven_upload_queue`, in the transaction that queues or dequeues a
 file; the import list's Done tab reads them in queue order, and each Done row
 its own release's (§3.2). Whether
-the download queue holds a release waiting or downloading is a flag bae keeps
-the same way, in the transaction that changes the queue, and where the release
+the download queue holds a release waiting or downloading, or failed, is a
+flag bae keeps the same way, in the transaction that changes the queue, and where the release
 sorts by storage is worked out from these in the same write, so the storage
 sort reads an index like every other.
 
@@ -2014,9 +2014,12 @@ outlives the process that ran it, so the `release_storage_action` rows are
 emptied as the library opens.
 
 Each row's storage state is the place it sorts by, which core reads with the
-row: Uploading, its chip filled as far as its bytes have come while any file
-is being sent; Pinning, filled as far as its download has come once it
-starts; making local, filled as far as its copies have downloaded (§4.4);
+row: Download failed, with its error, first; Uploading, its chip filled as far
+as its bytes have come while any file is being sent; Pinning, either queued,
+with the number of entries ahead of it that have not failed, or filled as far
+as its download has come once it starts, and in either case Paused while the
+queue is paused or Waiting for network while the device has none (the network
+first, since it makes the pause moot); making local, filled as far as its copies have downloaded (§4.4);
 Local, Pinned or In storage at rest, or, while another transition this process
 runs leaves the files where they are, that transition's words. No rate shows
 beside it.
@@ -2069,7 +2072,7 @@ continue from the bytes it fetched, and its files' pins are put back as they
 were, as a cancel's are. The queue takes no entry while the device has no
 usable network, as coven's network watch says, and goes on when it returns; a
 platform that cannot tell holds nothing back. A pin that fails stays in the queue with its error,
-its files' pins put back as they were; one that breaks on a bug fails the
+its files' pins put back as they were, and its row sorts first, reading Download failed; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. Retrying
 queues every failed pin again, each in its place, so a release's own
 control retries them all, as the queue's does. coven's record of the failed
@@ -4773,7 +4776,7 @@ What the library lists, bae-views' part, kept by its triggers:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
+| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; and where it sorts by storage, worked out from those: a failed download, uploading, pinning, local, pinned, in storage only |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |

@@ -240,14 +240,32 @@ pub struct BridgeStorageRow {
 /// What a Storage Manager row's storage state shows: where its files are, in
 /// the order the list sorts by storage, or a transition this process runs
 /// while they rest. Mirrors `StorageRowStatus`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeStorageRowStatus {
+    /// The download queue holds it failed, with the error.
+    DownloadFailed {
+        error: String,
+    },
     Uploading,
-    Pinning,
-    Transferring { action: crate::types::BridgeReleaseStorageAction },
+    Pinning {
+        step: BridgeDownloadEntryStep,
+    },
+    Transferring {
+        action: crate::types::BridgeReleaseStorageAction,
+    },
     OnOneDevice,
     Pinned,
     InStorage,
+}
+
+/// Where a release stands in the download queue while its files are coming to
+/// this device. Mirrors `DownloadEntryStep`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeDownloadEntryStep {
+    /// Waiting, with `ahead` entries before it that have not failed.
+    Queued { ahead: u32, wait: Option<crate::types::BridgeQueueWait> },
+    /// Downloading.
+    Running { wait: Option<crate::types::BridgeQueueWait> },
 }
 
 /// Column the Storage Manager can sort by. Mirrors `StorageSortField`.

@@ -51,6 +51,7 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
+import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 import uniffi.bae_bridge.BridgeReleaseStorageAction
@@ -167,18 +168,22 @@ private fun DownloadControlBody(
             DownloadActionButton(stringResource(R.string.download), Icons.Filled.Download, onDownload)
         }
 
-        BridgeReleaseDownloadStatus.Queued -> {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                WaitingToDownloadText()
-                DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
+        is BridgeReleaseDownloadStatus.Queued -> {
+            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    WaitingToDownloadText()
+                    DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
+                }
+                QueueStandingText(ahead = status.ahead.toInt(), wait = status.wait)
             }
         }
 
-        BridgeReleaseDownloadStatus.Downloading -> {
+        is BridgeReleaseDownloadStatus.Downloading -> {
             ActiveDownloadProgress(releaseId, downloads)
+            QueueStandingText(ahead = 0, wait = status.wait)
             DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
         }
 
@@ -190,6 +195,35 @@ private fun DownloadControlBody(
             DownloadedControl(unpinning, onRemove)
         }
     }
+}
+
+/** How many entries are [ahead] of a download in the queue, and what holds the queue back ([wait]). */
+@Composable
+private fun QueueStandingText(
+    ahead: Int,
+    wait: BridgeQueueWait?,
+) {
+    val words =
+        buildList {
+            if (ahead > 0) add(stringResource(R.string.download_ahead, ahead))
+            when (wait) {
+                BridgeQueueWait.PAUSED -> {
+                    add(stringResource(R.string.paused))
+                }
+
+                BridgeQueueWait.OFFLINE -> {
+                    add(stringResource(R.string.download_waiting_for_network))
+                }
+
+                null -> {}
+            }
+        }
+    if (words.isEmpty()) return
+    Text(
+        text = words.joinToString(" · "),
+        style = ThemeText.detail.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -279,7 +313,23 @@ private fun DownloadControlAvailablePreview() {
 @Composable
 private fun DownloadControlDownloadingPreview() {
     BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloading)
+        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloading(wait = null))
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadControlQueuedPausedPreview() {
+    BaeTheme {
+        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Queued(ahead = 2u, wait = BridgeQueueWait.PAUSED))
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadControlQueuedOfflinePreview() {
+    BaeTheme {
+        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Queued(ahead = 0u, wait = BridgeQueueWait.OFFLINE))
     }
 }
 

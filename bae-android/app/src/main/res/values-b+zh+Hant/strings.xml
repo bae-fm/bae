@@ -162,6 +162,8 @@
     <string name="download_remove">移除下載</string>
     <string name="download_downloaded">已下載</string>
     <string name="download_waiting">等待下載</string>
+    <string name="download_ahead">前面還有 %1$d 項</string>
+    <string name="download_waiting_for_network">等待網路</string>
     <string name="resume">繼續</string>
     <string name="downloads_empty">沒有下載</string>
     <string name="downloads_load_failed">無法載入你的下載。</string>

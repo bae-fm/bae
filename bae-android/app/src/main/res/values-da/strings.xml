@@ -168,6 +168,8 @@
     <string name="download_remove">Fjern overførslen</string>
     <string name="download_downloaded">Hentet</string>
     <string name="download_waiting">Venter på at blive hentet</string>
+    <string name="download_ahead">%1$d foran</string>
+    <string name="download_waiting_for_network">Venter på netværk</string>
     <string name="resume">Fortsæt</string>
     <string name="downloads_empty">Ingen overførsler</string>
     <string name="downloads_load_failed">Dine overførsler kunne ikke indlæses.</string>

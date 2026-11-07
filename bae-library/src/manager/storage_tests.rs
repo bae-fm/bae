@@ -742,7 +742,8 @@ async fn storage_page_sort_by_date_added() {
     );
 }
 
-/// Sorting by storage puts the releases uploading first, then those waiting
+/// Sorting by storage puts the releases uploading first (a failed download
+/// before them), then those waiting
 /// or downloading to be pinned, then the local, the pinned and the
 /// cloud-only ones, whatever their titles; descending reverses it, and each
 /// filter keeps the order among the releases it shows.
@@ -792,11 +793,14 @@ async fn storage_page_sort_by_storage_state() {
             .unwrap()
             .rows
             .iter()
-            .map(|row| row.status)
+            .map(|row| row.status.clone())
             .collect::<Vec<_>>(),
         vec![
             StorageRowStatus::Uploading,
-            StorageRowStatus::Pinning,
+            StorageRowStatus::Pinning(bae_views::album_detail::DownloadEntryStep::Queued {
+                ahead: 0,
+                wait: Some(bae_transfers::QueueWait::Paused),
+            }),
             StorageRowStatus::OnOneDevice,
             StorageRowStatus::Pinned,
             StorageRowStatus::InStorage,

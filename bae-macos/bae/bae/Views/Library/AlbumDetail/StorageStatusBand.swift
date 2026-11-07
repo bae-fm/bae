@@ -33,6 +33,9 @@ struct StorageStatusBand: View {
             else {
                 storageStatus
             }
+            if let download = release.downloadStatus {
+                downloadLine(download)
+            }
             // Why this Mac can't play the release: the device its audio is
             // on, or its originals missing here.
             if let unplayable = release.unplayableLine {
@@ -90,6 +93,28 @@ struct StorageStatusBand: View {
                 ),
                 kind: .pin
             )
+        }
+    }
+
+    /// Where the release stands in the download queue: waiting, with the
+    /// entries ahead of it and what holds the queue back, held back while it
+    /// downloads, or failed with its error.
+    @ViewBuilder
+    private func downloadLine(_ status: BridgeReleaseDownloadStatus)
+        -> some View
+    {
+        switch status {
+        case .queued(let ahead, let wait):
+            QueuedPinChips(ahead: ahead, wait: wait)
+        case .downloading(let wait?):
+            QueueWaitChip(wait: wait)
+        case .failed(let error):
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                StatusChip("Download failed", tone: .danger)
+                ErrorText(error)
+            }
+        case .downloading(.none), .downloaded, .available:
+            EmptyView()
         }
     }
 

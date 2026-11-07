@@ -11,10 +11,20 @@ struct StorageStateLabel: View {
 
     var body: some View {
         switch status {
+        case .downloadFailed(let error):
+            StatusChip("Download failed", tone: .danger)
+                .help(error)
         case .uploading:
             StorageUploadingChip(releaseId: release.id)
-        case .pinning:
-            StoragePinningChip(releaseId: release.id)
+        case .pinning(.queued(let ahead, let wait)):
+            QueuedPinChips(ahead: ahead, wait: wait)
+        case .pinning(.running(let wait)):
+            HStack(spacing: ThemeSpace.inline) {
+                StoragePinningChip(releaseId: release.id)
+                if let wait {
+                    QueueWaitChip(wait: wait)
+                }
+            }
         case .transferring(.detachAudio):
             StorageMakingLocalChip(releaseId: release.id)
         case .transferring(let action):
@@ -110,7 +120,25 @@ private struct StorageMakingLocalChip: View {
                     storageState: .inStorage(pinned: false),
                     transfer: .pin
                 ),
-                status: .pinning
+                status: .pinning(step: .running(wait: nil))
+            )
+            // A pin waiting its turn in a paused queue.
+            StorageStateLabel(
+                release: PreviewData.storageRelease(
+                    id: "r-queued",
+                    storageState: .inStorage(pinned: false)
+                ),
+                status: .pinning(step: .queued(ahead: 2, wait: .paused))
+            )
+            // A download that failed.
+            StorageStateLabel(
+                release: PreviewData.storageRelease(
+                    id: "r-failed",
+                    storageState: .inStorage(pinned: false)
+                ),
+                status: .downloadFailed(
+                    error: "The network connection was lost"
+                )
             )
             // A transition this process runs while the files rest.
             StorageStateLabel(

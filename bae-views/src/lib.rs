@@ -86,6 +86,7 @@ use bae_store::list_windows::{
 use bae_store::read::*;
 use bae_store::syncs_on;
 use bae_store::*;
+use bae_transfers::download_entry_sql;
 use bae_transfers::release_storage_action::{transfer_action_column, transfer_action_sql};
 use bae_util::search_text::search_pattern;
 use chrono::{DateTime, Utc};

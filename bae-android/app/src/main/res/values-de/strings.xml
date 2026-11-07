@@ -165,6 +165,8 @@
     <string name="download_remove">Download entfernen</string>
     <string name="download_downloaded">Heruntergeladen</string>
     <string name="download_waiting">Wartet auf Download</string>
+    <string name="download_ahead">%1$d davor</string>
+    <string name="download_waiting_for_network">Wartet auf Netzwerk</string>
     <string name="resume">Fortsetzen</string>
     <string name="downloads_empty">Keine Downloads</string>
     <string name="downloads_load_failed">Deine Downloads konnten nicht geladen werden.</string>

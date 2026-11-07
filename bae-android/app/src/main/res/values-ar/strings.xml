@@ -177,6 +177,8 @@
     <string name="download_remove">إزالة التنزيل</string>
     <string name="download_downloaded">تم التنزيل</string>
     <string name="download_waiting">في انتظار التنزيل</string>
+    <string name="download_ahead">قبله %1$d</string>
+    <string name="download_waiting_for_network">في انتظار الشبكة</string>
     <string name="resume">استئناف</string>
     <string name="downloads_empty">لا توجد تنزيلات</string>
     <string name="downloads_load_failed">تعذّر تحميل تنزيلاتك.</string>

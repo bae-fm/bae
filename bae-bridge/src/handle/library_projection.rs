@@ -229,11 +229,21 @@ mirror_struct! {
 }
 
 mirror_enum! {
+    crate::types::BridgeDownloadEntryStep = bae_views::album_detail::DownloadEntryStep,
+    from_core: fn,
+    variants: {
+        Queued { ahead, wait: (opt crate::types::BridgeQueueWait) },
+        Running { wait: (opt crate::types::BridgeQueueWait) },
+    },
+}
+
+mirror_enum! {
     BridgeStorageRowStatus = bae_views::album_detail::StorageRowStatus,
     from_core: fn,
     variants: {
+        DownloadFailed { error },
         Uploading,
-        Pinning,
+        Pinning(step: (crate::types::BridgeDownloadEntryStep)),
         Transferring(action: (crate::types::BridgeReleaseStorageAction)),
         OnOneDevice,
         Pinned,

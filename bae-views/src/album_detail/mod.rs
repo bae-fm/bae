@@ -158,9 +158,15 @@ pub fn available_storage_actions(
 pub enum ReleaseDownloadStatus {
     /// Kept offline, and no download in flight.
     Downloaded,
-    Queued,
+    /// Waiting, with `ahead` entries before it that have not failed.
+    Queued {
+        ahead: u32,
+        wait: Option<bae_transfers::QueueWait>,
+    },
     /// Bytes are arriving; how many is the release's download transfer.
-    Downloading,
+    Downloading {
+        wait: Option<bae_transfers::QueueWait>,
+    },
     Failed {
         error: String,
     },
@@ -186,14 +192,18 @@ pub enum ReleaseDownloadStatus {
 pub fn release_download_status(
     state: ReleaseStorageState,
     storage_actions: &[ReleaseStorageAction],
-    download: Option<&bae_transfers::DownloadPhase>,
+    download: Option<&bae_transfers::DownloadEntry>,
 ) -> Option<ReleaseDownloadStatus> {
-    use bae_transfers::DownloadPhase;
+    use bae_transfers::DownloadEntry;
 
     match download {
-        Some(DownloadPhase::Queued) => Some(ReleaseDownloadStatus::Queued),
-        Some(DownloadPhase::Active { progress: () }) => Some(ReleaseDownloadStatus::Downloading),
-        Some(DownloadPhase::Failed { error }) => {
+        Some(DownloadEntry::Queued { ahead, wait }) => {
+            Some(ReleaseDownloadStatus::Queued { ahead: *ahead, wait: *wait })
+        }
+        Some(DownloadEntry::Running { wait }) => {
+            Some(ReleaseDownloadStatus::Downloading { wait: *wait })
+        }
+        Some(DownloadEntry::Failed { error }) => {
             Some(ReleaseDownloadStatus::Failed { error: error.clone() })
         }
         None if state == (ReleaseStorageState::InStorage { pinned: true }) => {

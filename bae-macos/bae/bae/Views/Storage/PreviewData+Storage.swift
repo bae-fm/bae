@@ -434,6 +434,8 @@
                     let isRemote = index % 3 != 0
                     let pinned = isRemote && index % 4 == 0
                     let pinning = index == 5
+                    let queued = index == 7
+                    let failed = index == 10
                     return storageRow(
                         index: index,
                         title: titles[(index - 1) % titles.count],
@@ -444,10 +446,18 @@
                             ? .inStorage(pinned: pinned) : .onOneDevice,
                         transfer: pinning ? .pin : nil,
                         status: pinning
-                            ? .pinning
-                            : isRemote
-                                ? (pinned ? .pinned : .inStorage)
-                                : .onOneDevice,
+                            ? .pinning(step: .running(wait: nil))
+                            : queued
+                                ? .pinning(
+                                    step: .queued(ahead: 1, wait: .paused)
+                                )
+                                : failed
+                                    ? .downloadFailed(
+                                        error: "The network connection was lost"
+                                    )
+                                    : isRemote
+                                        ? (pinned ? .pinned : .inStorage)
+                                        : .onOneDevice,
                         fileCount: Int64(1 + index % 24),
                         totalSize: Int64(48_000_000 + index * 83_000_000)
                     )

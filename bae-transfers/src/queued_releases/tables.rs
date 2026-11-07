@@ -303,21 +303,6 @@ pub fn release_queue_entries_on(
     })
 }
 
-/// The download queue's phase for `release_id`, `None` when it is not
-/// queued: what a release's detail shows of its download.
-pub(crate) fn download_phase_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<Option<ReleaseQueueState<()>>, DbError> {
-    Ok(sql
-        .query_row(
-            "SELECT state, error FROM download_queue WHERE release_id = ?",
-            [release_id],
-            |row| phase_from_row(row, 0),
-        )
-        .optional()?)
-}
-
 /// Queue `entries` in order, passing over a release already in the queue;
 /// `true` when any went in.
 #[cfg(desktop)]

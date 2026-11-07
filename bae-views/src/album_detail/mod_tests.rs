@@ -54,12 +54,18 @@ fn in_storage_offers_pin_or_unpin_and_detach_audio() {
 /// in the queue it decides the control — even once the release reads pinned.
 #[test]
 fn a_queue_entry_outranks_pinned() {
-    use bae_transfers::DownloadPhase;
+    use bae_transfers::{DownloadEntry, QueueWait};
     let cases = [
-        (DownloadPhase::Queued, ReleaseDownloadStatus::Queued),
-        (DownloadPhase::Active { progress: () }, ReleaseDownloadStatus::Downloading),
         (
-            DownloadPhase::Failed { error: "read failed".to_string() },
+            DownloadEntry::Queued { ahead: 2, wait: Some(QueueWait::Paused) },
+            ReleaseDownloadStatus::Queued { ahead: 2, wait: Some(QueueWait::Paused) },
+        ),
+        (
+            DownloadEntry::Running { wait: Some(QueueWait::Offline) },
+            ReleaseDownloadStatus::Downloading { wait: Some(QueueWait::Offline) },
+        ),
+        (
+            DownloadEntry::Failed { error: "read failed".to_string() },
             ReleaseDownloadStatus::Failed { error: "read failed".to_string() },
         ),
     ];

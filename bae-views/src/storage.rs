@@ -230,12 +230,12 @@ fn storage_queues_on(sql: &SqlReadContext<'_>) -> Result<crate::StorageQueues, D
 }
 
 /// One Storage Manager row as read: the release's half, the album's half,
-/// where the release's files are, and when the release was added.
+/// what its storage state shows, and when the release was added.
 pub(crate) type StorageRowParts = (
     DbReleaseSummary,
     Option<String>,
     AlbumSummaryRow,
-    crate::album_detail::StoragePlace,
+    crate::album_detail::StorageRowStatus,
     DateTime<Utc>,
 );
 
@@ -244,7 +244,7 @@ fn storage_row_parts(row: &Row<'_>) -> rusqlite::Result<StorageRowParts> {
         row_to_release_summary(row)?,
         row.get("release_cover_version")?,
         AlbumSummaryRow::read(row)?,
-        storage_place(row)?,
+        storage_status(row)?,
         rfc3339_column(row, "date_added")?,
     ))
 }
@@ -266,21 +266,31 @@ fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
     })
 }
 
-/// Where the row's release's files are, from the listing's `storage_order`.
-fn storage_place(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::StoragePlace> {
+/// What the row's storage state shows: where its release's files are, from the
+/// listing's `storage_order`, with the transition and the download queue
+/// entry that go with it.
+fn storage_status(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::StorageRowStatus> {
+    use crate::album_detail::{StoragePlace, StorageRowStatus};
     let column = row.as_ref().column_index("storage_order")?;
-    match row.get::<_, i64>(column)? {
-        0 => Ok(crate::album_detail::StoragePlace::Uploading),
-        1 => Ok(crate::album_detail::StoragePlace::Pinning),
-        2 => Ok(crate::album_detail::StoragePlace::OnOneDevice),
-        3 => Ok(crate::album_detail::StoragePlace::Pinned),
-        4 => Ok(crate::album_detail::StoragePlace::InStorage),
-        order => Err(bae_store::read::column_conversion_error(
-            row,
-            column,
-            format!("storage order {order} names no place"),
-        )),
-    }
+    let place = match row.get::<_, i64>(column)? {
+        0 => StoragePlace::DownloadFailed,
+        1 => StoragePlace::Uploading,
+        2 => StoragePlace::Pinning,
+        3 => StoragePlace::OnOneDevice,
+        4 => StoragePlace::Pinned,
+        5 => StoragePlace::InStorage,
+        order => {
+            return Err(bae_store::read::column_conversion_error(
+                row,
+                column,
+                format!("storage order {order} names no place"),
+            ))
+        }
+    };
+    let transfer = transfer_action_column(row, "transfer_action")?;
+    let download = bae_transfers::download_entry_column(row)?;
+    StorageRowStatus::of(place, transfer, download)
+        .map_err(|reason| bae_store::read::column_conversion_error(row, column, reason))
 }
 
 /// What a Storage Manager filter keeps of `release_listing listing`, as a
@@ -360,6 +370,7 @@ fn storage_row_select(
             {release_cover} AS release_cover_version, \
             {RELEASE_UPLOAD_COLUMNS}, \
             {transfer_action} AS transfer_action, \
+            {download_entry}, \
             {album_columns}{extra} \
         FROM {listing} \
         CROSS JOIN release_storage storage ON storage.release_id = listing.release_id \
@@ -370,6 +381,7 @@ fn storage_row_select(
         release_cover = cover_version_sql("r.id"),
         release_media = release_media_sql("r.id"),
         transfer_action = transfer_action_sql("r.id"),
+        download_entry = download_entry_sql("r.id"),
     )
 }
 
@@ -590,13 +602,13 @@ pub(crate) fn process_storage_rows(
     rows: Vec<StorageRowParts>,
 ) -> Result<Vec<DbStorageRow>, DbError> {
     rows.into_iter()
-        .map(|(release, release_cover_version, album, place, date_added)| {
+        .map(|(release, release_cover_version, album, status, date_added)| {
             Ok(DbStorageRow {
                 release,
                 date_added,
                 release_cover_version,
                 album: album.process()?,
-                place,
+                status,
             })
         })
         .collect()

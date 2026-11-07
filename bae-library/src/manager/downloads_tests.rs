@@ -189,6 +189,72 @@ async fn a_pin_waits_while_the_network_is_down() {
     download_queue_until(manager, |queue| queue.rows.is_empty()).await;
 }
 
+/// Each pin waiting in the queue shows how many entries are ahead of it that
+/// have not failed, and that the queue is paused; a failed entry is not
+/// ahead of anything.
+#[tokio::test]
+async fn a_queued_pin_counts_the_entries_ahead_of_it() {
+    use bae_views::album_detail::{DownloadEntryStep, StorageRowStatus};
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    let dir = |name: &str| temp_dir.path().join(name);
+    let first = uploaded_release(manager, &dir("first"), "Album Title A", false).await;
+    let second = uploaded_release(manager, &dir("second"), "Album Title B", false).await;
+    let third = uploaded_release(manager, &dir("third"), "Album Title C", false).await;
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.enqueue_pins(vec![first.clone(), second.clone(), third.clone()]).await.unwrap();
+
+    let statuses = || async {
+        let sort = bae_views::StorageSortCriterion {
+            field: bae_views::StorageSortField::AlbumTitle,
+            direction: bae_store::SortDirection::Ascending,
+        };
+        views(manager)
+            .get_storage_page(&sort, bae_views::StorageFilter::All, 0, 10)
+            .await
+            .unwrap()
+            .rows
+            .into_iter()
+            .map(|row| row.status)
+            .collect::<Vec<_>>()
+    };
+    let waiting = |ahead| {
+        StorageRowStatus::Pinning(DownloadEntryStep::Queued {
+            ahead,
+            wait: Some(bae_transfers::QueueWait::Paused),
+        })
+    };
+    assert_eq!(statuses().await, vec![waiting(0), waiting(1), waiting(2)]);
+
+    assert!(activate_download(manager, &first).await.unwrap());
+    assert!(fail_download(manager, &first, "the network connection was lost".into())
+        .await
+        .unwrap());
+    manager.set_downloads_paused(true).await.unwrap();
+    assert_eq!(
+        statuses().await,
+        vec![
+            StorageRowStatus::DownloadFailed {
+                error: "the network connection was lost".to_string()
+            },
+            waiting(0),
+            waiting(1),
+        ],
+        "a failed entry is neither ahead of the rest nor waiting"
+    );
+
+    // Without a network the wait is the network: it makes the pause moot.
+    test.installation.lose_network();
+    assert_eq!(
+        statuses().await[1],
+        StorageRowStatus::Pinning(DownloadEntryStep::Queued {
+            ahead: 0,
+            wait: Some(bae_transfers::QueueWait::Offline)
+        })
+    );
+}
+
 /// Pinning a release whose download failed queues that entry again, in its
 /// place ahead of one queued after it, with its error gone.
 #[tokio::test]
@@ -243,7 +309,7 @@ async fn download_transfers_report_each_driven_file_progress() {
     manager.set_downloads_paused(true).await.unwrap();
     assert!(manager
         .downloads
-        .enqueue_all(vec![bae_transfers::DownloadEntry {
+        .enqueue_all(vec![bae_transfers::QueuedPin {
             release_id: release_id.clone(),
             created_at: 0,
             payload: (),
@@ -325,7 +391,7 @@ async fn download_bytes_send_no_new_sync_activity() {
     manager.set_downloads_paused(true).await.unwrap();
     assert!(manager
         .downloads
-        .enqueue_all(vec![bae_transfers::DownloadEntry {
+        .enqueue_all(vec![bae_transfers::QueuedPin {
             release_id: release_id.clone(),
             created_at: 0,
             payload: (),
@@ -529,6 +595,8 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
         || by_storage(manager, bae_views::StorageFilter::All, bae_store::SortDirection::Ascending);
     let resting = vec![first.clone(), second.clone()];
     let second_pinning = vec![second.clone(), first.clone()];
+    // A failed download sorts first, as a pinning one does, ahead of the rest.
+    let second_failed = vec![second.clone(), first.clone()];
     assert_eq!(ascending().await, resting);
 
     manager.set_downloads_paused(true).await.unwrap();
@@ -541,7 +609,7 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     assert!(fail_download(manager, &second, "the network connection was lost".into())
         .await
         .unwrap());
-    assert_eq!(ascending().await, resting, "failed");
+    assert_eq!(ascending().await, second_failed, "failed");
 
     // Starting the entry resumed the queue; paused again, the worker leaves
     // the entry to this test.

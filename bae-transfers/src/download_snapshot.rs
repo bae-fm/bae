@@ -89,7 +89,7 @@ impl DownloadRate {
 }
 
 /// A release to queue for download.
-pub type DownloadEntry = ReleaseQueueEntry<()>;
+pub type QueuedPin = ReleaseQueueEntry<()>;
 pub type DownloadProgress = ReleaseQueueProgress;
 /// A download as the Downloads pane lists it: its phase without the active
 /// one's bytes, which travel apart, keyed by release

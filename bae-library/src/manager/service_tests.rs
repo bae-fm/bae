@@ -26,7 +26,7 @@ async fn opening_a_library_keeps_its_download_queue() {
         .unwrap();
     let left = bae_store::test_devices::store_under(handle.clone(), clock.clone());
     let left = bae_transfers::Downloads::new(left);
-    left.enqueue_all(vec![bae_transfers::DownloadEntry {
+    left.enqueue_all(vec![bae_transfers::QueuedPin {
         release_id: REL_1.to_string(),
         created_at: 0,
         payload: (),

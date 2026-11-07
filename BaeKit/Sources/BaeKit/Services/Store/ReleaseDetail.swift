@@ -32,6 +32,9 @@ public struct ReleaseDetail: Identifiable, Sendable {
     /// when it can: the device its audio is on ("On Ana's Mac"), or its
     /// originals missing here.
     public var unplayableLine: String?
+    /// Where the release stands in this device's download queue, and what
+    /// holds the queue back; nil when core offers no download control.
+    public var downloadStatus: BridgeReleaseDownloadStatus?
 
     public var id: String {
         summary.id
@@ -62,6 +65,7 @@ public struct ReleaseDetail: Identifiable, Sendable {
         .joined(separator: separator)
         labelsLine = Self.labelsLine(bridge.labels, separator: separator)
         totalDuration = bridge.totalDuration
+        downloadStatus = bridge.downloadStatus
         tracks = bridge.tracks.map(Track.init(from:))
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))
         imageFiles = bridge.imageFiles

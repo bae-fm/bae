@@ -287,8 +287,7 @@ pub struct DbReleaseSummary {
 }
 
 /// Raw storage-page row: a release summary joined with its parent album summary,
-/// both halves from one SQL query, and where the release's files are, as the
-/// list sorts by storage. The storage views resolve them into
+/// both halves from one SQL query, and what its storage state shows. The storage views resolve them into
 /// `ReleaseSummary` / `AlbumSummary`, which the UI normalizes into slices.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageRow {
@@ -298,7 +297,7 @@ pub struct DbStorageRow {
     /// The version of the release's own cover; `None` when it has none.
     pub release_cover_version: Option<String>,
     pub album: DbAlbumSummary,
-    pub place: crate::album_detail::StoragePlace,
+    pub status: crate::album_detail::StorageRowStatus,
 }
 
 /// The columns the Storage Manager view renders, as sort keys.

@@ -232,10 +232,16 @@ pub struct BridgeDownloadOp {
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeReleaseDownloadStatus {
     Downloaded,
-    Queued,
+    /// Waiting, with `ahead` entries before it that have not failed.
+    Queued {
+        ahead: u32,
+        wait: Option<BridgeQueueWait>,
+    },
     /// Bytes are arriving; how many is the release's value in the download
     /// `KeyedValueStream`.
-    Downloading,
+    Downloading {
+        wait: Option<BridgeQueueWait>,
+    },
     Failed {
         error: String,
     },
@@ -247,10 +253,29 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Downloaded,
-        Queued,
-        Downloading,
+        Queued { ahead, wait: (opt BridgeQueueWait) },
+        Downloading { wait: (opt BridgeQueueWait) },
         Failed { error },
         Available,
+    },
+}
+
+/// What keeps the download queue from taking its next entry. Mirrors
+/// `QueueWait`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeQueueWait {
+    /// The device has no usable network.
+    Offline,
+    /// The person paused the queue.
+    Paused,
+}
+
+mirror_enum! {
+    BridgeQueueWait = bae_transfers::QueueWait,
+    from_core: pub(crate) fn,
+    variants: {
+        Offline,
+        Paused,
     },
 }
 

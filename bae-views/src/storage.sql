@@ -12,10 +12,11 @@
 -- from its `release_media`; `created_at`, when the release was added; its
 -- files' count and total size, `stored`, `pinned_count` and `queued_count`,
 -- copied from its `release_storage` row; `download_queued`, 1 while this
--- device's download queue holds it waiting or downloading; and
--- `storage_order`, where it sorts by storage, worked out from those in the
--- same write: uploading (0), pinning (1) while the download queue brings its
--- files to this device, local (2), pinned (3), in the cloud only (4).
+-- device's download queue holds it waiting or downloading; `download_failed`,
+-- 1 while that queue holds it failed; and `storage_order`, where it sorts by
+-- storage, worked out from those in the same write: a failed download first
+-- (0), uploading (1), pinning (2) while the download queue brings its files
+-- to this device, local (3), pinned (4), in the cloud only (5).
 CREATE TABLE IF NOT EXISTS release_listing (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     album_id TEXT NOT NULL,
@@ -31,12 +32,14 @@ CREATE TABLE IF NOT EXISTS release_listing (
     pinned_count INTEGER NOT NULL,
     queued_count INTEGER NOT NULL,
     download_queued INTEGER NOT NULL CHECK (download_queued IN (0, 1)),
+    download_failed INTEGER NOT NULL CHECK (download_failed IN (0, 1)),
     storage_order INTEGER GENERATED ALWAYS AS (CASE
-        WHEN queued_count > 0 THEN 0
-        WHEN download_queued = 1 THEN 1
-        WHEN stored = 0 THEN 2
-        WHEN file_count > 0 AND pinned_count = file_count THEN 3
-        ELSE 4 END) VIRTUAL
+        WHEN download_failed = 1 THEN 0
+        WHEN queued_count > 0 THEN 1
+        WHEN download_queued = 1 THEN 2
+        WHEN stored = 0 THEN 3
+        WHEN file_count > 0 AND pinned_count = file_count THEN 4
+        ELSE 5 END) VIRTUAL
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_release_listing_album ON release_listing (album_id);
@@ -128,7 +131,7 @@ BEGIN
     INSERT INTO release_listing (
         release_id, album_id, album_title, credit_sort_names, credit_artist_ids,
         media_empty, media_key, created_at, file_count, total_size, stored, pinned_count,
-        queued_count, download_queued)
+        queued_count, download_queued, download_failed)
     SELECT r.id, r.album_id, album.title, album.credit_sort_names, album.credit_artist_ids,
            media.media_empty,
            media.media_key,
@@ -139,7 +142,9 @@ BEGIN
            storage.pinned_count,
            storage.queued_count,
            EXISTS (SELECT 1 FROM download_queue download
-                   WHERE download.release_id = r.id AND download.state IN ('queued', 'active'))
+                   WHERE download.release_id = r.id AND download.state IN ('queued', 'active')),
+           EXISTS (SELECT 1 FROM download_queue download
+                   WHERE download.release_id = r.id AND download.state = 'failed')
     FROM releases r
     JOIN release_storage storage ON storage.release_id = r.id
     JOIN album_listing album ON album.album_id = r.album_id
@@ -157,7 +162,8 @@ BEGIN
         stored = excluded.stored,
         pinned_count = excluded.pinned_count,
         queued_count = excluded.queued_count,
-        download_queued = excluded.download_queued;
+        download_queued = excluded.download_queued,
+        download_failed = excluded.download_failed;
 END;
 
 -- A release arriving lists its album first. An album listed just now lists
@@ -264,24 +270,27 @@ BEGIN
 END;
 
 -- A release joining, moving through or leaving this device's download queue
--- moves its listing's `download_queued` flag, in the transaction that
--- changes the queue: waiting or downloading sets it, a failed download or
--- leaving the queue clears it. An entry names its release by id alone, so one whose
+-- moves its listing's `download_queued` and `download_failed` flags, in the
+-- transaction that changes the queue: waiting or downloading sets the first,
+-- a failed download the second, and leaving the queue clears both. An entry names its release by id alone, so one whose
 -- release is gone, or not listed yet, moves nothing: the listing's refresh
 -- reads the queue as it writes the release's row.
 CREATE TRIGGER IF NOT EXISTS release_listing_pin_queued AFTER INSERT ON download_queue
 BEGIN
-    UPDATE release_listing SET download_queued = NEW.state IN ('queued', 'active')
+    UPDATE release_listing SET download_queued = NEW.state IN ('queued', 'active'),
+        download_failed = NEW.state = 'failed'
     WHERE release_id = NEW.release_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_pin_changed AFTER UPDATE OF state ON download_queue
 BEGIN
-    UPDATE release_listing SET download_queued = NEW.state IN ('queued', 'active')
+    UPDATE release_listing SET download_queued = NEW.state IN ('queued', 'active'),
+        download_failed = NEW.state = 'failed'
     WHERE release_id = NEW.release_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_pin_dequeued AFTER DELETE ON download_queue
 BEGIN
-    UPDATE release_listing SET download_queued = 0 WHERE release_id = OLD.release_id;
+    UPDATE release_listing SET download_queued = 0, download_failed = 0
+    WHERE release_id = OLD.release_id;
 END;

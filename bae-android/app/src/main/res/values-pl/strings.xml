@@ -171,6 +171,8 @@
     <string name="download_remove">Usuń pobrane</string>
     <string name="download_downloaded">Pobrano</string>
     <string name="download_waiting">Oczekuje na pobranie</string>
+    <string name="download_ahead">Przed nim: %1$d</string>
+    <string name="download_waiting_for_network">Czeka na sieć</string>
     <string name="resume">Wznów</string>
     <string name="downloads_empty">Brak pobrań</string>
     <string name="downloads_load_failed">Nie udało się wczytać pobrań.</string>

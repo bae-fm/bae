@@ -5,6 +5,7 @@
 //! transitions are `release_storage_action`'s rows, each ended in the write
 //! that changes the release's files.
 
+mod download_entry;
 mod download_snapshot;
 mod output_snapshot;
 mod queued_releases;
@@ -13,9 +14,10 @@ mod release_state;
 pub mod release_storage_action;
 mod release_transfers;
 
+pub use download_entry::{download_entry_column, download_entry_sql, DownloadEntry, QueueWait};
 pub use download_snapshot::{
-    DownloadEntry, DownloadPhase, DownloadProgress, DownloadProgressError, DownloadRate,
-    DownloadRow, DownloadSnapshot, DownloadTransferProgress, QueuedDownload,
+    DownloadPhase, DownloadProgress, DownloadProgressError, DownloadRate, DownloadRow,
+    DownloadSnapshot, DownloadTransferProgress, QueuedDownload, QueuedPin,
 };
 pub use output_snapshot::{
     OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,
