@@ -21,7 +21,8 @@ accepting a slower number takes a commit:
   slower        above the baseline by more than the tolerance (exit status 1)
   no baseline   the scenario's number has none yet (exit status 0)
   not compared  the machine's one-minute load was over half its cores when the
-                scenario started; the numbers are shown and recorded, and
+                scenario started, after waiting up to ten minutes for it to
+                fall; the numbers are shown and recorded, and
                 `accept` refuses them
 
 The tolerance is 25%, widened by the baseline's own spread. The last run
@@ -45,6 +46,7 @@ import re
 import statistics
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -55,6 +57,7 @@ LAST_RUN = ROOT / "target" / "perf" / "last-run.json"
 TOLERANCE = 0.25
 LOAD_SHARE = 0.5
 DEFAULT_REPEAT = 3
+QUIET_WAIT = 600
 
 BETTER, WITHIN, SLOWER, NO_BASELINE, NOT_COMPARED = (
     "better",
@@ -64,7 +67,7 @@ BETTER, WITHIN, SLOWER, NO_BASELINE, NOT_COMPARED = (
     "not compared",
 )
 
-WINDOW_COST = re.compile(r"^WINDOW_COST (.*)$")
+WINDOW_COST = re.compile(r"^WINDOW_COST (list=.*)$")
 COST = re.compile(r"^COST metric=(\S+) value=(\S+) unit=(\S+)$")
 QUEUE_BENCH = re.compile(r"^(.+): fastest [\d.]+ s, median ([\d.]+) s \(runs ")
 
@@ -75,6 +78,8 @@ class Scenario:
     # The arguments to scripts/cargo.sh.
     cargo: tuple[str, ...]
     summary: str
+    # Environment variables the measurement reads, set for its cargo command.
+    env: tuple[tuple[str, str], ...] = ()
 
 
 def test_command(package: str, target: tuple[str, ...], filter_: tuple[str, ...]) -> tuple[str, ...]:
@@ -103,7 +108,14 @@ SCENARIOS: tuple[Scenario, ...] = (
     Scenario(
         "scan",
         test_command("bae-app", ("--test", "integration"), ("test_scan_cost::",)),
-        "a first scan of a watched folder as it grows",
+        "a first scan of 1,000 and 5,000 folders, flat, in one tree and with the list open",
+        env=(("SCAN_SIZES", "1000,5000"),),
+    ),
+    Scenario(
+        "scan-10k",
+        test_command("bae-app", ("--test", "integration"), ("test_scan_cost::flat_folders",)),
+        "a first scan of 10,000 flat folders, without and with the import list open",
+        env=(("SCAN_SIZES", "10000"),),
     ),
     Scenario(
         "import-live-query-reruns",
@@ -204,6 +216,7 @@ def chosen(names: list[str]) -> list[Scenario]:
 def run_once(scenario: Scenario) -> tuple[int, str]:
     process = subprocess.run(
         [str(ROOT / "scripts" / "cargo.sh"), *scenario.cargo],
+        env={**os.environ, **dict(scenario.env)},
         cwd=ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -221,6 +234,16 @@ def command_list(_: argparse.Namespace) -> int:
     return 0
 
 
+def wait_for_quiet(cores: int) -> None:
+    """Wait, up to ten minutes, for the one-minute load to fall to its share."""
+    waited = 0
+    while os.getloadavg()[0] > cores * LOAD_SHARE and waited < QUIET_WAIT:
+        if waited == 0:
+            print(f"  waiting for load {os.getloadavg()[0]:.2f} to fall under {cores * LOAD_SHARE:.0f}")
+        time.sleep(10)
+        waited += 10
+
+
 def command_run(args: argparse.Namespace) -> int:
     machine = machine_name()
     baselines = load_json(BASELINES / f"{machine}.json").get("scenarios", {})
@@ -229,6 +252,7 @@ def command_run(args: argparse.Namespace) -> int:
     slower = 0
     print(f"machine {machine}")
     for scenario in chosen(args.scenarios):
+        wait_for_quiet(cores)
         load = os.getloadavg()[0]
         print(f"\n{scenario.name} (load {load:.2f} of {cores} cores)")
         runs, logs = [], []

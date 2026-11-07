@@ -1,0 +1,6093 @@
+{
+  "machine": "Mac16-8-14cores",
+  "scenarios": {
+    "import-list-windows": {
+      "import_list/NewestFirst/jump/100000/end": {
+        "median": 63.393,
+        "spread": 0.012872083668543774,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/jump/100000/middle": {
+        "median": 29.019,
+        "spread": 0.02991143733416033,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/jump/100000/top": {
+        "median": 0.785,
+        "spread": 0.05350318471337584,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/jump/20000/end": {
+        "median": 10.678,
+        "spread": 0.03802210151713809,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/jump/20000/middle": {
+        "median": 5.584,
+        "spread": 0.03259312320916913,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/jump/20000/top": {
+        "median": 0.748,
+        "spread": 0.0254010695187166,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/jump/50000/end": {
+        "median": 28.847,
+        "spread": 0.07168856380212851,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/jump/50000/middle": {
+        "median": 13.461,
+        "spread": 0.0638139811306738,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/jump/50000/top": {
+        "median": 0.753,
+        "spread": 0.10358565737051802,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/scroll/100000/end": {
+        "median": 0.819,
+        "spread": 0.08547008547008542,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/scroll/100000/middle": {
+        "median": 0.835,
+        "spread": 0.06586826347305381,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/scroll/100000/top": {
+        "median": 1.259,
+        "spread": 0.036536934074662464,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/scroll/20000/end": {
+        "median": 0.823,
+        "spread": 0.04009720534629395,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/scroll/20000/middle": {
+        "median": 1.297,
+        "spread": 0.19814957594448737,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/scroll/20000/top": {
+        "median": 1.319,
+        "spread": 0.011372251705837682,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/scroll/50000/end": {
+        "median": 0.822,
+        "spread": 0.020681265206812672,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/scroll/50000/middle": {
+        "median": 0.824,
+        "spread": 0.018203883495145647,
+        "unit": "ms"
+      },
+      "import_list/NewestFirst/scroll/50000/top": {
+        "median": 1.286,
+        "spread": 0.06298600311042005,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/jump/100000/end": {
+        "median": 61.612,
+        "spread": 0.015841069921443858,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/jump/100000/middle": {
+        "median": 27.739,
+        "spread": 0.008183424059987754,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/jump/100000/top": {
+        "median": 0.752,
+        "spread": 0.11303191489361712,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/jump/20000/end": {
+        "median": 10.122,
+        "spread": 0.04524797470855564,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/jump/20000/middle": {
+        "median": 5.345,
+        "spread": 0.038727782974742726,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/jump/20000/top": {
+        "median": 0.757,
+        "spread": 0.023778071334214022,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/jump/50000/end": {
+        "median": 27.486,
+        "spread": 0.06559703121589175,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/jump/50000/middle": {
+        "median": 12.887,
+        "spread": 0.08566772716691233,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/jump/50000/top": {
+        "median": 0.727,
+        "spread": 0.22971114167812937,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/scroll/100000/end": {
+        "median": 0.766,
+        "spread": 0.0326370757180157,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/scroll/100000/middle": {
+        "median": 0.766,
+        "spread": 0.018276762402088788,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/scroll/100000/top": {
+        "median": 0.961,
+        "spread": 0.026014568158168598,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/scroll/20000/end": {
+        "median": 0.774,
+        "spread": 0.052971576227390224,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/scroll/20000/middle": {
+        "median": 1.006,
+        "spread": 0.029821073558648027,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/scroll/20000/top": {
+        "median": 1.083,
+        "spread": 0.05540166204986155,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/scroll/50000/end": {
+        "median": 0.787,
+        "spread": 0.006353240152477769,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/scroll/50000/middle": {
+        "median": 0.766,
+        "spread": 0.04569190600522197,
+        "unit": "ms"
+      },
+      "import_list/PathAscending/scroll/50000/top": {
+        "median": 0.986,
+        "spread": 0.07302231237322511,
+        "unit": "ms"
+      }
+    },
+    "import-live-query-reruns": {
+      "candidate_pane/caused_by_a_write": {
+        "median": 0.0,
+        "spread": 0.0,
+        "unit": "count"
+      },
+      "candidate_pane/runs": {
+        "median": 0.0,
+        "spread": 0.0,
+        "unit": "count"
+      },
+      "list/caused_by_a_write": {
+        "median": 976.0,
+        "spread": 0.022540983606557378,
+        "unit": "count"
+      },
+      "list/runs": {
+        "median": 976.0,
+        "spread": 0.0,
+        "unit": "count"
+      },
+      "progress/caused_by_a_write": {
+        "median": 1000.0,
+        "spread": 0.006,
+        "unit": "count"
+      },
+      "progress/runs": {
+        "median": 1000.0,
+        "spread": 0.0,
+        "unit": "count"
+      }
+    },
+    "library-create": {
+      "create_library": {
+        "median": 211.3996,
+        "spread": 0.009518939487113555,
+        "unit": "ms"
+      }
+    },
+    "library-list-windows": {
+      "albums/Artist_Ascending/jump/100000/end": {
+        "median": 29.386,
+        "spread": 0.012148642210576443,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/jump/100000/middle": {
+        "median": 14.684,
+        "spread": 0.017502043040043564,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/jump/100000/top": {
+        "median": 0.287,
+        "spread": 0.09059233449477341,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/jump/20000/end": {
+        "median": 4.954,
+        "spread": 0.0306822769479209,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/jump/20000/middle": {
+        "median": 2.585,
+        "spread": 0.029787234042553176,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/jump/20000/top": {
+        "median": 0.235,
+        "spread": 0.03404255319148928,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/jump/50000/end": {
+        "median": 13.487,
+        "spread": 0.03254986283087418,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/jump/50000/middle": {
+        "median": 6.851,
+        "spread": 0.04335133557144951,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/jump/50000/top": {
+        "median": 0.266,
+        "spread": 0.10526315789473693,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/scroll/100000/end": {
+        "median": 0.31,
+        "spread": 0.061290322580645214,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/scroll/100000/middle": {
+        "median": 0.319,
+        "spread": 0.03448275862068968,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/scroll/100000/top": {
+        "median": 0.327,
+        "spread": 0.07033639143730876,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/scroll/20000/end": {
+        "median": 0.285,
+        "spread": 0.04210526315789458,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/scroll/20000/middle": {
+        "median": 0.288,
+        "spread": 0.0937499999999999,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/scroll/20000/top": {
+        "median": 0.297,
+        "spread": 0.02020202020202022,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/scroll/50000/end": {
+        "median": 0.312,
+        "spread": 0.012820512820512832,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/scroll/50000/middle": {
+        "median": 0.309,
+        "spread": 0.012944983818770238,
+        "unit": "ms"
+      },
+      "albums/Artist_Ascending/scroll/50000/top": {
+        "median": 0.323,
+        "spread": 0.07430340557275548,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/jump/100000/end": {
+        "median": 29.822,
+        "spread": 0.020387633290859117,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/jump/100000/middle": {
+        "median": 15.051,
+        "spread": 0.021659690386020777,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/jump/100000/top": {
+        "median": 0.263,
+        "spread": 0.034220532319391664,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/jump/20000/end": {
+        "median": 4.927,
+        "spread": 0.037954130302415144,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/jump/20000/middle": {
+        "median": 2.575,
+        "spread": 0.021747572815533998,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/jump/20000/top": {
+        "median": 0.226,
+        "spread": 0.0707964601769911,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/jump/50000/end": {
+        "median": 13.544,
+        "spread": 0.03713821618428825,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/jump/50000/middle": {
+        "median": 6.897,
+        "spread": 0.03581267217630852,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/jump/50000/top": {
+        "median": 0.247,
+        "spread": 0.028340080971659944,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/scroll/100000/end": {
+        "median": 0.338,
+        "spread": 0.011834319526627229,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/scroll/100000/middle": {
+        "median": 0.352,
+        "spread": 0.03409090909090912,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/scroll/100000/top": {
+        "median": 0.298,
+        "spread": 0.030201342281879224,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/scroll/20000/end": {
+        "median": 0.3,
+        "spread": 0.010000000000000009,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/scroll/20000/middle": {
+        "median": 0.3,
+        "spread": 0.043333333333333376,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/scroll/20000/top": {
+        "median": 0.271,
+        "spread": 0.03321033210332106,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/scroll/50000/end": {
+        "median": 0.329,
+        "spread": 0.03343465045592708,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/scroll/50000/middle": {
+        "median": 0.336,
+        "spread": 0.005952380952380957,
+        "unit": "ms"
+      },
+      "albums/Artist_Descending/scroll/50000/top": {
+        "median": 0.296,
+        "spread": 0.0371621621621622,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/jump/100000/end": {
+        "median": 17.823,
+        "spread": 0.035796442798630874,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/jump/100000/middle": {
+        "median": 9.119,
+        "spread": 0.04079394670468252,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/jump/100000/top": {
+        "median": 0.243,
+        "spread": 0.0452674897119342,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/jump/20000/end": {
+        "median": 3.093,
+        "spread": 0.05593275137407049,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/jump/20000/middle": {
+        "median": 1.641,
+        "spread": 0.05240706886045099,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/jump/20000/top": {
+        "median": 0.22,
+        "spread": 0.02272727272727275,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/jump/50000/end": {
+        "median": 8.154,
+        "spread": 0.01165072357125345,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/jump/50000/middle": {
+        "median": 4.218,
+        "spread": 0.02702702702702721,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/jump/50000/top": {
+        "median": 0.233,
+        "spread": 0.11587982832618024,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/scroll/100000/end": {
+        "median": 0.269,
+        "spread": 0.08178438661710023,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/scroll/100000/middle": {
+        "median": 0.275,
+        "spread": 0.05818181818181803,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/scroll/100000/top": {
+        "median": 0.268,
+        "spread": 0.02985074626865674,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/scroll/20000/end": {
+        "median": 0.244,
+        "spread": 0.06147540983606552,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/scroll/20000/middle": {
+        "median": 0.238,
+        "spread": 0.11344537815126061,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/scroll/20000/top": {
+        "median": 0.244,
+        "spread": 0.0450819672131148,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/scroll/50000/end": {
+        "median": 0.266,
+        "spread": 0.05263157894736847,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/scroll/50000/middle": {
+        "median": 0.262,
+        "spread": 0.06870229007633594,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Ascending/scroll/50000/top": {
+        "median": 0.257,
+        "spread": 0.007782101167315182,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/jump/100000/end": {
+        "median": 17.728,
+        "spread": 0.02391696750902544,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/jump/100000/middle": {
+        "median": 8.841,
+        "spread": 0.015609093993892084,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/jump/100000/top": {
+        "median": 0.246,
+        "spread": 0.008130081300813016,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/jump/20000/end": {
+        "median": 3.095,
+        "spread": 0.032633279483037146,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/jump/20000/middle": {
+        "median": 1.627,
+        "spread": 0.04056545789797163,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/jump/20000/top": {
+        "median": 0.206,
+        "spread": 0.06796116504854376,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/jump/50000/end": {
+        "median": 8.074,
+        "spread": 0.02910577161258353,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/jump/50000/middle": {
+        "median": 4.162,
+        "spread": 0.01850072080730417,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/jump/50000/top": {
+        "median": 0.231,
+        "spread": 0.04761904761904766,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/scroll/100000/end": {
+        "median": 0.278,
+        "spread": 0.061151079136690496,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/scroll/100000/middle": {
+        "median": 0.274,
+        "spread": 0.025547445255474473,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/scroll/100000/top": {
+        "median": 0.271,
+        "spread": 0.04428044280442808,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/scroll/20000/end": {
+        "median": 0.248,
+        "spread": 0.01612903225806453,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/scroll/20000/middle": {
+        "median": 0.237,
+        "spread": 0.04219409282700414,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/scroll/20000/top": {
+        "median": 0.233,
+        "spread": 0.030042918454935646,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/scroll/50000/end": {
+        "median": 0.271,
+        "spread": 0.040590405904059074,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/scroll/50000/middle": {
+        "median": 0.263,
+        "spread": 0.053231939163498145,
+        "unit": "ms"
+      },
+      "albums/DateAdded_Descending/scroll/50000/top": {
+        "median": 0.25,
+        "spread": 0.04400000000000004,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/jump/100000/end": {
+        "median": 26.47,
+        "spread": 0.022893842085379604,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/jump/100000/middle": {
+        "median": 13.107,
+        "spread": 0.014190890363927669,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/jump/100000/top": {
+        "median": 0.249,
+        "spread": 0.02811244979919681,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/jump/20000/end": {
+        "median": 4.923,
+        "spread": 0.036359943124111366,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/jump/20000/middle": {
+        "median": 2.626,
+        "spread": 0.021325209444021175,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/jump/20000/top": {
+        "median": 0.224,
+        "spread": 0.08482142857142852,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/jump/50000/end": {
+        "median": 12.874,
+        "spread": 0.03246854124592209,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/jump/50000/middle": {
+        "median": 6.588,
+        "spread": 0.02792956891317536,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/jump/50000/top": {
+        "median": 0.228,
+        "spread": 0.10964912280701751,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/scroll/100000/end": {
+        "median": 0.258,
+        "spread": 0.034883720930232585,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/scroll/100000/middle": {
+        "median": 0.251,
+        "spread": 0.007968127490039847,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/scroll/100000/top": {
+        "median": 0.268,
+        "spread": 0.04104477611940302,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/scroll/20000/end": {
+        "median": 0.24,
+        "spread": 0.0833333333333333,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/scroll/20000/middle": {
+        "median": 0.238,
+        "spread": 0.008403361344537823,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/scroll/20000/top": {
+        "median": 0.233,
+        "spread": 0.01716738197424894,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/scroll/50000/end": {
+        "median": 0.259,
+        "spread": 0.04633204633204637,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/scroll/50000/middle": {
+        "median": 0.258,
+        "spread": 0.08527131782945743,
+        "unit": "ms"
+      },
+      "albums/Title_Ascending/scroll/50000/top": {
+        "median": 0.251,
+        "spread": 0.10358565737051802,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/jump/100000/end": {
+        "median": 25.754,
+        "spread": 0.015220936553545058,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/jump/100000/middle": {
+        "median": 13.202,
+        "spread": 0.020602938948644164,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/jump/100000/top": {
+        "median": 0.223,
+        "spread": 0.026905829596412578,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/jump/20000/end": {
+        "median": 4.936,
+        "spread": 0.045380875202593235,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/jump/20000/middle": {
+        "median": 2.59,
+        "spread": 0.027413127413127483,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/jump/20000/top": {
+        "median": 0.217,
+        "spread": 0.07834101382488486,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/jump/50000/end": {
+        "median": 12.433,
+        "spread": 0.03571141317461587,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/jump/50000/middle": {
+        "median": 6.264,
+        "spread": 0.02825670498084299,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/jump/50000/top": {
+        "median": 0.222,
+        "spread": 0.0675675675675675,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/scroll/100000/end": {
+        "median": 0.259,
+        "spread": 0.007722007722007728,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/scroll/100000/middle": {
+        "median": 0.256,
+        "spread": 0.06640625000000006,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/scroll/100000/top": {
+        "median": 0.243,
+        "spread": 0.0452674897119342,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/scroll/20000/end": {
+        "median": 0.233,
+        "spread": 0.04721030042918447,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/scroll/20000/middle": {
+        "median": 0.236,
+        "spread": 0.11864406779661016,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/scroll/20000/top": {
+        "median": 0.236,
+        "spread": 0.05932203389830514,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/scroll/50000/end": {
+        "median": 0.258,
+        "spread": 0.046511627906976785,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/scroll/50000/middle": {
+        "median": 0.256,
+        "spread": 0.027343750000000024,
+        "unit": "ms"
+      },
+      "albums/Title_Descending/scroll/50000/top": {
+        "median": 0.249,
+        "spread": 0.024096385542168697,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/jump/100000/end": {
+        "median": 22.817,
+        "spread": 0.021343734934478605,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/jump/100000/middle": {
+        "median": 11.537,
+        "spread": 0.021669411458784777,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/jump/100000/top": {
+        "median": 0.244,
+        "spread": 0.1024590163934426,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/jump/20000/end": {
+        "median": 4.493,
+        "spread": 0.06432227910082343,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/jump/20000/middle": {
+        "median": 2.406,
+        "spread": 0.04322527015793852,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/jump/20000/top": {
+        "median": 0.217,
+        "spread": 0.055299539170506964,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/jump/50000/end": {
+        "median": 10.986,
+        "spread": 0.03413435281267067,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/jump/50000/middle": {
+        "median": 5.623,
+        "spread": 0.0250755824293082,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/jump/50000/top": {
+        "median": 0.224,
+        "spread": 0.06250000000000006,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/scroll/100000/end": {
+        "median": 0.234,
+        "spread": 0.10256410256410253,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/scroll/100000/middle": {
+        "median": 0.242,
+        "spread": 0.024793388429752088,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/scroll/100000/top": {
+        "median": 0.237,
+        "spread": 0.10548523206751054,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/scroll/20000/end": {
+        "median": 0.225,
+        "spread": 0.013333333333333345,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/scroll/20000/middle": {
+        "median": 0.232,
+        "spread": 0.06465517241379304,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/scroll/20000/top": {
+        "median": 0.216,
+        "spread": 0.06018518518518524,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/scroll/50000/end": {
+        "median": 0.219,
+        "spread": 0.09132420091324209,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/scroll/50000/middle": {
+        "median": 0.235,
+        "spread": 0.07659574468085102,
+        "unit": "ms"
+      },
+      "albums/Year_Ascending/scroll/50000/top": {
+        "median": 0.229,
+        "spread": 0.026200873362445438,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/jump/100000/end": {
+        "median": 22.908,
+        "spread": 0.017417496071241528,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/jump/100000/middle": {
+        "median": 11.494,
+        "spread": 0.04724203932486524,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/jump/100000/top": {
+        "median": 0.228,
+        "spread": 0.06140350877192988,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/jump/20000/end": {
+        "median": 4.503,
+        "spread": 0.07639351543415507,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/jump/20000/middle": {
+        "median": 2.324,
+        "spread": 0.12048192771084348,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/jump/20000/top": {
+        "median": 0.217,
+        "spread": 0.07373271889400916,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/jump/50000/end": {
+        "median": 11.079,
+        "spread": 0.03863164545536608,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/jump/50000/middle": {
+        "median": 5.615,
+        "spread": 0.03579697239536948,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/jump/50000/top": {
+        "median": 0.218,
+        "spread": 0.018348623853211024,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/scroll/100000/end": {
+        "median": 0.249,
+        "spread": 0.02008032128514058,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/scroll/100000/middle": {
+        "median": 0.247,
+        "spread": 0.012145748987854262,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/scroll/100000/top": {
+        "median": 0.232,
+        "spread": 0.04310344827586199,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/scroll/20000/end": {
+        "median": 0.23,
+        "spread": 0.06086956521739124,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/scroll/20000/middle": {
+        "median": 0.225,
+        "spread": 0.08444444444444439,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/scroll/20000/top": {
+        "median": 0.21,
+        "spread": 0.06666666666666674,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/scroll/50000/end": {
+        "median": 0.241,
+        "spread": 0.016597510373443997,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/scroll/50000/middle": {
+        "median": 0.235,
+        "spread": 0.06808510638297867,
+        "unit": "ms"
+      },
+      "albums/Year_Descending/scroll/50000/top": {
+        "median": 0.22,
+        "spread": 0.0363636363636364,
+        "unit": "ms"
+      },
+      "albums/default/jump/100000/end": {
+        "median": 17.175,
+        "spread": 0.041397379912663665,
+        "unit": "ms"
+      },
+      "albums/default/jump/100000/middle": {
+        "median": 8.612,
+        "spread": 0.021365536460752354,
+        "unit": "ms"
+      },
+      "albums/default/jump/100000/top": {
+        "median": 0.228,
+        "spread": 0.026315789473684233,
+        "unit": "ms"
+      },
+      "albums/default/jump/20000/end": {
+        "median": 3.019,
+        "spread": 0.02981119576018559,
+        "unit": "ms"
+      },
+      "albums/default/jump/20000/middle": {
+        "median": 1.621,
+        "spread": 0.037014188772362636,
+        "unit": "ms"
+      },
+      "albums/default/jump/20000/top": {
+        "median": 0.209,
+        "spread": 0.023923444976076576,
+        "unit": "ms"
+      },
+      "albums/default/jump/50000/end": {
+        "median": 8.119,
+        "spread": 0.023894568296588134,
+        "unit": "ms"
+      },
+      "albums/default/jump/50000/middle": {
+        "median": 4.142,
+        "spread": 0.028730082085948974,
+        "unit": "ms"
+      },
+      "albums/default/jump/50000/top": {
+        "median": 0.234,
+        "spread": 0.04700854700854693,
+        "unit": "ms"
+      },
+      "albums/default/scroll/100000/end": {
+        "median": 0.267,
+        "spread": 0.03370786516853935,
+        "unit": "ms"
+      },
+      "albums/default/scroll/100000/middle": {
+        "median": 0.264,
+        "spread": 0.022727272727272745,
+        "unit": "ms"
+      },
+      "albums/default/scroll/100000/top": {
+        "median": 0.261,
+        "spread": 0.05363984674329506,
+        "unit": "ms"
+      },
+      "albums/default/scroll/20000/end": {
+        "median": 0.234,
+        "spread": 0.09401709401709397,
+        "unit": "ms"
+      },
+      "albums/default/scroll/20000/middle": {
+        "median": 0.242,
+        "spread": 0.04132231404958681,
+        "unit": "ms"
+      },
+      "albums/default/scroll/20000/top": {
+        "median": 0.235,
+        "spread": 0.05957446808510632,
+        "unit": "ms"
+      },
+      "albums/default/scroll/50000/end": {
+        "median": 0.263,
+        "spread": 0.04182509505703426,
+        "unit": "ms"
+      },
+      "albums/default/scroll/50000/middle": {
+        "median": 0.246,
+        "spread": 0.03658536585365857,
+        "unit": "ms"
+      },
+      "albums/default/scroll/50000/top": {
+        "median": 0.249,
+        "spread": 0.048192771084337394,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/jump/100000/end": {
+        "median": 1171.44,
+        "spread": 0.01606996517107154,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/jump/100000/middle": {
+        "median": 590.428,
+        "spread": 0.013231079826837501,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/jump/100000/top": {
+        "median": 0.336,
+        "spread": 0.04166666666666653,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/jump/20000/end": {
+        "median": 102.508,
+        "spread": 0.017891286533733983,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/jump/20000/middle": {
+        "median": 52.114,
+        "spread": 0.057201519745174075,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/jump/20000/top": {
+        "median": 0.294,
+        "spread": 0.044217687074829974,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/jump/50000/end": {
+        "median": 381.774,
+        "spread": 0.018387842021719756,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/jump/50000/middle": {
+        "median": 191.303,
+        "spread": 0.021557424609128052,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/jump/50000/top": {
+        "median": 0.323,
+        "spread": 0.015479876160990726,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/scroll/100000/end": {
+        "median": 0.394,
+        "spread": 0.02284263959390865,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/scroll/100000/middle": {
+        "median": 0.399,
+        "spread": 0.03258145363408524,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/scroll/100000/top": {
+        "median": 0.383,
+        "spread": 0.026109660574412556,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/scroll/20000/end": {
+        "median": 0.336,
+        "spread": 0.03571428571428575,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/scroll/20000/middle": {
+        "median": 0.339,
+        "spread": 0.041297935103244705,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/scroll/20000/top": {
+        "median": 0.344,
+        "spread": 0.04069767441860453,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/scroll/50000/end": {
+        "median": 0.374,
+        "spread": 0.018716577540106968,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/scroll/50000/middle": {
+        "median": 0.375,
+        "spread": 0.0346666666666667,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Ascending/scroll/50000/top": {
+        "median": 0.361,
+        "spread": 0.027700831024930775,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/jump/100000/end": {
+        "median": 1192.928,
+        "spread": 0.01876559188819459,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/jump/100000/middle": {
+        "median": 597.994,
+        "spread": 0.025409953946026298,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/jump/100000/top": {
+        "median": 0.33,
+        "spread": 0.02121212121212123,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/jump/20000/end": {
+        "median": 101.93,
+        "spread": 0.04059648778573536,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/jump/20000/middle": {
+        "median": 51.532,
+        "spread": 0.03838391678956768,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/jump/20000/top": {
+        "median": 0.285,
+        "spread": 0.00701754385964913,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/jump/50000/end": {
+        "median": 384.951,
+        "spread": 0.019636265394816402,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/jump/50000/middle": {
+        "median": 191.547,
+        "spread": 0.03319289782664309,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/jump/50000/top": {
+        "median": 0.329,
+        "spread": 0.07902735562310037,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/scroll/100000/end": {
+        "median": 0.398,
+        "spread": 0.04522613065326623,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/scroll/100000/middle": {
+        "median": 0.387,
+        "spread": 0.028423772609819146,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/scroll/100000/top": {
+        "median": 0.378,
+        "spread": 0.026455026455026478,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/scroll/20000/end": {
+        "median": 0.332,
+        "spread": 0.015060240963855434,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/scroll/20000/middle": {
+        "median": 0.344,
+        "spread": 0.05232558139534873,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/scroll/20000/top": {
+        "median": 0.335,
+        "spread": 0.011940298507462697,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/scroll/50000/end": {
+        "median": 0.381,
+        "spread": 0.06561679790026252,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/scroll/50000/middle": {
+        "median": 0.372,
+        "spread": 0.07258064516129038,
+        "unit": "ms"
+      },
+      "albums_by_artist/Artist_Descending/scroll/50000/top": {
+        "median": 0.359,
+        "spread": 0.0389972144846797,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/jump/100000/end": {
+        "median": 1284.086,
+        "spread": 0.005170993220080353,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/jump/100000/middle": {
+        "median": 645.688,
+        "spread": 0.005267249817249126,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/jump/100000/top": {
+        "median": 0.365,
+        "spread": 0.03561643835616442,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/jump/20000/end": {
+        "median": 110.38,
+        "spread": 0.03532342815727488,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/jump/20000/middle": {
+        "median": 56.905,
+        "spread": 0.03449608997451895,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/jump/20000/top": {
+        "median": 0.309,
+        "spread": 0.0161812297734628,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/jump/50000/end": {
+        "median": 419.163,
+        "spread": 0.011747220055205202,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/jump/50000/middle": {
+        "median": 208.131,
+        "spread": 0.0069763754558427055,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/jump/50000/top": {
+        "median": 0.341,
+        "spread": 0.02346041055718461,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/scroll/100000/end": {
+        "median": 0.447,
+        "spread": 0.05145413870246089,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/scroll/100000/middle": {
+        "median": 0.447,
+        "spread": 0.02013422818791948,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/scroll/100000/top": {
+        "median": 0.432,
+        "spread": 0.006944444444444451,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/scroll/20000/end": {
+        "median": 0.384,
+        "spread": 0.010416666666666676,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/scroll/20000/middle": {
+        "median": 0.388,
+        "spread": 0.025773195876288683,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/scroll/20000/top": {
+        "median": 0.385,
+        "spread": 0.0337662337662338,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/scroll/50000/end": {
+        "median": 0.428,
+        "spread": 0.03271028037383181,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/scroll/50000/middle": {
+        "median": 0.428,
+        "spread": 0.014018691588785059,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Ascending/scroll/50000/top": {
+        "median": 0.416,
+        "spread": 0.03605769230769234,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/jump/100000/end": {
+        "median": 1288.566,
+        "spread": 0.008452807229121406,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/jump/100000/middle": {
+        "median": 648.759,
+        "spread": 0.00669431946223476,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/jump/100000/top": {
+        "median": 0.371,
+        "spread": 0.048517520215633464,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/jump/20000/end": {
+        "median": 110.874,
+        "spread": 0.046367949203600406,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/jump/20000/middle": {
+        "median": 57.09,
+        "spread": 0.055648975302154485,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/jump/20000/top": {
+        "median": 0.316,
+        "spread": 0.053797468354430424,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/jump/50000/end": {
+        "median": 418.649,
+        "spread": 0.008465325368029023,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/jump/50000/middle": {
+        "median": 208.894,
+        "spread": 0.017870307428648043,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/jump/50000/top": {
+        "median": 0.343,
+        "spread": 0.014577259475218509,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/scroll/100000/end": {
+        "median": 0.434,
+        "spread": 0.00921658986175116,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/scroll/100000/middle": {
+        "median": 0.442,
+        "spread": 0.02488687782805432,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/scroll/100000/top": {
+        "median": 0.434,
+        "spread": 0.0069124423963133706,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/scroll/20000/end": {
+        "median": 0.383,
+        "spread": 0.007832898172323766,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/scroll/20000/middle": {
+        "median": 0.395,
+        "spread": 0.010126582278481022,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/scroll/20000/top": {
+        "median": 0.38,
+        "spread": 0.00789473684210527,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/scroll/50000/end": {
+        "median": 0.414,
+        "spread": 0.06038647342995161,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/scroll/50000/middle": {
+        "median": 0.426,
+        "spread": 0.037558685446009425,
+        "unit": "ms"
+      },
+      "albums_by_artist/DateAdded_Descending/scroll/50000/top": {
+        "median": 0.415,
+        "spread": 0.028915662650602303,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/jump/100000/end": {
+        "median": 1287.735,
+        "spread": 0.006865542988270021,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/jump/100000/middle": {
+        "median": 648.72,
+        "spread": 0.007406893575040001,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/jump/100000/top": {
+        "median": 0.368,
+        "spread": 0.04347826086956526,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/jump/20000/end": {
+        "median": 118.639,
+        "spread": 0.20113959153398123,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/jump/20000/middle": {
+        "median": 61.473,
+        "spread": 0.1398337481495942,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/jump/20000/top": {
+        "median": 0.313,
+        "spread": 0.3482428115015974,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/jump/50000/end": {
+        "median": 418.784,
+        "spread": 0.021029934285932646,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/jump/50000/middle": {
+        "median": 209.009,
+        "spread": 0.02608978560731836,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/jump/50000/top": {
+        "median": 0.349,
+        "spread": 0.037249283667621653,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/scroll/100000/end": {
+        "median": 0.448,
+        "spread": 0.040178571428571466,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/scroll/100000/middle": {
+        "median": 0.453,
+        "spread": 0.015452538631346591,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/scroll/100000/top": {
+        "median": 0.432,
+        "spread": 0.027777777777777804,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/scroll/20000/end": {
+        "median": 0.389,
+        "spread": 0.17737789203084833,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/scroll/20000/middle": {
+        "median": 0.432,
+        "spread": 0.12037037037037035,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/scroll/20000/top": {
+        "median": 0.392,
+        "spread": 0.26530612244897955,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/scroll/50000/end": {
+        "median": 0.419,
+        "spread": 0.023866348448687374,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/scroll/50000/middle": {
+        "median": 0.429,
+        "spread": 0.09324009324009333,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Ascending/scroll/50000/top": {
+        "median": 0.414,
+        "spread": 0.01207729468599035,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/jump/100000/end": {
+        "median": 1287.314,
+        "spread": 0.00846646583506424,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/jump/100000/middle": {
+        "median": 648.79,
+        "spread": 0.005326839192959228,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/jump/100000/top": {
+        "median": 0.371,
+        "spread": 0.013477088948787075,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/jump/20000/end": {
+        "median": 112.454,
+        "spread": 0.04777064399665641,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/jump/20000/middle": {
+        "median": 56.687,
+        "spread": 0.17391994637218403,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/jump/20000/top": {
+        "median": 0.317,
+        "spread": 0.09463722397476348,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/jump/50000/end": {
+        "median": 416.238,
+        "spread": 0.022410255671034298,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/jump/50000/middle": {
+        "median": 208.837,
+        "spread": 0.028725752620464878,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/jump/50000/top": {
+        "median": 0.346,
+        "spread": 0.014450867052022975,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/scroll/100000/end": {
+        "median": 0.426,
+        "spread": 0.021126760563380302,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/scroll/100000/middle": {
+        "median": 0.444,
+        "spread": 0.05180180180180185,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/scroll/100000/top": {
+        "median": 0.429,
+        "spread": 0.013986013986013998,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/scroll/20000/end": {
+        "median": 0.391,
+        "spread": 0.020460358056266004,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/scroll/20000/middle": {
+        "median": 0.411,
+        "spread": 0.23844282238442818,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/scroll/20000/top": {
+        "median": 0.386,
+        "spread": 0.14248704663212433,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/scroll/50000/end": {
+        "median": 0.422,
+        "spread": 0.0165876777251185,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/scroll/50000/middle": {
+        "median": 0.414,
+        "spread": 0.03140096618357491,
+        "unit": "ms"
+      },
+      "albums_by_artist/Title_Descending/scroll/50000/top": {
+        "median": 0.408,
+        "spread": 0.044117647058823435,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/jump/100000/end": {
+        "median": 1285.803,
+        "spread": 0.016695403572709114,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/jump/100000/middle": {
+        "median": 646.097,
+        "spread": 0.014624739009777277,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/jump/100000/top": {
+        "median": 0.364,
+        "spread": 0.060439560439560495,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/jump/20000/end": {
+        "median": 112.307,
+        "spread": 0.039080377892740395,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/jump/20000/middle": {
+        "median": 56.736,
+        "spread": 0.060243936830231236,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/jump/20000/top": {
+        "median": 0.31,
+        "spread": 0.0064516129032258125,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/jump/50000/end": {
+        "median": 420.039,
+        "spread": 0.01368444358738115,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/jump/50000/middle": {
+        "median": 208.211,
+        "spread": 0.003799030790880526,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/jump/50000/top": {
+        "median": 0.353,
+        "spread": 0.01133144475920681,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/scroll/100000/end": {
+        "median": 0.475,
+        "spread": 0.004210526315789478,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/scroll/100000/middle": {
+        "median": 0.483,
+        "spread": 0.024844720496894433,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/scroll/100000/top": {
+        "median": 0.446,
+        "spread": 0.051569506726457444,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/scroll/20000/end": {
+        "median": 0.423,
+        "spread": 0.02600472813238773,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/scroll/20000/middle": {
+        "median": 0.429,
+        "spread": 0.027972027972027996,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/scroll/20000/top": {
+        "median": 0.442,
+        "spread": 0.036199095022624465,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/scroll/50000/end": {
+        "median": 0.467,
+        "spread": 0.04710920770877948,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/scroll/50000/middle": {
+        "median": 0.462,
+        "spread": 0.015151515151515164,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Ascending/scroll/50000/top": {
+        "median": 0.473,
+        "spread": 0.04228329809725163,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/jump/100000/end": {
+        "median": 1283.846,
+        "spread": 0.00983295504289457,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/jump/100000/middle": {
+        "median": 646.396,
+        "spread": 0.009975309253151288,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/jump/100000/top": {
+        "median": 0.371,
+        "spread": 0.0026954177897574147,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/jump/20000/end": {
+        "median": 110.336,
+        "spread": 0.018688370069605546,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/jump/20000/middle": {
+        "median": 55.493,
+        "spread": 0.03677941361973577,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/jump/20000/top": {
+        "median": 0.315,
+        "spread": 0.019047619047619063,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/jump/50000/end": {
+        "median": 422.416,
+        "spread": 0.011401083292299607,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/jump/50000/middle": {
+        "median": 209.135,
+        "spread": 0.007095894996055087,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/jump/50000/top": {
+        "median": 0.359,
+        "spread": 0.011142061281337058,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/scroll/100000/end": {
+        "median": 0.505,
+        "spread": 0.04158415841584162,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/scroll/100000/middle": {
+        "median": 0.501,
+        "spread": 0.0159680638722555,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/scroll/100000/top": {
+        "median": 0.472,
+        "spread": 0.023305084745762615,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/scroll/20000/end": {
+        "median": 0.447,
+        "spread": 0.04250559284116335,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/scroll/20000/middle": {
+        "median": 0.454,
+        "spread": 0.022026431718061693,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/scroll/20000/top": {
+        "median": 0.419,
+        "spread": 0.01670644391408116,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/scroll/50000/end": {
+        "median": 0.481,
+        "spread": 0.029106029106029132,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/scroll/50000/middle": {
+        "median": 0.431,
+        "spread": 0.04176334106728542,
+        "unit": "ms"
+      },
+      "albums_by_artist/Year_Descending/scroll/50000/top": {
+        "median": 0.456,
+        "spread": 0.02192982456140353,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/jump/100000/end": {
+        "median": 1288.082,
+        "spread": 0.011253941907425045,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/jump/100000/middle": {
+        "median": 644.074,
+        "spread": 0.00945543524501848,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/jump/100000/top": {
+        "median": 0.363,
+        "spread": 0.03305785123966945,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/jump/20000/end": {
+        "median": 113.14,
+        "spread": 0.011004065759236384,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/jump/20000/middle": {
+        "median": 57.91,
+        "spread": 0.006596442756000778,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/jump/20000/top": {
+        "median": 0.312,
+        "spread": 0.022435897435897457,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/jump/50000/end": {
+        "median": 427.762,
+        "spread": 0.020520756869474195,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/jump/50000/middle": {
+        "median": 209.253,
+        "spread": 0.02181569678809861,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/jump/50000/top": {
+        "median": 0.334,
+        "spread": 0.014970059880239533,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/scroll/100000/end": {
+        "median": 0.439,
+        "spread": 0.06378132118451031,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/scroll/100000/middle": {
+        "median": 0.441,
+        "spread": 0.00680272108843538,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/scroll/100000/top": {
+        "median": 0.452,
+        "spread": 0.002212389380530975,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/scroll/20000/end": {
+        "median": 0.394,
+        "spread": 0.3299492385786802,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/scroll/20000/middle": {
+        "median": 0.388,
+        "spread": 0.04123711340206189,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/scroll/20000/top": {
+        "median": 0.382,
+        "spread": 0.034031413612565474,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/scroll/50000/end": {
+        "median": 0.416,
+        "spread": 0.016826923076923093,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/scroll/50000/middle": {
+        "median": 0.427,
+        "spread": 0.07962529274004691,
+        "unit": "ms"
+      },
+      "albums_by_artist/default/scroll/50000/top": {
+        "median": 0.415,
+        "spread": 0.026506024096385566,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/jump/100000/end": {
+        "median": 29.392,
+        "spread": 0.04038513881328257,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/jump/100000/middle": {
+        "median": 14.954,
+        "spread": 0.07329142704293166,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/jump/100000/top": {
+        "median": 0.096,
+        "spread": 0.010416666666666676,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/jump/20000/end": {
+        "median": 4.81,
+        "spread": 0.03180873180873191,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/jump/20000/middle": {
+        "median": 2.419,
+        "spread": 0.04381976023150057,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/jump/20000/top": {
+        "median": 0.093,
+        "spread": 0.07526881720430115,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/jump/50000/end": {
+        "median": 13.35,
+        "spread": 0.0370786516853932,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/jump/50000/middle": {
+        "median": 6.67,
+        "spread": 0.03838080959520243,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/jump/50000/top": {
+        "median": 0.095,
+        "spread": 0.021052631578947385,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/scroll/100000/end": {
+        "median": 0.119,
+        "spread": 0.0,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/scroll/100000/middle": {
+        "median": 0.12,
+        "spread": 0.0833333333333333,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/scroll/100000/top": {
+        "median": 0.109,
+        "spread": 0.018348623853211024,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/scroll/20000/end": {
+        "median": 0.115,
+        "spread": 0.07826086956521745,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/scroll/20000/middle": {
+        "median": 0.11,
+        "spread": 0.08181818181818189,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/scroll/20000/top": {
+        "median": 0.106,
+        "spread": 0.028301886792452855,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/scroll/50000/end": {
+        "median": 0.118,
+        "spread": 0.09322033898305082,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/scroll/50000/middle": {
+        "median": 0.116,
+        "spread": 0.07758620689655167,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Ascending/scroll/50000/top": {
+        "median": 0.109,
+        "spread": 0.009174311926605512,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/jump/100000/end": {
+        "median": 29.613,
+        "spread": 0.026441090061797227,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/jump/100000/middle": {
+        "median": 14.697,
+        "spread": 0.04191331564264826,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/jump/100000/top": {
+        "median": 0.1,
+        "spread": 0.030000000000000027,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/jump/20000/end": {
+        "median": 4.788,
+        "spread": 0.05054302422723475,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/jump/20000/middle": {
+        "median": 2.381,
+        "spread": 0.06131877362452748,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/jump/20000/top": {
+        "median": 0.092,
+        "spread": 0.10869565217391314,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/jump/50000/end": {
+        "median": 13.318,
+        "spread": 0.038744556239675626,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/jump/50000/middle": {
+        "median": 6.669,
+        "spread": 0.038836407257459946,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/jump/50000/top": {
+        "median": 0.097,
+        "spread": 0.030927835051546417,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/scroll/100000/end": {
+        "median": 0.12,
+        "spread": 0.025000000000000022,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/scroll/100000/middle": {
+        "median": 0.12,
+        "spread": 0.06666666666666661,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/scroll/100000/top": {
+        "median": 0.11,
+        "spread": 0.0181818181818182,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/scroll/20000/end": {
+        "median": 0.113,
+        "spread": 0.0,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/scroll/20000/middle": {
+        "median": 0.106,
+        "spread": 0.009433962264150952,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/scroll/20000/top": {
+        "median": 0.106,
+        "spread": 0.028301886792452855,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/scroll/50000/end": {
+        "median": 0.118,
+        "spread": 0.09322033898305082,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/scroll/50000/middle": {
+        "median": 0.117,
+        "spread": 0.05982905982905976,
+        "unit": "ms"
+      },
+      "artists/AlbumCount_Descending/scroll/50000/top": {
+        "median": 0.109,
+        "spread": 0.06422018348623859,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/jump/100000/end": {
+        "median": 30.208,
+        "spread": 0.06293034957627118,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/jump/100000/middle": {
+        "median": 15.041,
+        "spread": 0.10298517385812121,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/jump/100000/top": {
+        "median": 0.103,
+        "spread": 0.12621359223300968,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/jump/20000/end": {
+        "median": 4.861,
+        "spread": 0.06274429129808676,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/jump/20000/middle": {
+        "median": 2.46,
+        "spread": 0.0491869918699187,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/jump/20000/top": {
+        "median": 0.094,
+        "spread": 0.04255319148936174,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/jump/50000/end": {
+        "median": 13.68,
+        "spread": 0.04722222222222228,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/jump/50000/middle": {
+        "median": 6.938,
+        "spread": 0.049437878351109826,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/jump/50000/top": {
+        "median": 0.098,
+        "spread": 0.03061224489795921,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/scroll/100000/end": {
+        "median": 0.118,
+        "spread": 0.0169491525423729,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/scroll/100000/middle": {
+        "median": 0.121,
+        "spread": 0.03305785123966945,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/scroll/100000/top": {
+        "median": 0.117,
+        "spread": 0.10256410256410253,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/scroll/20000/end": {
+        "median": 0.104,
+        "spread": 0.028846153846153872,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/scroll/20000/middle": {
+        "median": 0.111,
+        "spread": 0.12612612612612611,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/scroll/20000/top": {
+        "median": 0.104,
+        "spread": 0.04807692307692312,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/scroll/50000/end": {
+        "median": 0.118,
+        "spread": 0.008474576271186331,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/scroll/50000/middle": {
+        "median": 0.115,
+        "spread": 0.04347826086956525,
+        "unit": "ms"
+      },
+      "artists/Name_Ascending/scroll/50000/top": {
+        "median": 0.109,
+        "spread": 0.0,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/jump/100000/end": {
+        "median": 30.046,
+        "spread": 0.04602942155361776,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/jump/100000/middle": {
+        "median": 15.049,
+        "spread": 0.05335902717788563,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/jump/100000/top": {
+        "median": 0.098,
+        "spread": 0.020408163265306138,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/jump/20000/end": {
+        "median": 4.868,
+        "spread": 0.05238290879211172,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/jump/20000/middle": {
+        "median": 2.458,
+        "spread": 0.045972335231895846,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/jump/20000/top": {
+        "median": 0.092,
+        "spread": 0.02173913043478263,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/jump/50000/end": {
+        "median": 13.908,
+        "spread": 0.04163071613459884,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/jump/50000/middle": {
+        "median": 6.95,
+        "spread": 0.03669064748201437,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/jump/50000/top": {
+        "median": 0.102,
+        "spread": 0.07843137254901955,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/scroll/100000/end": {
+        "median": 0.117,
+        "spread": 0.051282051282051204,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/scroll/100000/middle": {
+        "median": 0.119,
+        "spread": 0.05042016806722694,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/scroll/100000/top": {
+        "median": 0.109,
+        "spread": 0.10091743119266051,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/scroll/20000/end": {
+        "median": 0.113,
+        "spread": 0.0088495575221239,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/scroll/20000/middle": {
+        "median": 0.104,
+        "spread": 0.02884615384615374,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/scroll/20000/top": {
+        "median": 0.104,
+        "spread": 0.02884615384615374,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/scroll/50000/end": {
+        "median": 0.119,
+        "spread": 0.05042016806722682,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/scroll/50000/middle": {
+        "median": 0.117,
+        "spread": 0.05982905982905976,
+        "unit": "ms"
+      },
+      "artists/Name_Descending/scroll/50000/top": {
+        "median": 0.114,
+        "spread": 0.06140350877192988,
+        "unit": "ms"
+      },
+      "artists/default/jump/100000/end": {
+        "median": 30.471,
+        "spread": 0.10084998851366875,
+        "unit": "ms"
+      },
+      "artists/default/jump/100000/middle": {
+        "median": 15.055,
+        "spread": 0.05048156758551975,
+        "unit": "ms"
+      },
+      "artists/default/jump/100000/top": {
+        "median": 0.099,
+        "spread": 0.07070707070707076,
+        "unit": "ms"
+      },
+      "artists/default/jump/20000/end": {
+        "median": 4.838,
+        "spread": 0.05436130632492782,
+        "unit": "ms"
+      },
+      "artists/default/jump/20000/middle": {
+        "median": 2.452,
+        "spread": 0.039967373572593744,
+        "unit": "ms"
+      },
+      "artists/default/jump/20000/top": {
+        "median": 0.095,
+        "spread": 0.08421052631578954,
+        "unit": "ms"
+      },
+      "artists/default/jump/50000/end": {
+        "median": 13.811,
+        "spread": 0.056911157772789774,
+        "unit": "ms"
+      },
+      "artists/default/jump/50000/middle": {
+        "median": 6.897,
+        "spread": 0.04088734232274902,
+        "unit": "ms"
+      },
+      "artists/default/jump/50000/top": {
+        "median": 0.098,
+        "spread": 0.08163265306122441,
+        "unit": "ms"
+      },
+      "artists/default/scroll/100000/end": {
+        "median": 0.12,
+        "spread": 0.050000000000000044,
+        "unit": "ms"
+      },
+      "artists/default/scroll/100000/middle": {
+        "median": 0.122,
+        "spread": 0.024590163934426253,
+        "unit": "ms"
+      },
+      "artists/default/scroll/100000/top": {
+        "median": 0.107,
+        "spread": 0.056074766355140235,
+        "unit": "ms"
+      },
+      "artists/default/scroll/20000/end": {
+        "median": 0.108,
+        "spread": 0.05555555555555561,
+        "unit": "ms"
+      },
+      "artists/default/scroll/20000/middle": {
+        "median": 0.106,
+        "spread": 0.08490566037735857,
+        "unit": "ms"
+      },
+      "artists/default/scroll/20000/top": {
+        "median": 0.105,
+        "spread": 0.07619047619047627,
+        "unit": "ms"
+      },
+      "artists/default/scroll/50000/end": {
+        "median": 0.116,
+        "spread": 0.034482758620689564,
+        "unit": "ms"
+      },
+      "artists/default/scroll/50000/middle": {
+        "median": 0.117,
+        "spread": 0.299145299145299,
+        "unit": "ms"
+      },
+      "artists/default/scroll/50000/top": {
+        "median": 0.112,
+        "spread": 0.03571428571428575,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/jump/100000/end": {
+        "median": 30.719,
+        "spread": 0.04095185390149416,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/jump/100000/middle": {
+        "median": 15.256,
+        "spread": 0.03945988463555324,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/jump/100000/top": {
+        "median": 0.112,
+        "spread": 0.03571428571428575,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/jump/20000/end": {
+        "median": 4.891,
+        "spread": 0.043753833571866775,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/jump/20000/middle": {
+        "median": 2.486,
+        "spread": 0.04344328238133551,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/jump/20000/top": {
+        "median": 0.106,
+        "spread": 0.028301886792452855,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/jump/50000/end": {
+        "median": 13.768,
+        "spread": 0.024622312608948316,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/jump/50000/middle": {
+        "median": 6.902,
+        "spread": 0.034482758620689585,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/jump/50000/top": {
+        "median": 0.113,
+        "spread": 0.05309734513274341,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/scroll/100000/end": {
+        "median": 0.134,
+        "spread": 0.0522388059701493,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/scroll/100000/middle": {
+        "median": 0.131,
+        "spread": 0.05343511450381684,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/scroll/100000/top": {
+        "median": 0.125,
+        "spread": 0.02400000000000002,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/scroll/20000/end": {
+        "median": 0.129,
+        "spread": 0.06201550387596905,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/scroll/20000/middle": {
+        "median": 0.129,
+        "spread": 0.007751937984496131,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/scroll/20000/top": {
+        "median": 0.121,
+        "spread": 0.09917355371900824,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/scroll/50000/end": {
+        "median": 0.136,
+        "spread": 0.014705882352941188,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/scroll/50000/middle": {
+        "median": 0.127,
+        "spread": 0.06299212598425202,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Ascending/scroll/50000/top": {
+        "median": 0.126,
+        "spread": 0.07936507936507943,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/jump/100000/end": {
+        "median": 30.56,
+        "spread": 0.029155759162303726,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/jump/100000/middle": {
+        "median": 15.201,
+        "spread": 0.03598447470561139,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/jump/100000/top": {
+        "median": 0.113,
+        "spread": 0.053097345132743286,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/jump/20000/end": {
+        "median": 5.065,
+        "spread": 0.044619940769990124,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/jump/20000/middle": {
+        "median": 2.537,
+        "spread": 0.04296413086322427,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/jump/20000/top": {
+        "median": 0.109,
+        "spread": 0.08256880733944962,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/jump/50000/end": {
+        "median": 13.786,
+        "spread": 0.0438851008269259,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/jump/50000/middle": {
+        "median": 6.941,
+        "spread": 0.028670220429332927,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/jump/50000/top": {
+        "median": 0.112,
+        "spread": 0.08928571428571425,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/scroll/100000/end": {
+        "median": 0.134,
+        "spread": 0.0522388059701493,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/scroll/100000/middle": {
+        "median": 0.136,
+        "spread": 0.05147058823529416,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/scroll/100000/top": {
+        "median": 0.126,
+        "spread": 0.0714285714285715,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/scroll/20000/end": {
+        "median": 0.128,
+        "spread": 0.04687500000000004,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/scroll/20000/middle": {
+        "median": 0.128,
+        "spread": 0.1328125,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/scroll/20000/top": {
+        "median": 0.12,
+        "spread": 0.07500000000000007,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/scroll/50000/end": {
+        "median": 0.131,
+        "spread": 0.030534351145038195,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/scroll/50000/middle": {
+        "median": 0.133,
+        "spread": 0.0827067669172933,
+        "unit": "ms"
+      },
+      "composers/LinkedReleaseCount_Descending/scroll/50000/top": {
+        "median": 0.123,
+        "spread": 0.024390243902439046,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/jump/100000/end": {
+        "median": 30.359,
+        "spread": 0.0381764880266148,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/jump/100000/middle": {
+        "median": 15.251,
+        "spread": 0.03258802701462198,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/jump/100000/top": {
+        "median": 0.111,
+        "spread": 0.03603603603603607,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/jump/20000/end": {
+        "median": 4.903,
+        "spread": 0.040995308994493274,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/jump/20000/middle": {
+        "median": 2.489,
+        "spread": 0.0490156689433507,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/jump/20000/top": {
+        "median": 0.1,
+        "spread": 0.08999999999999994,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/jump/50000/end": {
+        "median": 13.686,
+        "spread": 0.02849627356422626,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/jump/50000/middle": {
+        "median": 6.878,
+        "spread": 0.034166908985170025,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/jump/50000/top": {
+        "median": 0.105,
+        "spread": 0.1142857142857144,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/scroll/100000/end": {
+        "median": 0.131,
+        "spread": 0.09923664122137413,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/scroll/100000/middle": {
+        "median": 0.127,
+        "spread": 0.04724409448818902,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/scroll/100000/top": {
+        "median": 0.119,
+        "spread": 0.016806722689075647,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/scroll/20000/end": {
+        "median": 0.12,
+        "spread": 0.016666666666666684,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/scroll/20000/middle": {
+        "median": 0.119,
+        "spread": 0.016806722689075647,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/scroll/20000/top": {
+        "median": 0.113,
+        "spread": 0.026548672566371705,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/scroll/50000/end": {
+        "median": 0.124,
+        "spread": 0.04838709677419359,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/scroll/50000/middle": {
+        "median": 0.124,
+        "spread": 0.024193548387096794,
+        "unit": "ms"
+      },
+      "composers/Name_Ascending/scroll/50000/top": {
+        "median": 0.117,
+        "spread": 0.09401709401709397,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/jump/100000/end": {
+        "median": 30.727,
+        "spread": 0.03482279428515639,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/jump/100000/middle": {
+        "median": 15.151,
+        "spread": 0.04276945416144147,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/jump/100000/top": {
+        "median": 0.108,
+        "spread": 0.027777777777777804,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/jump/20000/end": {
+        "median": 4.872,
+        "spread": 0.04064039408867003,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/jump/20000/middle": {
+        "median": 2.476,
+        "spread": 0.03554119547657515,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/jump/20000/top": {
+        "median": 0.099,
+        "spread": 0.10101010101010095,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/jump/50000/end": {
+        "median": 13.866,
+        "spread": 0.03512188085965672,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/jump/50000/middle": {
+        "median": 6.946,
+        "spread": 0.03714367981572128,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/jump/50000/top": {
+        "median": 0.11,
+        "spread": 0.08181818181818176,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/scroll/100000/end": {
+        "median": 0.128,
+        "spread": 0.03125000000000003,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/scroll/100000/middle": {
+        "median": 0.13,
+        "spread": 0.05384615384615389,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/scroll/100000/top": {
+        "median": 0.119,
+        "spread": 0.05042016806722682,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/scroll/20000/end": {
+        "median": 0.12,
+        "spread": 0.016666666666666684,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/scroll/20000/middle": {
+        "median": 0.113,
+        "spread": 0.044247787610619385,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/scroll/20000/top": {
+        "median": 0.116,
+        "spread": 0.0948275862068965,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/scroll/50000/end": {
+        "median": 0.125,
+        "spread": 0.016000000000000014,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/scroll/50000/middle": {
+        "median": 0.125,
+        "spread": 0.02400000000000002,
+        "unit": "ms"
+      },
+      "composers/Name_Descending/scroll/50000/top": {
+        "median": 0.117,
+        "spread": 0.07692307692307687,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/jump/100000/end": {
+        "median": 30.482,
+        "spread": 0.040909389147693716,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/jump/100000/middle": {
+        "median": 15.216,
+        "spread": 0.06210567823343839,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/jump/100000/top": {
+        "median": 0.114,
+        "spread": 0.017543859649122823,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/jump/20000/end": {
+        "median": 4.926,
+        "spread": 0.03816483962647173,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/jump/20000/middle": {
+        "median": 2.49,
+        "spread": 0.03694779116465866,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/jump/20000/top": {
+        "median": 0.105,
+        "spread": 0.03809523809523813,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/jump/50000/end": {
+        "median": 13.786,
+        "spread": 0.022414043232264563,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/jump/50000/middle": {
+        "median": 6.952,
+        "spread": 0.01812428078250868,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/jump/50000/top": {
+        "median": 0.109,
+        "spread": 0.018348623853211024,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/scroll/100000/end": {
+        "median": 0.132,
+        "spread": 0.060606060606060656,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/scroll/100000/middle": {
+        "median": 0.138,
+        "spread": 0.10144927536231892,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/scroll/100000/top": {
+        "median": 0.131,
+        "spread": 0.06106870229007639,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/scroll/20000/end": {
+        "median": 0.122,
+        "spread": 0.09836065573770501,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/scroll/20000/middle": {
+        "median": 0.122,
+        "spread": 0.04098360655737709,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/scroll/20000/top": {
+        "median": 0.118,
+        "spread": 0.0,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/scroll/50000/end": {
+        "median": 0.133,
+        "spread": 0.0075187969924812095,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/scroll/50000/middle": {
+        "median": 0.125,
+        "spread": 0.10400000000000009,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Ascending/scroll/50000/top": {
+        "median": 0.124,
+        "spread": 0.008064516129032265,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/jump/100000/end": {
+        "median": 30.648,
+        "spread": 0.04173192377969198,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/jump/100000/middle": {
+        "median": 15.628,
+        "spread": 0.036409009470181664,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/jump/100000/top": {
+        "median": 0.118,
+        "spread": 0.042372881355932125,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/jump/20000/end": {
+        "median": 4.919,
+        "spread": 0.04065867046147595,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/jump/20000/middle": {
+        "median": 2.469,
+        "spread": 0.046172539489671885,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/jump/20000/top": {
+        "median": 0.105,
+        "spread": 0.0285714285714286,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/jump/50000/end": {
+        "median": 13.698,
+        "spread": 0.03270550445320475,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/jump/50000/middle": {
+        "median": 6.973,
+        "spread": 0.0215115445288971,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/jump/50000/top": {
+        "median": 0.114,
+        "spread": 0.0964912280701754,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/scroll/100000/end": {
+        "median": 0.14,
+        "spread": 0.08571428571428578,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/scroll/100000/middle": {
+        "median": 0.14,
+        "spread": 0.04285714285714269,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/scroll/100000/top": {
+        "median": 0.129,
+        "spread": 0.0,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/scroll/20000/end": {
+        "median": 0.125,
+        "spread": 0.02400000000000002,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/scroll/20000/middle": {
+        "median": 0.127,
+        "spread": 0.07086614173228353,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/scroll/20000/top": {
+        "median": 0.12,
+        "spread": 0.04166666666666659,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/scroll/50000/end": {
+        "median": 0.134,
+        "spread": 0.03731343283582093,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/scroll/50000/middle": {
+        "median": 0.133,
+        "spread": 0.0827067669172933,
+        "unit": "ms"
+      },
+      "composers/WorkCount_Descending/scroll/50000/top": {
+        "median": 0.128,
+        "spread": 0.04687500000000004,
+        "unit": "ms"
+      },
+      "composers/default/jump/100000/end": {
+        "median": 30.366,
+        "spread": 0.04185602318382392,
+        "unit": "ms"
+      },
+      "composers/default/jump/100000/middle": {
+        "median": 15.091,
+        "spread": 0.038632297395798716,
+        "unit": "ms"
+      },
+      "composers/default/jump/100000/top": {
+        "median": 0.107,
+        "spread": 0.09345794392523372,
+        "unit": "ms"
+      },
+      "composers/default/jump/20000/end": {
+        "median": 4.887,
+        "spread": 0.03499079189686912,
+        "unit": "ms"
+      },
+      "composers/default/jump/20000/middle": {
+        "median": 2.521,
+        "spread": 0.03371677905593017,
+        "unit": "ms"
+      },
+      "composers/default/jump/20000/top": {
+        "median": 0.109,
+        "spread": 0.11009174311926602,
+        "unit": "ms"
+      },
+      "composers/default/jump/50000/end": {
+        "median": 13.674,
+        "spread": 0.023621471405587277,
+        "unit": "ms"
+      },
+      "composers/default/jump/50000/middle": {
+        "median": 6.921,
+        "spread": 0.028753070365554086,
+        "unit": "ms"
+      },
+      "composers/default/jump/50000/top": {
+        "median": 0.104,
+        "spread": 0.19230769230769235,
+        "unit": "ms"
+      },
+      "composers/default/scroll/100000/end": {
+        "median": 0.131,
+        "spread": 0.06106870229007639,
+        "unit": "ms"
+      },
+      "composers/default/scroll/100000/middle": {
+        "median": 0.124,
+        "spread": 0.06451612903225812,
+        "unit": "ms"
+      },
+      "composers/default/scroll/100000/top": {
+        "median": 0.121,
+        "spread": 0.049586776859504175,
+        "unit": "ms"
+      },
+      "composers/default/scroll/20000/end": {
+        "median": 0.117,
+        "spread": 0.07692307692307687,
+        "unit": "ms"
+      },
+      "composers/default/scroll/20000/middle": {
+        "median": 0.12,
+        "spread": 0.11666666666666665,
+        "unit": "ms"
+      },
+      "composers/default/scroll/20000/top": {
+        "median": 0.114,
+        "spread": 0.05263157894736847,
+        "unit": "ms"
+      },
+      "composers/default/scroll/50000/end": {
+        "median": 0.121,
+        "spread": 0.11570247933884296,
+        "unit": "ms"
+      },
+      "composers/default/scroll/50000/middle": {
+        "median": 0.124,
+        "spread": 0.04838709677419359,
+        "unit": "ms"
+      },
+      "composers/default/scroll/50000/top": {
+        "median": 0.121,
+        "spread": 0.024793388429752088,
+        "unit": "ms"
+      },
+      "downloads/queued/jump/100000/end": {
+        "median": 31.943,
+        "spread": 0.00735685439689445,
+        "unit": "ms"
+      },
+      "downloads/queued/jump/100000/middle": {
+        "median": 15.74,
+        "spread": 0.01264294790343074,
+        "unit": "ms"
+      },
+      "downloads/queued/jump/100000/top": {
+        "median": 0.107,
+        "spread": 0.028037383177570117,
+        "unit": "ms"
+      },
+      "downloads/queued/jump/20000/end": {
+        "median": 5.864,
+        "spread": 0.016541609822646578,
+        "unit": "ms"
+      },
+      "downloads/queued/jump/20000/middle": {
+        "median": 2.934,
+        "spread": 0.02965235173824122,
+        "unit": "ms"
+      },
+      "downloads/queued/jump/20000/top": {
+        "median": 0.097,
+        "spread": 0.11340206185567006,
+        "unit": "ms"
+      },
+      "downloads/queued/jump/50000/end": {
+        "median": 15.305,
+        "spread": 0.03377981051943817,
+        "unit": "ms"
+      },
+      "downloads/queued/jump/50000/middle": {
+        "median": 7.552,
+        "spread": 0.023702330508474496,
+        "unit": "ms"
+      },
+      "downloads/queued/jump/50000/top": {
+        "median": 0.107,
+        "spread": 0.028037383177570117,
+        "unit": "ms"
+      },
+      "downloads/queued/scroll/100000/end": {
+        "median": 0.108,
+        "spread": 0.009259259259259267,
+        "unit": "ms"
+      },
+      "downloads/queued/scroll/100000/middle": {
+        "median": 0.112,
+        "spread": 0.08928571428571436,
+        "unit": "ms"
+      },
+      "downloads/queued/scroll/100000/top": {
+        "median": 0.11,
+        "spread": 0.0454545454545455,
+        "unit": "ms"
+      },
+      "downloads/queued/scroll/20000/end": {
+        "median": 0.1,
+        "spread": 0.07000000000000006,
+        "unit": "ms"
+      },
+      "downloads/queued/scroll/20000/middle": {
+        "median": 0.104,
+        "spread": 0.01923076923076925,
+        "unit": "ms"
+      },
+      "downloads/queued/scroll/20000/top": {
+        "median": 0.103,
+        "spread": 0.019417475728155224,
+        "unit": "ms"
+      },
+      "downloads/queued/scroll/50000/end": {
+        "median": 0.102,
+        "spread": 0.07843137254901955,
+        "unit": "ms"
+      },
+      "downloads/queued/scroll/50000/middle": {
+        "median": 0.111,
+        "spread": 0.009009009009009018,
+        "unit": "ms"
+      },
+      "downloads/queued/scroll/50000/top": {
+        "median": 0.112,
+        "spread": 0.017857142857142873,
+        "unit": "ms"
+      },
+      "queue_upcoming/lane/jump/100000/end": {
+        "median": 1.077,
+        "spread": 0.019498607242339955,
+        "unit": "ms"
+      },
+      "queue_upcoming/lane/jump/100000/middle": {
+        "median": 0.626,
+        "spread": 0.009584664536741222,
+        "unit": "ms"
+      },
+      "queue_upcoming/lane/jump/100000/top": {
+        "median": 0.169,
+        "spread": 0.07100591715976337,
+        "unit": "ms"
+      },
+      "queue_upcoming/lane/jump/20000/end": {
+        "median": 0.336,
+        "spread": 0.07440476190476181,
+        "unit": "ms"
+      },
+      "queue_upcoming/lane/jump/20000/middle": {
+        "median": 0.251,
+        "spread": 0.011952191235059771,
+        "unit": "ms"
+      },
+      "queue_upcoming/lane/jump/20000/top": {
+        "median": 0.158,
+        "spread": 0.03797468354430383,
+        "unit": "ms"
+      },
+      "queue_upcoming/lane/jump/50000/end": {
+        "median": 0.618,
+        "spread": 0.05177993527508095,
+        "unit": "ms"
+      },
+      "queue_upcoming/lane/jump/50000/middle": {
+        "median": 0.403,
+        "spread": 0.06947890818858553,
+        "unit": "ms"
+      },
+      "queue_upcoming/lane/jump/50000/top": {
+        "median": 0.165,
+        "spread": 0.1272727272727272,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/jump/100000/end": {
+        "median": 253.063,
+        "spread": 0.014846105515227455,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/jump/100000/middle": {
+        "median": 91.146,
+        "spread": 0.02999583086476636,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/jump/100000/top": {
+        "median": 17.289,
+        "spread": 0.04418994736537699,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/jump/20000/end": {
+        "median": 34.046,
+        "spread": 0.022792692239910806,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/jump/20000/middle": {
+        "median": 22.389,
+        "spread": 0.045334762606637054,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/jump/20000/top": {
+        "median": 11.744,
+        "spread": 0.021287465940054498,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/jump/50000/end": {
+        "median": 103.709,
+        "spread": 0.04952318506590552,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/jump/50000/middle": {
+        "median": 44.98,
+        "spread": 0.04688750555802583,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/jump/50000/top": {
+        "median": 15.094,
+        "spread": 0.0891082549357361,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/scroll/100000/end": {
+        "median": 107.324,
+        "spread": 0.026778726100406335,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/scroll/100000/middle": {
+        "median": 19.614,
+        "spread": 0.013000917711838431,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/scroll/100000/top": {
+        "median": 17.333,
+        "spread": 0.029769803265447314,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/scroll/20000/end": {
+        "median": 14.953,
+        "spread": 0.026549856216143936,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/scroll/20000/middle": {
+        "median": 12.754,
+        "spread": 0.08358162145209339,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/scroll/20000/top": {
+        "median": 11.745,
+        "spread": 0.03158790974882933,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/scroll/50000/end": {
+        "median": 47.02,
+        "spread": 0.012866865163760186,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/scroll/50000/middle": {
+        "median": 16.464,
+        "spread": 0.03741496598639454,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Ascending/scroll/50000/top": {
+        "median": 15.576,
+        "spread": 0.02901900359527478,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/jump/100000/end": {
+        "median": 159.309,
+        "spread": 0.02761928076882038,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/jump/100000/middle": {
+        "median": 178.139,
+        "spread": 0.029252437703142,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/jump/100000/top": {
+        "median": 107.517,
+        "spread": 0.02850711980431013,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/jump/20000/end": {
+        "median": 30.829,
+        "spread": 0.011871938758960707,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/jump/20000/middle": {
+        "median": 24.431,
+        "spread": 0.02926609635299414,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/jump/20000/top": {
+        "median": 15.058,
+        "spread": 0.05326072519590924,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/jump/50000/end": {
+        "median": 70.911,
+        "spread": 0.03608748995219376,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/jump/50000/middle": {
+        "median": 76.357,
+        "spread": 0.03216470002750243,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/jump/50000/top": {
+        "median": 47.128,
+        "spread": 0.019012052283143795,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/scroll/100000/end": {
+        "median": 17.413,
+        "spread": 0.018434502957560325,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/scroll/100000/middle": {
+        "median": 105.989,
+        "spread": 0.021209748181415095,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/scroll/100000/top": {
+        "median": 108.538,
+        "spread": 0.01400431185391301,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/scroll/20000/end": {
+        "median": 11.639,
+        "spread": 0.018300541283615517,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/scroll/20000/middle": {
+        "median": 14.807,
+        "spread": 0.04396569190247866,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/scroll/20000/top": {
+        "median": 15.108,
+        "spread": 0.039118347895154955,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/scroll/50000/end": {
+        "median": 15.343,
+        "spread": 0.033761324382454584,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/scroll/50000/middle": {
+        "median": 47.279,
+        "spread": 0.037606548361851955,
+        "unit": "ms"
+      },
+      "storage/All_AlbumTitle_Descending/scroll/50000/top": {
+        "median": 47.042,
+        "spread": 0.010671314995110653,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/jump/100000/end": {
+        "median": 240.604,
+        "spread": 0.025253112998952606,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/jump/100000/middle": {
+        "median": 152.814,
+        "spread": 0.040068318347795485,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/jump/100000/top": {
+        "median": 60.645,
+        "spread": 0.009629812845246982,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/jump/20000/end": {
+        "median": 32.83,
+        "spread": 0.018123667377398688,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/jump/20000/middle": {
+        "median": 23.564,
+        "spread": 0.03254965201154301,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/jump/20000/top": {
+        "median": 13.739,
+        "spread": 0.006550695101535764,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/jump/50000/end": {
+        "median": 99.348,
+        "spread": 0.012441116076820772,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/jump/50000/middle": {
+        "median": 66.197,
+        "spread": 0.006873423266915608,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/jump/50000/top": {
+        "median": 31.729,
+        "spread": 0.02997258028932513,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/scroll/100000/end": {
+        "median": 61.154,
+        "spread": 0.009909409032933277,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/scroll/100000/middle": {
+        "median": 62.1,
+        "spread": 0.016457326892109474,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/scroll/100000/top": {
+        "median": 61.105,
+        "spread": 0.017085344898126128,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/scroll/20000/end": {
+        "median": 12.958,
+        "spread": 0.02585275505479247,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/scroll/20000/middle": {
+        "median": 13.977,
+        "spread": 0.03985118408814471,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/scroll/20000/top": {
+        "median": 14.142,
+        "spread": 0.07163060387498232,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/scroll/50000/end": {
+        "median": 30.411,
+        "spread": 0.01992700009864845,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/scroll/50000/middle": {
+        "median": 30.457,
+        "spread": 0.005154808418425978,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Ascending/scroll/50000/top": {
+        "median": 32.01,
+        "spread": 0.03045923149015926,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/jump/100000/end": {
+        "median": 239.557,
+        "spread": 0.05356136535354838,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/jump/100000/middle": {
+        "median": 155.055,
+        "spread": 0.0468672406565412,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/jump/100000/top": {
+        "median": 60.991,
+        "spread": 0.019347116787722773,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/jump/20000/end": {
+        "median": 33.459,
+        "spread": 0.05203383245165745,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/jump/20000/middle": {
+        "median": 23.002,
+        "spread": 0.040344317885401305,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/jump/20000/top": {
+        "median": 12.471,
+        "spread": 0.027744366931280576,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/jump/50000/end": {
+        "median": 101.519,
+        "spread": 0.03356022025433673,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/jump/50000/middle": {
+        "median": 67.24,
+        "spread": 0.040139797739440784,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/jump/50000/top": {
+        "median": 30.432,
+        "spread": 0.005290483701367027,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/scroll/100000/end": {
+        "median": 61.439,
+        "spread": 0.023909894366770313,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/scroll/100000/middle": {
+        "median": 61.97,
+        "spread": 0.02394707116346611,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/scroll/100000/top": {
+        "median": 60.886,
+        "spread": 0.007637223663896401,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/scroll/20000/end": {
+        "median": 13.732,
+        "spread": 0.018132828429944695,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/scroll/20000/middle": {
+        "median": 13.147,
+        "spread": 0.03863999391496152,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/scroll/20000/top": {
+        "median": 13.125,
+        "spread": 0.03222857142857143,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/scroll/50000/end": {
+        "median": 32.322,
+        "spread": 0.026978528556401208,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/scroll/50000/middle": {
+        "median": 31.885,
+        "spread": 0.04566410537870459,
+        "unit": "ms"
+      },
+      "storage/All_ArtistNames_Descending/scroll/50000/top": {
+        "median": 30.649,
+        "spread": 0.01063656236745083,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/jump/100000/end": {
+        "median": 160.982,
+        "spread": 0.016331018374725066,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/jump/100000/middle": {
+        "median": 110.524,
+        "spread": 0.010151641272483804,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/jump/100000/top": {
+        "median": 58.34,
+        "spread": 0.01549537195749051,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/jump/20000/end": {
+        "median": 28.573,
+        "spread": 0.007909564973926402,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/jump/20000/middle": {
+        "median": 18.143,
+        "spread": 0.006503885796174753,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/jump/20000/top": {
+        "median": 12.291,
+        "spread": 0.05581319664795378,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/jump/50000/end": {
+        "median": 72.481,
+        "spread": 0.013700142106207076,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/jump/50000/middle": {
+        "median": 51.119,
+        "spread": 0.0017214734247540243,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/jump/50000/top": {
+        "median": 26.564,
+        "spread": 0.0403177232344527,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/scroll/100000/end": {
+        "median": 64.569,
+        "spread": 0.009385308739488014,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/scroll/100000/middle": {
+        "median": 62.741,
+        "spread": 0.025421972872603223,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/scroll/100000/top": {
+        "median": 58.399,
+        "spread": 0.028185414133803675,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/scroll/20000/end": {
+        "median": 16.752,
+        "spread": 0.0327722063037249,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/scroll/20000/middle": {
+        "median": 12.493,
+        "spread": 0.05547106379572558,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/scroll/20000/top": {
+        "median": 12.551,
+        "spread": 0.01705043422834823,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/scroll/50000/end": {
+        "median": 31.933,
+        "spread": 0.03353897222309204,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/scroll/50000/middle": {
+        "median": 30.565,
+        "spread": 0.036185179126451875,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Ascending/scroll/50000/top": {
+        "median": 27.14,
+        "spread": 0.03419307295504793,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/jump/100000/end": {
+        "median": 152.546,
+        "spread": 0.011281842853958831,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/jump/100000/middle": {
+        "median": 110.753,
+        "spread": 0.019529945012776148,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/jump/100000/top": {
+        "median": 65.229,
+        "spread": 0.024329669318861293,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/jump/20000/end": {
+        "median": 24.191,
+        "spread": 0.010623785705427552,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/jump/20000/middle": {
+        "median": 18.066,
+        "spread": 0.015609432082364665,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/jump/20000/top": {
+        "median": 16.56,
+        "spread": 0.020591787439613377,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/jump/50000/end": {
+        "median": 66.65,
+        "spread": 0.003945986496624021,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/jump/50000/middle": {
+        "median": 51.693,
+        "spread": 0.028882053662971818,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/jump/50000/top": {
+        "median": 31.635,
+        "spread": 0.0270902481428797,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/scroll/100000/end": {
+        "median": 58.07,
+        "spread": 0.018839331840881716,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/scroll/100000/middle": {
+        "median": 63.14,
+        "spread": 0.0025498891352550104,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/scroll/100000/top": {
+        "median": 64.96,
+        "spread": 0.02544642857142866,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/scroll/20000/end": {
+        "median": 12.37,
+        "spread": 0.03225545675020218,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/scroll/20000/middle": {
+        "median": 12.347,
+        "spread": 0.005831376042763358,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/scroll/20000/top": {
+        "median": 16.53,
+        "spread": 0.053539019963702236,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/scroll/50000/end": {
+        "median": 27.104,
+        "spread": 0.015163813459267924,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/scroll/50000/middle": {
+        "median": 32.65,
+        "spread": 0.023185298621745943,
+        "unit": "ms"
+      },
+      "storage/All_DateAdded_Descending/scroll/50000/top": {
+        "median": 31.863,
+        "spread": 0.011580830430279515,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/jump/100000/end": {
+        "median": 251.564,
+        "spread": 0.02468954222384766,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/jump/100000/middle": {
+        "median": 109.589,
+        "spread": 0.023314383742893966,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/jump/100000/top": {
+        "median": 28.963,
+        "spread": 0.06273521389358826,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/jump/20000/end": {
+        "median": 34.182,
+        "spread": 0.032239190217073214,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/jump/20000/middle": {
+        "median": 22.143,
+        "spread": 0.0347288082012375,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/jump/20000/top": {
+        "median": 11.868,
+        "spread": 0.025278058645096114,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/jump/50000/end": {
+        "median": 94.971,
+        "spread": 0.04747765107243264,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/jump/50000/middle": {
+        "median": 61.252,
+        "spread": 0.031737739175863686,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/jump/50000/top": {
+        "median": 28.599,
+        "spread": 0.031189901744816232,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/scroll/100000/end": {
+        "median": 94.246,
+        "spread": 0.023555376355495334,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/scroll/100000/middle": {
+        "median": 30.217,
+        "spread": 0.029453618823840903,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/scroll/100000/top": {
+        "median": 29.097,
+        "spread": 0.03130906966353924,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/scroll/20000/end": {
+        "median": 14.346,
+        "spread": 0.017356754496026805,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/scroll/20000/middle": {
+        "median": 12.579,
+        "spread": 0.03656888464901827,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/scroll/20000/top": {
+        "median": 12.028,
+        "spread": 0.028101097439308213,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/scroll/50000/end": {
+        "median": 33.65,
+        "spread": 0.013580980683506709,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/scroll/50000/middle": {
+        "median": 29.964,
+        "spread": 0.004104925911093231,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Ascending/scroll/50000/top": {
+        "median": 28.767,
+        "spread": 0.032259185872701386,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/jump/100000/end": {
+        "median": 252.243,
+        "spread": 0.028405149003143764,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/jump/100000/middle": {
+        "median": 110.071,
+        "spread": 0.024911193684076554,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/jump/100000/top": {
+        "median": 31.696,
+        "spread": 0.034957092377587096,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/jump/20000/end": {
+        "median": 33.885,
+        "spread": 0.020333480891249818,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/jump/20000/middle": {
+        "median": 22.452,
+        "spread": 0.055629787992161,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/jump/20000/top": {
+        "median": 12.353,
+        "spread": 0.010442807415202749,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/jump/50000/end": {
+        "median": 94.817,
+        "spread": 0.030859445036227704,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/jump/50000/middle": {
+        "median": 62.455,
+        "spread": 0.016844127771995832,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/jump/50000/top": {
+        "median": 29.213,
+        "spread": 0.03125320918769042,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/scroll/100000/end": {
+        "median": 95.306,
+        "spread": 0.0301135290537847,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/scroll/100000/middle": {
+        "median": 30.491,
+        "spread": 0.017054212718507086,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/scroll/100000/top": {
+        "median": 31.409,
+        "spread": 0.021172275462447043,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/scroll/20000/end": {
+        "median": 14.317,
+        "spread": 0.04875323042536847,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/scroll/20000/middle": {
+        "median": 12.09,
+        "spread": 0.0281224152191894,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/scroll/20000/top": {
+        "median": 12.491,
+        "spread": 0.08854375150108076,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/scroll/50000/end": {
+        "median": 32.563,
+        "spread": 0.03854067499923233,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/scroll/50000/middle": {
+        "median": 29.709,
+        "spread": 0.010838466457975789,
+        "unit": "ms"
+      },
+      "storage/All_FileCount_Descending/scroll/50000/top": {
+        "median": 29.516,
+        "spread": 0.023072232009757332,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/jump/100000/end": {
+        "median": 255.935,
+        "spread": 0.026721628538495985,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/jump/100000/middle": {
+        "median": 94.539,
+        "spread": 0.015993399549392318,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/jump/100000/top": {
+        "median": 17.777,
+        "spread": 0.05388985768127346,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/jump/20000/end": {
+        "median": 33.93,
+        "spread": 0.059003831417624594,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/jump/20000/middle": {
+        "median": 21.983,
+        "spread": 0.049492789883091526,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/jump/20000/top": {
+        "median": 11.668,
+        "spread": 0.050994172094617665,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/jump/50000/end": {
+        "median": 105.434,
+        "spread": 0.03983534723144326,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/jump/50000/middle": {
+        "median": 46.112,
+        "spread": 0.03194396252602357,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/jump/50000/top": {
+        "median": 15.375,
+        "spread": 0.04474796747967472,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/scroll/100000/end": {
+        "median": 108.337,
+        "spread": 0.02041777047546086,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/scroll/100000/middle": {
+        "median": 19.781,
+        "spread": 0.0532834538193215,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/scroll/100000/top": {
+        "median": 17.347,
+        "spread": 0.05067158586499114,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/scroll/20000/end": {
+        "median": 15.416,
+        "spread": 0.06901920083030617,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/scroll/20000/middle": {
+        "median": 12.498,
+        "spread": 0.039686349815970454,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/scroll/20000/top": {
+        "median": 11.812,
+        "spread": 0.0606163223840162,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/scroll/50000/end": {
+        "median": 46.931,
+        "spread": 0.004559885789776451,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/scroll/50000/middle": {
+        "median": 16.225,
+        "spread": 0.028844375963020027,
+        "unit": "ms"
+      },
+      "storage/All_Media_Ascending/scroll/50000/top": {
+        "median": 15.852,
+        "spread": 0.04176129195054257,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/jump/100000/end": {
+        "median": 256.139,
+        "spread": 0.028832001374253676,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/jump/100000/middle": {
+        "median": 93.595,
+        "spread": 0.030151183289705678,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/jump/100000/top": {
+        "median": 17.786,
+        "spread": 0.051557404700325986,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/jump/20000/end": {
+        "median": 34.119,
+        "spread": 0.03364694158679903,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/jump/20000/middle": {
+        "median": 22.144,
+        "spread": 0.03734645953757217,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/jump/20000/top": {
+        "median": 11.809,
+        "spread": 0.024049453806418743,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/jump/50000/end": {
+        "median": 105.425,
+        "spread": 0.020128053118330567,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/jump/50000/middle": {
+        "median": 46.104,
+        "spread": 0.022275724449071686,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/jump/50000/top": {
+        "median": 15.199,
+        "spread": 0.04895058885452989,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/scroll/100000/end": {
+        "median": 108.952,
+        "spread": 0.021927087157647365,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/scroll/100000/middle": {
+        "median": 19.848,
+        "spread": 0.01294840790004038,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/scroll/100000/top": {
+        "median": 17.359,
+        "spread": 0.042571576703727215,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/scroll/20000/end": {
+        "median": 14.757,
+        "spread": 0.07094937995527538,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/scroll/20000/middle": {
+        "median": 12.312,
+        "spread": 0.105912930474334,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/scroll/20000/top": {
+        "median": 11.907,
+        "spread": 0.04266397917191576,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/scroll/50000/end": {
+        "median": 47.292,
+        "spread": 0.019072993318108793,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/scroll/50000/middle": {
+        "median": 16.0,
+        "spread": 0.014937499999999937,
+        "unit": "ms"
+      },
+      "storage/All_Media_Descending/scroll/50000/top": {
+        "median": 15.178,
+        "spread": 0.0204901831598366,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/jump/100000/end": {
+        "median": 253.876,
+        "spread": 0.03560793458223708,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/jump/100000/middle": {
+        "median": 94.073,
+        "spread": 0.024682958978665383,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/jump/100000/top": {
+        "median": 17.489,
+        "spread": 0.031905769340728446,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/jump/20000/end": {
+        "median": 34.363,
+        "spread": 0.1087797922183744,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/jump/20000/middle": {
+        "median": 22.385,
+        "spread": 0.01040875586330134,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/jump/20000/top": {
+        "median": 11.796,
+        "spread": 0.013479145473041769,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/jump/50000/end": {
+        "median": 106.314,
+        "spread": 0.011155633312639983,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/jump/50000/middle": {
+        "median": 47.752,
+        "spread": 0.03382057296029475,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/jump/50000/top": {
+        "median": 15.121,
+        "spread": 0.04966602737914155,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/scroll/100000/end": {
+        "median": 107.242,
+        "spread": 0.036207829022211535,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/scroll/100000/middle": {
+        "median": 19.736,
+        "spread": 0.027817186866639615,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/scroll/100000/top": {
+        "median": 17.192,
+        "spread": 0.01547231270358296,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/scroll/20000/end": {
+        "median": 14.973,
+        "spread": 0.07660455486542432,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/scroll/20000/middle": {
+        "median": 12.45,
+        "spread": 0.018795180722891568,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/scroll/20000/top": {
+        "median": 11.724,
+        "spread": 0.0353974752644148,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/scroll/50000/end": {
+        "median": 46.888,
+        "spread": 0.013414946254905259,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/scroll/50000/middle": {
+        "median": 16.534,
+        "spread": 0.038889560904802375,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Ascending/scroll/50000/top": {
+        "median": 15.227,
+        "spread": 0.034412556642805486,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/jump/100000/end": {
+        "median": 256.449,
+        "spread": 0.01622934774555567,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/jump/100000/middle": {
+        "median": 94.02,
+        "spread": 0.033258881089130075,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/jump/100000/top": {
+        "median": 17.374,
+        "spread": 0.01985725797168176,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/jump/20000/end": {
+        "median": 34.351,
+        "spread": 0.03429303368169769,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/jump/20000/middle": {
+        "median": 22.394,
+        "spread": 0.017772617665446088,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/jump/20000/top": {
+        "median": 11.708,
+        "spread": 0.03629996583532633,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/jump/50000/end": {
+        "median": 105.624,
+        "spread": 0.009713701431492807,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/jump/50000/middle": {
+        "median": 46.03,
+        "spread": 0.07749293938735607,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/jump/50000/top": {
+        "median": 14.975,
+        "spread": 0.014223706176961667,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/scroll/100000/end": {
+        "median": 106.858,
+        "spread": 0.009461154054913956,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/scroll/100000/middle": {
+        "median": 19.841,
+        "spread": 0.02580515095005294,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/scroll/100000/top": {
+        "median": 17.433,
+        "spread": 0.006826134342912854,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/scroll/20000/end": {
+        "median": 15.133,
+        "spread": 0.031917002577149196,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/scroll/20000/middle": {
+        "median": 12.605,
+        "spread": 0.04942483141610467,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/scroll/20000/top": {
+        "median": 11.772,
+        "spread": 0.0010193679918450947,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/scroll/50000/end": {
+        "median": 46.936,
+        "spread": 0.028208624509971133,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/scroll/50000/middle": {
+        "median": 16.227,
+        "spread": 0.030134960251432846,
+        "unit": "ms"
+      },
+      "storage/All_Storage_Descending/scroll/50000/top": {
+        "median": 14.94,
+        "spread": 0.01492637215528787,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/jump/100000/end": {
+        "median": 199.323,
+        "spread": 0.011639399366856776,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/jump/100000/middle": {
+        "median": 134.573,
+        "spread": 0.0040721392849977466,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/jump/100000/top": {
+        "median": 29.222,
+        "spread": 0.034015467798234195,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/jump/20000/end": {
+        "median": 30.466,
+        "spread": 0.030460185124400997,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/jump/20000/middle": {
+        "median": 21.783,
+        "spread": 0.009915989533122208,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/jump/20000/top": {
+        "median": 11.907,
+        "spread": 0.030318300159569905,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/jump/50000/end": {
+        "median": 91.152,
+        "spread": 0.03799148674741085,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/jump/50000/middle": {
+        "median": 59.74,
+        "spread": 0.030816873116839654,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/jump/50000/top": {
+        "median": 28.719,
+        "spread": 0.03137295866847731,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/scroll/100000/end": {
+        "median": 68.102,
+        "spread": 0.01251064579601192,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/scroll/100000/middle": {
+        "median": 63.289,
+        "spread": 0.04221902700311277,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/scroll/100000/top": {
+        "median": 29.553,
+        "spread": 0.040808039792914405,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/scroll/20000/end": {
+        "median": 14.158,
+        "spread": 0.017799124170080567,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/scroll/20000/middle": {
+        "median": 13.446,
+        "spread": 0.03673955079577568,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/scroll/20000/top": {
+        "median": 11.878,
+        "spread": 0.05489139585788847,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/scroll/50000/end": {
+        "median": 36.257,
+        "spread": 0.007639904018534381,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/scroll/50000/middle": {
+        "median": 31.672,
+        "spread": 0.02750063147259416,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Ascending/scroll/50000/top": {
+        "median": 29.856,
+        "spread": 0.0687299035369776,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/jump/100000/end": {
+        "median": 223.567,
+        "spread": 0.012680762366538926,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/jump/100000/middle": {
+        "median": 121.899,
+        "spread": 0.005307672745469539,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/jump/100000/top": {
+        "median": 68.732,
+        "spread": 0.020048885526392366,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/jump/20000/end": {
+        "median": 30.232,
+        "spread": 0.015579518391108762,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/jump/20000/middle": {
+        "median": 20.151,
+        "spread": 0.01329958810977126,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/jump/20000/top": {
+        "median": 14.322,
+        "spread": 0.024577572964669638,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/jump/50000/end": {
+        "median": 86.428,
+        "spread": 0.043527560512796784,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/jump/50000/middle": {
+        "median": 57.095,
+        "spread": 0.0159383483667571,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/jump/50000/top": {
+        "median": 36.272,
+        "spread": 0.029030657256285963,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/scroll/100000/end": {
+        "median": 93.936,
+        "spread": 0.03713166411173564,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/scroll/100000/middle": {
+        "median": 62.969,
+        "spread": 0.019231685432514502,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/scroll/100000/top": {
+        "median": 69.378,
+        "spread": 0.06215226728934241,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/scroll/20000/end": {
+        "median": 14.16,
+        "spread": 0.028742937853107345,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/scroll/20000/middle": {
+        "median": 13.059,
+        "spread": 0.026035684202465725,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/scroll/20000/top": {
+        "median": 14.508,
+        "spread": 0.04707747449682945,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/scroll/50000/end": {
+        "median": 33.105,
+        "spread": 0.01483159643558374,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/scroll/50000/middle": {
+        "median": 31.452,
+        "spread": 0.02022128958412817,
+        "unit": "ms"
+      },
+      "storage/All_TotalSize_Descending/scroll/50000/top": {
+        "median": 35.905,
+        "spread": 0.014761175323771093,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/jump/100000/end": {
+        "median": 254.821,
+        "spread": 0.013315229121618708,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/jump/100000/middle": {
+        "median": 92.272,
+        "spread": 0.02648690827119807,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/jump/100000/top": {
+        "median": 17.076,
+        "spread": 0.02506441789646292,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/jump/20000/end": {
+        "median": 34.802,
+        "spread": 0.0410321245905409,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/jump/20000/middle": {
+        "median": 22.346,
+        "spread": 0.02134610221068649,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/jump/20000/top": {
+        "median": 11.658,
+        "spread": 0.007291130554125996,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/jump/50000/end": {
+        "median": 105.685,
+        "spread": 0.043033543076122456,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/jump/50000/middle": {
+        "median": 46.854,
+        "spread": 0.03165151321125191,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/jump/50000/top": {
+        "median": 15.014,
+        "spread": 0.020114559744238685,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/scroll/100000/end": {
+        "median": 108.447,
+        "spread": 0.01744631017916582,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/scroll/100000/middle": {
+        "median": 19.607,
+        "spread": 0.030193298311827346,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/scroll/100000/top": {
+        "median": 17.345,
+        "spread": 0.01994811184779476,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/scroll/20000/end": {
+        "median": 14.862,
+        "spread": 0.009352711613511044,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/scroll/20000/middle": {
+        "median": 12.554,
+        "spread": 0.08594870160904895,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/scroll/20000/top": {
+        "median": 11.729,
+        "spread": 0.03478557421775083,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/scroll/50000/end": {
+        "median": 46.956,
+        "spread": 0.030304966351478016,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/scroll/50000/middle": {
+        "median": 16.241,
+        "spread": 0.02622991195123443,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Ascending/scroll/50000/top": {
+        "median": 15.251,
+        "spread": 0.029965248180447115,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/jump/100000/end": {
+        "median": 157.844,
+        "spread": 0.02952281999949315,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/jump/100000/middle": {
+        "median": 179.324,
+        "spread": 0.005543039414690726,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/jump/100000/top": {
+        "median": 106.309,
+        "spread": 0.03222681052403843,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/jump/20000/end": {
+        "median": 31.22,
+        "spread": 0.023190262652146066,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/jump/20000/middle": {
+        "median": 24.529,
+        "spread": 0.03518284479595579,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/jump/20000/top": {
+        "median": 14.909,
+        "spread": 0.048292977396203675,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/jump/50000/end": {
+        "median": 72.272,
+        "spread": 0.03803686074828419,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/jump/50000/middle": {
+        "median": 77.614,
+        "spread": 0.02225114025820089,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/jump/50000/top": {
+        "median": 47.346,
+        "spread": 0.005829425928272787,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/scroll/100000/end": {
+        "median": 17.509,
+        "spread": 0.011194242960763122,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/scroll/100000/middle": {
+        "median": 107.65,
+        "spread": 0.006827682303762186,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/scroll/100000/top": {
+        "median": 107.453,
+        "spread": 0.02074395317022325,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/scroll/20000/end": {
+        "median": 11.769,
+        "spread": 0.023536409210638203,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/scroll/20000/middle": {
+        "median": 14.758,
+        "spread": 0.041401273885350365,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/scroll/20000/top": {
+        "median": 14.96,
+        "spread": 0.08008021390374334,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/scroll/50000/end": {
+        "median": 15.175,
+        "spread": 0.028270181219110395,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/scroll/50000/middle": {
+        "median": 47.122,
+        "spread": 0.028521709604855505,
+        "unit": "ms"
+      },
+      "storage/Local_AlbumTitle_Descending/scroll/50000/top": {
+        "median": 46.742,
+        "spread": 0.011681143297248715,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/jump/100000/end": {
+        "median": 238.606,
+        "spread": 0.021411867262348727,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/jump/100000/middle": {
+        "median": 152.837,
+        "spread": 0.029207587168028678,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/jump/100000/top": {
+        "median": 60.08,
+        "spread": 0.036151797603195694,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/jump/20000/end": {
+        "median": 33.754,
+        "spread": 0.02293061563074009,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/jump/20000/middle": {
+        "median": 24.239,
+        "spread": 0.04558768926110815,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/jump/20000/top": {
+        "median": 13.605,
+        "spread": 0.04674751929437701,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/jump/50000/end": {
+        "median": 100.564,
+        "spread": 0.02327870808639283,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/jump/50000/middle": {
+        "median": 65.207,
+        "spread": 0.02939868419034769,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/jump/50000/top": {
+        "median": 31.304,
+        "spread": 0.08765652951699451,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/scroll/100000/end": {
+        "median": 62.021,
+        "spread": 0.028667709324261118,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/scroll/100000/middle": {
+        "median": 61.915,
+        "spread": 0.004893806024388345,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/scroll/100000/top": {
+        "median": 60.144,
+        "spread": 0.01619446661346097,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/scroll/20000/end": {
+        "median": 13.267,
+        "spread": 0.03957187005351627,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/scroll/20000/middle": {
+        "median": 14.06,
+        "spread": 0.04516358463726883,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/scroll/20000/top": {
+        "median": 13.975,
+        "spread": 0.023112701252236165,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/scroll/50000/end": {
+        "median": 30.586,
+        "spread": 0.015464591643235551,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/scroll/50000/middle": {
+        "median": 30.286,
+        "spread": 0.014197979264346553,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Ascending/scroll/50000/top": {
+        "median": 31.942,
+        "spread": 0.016561267296975764,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/jump/100000/end": {
+        "median": 239.226,
+        "spread": 0.029378077633702107,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/jump/100000/middle": {
+        "median": 153.802,
+        "spread": 0.009245653502555214,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/jump/100000/top": {
+        "median": 60.813,
+        "spread": 0.009570322135069816,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/jump/20000/end": {
+        "median": 34.849,
+        "spread": 0.01265459554076144,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/jump/20000/middle": {
+        "median": 23.735,
+        "spread": 0.01028017695386559,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/jump/20000/top": {
+        "median": 12.726,
+        "spread": 0.02058777306302048,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/jump/50000/end": {
+        "median": 101.854,
+        "spread": 0.017966893789149157,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/jump/50000/middle": {
+        "median": 67.588,
+        "spread": 0.00932118127478244,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/jump/50000/top": {
+        "median": 30.343,
+        "spread": 0.016511221698579614,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/scroll/100000/end": {
+        "median": 60.605,
+        "spread": 0.019816846794818918,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/scroll/100000/middle": {
+        "median": 62.168,
+        "spread": 0.02279307682408959,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/scroll/100000/top": {
+        "median": 61.087,
+        "spread": 0.013112446183312356,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/scroll/20000/end": {
+        "median": 13.82,
+        "spread": 0.027568740955137498,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/scroll/20000/middle": {
+        "median": 13.194,
+        "spread": 0.017356374109443625,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/scroll/20000/top": {
+        "median": 13.169,
+        "spread": 0.047839623357886,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/scroll/50000/end": {
+        "median": 32.074,
+        "spread": 0.022759867805699337,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/scroll/50000/middle": {
+        "median": 31.931,
+        "spread": 0.04735210297203335,
+        "unit": "ms"
+      },
+      "storage/Local_ArtistNames_Descending/scroll/50000/top": {
+        "median": 30.491,
+        "spread": 0.020071496507165994,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/jump/100000/end": {
+        "median": 160.794,
+        "spread": 0.011978058882794056,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/jump/100000/middle": {
+        "median": 110.974,
+        "spread": 0.010281687602501534,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/jump/100000/top": {
+        "median": 59.227,
+        "spread": 0.013743731743968124,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/jump/20000/end": {
+        "median": 28.391,
+        "spread": 0.03508153992462408,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/jump/20000/middle": {
+        "median": 18.377,
+        "spread": 0.030037546933667066,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/jump/20000/top": {
+        "median": 12.242,
+        "spread": 0.039454337526547846,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/jump/50000/end": {
+        "median": 73.355,
+        "spread": 0.014600231749710283,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/jump/50000/middle": {
+        "median": 51.069,
+        "spread": 0.01294327282695963,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/jump/50000/top": {
+        "median": 27.134,
+        "spread": 0.021559666838652645,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/scroll/100000/end": {
+        "median": 64.313,
+        "spread": 0.011148601371417889,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/scroll/100000/middle": {
+        "median": 62.261,
+        "spread": 0.023176627423266535,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/scroll/100000/top": {
+        "median": 59.429,
+        "spread": 0.013478268185566002,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/scroll/20000/end": {
+        "median": 16.704,
+        "spread": 0.015146072796934872,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/scroll/20000/middle": {
+        "median": 12.537,
+        "spread": 0.03142697615059425,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/scroll/20000/top": {
+        "median": 12.255,
+        "spread": 0.010199918400652794,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/scroll/50000/end": {
+        "median": 32.348,
+        "spread": 0.01734264869543712,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/scroll/50000/middle": {
+        "median": 31.182,
+        "spread": 0.03662369315630811,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Ascending/scroll/50000/top": {
+        "median": 27.186,
+        "spread": 0.01526521003457659,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/jump/100000/end": {
+        "median": 152.707,
+        "spread": 0.01074606926990917,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/jump/100000/middle": {
+        "median": 111.204,
+        "spread": 0.008282076184309848,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/jump/100000/top": {
+        "median": 63.581,
+        "spread": 0.013415957597395584,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/jump/20000/end": {
+        "median": 24.101,
+        "spread": 0.02385793120617399,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/jump/20000/middle": {
+        "median": 17.981,
+        "spread": 0.03347978421667317,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/jump/20000/top": {
+        "median": 16.729,
+        "spread": 0.01285193376770876,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/jump/50000/end": {
+        "median": 66.556,
+        "spread": 0.0218462647995674,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/jump/50000/middle": {
+        "median": 52.899,
+        "spread": 0.04234484583829552,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/jump/50000/top": {
+        "median": 32.748,
+        "spread": 0.04864419201172602,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/scroll/100000/end": {
+        "median": 57.956,
+        "spread": 0.011853820139416067,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/scroll/100000/middle": {
+        "median": 63.74,
+        "spread": 0.015955443991214353,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/scroll/100000/top": {
+        "median": 63.693,
+        "spread": 0.014868195877097997,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/scroll/20000/end": {
+        "median": 12.284,
+        "spread": 0.01611852816672097,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/scroll/20000/middle": {
+        "median": 12.375,
+        "spread": 0.01995959595959595,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/scroll/20000/top": {
+        "median": 16.689,
+        "spread": 0.012523218886691811,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/scroll/50000/end": {
+        "median": 27.343,
+        "spread": 0.06663497055919244,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/scroll/50000/middle": {
+        "median": 32.605,
+        "spread": 0.046741297347032695,
+        "unit": "ms"
+      },
+      "storage/Local_DateAdded_Descending/scroll/50000/top": {
+        "median": 32.745,
+        "spread": 0.015116811726981141,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/jump/100000/end": {
+        "median": 249.701,
+        "spread": 0.020027953432304943,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/jump/100000/middle": {
+        "median": 108.638,
+        "spread": 0.014304387046889688,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/jump/100000/top": {
+        "median": 28.976,
+        "spread": 0.027022363335173858,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/jump/20000/end": {
+        "median": 34.788,
+        "spread": 0.018627112797516276,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/jump/20000/middle": {
+        "median": 22.544,
+        "spread": 0.01996096522356278,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/jump/20000/top": {
+        "median": 12.049,
+        "spread": 0.04016930865632003,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/jump/50000/end": {
+        "median": 94.642,
+        "spread": 0.035745229390756854,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/jump/50000/middle": {
+        "median": 61.077,
+        "spread": 0.03341683448761394,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/jump/50000/top": {
+        "median": 29.364,
+        "spread": 0.03456613540389594,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/scroll/100000/end": {
+        "median": 93.331,
+        "spread": 0.01075741179243772,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/scroll/100000/middle": {
+        "median": 29.782,
+        "spread": 0.025418037740917263,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/scroll/100000/top": {
+        "median": 29.445,
+        "spread": 0.035761589403973414,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/scroll/20000/end": {
+        "median": 14.526,
+        "spread": 0.016935150764146954,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/scroll/20000/middle": {
+        "median": 12.294,
+        "spread": 0.033593622905482366,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/scroll/20000/top": {
+        "median": 12.14,
+        "spread": 0.04423393739703452,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/scroll/50000/end": {
+        "median": 32.847,
+        "spread": 0.011568788626054207,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/scroll/50000/middle": {
+        "median": 30.034,
+        "spread": 0.01911167343677171,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Ascending/scroll/50000/top": {
+        "median": 28.799,
+        "spread": 0.01229209347546787,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/jump/100000/end": {
+        "median": 249.117,
+        "spread": 0.02485579065258496,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/jump/100000/middle": {
+        "median": 109.143,
+        "spread": 0.024600753140375492,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/jump/100000/top": {
+        "median": 30.95,
+        "spread": 0.021647819063004788,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/jump/20000/end": {
+        "median": 34.407,
+        "spread": 0.026825936582672186,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/jump/20000/middle": {
+        "median": 22.211,
+        "spread": 0.0795101526270766,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/jump/20000/top": {
+        "median": 12.385,
+        "spread": 0.022930964876867233,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/jump/50000/end": {
+        "median": 94.339,
+        "spread": 0.017384114735157257,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/jump/50000/middle": {
+        "median": 61.059,
+        "spread": 0.037471953356589593,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/jump/50000/top": {
+        "median": 29.105,
+        "spread": 0.03432399931283293,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/scroll/100000/end": {
+        "median": 92.826,
+        "spread": 0.019304936117036195,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/scroll/100000/middle": {
+        "median": 29.773,
+        "spread": 0.022201323346656414,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/scroll/100000/top": {
+        "median": 31.134,
+        "spread": 0.02431425451275138,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/scroll/20000/end": {
+        "median": 14.264,
+        "spread": 0.02145260796410538,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/scroll/20000/middle": {
+        "median": 12.108,
+        "spread": 0.07416584076643538,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/scroll/20000/top": {
+        "median": 12.222,
+        "spread": 0.07331042382588766,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/scroll/50000/end": {
+        "median": 32.694,
+        "spread": 0.03272771762402888,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/scroll/50000/middle": {
+        "median": 29.713,
+        "spread": 0.029751287315316538,
+        "unit": "ms"
+      },
+      "storage/Local_FileCount_Descending/scroll/50000/top": {
+        "median": 29.114,
+        "spread": 0.026825582194133366,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/jump/100000/end": {
+        "median": 252.739,
+        "spread": 0.03328334764322078,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/jump/100000/middle": {
+        "median": 93.018,
+        "spread": 0.01137414263905918,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/jump/100000/top": {
+        "median": 17.672,
+        "spread": 0.059019918515165186,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/jump/20000/end": {
+        "median": 35.172,
+        "spread": 0.012509951097463829,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/jump/20000/middle": {
+        "median": 22.639,
+        "spread": 0.019833031494324027,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/jump/20000/top": {
+        "median": 11.613,
+        "spread": 0.013863773357444209,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/jump/50000/end": {
+        "median": 106.23,
+        "spread": 0.01852584015814745,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/jump/50000/middle": {
+        "median": 46.119,
+        "spread": 0.044580324811899594,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/jump/50000/top": {
+        "median": 15.077,
+        "spread": 0.02513762684884258,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/scroll/100000/end": {
+        "median": 108.273,
+        "spread": 0.014334136857757768,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/scroll/100000/middle": {
+        "median": 19.59,
+        "spread": 0.023838693210821785,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/scroll/100000/top": {
+        "median": 17.338,
+        "spread": 0.03881647248817616,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/scroll/20000/end": {
+        "median": 14.947,
+        "spread": 0.04623001271158097,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/scroll/20000/middle": {
+        "median": 12.327,
+        "spread": 0.019063843595359734,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/scroll/20000/top": {
+        "median": 11.691,
+        "spread": 0.015481994696775376,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/scroll/50000/end": {
+        "median": 47.593,
+        "spread": 0.022881516189355546,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/scroll/50000/middle": {
+        "median": 16.803,
+        "spread": 0.04636076891031363,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Ascending/scroll/50000/top": {
+        "median": 15.237,
+        "spread": 0.011419570781649898,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/jump/100000/end": {
+        "median": 254.289,
+        "spread": 0.009894254175367363,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/jump/100000/middle": {
+        "median": 94.364,
+        "spread": 0.027044211775677236,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/jump/100000/top": {
+        "median": 17.263,
+        "spread": 0.03620459943231188,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/jump/20000/end": {
+        "median": 34.85,
+        "spread": 0.023357245337159254,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/jump/20000/middle": {
+        "median": 22.831,
+        "spread": 0.04826770618895347,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/jump/20000/top": {
+        "median": 11.734,
+        "spread": 0.08590420998806894,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/jump/50000/end": {
+        "median": 106.948,
+        "spread": 0.01720462280734566,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/jump/50000/middle": {
+        "median": 46.575,
+        "spread": 0.019044551798174995,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/jump/50000/top": {
+        "median": 15.31,
+        "spread": 0.03350751143043761,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/scroll/100000/end": {
+        "median": 106.49,
+        "spread": 0.013109212132594618,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/scroll/100000/middle": {
+        "median": 19.674,
+        "spread": 0.02373691166005908,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/scroll/100000/top": {
+        "median": 17.335,
+        "spread": 0.028554946639746233,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/scroll/20000/end": {
+        "median": 15.039,
+        "spread": 0.024469712081920364,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/scroll/20000/middle": {
+        "median": 12.446,
+        "spread": 0.05592158123091754,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/scroll/20000/top": {
+        "median": 11.666,
+        "spread": 0.07483284759129087,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/scroll/50000/end": {
+        "median": 47.198,
+        "spread": 0.01108097800754261,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/scroll/50000/middle": {
+        "median": 15.949,
+        "spread": 0.027211737413003905,
+        "unit": "ms"
+      },
+      "storage/Local_Media_Descending/scroll/50000/top": {
+        "median": 15.098,
+        "spread": 0.058948205060272915,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/jump/100000/end": {
+        "median": 251.807,
+        "spread": 0.02262447032846586,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/jump/100000/middle": {
+        "median": 93.812,
+        "spread": 0.033140749584274876,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/jump/100000/top": {
+        "median": 17.614,
+        "spread": 0.05052798909957991,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/jump/20000/end": {
+        "median": 34.641,
+        "spread": 0.036142143702549076,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/jump/20000/middle": {
+        "median": 22.151,
+        "spread": 0.02803485169969763,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/jump/20000/top": {
+        "median": 11.669,
+        "spread": 0.040706144485388604,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/jump/50000/end": {
+        "median": 106.549,
+        "spread": 0.014744389905114058,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/jump/50000/middle": {
+        "median": 46.634,
+        "spread": 0.02869151263026978,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/jump/50000/top": {
+        "median": 14.894,
+        "spread": 0.021350879548811576,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/scroll/100000/end": {
+        "median": 106.417,
+        "spread": 0.014593532988150363,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/scroll/100000/middle": {
+        "median": 19.739,
+        "spread": 0.010081564415623794,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/scroll/100000/top": {
+        "median": 17.145,
+        "spread": 0.019130941965587806,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/scroll/20000/end": {
+        "median": 14.776,
+        "spread": 0.020506226312939958,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/scroll/20000/middle": {
+        "median": 12.557,
+        "spread": 0.011547344110854469,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/scroll/20000/top": {
+        "median": 11.764,
+        "spread": 0.038677320639238365,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/scroll/50000/end": {
+        "median": 47.413,
+        "spread": 0.014848248370699884,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/scroll/50000/middle": {
+        "median": 16.357,
+        "spread": 0.018646451060707937,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Ascending/scroll/50000/top": {
+        "median": 14.984,
+        "spread": 0.029231179925253644,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/jump/100000/end": {
+        "median": 252.174,
+        "spread": 0.0018479303972654126,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/jump/100000/middle": {
+        "median": 94.487,
+        "spread": 0.01802364346418029,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/jump/100000/top": {
+        "median": 17.387,
+        "spread": 0.03174785759475468,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/jump/20000/end": {
+        "median": 34.862,
+        "spread": 0.0314956112672824,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/jump/20000/middle": {
+        "median": 22.642,
+        "spread": 0.01744545534846743,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/jump/20000/top": {
+        "median": 11.574,
+        "spread": 0.017193710039744396,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/jump/50000/end": {
+        "median": 106.675,
+        "spread": 0.026997890789782007,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/jump/50000/middle": {
+        "median": 45.968,
+        "spread": 0.026387922032718433,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/jump/50000/top": {
+        "median": 15.228,
+        "spread": 0.02928815340162856,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/scroll/100000/end": {
+        "median": 108.516,
+        "spread": 0.030041652843820182,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/scroll/100000/middle": {
+        "median": 19.554,
+        "spread": 0.017899151068834912,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/scroll/100000/top": {
+        "median": 17.143,
+        "spread": 0.0230998075016042,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/scroll/20000/end": {
+        "median": 14.954,
+        "spread": 0.01431055236057245,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/scroll/20000/middle": {
+        "median": 12.523,
+        "spread": 0.010221193004870904,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/scroll/20000/top": {
+        "median": 11.824,
+        "spread": 0.007273342354533028,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/scroll/50000/end": {
+        "median": 47.714,
+        "spread": 0.025003143731399544,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/scroll/50000/middle": {
+        "median": 16.506,
+        "spread": 0.013207318550829999,
+        "unit": "ms"
+      },
+      "storage/Local_Storage_Descending/scroll/50000/top": {
+        "median": 15.131,
+        "spread": 0.0329786530962923,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/jump/100000/end": {
+        "median": 196.979,
+        "spread": 0.01210281299021716,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/jump/100000/middle": {
+        "median": 132.405,
+        "spread": 0.023020278690381795,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/jump/100000/top": {
+        "median": 29.101,
+        "spread": 0.019380777292876537,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/jump/20000/end": {
+        "median": 30.055,
+        "spread": 0.01913159208118447,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/jump/20000/middle": {
+        "median": 22.009,
+        "spread": 0.02153664410014086,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/jump/20000/top": {
+        "median": 12.09,
+        "spread": 0.02539288668320915,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/jump/50000/end": {
+        "median": 90.138,
+        "spread": 0.037930728438616466,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/jump/50000/middle": {
+        "median": 61.228,
+        "spread": 0.03318743058731294,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/jump/50000/top": {
+        "median": 29.314,
+        "spread": 0.06399672511427991,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/scroll/100000/end": {
+        "median": 67.34,
+        "spread": 0.0021681021681021796,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/scroll/100000/middle": {
+        "median": 61.632,
+        "spread": 0.0022066458982347285,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/scroll/100000/top": {
+        "median": 28.903,
+        "spread": 0.003632840881569402,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/scroll/20000/end": {
+        "median": 14.127,
+        "spread": 0.022014582006087628,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/scroll/20000/middle": {
+        "median": 13.094,
+        "spread": 0.02619520391018787,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/scroll/20000/top": {
+        "median": 12.117,
+        "spread": 0.036560204671123184,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/scroll/50000/end": {
+        "median": 35.507,
+        "spread": 0.024896499281831762,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/scroll/50000/middle": {
+        "median": 31.826,
+        "spread": 0.012159869289260368,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Ascending/scroll/50000/top": {
+        "median": 28.919,
+        "spread": 0.02126629551505937,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/jump/100000/end": {
+        "median": 221.382,
+        "spread": 0.01669964134392138,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/jump/100000/middle": {
+        "median": 119.532,
+        "spread": 0.025917745875581426,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/jump/100000/top": {
+        "median": 67.898,
+        "spread": 0.02689328109811788,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/jump/20000/end": {
+        "median": 30.423,
+        "spread": 0.030075929395523098,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/jump/20000/middle": {
+        "median": 20.166,
+        "spread": 0.02965387285530095,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/jump/20000/top": {
+        "median": 14.328,
+        "spread": 0.029801786711334422,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/jump/50000/end": {
+        "median": 85.59,
+        "spread": 0.061782918565252906,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/jump/50000/middle": {
+        "median": 56.307,
+        "spread": 0.007494627666187226,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/jump/50000/top": {
+        "median": 35.34,
+        "spread": 0.02368421052631568,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/scroll/100000/end": {
+        "median": 93.849,
+        "spread": 0.023005040011081543,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/scroll/100000/middle": {
+        "median": 60.291,
+        "spread": 0.0033338309200378253,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/scroll/100000/top": {
+        "median": 67.166,
+        "spread": 0.004853646190036528,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/scroll/20000/end": {
+        "median": 14.24,
+        "spread": 0.016853932584269676,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/scroll/20000/middle": {
+        "median": 13.135,
+        "spread": 0.047125999238675276,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/scroll/20000/top": {
+        "median": 14.03,
+        "spread": 0.02188168210976469,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/scroll/50000/end": {
+        "median": 32.413,
+        "spread": 0.0030234782340418653,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/scroll/50000/middle": {
+        "median": 30.893,
+        "spread": 0.008448515845013408,
+        "unit": "ms"
+      },
+      "storage/Local_TotalSize_Descending/scroll/50000/top": {
+        "median": 36.341,
+        "spread": 0.008145070306265633,
+        "unit": "ms"
+      },
+      "storage_search/broad/count/100000/all": {
+        "median": 14.567,
+        "spread": 0.01805450676185899,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Ascending/jump/100000/end": {
+        "median": 353.915,
+        "spread": 0.0043089442380233505,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Ascending/jump/100000/middle": {
+        "median": 142.892,
+        "spread": 0.010812361783724883,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Ascending/jump/100000/top": {
+        "median": 17.135,
+        "spread": 0.032973446162824493,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Ascending/scroll/100000/end": {
+        "median": 107.929,
+        "spread": 0.008848409602609107,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Ascending/scroll/100000/middle": {
+        "median": 19.827,
+        "spread": 0.010188127301155077,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Ascending/scroll/100000/top": {
+        "median": 17.272,
+        "spread": 0.008163501621120789,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Descending/jump/100000/end": {
+        "median": 266.358,
+        "spread": 0.0013778448554202188,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Descending/jump/100000/middle": {
+        "median": 229.217,
+        "spread": 0.009929455494138787,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Descending/jump/100000/top": {
+        "median": 106.879,
+        "spread": 0.006530749726326102,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Descending/scroll/100000/end": {
+        "median": 17.436,
+        "spread": 0.05110116999311779,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Descending/scroll/100000/middle": {
+        "median": 106.069,
+        "spread": 0.028264620200058363,
+        "unit": "ms"
+      },
+      "storage_search/broad_AlbumTitle_Descending/scroll/100000/top": {
+        "median": 107.488,
+        "spread": 0.010596531705864934,
+        "unit": "ms"
+      },
+      "storage_search/broad_DateAdded_Descending/jump/100000/end": {
+        "median": 215.352,
+        "spread": 0.020515249452059913,
+        "unit": "ms"
+      },
+      "storage_search/broad_DateAdded_Descending/jump/100000/middle": {
+        "median": 141.454,
+        "spread": 0.033530334949877665,
+        "unit": "ms"
+      },
+      "storage_search/broad_DateAdded_Descending/jump/100000/top": {
+        "median": 63.689,
+        "spread": 0.017349934839611298,
+        "unit": "ms"
+      },
+      "storage_search/broad_DateAdded_Descending/scroll/100000/end": {
+        "median": 58.344,
+        "spread": 0.04218085835732892,
+        "unit": "ms"
+      },
+      "storage_search/broad_DateAdded_Descending/scroll/100000/middle": {
+        "median": 64.056,
+        "spread": 0.03737354814537289,
+        "unit": "ms"
+      },
+      "storage_search/broad_DateAdded_Descending/scroll/100000/top": {
+        "median": 63.592,
+        "spread": 0.0026575669895584986,
+        "unit": "ms"
+      },
+      "storage_search/broad_Storage_Ascending/jump/100000/end": {
+        "median": 358.346,
+        "spread": 0.007526245583877042,
+        "unit": "ms"
+      },
+      "storage_search/broad_Storage_Ascending/jump/100000/middle": {
+        "median": 145.806,
+        "spread": 0.1097142778760818,
+        "unit": "ms"
+      },
+      "storage_search/broad_Storage_Ascending/jump/100000/top": {
+        "median": 17.399,
+        "spread": 0.040059773550203986,
+        "unit": "ms"
+      },
+      "storage_search/broad_Storage_Ascending/scroll/100000/end": {
+        "median": 108.715,
+        "spread": 0.002713516993975088,
+        "unit": "ms"
+      },
+      "storage_search/broad_Storage_Ascending/scroll/100000/middle": {
+        "median": 19.944,
+        "spread": 0.09160649819494594,
+        "unit": "ms"
+      },
+      "storage_search/broad_Storage_Ascending/scroll/100000/top": {
+        "median": 17.975,
+        "spread": 0.05379694019471481,
+        "unit": "ms"
+      },
+      "storage_search/rare/count/100000/all": {
+        "median": 1.423,
+        "spread": 0.11103302881236818,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Ascending/jump/100/end": {
+        "median": 110.483,
+        "spread": 0.015613261768778855,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Ascending/jump/100/middle": {
+        "median": 110.102,
+        "spread": 0.03207934460772735,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Ascending/jump/100/top": {
+        "median": 104.801,
+        "spread": 0.024532208662131065,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Ascending/scroll/100/end": {
+        "median": 25.282,
+        "spread": 0.042639031722173995,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Ascending/scroll/100/middle": {
+        "median": 25.711,
+        "spread": 0.02559215899809425,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Ascending/scroll/100/top": {
+        "median": 93.79,
+        "spread": 0.022433095212709236,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Descending/jump/100/end": {
+        "median": 112.206,
+        "spread": 0.016674687628112535,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Descending/jump/100/middle": {
+        "median": 109.88,
+        "spread": 0.0041772843101565635,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Descending/jump/100/top": {
+        "median": 23.178,
+        "spread": 0.0018120631633446196,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Descending/scroll/100/end": {
+        "median": 93.264,
+        "spread": 0.003130897237948055,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Descending/scroll/100/middle": {
+        "median": 92.691,
+        "spread": 0.012644161784855024,
+        "unit": "ms"
+      },
+      "storage_search/rare_AlbumTitle_Descending/scroll/100/top": {
+        "median": 25.725,
+        "spread": 0.007852283770651046,
+        "unit": "ms"
+      },
+      "storage_search/rare_DateAdded_Descending/jump/100/end": {
+        "median": 111.013,
+        "spread": 0.014538837793771811,
+        "unit": "ms"
+      },
+      "storage_search/rare_DateAdded_Descending/jump/100/middle": {
+        "median": 111.219,
+        "spread": 0.01684064773105319,
+        "unit": "ms"
+      },
+      "storage_search/rare_DateAdded_Descending/jump/100/top": {
+        "median": 84.194,
+        "spread": 0.019146257453025093,
+        "unit": "ms"
+      },
+      "storage_search/rare_DateAdded_Descending/scroll/100/end": {
+        "median": 57.222,
+        "spread": 0.007165076369228683,
+        "unit": "ms"
+      },
+      "storage_search/rare_DateAdded_Descending/scroll/100/middle": {
+        "median": 57.737,
+        "spread": 0.01389057276962791,
+        "unit": "ms"
+      },
+      "storage_search/rare_DateAdded_Descending/scroll/100/top": {
+        "median": 62.25,
+        "spread": 0.021140562248996023,
+        "unit": "ms"
+      },
+      "storage_search/rare_Storage_Ascending/jump/100/end": {
+        "median": 110.904,
+        "spread": 0.02081980812234002,
+        "unit": "ms"
+      },
+      "storage_search/rare_Storage_Ascending/jump/100/middle": {
+        "median": 111.258,
+        "spread": 0.017014506821981346,
+        "unit": "ms"
+      },
+      "storage_search/rare_Storage_Ascending/jump/100/top": {
+        "median": 104.466,
+        "spread": 0.013966266536480663,
+        "unit": "ms"
+      },
+      "storage_search/rare_Storage_Ascending/scroll/100/end": {
+        "median": 25.512,
+        "spread": 0.025713389777359628,
+        "unit": "ms"
+      },
+      "storage_search/rare_Storage_Ascending/scroll/100/middle": {
+        "median": 25.941,
+        "spread": 0.018272233144443168,
+        "unit": "ms"
+      },
+      "storage_search/rare_Storage_Ascending/scroll/100/top": {
+        "median": 93.501,
+        "spread": 0.02249173805627741,
+        "unit": "ms"
+      }
+    },
+    "library-restore": {
+      "restore/10_albums/300_edits/from_first_slot/latency_100ms": {
+        "median": 12798.4074,
+        "spread": 0.005443130369486398,
+        "unit": "ms"
+      },
+      "restore/10_albums/300_edits/from_floor/latency_100ms": {
+        "median": 2074.4606,
+        "spread": 0.006447893008910365,
+        "unit": "ms"
+      },
+      "restore/3000_albums/0_edits/from_first_slot/latency_0ms": {
+        "median": 14756.1115,
+        "spread": 0.008454103914842356,
+        "unit": "ms"
+      },
+      "restore/3000_albums/0_edits/from_floor/latency_0ms": {
+        "median": 3719.213,
+        "spread": 0.011617323342330765,
+        "unit": "ms"
+      }
+    },
+    "playback-cpu": {
+      "cue_flac/cpu_seconds_per_audio_second": {
+        "median": 0.0061,
+        "spread": 0.19672131147540978,
+        "unit": "ratio"
+      },
+      "cue_flac/multiple_of_a_bare_decode": {
+        "median": 7.6814,
+        "spread": 0.17231233889655542,
+        "unit": "ratio"
+      },
+      "mp3/cpu_seconds_per_audio_second": {
+        "median": 0.007,
+        "spread": 0.0,
+        "unit": "ratio"
+      },
+      "mp3/multiple_of_a_bare_decode": {
+        "median": 12.4463,
+        "spread": 0.07374882495199386,
+        "unit": "ratio"
+      }
+    },
+    "playback-queue-fill": {
+      "bae, no live queries: clear playing from": {
+        "median": 129.0,
+        "spread": 0.031007751937984496,
+        "unit": "ms"
+      },
+      "bae, no live queries: open without resuming": {
+        "median": 37.0,
+        "spread": 0.1891891891891892,
+        "unit": "ms"
+      },
+      "bae, no live queries: play into an empty lane": {
+        "median": 2090.0,
+        "spread": 0.012440191387559809,
+        "unit": "ms"
+      },
+      "bae, no live queries: play replacing a full lane": {
+        "median": 2385.0,
+        "spread": 0.019706498951781972,
+        "unit": "ms"
+      },
+      "bae, queue screens open: clear playing from": {
+        "median": 42.0,
+        "spread": 2.238095238095238,
+        "unit": "ms"
+      },
+      "bae, queue screens open: open without resuming": {
+        "median": 123.0,
+        "spread": 0.7235772357723578,
+        "unit": "ms"
+      },
+      "bae, queue screens open: play into an empty lane": {
+        "median": 2102.0,
+        "spread": 0.008563273073263558,
+        "unit": "ms"
+      },
+      "bae, queue screens open: play replacing a full lane": {
+        "median": 2407.0,
+        "spread": 0.03199002908184462,
+        "unit": "ms"
+      },
+      "plain SQLite, empty without the track_id index, no hook": {
+        "median": 14.0,
+        "spread": 0.0,
+        "unit": "ms"
+      },
+      "plain SQLite, empty without the track_id index, with a pre-update hook": {
+        "median": 207.0,
+        "spread": 0.0,
+        "unit": "ms"
+      },
+      "plain SQLite, empty, no hook": {
+        "median": 14.0,
+        "spread": 1.2857142857142858,
+        "unit": "ms"
+      },
+      "plain SQLite, empty, with a pre-update hook": {
+        "median": 2792.0,
+        "spread": 0.0068051575931232094,
+        "unit": "ms"
+      },
+      "plain SQLite, fill in track order, 16 MiB page cache, committed": {
+        "median": 2280.0,
+        "spread": 0.006578947368421052,
+        "unit": "ms"
+      },
+      "plain SQLite, fill in track order, 256 MiB page cache, committed": {
+        "median": 2269.0,
+        "spread": 0.006610841780520053,
+        "unit": "ms"
+      },
+      "plain SQLite, fill in track order, 64 MiB page cache, committed": {
+        "median": 2556.0,
+        "spread": 0.008215962441314555,
+        "unit": "ms"
+      },
+      "plain SQLite, fill in track order, changed pages kept in memory, committed": {
+        "median": 2242.0,
+        "spread": 0.007136485280999108,
+        "unit": "ms"
+      },
+      "plain SQLite, fill in track order, committed": {
+        "median": 3462.0,
+        "spread": 0.005777007510109763,
+        "unit": "ms"
+      },
+      "plain SQLite, fill without the track_id index, no hook": {
+        "median": 1226.0,
+        "spread": 0.010603588907014683,
+        "unit": "ms"
+      },
+      "plain SQLite, fill, 16 MiB page cache, committed": {
+        "median": 2044.0,
+        "spread": 0.005870841487279955,
+        "unit": "ms"
+      },
+      "plain SQLite, fill, 256 MiB page cache, committed": {
+        "median": 1937.0,
+        "spread": 0.004646360351058337,
+        "unit": "ms"
+      },
+      "plain SQLite, fill, 64 MiB page cache, committed": {
+        "median": 2118.0,
+        "spread": 0.012275731822474031,
+        "unit": "ms"
+      },
+      "plain SQLite, fill, changed pages kept in memory, committed": {
+        "median": 1983.0,
+        "spread": 0.004034291477559254,
+        "unit": "ms"
+      },
+      "plain SQLite, fill, committed": {
+        "median": 4033.0000000000005,
+        "spread": 0.0074386312918423006,
+        "unit": "ms"
+      },
+      "plain SQLite, fill, no hook": {
+        "median": 3374.0,
+        "spread": 0.0008891523414344991,
+        "unit": "ms"
+      },
+      "plain SQLite, fill, with a pre-update hook": {
+        "median": 3875.0,
+        "spread": 0.12903225806451613,
+        "unit": "ms"
+      },
+      "plain SQLite, the fill's rows alone, read and counted": {
+        "median": 833.0,
+        "spread": 0.003601440576230492,
+        "unit": "ms"
+      }
+    },
+    "scan": {
+      "flat/1000/last_tenth_per_folder": {
+        "median": 1.5468,
+        "spread": 0.3116757176105508,
+        "unit": "ms"
+      },
+      "flat/1000/total": {
+        "median": 1810.9235,
+        "spread": 0.1473839728735089,
+        "unit": "ms"
+      },
+      "flat/5000/last_tenth_per_folder": {
+        "median": 1.7568,
+        "spread": 0.5476434426229508,
+        "unit": "ms"
+      },
+      "flat/5000/total": {
+        "median": 10959.0875,
+        "spread": 0.21424850381019406,
+        "unit": "ms"
+      },
+      "flat_list_open/1000/last_tenth_per_folder": {
+        "median": 2.156,
+        "spread": 0.20282931354359926,
+        "unit": "ms"
+      },
+      "flat_list_open/1000/total": {
+        "median": 2211.0619,
+        "spread": 0.2603791870322581,
+        "unit": "ms"
+      },
+      "flat_list_open/5000/last_tenth_per_folder": {
+        "median": 1.8356,
+        "spread": 0.024242754412726077,
+        "unit": "ms"
+      },
+      "flat_list_open/5000/total": {
+        "median": 9835.0922,
+        "spread": 0.09780590567315675,
+        "unit": "ms"
+      },
+      "one_tree/1000/last_tenth_per_folder": {
+        "median": 2.3359,
+        "spread": 0.18686587610770994,
+        "unit": "ms"
+      },
+      "one_tree/1000/total": {
+        "median": 2341.7867,
+        "spread": 0.4281918588059279,
+        "unit": "ms"
+      },
+      "one_tree/5000/last_tenth_per_folder": {
+        "median": 2.1588,
+        "spread": 0.01977950713359272,
+        "unit": "ms"
+      },
+      "one_tree/5000/total": {
+        "median": 11095.0536,
+        "spread": 0.030569901888531623,
+        "unit": "ms"
+      }
+    },
+    "scan-10k": {
+      "flat/10000/last_tenth_per_folder": {
+        "median": 1.761,
+        "spread": 0.008290743895513883,
+        "unit": "ms"
+      },
+      "flat/10000/total": {
+        "median": 19318.102,
+        "spread": 0.026995177890664333,
+        "unit": "ms"
+      },
+      "flat_list_open/10000/last_tenth_per_folder": {
+        "median": 1.994,
+        "spread": 0.10747241725175523,
+        "unit": "ms"
+      },
+      "flat_list_open/10000/total": {
+        "median": 19920.356,
+        "spread": 0.07381782233209079,
+        "unit": "ms"
+      }
+    }
+  }
+}
