@@ -3,12 +3,12 @@
 use std::sync::{Arc, Mutex};
 
 use coven::task::{blocking_completing, caught_sync, report, Bug, BugSinkRef, TaskFailed};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 
 use crate::task_failure::panic_message;
 
-/// One worker: an OS thread draining a channel, and the sending end of that
-/// channel.
+/// One worker: an OS thread draining a channel, the sending end of that
+/// channel, and how the thread ended once it has.
 ///
 /// The two halves are created together by [`WorkerThread::spawn`] — the caller
 /// never holds a loose sender it could pair with the wrong thread — and are
@@ -23,9 +23,33 @@ pub struct WorkerThread<M> {
     /// the join.
     bugs: BugSinkRef,
     tx: mpsc::UnboundedSender<M>,
+    /// How the thread ended, once it has. The thread records it in the same
+    /// step that closes the channel, so a send finds either the channel open
+    /// or the end.
+    end: watch::Receiver<Option<WorkerEnd>>,
     /// Taken by whichever clone joins; a later `stop_and_join` finds `None` and
     /// returns, so stopping twice is not an error.
     thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
+}
+
+/// How a worker's thread ended.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum WorkerEnd {
+    /// Its body returned.
+    #[error("the worker's thread had returned")]
+    Returned,
+    /// Its body panicked with this bug, which reached the worker's bug sink as
+    /// it happened.
+    #[error("the worker's thread panicked")]
+    Panicked(#[source] Bug),
+}
+
+/// A message sent after the worker's thread ended, given back with how the
+/// thread ended.
+#[derive(Debug)]
+pub struct WorkerEnded<M> {
+    pub message: M,
+    pub end: WorkerEnd,
 }
 
 impl<M> Clone for WorkerThread<M> {
@@ -35,6 +59,7 @@ impl<M> Clone for WorkerThread<M> {
             name: self.name,
             bugs: self.bugs.clone(),
             tx: self.tx.clone(),
+            end: self.end.clone(),
             thread: self.thread.clone(),
         }
     }
@@ -42,47 +67,79 @@ impl<M> Clone for WorkerThread<M> {
 
 impl<M: Send + 'static> WorkerThread<M> {
     /// Open the channel and start the thread named `name`, which runs `body`
-    /// to drain it. Both ends go in: a worker whose loop sends itself
-    /// messages — or hands a sender to what it drives — gets the one paired
-    /// with its own receiver rather than a loose one the caller had to keep
-    /// straight. A panic in `body` goes to `bugs` as it happens, on the
-    /// thread, which then ends; the join does not report it again.
+    /// to drain it. The body gets a sender paired with its own receiver — for
+    /// a worker whose loop sends itself messages, or hands a sender to what it
+    /// drives — and borrows the receiver, which the thread keeps: the channel
+    /// closes only once the thread has recorded how the body ended. A panic in
+    /// `body` goes to `bugs` as it happens, on the thread, which then ends; the
+    /// join does not report it again.
     ///
     /// Panics if the system refuses the thread, as `std::thread::spawn` does.
     pub fn spawn(
         name: &'static str,
         bugs: BugSinkRef,
-        body: impl FnOnce(mpsc::UnboundedSender<M>, mpsc::UnboundedReceiver<M>) + Send + 'static,
+        body: impl FnOnce(mpsc::UnboundedSender<M>, &mut mpsc::UnboundedReceiver<M>) + Send + 'static,
     ) -> Self {
-        let (tx, rx) = mpsc::unbounded_channel();
+        let (tx, mut rx) = mpsc::unbounded_channel();
         let body_tx = tx.clone();
+        let (ended, end) = watch::channel(None);
         let heard = bugs.clone();
         let thread = std::thread::Builder::new()
             .name(name.to_string())
             .spawn(move || {
-                if let Err(bug) = caught_sync(name, move || body(body_tx, rx)) {
+                let ran = caught_sync(name, || body(body_tx, &mut rx));
+                let recorded = match &ran {
+                    Ok(()) => WorkerEnd::Returned,
+                    Err(bug) => WorkerEnd::Panicked(bug.clone()),
+                };
+                ended.send_modify(move |end| {
+                    *end = Some(recorded);
+                    drop(rx);
+                });
+                if let Err(bug) = ran {
                     report(heard.as_ref(), &bug);
                 }
             })
             .unwrap_or_else(|error| panic!("start the {name} thread: {error}"));
-        Self { name, bugs, tx, thread: Arc::new(Mutex::new(Some(thread))) }
+        Self { name, bugs, tx, end, thread: Arc::new(Mutex::new(Some(thread))) }
     }
 }
 
 impl<M> WorkerThread<M> {
-    pub fn send(&self, message: M) -> Result<(), mpsc::error::SendError<M>> {
-        self.tx.send(message)
+    /// Hand `message` to the thread, or give it back with how the thread
+    /// ended.
+    pub fn send(&self, message: M) -> Result<(), WorkerEnded<M>> {
+        // Held across the send, so the thread can't close the channel
+        // meanwhile.
+        let end = self.end.borrow();
+        if let Some(end) = end.as_ref() {
+            return Err(WorkerEnded { message, end: end.clone() });
+        }
+        if self.tx.send(message).is_err() {
+            unreachable!("the {} channel closed before its thread recorded its end", self.name);
+        }
+        Ok(())
     }
 
-    /// Fire-and-forget send. A worker that has already shut down is not a
+    /// How the thread ended, once it has.
+    pub async fn ended(&self) -> WorkerEnd {
+        let mut end = self.end.clone();
+        let ended = match end.wait_for(Option::is_some).await.as_deref() {
+            Ok(Some(end)) => end.clone(),
+            _ => unreachable!("the {} thread let go of its end before recording it", self.name),
+        };
+        ended
+    }
+
+    /// Fire-and-forget send. A worker that has already ended is not a
     /// caller's error — the message is logged against the worker's name and
-    /// dropped.
+    /// how it ended, and dropped.
     pub fn dispatch(&self, message: M)
     where
         M: std::fmt::Debug,
     {
-        if let Err(err) = self.send(message) {
-            tracing::warn!("{} command channel closed; dropped {:?}", self.name, err.0);
+        if let Err(ended) = self.send(message) {
+            tracing::warn!("{} ended ({:?}); dropped {:?}", self.name, ended.end, ended.message);
         }
     }
 

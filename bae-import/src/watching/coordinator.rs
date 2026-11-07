@@ -53,7 +53,7 @@ pub(crate) enum WatcherCommand {
 /// a watch left on a removed folder match nothing. What it holds of each
 /// root's scan that no table does goes out on `in_memory`.
 pub(crate) fn run_watcher(
-    cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
+    cmd_rx: &mut mpsc::UnboundedReceiver<WatcherCommand>,
     fs_rx: mpsc::UnboundedReceiver<WatchReport>,
     services: crate::ImportServices,
     folder_watcher: Arc<FolderWatcher>,
@@ -72,7 +72,7 @@ pub(crate) fn run_watcher(
 }
 
 pub(super) fn run_watcher_with_starter(
-    mut cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
+    cmd_rx: &mut mpsc::UnboundedReceiver<WatcherCommand>,
     mut fs_rx: mpsc::UnboundedReceiver<WatchReport>,
     services: crate::ImportServices,
     starter: RootScanStarter,

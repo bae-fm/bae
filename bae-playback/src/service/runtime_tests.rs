@@ -269,7 +269,8 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
         &["08c80007-b56a-4fc9-8df6-af2967fa09b9", "08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
     )])
     .await;
-    let (mut service, _progress_rx) = playback_service_over(store.store(), diagnostics.clone());
+    let (mut service, mut command_rx, _progress_rx) =
+        playback_service_and_commands_over(store.store(), diagnostics.clone());
 
     // Queue the play command and a shutdown, then let the real loop drain both:
     // it emits the command telemetry, runs the play, then breaks on shutdown.
@@ -280,7 +281,7 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
     );
     let (shutdown_tx, _shutdown_rx) = tokio::sync::oneshot::channel::<()>();
     dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
-    service.run().await;
+    service.run(&mut command_rx).await;
 
     diagnostics.flush().await.expect("flush succeeds");
     let names = transport.event_names();
@@ -373,7 +374,8 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let store = seeded_store(&[]).await;
-    let (mut service, mut progress_rx) = playback_service_over(store.store(), diagnostics.clone());
+    let (mut service, mut command_rx, mut progress_rx) =
+        playback_service_and_commands_over(store.store(), diagnostics.clone());
     service.audio_output = crate::audio_output::PlayerOutput::new(
         Box::new(EndPanicsOutput { panicked: false }),
         AudioOutputControls::new(crate::Volume::FULL),
@@ -385,7 +387,7 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     dispatch_command(&command_tx, PlaybackCommand::SaveState(saved_tx));
     dispatch_command(&command_tx, PlaybackCommand::Shutdown(shutdown_tx));
 
-    service.run().await;
+    service.run(&mut command_rx).await;
 
     saved_rx.await.expect("the next command is served");
     shutdown_rx.await.expect("the service shuts down when asked");
@@ -410,8 +412,9 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
 #[tokio::test]
 async fn a_playing_track_deleted_by_sync_stops_playback() {
     const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
-    let (store, mut service, mut progress_rx) =
-        seeded_playback_service(&[(RELEASE, &[TRACK_A])]).await;
+    let store = seeded_store(&[(RELEASE, &[TRACK_A])]).await;
+    let (mut service, mut command_rx, mut progress_rx) =
+        playback_service_and_commands_over(store.store(), bae_diagnostics::Diagnostics::noop());
     fill_test_release(&mut service, RELEASE).await;
     service.slot =
         active_slot(test_prepared_track(TRACK_A, create_sparse_buffer(1_024)), TrackPhase::Playing);
@@ -436,7 +439,7 @@ async fn a_playing_track_deleted_by_sync_stops_playback() {
         dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
         stopped
     };
-    let ((), stopped) = tokio::join!(service.run(), delete_then_watch);
+    let ((), stopped) = tokio::join!(service.run(&mut command_rx), delete_then_watch);
 
     assert!(stopped.is_ok(), "deleting the playing track's row stops playback");
 }
@@ -449,8 +452,9 @@ async fn a_playing_track_deleted_by_sync_stops_playback() {
 async fn the_loop_completes_an_airplay_track_when_its_last_audio_is_heard() {
     use std::time::Duration;
     const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
-    let (_home, mut service, mut progress) =
-        seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
+    let store = seeded_store(&[(RELEASE, &[TRACK_T])]).await;
+    let (mut service, mut command_rx, mut progress) =
+        playback_service_and_commands_over(store.store(), bae_diagnostics::Diagnostics::noop());
     let clock = Arc::new(crate::ManualPlaybackClock::new(test_clock_start()));
     service.clock = clock.clone();
     let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
@@ -488,7 +492,7 @@ async fn the_loop_completes_an_airplay_track_when_its_last_audio_is_heard() {
         dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
         completed
     };
-    let ((), completed) = tokio::join!(service.run(), hear_the_tail);
+    let ((), completed) = tokio::join!(service.run(&mut command_rx), hear_the_tail);
 
     assert!(completed.is_ok(), "the track completes once its last audio is heard");
 }
@@ -499,8 +503,9 @@ async fn the_loop_completes_an_airplay_track_when_its_last_audio_is_heard() {
 #[tokio::test]
 async fn the_loop_drains_an_event_the_moment_the_output_pushes_it() {
     const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
-    let (_home, mut service, mut progress) =
-        seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
+    let store = seeded_store(&[(RELEASE, &[TRACK_T])]).await;
+    let (mut service, mut command_rx, mut progress) =
+        playback_service_and_commands_over(store.store(), bae_diagnostics::Diagnostics::noop());
     let prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
     let (mut sink, stream, _) = create_track_stream_pair(44_100, 2);
     sink.mark_finished();
@@ -528,7 +533,92 @@ async fn the_loop_drains_an_event_the_moment_the_output_pushes_it() {
         dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
         completed
     };
-    let ((), completed) = tokio::join!(service.run(), push_the_completion);
+    let ((), completed) = tokio::join!(service.run(&mut command_rx), push_the_completion);
 
     assert!(completed.is_ok(), "the pushed completion is handled");
+}
+
+/// An audio device whose opening waits for the test, then panics: a bug in
+/// the playback thread outside any command, which ends the thread.
+struct OpenPanicsDevice(std::sync::mpsc::Receiver<()>);
+
+impl crate::audio_output::AudioOutputDevice for OpenPanicsDevice {
+    fn open_output(&self) -> Result<Box<dyn crate::audio_output::AudioOutput>, AudioError> {
+        self.0.recv().expect("the test lets the device open");
+        panic!("the device would not open")
+    }
+}
+
+/// A panic that ends the playback thread ends the player with it: whoever
+/// follows playback hears it stopped with an error, a play sent after it
+/// fails with the thread's bug, and the bug is reported once. Sabotage: leave
+/// the thread's end unheard by its handle, and the followers hear nothing.
+#[tokio::test]
+async fn a_panic_that_ends_the_playback_thread_ends_the_player() {
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let store = seeded_store(&[]).await;
+    let db = store.store();
+    let (open, opening) = std::sync::mpsc::channel();
+    let playback = PlaybackService::start_with_audio_device(
+        db.clone(),
+        bae_records::test_fixtures::test_records(db),
+        bae_people::People::new(db.clone()),
+        Arc::new(coven::UuidIds),
+        crate::tables::PlaybackQueueTables::new(db.clone()),
+        crate::tables::PlaybackNowRow::new(db.clone()),
+        crate::tables::PlaybackTimelineRow::new(db.clone()),
+        diagnostics,
+        tokio::runtime::Handle::current(),
+        50,
+        false,
+        Box::new(OpenPanicsDevice(opening)),
+        Arc::new(crate::ManualPlaybackClock::new(test_clock_start())),
+    );
+    let mut progress = playback.subscribe_progress();
+    open.send(()).unwrap();
+
+    let heard = tokio::time::timeout(HANG_GUARD, async {
+        let mut heard = Vec::new();
+        while let Some(event) = progress.recv().await {
+            let stopped =
+                matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Stopped });
+            heard.push(event);
+            if stopped {
+                return heard;
+            }
+        }
+        heard
+    })
+    .await
+    .expect("the player's followers hear it stopped");
+    let bug = Bug {
+        operation: "playback service thread",
+        message: "the device would not open".to_string(),
+    };
+    assert!(
+        matches!(
+            heard.as_slice(),
+            [
+                PlaybackProgress::PlaybackError { reason },
+                PlaybackProgress::StateChanged { state: PlaybackState::Stopped },
+            ] if reason == &crate::PlaybackErrorReason::internal(&bug)
+        ),
+        "{heard:?}"
+    );
+    let played = playback.play_library_shuffled().await;
+    assert!(
+        matches!(
+            &played,
+            Err(PlayError::Ended(bae_util::worker_thread::WorkerEnd::Panicked(heard))) if heard == &bug
+        ),
+        "{played:?}"
+    );
+    assert_eq!(
+        bugs.reports(),
+        vec![(
+            "playback service thread".to_string(),
+            "playback service thread panicked: the device would not open".to_string()
+        )]
+    );
 }

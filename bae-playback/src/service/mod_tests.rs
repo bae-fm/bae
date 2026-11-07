@@ -236,13 +236,26 @@ pub(super) async fn seeded_playback_service(
     (store, service, progress_rx)
 }
 
-/// Assemble a directly-drivable `PlaybackService` over `database` (with a
-/// stub audio output), reporting to `diagnostics`, for tests that call its
-/// handlers without the actor loop.
+/// Assemble a directly-drivable `PlaybackService` over `database` (with a stub audio output),
+/// reporting to `diagnostics`, for tests that call its handlers without the actor loop: no
+/// loop takes the commands it sends itself.
 pub(super) fn playback_service_over(
     db: &bae_store::Store,
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
+    let (service, _commands, progress_rx) = playback_service_and_commands_over(db, diagnostics);
+    (service, progress_rx)
+}
+
+/// [`playback_service_over`] with the commands its loop (`PlaybackService::run`) serves.
+pub(super) fn playback_service_and_commands_over(
+    db: &bae_store::Store,
+    diagnostics: bae_diagnostics::Diagnostics,
+) -> (
+    PlaybackService,
+    tokio_mpsc::UnboundedReceiver<PlaybackCommand>,
+    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+) {
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let preview =
@@ -257,7 +270,6 @@ pub(super) fn playback_service_over(
         ids: Arc::new(coven::UuidIds),
         diagnostics,
         command_tx,
-        command_rx,
         progress_tx,
         playback_queue,
         // The desktop's: a test of the gate sets a system that answers.
@@ -285,7 +297,7 @@ pub(super) fn playback_service_over(
         staged_sides,
         held_tracks,
     };
-    (service, progress_rx)
+    (service, command_rx, progress_rx)
 }
 
 /// Where a test's playback clock starts.

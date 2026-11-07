@@ -303,7 +303,7 @@ impl CoordinatorHarness {
         for root in &roots {
             tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
         }
-        let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (commands, mut command_rx) = tokio::sync::mpsc::unbounded_channel();
         let (fs_events, fs_rx) = tokio::sync::mpsc::unbounded_channel();
         if let Some(root) = roots.first() {
             let root_path = PathBuf::from(root);
@@ -345,7 +345,7 @@ impl CoordinatorHarness {
         let coordinator_removals = removal_backend.clone();
         let coordinator_thread = std::thread::spawn(move || {
             coordinator::run_watcher_with_starter(
-                command_rx,
+                &mut command_rx,
                 fs_rx,
                 services,
                 starter,

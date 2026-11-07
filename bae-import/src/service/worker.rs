@@ -109,8 +109,7 @@ impl ImportService {
                 .build()
                 .expect("Failed to create import runtime");
             rt.block_on(async move {
-                let mut service = ImportService {
-                    commands_rx,
+                let service = ImportService {
                     event_tx: event_tx_for_worker,
                     runtime: runtime_for_worker,
                     records,
@@ -123,12 +122,14 @@ impl ImportService {
                     diagnostics,
                 };
 
-                while let Some(message) = service.commands_rx.recv().await {
+                while let Some(message) = commands_rx.recv().await {
                     match message {
                         ImportWorkerMessage::Import { command, expectation } => {
                             service.do_import(command, expectation).await
                         }
                         ImportWorkerMessage::Shutdown => break,
+                        #[cfg(test)]
+                        ImportWorkerMessage::Panic => panic!("the import worker broke"),
                     }
                 }
             });

@@ -102,8 +102,15 @@ fn destination_label(destination: ImportDestination) -> &'static str {
 /// closing the channel because the last sender lives in the struct whose `Drop`
 /// joins the thread, so the channel could never close first.
 pub(crate) enum ImportWorkerMessage {
-    Import { command: ImportCommand, expectation: ImportExpectation },
+    Import {
+        command: ImportCommand,
+        expectation: ImportExpectation,
+    },
     Shutdown,
+    /// Panic on the worker's thread, outside any import: a bug that ends the
+    /// worker, for a test of what its end does to the service.
+    #[cfg(test)]
+    Panic,
 }
 
 /// The candidate an import commits, as the commit checks it.
@@ -176,7 +183,6 @@ pub enum CandidateMoved {
 }
 
 pub struct ImportService {
-    commands_rx: mpsc::UnboundedReceiver<ImportWorkerMessage>,
     event_tx: crate::ImportEventBus,
     /// What the bus's events have said about every candidate, held here for
     /// the standing a commit ends.

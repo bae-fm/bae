@@ -162,13 +162,11 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     };
 
     let (decision_completion, decision_result) = tokio::sync::oneshot::channel();
-    handle
-        .watcher
-        .send(WatcherCommand::SetFolderReleaseDecision {
-            target: (key, FolderReleaseDecision::CombineAsOneRelease),
-            completion: decision_completion,
-        })
-        .unwrap();
+    let sent = handle.watcher.send(WatcherCommand::SetFolderReleaseDecision {
+        target: (key, FolderReleaseDecision::CombineAsOneRelease),
+        completion: decision_completion,
+    });
+    assert!(sent.is_ok(), "the coordinator is running");
 
     let removal = handle.remove_watched_folder(root.clone());
     let (decision, removal) =

@@ -62,14 +62,14 @@ impl From<bae_playback::QueueEditError> for super::BridgeError {
 }
 
 /// A play with no outcome to tell: the queue couldn't be filled, a database
-/// failure, or the playback service had stopped, which is a bug of whoever
-/// still sent it a play.
+/// failure, or the playback service had stopped or ended, which is a bug: of
+/// whoever still sent it a play, or the one its thread ended on.
 impl From<bae_playback::PlayError> for super::BridgeError {
     fn from(error: bae_playback::PlayError) -> Self {
         match error {
             bae_playback::PlayError::Queue(error) => error.into(),
-            stopped @ bae_playback::PlayError::Stopped(_) => {
-                Self::diagnostic(super::BridgeErrorCategory::Internal, stopped)
+            gone @ (bae_playback::PlayError::Stopped(_) | bae_playback::PlayError::Ended(_)) => {
+                Self::diagnostic(super::BridgeErrorCategory::Internal, gone)
             }
         }
     }

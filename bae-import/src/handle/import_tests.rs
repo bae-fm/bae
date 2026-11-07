@@ -695,6 +695,53 @@ async fn an_automatic_start_the_closing_library_stops_records_nothing() {
     );
 }
 
+/// The import worker ending on a bug ends the import service with it: an
+/// automatic start after it fails with the worker's bug, is recorded as the
+/// candidate's failed import, and claims nothing, and the bug is reported
+/// once, as it happened. Sabotage: answer a send to the ended worker as a
+/// closing library, and the start fails as though nothing went wrong.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_automatic_start_after_the_worker_panicked_fails_with_its_bug() {
+    let fixture = Fixture::new("auto-import-worker-panicked").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.identify_ready(&dir, "mb-panicked", "rg-panicked").await;
+    assert!(fixture.import.worker.send(crate::service::ImportWorkerMessage::Panic).is_ok());
+    let bug = coven::task::Bug {
+        operation: "import worker thread",
+        message: "the import worker broke".to_string(),
+    };
+    assert_eq!(
+        fixture.import.worker.ended().await,
+        bae_util::worker_thread::WorkerEnd::Panicked(bug.clone())
+    );
+
+    let error =
+        fixture.import.import_identified(&key).await.expect_err("an ended worker queues no import");
+
+    assert!(
+        matches!(&error, crate::ImportError::WorkerFailed(heard) if heard == &bug),
+        "{error:?}"
+    );
+    assert!(fixture.import_failure(&dir).await.is_some(), "the failed start is recorded");
+    assert_eq!(
+        fixture.bugs.reports(),
+        vec![(
+            "import worker thread".to_string(),
+            "import worker thread panicked: the import worker broke".to_string()
+        )]
+    );
+    assert!(
+        fixture
+            .import
+            .candidate_runtime(&key)
+            .await
+            .unwrap()
+            .is_none_or(|runtime| runtime.import.is_none()),
+        "nothing claims the candidate"
+    );
+}
+
 impl Fixture {
     /// The failed import `dir`'s pane shows, if any.
     async fn import_failure(&self, dir: &Path) -> Option<crate::ImportFailure> {

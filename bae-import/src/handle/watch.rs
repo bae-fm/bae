@@ -10,20 +10,10 @@ impl ImportServiceHandle {
         Ok(self.services.tables.is_watched_import_folder(path).await?)
     }
 
-    /// Send a command to the folder-watch coordinator; a closed channel is an
-    /// `Internal` error naming the action.
-    #[expect(
-        clippy::map_err_ignore,
-        reason = "a closed coordinator channel says only that it stopped; the action is named"
-    )]
-    fn send_watcher_command(
-        &self,
-        command: WatcherCommand,
-        on_closed: &str,
-    ) -> Result<(), crate::ImportError> {
-        self.watcher
-            .send(command)
-            .map_err(|_| crate::ImportError::Internal { detail: on_closed.to_string() })
+    /// Send a command to the folder-watch coordinator, or fail with how the
+    /// coordinator ended.
+    fn send_watcher_command(&self, command: WatcherCommand) -> Result<(), crate::ImportError> {
+        self.watcher.send(command).map_err(|ended| ended.end.into())
     }
 
     /// Watch a folder, in whatever spelling the caller had. A folder already
@@ -50,10 +40,7 @@ impl ImportServiceHandle {
                 "{shown} is inside the watched folder {}; re-reading it",
                 coven::path_text(&covering)
             );
-            return self.send_watcher_command(
-                WatcherCommand::Rescan(covering),
-                "Failed to start watching folder",
-            );
+            return self.send_watcher_command(WatcherCommand::Rescan(covering));
         }
         let inner: Vec<std::path::PathBuf> =
             self.services.tables.watched_import_folders_below(&path).await?;
@@ -69,9 +56,9 @@ impl ImportServiceHandle {
         let read = WatcherCommand::Rescan(path.clone());
         let Some(folders) = added else {
             info!("{shown} is already watched; re-reading it");
-            return self.send_watcher_command(read, "Failed to start watching folder");
+            return self.send_watcher_command(read);
         };
-        if let Err(error) = self.send_watcher_command(read, "Failed to start watching folder") {
+        if let Err(error) = self.send_watcher_command(read) {
             self.services.tables.remove_watched_import_folders(vec![path], None).await?;
             return Err(error);
         }
@@ -100,10 +87,7 @@ impl ImportServiceHandle {
         parent: Option<std::path::PathBuf>,
     ) -> Result<(), crate::ImportError> {
         let (completion, receiver) = tokio::sync::oneshot::channel();
-        self.send_watcher_command(
-            WatcherCommand::Remove { roots, parent, completion },
-            "failed to request folder watch removal",
-        )?;
+        self.send_watcher_command(WatcherCommand::Remove { roots, parent, completion })?;
         receiver
             .await
             .map_err(|error| crate::ImportError::Internal {
@@ -116,10 +100,7 @@ impl ImportServiceHandle {
     /// asked for, or why the watched folders could not be listed.
     pub async fn scan_watched_folders(&self) -> Result<(), crate::ImportError> {
         let (completion, receiver) = tokio::sync::oneshot::channel();
-        self.send_watcher_command(
-            WatcherCommand::RescanAll { completion },
-            "Failed to start watching folder",
-        )?;
+        self.send_watcher_command(WatcherCommand::RescanAll { completion })?;
         receiver
             .await
             .map_err(|error| crate::ImportError::Internal {
@@ -169,10 +150,7 @@ impl ImportServiceHandle {
             });
         }
         let (completion, receiver) = tokio::sync::oneshot::channel();
-        self.send_watcher_command(
-            WatcherCommand::Refresh { path, completion },
-            "failed to request folder refresh",
-        )?;
+        self.send_watcher_command(WatcherCommand::Refresh { path, completion })?;
         receiver
             .await
             .map_err(|error| crate::ImportError::Internal {
@@ -198,10 +176,10 @@ impl ImportServiceHandle {
             });
         }
         let (completion, receiver) = tokio::sync::oneshot::channel();
-        self.send_watcher_command(
-            WatcherCommand::SetFolderReleaseDecision { target: (key, decision), completion },
-            "failed to set folder release decision",
-        )?;
+        self.send_watcher_command(WatcherCommand::SetFolderReleaseDecision {
+            target: (key, decision),
+            completion,
+        })?;
         receiver
             .await
             .map_err(|error| crate::ImportError::Internal {

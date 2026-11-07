@@ -113,7 +113,7 @@ async fn stored_outcome(db: &Store) -> crate::StoredScanOutcome {
 /// and what it holds of each root's scan.
 fn start_coordinator(
     scan: &TestScan,
-    command_rx: tokio::sync::mpsc::UnboundedReceiver<crate::watching::WatcherCommand>,
+    mut command_rx: tokio::sync::mpsc::UnboundedReceiver<crate::watching::WatcherCommand>,
 ) -> (
     std::thread::JoinHandle<()>,
     tokio::sync::watch::Receiver<crate::folder_scan_status::FolderScansInMemory>,
@@ -124,7 +124,7 @@ fn start_coordinator(
     let services = scan.services.services.clone();
     let folder_watcher = scan.services.folder_watcher.clone();
     let coordinator = std::thread::spawn(move || {
-        crate::watching::run_watcher(command_rx, fs_rx, services, folder_watcher, in_memory_tx)
+        crate::watching::run_watcher(&mut command_rx, fs_rx, services, folder_watcher, in_memory_tx)
     });
     (coordinator, in_memory)
 }

@@ -473,14 +473,12 @@ impl ImportServiceHandle {
         let candidate_key = command.candidate_key.clone();
         let import_id = command.import_id.clone();
         self.services.import_cancels.register(&candidate_key, &import_id);
-        if self
-            .worker
-            .send(crate::service::ImportWorkerMessage::Import { command, expectation })
-            .is_err()
+        if let Err(ended) =
+            self.worker.send(crate::service::ImportWorkerMessage::Import { command, expectation })
         {
             self.services.import_cancels.forget(&candidate_key, &import_id);
             self.release_import_claim(&candidate_key, &import_id).await?;
-            return Err(crate::ImportError::Stopped);
+            return Err(ended.end.into());
         }
         Ok(())
     }

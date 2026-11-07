@@ -255,6 +255,14 @@ pub enum ImportError {
     #[error("the import service has stopped")]
     Stopped,
 
+    /// A worker of the import service — the import worker or the folder scan
+    /// coordinator — ended on this bug, reported as it happened, before the
+    /// command could reach it: the service ended with it. Nothing was
+    /// claimed for the candidate.
+    #[cfg(desktop)]
+    #[error("the import service ended on a bug")]
+    WorkerFailed(#[source] coven::task::Bug),
+
     /// A broken invariant, not a user condition: artist-id remap miss,
     /// non-UTF-8 path, work that panicked apart from its caller, missing
     /// library-status row.
@@ -367,7 +375,8 @@ impl From<crate::tables::ImportCommitError> for ImportError {
 }
 
 /// A bug a coven call import made carried back, which the store reported as
-/// it returned, or one coven repeats.
+/// it returned, one coven repeats, or the bug an import worker ended on,
+/// which its thread reported as it happened.
 impl bae_util::task_failure::ReportedBug for ImportError {
     fn reported_bug(&self) -> Option<&coven::task::Bug> {
         match self {
@@ -379,12 +388,27 @@ impl bae_util::task_failure::ReportedBug for ImportError {
             #[cfg(desktop)]
             Self::Sync(error) => error.reported_bug(),
             #[cfg(desktop)]
+            Self::WorkerFailed(bug) => Some(bug),
+            #[cfg(desktop)]
             Self::Rollback { operation, .. } => operation.reported_bug(),
             #[cfg(desktop)]
             Self::FileCleanup { write, failures } => write.reported_bug().or_else(|| {
                 failures.iter().find_map(bae_util::task_failure::ReportedBug::reported_bug)
             }),
             _ => None,
+        }
+    }
+}
+
+/// A worker of the service that ended before a command reached it: one
+/// that returned was stopped as the library closed, and one that panicked
+/// ended the service on its bug.
+#[cfg(desktop)]
+impl From<bae_util::worker_thread::WorkerEnd> for ImportError {
+    fn from(end: bae_util::worker_thread::WorkerEnd) -> Self {
+        match end {
+            bae_util::worker_thread::WorkerEnd::Returned => Self::Stopped,
+            bae_util::worker_thread::WorkerEnd::Panicked(bug) => Self::WorkerFailed(bug),
         }
     }
 }
@@ -508,7 +532,7 @@ impl ImportError {
             Self::Catalog(error) => catalog_category(error),
             Self::Internal { .. } => C::Internal,
             #[cfg(desktop)]
-            Self::Stopped | Self::Provenance { .. } => C::Internal,
+            Self::Stopped | Self::WorkerFailed(_) | Self::Provenance { .. } => C::Internal,
             // The import pane combines only what it lists, at least two, so
             // a short pick or one that made nothing is bae's own fault; a
             // release that moved or was taken meanwhile is the person's to

@@ -1,6 +1,6 @@
 use super::*;
 
-use bae_util::worker_thread::WorkerThread;
+use bae_util::worker_thread::{WorkerEnd, WorkerThread};
 
 impl PlayingTrack {
     pub(super) fn from_prepared(prepared: &PlaybackPreparedTrack) -> Self {
@@ -41,6 +41,10 @@ pub enum PlayError {
     Queue(#[source] bae_store::DbError),
     #[error("the playback service stopped before it answered the play")]
     Stopped(#[source] oneshot::error::RecvError),
+    /// The service's thread had ended before the play was sent: shut down,
+    /// or ended on a bug reported as it happened.
+    #[error("the playback service had ended")]
+    Ended(#[source] WorkerEnd),
 }
 
 /// Where a play command's answer goes.
@@ -58,18 +62,23 @@ pub enum QueueEditError {
     Queue(#[source] bae_store::DbError),
     #[error("the playback service stopped before it answered the queue command")]
     Stopped(#[source] oneshot::error::RecvError),
+    /// The service's thread had ended before the command was sent: shut
+    /// down, or ended on a bug reported as it happened.
+    #[error("the playback service had ended")]
+    Ended(#[source] WorkerEnd),
 }
 
 impl QueueEditError {
     /// The class a surface words this failure in: the queue changed under
     /// the screen that asked, a database failure, or a service that had
-    /// stopped, which is a bug of whoever still sent it the command.
+    /// stopped or ended, which is a bug: of whoever still sent it the
+    /// command, or the one its thread ended on.
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         use bae_diagnostics::UiErrorCategory as C;
         match self {
             Self::QueueChanged => C::QueueChanged,
             Self::Queue(error) => bae_diagnostics::database_category(error),
-            Self::Stopped(_) => C::Internal,
+            Self::Stopped(_) | Self::Ended(_) => C::Internal,
         }
     }
 }
@@ -372,7 +381,7 @@ impl PlaybackHandle {
         command: impl FnOnce(PlayReply) -> PlaybackCommand,
     ) -> Result<PlayOutcome, PlayError> {
         let (reply, answer) = oneshot::channel();
-        self.dispatch(command(reply));
+        self.worker.send(command(reply)).map_err(|ended| PlayError::Ended(ended.end))?;
         answer.await.map_err(PlayError::Stopped)?
     }
     /// Play a release from `start_track_id`, or from its first track, or
@@ -553,8 +562,7 @@ impl PlaybackHandle {
         entry_id: QueueEntryId,
     ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
-        self.dispatch(PlaybackCommand::RemoveFromQueue { entry_id, reply });
-        async move { answer.await.map_err(QueueEditError::Stopped)? }
+        self.edit_queue(PlaybackCommand::RemoveFromQueue { entry_id, reply }, answer)
     }
     /// Move `entry_id` to just before `before`, or to the end of its lane
     /// when it's `None`, and answer the lane's version the move made: a
@@ -569,24 +577,34 @@ impl PlaybackHandle {
         before: Option<QueueEntryId>,
     ) -> impl std::future::Future<Output = Result<u64, QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
-        self.dispatch(PlaybackCommand::ReorderQueue { entry_id, before, reply });
-        async move { answer.await.map_err(QueueEditError::Stopped)? }
+        self.edit_queue(PlaybackCommand::ReorderQueue { entry_id, before, reply }, answer)
     }
     /// Empty the manual lane, answering once it is empty or why it isn't.
     pub fn clear_up_next(
         &self,
     ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
-        self.dispatch(PlaybackCommand::ClearUpNext(reply));
-        async move { answer.await.map_err(QueueEditError::Stopped)? }
+        self.edit_queue(PlaybackCommand::ClearUpNext(reply), answer)
     }
     /// Drop the context lane, answering once it is dropped or why it isn't.
     pub fn clear_playing_from(
         &self,
     ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
-        self.dispatch(PlaybackCommand::ClearPlayingFrom(reply));
-        async move { answer.await.map_err(QueueEditError::Stopped)? }
+        self.edit_queue(PlaybackCommand::ClearPlayingFrom(reply), answer)
+    }
+    /// Send the queue command `command` at the call; the future answers
+    /// with what it did, or why it didn't.
+    fn edit_queue<T: Send + 'static>(
+        &self,
+        command: PlaybackCommand,
+        answer: oneshot::Receiver<Result<T, QueueEditError>>,
+    ) -> impl std::future::Future<Output = Result<T, QueueEditError>> + Send + 'static {
+        let sent = self.worker.send(command).map_err(|ended| QueueEditError::Ended(ended.end));
+        async move {
+            sent?;
+            answer.await.map_err(QueueEditError::Stopped)?
+        }
     }
     pub fn set_repeat_mode(&self, mode: RepeatMode) {
         self.dispatch(PlaybackCommand::SetRepeatMode(mode));
@@ -636,8 +654,7 @@ impl PlaybackHandle {
         entry_id: QueueEntryId,
     ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
-        self.dispatch(PlaybackCommand::SkipTo { entry_id, reply });
-        async move { answer.await.map_err(QueueEditError::Stopped)? }
+        self.edit_queue(PlaybackCommand::SkipTo { entry_id, reply }, answer)
     }
     /// Called when `pause_between_sides` turns on, so a next track already staged
     /// for gapless playback is held if its boundary needs a pause.

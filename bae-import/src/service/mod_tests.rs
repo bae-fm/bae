@@ -124,11 +124,9 @@ pub(crate) async fn setup_import_service() -> TestService {
         bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
-    let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
     let event_tx = crate::ImportEventBus::new(runtime.clone());
     TestService {
         service: ImportService {
-            commands_rx,
             event_tx,
             runtime,
             records: bae_records::test_fixtures::test_records(&db),

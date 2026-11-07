@@ -466,7 +466,6 @@ pub struct PlaybackService {
     /// panic as the bug it is.
     diagnostics: Diagnostics,
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
-    command_rx: tokio_mpsc::UnboundedReceiver<PlaybackCommand>,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
     /// The queue: its tables, which the queue screens read, and the entry
     /// playing.

@@ -1,7 +1,7 @@
 use super::*;
 
 use bae_util::task_failure::{caught, caught_sync, Bug};
-use bae_util::worker_thread::WorkerThread;
+use bae_util::worker_thread::{WorkerEnd, WorkerThread};
 use std::ops::ControlFlow;
 
 impl PlaybackService {
@@ -730,6 +730,8 @@ impl PlaybackService {
         );
         let playback_queue = PlaybackQueue::new(queue_tables);
         let progress_handle_for_completion = progress_handle.clone();
+        let progress_tx_for_end = progress_tx.clone();
+        let runtime_handle_for_end = runtime_handle.clone();
         let service_arbiter = arbiter.clone();
         let worker = WorkerThread::spawn(
             "playback service thread",
@@ -788,7 +790,6 @@ impl PlaybackService {
                         ids,
                         diagnostics,
                         command_tx: command_tx.clone(),
-                        command_rx,
                         progress_tx,
                         playback_queue,
                         audio_focus,
@@ -824,14 +825,20 @@ impl PlaybackService {
                     } else {
                         debug!("restore on launch is off; starting with nothing in playback");
                     }
-                    service.run().await;
+                    service.run(command_rx).await;
                 });
             },
         );
+        follow_the_thread_s_end(&worker, progress_tx_for_end, &runtime_handle_for_end);
         PlaybackHandle::new(worker, progress_handle, arbiter, playing_bytes_rx)
     }
 
-    pub(super) async fn run(&mut self) {
+    /// Serve `commands`, and what else wakes the loop, until a shutdown has
+    /// been served.
+    pub(super) async fn run(
+        &mut self,
+        commands: &mut tokio_mpsc::UnboundedReceiver<PlaybackCommand>,
+    ) {
         info!("PlaybackService started");
         let mut countdown = deadline_wait::DeadlineWait::new();
         let mut audible = deadline_wait::DeadlineWait::new();
@@ -852,7 +859,7 @@ impl PlaybackService {
                 () = audio_events_ready(&self.output) => Wake::AudioEvents,
                 deadline = countdown.elapsed(), if countdown.is_armed() => Wake::CountdownElapsed(deadline),
                 _ = audible.elapsed(), if audible.is_armed() => Wake::AudibleDeadline,
-                Some(command) = self.command_rx.recv() => Wake::Command(command),
+                Some(command) = commands.recv() => Wake::Command(command),
                 (held, infos) = self.held_tracks.next() => Wake::HeldTracks { held, infos },
                 else => break,
             };
@@ -902,6 +909,32 @@ impl PlaybackService {
             self.diagnostics.panicked(again);
         }
     }
+}
+
+/// When the service thread ends on a panic, playback ends with it: whoever
+/// follows playback hears it stopped with the thread's bug, as a panic the
+/// loop caught stops it. A thread that returned was shut down, and says
+/// nothing more.
+fn follow_the_thread_s_end(
+    worker: &WorkerThread<PlaybackCommand>,
+    progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
+    runtime_handle: &tokio::runtime::Handle,
+) {
+    let worker = worker.clone();
+    runtime_handle.spawn(async move {
+        if let WorkerEnd::Panicked(bug) = worker.ended().await {
+            emit_progress(
+                &progress_tx,
+                PlaybackProgress::PlaybackError {
+                    reason: crate::PlaybackErrorReason::internal(&bug),
+                },
+            );
+            emit_progress(
+                &progress_tx,
+                PlaybackProgress::StateChanged { state: PlaybackState::Stopped },
+            );
+        }
+    });
 }
 
 /// Turn a progress event into the command it asks of the service loop: a
