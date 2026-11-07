@@ -25,6 +25,8 @@ struct LibrarySettingsTab: View {
     private var libraryName
     @Environment(MembershipStore.self)
     private var membership
+    @Environment(Sync.self)
+    private var sync
 
     @State
     private var showSyncSetup = false
@@ -37,6 +39,9 @@ struct LibrarySettingsTab: View {
     /// The recovery code section's reveal, hidden whenever this tab goes away.
     @State
     private var recoveryCode = RecoveryCodeReveal()
+    /// Why the library's location couldn't be read as this tab opened.
+    @State
+    private var storageReadError: DisplayError?
 
     var body: some View {
         Form {
@@ -63,6 +68,9 @@ struct LibrarySettingsTab: View {
 
             Section("Sync") {
                 UndoneSetupLine()
+                if let storageReadError {
+                    ErrorDetailDisclosure(error: storageReadError)
+                }
                 if let location = configStore.storage {
                     CloudProviderConnectedSection(location: location)
                     if syncStatus.line == .noStorage {
@@ -121,6 +129,7 @@ struct LibrarySettingsTab: View {
         // The name, the people, invites and admin changes are read while
         // this tab shows.
         .task { await libraryName.follow() }
+        .task { await readStorage() }
         .onAppear { membership.show() }
         .onDisappear {
             recoveryCode.hide()
@@ -150,6 +159,22 @@ struct LibrarySettingsTab: View {
                     )
                 )
             )
+        }
+    }
+
+    /// Read the library's location again as the tab opens: coven records
+    /// a Dropbox or OneDrive folder's name at every connection, so one
+    /// renamed at the provider shows from the first read after.
+    private func readStorage() async {
+        storageReadError = nil
+        do {
+            configStore.applyStorage(try await sync.storageLocation())
+        }
+        catch {
+            logger.error(
+                "Couldn't read the library's location: \(String(reflecting: error))"
+            )
+            storageReadError = DisplayError(error)
         }
     }
 
@@ -251,7 +276,7 @@ private struct UploadPauseToggle: View {
             onCheckForUpdates: {}
         )
         .frame(width: 500, height: 640)
-        .environment(PreviewData.previewSync())
+        .environment(PreviewData.previewSync(storage: configStore.storage))
         #if BAE_OAUTH_PROVIDERS
             .environment(CloudSyncSetup())
         #endif
@@ -330,7 +355,9 @@ private struct UploadPauseToggle: View {
         }
         .formStyle(.grouped)
         .frame(width: 500, height: 300)
-        .environment(PreviewData.previewSync())
+        .environment(
+            PreviewData.previewSync(storage: PreviewData.previewStorage)
+        )
         .environment(
             PreviewData.connectedConfigStore(
                 storage: PreviewData.previewStorage

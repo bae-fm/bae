@@ -143,7 +143,9 @@ private struct AdminChangeRow: View {
         }
         .formStyle(.grouped)
         .frame(width: 500, height: 300)
-        .environment(PreviewData.previewSync())
+        .environment(
+            PreviewData.previewSync(storage: PreviewData.previewStorage)
+        )
         .environment(
             MembershipStore.stub(
                 people: PreviewData.members,

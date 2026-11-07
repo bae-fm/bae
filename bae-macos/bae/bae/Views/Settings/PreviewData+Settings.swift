@@ -157,8 +157,9 @@
             + String(repeating: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567", count: 6)
 
         /// A `Sync` whose reads serve preview values, so the library-settings
-        /// previews never touch cloud storage.
-        static func previewSync() -> Sync {
+        /// previews never touch cloud storage. It reads the library's
+        /// location as `storage`.
+        static func previewSync(storage: BridgeStorageLocation?) -> Sync {
             Sync(
                 storageSetupSteps: {
                     StorageSetupSteps(host: BaeHost.preview())
@@ -181,7 +182,8 @@
                             noHandle: BridgeAddedDeviceWatch.NoHandle()
                         )
                     )
-                }
+                },
+                storageLocation: { storage }
             )
         }
 

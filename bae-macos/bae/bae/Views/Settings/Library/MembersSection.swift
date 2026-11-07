@@ -509,7 +509,7 @@ private struct JoinRequestSheet: View {
         }
         .formStyle(.grouped)
         .frame(width: 500, height: 360)
-        .environment(PreviewData.previewSync())
+        .environment(PreviewData.previewSync(storage: nil))
         .environment(SyncActivityStore.preview(needsAttention: false))
         .environment(PreviewData.configStore())
         .environment(

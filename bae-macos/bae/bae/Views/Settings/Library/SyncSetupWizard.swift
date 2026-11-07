@@ -340,7 +340,7 @@ struct SetupStep<Fields: View>: View {
     #Preview("Provider Selection") {
         SyncSetupWizard(onDone: {})
             .environment(PreviewData.configStore())
-            .environment(PreviewData.previewSync())
+            .environment(PreviewData.previewSync(storage: nil))
             #if BAE_OAUTH_PROVIDERS
                 .environment(CloudSyncSetup())
             #endif

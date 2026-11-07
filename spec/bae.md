@@ -2791,11 +2791,11 @@ account names them, and coven records them with the location
 Settings' sync section shows that name as *Folder*, under the account, with
 *Open in browser*, which opens the folder's page at the provider; when no app
 on the device opens it, the section says so. S3 and iCloud show neither, and
-nor does Dropbox's App folder, which has no label. The name is the one coven
-had recorded when Settings read the location: on a Mac as the library opens
-and again once a setup stops running, on Android each time Settings opens. A
-folder renamed at the provider shows its new name from the first read after a
-connection has recorded it.
+nor does Dropbox's App folder, which has no label. Settings reads the
+location each time its sync section opens, on a Mac and on Android, so a
+folder renamed at the provider shows its new name from the first time the
+section opens after a connection has recorded it; a read that fails shows why
+in the section.
 
 **iCloud setup** uses the Apple Account the device is signed in to, and keeps
 the library in bae's iCloud container, `iCloud.fm.bae.desktop`.
