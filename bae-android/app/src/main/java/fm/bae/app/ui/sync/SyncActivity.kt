@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -53,10 +52,12 @@ import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.color
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
@@ -92,7 +93,7 @@ internal fun SyncActivityButton(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (activity?.moving == true) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                WaitingIndicator(size = ThemeIcon.small)
             }
             if (activity?.needsAttention == true || error != null) {
                 Icon(

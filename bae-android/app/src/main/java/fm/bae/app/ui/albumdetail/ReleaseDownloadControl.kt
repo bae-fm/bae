@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -44,6 +43,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.downloads.ActiveDownloadProgress
 import fm.bae.app.ui.downloads.WaitingToDownloadText
 import fm.bae.app.ui.rememberScreenScope
@@ -228,7 +228,7 @@ private fun DownloadedControl(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (unpinning) {
-            CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium), strokeWidth = 2.dp)
+            WaitingIndicator(size = ThemeIcon.medium)
             Text(
                 text = LocalContext.current.coreString(bridgeTransferActionKey(BridgeReleaseStorageAction.UNPIN)),
                 style = ThemeText.detail.style,
