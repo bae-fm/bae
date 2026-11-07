@@ -268,7 +268,10 @@ where
     }
 
     /// Start `release_id`'s entry with `abort` as its task, as the worker
-    /// does — for a test that drives progress without a worker.
+    /// does — for a test that drives progress without a worker. An entry
+    /// starts only on a running queue, so the queue is resumed in the same
+    /// write, and no worker is woken: one parked on the paused queue stays
+    /// parked, leaving the entry to the test.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn activate_for_test(
         &self,
@@ -280,7 +283,10 @@ where
         let activated = release_id.to_string();
         let started = self
             .store
-            .call(move |sql| tables::activate_queued_release_on::<Extra>(sql, &activated))
+            .call(move |sql| {
+                tables::set_release_queue_paused_on::<Extra>(sql, false)?;
+                tables::activate_queued_release_on::<Extra>(sql, &activated)
+            })
             .await?;
         if started {
             self.publish_started(release_id);

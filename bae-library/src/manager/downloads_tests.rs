@@ -511,6 +511,9 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
         .unwrap());
     assert_eq!(ascending().await, resting, "failed");
 
+    // Starting the entry resumed the queue; paused again, the worker leaves
+    // the entry to this test.
+    manager.set_downloads_paused(true).await.unwrap();
     manager.retry_downloads().await.unwrap();
     assert_eq!(ascending().await, second_pinning, "retried");
 
@@ -528,11 +531,13 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     manager.cancel_download(&second).await.unwrap();
     assert_eq!(ascending().await, resting, "cancelled");
 
+    manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
     assert!(activate_download(manager, &second).await.unwrap());
     assert!(finish_download(manager, &second).await.unwrap());
     assert_eq!(ascending().await, resting, "finished");
 
+    manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
     clear_transfers_as_opening(manager).await.unwrap();
     assert_eq!(ascending().await, second_pinning, "kept as the library opens");
@@ -599,7 +604,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         listed_queues(manager).await,
         StorageQueues {
             uploads,
-            pins: Some(ReleaseQueueRun { paused: true, active: Some(pinning.clone()) }),
+            pins: Some(ReleaseQueueRun { paused: false, active: Some(pinning.clone()) }),
             outputs: outputs.clone(),
         }
     );

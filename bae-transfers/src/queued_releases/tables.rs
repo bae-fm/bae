@@ -535,11 +535,15 @@ pub fn clear_transfers_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
 pub mod worker_moves {
     use super::*;
 
-    /// Start `release_id`'s entry, as the worker does once its task runs.
+    /// Start `release_id`'s entry, as the worker does once its task runs. An
+    /// entry starts only on a running queue, so the queue is resumed in the
+    /// same write, and no worker is woken: one parked on the paused queue
+    /// stays parked, leaving the entry to the test.
     pub fn activate_on<P: QueuedPayload>(
         sql: &CovenWrite<'_>,
         release_id: &str,
     ) -> Result<bool, DbError> {
+        set_release_queue_paused_on::<P>(sql, false)?;
         activate_queued_release_on::<P>(sql, release_id)
     }
 
