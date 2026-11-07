@@ -31,10 +31,9 @@ import java.util.concurrent.ConcurrentHashMap
 // a stream the bridge holds and writes itself. The app pulls which keys
 // started or stopped holding a value, through a ScreenSubscription, and tells
 // the Views watching those keys. FrameFollowing hands a value to
-// the View drawing that key once per display frame; `changes` hands one that
-// changes now and then, such as where a join stands, to the screen as it
-// changes. App code passes streams and sources around; it holds no value of
-// its own.
+// the View drawing that key once per display frame, whether the value moves
+// every frame or only now and then, such as where a join stands. App code
+// passes streams and sources around; it holds no value of its own.
 // scripts/keyed-value-stream-boundary.py keeps every other file off the
 // bridge's stream.
 
