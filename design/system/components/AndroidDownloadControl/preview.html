@@ -1,4 +1,4 @@
-<!-- @dsCard group="Android library" height=520 -->
+<!-- @dsCard group="Android library" height=900 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>AndroidDownloadControl</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Available', h(B.AndroidDownloadControl, {})), W('Queued', h(B.AndroidDownloadControl, { state: 'queued' })), W('Downloading', h(B.AndroidDownloadControl, { state: 'downloading' })), W('Failed', h(B.AndroidDownloadControl, { state: 'failed' })), W('Downloaded', h(B.AndroidDownloadControl, { state: 'downloaded' })), W('Elsewhere', h(B.AndroidDownloadControl, { state: 'elsewhere' }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Available', h(B.AndroidDownloadControl, {})), W('Queued', h(B.AndroidDownloadControl, { state: 'queued' })), W('Downloading', h(B.AndroidDownloadControl, { state: 'downloading' })), W('Failed', h(B.AndroidDownloadControl, { state: 'failed' })), W('Queued, ahead, wait', h(B.AndroidDownloadControl, { state: 'queued', ahead: 2, wait: 'Paused' })), W('Downloading, wait', h(B.AndroidDownloadControl, { state: 'downloading', wait: 'Waiting for network' })), W('Copying here', h(B.AndroidDownloadControl, { state: 'copying' })), W('Downloaded', h(B.AndroidDownloadControl, { state: 'downloaded' })), W('Elsewhere', h(B.AndroidDownloadControl, { state: 'elsewhere' }))));
 </script>
 </body>
 </html>

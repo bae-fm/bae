@@ -219,8 +219,9 @@ export interface AndroidBrowseRowProps { name: string; count?: string; noImage?:
 export declare function AndroidBrowseRow(props: AndroidBrowseRowProps): React.ReactElement;
 export interface AndroidAlbumHeaderProps { title: string; artist?: string; year?: string; pressing?: string; labels?: string; noCover?: boolean }
 export declare function AndroidAlbumHeader(props: AndroidAlbumHeaderProps): React.ReactElement;
-export interface AndroidDownloadControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'elsewhere'; progress?: number; bytes?: string; error?: string; where?: string }
+export interface AndroidDownloadControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'copying' | 'elsewhere'; progress?: number; bytes?: string; ahead?: number; wait?: string; error?: string; where?: string }
 export declare function AndroidDownloadControl(props: AndroidDownloadControlProps): React.ReactElement;
+export declare function AndroidUploadLine(props: { phase?: string; wait?: string }): React.ReactElement;
 export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; pressing?: string; labels?: string; unplayable?: string; noCover?: boolean; coverSize?: number; children?: React.ReactNode }
 export declare function MacAlbumPanel(props: MacAlbumPanelProps): React.ReactElement;
 export declare function MacTrackColumns(props: { children?: React.ReactNode }): React.ReactElement;

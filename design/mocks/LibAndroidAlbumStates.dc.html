@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Album: every storage state</title>
+<script src="./support.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--background)}
+
+</style>
+</helmet>
+<div style="width:412px;box-sizing:border-box;padding:0 0 16px;background:var(--background);font-family:var(--font-android)"><div style="display:flex;flex-direction:column"><div style="padding:8px 16px;font:600 13px/20px var(--font-android);color:var(--text-secondary)">Download</div><div style="padding:8px 16px 12px;border-top:1px solid var(--hairline)"><div style="font:400 11px/16px var(--font-android);color:var(--text-secondary);padding-bottom:4px">Queued</div><x-import component-from-global-scope="Bae.AndroidDownloadControl" state="queued"></x-import></div><div style="padding:8px 16px 12px;border-top:1px solid var(--hairline)"><div style="font:400 11px/16px var(--font-android);color:var(--text-secondary);padding-bottom:4px">Queued, ahead, Paused</div><x-import component-from-global-scope="Bae.AndroidDownloadControl" state="queued" ahead="2" wait="Paused"></x-import></div><div style="padding:8px 16px 12px;border-top:1px solid var(--hairline)"><div style="font:400 11px/16px var(--font-android);color:var(--text-secondary);padding-bottom:4px">Queued, Waiting for network</div><x-import component-from-global-scope="Bae.AndroidDownloadControl" state="queued" wait="Waiting for network"></x-import></div><div style="padding:8px 16px 12px;border-top:1px solid var(--hairline)"><div style="font:400 11px/16px var(--font-android);color:var(--text-secondary);padding-bottom:4px">Downloading, Paused</div><x-import component-from-global-scope="Bae.AndroidDownloadControl" state="downloading" wait="Paused"></x-import></div><div style="padding:8px 16px 12px;border-top:1px solid var(--hairline)"><div style="font:400 11px/16px var(--font-android);color:var(--text-secondary);padding-bottom:4px">Downloading, Waiting for network</div><x-import component-from-global-scope="Bae.AndroidDownloadControl" state="downloading" wait="Waiting for network"></x-import></div><div style="padding:8px 16px 12px;border-top:1px solid var(--hairline)"><div style="font:400 11px/16px var(--font-android);color:var(--text-secondary);padding-bottom:4px">Copying here</div><x-import component-from-global-scope="Bae.AndroidDownloadControl" state="copying"></x-import></div></div><div style="display:flex;flex-direction:column"><div style="padding:8px 16px;font:600 13px/20px var(--font-android);color:var(--text-secondary)">Upload</div><div style="padding:8px 16px 12px;border-top:1px solid var(--hairline)"><div style="font:400 11px/16px var(--font-android);color:var(--text-secondary);padding-bottom:4px">Paused</div><x-import component-from-global-scope="Bae.AndroidUploadLine" wait="Paused"></x-import></div><div style="padding:8px 16px 12px;border-top:1px solid var(--hairline)"><div style="font:400 11px/16px var(--font-android);color:var(--text-secondary);padding-bottom:4px">Waiting for network</div><x-import component-from-global-scope="Bae.AndroidUploadLine" wait="Waiting for network"></x-import></div><div style="padding:8px 16px 12px;border-top:1px solid var(--hairline)"><div style="font:400 11px/16px var(--font-android);color:var(--text-secondary);padding-bottom:4px">Waiting for Wi-Fi</div><x-import component-from-global-scope="Bae.AndroidUploadLine" wait="Waiting for Wi-Fi"></x-import></div><div style="padding:8px 16px 12px;border-top:1px solid var(--hairline)"><div style="font:400 11px/16px var(--font-android);color:var(--text-secondary);padding-bottom:4px">Retrying at 6:40 PM</div><x-import component-from-global-scope="Bae.AndroidUploadLine" wait="Retrying at 6:40 PM"></x-import></div><div style="padding:8px 16px 12px;border-top:1px solid var(--hairline)"><div style="font:400 11px/16px var(--font-android);color:var(--text-secondary);padding-bottom:4px">Waiting for 01 Harbor Lights.flac</div><x-import component-from-global-scope="Bae.AndroidUploadLine" wait="Waiting for 01 Harbor Lights.flac"></x-import></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

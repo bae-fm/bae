@@ -3154,6 +3154,14 @@
    "w": 1452,
    "x": 14080,
    "y": 15812
+  },
+  "LibAndroidAlbumStates.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "Album: every storage state",
+   "w": 412,
+   "x": 1968,
+   "y": 8304
   }
  },
  "createdOnFiles": {
@@ -3529,7 +3537,7 @@
   },
   "row-album-states-android": {
    "kind": "title1",
-   "maxW": 1888,
+   "maxW": 2380,
    "page": "home",
    "text": "Album states: Android",
    "w": 240,
@@ -4658,6 +4666,7 @@
   "LibAndroidAlbumQueued.dc.html",
   "LibAndroidAlbumFailed.dc.html",
   "LibAndroidAlbumElsewhere.dc.html",
+  "LibAndroidAlbumStates.dc.html",
   "LibMacAlbumReleases.dc.html",
   "LibMacAlbumMenu.dc.html",
   "SearchAndroidTyping.dc.html",
