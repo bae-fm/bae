@@ -194,6 +194,7 @@ pub fn sync_category(error: &coven::SyncError) -> C {
         | E::InvitationChanged
         | E::MemberKeysReplaced { .. }
         | E::Rejected(_)
+        | E::CutOffRefused(_)
         | E::ReloadPending(_)
         | E::SnapshotPending(_)
         | E::Key(_)
