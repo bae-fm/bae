@@ -392,8 +392,9 @@ CREATE TABLE IF NOT EXISTS release_files (
     -- The file's coven file (`coven_files`), which holds its size, its hash
     -- and where it is: on the device that imported it, or in the cloud.
     file TEXT NOT NULL,
-    -- What the file held before import rewrote it: its own audio ('file') or
-    -- one slice of a CUE-described disc ('cue').
+    -- How the file gives the release its tracks, its bytes stored as they
+    -- were: as its own audio ('file'), or as a CUE-described image whose
+    -- tracks are slices of it ('cue'). NULL when it gives no tracks.
     source_audio_layout TEXT,
     source_audio_content_type TEXT,
     source_audio_container TEXT,
