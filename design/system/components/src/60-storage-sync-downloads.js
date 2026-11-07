@@ -77,7 +77,7 @@
   function MacStorageChip(props) {
     var s = props.state || 'cloud';
     if (s === 'uploading' || s === 'pinning' || s === 'detaching') {
-      var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : 'Detaching Audio…';
+      var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : 'Making local…';
       return h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
     }
     if (s === 'transfer') return h(StatusChip, { tone: 'activity' }, props.label || 'Pinning for offline');
