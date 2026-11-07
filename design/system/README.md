@@ -36,6 +36,10 @@ The text styles are macOS points. iOS follows Dynamic Type, and the Android comp
 
 Icons appear only when they are the control (copy, a chevron, a disclosure mark) or carry meaning the words beside them don't (a status glyph). Apple platforms use SF Symbols and Android Material icons.
 
+## Logo
+
+The sheep is bae's logo: `assets/Logos/bae-sheep.svg`, with no background of its own. On an app icon it sits on a pale pink tile, `#FFD6E7`. It's the product's own artwork, so Iconography's rule doesn't apply to it.
+
 ## Samples
 
 A component's sample is a set of named rows, each changing one thing.
