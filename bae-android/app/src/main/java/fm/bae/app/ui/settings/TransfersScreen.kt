@@ -85,16 +85,6 @@ internal fun TransfersContent(
     }
 }
 
-/** The row on the Settings page that opens [TransfersScreen]. */
-@Composable
-internal fun SettingsTransfersEntry(onOpen: () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge)) {
-        RowCard {
-            CardRow(title = stringResource(R.string.settings_transfers), onClick = onOpen)
-        }
-    }
-}
-
 /** Download over Wi-Fi only, or why whether it is on can't be told. */
 @Composable
 private fun WifiOnlyRows(

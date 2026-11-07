@@ -1927,7 +1927,9 @@ Other devices go on showing the release without playing it.
   beside Transfers with ↑ for uploads, ↓ for downloads or ⇅ for both. A paused
   file keeps its place; changes to the library still sync. Neither limits
   speed.
-- **Transfers on Android.** Settings opens a Transfers page with Download over
+- **Transfers on Android.** Settings lists Appearance, Library, Playback,
+  Transfers, Casting and About as rows on one card, each opening a page, in the
+  order of the Mac's sidebar. Transfers opens a page with Download over
   Wi-Fi only, the setting above, and how many files download at once. A phone
   never uploads release files, so Android has no pause.
 
