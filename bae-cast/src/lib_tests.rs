@@ -478,3 +478,22 @@ fn token_of(url: &str) -> String {
         .expect("the URL carries a token")
         .to_string()
 }
+
+/// A controller no one holds is gone, and its tasks with it: none of them
+/// holds it, so dropping the last handle ends it and drops the set that
+/// aborts them.
+#[test]
+fn dropping_the_controller_ends_it_and_its_tasks() {
+    let (runtime, controller, _services, _tmp) = test_controller(RendererDiscovery::reported());
+    let weak = Arc::downgrade(&controller);
+    drop(controller);
+    runtime.block_on(async {
+        tokio::time::timeout(HANG_GUARD, async {
+            while weak.upgrade().is_some() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("no task keeps the dropped controller alive");
+    });
+}

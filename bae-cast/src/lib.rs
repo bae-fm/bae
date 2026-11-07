@@ -289,6 +289,10 @@ pub enum BrowsingFor {
 /// machinery.
 pub struct CastController {
     runtime: Handle,
+    /// Casting's background tasks, started by [`Self::start_task`]. Dropping
+    /// the controller drops the set, which aborts them; none holds the
+    /// controller strongly, so nothing keeps it alive.
+    tasks: Mutex<tokio::task::JoinSet<()>>,
     services: AppServices,
     /// Where the picker's devices come from: bae's own browsing, or the services
     /// a host's browser reports in. Chosen once, per host. The picker reads
@@ -349,6 +353,7 @@ impl CastController {
         let receivers = discovery.subscribe();
         let controller = Arc::new(Self {
             runtime: runtime.clone(),
+            tasks: Mutex::new(tokio::task::JoinSet::new()),
             services,
             discovery: Mutex::new(discovery),
             browsing_asked: Mutex::new(HashSet::new()),
@@ -379,7 +384,7 @@ impl CastController {
         let (changed, mut changes) = tokio::sync::mpsc::unbounded_channel();
         for mut source in sources {
             let changed = changed.clone();
-            self.runtime.spawn(async move {
+            self.start_task(async move {
                 while source.changed().await.is_ok() {
                     if changed.send(()).is_err() {
                         return;
@@ -388,23 +393,31 @@ impl CastController {
             });
         }
         drop(changed);
-        let controller = self.clone();
-        self.runtime.spawn(async move {
+        let controller = Arc::downgrade(self);
+        self.start_task(async move {
             loop {
-                let merged = controller.with_discovery(|discovery| {
-                    caught_sync("merge the cast device lists", || discovery.devices())
-                });
-                match merged {
-                    Ok(merged) => {
-                        let listed = merged.iter().map(RendererDevice::listed).collect();
-                        if let Err(error) = controller.services.show_cast_devices(listed).await {
-                            controller
-                                .diagnostics
-                                .report_failure("list the cast receivers", &error);
+                {
+                    // Held only while a list is written, so the controller
+                    // can end between changes.
+                    let Some(controller) = controller.upgrade() else {
+                        return;
+                    };
+                    let merged = controller.with_discovery(|discovery| {
+                        caught_sync("merge the cast device lists", || discovery.devices())
+                    });
+                    match merged {
+                        Ok(merged) => {
+                            let listed = merged.iter().map(RendererDevice::listed).collect();
+                            if let Err(error) = controller.services.show_cast_devices(listed).await
+                            {
+                                controller
+                                    .diagnostics
+                                    .report_failure("list the cast receivers", &error);
+                            }
                         }
-                    }
-                    Err(bug) => {
-                        controller.diagnostics.panicked(bug);
+                        Err(bug) => {
+                            controller.diagnostics.panicked(bug);
+                        }
                     }
                 }
                 if changes.recv().await.is_none() {
@@ -422,12 +435,17 @@ impl CastController {
     /// the next change is applied.
     fn spawn_setting_watcher(self: &Arc<Self>) {
         let setting = self.services.follow_preferences(|prefs| prefs.cast_enabled);
-        let controller = self.clone();
-        self.runtime.spawn(async move {
+        let controller = Arc::downgrade(self);
+        self.start_task(async move {
             let mut was_enabled = None;
             loop {
                 match setting.next().await {
                     Ok(enabled) => {
+                        // Held only while a change is applied, so the
+                        // controller can end while the watcher waits.
+                        let Some(controller) = controller.upgrade() else {
+                            break;
+                        };
                         let turned_off = was_enabled == Some(true) && !enabled;
                         was_enabled = Some(enabled);
                         let applied = caught("apply the casting setting", async {
@@ -463,7 +481,7 @@ impl CastController {
         let mut progress = self.services.subscribe_playback_progress();
         let slot = self.server.clone();
         let diagnostics = self.diagnostics.clone();
-        self.runtime.spawn(async move {
+        self.start_task(async move {
             while let Some(event) = progress.recv().await {
                 let PlaybackProgress::RemoteStatusChanged {
                     remote: RemotePlayback::Local | RemotePlayback::Ended { .. },
@@ -485,6 +503,20 @@ impl CastController {
                 }
             }
         });
+    }
+
+    /// Start `task` on the runtime in the controller's set. Tasks that ended
+    /// since the last start are reaped here, a panic in one reported.
+    fn start_task(&self, task: impl std::future::Future<Output = ()> + Send + 'static) {
+        let mut tasks = lock_or_crash(&self.diagnostics, "the casting tasks", &self.tasks);
+        while let Some(ended) = tasks.try_join_next() {
+            if let Err(error) = ended {
+                if error.is_panic() {
+                    self.diagnostics.bug(TaskFailed::of_join("a casting task", error));
+                }
+            }
+        }
+        tasks.spawn_on(task, &self.runtime);
     }
 
     /// Act on the device sources. A panic while they were held may have left
@@ -542,7 +574,7 @@ impl CastController {
     pub fn start_discovery(self: &Arc<Self>, asker: BrowsingFor) {
         self.browsing_asked().insert(asker);
         let controller = self.clone();
-        self.runtime.spawn(async move {
+        self.start_task(async move {
             controller.decide_browsing().await;
             #[cfg(test)]
             controller.browsing_decided.send_modify(|decided| *decided += 1);
