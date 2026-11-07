@@ -3650,7 +3650,7 @@
    "text": "Album actions: macOS",
    "kind": "title1",
    "w": 240,
-   "maxW": 15532
+   "maxW": 8000
   },
   "row-album-states-android": {
    "kind": "title1",
@@ -4392,7 +4392,7 @@
   },
   "row-store-mac-states": {
    "kind": "title1",
-   "maxW": 10920,
+   "maxW": 8000,
    "page": "storage",
    "text": "Storage Manager states: macOS",
    "w": 240,
