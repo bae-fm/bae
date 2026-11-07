@@ -237,6 +237,7 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
     let (scan_completions, _scan_completions) = tokio::sync::mpsc::unbounded_channel();
     let (removal_completions, _removal_completions) = tokio::sync::mpsc::unbounded_channel();
     let active_roots = ActiveRoots::new(
+        tokio::runtime::Handle::current(),
         starter,
         Arc::new(FakeRemovalBackend::default()),
         crate::FolderStateCommit::new(),
@@ -247,6 +248,7 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
     );
     let (checked_tx, mut checks) = tokio::sync::mpsc::unbounded_channel();
     let mut coordinator = crate::watching::coordinator::Coordinator::new(
+        tokio::runtime::Handle::current(),
         active_roots,
         test.event_tx().clone(),
         tables,

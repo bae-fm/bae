@@ -34,7 +34,7 @@ impl FakeScanStarter {
             start_gate: Arc::new(Mutex::new(())),
         };
         let captured = fake.clone();
-        let starter: RootScanStarter = Arc::new(move |id, path, pass, completion| {
+        let starter: RootScanStarter = Arc::new(move |runtime, id, path, pass, completion| {
             drop(captured.start_gate.lock().unwrap());
             let cancellation = crate::folder_scanner::ScanCancellation::new();
             let (finish, finished) = tokio::sync::oneshot::channel();
@@ -42,7 +42,7 @@ impl FakeScanStarter {
             // The pass ends when it is finished, or when its finish is
             // dropped unsent: it ended without telling the coordinator.
             let task = bae_diagnostics::Diagnostics::noop().spawn_reported(
-                &tokio::runtime::Handle::current(),
+                runtime,
                 "a fake pass",
                 async move {
                     #[expect(

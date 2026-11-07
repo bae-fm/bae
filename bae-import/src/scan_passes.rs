@@ -86,6 +86,7 @@ pub(crate) struct RootScanCompletion {
 /// completion is sent all the same, so the root is freed and its waiters are
 /// answered.
 fn spawn_pass(
+    runtime: &tokio::runtime::Handle,
     name: &'static str,
     id: u64,
     path: PathBuf,
@@ -98,7 +99,7 @@ fn spawn_pass(
     let panicked_tx = completion_tx.clone();
     let panicked_path = path.clone();
     diagnostics.spawn_reported(
-        &tokio::runtime::Handle::current(),
+        runtime,
         name,
         async move {
             let unstored_failure = pass.await;
@@ -115,8 +116,15 @@ fn spawn_pass(
     )
 }
 
+/// Starts a pass on the runtime it is given.
 pub(crate) type RootScanStarter = Arc<
-    dyn Fn(u64, PathBuf, RootPass, mpsc::UnboundedSender<RootScanCompletion>) -> RootScanTask
+    dyn Fn(
+            &tokio::runtime::Handle,
+            u64,
+            PathBuf,
+            RootPass,
+            mpsc::UnboundedSender<RootScanCompletion>,
+        ) -> RootScanTask
         + Send
         + Sync,
 >;
@@ -138,6 +146,7 @@ impl ScanServices {
 /// Start one pass over the root at `path`: all of it, one folder decision, or
 /// the folders whose contents changed.
 pub(crate) fn spawn_root_pass(
+    runtime: &tokio::runtime::Handle,
     id: u64,
     path: PathBuf,
     pass: RootPass,
@@ -145,14 +154,19 @@ pub(crate) fn spawn_root_pass(
     completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
 ) -> RootScanTask {
     match pass {
-        RootPass::WholeRoot => spawn_root_scan(id, path, scan, completion_tx),
-        RootPass::Decision(request) => spawn_folder_reading(id, path, request, scan, completion_tx),
-        RootPass::Folders(folders) => spawn_changed_folders(id, path, folders, scan, completion_tx),
+        RootPass::WholeRoot => spawn_root_scan(runtime, id, path, scan, completion_tx),
+        RootPass::Decision(request) => {
+            spawn_folder_reading(runtime, id, path, request, scan, completion_tx)
+        }
+        RootPass::Folders(folders) => {
+            spawn_changed_folders(runtime, id, path, folders, scan, completion_tx)
+        }
     }
 }
 
 /// Store one folder decision under `path` and answer whoever asked.
 fn spawn_folder_reading(
+    runtime: &tokio::runtime::Handle,
     id: u64,
     path: PathBuf,
     request: FolderReadingRequest,
@@ -163,8 +177,14 @@ fn spawn_folder_reading(
     let reading_cancellation = cancellation.clone();
     let diagnostics = scan.services.diagnostics.clone();
     let pass_path = path.clone();
-    let task =
-        spawn_pass("store a folder decision", id, path, &diagnostics, completion_tx, async move {
+    let task = spawn_pass(
+        runtime,
+        "store a folder decision",
+        id,
+        path,
+        &diagnostics,
+        completion_tx,
+        async move {
             let path = pass_path;
             let target = request.target().clone();
             // A reading that panics answers its caller as one that failed.
@@ -195,12 +215,14 @@ fn spawn_folder_reading(
             // A decision's failure goes to the person who asked; it stores
             // no status.
             None
-        });
+        },
+    );
     RootScanTask::new(cancellation, task)
 }
 
 /// Read again the folders under `path` whose contents changed.
 fn spawn_changed_folders(
+    runtime: &tokio::runtime::Handle,
     id: u64,
     path: PathBuf,
     folders: std::collections::BTreeSet<std::ffi::OsString>,
@@ -212,6 +234,7 @@ fn spawn_changed_folders(
     let diagnostics = scan.services.diagnostics.clone();
     let pass_path = path.clone();
     let task = spawn_pass(
+        runtime,
         "read changed folders again",
         id,
         path,
@@ -223,6 +246,7 @@ fn spawn_changed_folders(
 }
 
 fn spawn_root_scan(
+    runtime: &tokio::runtime::Handle,
     id: u64,
     path: PathBuf,
     scan: ScanServices,
@@ -232,13 +256,20 @@ fn spawn_root_scan(
     let scan_cancellation = cancellation.clone();
     let diagnostics = scan.services.diagnostics.clone();
     let pass_path = path.clone();
-    let task =
-        spawn_pass("scan a watched folder", id, path, &diagnostics, completion_tx, async move {
+    let task = spawn_pass(
+        runtime,
+        "scan a watched folder",
+        id,
+        path,
+        &diagnostics,
+        completion_tx,
+        async move {
             if scan_cancellation.is_cancelled() {
                 return None;
             }
             rescan_and_reconcile(&pass_path, &scan, &scan_cancellation).await.unstored_failure()
-        });
+        },
+    );
     RootScanTask::new(cancellation, task)
 }
 

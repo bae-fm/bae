@@ -222,6 +222,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     let mut events = test.event_tx().every_event();
 
     let scan = spawn_root_scan(
+        &tokio::runtime::Handle::current(),
         1,
         root,
         test_scan_services(

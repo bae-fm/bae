@@ -65,8 +65,8 @@ pub(crate) fn run_watcher(
         services.diagnostics.clone(),
     ));
     let scan = ScanServices::new(services.clone(), folder_watcher);
-    let starter: RootScanStarter = Arc::new(move |id, path, pass, completion_tx| {
-        spawn_root_pass(id, path, pass, scan.clone(), completion_tx)
+    let starter: RootScanStarter = Arc::new(move |runtime, id, path, pass, completion_tx| {
+        spawn_root_pass(runtime, id, path, pass, scan.clone(), completion_tx)
     });
     run_watcher_with_starter(cmd_rx, fs_rx, services, starter, removal_backend, in_memory)
 }
@@ -85,11 +85,13 @@ pub(super) fn run_watcher_with_starter(
         .enable_all()
         .build()
         .expect("folder scan coordinator runtime");
+    let runtime_handle = runtime.handle().clone();
     runtime.block_on(async move {
         let (scan_completions, mut scan_completion_rx) = mpsc::unbounded_channel();
         let (removal_completions, mut removal_completion_rx) = mpsc::unbounded_channel();
         let (checked_tx, mut checked_rx) = mpsc::unbounded_channel();
         let active_roots = ActiveRoots::new(
+            runtime_handle.clone(),
             starter,
             removal_backend,
             folder_state_commit.clone(),
@@ -98,8 +100,14 @@ pub(super) fn run_watcher_with_starter(
             removal_completions,
             in_memory,
         );
-        let mut coordinator =
-            Coordinator::new(active_roots, event_tx, tables, diagnostics, checked_tx);
+        let mut coordinator = Coordinator::new(
+            runtime_handle,
+            active_roots,
+            event_tx,
+            tables,
+            diagnostics,
+            checked_tx,
+        );
         // The next check of the network folders: one period after the
         // coordinator starts, then one period after each check is taken.
         let mut next_check = clock.deadline(crate::volume::CHECK_PERIOD);
@@ -199,6 +207,8 @@ impl CoordinatorEvent {
 
 /// What the coordinator's loop holds between events.
 pub(super) struct Coordinator {
+    /// The runtime the loop runs on, which the network checks run on.
+    runtime: tokio::runtime::Handle,
     active_roots: ActiveRoots,
     /// The network roots whose check is under way. The check runs off the
     /// loop, since it can take seconds, and one runs per root at a time.
@@ -214,13 +224,22 @@ impl Coordinator {
     /// network checks it starts to `checked_tx`, which the loop hands back
     /// to [`Self::take`].
     pub(super) fn new(
+        runtime: tokio::runtime::Handle,
         active_roots: ActiveRoots,
         event_tx: crate::ImportEventBus,
         tables: crate::tables::ImportTables,
         diagnostics: bae_diagnostics::Diagnostics,
         checked_tx: mpsc::UnboundedSender<(PathBuf, NetworkCheck)>,
     ) -> Self {
-        Self { active_roots, checking: HashSet::new(), checked_tx, event_tx, tables, diagnostics }
+        Self {
+            runtime,
+            active_roots,
+            checking: HashSet::new(),
+            checked_tx,
+            event_tx,
+            tables,
+            diagnostics,
+        }
     }
 
     pub(super) async fn take(&mut self, event: CoordinatorEvent) {
@@ -426,7 +445,7 @@ impl Coordinator {
         // A check that panics answers "read the whole root", so the root
         // leaves `checking` and is read.
         self.diagnostics.spawn_reported(
-            &tokio::runtime::Handle::current(),
+            &self.runtime,
             "check a network folder",
             async move {
                 let found = check_network_folder(&tables, &checked_root, &diagnostics).await;

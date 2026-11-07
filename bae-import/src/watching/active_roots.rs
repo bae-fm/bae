@@ -25,6 +25,9 @@ pub(super) struct ActiveRoots {
     /// By id, since one removal can hold several roots.
     removals: HashMap<u64, RootRemovalSchedule>,
     starter: RootScanStarter,
+    /// The runtime the coordinator's loop runs on, which its passes and
+    /// removals run on.
+    runtime: tokio::runtime::Handle,
     scan_completions: mpsc::UnboundedSender<RootScanCompletion>,
     next_scan_id: u64,
     removal_backend: Arc<dyn RootRemovalBackend>,
@@ -194,6 +197,7 @@ impl ActiveRoots {
     /// loop hands back to [`Self::finish_scan`] and [`Self::finish_removal`],
     /// and publishing what they hold of each root's scan on `in_memory`.
     pub(super) fn new(
+        runtime: tokio::runtime::Handle,
         starter: RootScanStarter,
         removal_backend: Arc<dyn RootRemovalBackend>,
         folder_state_commit: crate::FolderStateCommit,
@@ -206,6 +210,7 @@ impl ActiveRoots {
             roots: HashMap::new(),
             removals: HashMap::new(),
             starter,
+            runtime,
             scan_completions,
             next_scan_id: 0,
             removal_backend,
@@ -455,7 +460,7 @@ impl ActiveRoots {
         // A removal that panics ends as one that failed: its callers hear why,
         // and the roots it held are read again.
         let task = self.diagnostics.spawn_reported(
-            &tokio::runtime::Handle::current(),
+            &self.runtime,
             "remove a watched folder",
             async move {
                 let result = run_root_removal(
@@ -635,7 +640,8 @@ impl ActiveRoots {
             });
         }
         let changed = if whole_root { BTreeSet::new() } else { queued.changed };
-        let scan = (self.starter)(id, path.clone(), pass, self.scan_completions.clone());
+        let scan =
+            (self.starter)(&self.runtime, id, path.clone(), pass, self.scan_completions.clone());
         self.roots.insert(
             path,
             RootActivity::Scanning(RootScanSchedule {
