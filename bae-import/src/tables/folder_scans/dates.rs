@@ -24,10 +24,10 @@ fn stored_date(
         (None, None) => Ok(None),
         (Some(at), Some("added_to_directory")) => Ok(Some(FolderDate::AddedToDirectory(at))),
         (Some(at), Some("created")) => Ok(Some(FolderDate::Created(at))),
-        _ => Err(DbError::Message(format!(
-            "invalid stored folder date for {}",
-            coven::path_text(folder)
-        ))),
+        stored => Err(DbError::unreadable(
+            format!("the stored folder date of {}", coven::path_text(folder)),
+            stored,
+        )),
     }
 }
 

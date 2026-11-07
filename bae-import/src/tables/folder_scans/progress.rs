@@ -63,11 +63,14 @@ fn stored_outcome(
         },
         (Some("complete"), None) => StoredScanOutcome::Complete,
         (Some("failed"), Some(error)) => StoredScanOutcome::Failed { error },
-        (status, error) => {
-            return Err(DbError::Message(format!(
-                "folder scan root {} has invalid status {status:?} and error {error:?}",
-                coven::path_text(watched_folder_path)
-            )))
+        stored => {
+            return Err(DbError::unreadable(
+                format!(
+                    "folder_scan_roots' status and error of {}",
+                    coven::path_text(watched_folder_path)
+                ),
+                stored,
+            ))
         }
     })
 }

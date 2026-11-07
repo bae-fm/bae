@@ -325,38 +325,39 @@ pub(crate) fn load_file_tag_snapshot(
         .optional()?;
     stored
         .map(|stored| {
-                let embedded_cover = match (
-                    stored.embedded_cover.source_relative_path,
-                    stored.embedded_cover.content_type,
-                    stored.embedded_cover.data,
-                ) {
-                    (None, None, None) => None,
-                    (Some(source_relative_path), Some(content_type), Some(data)) => {
-                        Some(EmbeddedCoverFact {
-                            source_relative_path,
-                            content_type: ContentType::from_mime(&content_type),
-                            data,
-                        })
-                    }
-                    columns => {
-                        return Err(DbError::Message(format!(
-                            "candidate {candidate_path}'s embedded cover is only partly stored: {columns:?}"
-                        )))
-                    }
-                };
-                Ok(FileTagSnapshot {
-                    scan_generation: to_u64(
-                        stored.scan_generation,
-                        "a file-tag snapshot's scan generation",
-                    )?,
-                    file_edit_revision: to_u64(
-                        stored.file_edit_revision,
-                        "a file-tag snapshot's file edit revision",
-                    )?,
-                    files: load_file_tag_facts(sql, watched_folder_path, candidate_path)?,
-                    embedded_cover,
-                })
+            let embedded_cover = match (
+                stored.embedded_cover.source_relative_path,
+                stored.embedded_cover.content_type,
+                stored.embedded_cover.data,
+            ) {
+                (None, None, None) => None,
+                (Some(source_relative_path), Some(content_type), Some(data)) => {
+                    Some(EmbeddedCoverFact {
+                        source_relative_path,
+                        content_type: ContentType::from_mime(&content_type),
+                        data,
+                    })
+                }
+                columns => {
+                    return Err(DbError::unreadable(
+                        format!("the embedded cover of {candidate_path}'s tag snapshot"),
+                        (columns.0, columns.1, columns.2.map(|data| data.len())),
+                    ))
+                }
+            };
+            Ok(FileTagSnapshot {
+                scan_generation: to_u64(
+                    stored.scan_generation,
+                    "a file-tag snapshot's scan generation",
+                )?,
+                file_edit_revision: to_u64(
+                    stored.file_edit_revision,
+                    "a file-tag snapshot's file edit revision",
+                )?,
+                files: load_file_tag_facts(sql, watched_folder_path, candidate_path)?,
+                embedded_cover,
             })
+        })
         .transpose()
 }
 
@@ -454,27 +455,34 @@ pub(super) fn stored_embedded_cover(
         )
         .optional()?
         .ok_or_else(|| {
-            DbError::Message(format!(
-                "candidate {candidate_path} selects embedded cover without a file-tag snapshot"
-            ))
+            DbError::unreadable(
+                format!("the tag snapshot of {candidate_path}, whose cover choice is embedded"),
+                None::<String>,
+            )
         })?;
     let (Some(stored_source), Some(data)) = (stored_source, data) else {
-        return Err(DbError::Message(format!(
-            "candidate {candidate_path} selects embedded cover without stored artwork"
-        )));
+        return Err(DbError::unreadable(
+            format!("the embedded cover of {candidate_path}'s tag snapshot, which it chose"),
+            None::<String>,
+        ));
     };
     if stored_source != source_file_id {
-        return Err(DbError::Message(format!(
-            "candidate {candidate_path} selects embedded cover from {source_file_id}, but its snapshot stores {stored_source}"
-        )));
+        return Err(DbError::unreadable(
+            format!("the source of {candidate_path}'s embedded cover and of its cover choice"),
+            (&stored_source, source_file_id),
+        ));
     }
     let (Some(size), Some(modified_at_ns)) = (size, modified_at_ns) else {
-        return Err(DbError::Message(format!(
-            "candidate {candidate_path}'s snapshot stores a cover from {source_file_id} but no reading of that file"
-        )));
+        return Err(DbError::unreadable(
+            format!("the reading of {source_file_id}, the source of {candidate_path}'s cover"),
+            (size, modified_at_ns),
+        ));
     };
     let path = path.ok_or_else(|| {
-        DbError::Message(format!("candidate {candidate_path} names missing file {source_file_id}"))
+        DbError::unreadable(
+            format!("the file {candidate_path}'s embedded cover choice names"),
+            source_file_id,
+        )
     })?;
     Ok((
         FileVersion {
@@ -556,11 +564,10 @@ impl StoredFileTags {
             }
             (Some(reason), None, None, None, None) => TagReading::Unparseable(reason),
             columns => {
-                return Err(DbError::Message(format!(
-                    "{}'s stored tags are neither what they state nor why they do not parse: \
-                     {columns:?}",
-                    self.relative_path
-                )))
+                return Err(DbError::unreadable(
+                    format!("the stored tags of {}", self.relative_path),
+                    columns,
+                ))
             }
         };
         Ok(FileTagFact {

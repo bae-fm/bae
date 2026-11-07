@@ -93,9 +93,7 @@ pub(super) fn proposed_role_of(
         ("damaged_image", None) => Ok(ProposedRole::DamagedImage),
         ("document", None) => Ok(ProposedRole::Document),
         ("other", None) => Ok(ProposedRole::Other),
-        (stored, damage) => {
-            Err(DbError::Message(format!("skipped file role {stored:?} stores damage {damage:?}")))
-        }
+        stored => Err(DbError::unreadable("scan_skipped_file's role and damage", stored)),
     }
 }
 
@@ -154,25 +152,29 @@ pub(super) fn sheet_binding_of(
     audio_files: Vec<SheetAudioFile>,
     codec: Option<String>,
 ) -> Result<SheetBinding, DbError> {
-    let malformed =
-        |detail: &str| DbError::Message(format!("folder scan binding {stored} {detail}"));
+    let malformed = |column: &str| {
+        DbError::unreadable(
+            format!("the {column} of a {stored} scan_candidate_file.sheet_binding"),
+            "none",
+        )
+    };
     match stored {
         "resolved" => {
             if audio_files.is_empty() {
-                return Err(malformed("names no audio"));
+                return Err(malformed("audio pairing"));
             }
             Ok(SheetBinding::Resolved { files: audio_files })
         }
         "unresolved" => Ok(SheetBinding::Unresolved { files: audio_files }),
         "refused_timing" => {
             if audio_files.is_empty() {
-                return Err(malformed("names no audio"));
+                return Err(malformed("audio pairing"));
             }
             Ok(SheetBinding::RefusedTiming { files: audio_files })
         }
-        "refused_codec" => Ok(SheetBinding::RefusedCodec {
-            codec: codec.ok_or_else(|| malformed("has no codec"))?,
-        }),
+        "refused_codec" => {
+            Ok(SheetBinding::RefusedCodec { codec: codec.ok_or_else(|| malformed("codec"))? })
+        }
         other => Err(DbError::unreadable("scan_candidate_file.sheet_binding", other)),
     }
 }
@@ -181,7 +183,7 @@ pub(super) fn sheet_disc_of(stored: &str, number: Option<i64>) -> Result<SheetDi
     match stored {
         "disc" => {
             let number = number.ok_or_else(|| {
-                DbError::Message("folder scan sheet disc names no number".to_string())
+                DbError::unreadable("the number of a scan sheet disc", None::<i64>)
             })?;
             Ok(SheetDisc::Disc { number: to_u32(number, "a sheet's disc number")? })
         }

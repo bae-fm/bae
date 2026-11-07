@@ -113,7 +113,10 @@ impl StoredCueTrack {
             mode: match self.mode.as_str() {
                 "audio" => CueTrackMode::Audio,
                 "other" => CueTrackMode::Other(self.mode_other.ok_or_else(|| {
-                    DbError::Message("a non-audio cue track names no mode".to_string())
+                    DbError::unreadable(
+                        "scan_cue_track.mode_other of an other track",
+                        None::<String>,
+                    )
                 })?),
                 other => return Err(DbError::unreadable("scan_cue_track.mode", other)),
             },

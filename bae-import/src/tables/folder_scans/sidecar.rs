@@ -67,10 +67,13 @@ impl StoredSidecar {
         let files = match self.state.as_str() {
             "downloading" => {
                 if !rows.is_empty() {
-                    return Err(DbError::Message(format!(
-                        "the sidecar of {} is downloading and stores files",
-                        coven::path_text(&folder)
-                    )));
+                    return Err(DbError::unreadable(
+                        format!(
+                            "the scan_sidecar_file rows of {}'s downloading sidecar",
+                            coven::path_text(&folder)
+                        ),
+                        rows.len(),
+                    ));
                 }
                 SidecarFiles::Downloading
             }

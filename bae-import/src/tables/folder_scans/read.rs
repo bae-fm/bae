@@ -104,10 +104,10 @@ pub(super) fn load_items(
         if let Some(root_generation) = root_generation {
             for item in &items {
                 if item.generation > root_generation {
-                    return Err(DbError::Message(format!(
-                        "folder scan entry {} has generation {} newer than root generation {}",
-                        item.key, item.generation, root_generation
-                    )));
+                    return Err(DbError::unreadable(
+                        format!("scan_candidate.generation of {}, newer than its root's", item.key),
+                        (item.generation, root_generation),
+                    ));
                 }
             }
         }
@@ -140,10 +140,10 @@ pub(crate) fn load_item_by_key_rows(
         |row| path_column::get(row, 0),
     )?;
     if roots.len() > 1 {
-        return Err(DbError::Message(format!(
-            "folder scan entry {entry_key} is stored under {} roots",
-            roots.len()
-        )));
+        return Err(DbError::unreadable(
+            format!("the watched folders scan_candidate stores {entry_key} under"),
+            roots.iter().map(|root| coven::path_text(root)).collect::<Vec<_>>(),
+        ));
     }
     if let Some(root) = roots.into_iter().next() {
         let items = load_candidate_items_rows(
@@ -156,9 +156,12 @@ pub(crate) fn load_item_by_key_rows(
             let mut items = items()?;
             match items.pop() {
                 Some(item) => Ok((root, item)),
-                None => Err(DbError::Message(format!(
-                    "folder scan candidate {entry_key} vanished between its two reads"
-                ))),
+                // Both reads are of one snapshot, which lists the
+                // candidate under its root.
+                None => Err(DbError::unreadable(
+                    format!("the scan_candidate rows of {entry_key} under its root"),
+                    0,
+                )),
             }
         })));
     }
@@ -302,7 +305,10 @@ pub(super) fn scanned_file_version(
         )
         .optional()?
         .ok_or_else(|| {
-            DbError::Message(format!("candidate {candidate_path} names missing file {file_id}"))
+            DbError::unreadable(
+                format!("the file candidate {candidate_path}'s stored cover choice names"),
+                file_id,
+            )
         })?;
     Ok(FileVersion {
         path: path_column::decode(path)?,
@@ -524,10 +530,13 @@ fn files_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<CandidateFi
                 "other" => FileRole::Other,
                 "track_sheet" => {
                     let missing = |what: &str| {
-                        DbError::Message(format!(
-                            "track sheet {} under {candidate_path} has no {what}",
-                            row.relative_path
-                        ))
+                        DbError::unreadable(
+                            format!(
+                                "the {what} of track sheet {} under {candidate_path}",
+                                row.relative_path
+                            ),
+                            None::<String>,
+                        )
                     };
                     FileRole::TrackSheet {
                         sheet: row.sheet.ok_or_else(|| missing("parsed sheet"))?.sheet()?,
@@ -582,11 +591,14 @@ fn check_sheet_bindings_name_audio(
         };
         for named in binding.audio_files().unwrap_or_default() {
             if !audio.contains(named.file_id.as_str()) {
-                return Err(DbError::Message(format!(
-                    "track sheet {} under {candidate_path} describes {}, which is not the \
-                     candidate's audio",
-                    entry.file.relative_path, named.file_id
-                )));
+                return Err(DbError::unreadable(
+                    format!(
+                        "the audio track sheet {} under {candidate_path} is bound to, which is \
+                         not the candidate's",
+                        entry.file.relative_path
+                    ),
+                    &named.file_id,
+                ));
             }
         }
     }
@@ -615,11 +627,10 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
         ) if row.role == "audio" => {
             let content_type = ContentType::from_mime(content_type);
             if !content_type.is_audio() {
-                return Err(DbError::Message(format!(
-                    "candidate audio file {} stores non-audio content type {}",
-                    row.relative_path,
-                    content_type.as_str()
-                )));
+                return Err(DbError::unreadable(
+                    format!("the content type of candidate audio file {}", row.relative_path),
+                    content_type.as_str(),
+                ));
             }
             to_u64(sample_rate_hz, "an audio file's sample rate")?;
             bits_per_sample.map(|value| to_u64(value, "an audio file's bit depth")).transpose()?;
@@ -638,10 +649,10 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
                 duration_ms: to_u64(duration_ms, "an audio file's duration")?,
             }))
         }
-        columns => Err(DbError::Message(format!(
-            "candidate file {} stores inconsistent source-audio facts: {columns:?}",
-            row.relative_path
-        ))),
+        columns => Err(DbError::unreadable(
+            format!("the source-audio facts of {} file {}", row.role, row.relative_path),
+            columns,
+        )),
     }
 }
 

@@ -119,8 +119,9 @@ impl ImportTables {
                 )?;
                 keys.into_iter()
                     .map(|key| {
+                        // Both reads are of one snapshot, which lists the key.
                         read::load_item_by_key_rows(&sql, &key, RowSources::Any)?.ok_or_else(|| {
-                            DbError::Message(format!("{key} vanished between its two reads"))
+                            DbError::unreadable(format!("the scan_candidate rows of {key}"), 0)
                         })
                     })
                     .collect::<Result<Vec<_>, DbError>>()
@@ -134,9 +135,12 @@ impl ImportTables {
                             item: ScanItem::Discovered(candidate) | ScanItem::Valid(candidate),
                             ..
                         } => Ok((key, candidate.files)),
-                        read::StoredScanItem { key, .. } => Err(DbError::Message(format!(
-                            "{key} is stored as a release with files but reads as none"
-                        ))),
+                        read::StoredScanItem { key, item: ScanItem::Invalid(_), .. } => {
+                            Err(DbError::unreadable(
+                                format!("scan_candidate.kind of {key}, a release with files"),
+                                "invalid",
+                            ))
+                        }
                     })
                     .collect()
             })
