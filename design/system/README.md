@@ -21,7 +21,7 @@ The apps offer six tones (neutral, slate, plum, midnight, forest, sand), eight a
 
 The text styles are macOS points. iOS follows Dynamic Type, and the Android components set Android's sizes. No font files ship: each platform uses its own face.
 
-- `title`, `hero`, `display` and `wordmark` are for pages and the welcome screen, not settings.
+- `title`, `hero` and `display` are for pages and the welcome screen, not settings. `wordmark` is for the word beside the sheep (see Logo).
 
 ## Screens
 
@@ -38,7 +38,11 @@ Icons appear only when they are the control (copy, a chevron, a disclosure mark)
 
 ## Logo
 
-The sheep is bae's logo: `assets/Logos/bae-sheep.svg`, with no background of its own. On an app icon it sits on a pale pink tile, `#FFD6E7`. It's the product's own artwork, so Iconography's rule doesn't apply to it.
+The sheep is bae's logo: `assets/Logos/bae-sheep.svg`, with no background of its own. It's the product's own artwork, so Iconography's rule doesn't apply to it.
+
+- **Sheep and "bae" together:** where bae introduces itself: Welcome, About and this system's cover. The sheep on top, both centered, the word in the `wordmark` style.
+- **Sheep alone:** where the system or the space already says the name: app icons and favicons. Never under 32px. On an app icon it sits on a pale pink tile, `#FFD6E7`.
+- **"bae" alone:** in sentences, titles and menus, as plain text in the style around it.
 
 ## Samples
 
