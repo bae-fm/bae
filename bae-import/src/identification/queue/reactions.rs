@@ -2,6 +2,7 @@
 //! the queue does not hold on it.
 
 use super::*;
+use crate::ImportProgress;
 
 /// Apply `events` in the order they were sent. The releases found among them
 /// are one admission, so the count opens at their total; it goes ahead of any
@@ -99,12 +100,32 @@ async fn handle_event(
         ImportEvent::Scan(ScanEvent::CandidateSkipChanged { candidate_key, skipped: true }) => {
             queue.withdraw(context, &candidate_key).await;
         }
-        // Gone, or taken by an import: a run left going would never finish.
-        ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key })
-        | ImportEvent::ImportProgress { candidate_key, .. } => {
+        // Gone: a run left going would never finish.
+        ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
+            queue.withdraw(context, &candidate_key).await;
+        }
+        // Taken by an import, which says so once, in its first report.
+        ImportEvent::ImportProgress { candidate_key, progress }
+            if import_takes_candidate(&progress) =>
+        {
             queue.withdraw(context, &candidate_key).await;
         }
         _ => {}
+    }
+}
+
+/// Whether `progress` is the report that says an import took its candidate.
+/// An import's first report is its `Preparing`, sent before it writes
+/// anything; every later one (percent ticks, endings) finds the key already
+/// off the queue, and withdrawing it again is a write that changes nothing.
+fn import_takes_candidate(progress: &ImportProgress) -> bool {
+    match progress {
+        ImportProgress::Preparing { .. } => true,
+        ImportProgress::Progress { .. }
+        | ImportProgress::Complete { .. }
+        | ImportProgress::RemoteUploadQueued { .. }
+        | ImportProgress::Failed { .. }
+        | ImportProgress::Cancelled { .. } => false,
     }
 }
 

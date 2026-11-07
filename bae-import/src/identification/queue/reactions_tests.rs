@@ -508,3 +508,50 @@ async fn a_found_release_whose_key_is_then_removed_is_not_identified() {
 
     assert!(fixture.identified_for(&dir).await.is_none());
 }
+
+/// An import takes its candidate off the queue in its first report; no later
+/// report withdraws it again.
+#[test]
+fn only_an_imports_preparing_report_takes_its_candidate() {
+    use crate::{ImportPhase, PrepareStep};
+    let import_id = || "import-1".to_string();
+    let reports = [
+        (
+            ImportProgress::Preparing {
+                import_id: import_id(),
+                step: PrepareStep::ValidatingSourceFiles,
+            },
+            true,
+        ),
+        (
+            ImportProgress::Progress {
+                id: "release-1".to_string(),
+                percent: Some(40),
+                phase: ImportPhase::ReadingFiles,
+                import_id: import_id(),
+            },
+            false,
+        ),
+        (
+            ImportProgress::Complete {
+                id: "release-1".to_string(),
+                import_id: import_id(),
+                album_id: "album-1".to_string(),
+            },
+            false,
+        ),
+        (
+            ImportProgress::RemoteUploadQueued {
+                id: "release-1".to_string(),
+                import_id: import_id(),
+                album_id: "album-1".to_string(),
+            },
+            false,
+        ),
+        (ImportProgress::Failed { error: "boom".to_string(), import_id: import_id() }, false),
+        (ImportProgress::Cancelled { import_id: import_id() }, false),
+    ];
+    for (progress, takes) in reports {
+        assert_eq!(import_takes_candidate(&progress), takes, "{progress:?}");
+    }
+}
