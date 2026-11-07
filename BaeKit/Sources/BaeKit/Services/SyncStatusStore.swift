@@ -47,6 +47,22 @@ public final class SyncStatusStore {
             lastSynced: nil
         )
 
+        /// A library whose last pass failed because a file it uploads is
+        /// gone.
+        public static let previewFailed = BridgeSyncShown(
+            status: .syncFailed,
+            tone: .danger,
+            cause: BridgeSyncCause(
+                message: BridgeMessage(
+                    key: "core.sync.cause.file_changed",
+                    args: [BridgeMessageArg(name: "file", value: "Cover.jpg")]
+                ),
+                resumesAt: nil
+            ),
+            fix: .retryNow,
+            lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
+        )
+
         /// A Dropbox library this device is signed out of.
         public static let previewSignedOut = BridgeSyncShown(
             status: .signedOutOfDropbox,

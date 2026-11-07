@@ -58,12 +58,12 @@ extension ShotScene {
         librarySettings(
             "settings-library-problem",
             storage: PreviewData.previewStorage,
-            indicator: .failed
+            shown: .previewFailed
         ),
         librarySettings(
             "settings-library-not-synced",
             storage: nil,
-            indicator: nil
+            shown: .previewNotSynced
         ),
     ]
 
@@ -109,16 +109,16 @@ extension ShotScene {
     }
 
     /// The Library tab over a library whose storage is `storage`, or none,
-    /// with its sync at `indicator`, once its name and people have answered.
+    /// with its sync as `shown` says, once its name and people have answered.
     private static func librarySettings(
         _ id: String,
         storage: BridgeStorageLocation?,
-        indicator: BridgeSyncIndicator? = .synced
+        shown: BridgeSyncShown = .previewSynced
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 500, height: 600)) {
             let fixture = LibrarySettingsTabPreviewFixture(storage: storage)
             return ShotStage(
-                librarySettingsTabPreview(fixture, indicator: indicator)
+                librarySettingsTabPreview(fixture, shown: shown)
             ) {
                 fixture.answered
             }
