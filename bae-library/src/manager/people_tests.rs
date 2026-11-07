@@ -288,6 +288,7 @@ fn an_invite_is_listed_until_it_is_cancelled() {
         let mut invites = views.subscribe_invites();
         crate::followed::value_matching(&mut invites, Vec::is_empty).await;
         let invite = manager
+            .store
             .invite_person(
                 coven::MemberRole::Member,
                 "Dan".into(),

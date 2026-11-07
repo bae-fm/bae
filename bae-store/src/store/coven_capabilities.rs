@@ -412,7 +412,10 @@ impl Store {
     }
 
     /// Invite a new person: the write journals the invite, offline too,
-    /// and a pass grants its access and fixes its code (§5.6).
+    /// and a pass grants its access and fixes its code (§5.6). Re-inviting
+    /// creates a fresh identity; the removed person's rows retain their
+    /// owner. `name` is the profile name the person's device writes when it
+    /// joins (§5.4).
     pub async fn invite_person(
         &self,
         role: coven::MemberRole,

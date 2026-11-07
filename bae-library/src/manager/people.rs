@@ -165,31 +165,11 @@ impl LibraryManager {
         Ok(self.membership.set_member_role(member, role).await?)
     }
 
-    /// Re-inviting creates a fresh identity; the removed person's rows retain
-    /// their owner. `name` is the profile name the person's device writes
-    /// when it joins (§5.4).
-    pub async fn invite_person(
-        &self,
-        role: coven::MemberRole,
-        name: String,
-        access: coven::InviteAccess,
-        lifetime: coven::InviteLifetime,
-    ) -> Result<coven::InviteId, LibraryError> {
-        Ok(self.store.invite_person(role, name, access, lifetime).await?)
-    }
-
     pub async fn approve_join_request(
         &self,
         request: &coven::JoinRequest,
     ) -> Result<(), LibraryError> {
         Ok(self.membership.approve_join_request(request).await?)
-    }
-
-    pub async fn decline_join_request(
-        &self,
-        request: &coven::JoinRequest,
-    ) -> Result<(), LibraryError> {
-        Ok(self.store.decline_join_request(request).await?)
     }
 
     /// Cancel an invite and take back its access. Once approval of its

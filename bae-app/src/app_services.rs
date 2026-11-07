@@ -523,7 +523,7 @@ impl AppServices {
     delegate_async!(manager, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> Result<(), bae_library::LibraryError>);
     delegate_values!(subscribe_admin_changes => subscribe_admin_changes() -> Vec<bae_people::admin_change::AdminChange>);
     delegate_async!(manager, acknowledge_admin_change => acknowledge_admin_change(operation: coven::OperationId) -> Result<(), bae_library::LibraryError>);
-    delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, lifetime: coven::InviteLifetime) -> Result<coven::InviteId, bae_library::LibraryError>);
+    delegate_store!(invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, lifetime: coven::InviteLifetime) -> coven::InviteId);
     /// This device's open invites, each with the pending record of its
     /// operation when coven holds one.
     pub fn subscribe_invites(
@@ -532,7 +532,7 @@ impl AppServices {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_invites())
     }
     delegate_async!(manager, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> Result<(), bae_library::LibraryError>);
-    delegate_async!(manager, decline_join_request => decline_join_request(request: &coven::JoinRequest) -> Result<(), bae_library::LibraryError>);
+    delegate_store!(decline_join_request => decline_join_request(request: &coven::JoinRequest) -> ());
     delegate_async!(manager, cancel_invite => cancel_invite(invite: &coven::InviteId) -> Result<(), bae_library::LibraryError>);
 
     delegate_async!(manager, retry_outbox_now => retry_outbox_now() -> Result<(), bae_library::LibraryError>);
