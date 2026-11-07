@@ -85,6 +85,7 @@ impl From<LibraryError> for AutomationError {
             | LibraryError::StorageTransition(_)
             | LibraryError::SetupDismiss(_)
             | LibraryError::AdminChangeDismiss(_)
+            | LibraryError::PrimaryRelease(_)
             | LibraryError::Deletion(_)
             | LibraryError::ImageWrite(_)) => {
                 bae_diagnostics::UiError::diagnostic(error.category(), error).into()

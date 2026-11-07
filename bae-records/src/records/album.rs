@@ -1,5 +1,27 @@
 use super::*;
 
+/// Why making a release its album's primary was refused.
+#[derive(Debug, thiserror::Error)]
+pub enum PrimaryReleaseError {
+    /// The release is not one of the album's: it moved to another album,
+    /// or left the library, after the person picked it. Nothing was written.
+    #[error("release {release_id} is not one of album {album_id}'s releases")]
+    NotAlbumRelease { album_id: String, release_id: String },
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+/// A bug the store's write carried back, which the store reported as it
+/// returned; a refusal holds none.
+impl bae_util::task_failure::ReportedBug for PrimaryReleaseError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Database(error) => error.reported_bug(),
+            Self::NotAlbumRelease { .. } => None,
+        }
+    }
+}
+
 impl Records {
     /// Track ids for an album's primary release. `None` means no album carries
     /// this id; `Some(vec![])` means the album exists but holds no release, or
@@ -123,9 +145,10 @@ impl Records {
         &self,
         album_id: &str,
         primary_release_id: &str,
-    ) -> Result<(), DbError> {
-        let (album_id, primary_release_id) = (album_id.to_string(), primary_release_id.to_string());
-        self.store
+    ) -> Result<(), PrimaryReleaseError> {
+        let (album, release) = (album_id.to_string(), primary_release_id.to_string());
+        let set = self
+            .store
             .call_sql(move |sql| {
                 // The release is ordered below the album's lowest, so it is the
                 // album's primary on every device that applies this write. One
@@ -136,27 +159,29 @@ impl Records {
                             "SELECT {} FROM albums a WHERE a.id = ?",
                             album_primary_release_sql()
                         ),
-                        params![album_id],
+                        params![album],
                         |row| row.get(0),
                     )
                     .optional()?
                     .flatten();
-                if current.as_deref() == Some(primary_release_id.as_str()) {
-                    return Ok(());
+                if current.as_deref() == Some(release.as_str()) {
+                    return Ok(true);
                 }
                 let moved = sql.execute(
                     "UPDATE releases SET album_order = \
                      (SELECT MIN(album_order) - 1 FROM releases WHERE album_id = ?1) \
                  WHERE id = ?2 AND album_id = ?1",
-                    params![album_id, primary_release_id],
+                    params![album, release],
                 )?;
-                if moved != 1 {
-                    return Err(DbError::Message(format!(
-                        "release {primary_release_id} is not one of album {album_id}'s releases"
-                    )));
-                }
-                Ok(())
+                Ok(moved == 1)
             })
-            .await
+            .await?;
+        match set {
+            true => Ok(()),
+            false => Err(PrimaryReleaseError::NotAlbumRelease {
+                album_id: album_id.to_string(),
+                release_id: primary_release_id.to_string(),
+            }),
+        }
     }
 }

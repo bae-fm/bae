@@ -242,10 +242,15 @@ async fn test_a_release_of_another_album_cannot_be_made_primary() {
         .await
         .unwrap();
 
-    library
-        .manager()
-        .set_album_primary_release(&album.id, &elsewhere.id)
-        .await
-        .expect_err("another album's release is not this album's to make primary");
+    let refused = library.manager().set_album_primary_release(&album.id, &elsewhere.id).await;
+    assert!(
+        matches!(
+            &refused,
+            Err(bae_library::LibraryError::PrimaryRelease(
+                bae_records::PrimaryReleaseError::NotAlbumRelease { album_id, release_id }
+            )) if *album_id == album.id && *release_id == elsewhere.id
+        ),
+        "another album's release is not this album's to make primary: {refused:?}"
+    );
     assert_eq!(primary_release_of(&db, &album.id).await, release.id);
 }

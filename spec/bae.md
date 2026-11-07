@@ -4967,7 +4967,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device, after its warning (§6.4) |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library |
-| `Import`, `ImportData` | reads the detail: the source couldn't be read, or what the operation was prepared against changed before it was written (an import's candidate or the library's artists, a deleted release or album, a replaced cover or artist image), and asking again works on what now stands |
+| `Import`, `ImportData` | reads the detail: the source couldn't be read, or what the operation was prepared against changed before it was written (an import's candidate or the library's artists, a deleted release or album, a replaced cover or artist image, a release picked as its album's primary), and asking again works on what now stands |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |

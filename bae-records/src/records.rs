@@ -24,6 +24,7 @@ macro_rules! release_file_columns {
 }
 
 mod album;
+pub use album::PrimaryReleaseError;
 mod catalog_rank;
 pub(crate) use catalog_rank::CATALOG_RANK;
 mod artist;

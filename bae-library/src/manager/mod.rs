@@ -193,6 +193,10 @@ pub enum LibraryError {
     /// is no admin change of this device's, or the store failed.
     #[error(transparent)]
     AdminChangeDismiss(bae_people::admin_change::AdminChangeDismissError),
+    /// Making a release its album's primary did not commit: the release is
+    /// not one of the album's, or the store failed.
+    #[error(transparent)]
+    PrimaryRelease(bae_records::PrimaryReleaseError),
     /// Making a release local again failed; coven removed what the call
     /// made, so the release stays in the cloud.
     #[error("make release local: {0}")]
@@ -341,6 +345,7 @@ impl bae_util::task_failure::ReportedBug for LibraryError {
             LibraryError::StorageTransition(error) => error.reported_bug(),
             LibraryError::SetupDismiss(error) => error.reported_bug(),
             LibraryError::AdminChangeDismiss(error) => error.reported_bug(),
+            LibraryError::PrimaryRelease(error) => error.reported_bug(),
             LibraryError::Deletion(error) => error.reported_bug(),
             LibraryError::ImageWrite(error) => error.reported_bug(),
             LibraryError::Sync(error) | LibraryError::InviteJoining(error) => error.reported_bug(),
@@ -397,6 +402,7 @@ impl LibraryError {
             LibraryError::StorageTransition(error) => storage_transition_category(error),
             LibraryError::SetupDismiss(error) => setup_dismiss_category(error),
             LibraryError::AdminChangeDismiss(error) => admin_change_dismiss_category(error),
+            LibraryError::PrimaryRelease(error) => primary_release_category(error),
             LibraryError::Deletion(error) => deletion_category(error),
             LibraryError::ImageWrite(error) => image_write_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
@@ -547,6 +553,30 @@ impl From<bae_people::admin_change::AdminChangeDismissError> for LibraryError {
                 Self::Database(error)
             }
             error => Self::AdminChangeDismiss(error),
+        }
+    }
+}
+
+/// The class a surface words a refused primary release in: a release that
+/// moved to another album or left the library after the person picked it
+/// is theirs to pick again, from the album as it now stands.
+fn primary_release_category(
+    error: &bae_records::PrimaryReleaseError,
+) -> bae_diagnostics::UiErrorCategory {
+    use bae_records::PrimaryReleaseError as E;
+    match error {
+        E::Database(error) => bae_diagnostics::database_category(error),
+        E::NotAlbumRelease { .. } => bae_diagnostics::UiErrorCategory::Import,
+    }
+}
+
+/// Making a release primary that failed in the store is the library's store
+/// failure.
+impl From<bae_records::PrimaryReleaseError> for LibraryError {
+    fn from(error: bae_records::PrimaryReleaseError) -> Self {
+        match error {
+            bae_records::PrimaryReleaseError::Database(error) => Self::Database(error),
+            error => Self::PrimaryRelease(error),
         }
     }
 }
