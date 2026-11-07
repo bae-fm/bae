@@ -181,8 +181,9 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
         for ((window, windowRows) in delivered.windows) {
             val offset = window.offset.toInt()
             if (offset !in windows) continue
-            removePage(offset)
-            windowRows.forEachIndexed { index, row -> rows[offset + index] = row }
+            // Write only what differs: each write invalidates every reader of the map.
+            windowRows.forEachIndexed { index, row -> if (rows[offset + index] != row) rows[offset + index] = row }
+            for (position in offset + windowRows.size until offset + BROWSER_PAGE_SIZE) rows.remove(position)
         }
         rows.keys.filter { it >= delivered.totalCount }.forEach(rows::remove)
         totalCount = delivered.totalCount

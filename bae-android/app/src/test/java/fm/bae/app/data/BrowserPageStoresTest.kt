@@ -1,6 +1,7 @@
 package fm.bae.app.data
 
 import android.os.Looper
+import androidx.compose.runtime.snapshots.Snapshot
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.R
 import kotlinx.coroutines.CoroutineScope
@@ -77,6 +78,34 @@ class BrowserPageStoresTest {
         query.emit(window(60), "kept")
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals("kept", store.rows[60])
+    }
+
+    @Test
+    fun aValueEqualToTheRowsHeldWritesNoRow() {
+        val store = RecordingPageStore(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+        val rowWrites = mutableListOf<Set<Any>>()
+        val observer = Snapshot.registerApplyObserver { changed, _ -> if (store.rows in changed) rowWrites.add(changed) }
+        try {
+            store.activate("all")
+            val query = store.queries.single()
+            query.emit(window(0), "same")
+            shadowOf(Looper.getMainLooper()).idle()
+            Snapshot.sendApplyNotifications()
+            rowWrites.clear()
+
+            query.emit(window(0), "same")
+            shadowOf(Looper.getMainLooper()).idle()
+            Snapshot.sendApplyNotifications()
+            assertTrue(rowWrites.isEmpty())
+
+            query.emit(window(0), "changed")
+            shadowOf(Looper.getMainLooper()).idle()
+            Snapshot.sendApplyNotifications()
+            assertEquals("changed", store.rows[0])
+            assertFalse(rowWrites.isEmpty())
+        } finally {
+            observer.dispose()
+        }
     }
 
     @Test
