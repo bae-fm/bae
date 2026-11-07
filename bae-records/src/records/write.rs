@@ -592,7 +592,7 @@ pub fn insert_scrub_points_row(
 ) -> Result<(), DbError> {
     conn.execute(
         "INSERT INTO audio_segment_scrub_points (audio_format_segment_id, points) VALUES (?, ?)",
-        params![points.audio_segment_id, super::scrub_points_column::encode(&points.points)?,],
+        params![points.audio_segment_id, super::scrub_points_column::encode(&points.points),],
     )
     .map(|_| ())
     .map_err(DbError::from)
@@ -664,7 +664,8 @@ pub fn write_release_records(
 }
 
 /// Make `album_id`'s credit list exactly `artists`, touching only the rows
-/// that differ (see `write_credits`).
+/// that differ (see `write_credits`). An artist of another album is a bug
+/// of the caller's, which panics in the store's work.
 pub fn replace_album_artists(
     conn: &CovenWrite<'_>,
     album_id: &str,
@@ -672,10 +673,10 @@ pub fn replace_album_artists(
     now: &str,
 ) -> Result<(), DbError> {
     if let Some(stray) = artists.iter().find(|aa| aa.album_id != album_id) {
-        return Err(DbError::Message(format!(
+        panic!(
             "an album artist names album {}, whose credits this write does not replace",
             stray.album_id
-        )));
+        );
     }
     let credits: Vec<Credit<'_>> = artists
         .iter()
@@ -696,6 +697,8 @@ pub fn replace_album_artists(
 /// the rows that differ (see `write_credits`). Callers pass the affected
 /// track ids explicitly because `artists` may not cover every track (a track
 /// legitimately has no per-track artists when it inherits from the album).
+/// An artist of a track outside `track_ids` is a bug of the caller's, which
+/// panics in the store's work.
 pub(super) fn replace_track_artists(
     conn: &CovenWrite<'_>,
     track_ids: &[&str],
@@ -703,10 +706,10 @@ pub(super) fn replace_track_artists(
     now: &str,
 ) -> Result<(), DbError> {
     if let Some(stray) = artists.iter().find(|ta| !track_ids.contains(&ta.track_id.as_str())) {
-        return Err(DbError::Message(format!(
+        panic!(
             "a track artist names track {}, whose credits this write does not replace",
             stray.track_id
-        )));
+        );
     }
     for track_id in track_ids {
         let credits: Vec<Credit<'_>> = artists

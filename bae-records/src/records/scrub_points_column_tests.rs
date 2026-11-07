@@ -20,7 +20,7 @@ fn points_read_back_as_written() {
         point(436_656, 159_287, 436_656),
         point(u64::MAX - 1, u64::MAX - 1, u64::MAX),
     ];
-    assert_eq!(decode(&encode(&points).unwrap()).unwrap(), points);
+    assert_eq!(decode(&encode(&points)).unwrap(), points);
 }
 
 /// An MP3's points 10 seconds apart at 320 kbps take a few bytes each:
@@ -33,9 +33,11 @@ fn an_mp3s_points_take_eight_bytes_each() {
             point(sample, index * 400_000, sample + 3_456)
         })
         .collect();
-    assert_eq!(encode(&points).unwrap().len(), 24 * 8);
+    assert_eq!(encode(&points).len(), 24 * 8);
 }
 
+/// Points no maker of bae's produces are its bug: they panic, which fails
+/// the write they were for.
 #[test]
 fn points_out_of_order_fail_the_write() {
     for points in [
@@ -45,7 +47,7 @@ fn points_out_of_order_fail_the_write() {
         vec![point(20, 100, 19)],
         vec![],
     ] {
-        assert!(matches!(encode(&points), Err(DbError::Message(_))), "{points:?}");
+        assert!(std::panic::catch_unwind(|| encode(&points)).is_err(), "{points:?}");
     }
 }
 
@@ -73,7 +75,7 @@ fn the_table_refuses_a_blob_that_ends_inside_a_varint() {
 
 #[test]
 fn a_blob_that_is_not_whole_points_is_a_damaged_database() {
-    let whole = encode(&[point(5, 6, 7), point(500, 600, 700)]).unwrap();
+    let whole = encode(&[point(5, 6, 7), point(500, 600, 700)]);
     for blob in [
         Vec::new(),
         // A point short of its third varint.
@@ -84,7 +86,7 @@ fn a_blob_that_is_not_whole_points_is_a_damaged_database() {
         vec![0xff; 11],
         vec![0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x02, 0, 0],
         // A step past the largest sample.
-        [encode(&[point(u64::MAX, 0, u64::MAX)]).unwrap(), vec![0, 0, 0]].concat(),
+        [encode(&[point(u64::MAX, 0, u64::MAX)]), vec![0, 0, 0]].concat(),
     ] {
         assert!(is_damaged(decode(&blob)), "{blob:?}");
     }

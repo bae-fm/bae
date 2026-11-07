@@ -11,43 +11,40 @@
 use crate::ScrubPoint;
 use bae_store::DbError;
 
-/// `points` as their blob. Points not each past the one before, or one
-/// whose `exact_from` is before its own sample, are a bug in their maker:
-/// they fail the write.
+/// `points` as their blob. No points, points not each past the one before,
+/// or one whose `exact_from` is before its own sample, are a bug in their
+/// maker: they panic in the store's work, which fails the write and comes
+/// back as a bug.
 #[cfg(any(test, feature = "test-utils", desktop))]
-pub(super) fn encode(points: &[ScrubPoint]) -> Result<Vec<u8>, DbError> {
-    if points.is_empty() {
-        return Err(DbError::Message("a segment with no scrub points stores no row".to_string()));
-    }
+pub(super) fn encode(points: &[ScrubPoint]) -> Vec<u8> {
+    assert!(!points.is_empty(), "a segment with no scrub points stores no row");
     let mut blob = Vec::with_capacity(points.len() * 8);
     let mut before: Option<ScrubPoint> = None;
     for point in points {
         let (sample, byte) = match before {
             None => (point.sample, point.byte),
             Some(before) => (
-                step(before.sample, point.sample, "sample", points)?,
-                step(before.byte, point.byte, "byte", points)?,
+                step(before.sample, point.sample, "sample", points),
+                step(before.byte, point.byte, "byte", points),
             ),
         };
-        let lead = point.exact_from.checked_sub(point.sample).ok_or_else(|| {
-            DbError::Message(format!(
-                "scrub point {point:?} plays exactly from before its own sample"
-            ))
-        })?;
+        let lead = point.exact_from.checked_sub(point.sample).unwrap_or_else(|| {
+            panic!("scrub point {point:?} plays exactly from before its own sample")
+        });
         for value in [sample, byte, lead] {
             push_varint(&mut blob, value);
         }
         before = Some(*point);
     }
-    Ok(blob)
+    blob
 }
 
 /// How far `to` is past `from`, less one.
 #[cfg(any(test, feature = "test-utils", desktop))]
-fn step(from: u64, to: u64, what: &str, points: &[ScrubPoint]) -> Result<u64, DbError> {
+fn step(from: u64, to: u64, what: &str, points: &[ScrubPoint]) -> u64 {
     to.checked_sub(from)
         .and_then(|step| step.checked_sub(1))
-        .ok_or_else(|| DbError::Message(format!("scrub points out of {what} order: {points:?}")))
+        .unwrap_or_else(|| panic!("scrub points out of {what} order: {points:?}"))
 }
 
 #[cfg(any(test, feature = "test-utils", desktop))]

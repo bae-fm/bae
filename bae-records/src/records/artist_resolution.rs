@@ -453,25 +453,25 @@ fn resolve_by_name_on<Q: coven::SqlRead>(
 }
 
 /// `links` with each one's artist rewritten from the credit id it names to
-/// the library artist that credit resolved to.
+/// the library artist that credit resolved to. Every link names a credit of
+/// the write that resolved `artist_ids`, so one naming another is a bug of
+/// the write's, which panics in the store's work.
 pub fn relink<T: Clone>(
     links: &[T],
     artist_ids: &HashMap<String, String>,
     label: &str,
     artist_id: impl Fn(&mut T) -> &mut String,
-) -> Result<Vec<T>, DbError> {
+) -> Vec<T> {
     links
         .iter()
         .map(|link| {
             let mut link = link.clone();
             let credit_id = artist_id(&mut link);
-            let resolved = artist_ids.get(credit_id.as_str()).ok_or_else(|| {
-                DbError::Message(format!(
-                    "{label} names {credit_id}, which no credit of the write is"
-                ))
-            })?;
+            let resolved = artist_ids.get(credit_id.as_str()).unwrap_or_else(|| {
+                panic!("{label} names {credit_id}, which no credit of the write is")
+            });
             credit_id.clone_from(resolved);
-            Ok(link)
+            link
         })
         .collect()
 }
@@ -481,7 +481,7 @@ pub fn relink<T: Clone>(
 pub fn relink_album_artists(
     links: &[DbAlbumArtist],
     artist_ids: &HashMap<String, String>,
-) -> Result<Vec<DbAlbumArtist>, DbError> {
+) -> Vec<DbAlbumArtist> {
     relink(links, artist_ids, "album artist", |link| &mut link.artist_id)
 }
 
@@ -489,7 +489,7 @@ pub fn relink_album_artists(
 pub fn relink_track_artists(
     links: &[DbTrackArtist],
     artist_ids: &HashMap<String, String>,
-) -> Result<Vec<DbTrackArtist>, DbError> {
+) -> Vec<DbTrackArtist> {
     relink(links, artist_ids, "track artist", |link| &mut link.artist_id)
 }
 

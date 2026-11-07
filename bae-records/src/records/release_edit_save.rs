@@ -85,18 +85,18 @@ fn write_applied_rows_on(
     let resolved = ArtistCredits { credits: &rows.artists, picked }.resolve_on(tx)?;
     resolved.write_on(tx)?;
     let artist_ids = resolved.id_map(&rows.artists);
-    let album_artists = relink_album_artists(&rows.album_artists, &artist_ids)?;
-    let track_artists = relink_track_artists(&rows.track_artists, &artist_ids)?;
+    let album_artists = relink_album_artists(&rows.album_artists, &artist_ids);
+    let track_artists = relink_track_artists(&rows.track_artists, &artist_ids);
     let release_roles =
         relink(&rows.release_artist_roles, &artist_ids, "release artist role", |role| {
             &mut role.artist_id
-        })?;
+        });
     let track_roles = relink(&rows.track_artist_roles, &artist_ids, "track artist role", |role| {
         &mut role.artist_id
-    })?;
+    });
     let work_artists = relink(&rows.work_graph.work_artists, &artist_ids, "work artist", |link| {
         &mut link.artist_id
-    })?;
+    });
 
     let album = &rows.album;
     if album_fields == AlbumFields::Written {

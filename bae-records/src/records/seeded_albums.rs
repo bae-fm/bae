@@ -84,12 +84,10 @@ impl Records {
                     let tx = &sql;
                     let mut covers = covers.into_iter();
                     let mut files = files.into_iter();
+                    // The batch staged one coven file per seeded file, in
+                    // order, so running out is a bug of this write's.
                     let staged = |file: Option<coven::FileId>| {
-                        file.ok_or_else(|| {
-                            IdentityWriteError::from(DbError::Message(
-                                "a seeded file has no coven file".into(),
-                            ))
-                        })
+                        file.expect("every seeded file has the coven file staged for it")
                     };
                     for artist in &artists {
                         insert_artist_row(tx, artist)?;
@@ -105,7 +103,7 @@ impl Records {
                             insert_track_row(tx, track)?;
                         }
                         if let Some((image, _)) = &seeded.cover {
-                            upsert_library_image_row(tx, image, &staged(covers.next())?)?;
+                            upsert_library_image_row(tx, image, &staged(covers.next()))?;
                         }
                     }
                     // The files go in after every release, each referencing the
@@ -113,7 +111,7 @@ impl Records {
                     // reading them.
                     for (rows, audio_formats, audio_segments) in &audios {
                         for file in rows {
-                            insert_release_file_row(tx, file, staged(files.next())?)?;
+                            insert_release_file_row(tx, file, staged(files.next()))?;
                         }
                         for format in audio_formats {
                             insert_audio_format_row(tx, format)?;

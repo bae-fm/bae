@@ -402,21 +402,19 @@ impl ImportTables {
                     }
                     resolved.write_on(tx)?;
                     let artist_ids = resolved.id_map(&artist_credits);
-                    let album_artists = relink_album_artists(&album_artists, &artist_ids)?;
-                    let track_artists = relink_track_artists(&track_artists, &artist_ids)?;
-                    let release_artist_roles = relink(
-                        &release_artist_roles,
-                        &artist_ids,
-                        "release artist role",
-                        |role| &mut role.artist_id,
-                    )?;
+                    let album_artists = relink_album_artists(&album_artists, &artist_ids);
+                    let track_artists = relink_track_artists(&track_artists, &artist_ids);
+                    let release_artist_roles =
+                        relink(&release_artist_roles, &artist_ids, "release artist role", |role| {
+                            &mut role.artist_id
+                        });
                     let track_artist_roles =
                         relink(&track_artist_roles, &artist_ids, "track artist role", |role| {
                             &mut role.artist_id
-                        })?;
+                        });
                     let work_artists = relink(&work_artists, &artist_ids, "work artist", |link| {
                         &mut link.artist_id
-                    })?;
+                    });
 
                     // A new album for a release group carries the group's id, so
                     // its row can be here already, emptied by an earlier delete

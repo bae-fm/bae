@@ -49,11 +49,8 @@ pub(crate) fn merge_artist_on(
         merge.musicbrainz_artist_id,
         merge.sort_name,
     )?;
-    if changed != 1 {
-        return Err(DbError::Message(format!(
-            "artist merge updated {changed} surviving artists; expected exactly one"
-        )));
-    }
+    // The survivor is an artist this write read, and its id names one row.
+    assert_eq!(changed, 1, "an artist merge updates exactly its surviving artist");
     // A chain that ended at the absorbed artist now ends at the survivor.
     conn.execute(
         "UPDATE artist_merges SET into_artist_id = ?1 WHERE into_artist_id = ?2",
@@ -87,11 +84,8 @@ pub(crate) fn merge_label_on(conn: &CovenWrite<'_>, merge: &LabelMerge<'_>) -> R
          WHERE id = ?1",
         params![merge.survivor, merge.musicbrainz_label_id, merge.discogs_label_id],
     )?;
-    if changed != 1 {
-        return Err(DbError::Message(format!(
-            "label merge updated {changed} surviving labels; expected exactly one"
-        )));
-    }
+    // The survivor is a label this write read, and its id names one row.
+    assert_eq!(changed, 1, "a label merge updates exactly its surviving label");
     // A chain that ended at the absorbed label now ends at the survivor.
     conn.execute(
         "UPDATE label_merges SET into_label_id = ?1 WHERE into_label_id = ?2",
