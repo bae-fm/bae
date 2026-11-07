@@ -65,6 +65,8 @@ impl BridgeStorageLocation {
         }
     }
 
+    // Read only by the OAuth storage calls and by the tests of the crossing.
+    #[cfg(any(test, feature = "oauth-providers"))]
     pub(crate) fn into_core(self) -> Result<coven::StorageConfig, BridgeError> {
         Ok(match self {
             Self::S3 { bucket, region, endpoint, profile } => coven::StorageConfig::S3 {
