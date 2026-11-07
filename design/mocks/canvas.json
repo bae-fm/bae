@@ -3114,6 +3114,38 @@
    "y": 260,
    "w": 690,
    "h": 600
+  },
+  "StoreMacStates.dc.html": {
+   "h": 700,
+   "page": "storage",
+   "title": "macOS: every row state",
+   "w": 1100,
+   "x": 6280,
+   "y": 1380
+  },
+  "StoreMacDownloadFailed.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a failed download, in the inspector",
+   "w": 1100,
+   "x": 7460,
+   "y": 1380
+  },
+  "StoreMacMoveFailedMenu.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a failed move’s menu",
+   "w": 1100,
+   "x": 8640,
+   "y": 1380
+  },
+  "StoreMacCopyingMenu.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a release copying here, its menu",
+   "w": 1100,
+   "x": 9820,
+   "y": 1380
   }
  },
  "createdOnFiles": {
@@ -4227,7 +4259,7 @@
   },
   "row-store-mac-states": {
    "kind": "title1",
-   "maxW": 5000,
+   "maxW": 10920,
    "page": "storage",
    "text": "Storage Manager states: macOS",
    "w": 240,
@@ -4661,6 +4693,10 @@
   "StoreMacLoading.dc.html",
   "StoreMacCloud.dc.html",
   "StoreMacNoLibrary.dc.html",
+  "StoreMacStates.dc.html",
+  "StoreMacDownloadFailed.dc.html",
+  "StoreMacMoveFailedMenu.dc.html",
+  "StoreMacCopyingMenu.dc.html",
   "SyncMacMoving.dc.html",
   "SyncMacAttention.dc.html",
   "SyncMacFailed.dc.html",

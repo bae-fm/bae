@@ -1,0 +1,13 @@
+<!-- @dsCard group="macOS storage" height=220 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacDownloadRow</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell', style: { width: 440 } }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Pin', h(B.MacDownloadRow, { kind: 'pin' })), W('Make local', h(B.MacDownloadRow, { kind: 'makeLocal' }))));
+</script>
+</body>
+</html>

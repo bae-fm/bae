@@ -73,16 +73,40 @@
     return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
   }
   function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
-  // The Storage column: Local, Pinned, In storage; or a transfer: Uploading and Pinning fill as they go.
+  // The Storage column, as StorageStateLabel draws it: one chip, or several in a row. At rest: Local, Pinned, In storage. Failed: Download failed, Move failed (`file`), Couldn't make local. Waiting: Queued or Queued to make local, `ahead`, then the `wait`. Moving: Uploading, Pinning and Making local… fill with `progress` and take a `wait` after them; Copying here.
   function MacStorageChip(props) {
     var s = props.state || 'cloud';
+    var chip = function (tone, label) { return h(StatusChip, { tone: tone }, label); };
+    var wait = props.wait ? chip('warning', props.wait) : null;
+    var row = function (parts) { return h('span', { className: 'bae-m-chips' }, parts.filter(Boolean)); };
+    var queued = function (label) { return row([h(React.Fragment, { key: 'q' }, chip('activity', label)), Number(props.ahead || 0) > 0 ? h(React.Fragment, { key: 'a' }, chip('neutral', props.ahead + ' ahead')) : null, wait ? h(React.Fragment, { key: 'w' }, wait) : null]); };
     if (s === 'uploading' || s === 'pinning' || s === 'detaching') {
       var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : 'Making local…';
-      return h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
+      var filling = h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
+      return wait ? row([h(React.Fragment, { key: 'p' }, filling), h(React.Fragment, { key: 'w' }, wait)]) : filling;
     }
-    if (s === 'transfer') return h(StatusChip, { tone: 'activity' }, props.label || 'Pinning for offline');
+    if (s === 'transfer') return chip('activity', props.label || 'Pinning for offline');
+    if (s === 'downloadFailed') return chip('danger', 'Download failed');
+    if (s === 'moveFailed') return chip('danger', 'Move failed: ' + (props.file || '01 Harbor Lights.flac') + ' changed since import');
+    if (s === 'makeLocalFailed') return chip('danger', 'Couldn’t make local');
+    if (s === 'queued') return queued('Queued');
+    if (s === 'makeLocalQueued') return queued('Queued to make local');
+    if (s === 'copying') return chip('activity', 'Copying here');
     var icon = { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s];
     return h(StatusChip, { tone: 'neutral' }, h(Sym, { name: icon, size: 10 }), { local: 'Local', pinned: 'Pinned', cloud: 'In storage' }[s]);
+  }
+  // DownloadRow's failed row in the inspector: the kind's icon, title and detail, how long ago it was queued, the cancel mark; under them the failure chip and Retry.
+  function MacDownloadRow(props) {
+    var makeLocal = props.kind === 'makeLocal';
+    return h('div', { className: 'bae-m-dlrow' },
+      h('div', { className: 'bae-m-dlrow-top' },
+        h(Sym, { name: makeLocal ? 'folder' : 'down', size: 16, className: 'bae-muted' }),
+        h('div', { className: 'bae-m-dlrow-text' }, h('span', { className: 'bae-ellipsis' }, props.title || 'Glass Harbor'), h('span', { className: 'bae-muted bae-num bae-m-dlrow-detail' }, props.detail || '9 files · 356 MB')),
+        h('span', { className: 'bae-muted bae-m-dlrow-ago' }, props.ago || '2m ago'),
+        h('span', { className: 'bae-muted', title: 'Cancel this download' }, h(Sym, { name: 'xcircle', size: 15 }))),
+      h('div', { className: 'bae-m-dlrow-badge' },
+        h(StatusChip, { tone: 'danger' }, h(Sym, { name: 'octagon', size: 10 }), makeLocal ? 'Couldn’t make local' : 'Failed'),
+        h(MacButton, { size: 'small' }, 'Retry')));
   }
   // Under the list: how many releases, the total, then one rate and Pause per queue with work.
   function MacStorageFooter(props) {

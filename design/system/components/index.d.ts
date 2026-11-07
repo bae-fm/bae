@@ -278,7 +278,8 @@ export declare function MacStorageWindow(props: { filter?: 'All' | 'Local' | 'In
 export declare function MacTable(props: { columns: string; empty?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacTableRow(props: { selected?: boolean; placeholder?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacReleaseCell(props: { title: string }): React.ReactElement;
-export declare function MacStorageChip(props: { state?: 'local' | 'pinned' | 'cloud' | 'transfer' | 'uploading' | 'pinning' | 'detaching'; label?: string; progress?: number }): React.ReactElement;
+export declare function MacStorageChip(props: { state?: 'local' | 'pinned' | 'cloud' | 'transfer' | 'uploading' | 'pinning' | 'detaching' | 'downloadFailed' | 'moveFailed' | 'makeLocalFailed' | 'queued' | 'makeLocalQueued' | 'copying'; label?: string; progress?: number; wait?: string; ahead?: number; file?: string }): React.ReactElement;
+export declare function MacDownloadRow(props: { kind?: 'pin' | 'makeLocal'; title?: string; detail?: string; ago?: string }): React.ReactElement;
 export declare function MacStorageFooter(props: { releases?: string; total?: string; uploads?: string; pins?: string; exports?: string }): React.ReactElement;
 export declare function MacTransferSummary(props: { kind?: 'upload' | 'pin'; counts?: string; bytes?: string; rate?: string; progress?: number; cancel?: boolean }): React.ReactElement;
 export declare function MacTransferReadout(props: { kind?: 'upload' | 'pin'; bytes?: string; rate?: string; progress?: number }): React.ReactElement;

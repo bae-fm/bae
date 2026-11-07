@@ -738,3 +738,10 @@
 .bae-m-lrow-selected .bae-muted { color: var(--on-fill-secondary); }
 .bae-a-lrow { display: flex; align-items: center; gap: 12px; padding: 8px 16px; font-family: var(--font-android); }
 .bae-a-lrow-selected { background: var(--accent-tint); }
+.bae-m-chips { display: inline-flex; align-items: center; gap: var(--space-inline); }
+.bae-m-dlrow { display: flex; flex-direction: column; gap: 6px; padding: 8px 16px; font: 400 13px var(--font-sans); border-bottom: 1px solid var(--hairline); }
+.bae-m-dlrow-top { display: flex; align-items: flex-start; gap: 10px; }
+.bae-m-dlrow-text { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.bae-m-dlrow-detail { font-size: 11px; white-space: nowrap; }
+.bae-m-dlrow-ago { font-size: 10.5px; white-space: nowrap; }
+.bae-m-dlrow-badge { display: flex; align-items: center; gap: 8px; padding-left: 26px; }
