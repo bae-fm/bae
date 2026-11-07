@@ -139,9 +139,8 @@ fn store_run_on(
         )?
         .into_iter()
         .next();
-    if stored_key.as_ref() != Some(key) {
-        return Err(DbError::Message(format!("run {run} of {key} is stored as another key's")));
-    }
+    // Each run is minted for one key.
+    assert!(stored_key.as_ref() == Some(key), "run {run} of {key} is stored as another key's");
     let owner = Owner::Run(run);
     store_outcome(sql, owner, Outcome::of(outcome), false)?;
     crate::tables::source_releases::store_named_releases_on(sql, releases)?;
@@ -151,15 +150,14 @@ fn store_run_on(
     Ok(())
 }
 
-/// How `state`, which `run` of `key` published, stands; a run publishes no
-/// `Idle` while it runs.
+/// How `outcome`, which `run` of `key` published, stands, read in the store's
+/// work: a run publishes no `Idle` while it runs.
 fn published_outcome(
     key: &CandidateKey,
     run: IdentifyRunId,
-    state: &IdentifyState,
-) -> Result<RunOutcome, DbError> {
-    RunOutcome::of(state)
-        .ok_or_else(|| DbError::Message(format!("{key}'s run {run:?} published no state to store")))
+    outcome: Option<RunOutcome>,
+) -> RunOutcome {
+    outcome.unwrap_or_else(|| panic!("{key}'s run {run:?} published no state to store"))
 }
 
 /// Store how `run` of the library release whose re-identify key is `key`
@@ -270,12 +268,13 @@ impl ImportTables {
         run: IdentifyRunId,
         state: &IdentifyState,
     ) -> Result<IdentificationMove, DbError> {
-        let outcome = published_outcome(key, run, state)?;
+        let outcome = RunOutcome::of(state);
         let releases = state.read_releases();
         let key = key.clone();
         let change = IdentificationChange::RunStarted { files: files.clone(), run };
         self.store
             .call(move |sql| {
+                let outcome = published_outcome(&key, run, outcome);
                 let moved = change_identification_on(sql, &key, &change)?;
                 publish_candidate_run_on(sql, &key, run, &outcome, &releases, None)?;
                 Ok(moved)
@@ -294,12 +293,13 @@ impl ImportTables {
         state: &IdentifyState,
         signals: Option<&Signals>,
     ) -> Result<bool, DbError> {
-        let outcome = published_outcome(key, run, state)?;
+        let outcome = RunOutcome::of(state);
         let releases = state.read_releases();
         let key = key.clone();
         let signals = signals.cloned();
         self.store
             .call(move |sql| {
+                let outcome = published_outcome(&key, run, outcome);
                 publish_candidate_run_on(sql, &key, run, &outcome, &releases, signals.as_ref())
             })
             .await

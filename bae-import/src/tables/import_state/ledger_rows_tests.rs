@@ -6,7 +6,6 @@ use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_identify::{Findings, NarrowedOut, TerminalVerdict};
-use bae_store::test_fixtures::empty_db;
 
 /// `release` as one catalog's record of its own.
 fn release_on(source: bae_catalogs::catalog::LookupCatalog, release_id: &str) -> MetadataResult {
@@ -232,11 +231,12 @@ async fn the_ledger_round_trips_how_each_clue_stood() {
     assert_eq!(listings, vec!["77 offered"]);
 }
 
-/// A ledger a settled run cannot have recorded is refused: a lookup still
-/// under way.
+/// A ledger a settled run cannot have recorded, a lookup still under way, is
+/// a bug of bae's own: its write fails with the bug the store reports.
 #[tokio::test]
-async fn a_ledger_with_a_lookup_under_way_is_not_stored() {
-    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+async fn a_settled_ledger_with_a_lookup_under_way_is_a_bug() {
+    let (db, _tmp, heard) =
+        bae_store::test_fixtures::temp_db_hearing_bugs(crate::TEST_SCHEMA).await;
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
@@ -250,5 +250,10 @@ async fn a_ledger_with_a_lookup_under_way_is_not_stored() {
     let verdict = TerminalVerdict::NotFoundAnywhere { ledger: Some(ledger) };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    assert!(crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.is_err());
+
+    let failed =
+        crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap_err();
+
+    let bug = the_reported_bug(&heard, &failed);
+    assert!(bug.contains("a lookup under way"), "{bug}");
 }

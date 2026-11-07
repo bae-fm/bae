@@ -161,7 +161,7 @@ pub(super) fn store_outcome(
         }
         Outcome::Settled(TerminalVerdict::Error { .. }) => ("error", None),
     };
-    let steps = step_columns(owner, outcome.ledger(), outcome.running())?;
+    let steps = step_columns(owner, outcome.ledger(), outcome.running());
     let medium_conflict =
         outcome.findings().and_then(|findings| findings.medium_conflict).map(|conflict| {
             match conflict {
@@ -169,20 +169,18 @@ pub(super) fn store_outcome(
                 MediumConflict::NotCdAudio => "not_cd_audio",
             }
         });
-    let failures_json =
-        match outcome {
-            Outcome::Settled(TerminalVerdict::Failed { failures, .. }) => {
-                if failures.is_empty() {
-                    return Err(DbError::Message(format!(
-                        "failed verdict for {owner} contains no failed lookup"
-                    )));
-                }
-                Some(serde_json::to_string(failures).map_err(|error| {
+    let failures_json = match outcome {
+        Outcome::Settled(TerminalVerdict::Failed { failures, .. }) => {
+            // A run fails only on a lookup that failed.
+            assert!(!failures.is_empty(), "failed verdict for {owner} contains no failed lookup");
+            Some(
+                serde_json::to_string(failures).map_err(|error| {
                     DbError::encode(format!("identify failure for {owner}"), error)
-                })?)
-            }
-            Outcome::Running { .. } | Outcome::Settled(_) => None,
-        };
+                })?,
+            )
+        }
+        Outcome::Running { .. } | Outcome::Settled(_) => None,
+    };
     let error_detail = match outcome {
         Outcome::Settled(TerminalVerdict::Error { failure }) => Some(failure.detail.as_str()),
         Outcome::Running { .. } | Outcome::Settled(_) => None,
@@ -287,25 +285,24 @@ fn store_matches<'a>(
             named.release.catalog == result.source && named.release.key == result.release_id
         })
     }) {
-        return Err(DbError::Message(format!(
+        panic!(
             "a verdict for {owner} names a note of {} {}, which it does not offer",
             stray.release.catalog.as_str(),
             stray.release.key
-        )));
+        );
     }
+    // A verdict carries one pressing entry for each release it lists.
     let rowed = |what: &str, results: &[MetadataResult], rows: &[u32]| {
-        if results.len() == rows.len() {
-            return Ok(());
-        }
-        Err(DbError::Message(format!(
+        assert!(
+            results.len() == rows.len(),
             "a verdict for {owner} carries {} {what} and {} pressing entries; they are \
              index-aligned",
             results.len(),
             rows.len()
-        )))
+        );
     };
-    rowed("matches", matches, pressings)?;
-    rowed("narrowed-out releases", narrowed_matches, narrowed_pressings)?;
+    rowed("matches", matches, pressings);
+    rowed("narrowed-out releases", narrowed_matches, narrowed_pressings);
     let mut written: Vec<(&MetadataResult, Written<'_>)> = matches
         .iter()
         .zip(pressings.iter())

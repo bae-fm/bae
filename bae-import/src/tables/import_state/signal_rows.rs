@@ -90,8 +90,8 @@ pub(super) fn store_signals(
     owner: Owner<'_>,
     signals: &Signals,
 ) -> Result<(), DbError> {
-    let scanning_refused =
-        || DbError::Message(format!("signals of {owner} still scanning at verdict write"));
+    // A verdict is written once extraction stopped scanning.
+    let scanning_refused = || -> ! { panic!("signals of {owner} still scanning at verdict write") };
     let running = matches!(owner, Owner::Run(_));
     let (disc_id_state, discs, disc_id_failure) = match &signals.disc_id {
         DiscIdSignal::Computed { discs } => ("computed", discs.as_slice(), None),
@@ -117,13 +117,13 @@ pub(super) fn store_signals(
         BarcodeSignal::Absent => ("absent", None),
         BarcodeSignal::Failed { failure, .. } => ("failed", Some(failure)),
         BarcodeSignal::Scanning { .. } if running => ("scanning", None),
-        BarcodeSignal::Scanning { .. } => return Err(scanning_refused()),
+        BarcodeSignal::Scanning { .. } => scanning_refused(),
     };
     let (text_state, text_failure) = match &signals.text {
         TextSignal::Settled { .. } => ("settled", None),
         TextSignal::Failed { failure, .. } => ("failed", Some(failure)),
         TextSignal::Scanning { .. } if running => ("scanning", None),
-        TextSignal::Scanning { .. } => return Err(scanning_refused()),
+        TextSignal::Scanning { .. } => scanning_refused(),
     };
     let detail = |failure: Option<&InternalFailure>| failure.map(|failure| failure.detail.clone());
 

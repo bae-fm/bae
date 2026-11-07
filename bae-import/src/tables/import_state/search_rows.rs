@@ -317,15 +317,15 @@ fn start_on(
         |row| row.get(0),
     )?;
     for (position, (catalog, part)) in search.sources.iter().enumerate() {
-        if !matches!(
-            part,
-            SourceSearch::Off | SourceSearch::NotConfigured | SourceSearch::Searching
-        ) {
-            return Err(DbError::Message(format!(
-                "{key}'s search starts with its {} part already answered",
-                catalog.as_str()
-            )));
-        }
+        // A search starts before any catalog answers it.
+        assert!(
+            matches!(
+                part,
+                SourceSearch::Off | SourceSearch::NotConfigured | SourceSearch::Searching
+            ),
+            "{key}'s search starts with its {} part already answered",
+            catalog.as_str()
+        );
         let columns = part_columns(part);
         sql.execute(
             "INSERT INTO import_candidate_search_source \
@@ -378,13 +378,13 @@ fn land_on(
     )?;
     let next = to_usize(next, "a search's next position")?;
     for (offset, result) in results.iter().enumerate() {
-        if result.source != catalog {
-            return Err(DbError::Message(format!(
-                "{} answered a search with a {} release",
-                catalog.as_str(),
-                result.source.as_str()
-            )));
-        }
+        // A catalog's search answers with its own releases.
+        assert!(
+            result.source == catalog,
+            "{} answered a search with a {} release",
+            catalog.as_str(),
+            result.source.as_str()
+        );
         store_match(
             sql,
             MatchOwner::Search(run.number()),

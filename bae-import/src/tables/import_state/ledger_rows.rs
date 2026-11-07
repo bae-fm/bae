@@ -38,11 +38,10 @@ pub(super) struct StepColumns<'a> {
     pub(super) search_artist: Option<&'a str>,
 }
 
-/// A ledger's clue in a state no settled run records.
-fn unsettled(owner: Owner<'_>, what: &str) -> DbError {
-    DbError::Message(format!(
-        "the ledger recorded for {owner} shows {what}, which no settled run records"
-    ))
+/// A ledger's clue in a state no settled run records: a settled verdict is
+/// written only once every clue settled.
+fn unsettled(owner: Owner<'_>, what: &str) -> ! {
+    panic!("the ledger recorded for {owner} shows {what}, which no settled run records")
 }
 
 /// How each clue of `ledger` stands, as step columns. `running`: the ledger
@@ -51,9 +50,9 @@ pub(super) fn step_columns<'a>(
     owner: Owner<'_>,
     ledger: Option<&'a IdentifyRunView>,
     running: bool,
-) -> Result<StepColumns<'a>, DbError> {
+) -> StepColumns<'a> {
     let Some(ledger) = ledger else {
-        return Ok(StepColumns {
+        return StepColumns {
             disc_id: None,
             barcode: None,
             catalog: None,
@@ -61,11 +60,11 @@ pub(super) fn step_columns<'a>(
             search: None,
             search_album: None,
             search_artist: None,
-        });
+        };
     };
     let disc_id = match &ledger.disc_id {
         DiscIdStepView::Reading if running => "reading",
-        DiscIdStepView::Reading => return Err(unsettled(owner, "a disc ID being read")),
+        DiscIdStepView::Reading => unsettled(owner, "a disc ID being read"),
         DiscIdStepView::Absent => "absent",
         DiscIdStepView::NotCdAudio => "not_cd_audio",
         DiscIdStepView::Read { .. } => "read",
@@ -75,7 +74,7 @@ pub(super) fn step_columns<'a>(
         BarcodeStepView::NoCodes => "no_codes",
         BarcodeStepView::Rows { scanning: true, .. } if running => "scanning",
         BarcodeStepView::Rows { scanning: true, .. } => {
-            return Err(unsettled(owner, "barcodes still being scanned"))
+            unsettled(owner, "barcodes still being scanned")
         }
         BarcodeStepView::Rows { scanning: false, .. } => "rows",
     };
@@ -83,13 +82,13 @@ pub(super) fn step_columns<'a>(
         CatalogStepView::NoneFound => "none_found",
         CatalogStepView::Numbers { scanning: true, .. } if running => "scanning",
         CatalogStepView::Numbers { scanning: true, .. } => {
-            return Err(unsettled(owner, "catalog numbers still being scanned"))
+            unsettled(owner, "catalog numbers still being scanned")
         }
         CatalogStepView::Numbers { scanning: false, .. } => "numbers",
     };
     let isrc = match &ledger.isrc {
         IsrcStepView::Reading if running => "reading",
-        IsrcStepView::Reading => return Err(unsettled(owner, "ISRCs being read")),
+        IsrcStepView::Reading => unsettled(owner, "ISRCs being read"),
         IsrcStepView::Absent => "absent",
         IsrcStepView::Read { .. } => "read",
     };
@@ -99,14 +98,12 @@ pub(super) fn step_columns<'a>(
         SearchStepView::Waiting { album, artist } if running => {
             ("waiting", Some(album.as_str()), Some(artist.as_str()))
         }
-        SearchStepView::Waiting { .. } => {
-            return Err(unsettled(owner, "a title search waiting to go out"))
-        }
+        SearchStepView::Waiting { .. } => unsettled(owner, "a title search waiting to go out"),
         SearchStepView::Searched { album, artist, .. } => {
             ("searched", Some(album.as_str()), Some(artist.as_str()))
         }
     };
-    Ok(StepColumns {
+    StepColumns {
         disc_id: Some(disc_id),
         barcode: Some(barcode),
         catalog: Some(catalog),
@@ -114,7 +111,7 @@ pub(super) fn step_columns<'a>(
         search: Some(search),
         search_album,
         search_artist,
-    })
+    }
 }
 
 /// Clear the ledger rows `owner` holds; the lookups and the releases they
@@ -257,8 +254,8 @@ fn store_lookup(
     let (answer, reason, failure) = match lookup {
         LookupView::Queued if running => ("queued", None, None),
         LookupView::LookingUp if running => ("looking_up", None, None),
-        LookupView::Queued => return Err(unsettled(owner, "a queued lookup")),
-        LookupView::LookingUp => return Err(unsettled(owner, "a lookup under way")),
+        LookupView::Queued => unsettled(owner, "a queued lookup"),
+        LookupView::LookingUp => unsettled(owner, "a lookup under way"),
         LookupView::NotAsked { reason } => (
             "not_asked",
             Some(match reason {
@@ -293,19 +290,20 @@ fn store_lookup(
         let Some((match_position, held)) =
             matches.get(&(release.source, release.release_id.as_str()))
         else {
-            return Err(DbError::Message(format!(
+            panic!(
                 "a ledger cell of {owner} lists {} {}, which no match row holds",
                 release.source.as_str(),
                 release.release_id
-            )));
+            );
         };
-        if *held != release {
-            return Err(DbError::Message(format!(
-                "a ledger cell of {owner} lists {} {} as other than its match row holds it",
-                release.source.as_str(),
-                release.release_id
-            )));
-        }
+        // The verdict's lookups list the releases its matches hold, written
+        // before them in the same write.
+        assert!(
+            *held == release,
+            "a ledger cell of {owner} lists {} {} as other than its match row holds it",
+            release.source.as_str(),
+            release.release_id
+        );
         sql.execute(
             "INSERT INTO import_candidate_lookup_release \
                  (content_hash, identify_run, step, position, cell, ordinal, match_position) \

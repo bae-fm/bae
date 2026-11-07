@@ -94,20 +94,36 @@ async fn a_run_s_published_state_goes_in_the_write_that_moves_its_standing_off_i
     assert!(stored_runs(&tables, key).await.is_empty());
 }
 
-/// A run publishes no `Idle` while it runs: a folder candidate's run
-/// publishing one is refused.
+/// A run publishes no `Idle` while it runs, so a folder candidate's run
+/// publishing one is a bug of bae's own: the write fails with the bug the
+/// store reports.
 #[tokio::test]
-async fn a_folder_candidate_s_run_publishing_idle_is_refused() {
-    let (tables, key, files, _tmp) = scanned().await;
-    admit(&tables, &key, &files, Admission::Automatic).await;
-    report(&tables, &key, &files, run(1), triangulating()).await;
+async fn a_folder_candidate_s_run_publishing_idle_is_a_bug() {
+    for starting in [false, true] {
+        let (db, _tmp, heard) =
+            bae_store::test_fixtures::temp_db_hearing_bugs(crate::TEST_SCHEMA).await;
+        let (_, content_hash) = stored_pane_candidate(&db).await;
+        let files = CandidateFiles { content_hash, file_edit_revision: 0 };
+        let tables = ImportTables::new(db);
+        let key = pane_candidate_key();
+        admit(&tables, &key, &files, Admission::Automatic).await;
+        report(&tables, &key, &files, run(1), triangulating()).await;
 
-    assert!(tables.publish_candidate_run(&key, run(1), &IdentifyState::Idle, None).await.is_err());
-    assert!(tables.start_candidate_run(&key, &files, run(2), &IdentifyState::Idle).await.is_err());
-    assert_eq!(
-        stored_runs(&tables, &key).await,
-        BTreeMap::from([(run(1), published(triangulating()))])
-    );
+        let failed = match starting {
+            true => tables
+                .start_candidate_run(&key, &files, run(2), &IdentifyState::Idle)
+                .await
+                .map(|_| ()),
+            false => tables
+                .publish_candidate_run(&key, run(1), &IdentifyState::Idle, None)
+                .await
+                .map(|_| ()),
+        }
+        .unwrap_err();
+
+        let bug = crate::tables::tests::the_reported_bug(&heard, &failed);
+        assert!(bug.contains("published no state"), "{bug}");
+    }
 }
 
 /// No run outlives the process: opening the library empties the runs table,

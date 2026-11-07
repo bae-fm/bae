@@ -156,11 +156,7 @@ pub(super) fn store_match(
         | (
             MatchOwner::Search(_),
             Written::Offered(..) | Written::NarrowedOut(_) | Written::Unlisted,
-        ) => {
-            return Err(DbError::Message(format!(
-                "{owner:?} stores a release listed as no owner of its kind lists one"
-            )))
-        }
+        ) => panic!("{owner:?} stores a release listed as no owner of its kind lists one"),
     };
     // A search's release hangs off the part that answered with it, which
     // holds releases only while it stands answered.

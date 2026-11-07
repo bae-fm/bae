@@ -328,11 +328,10 @@ pub(super) fn save_preparation_on(
     match extras.pane {
         CandidatePaneWrite::Keep => {}
         CandidatePaneWrite::OpenOnDraftUnlessCheckFailed => {
-            let identification = prep.identification.as_ref().ok_or_else(|| {
-                DbError::Message(format!(
-                    "candidate {content_hash} opens on a result it stores none of"
-                ))
-            })?;
+            // Only a save that stores an identification asks to open on it.
+            let identification = prep.identification.as_ref().unwrap_or_else(|| {
+                panic!("candidate {content_hash} opens on a result it stores none of")
+            });
             if bae_identify::VerdictSummary::of(
                 &identification.verdict,
                 identification.kept_own_draft,

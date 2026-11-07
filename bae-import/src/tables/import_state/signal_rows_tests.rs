@@ -142,10 +142,11 @@ async fn every_settled_signal_shape_round_trips() {
     }
 }
 
-/// A signal still scanning is refused, and the whole write, verdict included,
-/// rolls back.
+/// A verdict is written once extraction stopped scanning, so one whose
+/// signals still scan is a bug of bae's own: its write fails with the bug the
+/// store reports.
 #[tokio::test]
-async fn a_scanning_signal_is_refused_and_writes_nothing() {
+async fn a_verdict_with_a_scanning_signal_is_a_bug() {
     for scanning in [
         Signals {
             origin: bae_catalogs::AudioOrigin::default(),
@@ -166,12 +167,12 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             track_titles: Vec::new(),
         },
     ] {
-        let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
-        let tables = crate::tables::ImportTables::new(db.clone());
+        let (db, _tmp, heard) =
+            bae_store::test_fixtures::temp_db_hearing_bugs(crate::TEST_SCHEMA).await;
         let candidate = pane_candidate();
         let hash = store_candidate_state(&db, &candidate, &pane_candidate_path()).await;
 
-        let error = crate::tables::ImportTables::new(db.clone())
+        let failed = crate::tables::ImportTables::new(db.clone())
             .store_verdict(&NewImportCandidateVerdict {
                 content_hash: hash.to_string(),
                 file_edit_revision: 0,
@@ -183,16 +184,8 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             })
             .await
             .expect_err("a scanning signal is not storable");
-        assert!(
-            error.to_string().contains("still scanning"),
-            "{error} should name what was refused"
-        );
-        let state = tables
-            .load_import_candidate_state(&hash)
-            .await
-            .unwrap()
-            .expect("the discovered candidate remains");
-        assert!(state.identify.is_none(), "the refused write left no verdict");
+        let bug = crate::tables::tests::the_reported_bug(&heard, &failed);
+        assert!(bug.contains("still scanning"), "{bug}");
     }
 }
 
