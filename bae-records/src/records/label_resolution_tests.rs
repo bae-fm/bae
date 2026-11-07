@@ -15,12 +15,16 @@ async fn label_count(store: &Store) -> i64 {
 async fn a_label_is_the_library_label_holding_its_catalog_id() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
-    let held = add_label(&db, "Warner Strategic Marketing", None, Some("7190")).await;
+    let held = add_label(&db, "Label Name Held", None, Some("7190")).await;
 
     write(
         &db,
         vec![
-            with_ids(label(Some("Rhino"), Some("R2 1")), Some("mb-rhino"), Some("7190")),
+            with_ids(
+                label(Some("Label Name Credited"), Some("R2 1")),
+                Some("mb-credited"),
+                Some("7190"),
+            ),
             label(None, Some("XY 3")),
         ],
     )
@@ -31,12 +35,12 @@ async fn a_label_is_the_library_label_holding_its_catalog_id() {
     assert_eq!(ids_of(&rows), [Some(held.as_str()), None]);
     assert_eq!(rows[1].1.as_deref(), Some("XY 3"));
     let held = stored_label(&db, &held).await;
-    assert_eq!(held.name, "Warner Strategic Marketing");
-    assert_eq!(held.musicbrainz_label_id.as_deref(), Some("mb-rhino"));
+    assert_eq!(held.name, "Label Name Held");
+    assert_eq!(held.musicbrainz_label_id.as_deref(), Some("mb-credited"));
     assert_eq!(label_count(&db).await, 1);
     assert_eq!(
         read_labels(&records).await,
-        vec![label(Some("Warner Strategic Marketing"), Some("R2 1")), label(None, Some("XY 3"))]
+        vec![label(Some("Label Name Held"), Some("R2 1")), label(None, Some("XY 3"))]
     );
 }
 
@@ -46,27 +50,27 @@ async fn a_label_is_the_library_label_holding_its_catalog_id() {
 #[tokio::test]
 async fn a_label_without_ids_is_the_one_library_label_of_its_name_key() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
-    let rhino = add_label(&db, "Rhino Records", None, None).await;
+    let alpha = add_label(&db, "Label Name Alpha Records", None, None).await;
     let held = [
-        rhino.clone(),
-        add_label(&db, "Columbia", None, Some("1866")).await,
-        add_label(&db, "Columbia Records", None, Some("5320")).await,
-        add_label(&db, "Harbor", None, Some("10")).await,
+        alpha.clone(),
+        add_label(&db, "Label Name Beta", None, Some("1866")).await,
+        add_label(&db, "Label Name Beta Records", None, Some("5320")).await,
+        add_label(&db, "Label Name Gamma", None, Some("10")).await,
     ];
 
     write(
         &db,
         vec![
-            label(Some("RHINO"), None),
-            label(Some("Columbia"), None),
-            with_ids(label(Some("Harbor Music"), None), None, Some("11")),
+            label(Some("LABEL NAME ALPHA"), None),
+            label(Some("Label Name Beta"), None),
+            with_ids(label(Some("Label Name Gamma Music"), None), None, Some("11")),
         ],
     )
     .await
     .unwrap();
 
     let rows = placed(&db).await;
-    assert_eq!(rows[0].0.as_deref(), Some(rhino.as_str()));
+    assert_eq!(rows[0].0.as_deref(), Some(alpha.as_str()));
     for new in [&rows[1].0, &rows[2].0] {
         assert!(!held.contains(new.as_ref().unwrap()));
     }
@@ -107,14 +111,14 @@ async fn one_write_makes_one_new_label_of_two_places_naming_it() {
 async fn an_edit_keeps_the_label_the_release_names_by_its_name() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     let held = [
-        add_label(&db, "Columbia", None, Some("1866")).await,
-        add_label(&db, "Columbia", None, Some("5320")).await,
+        add_label(&db, "Label Name Beta", None, Some("1866")).await,
+        add_label(&db, "Label Name Beta", None, Some("5320")).await,
     ];
-    write(&db, vec![label(Some("Columbia"), Some("C 1"))]).await.unwrap();
+    write(&db, vec![label(Some("Label Name Beta"), Some("C 1"))]).await.unwrap();
     let made = placed(&db).await[0].0.clone().unwrap();
     assert!(!held.contains(&made));
 
-    write(&db, vec![label(Some("Columbia"), Some("C 2"))]).await.unwrap();
+    write(&db, vec![label(Some("Label Name Beta"), Some("C 2"))]).await.unwrap();
 
     assert_eq!(placed(&db).await, vec![(Some(made), Some("C 2".to_string()))]);
     assert_eq!(label_count(&db).await, 3);
