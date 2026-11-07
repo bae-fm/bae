@@ -745,6 +745,7 @@ ImageHold = "RemoteImageHost"
 "bae-track-audio/src/data_source.rs" = [
     "CovenFileReader::for_playback",
     "CovenFileReader::new",
+    "FetchArbiter::new",
 ]
 "bae-track-audio/src/data_source/local.rs" = ["LocalReader::new"]
 "bae-track-audio/src/storage_wait.rs" = ["StorageWaits::new"]
