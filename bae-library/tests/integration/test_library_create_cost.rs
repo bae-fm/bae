@@ -50,4 +50,9 @@ async fn creating_a_library_costs() {
     }
     times.sort();
     eprintln!("median of {CREATIONS} library creations: {:?}", times[CREATIONS / 2]);
+    bae_store::test_fixtures::window_cost::report_cost(
+        "create_library",
+        times[CREATIONS / 2].as_secs_f64() * 1000.0,
+        "ms",
+    );
 }

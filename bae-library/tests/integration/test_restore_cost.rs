@@ -221,6 +221,17 @@ async fn restore_cost(library: Library) {
         "restored {tracks} tracks in {restored_in:?} (floor {floor}, latency {:?})",
         library.latency
     );
+    bae_store::test_fixtures::window_cost::report_cost(
+        &format!(
+            "restore/{}_albums/{}_edits/{}/latency_{}ms",
+            library.albums,
+            library.edits,
+            if floor { "from_floor" } else { "from_first_slot" },
+            library.latency.as_millis(),
+        ),
+        restored_in.as_secs_f64() * 1000.0,
+        "ms",
+    );
     restored.close().await.unwrap();
 }
 

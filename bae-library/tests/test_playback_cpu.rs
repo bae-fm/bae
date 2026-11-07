@@ -461,6 +461,17 @@ async fn assert_playback_efficient(fixture: &mut PlaybackTestFixture, label: &st
     let playback_factor = measure_playback_realtime_factor(fixture, label).await;
 
     let multiple = playback_factor / decode_factor;
+    let metric = label.replace('/', "_").to_lowercase();
+    bae_store::test_fixtures::window_cost::report_cost(
+        &format!("{metric}/cpu_seconds_per_audio_second"),
+        playback_factor,
+        "ratio",
+    );
+    bae_store::test_fixtures::window_cost::report_cost(
+        &format!("{metric}/multiple_of_a_bare_decode"),
+        multiple,
+        "ratio",
+    );
     eprintln!(
         "{label}: playback costs {multiple:.2}x a bare decode of the same audio \
          (relative max {MAX_DECODE_MULTIPLE:.1}x; absolute max {:.1}% of one core)",

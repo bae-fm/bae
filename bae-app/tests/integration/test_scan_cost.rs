@@ -148,6 +148,21 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
         Shape::Flat => "flat",
         Shape::OneTree => "one tree",
     };
+    let name =
+        format!("{}/{count}", layout.replace(' ', "_") + if list_open { "_list_open" } else { "" });
+    bae_store::test_fixtures::window_cost::report_cost(
+        &format!("{name}/total"),
+        total.as_secs_f64() * 1_000.0,
+        "ms",
+    );
+    // The last tenth of the scan, where a cost that grows with what is stored
+    // shows as later folders costing more.
+    let last = (announced[count - 1] - announced[count - stretch - 1]).as_secs_f64() * 1_000.0;
+    bae_store::test_fixtures::window_cost::report_cost(
+        &format!("{name}/last_tenth_per_folder"),
+        last / stretch as f64,
+        "ms",
+    );
     println!(
         "{layout}{} {count} folders: {:.1} s, {:.2} ms a folder; \
          ms a folder by tenth of the scan: {}",

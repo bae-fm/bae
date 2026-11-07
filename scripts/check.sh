@@ -95,6 +95,7 @@ check "owner construction check"   scripts/owner-construction-check.sh
 check "UniFFI runtime boundary"      scripts/check-uniffi-runtime-boundary.py
 check "every Rust file compiled"    sh -c 'python3 scripts/check-rust-files-compiled.py && python3 scripts/tests/check-rust-files-compiled-test.py'
 check "test keychain"                sh -c 'python3 scripts/check-test-keychain.py && python3 scripts/tests/check-test-keychain-test.py'
+check "performance suite"            python3 scripts/tests/perf-test.py
 check "macOS native Cargo cache"     scripts/check-macos-build-cache.sh
 check "mobile host Cargo cache"      scripts/check-mobile-build-cache.sh
 check "Xcode build trees"           scripts/check-xcode-trees.py

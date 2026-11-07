@@ -65,6 +65,13 @@ pub fn report(
     );
 }
 
+/// One measured number that is not a window's: a line `scripts/perf.sh` reads,
+/// `metric` naming it without spaces and `unit` saying what `value` counts
+/// (`ms`, `ratio`, `count`), lower being better in every unit.
+pub fn report_cost(metric: &str, value: f64, unit: &str) {
+    eprintln!("COST metric={metric} value={value:.4} unit={unit}");
+}
+
 /// Reads a list's rows under a seek, at most a limit from an offset, each
 /// with its key: what a list's live query reads its windows with.
 pub type Rows<R> =

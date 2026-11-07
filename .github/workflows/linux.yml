@@ -77,6 +77,9 @@ jobs:
         python3 scripts/check-test-keychain.py
         python3 scripts/tests/check-test-keychain-test.py
 
+    - name: Test the performance suite's comparison
+      run: python3 scripts/tests/perf-test.py
+
     - name: Test the string catalog merge driver
       run: python3 scripts/tests/merge-xcstrings-test.py
 

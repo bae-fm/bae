@@ -224,6 +224,14 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         [("candidate pane", pane_counted), ("list", list_counted), ("progress", progress_counted)]
     {
         println!("  {name:14} {:5} ({:5}, {:5})", counted.runs, counted.writes, counted.equal);
+        let metric = name.replace(' ', "_");
+        for (kind, count) in [("runs", counted.runs), ("caused_by_a_write", counted.writes)] {
+            bae_store::test_fixtures::window_cost::report_cost(
+                &format!("{metric}/{kind}"),
+                count as f64,
+                "count",
+            );
+        }
     }
 
     // Coven reruns a query for a commit only when the commit changes a row
