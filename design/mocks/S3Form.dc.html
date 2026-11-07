@@ -45,8 +45,8 @@ class Component extends DCLogic {
       denied: 'This key can\u2019t use the bucket. Give it read and write access, or use another key.'
     }[error] || '';
     const bucketError = {
-      bucket: 'No bucket by this name at this endpoint.',
-      occupied: 'This bucket holds other files. Use an empty bucket for this library.'
+      bucket: 'The storage location was not found.',
+      occupied: 'Use an empty bucket or folder that only this library uses.'
     }[error] || '';
     const regionError = error === 'region' ? 'The region or endpoint doesn\u2019t match this bucket.' : '';
     return {
