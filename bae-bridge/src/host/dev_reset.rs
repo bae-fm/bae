@@ -133,7 +133,9 @@ impl BridgeHost {
 
         steps.uncounted(crate::types::BridgeSetupStep::ConnectingStorage);
         tracing::info!("dev reset: connecting S3 storage");
-        app.clone().save_sync_config(profile.sync_config, device_name.to_string(), None).await?;
+        // Coven's steps go to the reset's own stream; the first line stays
+        // Connecting storage until coven reports its first.
+        app.save_storage(profile.sync_config, device_name, steps).await?;
 
         tracing::info!("dev reset: saving the Discogs key");
         match app.clone().save_discogs_token(profile.discogs_token).await? {

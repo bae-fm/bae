@@ -153,10 +153,7 @@ forward! { async this => {
     /// `setup`'s stream when the app shows the setup.
     fn save_sync_config(config_data: BridgeSaveSyncConfig, device_name: String, setup: Option<std::sync::Arc<crate::BridgeLibrarySetup>>) -> crate::types::BridgeStorageSetup {
         let steps = crate::screens::SetupFeed::new(setup).steps();
-        Ok(this
-            .services
-            .save_s3_config(config_data.into_core()?, &device_name, &|progress| steps.storage(progress))
-            .await.map(crate::types::BridgeStorageSetup::from_core)?)
+        this.save_storage(config_data, &device_name, &steps).await
     }
 
     /// This person's restore code to type, and for the QR the code that also

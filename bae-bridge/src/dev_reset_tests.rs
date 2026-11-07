@@ -39,7 +39,8 @@ fn the_profile_crosses_with_its_bucket() {
 /// A dev reset removes every library, empties bae's directory, creates the
 /// profile's library and sets it up, writing each step as it starts; the
 /// first failure, here storage that refuses the connection, stops it and is
-/// returned, with the new library closed.
+/// returned, with the new library closed. Storage's steps, as coven reports
+/// them, follow Connecting storage on the same stream.
 #[cfg(desktop)]
 #[test]
 fn a_dev_reset_reports_each_step_until_one_fails() {
@@ -97,6 +98,14 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
             step(Step::CreatingLibrary, 0, 0),
             step(Step::SettingUpLibrary, 0, 0),
             step(Step::ConnectingStorage, 0, 0),
+            // Coven's own steps follow, on the same stream, until it fails.
+            Some(BridgeFastValue::StorageSetupProgress {
+                progress: crate::types::BridgeStorageSetupProgress {
+                    step: crate::types::BridgeStorageSetupStep::CheckingLocation,
+                    done: 0,
+                    total: 1,
+                }
+            }),
             None,
         ]
     );

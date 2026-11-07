@@ -65,6 +65,21 @@ extension BridgeSetupProgress: ProgressStep {
     }
 }
 
+extension SetupLine: ProgressStep {
+    var title: String {
+        switch self {
+        case .step(let progress): progress.title
+        case .storage(let progress): progress.title
+        }
+    }
+    var fraction: Double? {
+        switch self {
+        case .step(let progress): progress.fraction
+        case .storage(let progress): progress.fraction
+        }
+    }
+}
+
 /// The step a library's open, a setup call, a close or an apply of a catalog
 /// release runs, over a bar of how much of it is done, set straight from the
 /// call's stream once per display frame. Between steps it is hidden. A step
@@ -278,11 +293,33 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
     #Preview("Removing libraries") {
         StepProgressLine(
             steps:
-                LatestStream.setupProgress(
-                    holding: BridgeSetupProgress(
-                        step: .removingLibraries,
-                        done: 1,
-                        total: 3
+                LatestStream.setupLines(
+                    holding: .step(
+                        BridgeSetupProgress(
+                            step: .removingLibraries,
+                            done: 1,
+                            total: 3
+                        )
+                    )
+                )
+                .only
+        ) {
+            EmptyView()
+        }
+        .frame(width: 320)
+        .padding()
+    }
+
+    #Preview("Setting storage up") {
+        StepProgressLine(
+            steps:
+                LatestStream.setupLines(
+                    holding: .storage(
+                        BridgeStorageSetupProgress(
+                            step: .connecting,
+                            done: 1,
+                            total: 3
+                        )
                     )
                 )
                 .only

@@ -468,17 +468,20 @@ extension LatestStream where Value == BridgeOpenProgress {
     }
 }
 
-extension LatestStream where Value == BridgeSetupProgress {
-    /// How far a setup call has come, while it runs a step; a preview's
-    /// holds `value` and nothing feeds it.
-    public static func setupProgress(holding value: Value? = nil)
+extension LatestStream where Value == SetupLine {
+    /// How far a setup call has come, while it runs a step of its own or one
+    /// coven runs setting storage up; a preview's holds `value` and nothing
+    /// feeds it.
+    public static func setupLines(holding value: Value? = nil)
         -> LatestStream
     {
         LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {
-            if case .setupProgress(let progress) = $0 {
-                progress
-            }
-            else {
+            switch $0 {
+            case .setupProgress(let progress):
+                .step(progress)
+            case .storageSetupProgress(let progress):
+                .storage(progress)
+            default:
                 nil
             }
         }

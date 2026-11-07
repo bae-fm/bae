@@ -327,6 +327,22 @@ impl AppHandle {
         })
     }
 
+    /// Set S3 up as the library's storage, writing each step coven runs into
+    /// `steps`: the exported `save_sync_config` and the dev reset both set
+    /// storage up through it.
+    pub(crate) async fn save_storage(
+        &self,
+        config: BridgeSaveSyncConfig,
+        device_name: &str,
+        steps: &crate::screens::SetupSteps,
+    ) -> Result<crate::types::BridgeStorageSetup, BridgeError> {
+        Ok(self
+            .services
+            .save_s3_config(config.into_core()?, device_name, &|progress| steps.storage(progress))
+            .await
+            .map(crate::types::BridgeStorageSetup::from_core)?)
+    }
+
     async fn run_exported<T, Build, Fut>(
         self: std::sync::Arc<Self>,
         operation: &'static str,
