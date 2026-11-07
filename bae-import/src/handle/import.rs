@@ -107,7 +107,8 @@ impl ImportServiceHandle {
 
     /// Record a refused start as `candidate_key`'s failed import. No caller
     /// waits to hear how that went, so a read or write that fails is a bug,
-    /// reported with the refusal it was recording.
+    /// reported with the refusal it was recording; a write refused because the
+    /// candidate changed is not.
     async fn record_failed_start(
         &self,
         candidate_key: &crate::CandidateKey,
@@ -128,9 +129,21 @@ impl ImportServiceHandle {
                 return;
             }
         };
+        self.record_failed_start_of(&candidate, candidate_key, error).await;
+    }
+
+    /// [`Self::record_failed_start`] for `candidate` as it was read. The
+    /// candidate may have changed since: its state left, or its files moved
+    /// past the revision read; that refusal is logged, not reported as a bug.
+    pub(super) async fn record_failed_start_of(
+        &self,
+        candidate: &crate::folder_scanner::FolderCandidate,
+        candidate_key: &crate::CandidateKey,
+        error: &crate::ImportError,
+    ) {
         let failure =
             crate::ImportFailure::of(error, bae_store::utc_now(self.services.clock.as_ref()));
-        if let Err(write) = self
+        match self
             .services
             .tables
             .save_import_candidate_failure(
@@ -140,11 +153,17 @@ impl ImportServiceHandle {
             )
             .await
         {
-            self.services.diagnostics.report_failure_as(
+            Ok(()) => {}
+            // The candidate changed meanwhile: an expected refusal, with no
+            // failure to record on it.
+            Err(crate::ImportError::CandidateState(refusal)) => warn!(
+                "{candidate_key} changed meanwhile; its refused import ({error}) has no failure to record: {refusal}"
+            ),
+            Err(write) => self.services.diagnostics.report_failure_as(
                 &format!("record the refused import of {candidate_key}"),
                 &write,
                 &format!("the import was refused: {error}; recording that failed: {write}"),
-            );
+            ),
         }
     }
 

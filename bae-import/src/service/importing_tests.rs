@@ -183,6 +183,30 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
     );
 }
 
+/// An import that fails after its candidate changed has no failure to record
+/// on it, and that refusal is not a bug: the crash reporter hears nothing of it.
+#[tokio::test]
+async fn a_failed_import_whose_candidate_changed_meanwhile_files_no_bug_report() {
+    let mut test = setup_import_service().await;
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    test.service.diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let folder = test.temp.path().join("album");
+    std::fs::create_dir_all(&folder).unwrap();
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
+    std::fs::copy(&fixture, folder.join("01 Track 1.flac")).unwrap();
+    let (candidate_key, mut stored) = store_scanned_candidate(&test, &folder, "Album").await;
+    // The revision the import was queued against; the stored state has moved on.
+    stored.candidate.file_edit_revision += 1;
+
+    test.service.queue_import_for_test(&candidate_key, "import-stale").await;
+    test.service
+        .do_import(local_import_command("import-stale", &candidate_key, &folder), stored)
+        .await;
+
+    assert_eq!(bugs.reports(), Vec::new());
+}
+
 /// The library album a person picks for an import to join: an album of its
 /// own holding one release of one track, credited to "Picked Artist".
 async fn picked_album(test: &TestService) -> bae_records::DbAlbum {

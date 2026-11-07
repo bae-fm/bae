@@ -67,8 +67,9 @@ impl ImportService {
             // claim: the two commit or roll back together, so no read sees
             // the import ended without its failure. No caller waits on the
             // worker, so a write that will not land is a bug, reported with
-            // the import's own failure, the one the person was waiting to see.
-            if let Err(write) = self
+            // the import's own failure, the one the person was waiting to see;
+            // a refusal because the candidate changed is not.
+            match self
                 .tables
                 .fail_candidate_import(
                     &content_hash,
@@ -79,11 +80,17 @@ impl ImportService {
                 )
                 .await
             {
-                self.diagnostics.report_failure_as(
+                Ok(()) => {}
+                // The candidate changed meanwhile: an expected refusal, with
+                // no failure to record on it.
+                Err(crate::ImportError::CandidateState(refusal)) => warn!(
+                    "{candidate_key} changed meanwhile; its failed import ({error}) has no failure to record: {refusal}"
+                ),
+                Err(write) => self.diagnostics.report_failure_as(
                     &format!("record the failed import of {candidate_key}"),
                     &write,
                     &format!("the import failed: {error}; recording that failed: {write}"),
-                );
+                ),
             }
 
             self.event_tx.send(crate::ImportEvent::ImportProgress {

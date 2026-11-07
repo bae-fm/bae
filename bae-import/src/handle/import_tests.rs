@@ -53,6 +53,32 @@ async fn a_file_changed_after_its_scan_fails_the_import_before_any_row() {
     shut_down(pick.handle).await;
 }
 
+/// A refused start whose candidate changed between the read and the write that
+/// records it is an expected refusal of that write: no bug is reported.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_refused_start_whose_candidate_changed_meanwhile_files_no_bug_report() {
+    let bugs = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let (parts, db, tmp) = setup_test_import_over(
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+        bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
+    )
+    .await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (candidate, key, _hash) = picked_candidate(&tables, &tmp, "Album").await;
+    let StoredCandidate { handle, mut candidate, key, .. } =
+        started(parts, db, candidate, key, tmp).await;
+    // The candidate as read, before its files moved past this revision.
+    candidate.file_edit_revision += 1;
+
+    handle
+        .record_failed_start_of(&candidate, &key, &crate::ImportError::CandidateImportInProgress)
+        .await;
+    shut_down(handle).await;
+
+    assert_eq!(bugs.reports(), Vec::new());
+}
+
 /// What the import writes is the draft: storing the release again after it
 /// was applied, its tracklist and credits changed by its editors, changes
 /// nothing the candidate imports (B2).

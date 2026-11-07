@@ -1629,6 +1629,8 @@ import. Turning import on imports nothing already identified. An automatic
 import that cannot start has nobody to tell, so the refusal is recorded as
 the release's failed import, where its row and pane show it, and one that is
 a bug (a store that fails, a row that is damaged) is also reported as a bug.
+A failed import, automatic or asked for, whose candidate changed meanwhile has
+no failure to record: that is logged, not reported as a bug.
 It records nothing when another import already holds the release, when this
 device already imported its files, or when the library is closing.
 
