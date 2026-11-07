@@ -5,8 +5,11 @@
 # The rule groups bae holds itself to: its crates depend only downward, no
 # struct exists only to be taken apart, each library table is written only
 # from its domain's homes (the [database] rows below), and an owner never
-# hands out what it holds.
-rules = ["component-bundles", "crate-dependencies", "database-boundary", "owner-dependencies"]
+# hands out what it holds. A capability (the capability_types below) is built
+# only at a composition root or inside a task made for one operation
+# (capability-construction), and handed on only along the paths the policy
+# lists (capability-boundaries).
+rules = ["capability-boundaries", "capability-construction", "component-bundles", "crate-dependencies", "database-boundary", "owner-dependencies"]
 
 # The code generator for the bindings answers only to the conventions.
 tools = ["bae-uniffi-bindgen"]
