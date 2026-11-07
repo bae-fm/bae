@@ -21,7 +21,6 @@ use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::track_stream::{create_track_stream_pair, ReadyReceiver, TrackStream};
 use bae_diagnostics::{Diagnostics, ReportedThread};
 use bae_track_audio::StreamDecodeParams;
-use bae_util::task_failure::blocking;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
@@ -260,7 +259,11 @@ impl StreamPipeline {
     /// a new pipeline can reuse the same buffers with the old decoder guaranteed
     /// gone. The buffers themselves are left uncancelled (the owner retains them
     /// across the seek).
-    pub(crate) async fn shutdown_for_seek(self, buffers: &[SharedSparseBuffer]) {
+    pub(crate) async fn shutdown_for_seek(
+        self,
+        diagnostics: &Diagnostics,
+        buffers: &[SharedSparseBuffer],
+    ) {
         // Drop the stream first so the audio callback stops pulling.
         drop(self.stream);
 
@@ -269,7 +272,8 @@ impl StreamPipeline {
             Err(_) => warn!("playback source lock poisoned during seek teardown; skipping cancel"),
         }
 
-        cancel_and_join_decoder(&self.cancel_token, buffers, self.decoder_handle).await;
+        cancel_and_join_decoder(diagnostics, &self.cancel_token, buffers, self.decoder_handle)
+            .await;
     }
 
     /// The output stream's report, if its device made one, that the stream
@@ -311,6 +315,7 @@ impl StreamPipeline {
 /// `cancel`), so a decoder parked writing a full ring also unparks. A decoder
 /// that panicked was reported on its own thread.
 pub(crate) async fn cancel_and_join_decoder(
+    diagnostics: &Diagnostics,
     cancel_token: &AtomicBool,
     buffers: &[SharedSparseBuffer],
     handle: ReportedThread,
@@ -321,7 +326,8 @@ pub(crate) async fn cancel_and_join_decoder(
     }
     // The join itself can't panic, so this fails only when the runtime is
     // shutting down under it.
-    if let Err(failed) = blocking("join a decoder thread", move || handle.join()).await {
+    if let Err(failed) = diagnostics.blocking("join a decoder thread", move || handle.join()).await
+    {
         warn!("{failed}");
     }
 }

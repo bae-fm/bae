@@ -7,7 +7,6 @@ use super::RemoteImageError;
 use bae_diagnostics::Diagnostics;
 use bae_util::content_type::ContentType;
 use bae_util::http::Http;
-use bae_util::task_failure::blocking;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, warn};
@@ -377,9 +376,10 @@ async fn read_disk(
     disk: Arc<DiskImageCache>,
     url: String,
 ) -> Result<Option<DiskImageEntry>, RemoteImageError> {
-    blocking("read the remote image cache", move || disk.get(&url))
+    diagnostics
+        .blocking("read the remote image cache", move || disk.get(&url))
         .await
-        .map_err(|failed| RemoteImageError::CacheTask(diagnostics.bug(failed)))
+        .map_err(RemoteImageError::CacheTask)
 }
 
 async fn write_disk(
@@ -388,9 +388,10 @@ async fn write_disk(
     url: String,
     entry: DiskImageEntry,
 ) -> Result<(), RemoteImageError> {
-    blocking("write the remote image cache", move || disk.put(&url, &entry))
+    diagnostics
+        .blocking("write the remote image cache", move || disk.put(&url, &entry))
         .await
-        .map_err(|failed| RemoteImageError::CacheTask(diagnostics.bug(failed)))
+        .map_err(RemoteImageError::CacheTask)
 }
 
 #[cfg(test)]

@@ -31,7 +31,7 @@ use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use bae_diagnostics::{Diagnostics, ReportedTask};
 use bae_track_audio::data_source::{AudioDataReader, LocalReader};
 use bae_track_audio::{PreviewTarget, SegmentDecodeParams, StreamDecodeParams};
-use bae_util::task_failure::{blocking, TaskFailed};
+use bae_util::task_failure::TaskFailed;
 use std::path::Path;
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
@@ -289,7 +289,7 @@ impl PreviewPlayer {
         // so the fresh decoder can reuse the retained buffer.
         let active = self.active.take().unwrap();
         active.listener_handle.abort();
-        active.pipeline.shutdown_for_seek(std::slice::from_ref(&buffer)).await;
+        active.pipeline.shutdown_for_seek(&self.diagnostics, std::slice::from_ref(&buffer)).await;
 
         let started = self.start_streaming(source, Some(position), was_paused, audio_device).await;
 
@@ -638,11 +638,11 @@ async fn probe_preview_audio(
     path: &Path,
 ) -> Option<bae_audio::ProbeResult> {
     let probe_path = path.to_path_buf();
-    let result = blocking("probe the file to preview", move || {
-        bae_audio::probe_audio_from_path(&probe_path)
-    })
-    .await
-    .map_err(|failed| diagnostics.bug(failed));
+    let result = diagnostics
+        .blocking("probe the file to preview", move || {
+            bae_audio::probe_audio_from_path(&probe_path)
+        })
+        .await;
     resolve_preview_probe(path, result)
 }
 

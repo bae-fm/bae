@@ -307,7 +307,7 @@ impl LibraryManager {
     /// Where a bug a coven call or live query carries goes as it arrives:
     /// the crash reporter.
     pub(crate) fn bugs(&self) -> coven::task::BugSinkRef {
-        std::sync::Arc::new(self.diagnostics.clone())
+        self.diagnostics.bug_sink()
     }
 
     /// Report a bug to the log and the platform's crash reporter.
@@ -322,6 +322,17 @@ impl LibraryManager {
         failed: bae_util::task_failure::TaskFailed,
     ) -> bae_util::task_failure::TaskFailed {
         self.diagnostics.bug(failed)
+    }
+
+    /// Run `work`, named `operation`, on the blocking pool, its panic
+    /// reported as a bug whether or not its caller still waits
+    /// ([`Diagnostics::blocking`]).
+    pub async fn blocking<T: Send + 'static>(
+        &self,
+        operation: &'static str,
+        work: impl FnOnce() -> T + Send + 'static,
+    ) -> Result<T, bae_util::task_failure::TaskFailed> {
+        self.diagnostics.blocking(operation, work).await
     }
 
     /// Report `bug`, work that panicked, and hand it back for the caller's

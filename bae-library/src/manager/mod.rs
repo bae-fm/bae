@@ -28,7 +28,7 @@ use bae_records::{DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef, LibraryI
 use bae_store::Store;
 use bae_sync_status::SyncStatus;
 use bae_types::release_storage::ReleaseStorageAction;
-use bae_util::task_failure::{blocking, caught, joined, Bug, TaskFailed};
+use bae_util::task_failure::{caught, joined, Bug, TaskFailed};
 use coven::ClockRef;
 use coven::IdSourceRef;
 

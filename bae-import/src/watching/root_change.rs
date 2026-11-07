@@ -83,15 +83,20 @@ pub(super) async fn root_change_of(
 ) -> RootChange {
     let root = root.to_path_buf();
     let changed: Vec<PathBuf> = changed.iter().map(|path| path.to_path_buf()).collect();
-    bae_util::task_failure::blocking("read what changed under a watched folder", move || {
-        let changed: Vec<&Path> = changed.iter().map(PathBuf::as_path).collect();
-        root_change(&root, &changed, holds_its_own_release)
-    })
-    .await
-    .unwrap_or_else(|failed| {
-        diagnostics.bug(failed);
-        RootChange::WholeRoot
-    })
+    match diagnostics
+        .blocking("read what changed under a watched folder", move || {
+            let changed: Vec<&Path> = changed.iter().map(PathBuf::as_path).collect();
+            root_change(&root, &changed, holds_its_own_release)
+        })
+        .await
+    {
+        Ok(change) => change,
+        // Reported as it failed; the whole root is read again.
+        Err(failed) => {
+            tracing::debug!("{failed}; reading the whole root again");
+            RootChange::WholeRoot
+        }
+    }
 }
 
 /// What `changed` (paths under `root`) asks to be read again.

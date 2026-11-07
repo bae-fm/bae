@@ -94,18 +94,18 @@ impl BridgeHost {
         let library_id = created.library_id();
 
         steps.uncounted(Step::SettingUpLibrary);
-        let app = bae_util::task_failure::blocking("start the new library", move || {
-            created.open(200, false)
-        })
-        .await
-        .map_err(|failed| BridgeError::unfinished(self.diagnostics.bug(failed)))??;
+        let app = self
+            .diagnostics
+            .blocking("start the new library", move || created.open(200, false))
+            .await
+            .map_err(BridgeError::unfinished)??;
         let set_up = self.set_up_dev_library(&app, profile, device_name, steps).await;
         let closing = app.clone();
-        let closed = bae_util::task_failure::blocking("close the new library", move || {
-            closing.close_library(None)
-        })
-        .await
-        .map_err(|failed| BridgeError::unfinished(self.diagnostics.bug(failed)))?;
+        let closed = self
+            .diagnostics
+            .blocking("close the new library", move || closing.close_library(None))
+            .await
+            .map_err(BridgeError::unfinished)?;
         set_up?;
         closed?;
         Ok(library_id)

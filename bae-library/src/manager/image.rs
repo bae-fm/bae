@@ -83,9 +83,10 @@ impl LibraryManager {
         // the stored bytes, their format, size and hash all describe the thumbnail,
         // not the source.
         // Decoding and re-encoding the image is CPU work.
-        let bytes = blocking("resize a cover", move || bae_util::stored_image::stored_jpeg(&bytes))
-            .await
-            .map_err(|failed| self.bug(failed))?
+        let bytes = self
+            .diagnostics
+            .blocking("resize a cover", move || bae_util::stored_image::stored_jpeg(&bytes))
+            .await?
             .map_err(|detail| bae_import::ImportError::CoverArt { detail })?;
         let library_image = DbLibraryImage::cover(release_id);
 

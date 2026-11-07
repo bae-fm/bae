@@ -205,14 +205,15 @@ impl AppServices {
             let import = self.inner.import.clone();
             // Both joins block until their threads exit, so they run off the
             // runtime rather than stall one of its threads.
-            bae_util::task_failure::blocking("stop identification and import", move || {
-                // Before the import worker's join, as in the drop: a cancelled
-                // candidate writes no row.
-                identification.stop();
-                import.stop_and_join();
-            })
-            .await
-            .map_err(|failed| self.inner.manager.bug(failed))?;
+            self.inner
+                .manager
+                .blocking("stop identification and import", move || {
+                    // Before the import worker's join, as in the drop: a
+                    // cancelled candidate writes no row.
+                    identification.stop();
+                    import.stop_and_join();
+                })
+                .await?;
         }
         Ok(())
     }

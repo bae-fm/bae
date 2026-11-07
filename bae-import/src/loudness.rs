@@ -603,11 +603,11 @@ pub(super) async fn measure_loudness(
                 let index = track.index;
                 let label = format!("{} (track {})", track.title, index + 1);
                 let track_diagnostics = diagnostics.clone();
-                let outcome = bae_util::task_failure::blocking(MEASURE_TRACK, move || {
-                    measure_track(&track, &streams, progress, &track_diagnostics)
-                })
-                .await
-                .map_err(|failed| diagnostics.bug(failed))?;
+                let outcome = diagnostics
+                    .blocking(MEASURE_TRACK, move || {
+                        measure_track(&track, &streams, progress, &track_diagnostics)
+                    })
+                    .await?;
                 match outcome {
                     TrackOutcome::Unreadable(error) => {
                         Err(crate::ImportError::SourceRead { track: label, error })

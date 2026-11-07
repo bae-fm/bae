@@ -34,6 +34,47 @@ fn bug_does_not_report_a_runtime_shutting_down() {
     assert!(reports.reports().is_empty());
 }
 
+/// A crash reporter that tells the test of each report as it arrives.
+struct HeardReports(tokio::sync::mpsc::UnboundedSender<(String, String)>);
+
+impl crate::BugReporter for HeardReports {
+    fn report(&self, operation: &str, detail: &str) {
+        self.0.send((operation.to_string(), detail.to_string())).expect("the test is listening");
+    }
+}
+
+/// Work on the blocking pool runs to its end after its caller stops waiting,
+/// and its panic still reaches the crash reporter. Sabotage: run it under
+/// `coven::task::blocking`, and the panic goes nowhere once the caller drops.
+#[tokio::test]
+async fn blocking_reports_a_panic_its_caller_stopped_waiting_for() {
+    let (heard_tx, mut heard) = tokio::sync::mpsc::unbounded_channel();
+    let diagnostics = Diagnostics::noop().reporting_bugs_to(Arc::new(HeardReports(heard_tx)));
+    let (started_tx, started) = tokio::sync::oneshot::channel();
+    let (go, wait) = std::sync::mpsc::channel::<()>();
+    let mut work = Box::pin(diagnostics.blocking("resize the cover", move || {
+        started_tx.send(()).expect("the test waits for the start");
+        wait.recv().expect("the test lets the work go on");
+        panic!("zero width");
+    }));
+    tokio::select! {
+        _ = &mut work => panic!("the work waits for the test"),
+        started = started => started.expect("the work started"),
+    }
+    // The caller stops waiting, and nothing else in the test holds the
+    // reporter: only the work running on can still report.
+    drop(work);
+    drop(diagnostics);
+    go.send(()).expect("the work is waiting");
+    let report = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, heard.recv())
+        .await
+        .expect("the work ends");
+    assert_eq!(
+        report,
+        Some(("resize the cover".to_string(), "resize the cover panicked: zero width".to_string()))
+    );
+}
+
 #[tokio::test]
 async fn spawn_reported_reports_a_panic_and_lets_its_owner_end_the_work() {
     let (diagnostics, reports) = reporting();

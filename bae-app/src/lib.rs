@@ -341,7 +341,7 @@ async fn open_store(
         }
         LibraryOpening::Open(handle) => handle,
     };
-    Ok(bae_store::Store::new(handle, clock, Arc::new(diagnostics.clone())))
+    Ok(bae_store::Store::new(handle, clock, diagnostics.bug_sink()))
 }
 
 /// The library a registered id names; an id that is no library's is not

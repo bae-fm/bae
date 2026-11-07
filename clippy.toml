@@ -6,4 +6,7 @@ disallowed-methods = [
     { path = "std::fs::File::try_lock", reason = "Unsupported on Android; use coven::FileLock" },
     { path = "std::fs::File::try_lock_shared", reason = "Unsupported on Android; use coven::FileLock" },
     { path = "std::fs::File::unlock", reason = "Unsupported on Android; use coven::FileLock" },
+    # A dropped caller of `blocking` loses its work's panic with the join
+    # handle; bae's work runs under Diagnostics::blocking, which reports it.
+    { path = "coven::task::blocking", reason = "use Diagnostics::blocking, or blocking_completing with a bug sink" },
 ]

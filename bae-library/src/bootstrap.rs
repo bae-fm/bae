@@ -344,7 +344,7 @@ async fn with_profile(
             bae_people::People::new(bae_store::Store::new(
                 handle.clone(),
                 clock,
-                std::sync::Arc::new(diagnostics.clone()),
+                diagnostics.bug_sink(),
             ))
             .create_profile(name)
             .await,
@@ -500,7 +500,7 @@ async fn settings_of_this_copy(
     let store = bae_store::Store::new(
         handle.clone(),
         std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(diagnostics.clone()),
+        diagnostics.bug_sink(),
     );
     let settings = bae_preferences::preferences(&store).await;
     let closed = store.close().await;

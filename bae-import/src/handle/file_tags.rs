@@ -64,8 +64,10 @@ impl ImportServiceHandle {
         } = stored;
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
         let file_edit_revision = candidate.file_edit_revision;
-        let snapshot =
-            bae_util::task_failure::blocking("read a candidate's file tags", move || {
+        let snapshot = self
+            .services
+            .diagnostics
+            .blocking("read a candidate's file tags", move || {
                 let observations = crate::file_tag_snapshot::observe_audio_files(&audio_files)?;
                 if let Some(snapshot) = stored_snapshot.filter(|snapshot| {
                     file_tag_snapshot_match(
@@ -84,8 +86,7 @@ impl ImportServiceHandle {
                     reader.as_ref(),
                 )
             })
-            .await
-            .map_err(|failed| self.services.diagnostics.bug(failed))??;
+            .await??;
         Ok(FileTagSnapshotRead { candidate, snapshot })
     }
 }

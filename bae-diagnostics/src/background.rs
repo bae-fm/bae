@@ -1,10 +1,14 @@
 //! A panic in work apart from its caller, reported as the bug it is.
 //!
-//! Three shapes, decided by who waits on the work:
+//! Four shapes, decided by who waits on the work:
 //!
-//! - Work a caller awaits joins through `bae_util::task_failure` (`blocking`,
-//!   `joined`, `caught`), and the caller hands the failure to
-//!   [`Diagnostics::bug`] before turning it into its own error.
+//! - Work a caller awaits joins through `bae_util::task_failure` (`joined`,
+//!   `caught`), and the caller hands the failure to [`Diagnostics::bug`]
+//!   before turning it into its own error.
+//! - Work on the blocking pool runs under [`Diagnostics::blocking`], to its
+//!   end even when its caller stops waiting: a panic is reported to a caller
+//!   still waiting as the first shape's is, and to the crash reporter once
+//!   none is.
 //! - Work nobody awaits runs under [`Diagnostics::spawn_reported`] or
 //!   [`Diagnostics::spawn_thread_reported`]: a panic is reported, and the
 //!   owner's `on_panic` ends what the work served so its reader sees it end.
@@ -13,7 +17,7 @@
 //!   be valid.
 
 use std::future::Future;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use bae_util::task_failure::{caught, caught_sync, Bug, TaskFailed};
 
@@ -29,6 +33,12 @@ impl coven::task::BugSink for Diagnostics {
 }
 
 impl Diagnostics {
+    /// This reporter as coven's bug sink: where a bug in work nobody waits
+    /// for goes.
+    pub fn bug_sink(&self) -> coven::task::BugSinkRef {
+        Arc::new(self.clone())
+    }
+
     /// Report `failed` when it is a panic, and hand it back for the caller's
     /// own error type. A runtime shutting down under the work is not a bug.
     pub fn bug(&self, failed: TaskFailed) -> TaskFailed {
@@ -42,6 +52,32 @@ impl Diagnostics {
                 );
                 TaskFailed::Shutdown(shutdown)
             }
+        }
+    }
+
+    /// Run `work`, named `operation`, on the blocking pool, where it runs to
+    /// its end even when its caller stops waiting. A panic in it is reported
+    /// either way: here, and handed back as `TaskFailed::Panicked`, to a
+    /// caller still waiting; to the crash reporter as coven's bugs in work
+    /// nobody waits for go, once none is (`coven::task::blocking_completing`).
+    /// The pool dropping it unstarted, as its runtime shuts down, comes back
+    /// as `TaskFailed::Shutdown`.
+    ///
+    /// The work's value is handed back whole, an error in it included: an
+    /// error a store call carries a bug in has reached the reporter already,
+    /// as the store's call returned.
+    pub async fn blocking<T: Send + 'static>(
+        &self,
+        operation: &'static str,
+        work: impl FnOnce() -> T + Send + 'static,
+    ) -> Result<T, TaskFailed> {
+        let completing = coven::task::blocking_completing(operation, self.bug_sink(), move || {
+            Ok::<T, std::convert::Infallible>(work())
+        });
+        match completing.await {
+            Ok(Ok(value)) => Ok(value),
+            Ok(Err(never)) => match never {},
+            Err(failed) => Err(self.bug(failed)),
         }
     }
 

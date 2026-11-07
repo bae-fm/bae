@@ -11,7 +11,7 @@
 
 use std::path::Path;
 
-use tracing::warn;
+use tracing::{debug, warn};
 
 /// How often a watched folder on a network volume is checked, and so how long
 /// a change made there from elsewhere can go unnoticed. Named here because the list tells the user
@@ -53,14 +53,18 @@ pub(crate) async fn volume_kind(
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> VolumeKind {
     let path = path.to_path_buf();
-    bae_util::task_failure::blocking("read which volume a folder is on", move || {
-        platform::volume_kind(&path)
-    })
-    .await
-    .unwrap_or_else(|failed| {
-        diagnostics.bug(failed);
-        VolumeKind::Local
-    })
+    match diagnostics
+        .blocking("read which volume a folder is on", move || platform::volume_kind(&path))
+        .await
+    {
+        Ok(kind) => kind,
+        // Reported as it failed; the folder is read as a platform that will
+        // not say is.
+        Err(failed) => {
+            debug!("{failed}; reading the folder as local");
+            VolumeKind::Local
+        }
+    }
 }
 
 /// When this directory was last touched, in nanoseconds since the epoch, or

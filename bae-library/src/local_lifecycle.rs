@@ -225,7 +225,7 @@ pub async fn unsent_before_removal(
     let store = bae_store::Store::new(
         handle,
         std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(diagnostics.clone()),
+        diagnostics.bug_sink(),
     );
     let unsent = store.unsent_before_removal().await;
     let closed = store.close().await;
@@ -466,9 +466,7 @@ async fn file_work<T: Send + 'static>(
     operation: &'static str,
     work: impl FnOnce() -> Result<T, LibraryError> + Send + 'static,
 ) -> Result<T, LibraryError> {
-    bae_util::task_failure::blocking(operation, work)
-        .await
-        .map_err(|failed| diagnostics.bug(failed))?
+    diagnostics.blocking(operation, work).await?
 }
 
 /// Keep the path in the error: a bare "Permission denied" names no file.

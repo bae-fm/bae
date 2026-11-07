@@ -419,9 +419,10 @@ async fn run_fast_pass_blocking<F>(
 where
     F: FnOnce() -> Result<FastPass, crate::ImportError> + Send + 'static,
 {
-    let pass = bae_util::task_failure::blocking("read a folder's signals", task)
+    let pass = diagnostics
+        .blocking("read a folder's signals", task)
         .await
-        .map_err(|failed| diagnostics.bug(failed).to_string())?;
+        .map_err(|failed| failed.to_string())?;
     pass.map_err(|error| {
         error!("signals: folder timing is invalid: {error}; aborting extraction");
         format!("folder timing is invalid: {error}")

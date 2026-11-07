@@ -117,23 +117,21 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
     async fn uninstall(&self, path: &Path) -> Result<FolderWatchSnapshot, String> {
         let watcher = self.folder_watcher.clone();
         let path = path.to_path_buf();
-        bae_util::task_failure::blocking("remove a folder's watch", move || {
-            watcher.uninstall(&path)
-        })
-        .await
-        .map_err(|failed| self.diagnostics.bug(failed).to_string())
+        self.diagnostics
+            .blocking("remove a folder's watch", move || watcher.uninstall(&path))
+            .await
+            .map_err(|failed| failed.to_string())
     }
 
     async fn reinstall(&self, path: &Path, snapshot: &FolderWatchSnapshot) -> Result<(), String> {
         let watcher = self.folder_watcher.clone();
         let path = path.to_path_buf();
         let snapshot = snapshot.clone();
-        bae_util::task_failure::blocking("restore a folder's watch", move || {
-            watcher.reinstall(&path, &snapshot)
-        })
-        .await
-        .map_err(|failed| self.diagnostics.bug(failed).to_string())?
-        .map_err(|error| error.to_string())
+        self.diagnostics
+            .blocking("restore a folder's watch", move || watcher.reinstall(&path, &snapshot))
+            .await
+            .map_err(|failed| failed.to_string())?
+            .map_err(|error| error.to_string())
     }
 
     async fn remove_durable_roots(

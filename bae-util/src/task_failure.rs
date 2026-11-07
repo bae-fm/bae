@@ -1,19 +1,21 @@
-//! Work run apart from its caller — on the blocking pool, as its own task, or
-//! as one message of a long-lived loop — whose panic comes back to that
-//! caller as a value instead of an unwind: coven's, which bae and coven share.
+//! Work run apart from its caller — as its own task, or as one message of a
+//! long-lived loop — whose panic comes back to that caller as a value instead
+//! of an unwind: coven's, which bae and coven share. Work on the blocking pool
+//! runs under bae-diagnostics' `Diagnostics::blocking`, which reports its
+//! panic even once its caller stops waiting.
 //!
 //! A panic turned into an `Err` at the nearest join lets the caller's own
 //! failure path run: the rollback, the cleanup and the "this import failed"
 //! record bae writes on `Err`, which an unwind would skip. The caller reports
-//! the panic as a bug (bae-library's `Diagnostics::bug`); this crate has no bug
-//! reporter of its own.
+//! the panic as a bug (bae-diagnostics' `Diagnostics::bug`); this crate has no
+//! bug reporter of its own.
 //!
 //! [`ReportedBug`] says whether a failure holds a bug that has already reached
 //! the crash reporter, so whoever meets the failure later doesn't report it
 //! again.
 
 pub use coven::task::CarriesBug;
-pub use coven::task::{blocking, caught, caught_sync, joined, panic_message, Bug, TaskFailed};
+pub use coven::task::{caught, caught_sync, joined, panic_message, Bug, TaskFailed};
 
 /// A failure holding a bug that has already reached the crash reporter, so
 /// whoever meets the failure later shows it and doesn't report it again.

@@ -3,7 +3,7 @@ use super::cover_image::ImportCover;
 use super::*;
 use crate::import_cancel::{ImportRunEnd, ImportStop};
 use crate::types::{ImportStep, TrackAudio};
-use bae_util::task_failure::{blocking, caught, TaskFailed};
+use bae_util::task_failure::{caught, TaskFailed};
 
 impl ImportService {
     pub(super) async fn do_import(&self, command: ImportCommand, expectation: ImportExpectation) {
@@ -152,11 +152,12 @@ impl ImportService {
             .into());
         }
         let identity_files = stored_candidate.files.release_files().cloned().collect::<Vec<_>>();
-        let audio_observations = blocking("validate the import's file identities", move || {
-            super::file_identity::validate_scanned_file_identities(&identity_files)
-        })
-        .await
-        .map_err(|failed| self.diagnostics.bug(failed))??;
+        let audio_observations = self
+            .diagnostics
+            .blocking("validate the import's file identities", move || {
+                super::file_identity::validate_scanned_file_identities(&identity_files)
+            })
+            .await??;
         let source_name = stored_candidate.name.to_string();
         let categorized = stored_candidate.files;
 
@@ -472,17 +473,17 @@ impl ImportService {
             let clock = self.clock.clone();
             let ids = self.ids.clone();
             let diagnostics = self.diagnostics.clone();
-            blocking("build the import's audio formats", move || {
-                super::build_audio_formats(
-                    &tracks,
-                    &file_ids,
-                    clock.as_ref(),
-                    ids.as_ref(),
-                    &diagnostics,
-                )
-            })
-            .await
-            .map_err(|failed| self.diagnostics.bug(failed))??
+            self.diagnostics
+                .blocking("build the import's audio formats", move || {
+                    super::build_audio_formats(
+                        &tracks,
+                        &file_ids,
+                        clock.as_ref(),
+                        ids.as_ref(),
+                        &diagnostics,
+                    )
+                })
+                .await??
         };
         let source_file_sizes: HashMap<PathBuf, u64> = discovered_files
             .iter()

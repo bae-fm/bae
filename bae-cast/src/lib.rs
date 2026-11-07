@@ -35,7 +35,7 @@ use bae_playback::renderer::{
 };
 use bae_playback::{PlaybackProgress, RemoteDevice, RemotePlayback};
 use bae_preferences::SubsonicCredential;
-use bae_util::task_failure::{blocking, caught, caught_sync, TaskFailed};
+use bae_util::task_failure::{caught, caught_sync, TaskFailed};
 use rand::RngCore;
 use tokio::runtime::Handle;
 use tokio_util::sync::CancellationToken;
@@ -584,12 +584,14 @@ impl CastController {
         {
             RendererConnection::Cast { addr, port } => {
                 let (addr, port) = (*addr, *port);
-                let channel = blocking("connect to the Cast device", move || {
-                    RustCastChannel::connect(addr, port)
-                })
-                .await
-                .map_err(|failed| CastError::Internal(self.diagnostics.bug(failed)))?
-                .map_err(|e| CastError::Connect(e.to_string()))?;
+                let channel = self
+                    .diagnostics
+                    .blocking("connect to the Cast device", move || {
+                        RustCastChannel::connect(addr, port)
+                    })
+                    .await
+                    .map_err(CastError::Internal)?
+                    .map_err(|e| CastError::Connect(e.to_string()))?;
                 (Box::new(channel), RendererFlavor::Cast)
             }
             RendererConnection::Dlna { av_transport_url, rendering_control_url } => {

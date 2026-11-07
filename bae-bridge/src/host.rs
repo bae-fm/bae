@@ -172,11 +172,10 @@ impl BridgeHost {
     /// [`Self::wait_for_closing`] from an async call on the host's runtime.
     pub(crate) async fn closed(self: &Arc<Self>, store: coven::StoreId) -> Result<(), BridgeError> {
         let host = Arc::clone(self);
-        bae_util::task_failure::blocking("wait for a library to close", move || {
-            host.wait_for_closing(store)
-        })
-        .await
-        .map_err(|failed| BridgeError::unfinished(self.diagnostics.bug(failed)))
+        self.diagnostics
+            .blocking("wait for a library to close", move || host.wait_for_closing(store))
+            .await
+            .map_err(BridgeError::unfinished)
     }
 
     /// Finish every recorded removal, on the caller's task, writing how many
@@ -303,7 +302,7 @@ impl BridgeHost {
         let diagnostics = diagnostics.core().clone();
         let coven = coven::Coven::in_memory_reporting_to(
             app_dir.core().coven_app_dir(),
-            Arc::new(diagnostics.clone()),
+            diagnostics.bug_sink(),
         );
         Self::start(diagnostics, app_dir, coven, bae_playback::AudioFocus::Unshared)
     }
@@ -584,7 +583,7 @@ fn installation(
     diagnostics: &Diagnostics,
     app_dir: &bae_app_dir::AppDir,
 ) -> Result<coven::Coven, BridgeError> {
-    app_dir.coven(Arc::new(diagnostics.clone())).map_err(|error| {
+    app_dir.coven(diagnostics.bug_sink()).map_err(|error| {
         diagnostics.event(TelemetryEvent::KeyringInitFailed {});
         BridgeError::Diagnostic {
             category: crate::types::BridgeErrorCategory::Keyring,

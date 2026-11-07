@@ -66,8 +66,8 @@ pub async fn resolve_release_identity(
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
     let track_lengths_ms: Vec<u64> = tracks.iter().map(|track| track.duration_ms).collect();
-    let (rip, formats) =
-        bae_util::task_failure::blocking("read a release's rip files", move || {
+    let (rip, formats) = diagnostics
+        .blocking("read a release's rip files", move || {
             let categorized = crate::folder_scanner::categorize_library_files(
                 files.into_iter().filter_map(|(file, original)| local_file(file, original?)),
             );
@@ -78,8 +78,7 @@ pub async fn resolve_release_identity(
                 .collect();
             (crate::rip_reading::read_library_rip_artifacts(&categorized), formats)
         })
-        .await
-        .map_err(|failed| diagnostics.bug(failed))?;
+        .await?;
     let audio =
         bae_identify::signals::AudioFacts::of(tracks.len() as u32, track_lengths_ms, &formats);
 
@@ -153,10 +152,11 @@ pub(crate) async fn resolve_release_artwork_paths(
         Ok(Some(file)) => match store.read_file(&file).await {
             Ok(bytes) => {
                 let staging_release = release_id.to_string();
-                match bae_util::task_failure::blocking("stage a cover for reading", move || {
-                    stage_cover_for_ocr(&staging_release, &bytes)
-                })
-                .await
+                match diagnostics
+                    .blocking("stage a cover for reading", move || {
+                        stage_cover_for_ocr(&staging_release, &bytes)
+                    })
+                    .await
                 {
                     Ok(Some((dir, cover_path))) => {
                         paths.push(cover_path);
@@ -166,7 +166,7 @@ pub(crate) async fn resolve_release_artwork_paths(
                     // A staging that panicked skips the cover, as one
                     // that failed does, reported as the bug it is.
                     Err(failed) => {
-                        diagnostics.bug(failed);
+                        debug!("{failed}; reading the release without its cover");
                         None
                     }
                 }

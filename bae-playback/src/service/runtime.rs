@@ -102,7 +102,13 @@ impl PlaybackService {
                     if let Some(output) = &self.output {
                         output.source.lock().unwrap().cancel();
                     }
-                    cancel_and_join_decoder(&decoder.cancel_token, &buffers, decoder.handle).await;
+                    cancel_and_join_decoder(
+                        &self.diagnostics,
+                        &decoder.cancel_token,
+                        &buffers,
+                        decoder.handle,
+                    )
+                    .await;
                 }
                 return Err(error);
             }
@@ -117,7 +123,13 @@ impl PlaybackService {
             }
             drop(handle);
             if let Some((decoder, buffers)) = outgoing_decoder {
-                cancel_and_join_decoder(&decoder.cancel_token, &buffers, decoder.handle).await;
+                cancel_and_join_decoder(
+                    &self.diagnostics,
+                    &decoder.cancel_token,
+                    &buffers,
+                    decoder.handle,
+                )
+                .await;
             }
             return Err(error);
         }
@@ -151,7 +163,13 @@ impl PlaybackService {
         );
 
         if let Some((decoder, buffers)) = outgoing_decoder {
-            cancel_and_join_decoder(&decoder.cancel_token, &buffers, decoder.handle).await;
+            cancel_and_join_decoder(
+                &self.diagnostics,
+                &decoder.cancel_token,
+                &buffers,
+                decoder.handle,
+            )
+            .await;
         }
 
         self.install_active_track(
@@ -713,8 +731,10 @@ impl PlaybackService {
         let playback_queue = PlaybackQueue::new(queue_tables);
         let progress_handle_for_completion = progress_handle.clone();
         let service_arbiter = arbiter.clone();
-        let worker =
-            WorkerThread::spawn("playback service thread", move |command_tx, command_rx| {
+        let worker = WorkerThread::spawn(
+            "playback service thread",
+            diagnostics.bug_sink(),
+            move |command_tx, command_rx| {
                 let command_tx_for_completion = command_tx.clone();
                 let follower_diagnostics = diagnostics.clone();
                 runtime_handle.spawn(async move {
@@ -811,7 +831,8 @@ impl PlaybackService {
                         service.run().await;
                     });
                 })
-            });
+            },
+        );
         PlaybackHandle::new(worker, progress_handle, arbiter, playing_bytes_rx)
     }
 

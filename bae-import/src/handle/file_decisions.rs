@@ -25,11 +25,13 @@ impl ImportServiceHandle {
         sheet_file_id: String,
     ) -> Result<Vec<crate::folder_scanner::SheetReferenceOptions>, crate::ImportError> {
         let (files, _) = self.folder_files_for_binding(&candidate_key).await?;
-        bae_util::task_failure::blocking("offer a sheet's audio bindings", move || {
-            files.sheet_binding_options(&sheet_file_id)
-        })
-        .await
-        .map_err(|failed| self.services.diagnostics.bug(failed).into())
+        self.services
+            .diagnostics
+            .blocking("offer a sheet's audio bindings", move || {
+                files.sheet_binding_options(&sheet_file_id)
+            })
+            .await
+            .map_err(Into::into)
     }
 
     /// Bind a FILE reference of one of a candidate's track sheets to an audio
@@ -237,16 +239,18 @@ impl ImportServiceHandle {
                 .map(|(key, _)| key.clone())
                 .collect::<std::collections::BTreeSet<_>>();
             let decided = edits.clone();
-            let settled = bae_util::task_failure::blocking("apply a file decision", move || {
-                let mut settled = Vec::with_capacity(matching_files.len());
-                for (key, mut files) in matching_files {
-                    files.apply_candidate_file_edits(&decided)?;
-                    settled.push((key, files));
-                }
-                Ok::<_, crate::folder_scanner::UnreadableAudio>(settled)
-            })
-            .await
-            .map_err(|failed| self.services.diagnostics.bug(failed))??;
+            let settled = self
+                .services
+                .diagnostics
+                .blocking("apply a file decision", move || {
+                    let mut settled = Vec::with_capacity(matching_files.len());
+                    for (key, mut files) in matching_files {
+                        files.apply_candidate_file_edits(&decided)?;
+                        settled.push((key, files));
+                    }
+                    Ok::<_, crate::folder_scanner::UnreadableAudio>(settled)
+                })
+                .await??;
 
             let settled_files = settled
                 .iter()
@@ -271,8 +275,10 @@ impl ImportServiceHandle {
             let mut replacement = current_candidate.clone();
             replacement.files = settled_files.clone();
             let reads = crate::folder_scanner::FileReads::new(self.services.file_tags.clone());
-            let initialized =
-                bae_util::task_failure::blocking("read the files' track metadata", move || {
+            let initialized = self
+                .services
+                .diagnostics
+                .blocking("read the files' track metadata", move || {
                     crate::file_metadata_seed::FileMetadataSeed::read(
                         &replacement,
                         stored.scan_generation,
@@ -281,8 +287,7 @@ impl ImportServiceHandle {
                     )
                     .map(|seed| seed.draft)
                 })
-                .await
-                .map_err(|failed| self.services.diagnostics.bug(failed))??;
+                .await??;
             let draft = crate::pane::redraw_draft_for_files(
                 current_files,
                 settled_files,

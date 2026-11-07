@@ -18,7 +18,7 @@ use bae_diagnostics::Diagnostics;
 use bae_preferences::SaveFormat;
 use bae_records::LibraryImageType;
 use bae_records::{ResolvedTrackAudio, ResolvedTrackAudioSegment};
-use bae_util::task_failure::{blocking, caught_sync};
+use bae_util::task_failure::caught_sync;
 use bytes::Bytes;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -249,12 +249,14 @@ async fn stream_encoded(
     content_length: Option<u64>,
 ) -> Result<Response, SubError> {
     let decode = state.services.open_track_decode(audio);
-    let decode = blocking("wait for a streamed track's files", move || {
-        decode.wait_readable().map(|()| decode)
-    })
-    .await
-    .map_err(|failed| SubError::generic(state.diagnostics.bug(failed).to_string()))?
-    .map_err(unreadable)?;
+    let decode = state
+        .diagnostics
+        .blocking("wait for a streamed track's files", move || {
+            decode.wait_readable().map(|()| decode)
+        })
+        .await
+        .map_err(|failed| SubError::generic(failed.to_string()))?
+        .map_err(unreadable)?;
 
     let cancel = Arc::new(AtomicBool::new(false));
     let track_id = audio.track_id.clone();

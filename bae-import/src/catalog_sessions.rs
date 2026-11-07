@@ -18,7 +18,6 @@ use bae_diagnostics::Diagnostics;
 use bae_preferences::DiscogsValidation;
 use bae_store::DbError;
 use bae_store::Store;
-use bae_util::task_failure::blocking;
 use std::future::Future;
 use std::sync::Arc;
 use tracing::debug;
@@ -234,9 +233,10 @@ impl CatalogSessions {
     /// thread: a keychain call can wait on the system, and on a prompt.
     pub async fn stored_discogs_key(&self) -> Result<Option<String>, DiscogsKeyError> {
         let store = self.store.clone();
-        let key = blocking("read the Discogs key", move || store.host_secret(DISCOGS_API_KEY))
-            .await
-            .map_err(|failed| self.diagnostics.bug(failed))??;
+        let key = self
+            .diagnostics
+            .blocking("read the Discogs key", move || store.host_secret(DISCOGS_API_KEY))
+            .await??;
         Ok(key)
     }
 
@@ -253,11 +253,11 @@ impl CatalogSessions {
         self.change_discogs_key(async {
             let store = self.store.clone();
             let token = token.to_string();
-            blocking("store the Discogs key", move || {
-                store.set_host_secret(DISCOGS_API_KEY, &token)
-            })
-            .await
-            .map_err(|failed| self.diagnostics.bug(failed))??;
+            self.diagnostics
+                .blocking("store the Discogs key", move || {
+                    store.set_host_secret(DISCOGS_API_KEY, &token)
+                })
+                .await??;
             self.preferences
                 .edit(move |prefs| {
                     prefs.discogs = Some(validation);
@@ -281,9 +281,11 @@ impl CatalogSessions {
                 })
                 .await?;
             let store = self.store.clone();
-            blocking("clear the Discogs key", move || store.delete_host_secret(DISCOGS_API_KEY))
-                .await
-                .map_err(|failed| self.diagnostics.bug(failed))??;
+            self.diagnostics
+                .blocking("clear the Discogs key", move || {
+                    store.delete_host_secret(DISCOGS_API_KEY)
+                })
+                .await??;
             Ok(())
         })
         .await

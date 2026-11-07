@@ -197,10 +197,10 @@ impl LibraryManager {
         // stays on one filesystem and is atomic. The name is hidden and carries the
         // release id so a concurrent export of a different release can't collide.
         let staging_path = request.target_dir.join(output_sibling(&folder, "export", release_id));
-        let staging =
-            blocking("create an output's staging folder", move || StagingDir::create(staging_path))
-                .await
-                .map_err(|failed| self.bug(failed))??;
+        let staging = self
+            .diagnostics
+            .blocking("create an output's staging folder", move || StagingDir::create(staging_path))
+            .await??;
 
         match request.kind {
             bae_transfers::OutputKind::Export => {
@@ -220,12 +220,12 @@ impl LibraryManager {
 
         let staging_path = staging.path().to_path_buf();
         let marker_release_id = release_id.to_string();
-        blocking("move an output into place", move || -> Result<(), LibraryError> {
-            write_output_marker(&staging_path, &marker_release_id)?;
-            replace_output_dir(&staging_path, &final_dir, &folder, &marker_release_id)
-        })
-        .await
-        .map_err(|failed| self.bug(failed))??;
+        self.diagnostics
+            .blocking("move an output into place", move || -> Result<(), LibraryError> {
+                write_output_marker(&staging_path, &marker_release_id)?;
+                replace_output_dir(&staging_path, &final_dir, &folder, &marker_release_id)
+            })
+            .await??;
         staging.disarm();
         Ok(())
     }

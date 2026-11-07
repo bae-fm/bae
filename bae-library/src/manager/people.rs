@@ -34,12 +34,13 @@ impl LibraryManager {
         let avatar = match bytes {
             Some(bytes) => {
                 // Decoding and re-encoding the image is CPU work.
-                let jpeg = blocking("resize an avatar", move || {
-                    bae_util::stored_image::stored_jpeg(&bytes)
-                })
-                .await
-                .map_err(|failed| self.bug(failed))?
-                .map_err(|detail| crate::people::AvatarError::Image { detail })?;
+                let jpeg = self
+                    .diagnostics
+                    .blocking("resize an avatar", move || {
+                        bae_util::stored_image::stored_jpeg(&bytes)
+                    })
+                    .await?
+                    .map_err(|detail| crate::people::AvatarError::Image { detail })?;
                 Some(jpeg)
             }
             None => None,

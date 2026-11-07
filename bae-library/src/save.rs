@@ -2,7 +2,8 @@ use crate::SaveTrackPlan;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::{EncodeFormat, StreamingEncoder};
 use bae_track_audio::track_sources::{run_tracks_over_sources, SourceStream};
-use bae_util::task_failure::{blocking, joined, TaskFailed};
+use bae_util::task_failure::{joined, Bug, TaskFailed};
+use coven::task::{blocking_completing, BugSinkRef};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
@@ -102,6 +103,17 @@ pub(crate) enum SaveError {
     Unfinished(#[from] TaskFailed),
 }
 
+/// A save's work that panicked carries its bug: one its caller reports, or,
+/// once no caller waits, the bug sink the work ran under.
+impl coven::task::CarriesBug for SaveError {
+    fn bug(&self) -> Option<&Bug> {
+        match self {
+            Self::Failed(_) => None,
+            Self::Unfinished(failed) => coven::task::CarriesBug::bug(failed),
+        }
+    }
+}
+
 impl From<String> for SaveError {
     fn from(detail: String) -> Self {
         Self::Failed(detail)
@@ -194,7 +206,8 @@ impl SaveService {
     /// (see [`run_tracks_over_sources`]); `open` opens one by release file id.
     /// `on_saved` runs as each track's file is written. `existing` says what a
     /// file already at a track's output path does. A track whose save panics
-    /// fails the save as unfinished, which the caller reports.
+    /// fails the save as unfinished, which the caller reports; once the
+    /// caller stops waiting, an encode that panics goes to `bugs`.
     ///
     /// On future-drop the cancel flag flips, the encoder loop exits between
     /// frames, and any partially-written output file is removed.
@@ -206,6 +219,7 @@ impl SaveService {
         existing: ExistingOutput,
         open: impl Fn(&String) -> SourceStream,
         on_saved: Arc<dyn Fn() + Send + Sync>,
+        bugs: BugSinkRef,
     ) -> Result<(), SaveError> {
         let cover_image_bytes = Arc::new(cover_image_bytes);
         run_tracks_over_sources(
@@ -217,6 +231,7 @@ impl SaveService {
                 let cover_image_bytes = cover_image_bytes.clone();
                 let codec = codec.clone();
                 let on_saved = on_saved.clone();
+                let bugs = bugs.clone();
                 async move {
                     Self::save_track_with_codec(
                         plan,
@@ -225,6 +240,7 @@ impl SaveService {
                         output_path,
                         codec,
                         existing,
+                        bugs,
                     )
                     .await?;
                     on_saved();
@@ -241,7 +257,8 @@ impl SaveService {
     /// indexing them. Tracks stream into the image one at a time; a source
     /// file is open only while a track reading it is being encoded. A track
     /// whose work panics fails the save as unfinished, which the caller
-    /// reports.
+    /// reports; once the caller stops waiting, writing the sheet and tags
+    /// that panics goes to `bugs`.
     pub(crate) async fn save_release_image_with_cue(
         plans: Vec<SaveTrackPlan>,
         cover_image_bytes: Option<Vec<u8>>,
@@ -250,6 +267,7 @@ impl SaveService {
         catalog: Option<String>,
         preset: bae_preferences::SavePreset,
         open: impl Fn(&String) -> SourceStream,
+        bugs: BugSinkRef,
     ) -> Result<(), SaveError> {
         if plans.is_empty() {
             return Err(SaveError::Failed(
@@ -373,42 +391,46 @@ impl SaveService {
         joined("encode a release image", encode).await??;
         let cue_tracks = tracks?;
 
-        blocking("write a release image's CUE sheet and tags", move || -> Result<(), String> {
-            if cancel.load(Ordering::Relaxed) {
-                return Err("export cancelled".to_string());
-            }
+        blocking_completing(
+            "write a release image's CUE sheet and tags",
+            bugs,
+            move || -> Result<(), SaveError> {
+                if cancel.load(Ordering::Relaxed) {
+                    return Err(SaveError::Failed("export cancelled".to_string()));
+                }
 
-            let cue = render_cue_sheet(
-                &release_title,
-                &release_performer,
-                catalog.as_deref().map(str::trim).filter(|catalog| !catalog.is_empty()),
-                year,
-                &audio_filename,
-                cue_file_type,
-                sample_rate,
-                &cue_tracks,
-            );
-            std::fs::write(&output_cue_path, cue)
-                .map_err(|e| format!("Failed to write CUE sheet: {e}"))?;
+                let cue = render_cue_sheet(
+                    &release_title,
+                    &release_performer,
+                    catalog.as_deref().map(str::trim).filter(|catalog| !catalog.is_empty()),
+                    year,
+                    &audio_filename,
+                    cue_file_type,
+                    sample_rate,
+                    &cue_tracks,
+                );
+                std::fs::write(&output_cue_path, cue)
+                    .map_err(|e| format!("Failed to write CUE sheet: {e}"))?;
 
-            if cancel.load(Ordering::Relaxed) {
-                return Err("export cancelled".to_string());
-            }
+                if cancel.load(Ordering::Relaxed) {
+                    return Err(SaveError::Failed("export cancelled".to_string()));
+                }
 
-            write_tags(
-                &output_audio_path,
-                tag_type,
-                &tags,
-                None,
-                total_tracks,
-                cover_image_bytes.as_deref(),
-            )?;
+                write_tags(
+                    &output_audio_path,
+                    tag_type,
+                    &tags,
+                    None,
+                    total_tracks,
+                    cover_image_bytes.as_deref(),
+                )?;
 
-            if cancel.load(Ordering::Relaxed) {
-                return Err("export cancelled".to_string());
-            }
-            Ok(())
-        })
+                if cancel.load(Ordering::Relaxed) {
+                    return Err(SaveError::Failed("export cancelled".to_string()));
+                }
+                Ok(())
+            },
+        )
         .await??;
 
         output_guard.commit();
@@ -422,6 +444,7 @@ impl SaveService {
         output_path: PathBuf,
         codec: bae_preferences::SaveCodec,
         existing: ExistingOutput,
+        bugs: BugSinkRef,
     ) -> Result<(), SaveError> {
         let track_id = plan.audio_meta.track.id.clone();
         debug!("Exporting track {} to {}", track_id, output_path.display());
@@ -438,7 +461,7 @@ impl SaveService {
 
         let cancel_for_blocking = Arc::clone(&cancel);
         let subject = format!("track {track_id}");
-        blocking("encode a saved track", move || -> Result<(), SaveError> {
+        blocking_completing("encode a saved track", bugs, move || -> Result<(), SaveError> {
             let file = match existing {
                 ExistingOutput::Replace => std::fs::File::create(&output_path)
                     .map_err(|e| format!("Failed to create track file: {e}"))?,

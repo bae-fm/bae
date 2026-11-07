@@ -463,16 +463,13 @@ async fn check_network_folder(
         }
     };
     let checked_root = root.to_path_buf();
-    let changes = match bae_util::task_failure::blocking("check a network folder", move || {
-        network_changes(&checked_root, &recorded)
-    })
-    .await
+    let changes = match diagnostics
+        .blocking("check a network folder", move || network_changes(&checked_root, &recorded))
+        .await
     {
         Ok(changes) => changes,
-        Err(failed @ bae_util::task_failure::TaskFailed::Panicked { .. }) => {
-            diagnostics.bug(failed);
-            None
-        }
+        // Reported as it failed.
+        Err(bae_util::task_failure::TaskFailed::Panicked(_)) => None,
         Err(failed) => {
             debug!("the check of {} ended unfinished: {failed}", root.display());
             return NetworkCheck::Unfinished;

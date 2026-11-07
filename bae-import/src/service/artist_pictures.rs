@@ -93,12 +93,13 @@ impl ImportService {
                 continue;
             };
             // Decoding and re-encoding the image is CPU work.
-            let jpeg = bae_util::task_failure::blocking("resize an artist picture", move || {
-                bae_util::stored_image::stored_jpeg(&image.bytes)
-            })
-            .await
-            .map_err(|failed| self.diagnostics.bug(failed))?
-            .map_err(|detail| crate::ImportError::CoverArt { detail })?;
+            let jpeg = self
+                .diagnostics
+                .blocking("resize an artist picture", move || {
+                    bae_util::stored_image::stored_jpeg(&image.bytes)
+                })
+                .await?
+                .map_err(|detail| crate::ImportError::CoverArt { detail })?;
             answers.push(DiscogsArtistImage::Image { discogs_artist_id, jpeg });
         }
         Ok(answers)

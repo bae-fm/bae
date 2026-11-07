@@ -444,18 +444,20 @@ impl LibraryManager {
         name: &'static str,
     ) -> Result<Option<String>, LibraryError> {
         let store = self.store.clone();
-        let secret = blocking("read a host secret", move || store.host_secret(name))
-            .await
-            .map_err(|failed| self.bug(failed))?;
+        let secret = self
+            .diagnostics
+            .blocking("read a host secret", move || store.host_secret(name))
+            .await?;
         Ok(secret?)
     }
 
     /// Store a host secret in the keychain on a blocking thread.
     async fn set_host_secret(&self, name: &'static str, value: String) -> Result<(), LibraryError> {
         let store = self.store.clone();
-        let stored = blocking("store a host secret", move || store.set_host_secret(name, &value))
-            .await
-            .map_err(|failed| self.bug(failed))?;
+        let stored = self
+            .diagnostics
+            .blocking("store a host secret", move || store.set_host_secret(name, &value))
+            .await?;
         Ok(stored?)
     }
 }

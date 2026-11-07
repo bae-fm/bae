@@ -4396,7 +4396,9 @@ each device and hands playback the channel or sink.
   A panic in work core runs apart from whoever asked for it — on a blocking
   thread, as a task or a thread of its own — is such a bug: it is reported,
   and what the work served ends with it, the operation that asked failing
-  with "Something went wrong", never left waiting. coven's own bugs in work
+  with "Something went wrong", never left waiting. Work on a blocking thread
+  runs to its end even once whoever asked for it stops waiting, and a panic
+  in it is reported all the same. coven's own bugs in work
   nobody waits for, such as a store's sync loop and upload worker, reach the
   same crash reporter: bae hands coven its reporter when it builds the
   device's libraries at launch. A later call coven answers with such a

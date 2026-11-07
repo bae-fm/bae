@@ -31,13 +31,14 @@ impl ImportServiceHandle {
         }
         let path = entry.file.version.path;
         let file = file_id.to_string();
-        bae_util::task_failure::blocking("read a candidate's document", move || {
-            bae_util::text_encoding::read_text_file(&path)
-                .map(|decoded| decoded.text)
-                .map_err(|error| crate::ImportError::DocumentRead { file, error })
-        })
-        .await
-        .map_err(|failed| self.services.diagnostics.bug(failed))?
+        self.services
+            .diagnostics
+            .blocking("read a candidate's document", move || {
+                bae_util::text_encoding::read_text_file(&path)
+                    .map(|decoded| decoded.text)
+                    .map_err(|error| crate::ImportError::DocumentRead { file, error })
+            })
+            .await?
     }
 }
 

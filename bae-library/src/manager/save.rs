@@ -186,6 +186,7 @@ impl LibraryManager {
             crate::save::ExistingOutput::Replace,
             |file_id: &String| self.open_save_source(&sources[file_id]),
             Arc::new(|| {}),
+            self.bugs(),
         )
         .await
         .map_err(|error| self.save_failed(error))
@@ -263,6 +264,7 @@ impl LibraryManager {
             crate::save::ExistingOutput::Refuse,
             |file_id: &String| self.open_save_source(&sources[file_id]),
             on_saved,
+            self.bugs(),
         )
         .await
         .map_err(|error| self.save_failed(error))
@@ -307,6 +309,7 @@ impl LibraryManager {
             media_catalog_number(&release.pressing.barcodes),
             preset,
             |file_id: &String| self.open_save_source(&sources[file_id]),
+            self.bugs(),
         )
         .await
         .map_err(|error| self.save_failed(error))

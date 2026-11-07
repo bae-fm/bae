@@ -210,25 +210,26 @@ async fn read_folder_again(
     let walk_cancellation = cancellation.clone();
     let wants_folder = decision.is_some();
     let ids = services.ids.clone();
-    let walked = bae_util::task_failure::blocking("read a folder again", move || {
-        let new_key = || new_grouping_key(ids.as_ref());
-        read_top_level_folder(
-            directories.as_ref(),
-            &watcher,
-            &walk_root,
-            &walk_folder,
-            &crate::folder_scanner::ScanReadings {
-                stored: &stored_edits,
-                decisions: &decisions,
-                new_grouping_key: &new_key,
-            },
-            &walk_reads,
-            &walk_cancellation,
-            wants_folder,
-        )
-    })
-    .await
-    .map_err(|failed| services.diagnostics.bug(failed))??;
+    let walked = services
+        .diagnostics
+        .blocking("read a folder again", move || {
+            let new_key = || new_grouping_key(ids.as_ref());
+            read_top_level_folder(
+                directories.as_ref(),
+                &watcher,
+                &walk_root,
+                &walk_folder,
+                &crate::folder_scanner::ScanReadings {
+                    stored: &stored_edits,
+                    decisions: &decisions,
+                    new_grouping_key: &new_key,
+                },
+                &walk_reads,
+                &walk_cancellation,
+                wants_folder,
+            )
+        })
+        .await??;
     let read_at = started.elapsed();
 
     let mut scanned_decisions = Vec::new();

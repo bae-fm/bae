@@ -7,7 +7,7 @@ impl ImportServiceHandle {
     /// Where a bug a surface's live query carries goes as it arrives: the
     /// crash reporter.
     fn bugs(&self) -> coven::task::BugSinkRef {
-        std::sync::Arc::new(self.services.diagnostics.clone())
+        self.services.diagnostics.bug_sink()
     }
 
     /// Open an import list showing `view` through `windows`, with nothing

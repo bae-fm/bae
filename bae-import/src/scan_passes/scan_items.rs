@@ -96,12 +96,10 @@ pub(super) async fn folder_date(
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.clone(),
         ScanItem::Invalid(candidate) => candidate.path.clone(),
     };
-    bae_util::task_failure::blocking("read a folder's date", move || {
-        crate::folder_scanner::FolderDate::read(&path)
-    })
-    .await
-    .map_err(|failed| diagnostics.bug(failed))?
-    .map_err(Into::into)
+    diagnostics
+        .blocking("read a folder's date", move || crate::folder_scanner::FolderDate::read(&path))
+        .await?
+        .map_err(Into::into)
 }
 
 /// `item` with the file decisions stored for its files applied, and the
@@ -269,16 +267,16 @@ pub(crate) async fn scan_item_seed(
         )
         .await?;
     let candidate = candidate.clone();
-    let read = bae_util::task_failure::blocking("read a folder's file tags", move || {
-        crate::file_metadata_seed::FileMetadataSeed::read(
-            &candidate,
-            generation,
-            &reads,
-            stored.as_ref(),
-        )
-    })
-    .await
-    .map_err(|failed| diagnostics.bug(failed))?;
+    let read = diagnostics
+        .blocking("read a folder's file tags", move || {
+            crate::file_metadata_seed::FileMetadataSeed::read(
+                &candidate,
+                generation,
+                &reads,
+                stored.as_ref(),
+            )
+        })
+        .await?;
     match read {
         Ok(seed) => Ok(ScanItemSeed::Tags(Some(seed))),
         Err(error) => {

@@ -218,13 +218,15 @@ impl LibraryManager {
         let failed =
             |detail: String| LibraryFixtureError::Cover { path: path.to_path_buf(), detail };
         let source = path.to_path_buf();
-        let bytes = blocking("read a fixture cover", move || {
-            let bytes = std::fs::read(&source).map_err(|error| error.to_string())?;
-            bae_util::stored_image::stored_jpeg(&bytes)
-        })
-        .await
-        .map_err(|task| failed(self.bug(task).to_string()))?
-        .map_err(failed)?;
+        let bytes = self
+            .diagnostics
+            .blocking("read a fixture cover", move || {
+                let bytes = std::fs::read(&source).map_err(|error| error.to_string())?;
+                bae_util::stored_image::stored_jpeg(&bytes)
+            })
+            .await
+            .map_err(|task| failed(task.to_string()))?
+            .map_err(failed)?;
         let image = DbLibraryImage::cover(release_id);
         Ok((image, bytes))
     }

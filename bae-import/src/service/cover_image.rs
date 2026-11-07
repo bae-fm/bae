@@ -78,12 +78,12 @@ impl ImportCover {
             Self::Local(path) => folder_cover(discovered_files, &path, diagnostics).await?,
         };
         // Decoding and re-encoding the image is CPU work.
-        let bytes = bae_util::task_failure::blocking("resize the import's cover", move || {
-            bae_util::stored_image::stored_jpeg(&source)
-        })
-        .await
-        .map_err(|failed| diagnostics.bug(failed))?
-        .map_err(|detail| ImportError::CoverArt { detail })?;
+        let bytes = diagnostics
+            .blocking("resize the import's cover", move || {
+                bae_util::stored_image::stored_jpeg(&source)
+            })
+            .await?
+            .map_err(|detail| ImportError::CoverArt { detail })?;
         Ok((bae_records::DbLibraryImage::cover(release_id), bytes))
     }
 }
@@ -132,16 +132,12 @@ async fn folder_cover(
         })?;
 
     let path = cover_file.version.path.clone();
-    let bytes =
-        bae_util::task_failure::blocking("read the import's cover", move || std::fs::read(&path))
-            .await
-            .map_err(|failed| diagnostics.bug(failed))?
-            .map_err(|e| ImportError::LocalCover {
-                detail: format!(
-                    "Failed to read cover art {}: {e}",
-                    cover_file.version.path.display()
-                ),
-            })?;
+    let bytes = diagnostics
+        .blocking("read the import's cover", move || std::fs::read(&path))
+        .await?
+        .map_err(|e| ImportError::LocalCover {
+            detail: format!("Failed to read cover art {}: {e}", cover_file.version.path.display()),
+        })?;
 
     Ok(bytes)
 }

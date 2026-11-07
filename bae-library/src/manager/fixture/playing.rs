@@ -138,18 +138,19 @@ impl LibraryManager {
             let ids = self.ids.clone();
             let diagnostics = self.diagnostics.clone();
             let tracks = tracks_to_files.clone();
-            bae_util::task_failure::blocking("build a fixture's audio formats", move || {
-                bae_import::service::build_audio_formats(
-                    &tracks,
-                    &file_ids,
-                    clock.as_ref(),
-                    ids.as_ref(),
-                    &diagnostics,
-                )
-            })
-            .await
-            .map_err(|failed| invalid(self.bug(failed).to_string()))?
-            .map_err(|error| invalid(error.to_string()))?
+            self.diagnostics
+                .blocking("build a fixture's audio formats", move || {
+                    bae_import::service::build_audio_formats(
+                        &tracks,
+                        &file_ids,
+                        clock.as_ref(),
+                        ids.as_ref(),
+                        &diagnostics,
+                    )
+                })
+                .await
+                .map_err(|failed| invalid(failed.to_string()))?
+                .map_err(|error| invalid(error.to_string()))?
         };
         seeded.tracks = tracks_to_files.into_iter().map(|track| track.db_track).collect();
         seeded.audio = Some(SeededAudio {
