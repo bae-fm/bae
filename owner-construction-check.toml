@@ -420,6 +420,14 @@ task_types = [
     "ChannelSink",
     # One MCP client session's server, built when the session opens.
     "BaeMcpServer",
+    # One AirPlay connection to one receiver: its sink, session and the PCM feed
+    # it plays, and the media source a cast session fetches from.
+    "RaopSink",
+    "Ap2Sink",
+    "RaopSession",
+    "Ap2Session",
+    "PcmFeed",
+    "RendererMediaSource",
 ]
 
 # Handles (Appendix F.3): what an owner makes from its own state to hand out.
@@ -529,6 +537,8 @@ ImageHold = "RemoteImageHost"
 "bae-bridge/src/init.rs" = ["BridgeDiagnostics::core"]
 # A library just set up opens.
 "bae-bridge/src/setup.rs" = ["OpenedLibrary::open", "OpenedLibrary::new"]
+# x
+"bae-cast/src/renderer/protocol_discovery.rs" = ["ProtocolDiscovery::new"]
 # A test's catalog fakes: the providers its library asks are built over
 # them, once per library the test opens.
 "bae-catalogs/src/fake_catalogs.rs" = [
@@ -736,12 +746,16 @@ ImageHold = "RemoteImageHost"
 ]
 "bae-cast/src/cast/discovery.rs" = ["CastBrowse::start"]
 "bae-cast/src/dlna/discovery.rs" = ["DlnaSearch::start"]
-"bae-cast/src/lib.rs" = ["EphemeralServer::start"]
+"bae-cast/src/lib.rs" = [
+    "EphemeralServer::start",
+    "CastController::ensure_server",
+]
 "bae-cast/src/renderer/discovery.rs" = [
     "RendererDiscovery::builtin",
     "RendererDiscovery::for_host",
     "RendererDiscovery::reported",
     "ReportedDiscovery::new",
+    "BuiltinDiscovery::new",
 ]
 "bae-cast/src/renderer/published_devices.rs" = ["PublishedDevices::new"]
 "bae-catalogs/src/discogs/client.rs" = [
