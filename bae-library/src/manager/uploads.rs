@@ -296,3 +296,7 @@ impl UploadBatchFailure {
 #[cfg(test)]
 #[path = "uploads_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "uploads_wait_tests.rs"]
+mod wait_tests;

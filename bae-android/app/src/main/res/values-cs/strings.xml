@@ -188,6 +188,7 @@
     <string name="download_waiting_for_network">Čeká na síť</string>
     <string name="upload_waiting_for_wifi">Čeká na Wi-Fi</string>
     <string name="upload_retrying_at">Další pokus v %1$s</string>
+    <string name="upload_waiting_for_file">Čeká na %1$s</string>
     <string name="resume">Pokračovat</string>
     <string name="downloads_empty">Žádná stahování</string>
     <string name="downloads_load_failed">Nelze načíst vaše stahování.</string>

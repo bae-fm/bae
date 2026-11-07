@@ -1892,7 +1892,7 @@ coven pins it itself and downloads its copy from storage, never reading the
 original for the cache, and retries a failed download by itself.
 
 If an original goes missing before its upload, the move waits for it, the
-pending list naming the file. If one changed, its upload stops before a
+pending list and the release's row naming the file. If one changed, its upload stops before a
 changed byte is sent and the move fails: none of its files switches, and the
 pending list names the file and offers Cancel upload.
 
@@ -1988,9 +1988,12 @@ being sent, how many bytes of its whole size are stored or sent. The counts
 are read in the same query as the row: which files are being sent comes
 from coven's `coven_sending`, a live view of the uploads in flight. While none
 is being sent, the row says why the waiting files do not move, from coven's
-`coven_uploads` and `coven_network`: Waiting for network, or Paused, or Waiting
-for Wi-Fi when files move only on unmetered networks and this one is metered,
-or Retrying at the time of the earliest retry, the first of these that holds. How far
+`coven_uploads`, `coven_pending` and `coven_network`: Waiting for the file
+whose original is missing, named, ahead of the rest since it stops that file
+whatever the network does and only restoring it lets the move go on; then
+Waiting for network, or Paused, or Waiting for Wi-Fi when files move only on
+unmetered networks and this one is metered, or Retrying at the time of the
+earliest retry, the first of these that holds. How far
 the bytes have got is not in any table: coven's upload watch tells, file by
 file, how much of each file's encrypted object has gone to the connection,
 whether the file goes in parts or in one request. A release's bytes are its

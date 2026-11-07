@@ -183,6 +183,7 @@
     <string name="download_waiting_for_network">Väntar på nätverk</string>
     <string name="upload_waiting_for_wifi">Väntar på Wi-Fi</string>
     <string name="upload_retrying_at">Försöker igen kl. %1$s</string>
+    <string name="upload_waiting_for_file">Väntar på %1$s</string>
     <string name="resume">Fortsätt</string>
     <string name="downloads_empty">Inga hämtningar</string>
     <string name="downloads_load_failed">Dina hämtningar kunde inte läsas in.</string>

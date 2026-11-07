@@ -226,6 +226,7 @@
     <string name="download_waiting_for_network">Waiting for network</string>
     <string name="upload_waiting_for_wifi">Waiting for Wi-Fi</string>
     <string name="upload_retrying_at">Retrying at %1$s</string>
+    <string name="upload_waiting_for_file">Waiting for %1$s</string>
     <string name="resume">Resume</string>
     <string name="downloads_empty">No downloads</string>
     <string name="downloads_load_failed">Couldn\'t load your downloads.</string>

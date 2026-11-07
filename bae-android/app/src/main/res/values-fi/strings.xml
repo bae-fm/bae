@@ -183,6 +183,7 @@
     <string name="download_waiting_for_network">Odottaa verkkoa</string>
     <string name="upload_waiting_for_wifi">Odottaa Wi-Fi-yhteyttä</string>
     <string name="upload_retrying_at">Yritetään uudelleen klo %1$s</string>
+    <string name="upload_waiting_for_file">Odottaa tiedostoa %1$s</string>
     <string name="resume">Jatka</string>
     <string name="downloads_empty">Ei latauksia</string>
     <string name="downloads_load_failed">Latauksiasi ei voitu ladata.</string>

@@ -180,6 +180,7 @@
     <string name="download_waiting_for_network">Изчаква мрежата</string>
     <string name="upload_waiting_for_wifi">Изчаква Wi-Fi</string>
     <string name="upload_retrying_at">Нов опит в %1$s</string>
+    <string name="upload_waiting_for_file">Изчаква %1$s</string>
     <string name="resume">Възобнови</string>
     <string name="downloads_empty">Няма изтегляния</string>
     <string name="downloads_load_failed">Изтеглянията ви не могат да бъдат заредени.</string>

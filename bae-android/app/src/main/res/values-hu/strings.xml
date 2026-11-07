@@ -183,6 +183,7 @@
     <string name="download_waiting_for_network">Hálózatra vár</string>
     <string name="upload_waiting_for_wifi">Wi-Fi-re vár</string>
     <string name="upload_retrying_at">Újrapróbálás ekkor: %1$s</string>
+    <string name="upload_waiting_for_file">Várakozás erre: %1$s</string>
     <string name="resume">Folytatás</string>
     <string name="downloads_empty">Nincs letöltés</string>
     <string name="downloads_load_failed">A letöltéseidet nem sikerült betölteni.</string>

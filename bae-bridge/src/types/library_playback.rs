@@ -371,8 +371,11 @@ pub struct BridgeReleaseUpload {
 
 /// What keeps a release's waiting files from being sent. Mirrors
 /// `UploadWait`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadWait {
+    /// An original the upload reads is missing: the move waits for the
+    /// person to restore the file named.
+    Original { file_name: String },
     /// The device has no usable network.
     Offline,
     /// The person paused uploads.

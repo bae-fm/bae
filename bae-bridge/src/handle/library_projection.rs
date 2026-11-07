@@ -662,6 +662,7 @@ mirror_enum! {
     crate::types::BridgeUploadWait = bae_records::UploadWait,
     from_core: fn,
     variants: {
+        Original { file_name },
         Offline,
         Paused,
         Metered,

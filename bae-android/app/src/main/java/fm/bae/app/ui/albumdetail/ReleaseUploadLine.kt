@@ -72,6 +72,10 @@ private fun UploadLineBody(
 @Composable
 private fun uploadWaitText(wait: BridgeUploadWait): String =
     when (wait) {
+        is BridgeUploadWait.Original -> {
+            stringResource(R.string.upload_waiting_for_file, wait.fileName)
+        }
+
         BridgeUploadWait.Offline -> {
             stringResource(R.string.download_waiting_for_network)
         }

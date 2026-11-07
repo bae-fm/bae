@@ -49,7 +49,19 @@ pub const RELEASE_UPLOAD_COLUMNS: &str = "storage.queued_count AS queued_count, 
      (SELECT MIN(upload.retry_at) FROM release_files AS f \
          JOIN coven_uploads AS upload ON upload.file = f.file \
          WHERE f.release_id = storage.release_id) AS uploads_retry_at, \
-     (SELECT usable FROM coven_network) AS upload_network_usable";
+     (SELECT usable FROM coven_network) AS upload_network_usable, \
+     CASE WHEN storage.queued_count > 0 THEN \
+         (SELECT json_group_array(json(CAST(pending.record AS TEXT))) \
+          FROM coven_pending AS pending \
+          WHERE pending.move IN (SELECT upload.move FROM release_files AS f \
+              JOIN coven_uploads AS upload ON upload.file = f.file \
+              WHERE f.release_id = storage.release_id)) END AS upload_move_records, \
+     CASE WHEN storage.queued_count > 0 THEN \
+         (SELECT json_group_array(json_object('path', hex(original.path), \
+              'name', f.original_filename)) \
+          FROM release_files AS f \
+          JOIN coven_user_files AS original ON original.file = f.file \
+          WHERE f.release_id = storage.release_id) END AS upload_original_names";
 
 /// The release's upload as [`RELEASE_UPLOAD_COLUMNS`] read it; `None` when
 /// none of its files waits. A count below zero, or past a `u32`, is a
@@ -64,6 +76,7 @@ pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbRelease
         None
     } else {
         UploadWait::pick(
+            missing_original_in_row(row)?,
             row.get("upload_network_usable")?,
             row.get::<_, Option<bool>>("uploads_paused")?.unwrap_or(false),
             row.get::<_, Option<bool>>("uploads_metered")?.unwrap_or(false),
@@ -76,6 +89,54 @@ pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbRelease
         stored: bae_store::read::count_column(row, "stored_files")?,
         wait,
     }))
+}
+
+/// The name of the release file whose original a move of the release waits
+/// for, as the move's pending record names the original by its path.
+fn missing_original_in_row(row: &Row<'_>) -> rusqlite::Result<Option<String>> {
+    let Some(records) = row.get::<_, Option<String>>("upload_move_records")? else {
+        return Ok(None);
+    };
+    let records: Vec<coven::PendingRecord> = serde_json::from_str(&records).map_err(|error| {
+        bae_store::read::column_conversion_error(
+            row,
+            row.as_ref().column_index("upload_move_records").unwrap_or(0),
+            format!("a pending record: {error}"),
+        )
+    })?;
+    let missing: Vec<String> = records
+        .iter()
+        .filter_map(|record| match &record.reason {
+            coven::PendingReason::Original { path, failure: coven::FileSourceFailure::Missing } => {
+                Some(hex::encode(coven::path_bytes(path)))
+            }
+            _ => None,
+        })
+        .collect();
+    if missing.is_empty() {
+        return Ok(None);
+    }
+    let names: Vec<OriginalName> =
+        serde_json::from_str(&row.get::<_, String>("upload_original_names")?).map_err(|error| {
+            bae_store::read::column_conversion_error(
+                row,
+                row.as_ref().column_index("upload_original_names").unwrap_or(0),
+                format!("the release's originals: {error}"),
+            )
+        })?;
+    Ok(names
+        .into_iter()
+        .find(|original| missing.contains(&original.path.to_lowercase()))
+        .map(|original| original.name))
+}
+
+/// A release file and the path of the original coven holds of it, as
+/// `upload_original_names` lists them.
+#[derive(serde::Deserialize)]
+struct OriginalName {
+    /// The path's bytes in hex.
+    path: String,
+    name: String,
 }
 
 /// What of the release `release_id` waits in this device's upload queue.

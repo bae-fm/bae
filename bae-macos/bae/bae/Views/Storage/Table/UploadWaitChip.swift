@@ -7,6 +7,8 @@ struct UploadWaitChip: View {
 
     var body: some View {
         switch wait {
+        case .original(let fileName):
+            StatusChip("Waiting for \(fileName)", tone: .warning)
         case .paused:
             QueueWaitChip(wait: .paused)
         case .offline:
@@ -31,6 +33,7 @@ struct UploadWaitChip: View {
 #if DEBUG
     #Preview("Upload waits") {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            UploadWaitChip(wait: .original(fileName: "01 Track.flac"))
             UploadWaitChip(wait: .paused)
             UploadWaitChip(wait: .offline)
             UploadWaitChip(wait: .metered)

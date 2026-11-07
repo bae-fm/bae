@@ -180,6 +180,7 @@
     <string name="download_waiting_for_network">Wartet auf Netzwerk</string>
     <string name="upload_waiting_for_wifi">Wartet auf WLAN</string>
     <string name="upload_retrying_at">Neuer Versuch um %1$s</string>
+    <string name="upload_waiting_for_file">Wartet auf %1$s</string>
     <string name="resume">Fortsetzen</string>
     <string name="downloads_empty">Keine Downloads</string>
     <string name="downloads_load_failed">Deine Downloads konnten nicht geladen werden.</string>

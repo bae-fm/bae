@@ -118,7 +118,7 @@ pub struct DbTrackWithArtists {
 /// A release's files in this device's upload queue, as one read finds them:
 /// how many only wait there, how many this process is sending now, and how
 /// many are stored.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbReleaseUpload {
     pub waiting: u32,
     pub sending: u32,
@@ -131,8 +131,11 @@ pub struct DbReleaseUpload {
 
 /// What keeps a release's waiting files from being sent, as coven says it
 /// of their uploads and the network.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UploadWait {
+    /// An original the upload reads is missing: the move waits for the
+    /// person to restore the file named. Nothing else lets it go on.
+    Original { file_name: String },
     /// The device has no usable network.
     Offline,
     /// The person paused uploads.
@@ -145,16 +148,20 @@ pub enum UploadWait {
 }
 
 impl UploadWait {
-    /// The reason that holds the files, when several do: the network first,
-    /// since it makes the rest moot, then the pause, the metered network
-    /// and last the retry time.
+    /// The reason that holds the files, when several do: a missing original
+    /// first, since it stops its file whatever the network does and only the
+    /// person can end it, then the network, which makes the rest moot, then
+    /// the pause, the metered network and last the retry time.
     pub fn pick(
+        original: Option<String>,
         network_usable: Option<bool>,
         paused: bool,
         metered: bool,
         retry_at_ms: Option<i64>,
     ) -> Option<Self> {
-        if network_usable == Some(false) {
+        if let Some(file_name) = original {
+            Some(Self::Original { file_name })
+        } else if network_usable == Some(false) {
             Some(Self::Offline)
         } else if paused {
             Some(Self::Paused)

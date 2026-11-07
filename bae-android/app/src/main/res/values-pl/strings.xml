@@ -188,6 +188,7 @@
     <string name="download_waiting_for_network">Czeka na sieć</string>
     <string name="upload_waiting_for_wifi">Czeka na Wi-Fi</string>
     <string name="upload_retrying_at">Ponowna próba o %1$s</string>
+    <string name="upload_waiting_for_file">Czeka na %1$s</string>
     <string name="resume">Wznów</string>
     <string name="downloads_empty">Brak pobrań</string>
     <string name="downloads_load_failed">Nie udało się wczytać pobrań.</string>

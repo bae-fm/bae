@@ -188,6 +188,7 @@
     <string name="download_waiting_for_network">Așteaptă rețeaua</string>
     <string name="upload_waiting_for_wifi">Așteaptă Wi-Fi</string>
     <string name="upload_retrying_at">Reîncercare la %1$s</string>
+    <string name="upload_waiting_for_file">Așteaptă %1$s</string>
     <string name="resume">Reia</string>
     <string name="downloads_empty">Nicio descărcare</string>
     <string name="downloads_load_failed">Descărcările tale nu au putut fi încărcate.</string>

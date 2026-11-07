@@ -184,6 +184,7 @@
     <string name="download_waiting_for_network">Čeka mrežu</string>
     <string name="upload_waiting_for_wifi">Čeka Wi-Fi</string>
     <string name="upload_retrying_at">Ponovni pokušaj u %1$s</string>
+    <string name="upload_waiting_for_file">Čeka %1$s</string>
     <string name="resume">Nastavi</string>
     <string name="downloads_empty">Nema preuzimanja</string>
     <string name="downloads_load_failed">Nije moguće učitati vaša preuzimanja.</string>

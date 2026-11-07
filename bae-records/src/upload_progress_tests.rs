@@ -29,9 +29,15 @@ fn a_release_upload_is_queued_until_a_file_is_sent() {
 fn the_reason_named_is_the_first_that_holds() {
     use crate::UploadWait::*;
     let pick = crate::UploadWait::pick;
-    assert_eq!(pick(Some(false), true, true, Some(5)), Some(Offline));
-    assert_eq!(pick(Some(true), true, true, Some(5)), Some(Paused));
-    assert_eq!(pick(None, false, true, Some(5)), Some(Metered));
-    assert_eq!(pick(Some(true), false, false, Some(5)), Some(Retrying { at_ms: 5 }));
-    assert_eq!(pick(None, false, false, None), None);
+    let original = || Some("a.flac".to_string());
+    assert_eq!(
+        pick(original(), Some(false), true, true, Some(5)),
+        Some(Original { file_name: "a.flac".to_string() }),
+        "a missing original outranks the network"
+    );
+    assert_eq!(pick(None, Some(false), true, true, Some(5)), Some(Offline));
+    assert_eq!(pick(None, Some(true), true, true, Some(5)), Some(Paused));
+    assert_eq!(pick(None, None, false, true, Some(5)), Some(Metered));
+    assert_eq!(pick(None, Some(true), false, false, Some(5)), Some(Retrying { at_ms: 5 }));
+    assert_eq!(pick(None, None, false, false, None), None);
 }

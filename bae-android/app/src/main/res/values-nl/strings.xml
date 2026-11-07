@@ -180,6 +180,7 @@
     <string name="download_waiting_for_network">Wacht op netwerk</string>
     <string name="upload_waiting_for_wifi">Wacht op wifi</string>
     <string name="upload_retrying_at">Opnieuw proberen om %1$s</string>
+    <string name="upload_waiting_for_file">Wacht op %1$s</string>
     <string name="resume">Hervatten</string>
     <string name="downloads_empty">Geen downloads</string>
     <string name="downloads_load_failed">Kan je downloads niet laden.</string>

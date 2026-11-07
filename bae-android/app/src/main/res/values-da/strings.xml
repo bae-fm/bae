@@ -183,6 +183,7 @@
     <string name="download_waiting_for_network">Venter på netværk</string>
     <string name="upload_waiting_for_wifi">Venter på Wi-Fi</string>
     <string name="upload_retrying_at">Prøver igen kl. %1$s</string>
+    <string name="upload_waiting_for_file">Venter på %1$s</string>
     <string name="resume">Fortsæt</string>
     <string name="downloads_empty">Ingen overførsler</string>
     <string name="downloads_load_failed">Dine overførsler kunne ikke indlæses.</string>

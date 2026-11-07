@@ -183,6 +183,7 @@
     <string name="download_waiting_for_network">Venter på nettverk</string>
     <string name="upload_waiting_for_wifi">Venter på Wi-Fi</string>
     <string name="upload_retrying_at">Prøver igjen kl. %1$s</string>
+    <string name="upload_waiting_for_file">Venter på %1$s</string>
     <string name="resume">Fortsett</string>
     <string name="downloads_empty">Ingen nedlastinger</string>
     <string name="downloads_load_failed">Nedlastingene dine kunne ikke lastes inn.</string>
