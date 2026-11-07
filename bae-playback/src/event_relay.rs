@@ -12,7 +12,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::thread::Thread;
+use std::thread::{JoinHandle, Thread};
 
 struct RelayState {
     ready: tokio::sync::Notify,
@@ -33,10 +33,11 @@ impl RelayWake {
 }
 
 /// The draining side: waits until events were pushed. Dropping it ends the
-/// relay thread.
+/// relay thread, and waits for it to end.
 pub(crate) struct EventRelay {
     state: Arc<RelayState>,
-    relay: Thread,
+    /// The relay thread, taken by the drop that joins it.
+    relay: Option<JoinHandle<()>>,
 }
 
 impl EventRelay {
@@ -50,7 +51,15 @@ impl EventRelay {
 impl Drop for EventRelay {
     fn drop(&mut self) {
         self.state.closed.store(true, Ordering::Release);
-        self.relay.unpark();
+        let Some(relay) = self.relay.take() else {
+            return;
+        };
+        relay.thread().unpark();
+        // The relay thread runs only the loop below, which never drops this,
+        // so the join is never on itself.
+        if relay.join().is_err() {
+            tracing::warn!("the playback audio event relay thread panicked");
+        }
     }
 }
 
@@ -58,18 +67,17 @@ impl Drop for EventRelay {
 pub(crate) fn event_relay() -> std::io::Result<(RelayWake, EventRelay)> {
     let state = Arc::new(RelayState { ready: tokio::sync::Notify::new(), closed: false.into() });
     let relayed = state.clone();
-    let relay = std::thread::Builder::new()
-        .name("playback audio events".to_string())
-        .spawn(move || loop {
-            std::thread::park();
-            if relayed.closed.load(Ordering::Acquire) {
-                return;
+    let relay =
+        std::thread::Builder::new().name("playback audio events".to_string()).spawn(move || {
+            loop {
+                std::thread::park();
+                if relayed.closed.load(Ordering::Acquire) {
+                    return;
+                }
+                relayed.ready.notify_one();
             }
-            relayed.ready.notify_one();
-        })?
-        .thread()
-        .clone();
-    Ok((RelayWake { relay: relay.clone() }, EventRelay { state, relay }))
+        })?;
+    Ok((RelayWake { relay: relay.thread().clone() }, EventRelay { state, relay: Some(relay) }))
 }
 
 #[cfg(test)]
