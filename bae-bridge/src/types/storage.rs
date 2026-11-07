@@ -1,3 +1,4 @@
+#[cfg(any(test, feature = "oauth-providers"))]
 use super::BridgeError;
 use super::BridgeStoreKeyState;
 
