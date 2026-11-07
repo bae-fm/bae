@@ -361,7 +361,7 @@
       s === 'queued' ? h('div', { className: 'bae-a-dlrow' }, line('Waiting to download'), btn('close', 'Cancel')) :
       s === 'downloading' ? [h(AndroidProgress, { key: 'p', value: Number(props.progress || 0.4) }), h('span', { key: 'b', className: 'bae-a-fine' }, props.bytes || '120 MB of 300 MB'), h('div', { key: 'c' }, btn('close', 'Cancel'))] :
       s === 'failed' ? [h('div', { key: 'e', className: 'bae-a-error' }, props.error || 'Couldn’t reach your storage.'), h('div', { key: 'r', className: 'bae-a-dlrow' }, btn('retry', 'Retry'), btn('close', 'Cancel'))] :
-      s === 'downloaded' ? h('div', { className: 'bae-a-dlrow' }, h(Glyph, { name: 'downloaded', size: 16, className: 'bae-muted' }), line('Downloaded'), btn('remove', 'Remove Download')) :
+      s === 'downloaded' ? h('div', { className: 'bae-a-dlrow' }, h(Glyph, { name: 'downloaded', size: 16, className: 'bae-muted' }), line('Downloaded'), btn('remove', 'Remove download')) :
       btn('download', 'Download');
     return h('div', { className: 'bae-a-dl' }, body);
   }

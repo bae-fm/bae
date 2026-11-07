@@ -35,7 +35,7 @@
     var s = props.state || 'cloud';
     return h('div', { className: 'bae-m-sband' },
       s === 'uploading' ? [h('div', { key: 'c' }, h(StatusChip, { tone: 'activity' }, h(Sym, { name: 'up', size: 10 }), 'Uploading')), h('div', { key: 'b', style: { display: 'flex', gap: 8, alignItems: 'center' } }, h('div', { className: 'bae-m-track', style: { flex: 1 } }, h('div', { className: 'bae-accent-bg', style: { width: '40%' } })), h('span', { className: 'bae-muted bae-num' }, '96 MB of 221.2 MB'))]
-        : h('div', { className: 'bae-muted', style: { display: 'flex', gap: 6, alignItems: 'center' } }, h(Sym, { name: { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s], size: 14 }), { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]),
+        : h('div', { className: 'bae-muted', style: { display: 'flex', gap: 6, alignItems: 'center' } }, h(Sym, { name: { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s], size: 14 }), { local: 'Local', pinned: 'Pinned', cloud: 'In storage' }[s]),
       props.why ? h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, props.why) : null,
-      s === 'uploading' ? null : h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, list(props.actions || 'Pin,Make Local…,Export…,Save As…').map(function (a) { return h(MacButton, { key: a }, a); })));
+      s === 'uploading' ? null : h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, list(props.actions || 'Pin,Make local…,Export…,Save as…').map(function (a) { return h(MacButton, { key: a }, a); })));
   }

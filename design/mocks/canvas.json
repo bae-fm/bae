@@ -149,7 +149,7 @@
   "AlbMacSaveAs.dc.html": {
    "h": 1000,
    "page": "home",
-   "title": "macOS: Save As… on a track",
+   "title": "macOS: Save as… on a track",
    "w": 1200,
    "x": 12800,
    "y": 15812
@@ -2798,7 +2798,7 @@
   "StoreMacCloud.dc.html": {
    "h": 660,
    "page": "storage",
-   "title": "macOS: Cloud only",
+   "title": "macOS: In storage only",
    "w": 1100,
    "x": 4720,
    "y": 1380
@@ -2838,7 +2838,7 @@
   "StoreMacMoveToCloud.dc.html": {
    "h": 660,
    "page": "storage",
-   "title": "macOS: Move to Cloud",
+   "title": "macOS: Move to storage",
    "w": 1100,
    "x": 1180,
    "y": 1380
@@ -3085,7 +3085,7 @@
    "h": 654,
    "page": "storage",
    "radius": 10,
-   "title": "All / Local / Cloud, sorted by Storage",
+   "title": "All / Local / In storage, sorted by Storage",
    "w": 1040,
    "x": 0,
    "y": 8666

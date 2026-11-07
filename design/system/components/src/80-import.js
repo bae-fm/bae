@@ -40,7 +40,7 @@
   function MacImportFolderLine(props) {
     return h('div', { className: 'bae-m-ifl' }, h(StatusChip, { tone: 'accent' }, props.tab || 'Found'), h(Sym, { name: 'right', size: 10, className: 'bae-m-tertiary' }), h(Sym, { name: 'folder', size: 15, className: 'bae-muted' }), h('span', { className: 'bae-ellipsis bae-strong', style: { fontSize: 15 } }, props.folder));
   }
-  // The draft card: Identify with Automatic, Search and ⋯; the folder checks, Cloud/Pinned and Import; the cover well and identity; the Release grid; the linked records.
+  // The draft card: Identify with Automatic, Search and ⋯; the folder checks, In storage/Pinned and Import; the cover well and identity; the Release grid; the linked records.
   function MacImportDraft(props) {
     var rows = list(props.fields || 'Year:1992,Media:CD,Label:Harbor Records — HR-1042,Country:—,Barcode:—,Status:Official,Packaging:—,Details:—').map(function (r) { var i = r.indexOf(':'); return [r.slice(0, i), r.slice(i + 1)]; });
     return h('div', { className: 'bae-m-card bae-m-idraft' },
@@ -48,7 +48,7 @@
         h('span', { className: 'bae-strong bae-muted' }, 'Identify'), h(MacButton, null, 'Automatic'), h(MacButton, null, 'Search'), props.editor ? null : h(MacButton, null, '⋯'),
         h('span', { style: { flex: 1 } }),
         props.check ? h('span', { className: 'bae-m-idraft-warn' }, props.check) : null,
-        props.cloud ? h(MacCheckbox, { label: 'Cloud', on: true }) : null, props.cloud ? h(MacCheckbox, { label: 'Pinned' }) : null,
+        props.cloud ? h(MacCheckbox, { label: 'In storage', on: true }) : null, props.cloud ? h(MacCheckbox, { label: 'Pinned' }) : null,
         props.editor ? [props.changed ? h(MacButton, { key: 'c' }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary' }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary' }, props.retry ? 'Retry Import' : 'Import')),
       h('div', { className: 'bae-m-idraft-head' },
         props.cover ? h(Artwork, { title: props.cover, size: 132, radius: 6 }) : h('div', { className: 'bae-m-idraft-well' }, h('div', { className: 'bae-strong' }, 'Add artwork'), h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, 'Drag an image here, or click to choose')),

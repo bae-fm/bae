@@ -42,7 +42,7 @@
   function list(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
 
   // ---- Storage Manager (macOS) ----
-  // The window: title, Filter field, All / Local / Cloud, the Inspector toggle, then the release list and the inspector.
+  // The window: title, Filter field, All / Local / In storage, the Inspector toggle, then the release list and the inspector.
   function MacStorageWindow(props) {
     var k = kids(props.children);
     return h('div', { className: 'bae-m-window bae-m-storewin', style: { width: Number(props.width || 1100), height: Number(props.height || 660) } },
@@ -50,7 +50,7 @@
       h('header', { className: 'bae-m-storewin-bar' },
         h('span', { className: 'bae-m-storewin-title' }, 'Storage Manager'),
         h('span', { style: { flex: 1 } }),
-        h(MacSegmentedControl, { options: 'All, Local, Cloud', selected: props.filter || 'All' }),
+        h(MacSegmentedControl, { options: 'All, Local, In storage', selected: props.filter || 'All' }),
         h('span', { style: { flex: 1 } }),
         h('span', { className: 'bae-m-storewin-filter' }, h(Glyph, { set: 'mac', name: 'search', size: 12 }), h('span', { className: props.search ? null : 'bae-m-search-prompt' }, props.search || 'Filter')),
         h('span', { className: cx('bae-m-iconbtn', props.inspector && 'bae-m-iconbtn-on'), title: 'Inspector' }, h(Sym, { name: 'sidebar', size: 15 }))),
@@ -73,7 +73,7 @@
     return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
   }
   function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
-  // The Storage column: Local, Pinned, Cloud; or a transfer: Uploading and Pinning fill as they go.
+  // The Storage column: Local, Pinned, In storage; or a transfer: Uploading and Pinning fill as they go.
   function MacStorageChip(props) {
     var s = props.state || 'cloud';
     if (s === 'uploading' || s === 'pinning' || s === 'detaching') {
@@ -82,7 +82,7 @@
     }
     if (s === 'transfer') return h(StatusChip, { tone: 'activity' }, props.label || 'Pinning for offline');
     var icon = { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s];
-    return h(StatusChip, { tone: 'neutral' }, h(Sym, { name: icon, size: 10 }), { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]);
+    return h(StatusChip, { tone: 'neutral' }, h(Sym, { name: icon, size: 10 }), { local: 'Local', pinned: 'Pinned', cloud: 'In storage' }[s]);
   }
   // Under the list: how many releases, the total, then one rate and Pause per queue with work.
   function MacStorageFooter(props) {
