@@ -3089,9 +3089,10 @@ words of a button, which are each platform's.
   (*There's no space left on this device. Free some space and bae will try
   again.*); the operating system won't let bae open a file it needs, named when
   a row on this device names it (*Couldn't read "Cover.jpg": bae isn't allowed
-  to open it.*); the device's disk failed some other way; something went wrong
-  in bae. A phone never uploads, so its causes are local
-  ones, a provider error or a damaged change. A start that failed with sync
+  to open it.*); the device's disk failed some other way (*bae couldn't read or
+  write a file on this device. It will try again.*); something went wrong in
+  bae. A phone never uploads, so its causes are local ones, a provider error or
+  a damaged change. A start that failed with sync
   not running is Sync failed with the start's own line as its cause and
   *Reconnect* as its fix.
 
