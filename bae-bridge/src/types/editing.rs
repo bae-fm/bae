@@ -747,7 +747,7 @@ pub struct BridgeRawTrackEdit {
     pub file: Option<BridgeAudioFile>,
 }
 
-/// Why a release edit can't be saved. An FFI mirror of bae-library's
+/// Why an edit can't be saved. An FFI mirror of bae-types'
 /// `EditValidationError`; the UI renders each variant by resolving its
 /// localization key — see `bridge_validation_reason_key`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -761,9 +761,6 @@ pub enum BridgeValidationReason {
 impl BridgeValidationReason {
     /// The catalog key the UI resolves against the generated `Core` string
     /// table — the single source of the variant→key mapping for every platform.
-    /// Only the desktop edit flow produces a validation reason, so the mapping
-    /// is compiled there (and under test for the cross-check).
-    #[cfg(desktop)]
     pub(crate) fn loc_key(self) -> &'static str {
         match self {
             Self::EmptyAlbumTitle => "core.import.validation.empty_album_title",
@@ -772,6 +769,14 @@ impl BridgeValidationReason {
             Self::InvalidYear => "core.import.validation.invalid_year",
         }
     }
+}
+
+mirror_enum! {
+    /// Kept here, not as a `From` in bae-library, so bae-library stays unaware of
+    /// bridge types.
+    BridgeValidationReason = bae_types::edit_validation::EditValidationError,
+    from_core: pub(crate) fn,
+    variants: { EmptyAlbumTitle, NoAlbumArtist, EmptyArtistName, InvalidYear },
 }
 
 /// Outcome of shaping a raw edit form (`shape_release_edit`). `Valid` carries

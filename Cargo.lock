@@ -1294,6 +1294,7 @@ version = "0.0.0-dev"
 dependencies = [
  "regex",
  "serde",
+ "thiserror 2.0.18",
  "unicode-normalization",
 ]
 

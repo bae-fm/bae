@@ -81,7 +81,7 @@ impl LibraryManager {
 /// A credit name a person entered, refused when blank.
 fn credit_name(name: &str) -> Result<bae_store::EnteredName, LibraryError> {
     bae_store::EnteredName::parse(name).map_err(|bae_store::BlankName| {
-        LibraryError::Refused("a credit name cannot be blank".into())
+        LibraryError::Edit(bae_types::edit_validation::EditValidationError::EmptyArtistName)
     })
 }
 

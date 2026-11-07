@@ -245,6 +245,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::ReleaseChangedSinceOpened,
         BridgeErrorCategory::ChangedMeanwhile,
         BridgeErrorCategory::ConflictingSourceIds,
+        BridgeErrorCategory::InvalidEdit { reason: BridgeValidationReason::EmptyArtistName },
         BridgeErrorCategory::QueueChanged,
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateBeingIdentified,

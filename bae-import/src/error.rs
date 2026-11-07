@@ -534,6 +534,8 @@ impl ImportError {
             #[cfg(desktop)]
             Self::Refused(_) | Self::LibraryChanged | Self::CandidateMoved(_) => C::Import,
             #[cfg(desktop)]
+            Self::Edit(reason) => C::InvalidEdit(*reason),
+            #[cfg(desktop)]
             Self::Identity(bae_records::IdentityRefusal::ArtistGone(_)) => C::ChangedMeanwhile,
             #[cfg(desktop)]
             Self::Identity(bae_records::IdentityRefusal::ConflictingSourceIds(_)) => {
@@ -669,7 +671,6 @@ impl ImportError {
             | Self::LocalCover { .. }
             | Self::DecodeVerification { .. }
             | Self::SourceRead { .. }
-            | Self::Edit(_)
             | Self::Cover(_)
             | Self::SheetBinding { .. }
             | Self::WatchedFolder(_)

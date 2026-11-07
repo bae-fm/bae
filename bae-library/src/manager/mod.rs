@@ -147,12 +147,11 @@ pub enum LibraryError {
     /// A save (rendered output — track or release) failed.
     #[error("Save error: {0}")]
     Save(String),
-    /// A user-submitted release metadata edit failed its invariants (blank album
-    /// title, no album artist). The editor's typed error, so every surface reports
-    /// the same rule rather than its own hand-written sentence.
+    /// What the person typed failed its invariants (a blank album title, no
+    /// album artist, a blank credit name). The editor's typed error, so every
+    /// surface reports the same rule rather than its own hand-written sentence.
     #[error(transparent)]
-    #[cfg(desktop)]
-    Edit(#[from] bae_import::EditValidationError),
+    Edit(#[from] bae_types::edit_validation::EditValidationError),
     #[error("Release editor cannot load: {0}")]
     #[cfg(desktop)]
     ReleaseEditLoad(#[from] bae_import::ReleaseEditLoadError),
@@ -393,8 +392,7 @@ impl LibraryError {
             #[cfg(desktop)]
             LibraryError::Import(error) => error.category(),
             LibraryError::Refused(_) => C::Import,
-            #[cfg(desktop)]
-            LibraryError::Edit(_) => C::Import,
+            LibraryError::Edit(reason) => C::InvalidEdit(*reason),
             LibraryError::ReleaseMissing { work, .. } => match work {
                 ReleaseWork::Edit => C::ChangedMeanwhile,
                 ReleaseWork::Export => C::Export,

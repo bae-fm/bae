@@ -10,6 +10,7 @@ use crate::{
     SearchForm, SearchTab,
 };
 use bae_diagnostics::{GroupingBlockReason, UiError, UiErrorCategory};
+use bae_types::edit_validation::EditValidationError;
 
 fn presentation_column(presentation: MetadataPresentation) -> &'static str {
     match presentation {
@@ -95,6 +96,15 @@ fn block_column(reason: GroupingBlockReason) -> &'static str {
     }
 }
 
+fn edit_column(reason: EditValidationError) -> &'static str {
+    match reason {
+        EditValidationError::EmptyAlbumTitle => "empty_album_title",
+        EditValidationError::NoAlbumArtist => "no_album_artist",
+        EditValidationError::EmptyArtistName => "empty_artist_name",
+        EditValidationError::InvalidYear => "invalid_year",
+    }
+}
+
 /// How a failure's class is stored: its name, and for a class that carries a
 /// reason or counts, each after a dot.
 fn category_column(category: UiErrorCategory) -> String {
@@ -108,6 +118,7 @@ fn category_column(category: UiErrorCategory) -> String {
             format!("{class}.{}", mediums.iter().map(u32::to_string).collect::<Vec<_>>().join("."))
         }
         C::GroupingBlocked(reason) => format!("{class}.{}", block_column(reason)),
+        C::InvalidEdit(reason) => format!("{class}.{}", edit_column(reason)),
         C::Storage(failure) | C::S3VersioningUnknown(failure) => {
             format!("{class}.{}", storage_failure_json(&failure))
         }
@@ -200,6 +211,17 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             ]
             .into_iter()
             .find(|reason| block_column(*reason) == stored)
+            .ok_or_else(unreadable)?,
+        ),
+        K::InvalidEdit => C::InvalidEdit(
+            [
+                EditValidationError::EmptyAlbumTitle,
+                EditValidationError::NoAlbumArtist,
+                EditValidationError::EmptyArtistName,
+                EditValidationError::InvalidYear,
+            ]
+            .into_iter()
+            .find(|reason| edit_column(*reason) == stored)
             .ok_or_else(unreadable)?,
         ),
         K::Storage => {

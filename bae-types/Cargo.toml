@@ -16,6 +16,8 @@ path = "src/lib.rs"
 [dependencies]
 # Every pressing value is stored and serialized by its key.
 serde = { workspace = true, features = ["derive"] }
+# The refusals this crate names.
+thiserror = { workspace = true }
 # Text is compared with its diacritics folded away (src/text_match/fold.rs).
 unicode-normalization = { workspace = true }
 

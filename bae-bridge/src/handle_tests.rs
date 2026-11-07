@@ -866,7 +866,9 @@ fn a_library_refusal_crosses_in_the_class_core_gave_it() {
         matches!(
             result,
             Err(crate::types::BridgeError::Diagnostic {
-                category: crate::types::BridgeErrorCategory::Import,
+                category: crate::types::BridgeErrorCategory::InvalidEdit {
+                    reason: crate::types::BridgeValidationReason::EmptyArtistName
+                },
                 ..
             })
         ),

@@ -7,6 +7,7 @@
 
 use super::*;
 use bae_catalogs::credits::ArtistCredit;
+pub use bae_types::edit_validation::EditValidationError;
 
 /// Edit-metadata form values exactly as the editor holds them — text the user
 /// typed, not yet normalized. Artist assignments retain their identity while
@@ -172,21 +173,6 @@ pub struct RawTrackEdit<Audio = Option<AudioFile>> {
     /// The audio bound to this row, carried through editing untouched, so the
     /// row the editor hands back names the audio it was drawn over.
     pub file: Audio,
-}
-
-/// Why a [`RawReleaseEdit`] can't be shaped into a savable
-/// [`ReleaseUserEdit`]. The editor surfaces this to disable Save (and, on
-/// commit, to block the write).
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum EditValidationError {
-    #[error("Album title is required")]
-    EmptyAlbumTitle,
-    #[error("Album must have at least one artist")]
-    NoAlbumArtist,
-    #[error("Artist name is required")]
-    EmptyArtistName,
-    #[error("Year must be a number")]
-    InvalidYear,
 }
 
 /// Typed text trimmed; empty after trimming is `None`.

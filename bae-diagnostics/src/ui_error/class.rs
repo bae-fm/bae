@@ -23,6 +23,7 @@ pub enum UiErrorClass {
     ReleaseChangedSinceOpened,
     ChangedMeanwhile,
     ConflictingSourceIds,
+    InvalidEdit,
     GroupingBlocked,
     Export,
     Save,
@@ -56,7 +57,7 @@ pub enum UiErrorClass {
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 45] = [
+    const ALL: [Self; 46] = [
         Self::Database,
         Self::Config,
         Self::Internal,
@@ -73,6 +74,7 @@ impl UiErrorClass {
         Self::ReleaseChangedSinceOpened,
         Self::ChangedMeanwhile,
         Self::ConflictingSourceIds,
+        Self::InvalidEdit,
         Self::GroupingBlocked,
         Self::Export,
         Self::Save,
@@ -123,6 +125,7 @@ impl UiErrorClass {
             Self::ReleaseChangedSinceOpened => "release_changed_since_opened",
             Self::ChangedMeanwhile => "changed_meanwhile",
             Self::ConflictingSourceIds => "conflicting_source_ids",
+            Self::InvalidEdit => "invalid_edit",
             Self::GroupingBlocked => "grouping_blocked",
             Self::Export => "export",
             Self::Save => "save",
@@ -221,6 +224,7 @@ impl UiErrorClass {
             | Self::TiedMediums
             | Self::ReleaseChangedSinceOpened
             | Self::ChangedMeanwhile
+            | Self::InvalidEdit
             | Self::StorageLocationChangeUnsupported
             | Self::KeychainEntitlementMissing
             | Self::SavedRestoreCodesFull
@@ -258,6 +262,7 @@ impl UiErrorCategory {
             Self::ReleaseChangedSinceOpened => K::ReleaseChangedSinceOpened,
             Self::ChangedMeanwhile => K::ChangedMeanwhile,
             Self::ConflictingSourceIds => K::ConflictingSourceIds,
+            Self::InvalidEdit(_) => K::InvalidEdit,
             Self::GroupingBlocked(_) => K::GroupingBlocked,
             Self::Export => K::Export,
             Self::Save => K::Save,
@@ -334,6 +339,7 @@ impl UiErrorCategory {
             K::DeletionSignInRequired => Self::DeletionSignInRequired,
             K::MetadataTrackCount
             | K::TiedMediums
+            | K::InvalidEdit
             | K::GroupingBlocked
             | K::Storage
             | K::StorageCheck

@@ -9,6 +9,7 @@ pub mod audio_format;
 pub mod barcode;
 pub mod count_label;
 pub mod credits;
+pub mod edit_validation;
 pub mod mediums;
 pub mod pressing;
 pub mod release_storage;

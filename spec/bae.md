@@ -5008,8 +5008,9 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device, after its warning (§6.4) |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library |
-| `Import`, `ImportData` | reads the detail: an import couldn't finish, because a catalog or a source couldn't answer or be read, or its candidate, the library's artists or the watched folders changed before its write, and importing again works on what now stands; or another change to the library was refused for the reason the detail gives, such as a blank name |
+| `Import`, `ImportData` | reads the detail: an import couldn't finish, because a catalog or a source couldn't answer or be read, or its candidate, the library's artists or the watched folders changed before its write, and importing again works on what now stands; or another change to the library was refused for the reason the detail gives |
 | `ChangedMeanwhile` | asks again, on what now stands: what a change to the library acted on changed before it was written, and nothing was written (a release deleted before an edit or a deletion of it, an album or release a deletion was planned against, a cover or artist image replaced again, a release picked as its album's primary that moved to another album, an artist given a printed name that was deleted or merged, an artist a credit picked that left the library) |
+| `InvalidEdit` | fixes what they typed, as the line says: an album title, an artist, an artist's name, a year |
 | `ConflictingSourceIds` | reads which artist the detail names: the catalog ids a credit carries disagree with those of the library artist it matched, and nothing was written |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |
@@ -5044,7 +5045,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 `DeviceRemoved`, `CandidateImportInProgress`, `CandidateBeingIdentified`,
 `FilesAlreadyImported`, `MetadataTrackCount`, `TiedMediums`,
-`ReleaseChangedSinceOpened`, `ChangedMeanwhile`,
+`ReleaseChangedSinceOpened`, `ChangedMeanwhile`, `InvalidEdit`,
 `StorageLocationChangeUnsupported`, `KeychainEntitlementMissing`,
 `SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge`, `StoreOwnerAccount`,
 `QueueChanged`, `ReplacementUnfinished`, `RestoreRegistered`,

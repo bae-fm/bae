@@ -22,7 +22,7 @@ pub enum UiErrorCategory {
     /// An import couldn't finish: a catalog or a source couldn't answer or
     /// be read, or what it was prepared against changed before its write.
     /// Also another change to the library refused for the reason its detail
-    /// gives, such as a blank name.
+    /// gives.
     Import,
     /// Source metadata or artwork could not be parsed or decoded.
     ImportData,
@@ -57,6 +57,8 @@ pub enum UiErrorCategory {
     /// matched, so its write can't say which artist it is; the detail names
     /// the artist.
     ConflictingSourceIds,
+    /// What the person typed can't be saved; the line says what it needs.
+    InvalidEdit(bae_types::edit_validation::EditValidationError),
     /// A release read from several folders cannot be worked on as it stands,
     /// or cannot be made, for a reason the person can act on.
     GroupingBlocked(GroupingBlockReason),
