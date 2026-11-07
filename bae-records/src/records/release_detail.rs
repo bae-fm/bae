@@ -168,28 +168,45 @@ fn unstored_rows_on(
     )?)
 }
 
+/// Why the other device a release file is on could not be named, for a
+/// read of the file that found it on one device only, not this one.
+#[derive(Debug, thiserror::Error)]
+pub enum OtherDeviceError {
+    /// Coven lists the file on no one device: it reached storage, or left
+    /// the library, after the read that found it on one.
+    #[error("release file {0} is on no one device")]
+    NotOnOneDevice(String),
+    /// Coven lists the file's original on this device.
+    #[error("release file {0} has its original on this device")]
+    OriginalHere(String),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
 impl Records {
     /// The other device release file `file_id` is on, for a read of it that
     /// found it on one device only, not this one. A file coven records here,
     /// or on no one device, fails the read naming the file.
-    pub async fn release_file_other_device(&self, file_id: &str) -> Result<OtherDevice, DbError> {
-        let file_id = file_id.to_string();
-        self.store
+    pub async fn release_file_other_device(
+        &self,
+        file_id: &str,
+    ) -> Result<OtherDevice, OtherDeviceError> {
+        let file = file_id.to_string();
+        let audio = self
+            .store
             .read(move |sql| {
-                let mut rows = unstored_rows_on(&sql, "f.id = ?", &file_id)?;
-                let (Some(row), None) = (rows.pop(), rows.pop()) else {
-                    return Err(DbError::Message(format!(
-                        "coven lists release file {file_id} on no one device"
-                    )));
-                };
-                match row.into_unstored_audio()? {
-                    DbUnstoredAudio::Elsewhere(device) => Ok(device),
-                    DbUnstoredAudio::Original => Err(DbError::Message(format!(
-                        "release file {file_id} read as on another device, with its original here"
-                    ))),
+                let mut rows = unstored_rows_on(&sql, "f.id = ?", &file)?;
+                match (rows.pop(), rows.pop()) {
+                    (Some(row), None) => Ok(Some(row.into_unstored_audio()?)),
+                    _ => Ok(None),
                 }
             })
-            .await
+            .await?;
+        match audio {
+            Some(DbUnstoredAudio::Elsewhere(device)) => Ok(device),
+            Some(DbUnstoredAudio::Original) => Err(OtherDeviceError::OriginalHere(file_id.into())),
+            None => Err(OtherDeviceError::NotOnOneDevice(file_id.into())),
+        }
     }
 }
 
