@@ -383,13 +383,6 @@ impl LibraryManager {
 }
 
 impl LibraryManager {
-    pub async fn detect_s3_settings(
-        &self,
-        storage: coven::StorageConfig,
-        credentials: coven::S3Credentials,
-    ) -> Result<coven::S3Detection, LibraryError> {
-        Ok(self.store.detect_s3_settings(storage, credentials).await?)
-    }
     pub async fn storage_location(&self) -> Result<Option<coven::StorageConfig>, LibraryError> {
         Ok(self.store.storage_config().await?)
     }

@@ -1,10 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// S3 setup: the bucket, region, endpoint and access key, and nothing else.
-/// coven knows a service by its endpoint and fills in how to talk to it;
-/// Advanced holds the profile and a detection of the settings for a service
-/// coven doesn't know. The library takes the whole bucket.
+/// S3 setup: the endpoint, region and bucket, then the access key. coven
+/// knows a service by its endpoint and fills in how to talk to it. The library
+/// takes the whole bucket. A failed setup leaves the fields as typed, with the
+/// reason under the field it names.
 struct S3SetupForm: View {
     let onConnected: (BridgeStorageSetup) -> Void
 
@@ -13,20 +13,22 @@ struct S3SetupForm: View {
 
     @State
     private var fields: S3SetupFields
-    @State
-    private var showAdvanced = false
 
-    init(
-        detectSettings:
-            @escaping @Sendable (BridgeStorageLocation, BridgeS3Credentials)
-            async throws -> BridgeS3Detection,
-        onConnected: @escaping (BridgeStorageSetup) -> Void
-    ) {
-        _fields = State(
-            initialValue: S3SetupFields(detectSettings: detectSettings)
-        )
+    init(onConnected: @escaping (BridgeStorageSetup) -> Void) {
+        _fields = State(initialValue: S3SetupFields())
         self.onConnected = onConnected
     }
+
+    #if DEBUG
+        /// A form whose fields are staged, for a preview or a shot.
+        init(
+            staged fields: S3SetupFields,
+            onConnected: @escaping (BridgeStorageSetup) -> Void
+        ) {
+            _fields = State(initialValue: fields)
+            self.onConnected = onConnected
+        }
+    #endif
 
     var body: some View {
         @Bindable
@@ -35,57 +37,36 @@ struct S3SetupForm: View {
             actionTitle: "Connect",
             ready: fields.ready,
             operation: { [sync, fields] setup in
-                try await sync.saveSyncConfig(fields.config, setup)
+                fields.clearFailure()
+                return try await sync.saveSyncConfig(fields.config, setup)
             },
-            onConnected: onConnected
-        ) {
-            Section {
-                TextField("Bucket", text: $fields.bucket)
-                TextField("Region", text: $fields.region)
-                TextField("Endpoint", text: $fields.endpoint)
-                    .textContentType(.URL)
-            } footer: {
-                Text("Leave the endpoint empty for AWS.")
-            }
-            Section {
-                TextField("Access key", text: $fields.accessKey)
-                SecureField("Secret key", text: $fields.secretKey)
-            }
-            Section {
-                DisclosureGroup("Advanced", isExpanded: $showAdvanced) {
-                    advanced
+            onConnected: onConnected,
+            claim: { fields.place($0) },
+            fields: {
+                Section("Location") {
+                    TextField("Endpoint", text: $fields.endpoint)
+                        .textContentType(.URL)
+                    TextField("Region", text: $fields.region)
+                    failure(under: .region)
+                    TextField("Bucket", text: $fields.bucket)
+                    failure(under: .bucket)
+                }
+                Section("Key") {
+                    TextField("Access key ID", text: $fields.accessKey)
+                    SecureField("Secret access key", text: $fields.secretKey)
                 }
             }
-        }
-        .onDisappear { fields.cancelDetection() }
+        )
     }
 
+    /// The reason a failed setup gives for `field`, under it.
     @ViewBuilder
-    private var advanced: some View {
-        @Bindable
-        var fields = fields
-        Picker("Profile", selection: $fields.profile) {
-            Text("Automatic").tag(S3SetupFields.ProfileChoice.automatic)
-            ForEach(S3SetupFields.profileNames, id: \.self) { name in
-                Text(verbatim: name.displayName)
-                    .tag(S3SetupFields.ProfileChoice.named(name))
-            }
-            Text("Detected settings")
-                .tag(S3SetupFields.ProfileChoice.detected)
-                .selectionDisabled(fields.detection == nil)
-        }
-        HStack {
-            Button("Detect settings") { fields.detect() }
-                .disabled(fields.isDetecting || !fields.ready)
-            if fields.isDetecting {
-                WaitingIndicator("Detecting the service's settings…")
-            }
-        }
-        if let detectError = fields.detectError {
-            ErrorDetailDisclosure(error: detectError)
-        }
-        if let detection = fields.detection {
-            S3DetectedSettings(detection: detection)
+    private func failure(under field: S3SetupFields.Field) -> some View {
+        if let failure = fields.fieldFailure, failure.field == field {
+            Text(failure.error.line)
+                .themeText(.detail)
+                .foregroundStyle(Theme.danger)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

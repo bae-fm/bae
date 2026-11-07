@@ -251,14 +251,6 @@
     <string name="settings_set_up_sync_explanation">Această bibliotecă este stocată doar pe acest dispozitiv. Sincronizarea o păstrează în stocare, unde celelalte dispozitive ale tale și gospodăria o pot folosi.</string>
     <string name="storage_setup_choose">Unde să fie stocată această bibliotecă?</string>
     <string name="storage_s3_endpoint_hint">Lasă gol pentru Amazon S3.</string>
-    <string name="storage_s3_advanced">Avansat</string>
-    <string name="storage_s3_profile">Profilul serviciului</string>
-    <string name="storage_s3_profile_detect">Detectează după endpoint</string>
-    <string name="storage_s3_check">Verifică bucketul</string>
-    <string name="storage_versioning_disabled">Gestionarea versiunilor este dezactivată.</string>
-    <string name="storage_versioning_enabled">Gestionarea versiunilor este activată.</string>
-    <string name="storage_versioning_suspended">Gestionarea versiunilor este suspendată.</string>
-    <string name="storage_versioning_unavailable">Acest serviciu nu oferă gestionarea versiunilor.</string>
     <string name="storage_set_up">Configurează</string>
     <string name="storage_dropbox_choose">Alege un dosar partajat</string>
     <string name="storage_dropbox_reading">Se citesc dosarele tale Dropbox partajate…</string>

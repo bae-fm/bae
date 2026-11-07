@@ -67,6 +67,3 @@ pub use membership::*;
 
 mod bootstrap;
 pub use bootstrap::*;
-
-mod s3_detection;
-pub use s3_detection::*;

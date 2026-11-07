@@ -1,87 +1,45 @@
 package fm.bae.app.ui.settings
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
-import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.coreString
-import fm.bae.app.performBridgeAction
-import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeErrorCategory
-import uniffi.bae_bridge.BridgeS3BucketVersioning
-import uniffi.bae_bridge.BridgeS3Credentials
-import uniffi.bae_bridge.BridgeS3Detection
-import uniffi.bae_bridge.BridgeS3Profile
-import uniffi.bae_bridge.BridgeS3ProfileName
-import uniffi.bae_bridge.BridgeS3Versioning
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSaveSyncConfig
-import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.bridgeErrorCategoryKey
+import uniffi.bae_bridge.BridgeStorageFailure
 
-private val logger = BaeLogger("bae.S3SetupForm")
+/** A form field a failed setup's reason can sit under. */
+private enum class S3Field { REGION, BUCKET }
 
-/** The S3-compatible services coven has a profile for, by their own names. */
-private fun profileName(profile: BridgeS3ProfileName): String =
-    when (profile) {
-        BridgeS3ProfileName.AWS -> "Amazon S3"
-        BridgeS3ProfileName.GCS -> "Google Cloud Storage"
-        BridgeS3ProfileName.R2 -> "Cloudflare R2"
-        BridgeS3ProfileName.RUST_FS -> "RustFS"
-        BridgeS3ProfileName.SEAWEED_FS -> "SeaweedFS"
-        BridgeS3ProfileName.CEPH_RGW -> "Ceph RGW"
-        BridgeS3ProfileName.VERSITY_GW -> "Versity Gateway"
-    }
-
-/** What the person typed into the S3 form. */
+/** What the person typed into the S3 form, and the reason a failed setup gave for one field. */
 private class S3FormInput {
-    var bucket by mutableStateOf("")
-    var region by mutableStateOf("")
     var endpoint by mutableStateOf("")
+    var region by mutableStateOf("")
+    var bucket by mutableStateOf("")
     var accessKeyId by mutableStateOf("")
     var secretAccessKey by mutableStateOf("")
-    var profile by mutableStateOf<BridgeS3ProfileName?>(null)
+    var failedField by mutableStateOf<S3Field?>(null)
+    var failure by mutableStateOf<DisplayError?>(null)
 
     val complete: Boolean
         get() = bucket.isNotEmpty() && region.isNotEmpty() && accessKeyId.isNotEmpty() && secretAccessKey.isNotEmpty()
-
-    val credentials: BridgeS3Credentials
-        get() = BridgeS3Credentials(accessKeyId, secretAccessKey)
-
-    /** The bucket as a location, for coven to check before anything is set up. */
-    fun location(): BridgeStorageLocation =
-        BridgeStorageLocation.S3(
-            bucket = bucket,
-            region = region,
-            endpoint = endpoint.takeIf { it.isNotEmpty() },
-            profile = profile?.let { BridgeS3Profile.Named(it) },
-        )
 
     fun config(): BridgeSaveSyncConfig =
         BridgeSaveSyncConfig(
@@ -90,16 +48,42 @@ private class S3FormInput {
             endpoint = endpoint.takeIf { it.isNotEmpty() },
             accessKey = accessKeyId,
             secretKey = secretAccessKey,
-            profile = profile?.let { BridgeS3Profile.Named(it) },
+            profile = null,
         )
+
+    /**
+     * Show [shown], the reason for [error], under its field when [error] names one: a region or
+     * endpoint that doesn't match the bucket under Region, a bucket that isn't there or that
+     * holds other files under Bucket. False for any other failure, which the screen shows.
+     */
+    fun place(
+        error: BridgeException,
+        shown: DisplayError?,
+    ): Boolean {
+        val failure = ((error as? BridgeException.Diagnostic)?.category as? BridgeErrorCategory.Storage)?.failure
+        failedField =
+            when (failure) {
+                is BridgeStorageFailure.RegionMismatch -> S3Field.REGION
+                is BridgeStorageFailure.ContainerNotFound, is BridgeStorageFailure.OwnLocationRequired -> S3Field.BUCKET
+                else -> return false
+            }
+        this.failure = shown
+        return true
+    }
+
+    fun clearFailure() {
+        failedField = null
+        failure = null
+    }
+
+    fun failureUnder(field: S3Field): String? = failure?.line?.takeIf { failedField == field }
 }
 
 /**
- * The S3 form: the bucket, its region and endpoint, and the access key. coven
- * knows a service by its endpoint and fills in how to talk to it; Advanced
- * holds a profile for a service coven doesn't know and a check of what coven
- * detects in the bucket. The library takes the whole bucket. [setup] runs
- * the setup, which the person can stop with Cancel, calling [onCancel].
+ * The S3 form: the endpoint, region and bucket, then the access key. coven knows a service by
+ * its endpoint and fills in how to talk to it. The library takes the whole bucket. A failed
+ * setup leaves the fields as typed, with the reason under the field it names. [setup] runs the
+ * setup, which the person can stop with Cancel, calling [onCancel].
  */
 @Composable
 internal fun S3SetupForm(
@@ -110,13 +94,19 @@ internal fun S3SetupForm(
 ) {
     val scope = rememberScreenScope()
     val input = remember { S3FormInput() }
-    var showAdvanced by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
 
-    TextInput(input.bucket, R.string.settings_bucket) { input.bucket = it.trim() }
-    TextInput(input.region, R.string.settings_region) { input.region = it.trim() }
-    TextInput(input.endpoint, R.string.settings_endpoint, R.string.storage_s3_endpoint_hint, KeyboardType.Uri) {
-        input.endpoint = it.trim()
+    TextInput(
+        input.endpoint,
+        R.string.settings_endpoint,
+        hint = R.string.storage_s3_endpoint_hint,
+        keyboardType = KeyboardType.Uri,
+    ) { input.endpoint = it.trim() }
+    TextInput(input.region, R.string.settings_region, error = input.failureUnder(S3Field.REGION)) {
+        input.region = it.trim()
+    }
+    TextInput(input.bucket, R.string.settings_bucket, error = input.failureUnder(S3Field.BUCKET)) {
+        input.bucket = it.trim()
     }
     S3KeyFields(
         accessKeyId = input.accessKeyId,
@@ -124,18 +114,18 @@ internal fun S3SetupForm(
         onAccessKeyIdChange = { input.accessKeyId = it.trim() },
         onSecretAccessKeyChange = { input.secretAccessKey = it.trim() },
     )
-    TextButton(onClick = { showAdvanced = !showAdvanced }) { Text(stringResource(R.string.storage_s3_advanced)) }
-    if (showAdvanced) {
-        S3Advanced(session = session, input = input, onError = onError)
-    }
     StorageSetupRunLine(setup, onCancel)
     PrimaryButton(
         enabled = input.complete && !busy,
         onClick = {
             busy = true
             onError(null)
+            input.clearFailure()
             scope.launch {
-                setup.run("set up S3 storage") { deviceName, bridgeSetup ->
+                setup.run(
+                    "set up S3 storage",
+                    claim = { input.place(it, session.errors.display(it)) },
+                ) { deviceName, bridgeSetup ->
                     session.appHandle.saveSyncConfig(input.config(), deviceName, bridgeSetup)
                 }
                 busy = false
@@ -146,123 +136,24 @@ internal fun S3SetupForm(
     }
 }
 
-/** The service profile, and a check of the bucket as coven finds it. */
-@Composable
-private fun S3Advanced(
-    session: OpenLibrary,
-    input: S3FormInput,
-    onError: (DisplayError?) -> Unit,
-) {
-    val scope = rememberScreenScope()
-    var detection by remember { mutableStateOf<BridgeS3Detection?>(null) }
-    var checking by remember { mutableStateOf(false) }
-    ProfileChoice(input.profile) { input.profile = it }
-    OutlinedButton(
-        enabled = input.complete && !checking,
-        onClick = {
-            checking = true
-            onError(null)
-            scope.launch {
-                performBridgeAction(logger, "detect S3 settings", session.errors, onError) {
-                    detection = session.appHandle.detectS3Settings(input.location(), input.credentials)
-                }
-                checking = false
-            }
-        },
-    ) {
-        Text(stringResource(R.string.storage_s3_check))
-    }
-    detection?.let { DetectionResults(it) }
-}
-
 @Composable
 private fun TextInput(
     value: String,
     @StringRes label: Int,
     @StringRes hint: Int? = null,
+    error: String? = null,
     keyboardType: KeyboardType = KeyboardType.Ascii,
     onValueChange: (String) -> Unit,
 ) {
+    val supporting = error ?: hint?.let { stringResource(it) }
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(stringResource(label)) },
-        supportingText = hint?.let { { Text(stringResource(it)) } },
+        supportingText = supporting?.let { { Text(it) } },
+        isError = error != null,
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, autoCorrectEnabled = false),
     )
 }
-
-/** Which service's profile coven uses: the one it detects from the endpoint, or one chosen here. */
-@Composable
-private fun ProfileChoice(
-    profile: BridgeS3ProfileName?,
-    onChoose: (BridgeS3ProfileName?) -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    val detect = stringResource(R.string.storage_s3_profile_detect)
-    Text(stringResource(R.string.storage_s3_profile), style = ThemeText.detail.style)
-    OutlinedButton(onClick = { open = true }) {
-        Text(profile?.let(::profileName) ?: detect)
-    }
-    DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-        DropdownMenuItem(text = { Text(detect) }, onClick = {
-            open = false
-            onChoose(null)
-        })
-        BridgeS3ProfileName.entries.forEach { name ->
-            DropdownMenuItem(text = { Text(profileName(name)) }, onClick = {
-                open = false
-                onChoose(name)
-            })
-        }
-    }
-}
-
-/** What coven found in the bucket: whether it keeps versions, and the settings and probes behind Details. */
-@Composable
-private fun DetectionResults(detection: BridgeS3Detection) {
-    val context = LocalContext.current
-    var showDetails by remember(detection) { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-        Text(
-            when (val versioning = detection.versioning()) {
-                is BridgeS3Versioning.Known -> {
-                    stringResource(
-                        when (versioning.state) {
-                            BridgeS3BucketVersioning.DISABLED -> R.string.storage_versioning_disabled
-                            BridgeS3BucketVersioning.ENABLED -> R.string.storage_versioning_enabled
-                            BridgeS3BucketVersioning.SUSPENDED -> R.string.storage_versioning_suspended
-                            BridgeS3BucketVersioning.UNAVAILABLE -> R.string.storage_versioning_unavailable
-                        },
-                    )
-                }
-
-                is BridgeS3Versioning.Failed -> {
-                    val category = BridgeErrorCategory.S3VersioningUnknown(versioning.failure)
-                    context.coreString(bridgeErrorCategoryKey(category))
-                }
-            },
-        )
-        TextButton(onClick = { showDetails = !showDetails }) { Text(stringResource(R.string.details)) }
-        if (showDetails) {
-            SelectionContainer {
-                Text(
-                    text = detectionDetails(detection),
-                    style = ThemeText.mono.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-/** The detected settings and each probe's outcome, as coven reports them. */
-private fun detectionDetails(detection: BridgeS3Detection): String =
-    buildString {
-        appendLine(detection.settings().toString())
-        detection.results().forEach { result ->
-            appendLine("${if (result.held) "✓" else "✗"} ${result.probe}: ${result.detail}")
-        }
-    }.trimEnd()

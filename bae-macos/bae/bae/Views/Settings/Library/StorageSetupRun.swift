@@ -56,7 +56,7 @@ final class StorageSetupRun {
         operation:
             @escaping (BridgeLibrarySetup) async throws -> BridgeStorageSetup,
         onConnected: @escaping (BridgeStorageSetup) -> Void,
-        onFailed: @escaping (DisplayError?) -> Void
+        onFailed: @escaping (any Error) -> Void
     ) {
         state = .running(following)
         task = Task {
@@ -85,7 +85,7 @@ final class StorageSetupRun {
                 return
             }
             logger.error("Storage setup failed: \(String(reflecting: failure))")
-            onFailed(DisplayError(failure))
+            onFailed(failure)
         }
     }
 

@@ -50,9 +50,6 @@ public final class Sync: Sendable, Observable {
     public let setMaxConcurrentUploads: @Sendable (UInt32) async throws -> Void
     public let storageLocation:
         @Sendable () async throws -> BridgeStorageLocation?
-    public let detectS3Settings:
-        @Sendable (BridgeStorageLocation, BridgeS3Credentials) async throws ->
-            BridgeS3Detection
     /// The requests that ask sync to run now, none of which waits for it.
     public let nudges: SyncNudges
     /// What a pending record's action asks core to do.
@@ -144,11 +141,6 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable () async throws -> BridgeStorageLocation? = {
                 throw StubError.notImplemented
             },
-        detectS3Settings:
-            @escaping @Sendable (BridgeStorageLocation, BridgeS3Credentials)
-            async throws -> BridgeS3Detection = { _, _ in
-                throw StubError.notImplemented
-            },
         nudges: SyncNudges = SyncNudges(),
         pendingActions: SyncPendingActions = SyncPendingActions()
     ) {
@@ -175,7 +167,6 @@ public final class Sync: Sendable, Observable {
         self.reconnectSync = reconnectSync
         self.setMaxConcurrentUploads = setMaxConcurrentUploads
         self.storageLocation = storageLocation
-        self.detectS3Settings = detectS3Settings
         self.nudges = nudges
         self.pendingActions = pendingActions
     }
@@ -240,9 +231,6 @@ public final class Sync: Sendable, Observable {
                 try await handle.setMaxConcurrentUploads(n: $0)
             },
             storageLocation: { try await handle.storageLocation() },
-            detectS3Settings: {
-                try await handle.detectS3Settings(location: $0, credentials: $1)
-            },
             nudges: SyncNudges(handle: handle),
             pendingActions: SyncPendingActions(handle: handle)
         )

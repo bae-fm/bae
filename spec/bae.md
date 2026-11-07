@@ -2713,15 +2713,15 @@ Every cloud home holds the same thing: encrypted objects under random names
 says what each provider needs.
 
 **S3 setup.** Dan, on the baeium edition, sets up a library on a Cloudflare R2
-bucket. The form asks for the bucket, region, endpoint and access key, and
-nothing else. coven knows R2 by its endpoint's host and fills in how to talk to
-it
+bucket. The form asks for the endpoint, region and bucket, then the access key
+ID and secret access key, and nothing else: no profile, no key prefix, as the
+library takes the whole bucket. coven knows R2 by its endpoint's host and fills
+in how to talk to it
 ([coven E.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#e3-s3-settings-and-profiles)).
-An Advanced section holds a choice of profile, automatic by default; there
-is no key prefix, as the library takes the whole bucket. For a service coven doesn't know, *Detect settings*
-probes the bucket with the key and shows what it found, which the person can
-then use, naming the probe while it runs. When coven refuses a setup, bae says
-why in plain words.
+When coven refuses a setup, bae says why in plain words, and the form stays as
+typed. A region or endpoint that doesn't match the bucket shows its reason under
+Region; a bucket that isn't there, or that holds other files, under Bucket;
+any other reason at the top of the form. macOS and Android both do this.
 
 **What setup shows while it runs.** Setting a cloud home up, or reconnecting
 one after signing in again or with a new S3 key, waits on the provider, at

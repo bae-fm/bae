@@ -246,14 +246,6 @@
     <string name="settings_set_up_sync_explanation">이 라이브러리는 이 기기에만 저장되어 있습니다. 동기화하면 라이브러리가 스토리지에 보관되어 다른 기기와 가족도 사용할 수 있습니다.</string>
     <string name="storage_setup_choose">이 라이브러리를 어디에 저장할까요?</string>
     <string name="storage_s3_endpoint_hint">Amazon S3는 비워 두세요.</string>
-    <string name="storage_s3_advanced">고급</string>
-    <string name="storage_s3_profile">서비스 프로필</string>
-    <string name="storage_s3_profile_detect">엔드포인트로 감지</string>
-    <string name="storage_s3_check">버킷 확인</string>
-    <string name="storage_versioning_disabled">버전 관리가 꺼져 있습니다.</string>
-    <string name="storage_versioning_enabled">버전 관리가 켜져 있습니다.</string>
-    <string name="storage_versioning_suspended">버전 관리가 일시 중지되었습니다.</string>
-    <string name="storage_versioning_unavailable">이 서비스는 버전 관리를 제공하지 않습니다.</string>
     <string name="storage_set_up">설정</string>
     <string name="storage_dropbox_choose">공유 폴더 선택</string>
     <string name="storage_dropbox_reading">공유된 Dropbox 폴더를 읽는 중…</string>

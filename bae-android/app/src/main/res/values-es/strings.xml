@@ -251,14 +251,6 @@
     <string name="settings_set_up_sync_explanation">Esta biblioteca solo está en este dispositivo. La sincronización la guarda en el almacenamiento, donde tus otros dispositivos y tu hogar pueden usarla.</string>
     <string name="storage_setup_choose">¿Dónde se guardará esta biblioteca?</string>
     <string name="storage_s3_endpoint_hint">Déjalo vacío para Amazon S3.</string>
-    <string name="storage_s3_advanced">Avanzado</string>
-    <string name="storage_s3_profile">Perfil del servicio</string>
-    <string name="storage_s3_profile_detect">Detectar por el endpoint</string>
-    <string name="storage_s3_check">Comprobar bucket</string>
-    <string name="storage_versioning_disabled">El control de versiones está desactivado.</string>
-    <string name="storage_versioning_enabled">El control de versiones está activado.</string>
-    <string name="storage_versioning_suspended">El control de versiones está suspendido.</string>
-    <string name="storage_versioning_unavailable">Este servicio no ofrece control de versiones.</string>
     <string name="storage_set_up">Configurar</string>
     <string name="storage_dropbox_choose">Elige una carpeta compartida</string>
     <string name="storage_dropbox_reading">Leyendo tus carpetas compartidas de Dropbox…</string>

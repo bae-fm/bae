@@ -67,6 +67,10 @@ struct SyncSetupWizard: View {
     /// call ends.
     @State
     private var run: StorageSetupRun
+    #if DEBUG
+        /// The S3 form's fields, when a preview or a shot stages them.
+        private var stagedS3: S3SetupFields?
+    #endif
 
     init(onDone: @escaping () -> Void) {
         self.onDone = onDone
@@ -170,10 +174,7 @@ struct SyncSetupWizard: View {
     private func configureStep(for provider: BridgeCloudProvider) -> some View {
         switch provider {
         case .s3:
-            S3SetupForm(
-                detectSettings: sync.detectS3Settings,
-                onConnected: connected
-            )
+            s3Form
         case .dropbox:
             #if BAE_OAUTH_PROVIDERS
                 OAuthFolderSetup(
@@ -199,6 +200,15 @@ struct SyncSetupWizard: View {
                 EmptyView()
             #endif
         }
+    }
+
+    private var s3Form: S3SetupForm {
+        #if DEBUG
+            if let stagedS3 {
+                return S3SetupForm(staged: stagedS3, onConnected: connected)
+            }
+        #endif
+        return S3SetupForm(onConnected: connected)
     }
 
     private func connected(_ setup: BridgeStorageSetup) {
@@ -246,6 +256,9 @@ struct SetupStep<Fields: View>: View {
     /// Set the storage up, writing each step into the setup's stream.
     let operation: (BridgeLibrarySetup) async throws -> BridgeStorageSetup
     let onConnected: (BridgeStorageSetup) -> Void
+    /// Offered a failed setup before the step shows it at the top: true when
+    /// a field shows it instead.
+    var claim: (any Error) -> Bool = { _ in false }
     @ViewBuilder
     let fields: Fields
 
@@ -305,7 +318,9 @@ struct SetupStep<Fields: View>: View {
             sync.followStorageSetup(),
             operation: operation,
             onConnected: onConnected,
-            onFailed: { error = $0 }
+            onFailed: { failure in
+                if !claim(failure) { error = DisplayError(failure) }
+            }
         )
     }
 }
@@ -322,6 +337,8 @@ struct SetupStep<Fields: View>: View {
             case finishing(BridgeStorageSetupStep)
             /// The person cancelled it while it connected.
             case cancelling
+            /// The setup failed with `failure`, the form as typed.
+            case failed(BridgeStorageFailure)
         }
 
         /// The wizard on the S3 form, its setup staged at `staging` in
@@ -332,26 +349,47 @@ struct SetupStep<Fields: View>: View {
                 switch staging {
                 case .running(let step): (step, false)
                 case .finishing(let step): (step, true)
-                case .cancelling: (.connecting, false)
+                case .cancelling, .failed: (.connecting, false)
                 }
             let run = StorageSetupRun(onCancelled: {})
-            run.start(
-                StorageSetupFollowing(
-                    staging: BridgeStorageSetupProgress(
-                        step: step,
-                        done: 0,
-                        total: 1
+            if case .failed = staging {
+            }
+            else {
+                run.start(
+                    StorageSetupFollowing(
+                        staging: BridgeStorageSetupProgress(
+                            step: step,
+                            done: 0,
+                            total: 1
+                        ),
+                        finishing: finishing
                     ),
-                    finishing: finishing
-                ),
-                operation: { _ in try await Task.neverAnswers() },
-                onConnected: { _ in },
-                onFailed: { _ in }
-            )
+                    operation: { _ in try await Task.neverAnswers() },
+                    onConnected: { _ in },
+                    onFailed: { _ in }
+                )
+            }
             if case .cancelling = staging {
                 run.cancel(sync)
             }
-            return SyncSetupWizard(provider: .s3, run: run, onDone: {})
+            var wizard = SyncSetupWizard(provider: .s3, run: run, onDone: {})
+            if case .failed(let failure) = staging {
+                let fields = S3SetupFields()
+                fields.endpoint = "https://s3.home.lan"
+                fields.region = "us-east-1"
+                fields.bucket = "my-bucket"
+                fields.accessKey = "a1b2c3d4e5f6"
+                fields.secretKey = "abcdefghijkl"
+                _ = fields.place(
+                    BridgeError.Diagnostic(
+                        category: .storage(failure: failure),
+                        detail: ""
+                    )
+                )
+                wizard.stagedS3 = fields
+            }
+            return
+                wizard
                 .environment(PreviewData.configStore())
                 .environment(sync)
                 #if BAE_OAUTH_PROVIDERS

@@ -57,8 +57,6 @@ import uniffi.bae_bridge.BridgeRendererServiceType
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeReportedRenderer
 import uniffi.bae_bridge.BridgeRestoreCodeShare
-import uniffi.bae_bridge.BridgeS3Credentials
-import uniffi.bae_bridge.BridgeS3Detection
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeSearchResults
@@ -283,11 +281,6 @@ internal open class FakeAppHandle(
     override fun closeLibrary(closing: BridgeLibraryClosing?) {
         unfaked("closeLibrary")
     }
-
-    override suspend fun detectS3Settings(
-        location: BridgeStorageLocation,
-        credentials: BridgeS3Credentials,
-    ): BridgeS3Detection = unfaked("detectS3Settings")
 
     override suspend fun storageLocation(): BridgeStorageLocation? = unfaked("storageLocation")
 

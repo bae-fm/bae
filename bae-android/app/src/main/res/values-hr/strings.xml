@@ -252,14 +252,6 @@
     <string name="settings_set_up_sync_explanation">Ova je fonoteka pohranjena samo na ovom uređaju. Sinkronizacija je drži u pohrani, gdje je mogu koristiti vaši drugi uređaji i kućanstvo.</string>
     <string name="storage_setup_choose">Gdje pohraniti ovu fonoteku?</string>
     <string name="storage_s3_endpoint_hint">Ostavite prazno za Amazon S3.</string>
-    <string name="storage_s3_advanced">Napredno</string>
-    <string name="storage_s3_profile">Profil usluge</string>
-    <string name="storage_s3_profile_detect">Prepoznaj prema krajnjoj točki</string>
-    <string name="storage_s3_check">Provjeri bucket</string>
-    <string name="storage_versioning_disabled">Verzioniranje je isključeno.</string>
-    <string name="storage_versioning_enabled">Verzioniranje je uključeno.</string>
-    <string name="storage_versioning_suspended">Verzioniranje je obustavljeno.</string>
-    <string name="storage_versioning_unavailable">Ova usluga ne nudi verzioniranje.</string>
     <string name="storage_set_up">Postavi</string>
     <string name="storage_dropbox_choose">Odaberite dijeljenu mapu</string>
     <string name="storage_dropbox_reading">Čitanje vaših dijeljenih mapa na Dropboxu…</string>

@@ -246,14 +246,6 @@
     <string name="settings_set_up_sync_explanation">此库只存储在这台设备上。同步会将它保存在存储中，你的其他设备和家人都能在那里使用它。</string>
     <string name="storage_setup_choose">此库应存储在哪里？</string>
     <string name="storage_s3_endpoint_hint">使用 Amazon S3 时请留空。</string>
-    <string name="storage_s3_advanced">高级</string>
-    <string name="storage_s3_profile">服务配置</string>
-    <string name="storage_s3_profile_detect">根据端点检测</string>
-    <string name="storage_s3_check">检查存储桶</string>
-    <string name="storage_versioning_disabled">版本控制已关闭。</string>
-    <string name="storage_versioning_enabled">版本控制已开启。</string>
-    <string name="storage_versioning_suspended">版本控制已暂停。</string>
-    <string name="storage_versioning_unavailable">此服务不提供版本控制。</string>
     <string name="storage_set_up">设置</string>
     <string name="storage_dropbox_choose">选择一个共享文件夹</string>
     <string name="storage_dropbox_reading">正在读取你共享的 Dropbox 文件夹…</string>

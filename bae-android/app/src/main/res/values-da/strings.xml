@@ -248,14 +248,6 @@
     <string name="settings_set_up_sync_explanation">Dette bibliotek ligger kun på denne enhed. Synkronisering holder det i lageret, hvor dine andre enheder og din husstand kan bruge det.</string>
     <string name="storage_setup_choose">Hvor skal dette bibliotek gemmes?</string>
     <string name="storage_s3_endpoint_hint">Lad stå tomt for Amazon S3.</string>
-    <string name="storage_s3_advanced">Avanceret</string>
-    <string name="storage_s3_profile">Tjenesteprofil</string>
-    <string name="storage_s3_profile_detect">Find ud fra slutpunktet</string>
-    <string name="storage_s3_check">Tjek bucket</string>
-    <string name="storage_versioning_disabled">Versionering er slået fra.</string>
-    <string name="storage_versioning_enabled">Versionering er slået til.</string>
-    <string name="storage_versioning_suspended">Versionering er sat på pause.</string>
-    <string name="storage_versioning_unavailable">Denne tjeneste tilbyder ikke versionering.</string>
     <string name="storage_set_up">Opsæt</string>
     <string name="storage_dropbox_choose">Vælg en delt mappe</string>
     <string name="storage_dropbox_reading">Læser dine delte Dropbox-mapper…</string>

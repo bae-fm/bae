@@ -423,21 +423,4 @@ impl Store {
     pub async fn cancel_invite(&self, invite: &coven::InviteId) -> Result<(), coven::SyncError> {
         self.reported(self.inner.handle.cancel_invite(invite).await)
     }
-
-    pub async fn detect_s3_settings(
-        &self,
-        storage: coven::StorageConfig,
-        credentials: coven::S3Credentials,
-    ) -> Result<coven::S3Detection, coven::StorageSetupError> {
-        self.reported(
-            self.inner
-                .handle
-                .detect_s3_settings(
-                    storage,
-                    credentials.access_key_id,
-                    credentials.secret_access_key,
-                )
-                .await,
-        )
-    }
 }

@@ -246,14 +246,6 @@
     <string name="settings_set_up_sync_explanation">此資料庫只儲存在這台裝置上。同步會將它保存在儲存空間中，你的其他裝置和家人都能在那裡使用它。</string>
     <string name="storage_setup_choose">此資料庫要儲存在哪裡？</string>
     <string name="storage_s3_endpoint_hint">使用 Amazon S3 時請留空。</string>
-    <string name="storage_s3_advanced">進階</string>
-    <string name="storage_s3_profile">服務設定檔</string>
-    <string name="storage_s3_profile_detect">依端點偵測</string>
-    <string name="storage_s3_check">檢查儲存貯體</string>
-    <string name="storage_versioning_disabled">版本控制已關閉。</string>
-    <string name="storage_versioning_enabled">版本控制已開啟。</string>
-    <string name="storage_versioning_suspended">版本控制已暫停。</string>
-    <string name="storage_versioning_unavailable">此服務不提供版本控制。</string>
     <string name="storage_set_up">設定</string>
     <string name="storage_dropbox_choose">選擇一個共用資料夾</string>
     <string name="storage_dropbox_reading">正在讀取你共享的 Dropbox 資料夾…</string>

@@ -255,14 +255,6 @@
     <string name="settings_set_up_sync_explanation">Ta biblioteka jest przechowywana tylko na tym urządzeniu. Synchronizacja trzyma ją w magazynie, gdzie mogą z niej korzystać twoje inne urządzenia i domownicy.</string>
     <string name="storage_setup_choose">Gdzie przechowywać tę bibliotekę?</string>
     <string name="storage_s3_endpoint_hint">Pozostaw puste dla Amazon S3.</string>
-    <string name="storage_s3_advanced">Zaawansowane</string>
-    <string name="storage_s3_profile">Profil usługi</string>
-    <string name="storage_s3_profile_detect">Wykryj na podstawie punktu końcowego</string>
-    <string name="storage_s3_check">Sprawdź zasobnik</string>
-    <string name="storage_versioning_disabled">Wersjonowanie jest wyłączone.</string>
-    <string name="storage_versioning_enabled">Wersjonowanie jest włączone.</string>
-    <string name="storage_versioning_suspended">Wersjonowanie jest wstrzymane.</string>
-    <string name="storage_versioning_unavailable">Ta usługa nie oferuje wersjonowania.</string>
     <string name="storage_set_up">Skonfiguruj</string>
     <string name="storage_dropbox_choose">Wybierz udostępniony folder</string>
     <string name="storage_dropbox_reading">Odczytywanie udostępnionych folderów Dropbox…</string>

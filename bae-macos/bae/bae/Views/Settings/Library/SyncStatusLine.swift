@@ -399,7 +399,7 @@ struct S3KeySheet: View {
                 try await sync.saveSyncConfig(config, setup)
             },
             onConnected: { _ in onDismiss() },
-            onFailed: { error = $0 }
+            onFailed: { error = DisplayError($0) }
         )
     }
 }

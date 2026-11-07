@@ -765,6 +765,5 @@ mod personal;
 mod removal;
 
 impl AppServices {
-    delegate_async!(manager, detect_s3_settings => detect_s3_settings(storage:coven::StorageConfig, credentials:coven::S3Credentials) -> Result<coven::S3Detection, bae_library::LibraryError>);
     delegate_async!(manager, storage_location => storage_location() -> Result<Option<coven::StorageConfig>, bae_library::LibraryError>);
 }

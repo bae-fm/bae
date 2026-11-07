@@ -56,6 +56,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeSetupCancellation
 import uniffi.bae_bridge.BridgeStorageSetup
@@ -350,6 +351,18 @@ internal class StorageSetupRunner(
         operation: String,
         setUp: suspend (deviceName: String, setup: BridgeLibrarySetup) -> BridgeStorageSetup,
     ) {
+        run(operation, { false }, setUp)
+    }
+
+    /**
+     * Run [setUp] as the other [run] does. A failure [claim] takes is shown by the caller where
+     * it belongs, not as this runner's error.
+     */
+    suspend fun run(
+        operation: String,
+        claim: (BridgeException) -> Boolean,
+        setUp: suspend (deviceName: String, setup: BridgeLibrarySetup) -> BridgeStorageSetup,
+    ) {
         var result: BridgeStorageSetup? = null
         StorageSetupProgress((context.applicationContext as BaeApp).host, scope, session.bugs).use { progress ->
             steps = progress.steps
@@ -357,7 +370,13 @@ internal class StorageSetupRunner(
             val following = scope.launch { progress.followFinishing { finishing = it } }
             try {
                 performBridgeAction(logger, operation, session.errors, onError) {
-                    result = setUp(deviceName(context), progress.setup)
+                    result =
+                        try {
+                            setUp(deviceName(context), progress.setup)
+                        } catch (e: BridgeException) {
+                            if (!claim(e)) throw e
+                            null
+                        }
                 }
             } finally {
                 following.cancel()

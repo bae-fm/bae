@@ -1,121 +1,76 @@
 import Foundation
 import Observation
-import os.log
 
-private let logger = Logger.bae("S3SetupFields")
-
-/// The S3 setup form's state: the bucket, region, endpoint and access key,
-/// and under Advanced the profile and a detection of the settings for a
-/// service coven doesn't know by its endpoint. The library takes the whole
-/// bucket.
+/// The S3 setup form's state: the endpoint, region, bucket and access key.
+/// coven knows a service by its endpoint and fills in how to talk to it. The
+/// library takes the whole bucket. A failed setup leaves the fields as typed;
+/// the failures that name one of them show under it.
 @MainActor
 @Observable
 public final class S3SetupFields {
-    /// How setup learns the service's behaviors.
-    public enum ProfileChoice: Hashable {
-        /// Known by the endpoint's host, or AWS with no endpoint.
-        case automatic
-        case named(BridgeS3ProfileName)
-        /// What the last detection found.
-        case detected
+    /// A field a failed setup's reason can sit under.
+    public enum Field: Equatable {
+        case region
+        case bucket
     }
 
-    /// The profiles coven knows, in the order a picker lists them.
-    public static let profileNames: [BridgeS3ProfileName] = [
-        .aws, .gcs, .r2, .rustFs, .seaweedFs, .cephRgw, .versityGw,
-    ]
+    /// A failed setup's reason and the field it sits under.
+    public struct FieldFailure: Equatable {
+        public let field: Field
+        public let error: DisplayError
 
-    public var bucket = "" { didSet { clearDetection() } }
+        public init(field: Field, error: DisplayError) {
+            self.field = field
+            self.error = error
+        }
+    }
+
+    public var endpoint = ""
     public var region = ""
-    public var endpoint = "" { didSet { clearDetection() } }
+    public var bucket = ""
     public var accessKey = ""
     public var secretKey = ""
-    public var profile: ProfileChoice = .automatic
-    public private(set) var detection: BridgeS3Detection?
-    public private(set) var detectError: DisplayError?
-    public private(set) var isDetecting = false
+    public private(set) var fieldFailure: FieldFailure?
 
-    @ObservationIgnored
-    private var detectTask: Task<Void, Never>?
-    @ObservationIgnored
-    private let detectSettings:
-        @Sendable (BridgeStorageLocation, BridgeS3Credentials) async throws ->
-            BridgeS3Detection
-
-    public init(
-        detectSettings:
-            @escaping @Sendable (BridgeStorageLocation, BridgeS3Credentials)
-            async throws -> BridgeS3Detection
-    ) {
-        self.detectSettings = detectSettings
-    }
+    public init() {}
 
     public var ready: Bool {
         !bucket.isEmpty && !region.isEmpty && !accessKey.isEmpty
             && !secretKey.isEmpty
     }
 
-    /// The connection the form describes, with the chosen profile.
+    /// The connection the form describes.
     public var config: BridgeSaveSyncConfig {
-        let chosen: BridgeS3Profile? =
-            switch profile {
-            case .automatic: nil
-            case .named(let name): .named(profile: name)
-            case .detected:
-                detection.map { .custom(settings: $0.settings()) }
-            }
-        return BridgeSaveSyncConfig(
+        BridgeSaveSyncConfig(
             bucket: bucket,
             region: region,
             endpoint: endpoint.isEmpty ? nil : endpoint,
             accessKey: accessKey,
             secretKey: secretKey,
-            profile: chosen
-        )
-    }
-
-    /// Probe the bucket with the entered key and record what the service does.
-    public func detect() {
-        let location = BridgeStorageLocation.s3(
-            bucket: bucket,
-            region: region,
-            endpoint: endpoint.isEmpty ? nil : endpoint,
             profile: nil
         )
-        let credentials = BridgeS3Credentials(
-            accessKeyId: accessKey,
-            secretAccessKey: secretKey
-        )
-        let detectSettings = detectSettings
-        detectError = nil
-        isDetecting = true
-        detectTask = Task {
-            defer {
-                detectTask = nil
-                isDetecting = false
-            }
-            do {
-                detection = try await detectSettings(location, credentials)
-            }
-            catch is CancellationError {
-                logger.debug("S3 detection cancelled")
-            }
-            catch {
-                logger.error(
-                    "S3 detection failed: \(String(reflecting: error))"
-                )
-                detectError = DisplayError(error)
-            }
+    }
+
+    /// Show `error` under its field when it names one: a region or endpoint
+    /// that doesn't match the bucket under Region, a bucket that isn't there
+    /// or that holds other files under Bucket. False for any other failure,
+    /// which the step shows at the top.
+    public func place(_ error: any Error) -> Bool {
+        guard
+            case .Diagnostic(.storage(let failure), _) = error as? BridgeError,
+            let shown = DisplayError(error)
+        else { return false }
+        let field: Field
+        switch failure {
+        case .regionMismatch: field = .region
+        case .containerNotFound, .ownLocationRequired: field = .bucket
+        default: return false
         }
+        fieldFailure = FieldFailure(field: field, error: shown)
+        return true
     }
 
-    public func cancelDetection() {
-        detectTask?.cancel()
-    }
-
-    /// A detection belongs to the bucket and endpoint it probed.
-    private func clearDetection() {
-        detection = nil
-        if profile == .detected { profile = .automatic }
+    public func clearFailure() {
+        fieldFailure = nil
     }
 }

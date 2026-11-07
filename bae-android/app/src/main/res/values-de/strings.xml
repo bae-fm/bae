@@ -249,14 +249,6 @@
     <string name="settings_set_up_sync_explanation">Diese Bibliothek liegt nur auf diesem Gerät. Sync hält sie im Speicher, wo deine anderen Geräte und dein Haushalt sie nutzen können.</string>
     <string name="storage_setup_choose">Wo soll diese Bibliothek gespeichert werden?</string>
     <string name="storage_s3_endpoint_hint">Für Amazon S3 leer lassen.</string>
-    <string name="storage_s3_advanced">Erweitert</string>
-    <string name="storage_s3_profile">Dienstprofil</string>
-    <string name="storage_s3_profile_detect">Am Endpunkt erkennen</string>
-    <string name="storage_s3_check">Bucket prüfen</string>
-    <string name="storage_versioning_disabled">Die Versionierung ist aus.</string>
-    <string name="storage_versioning_enabled">Die Versionierung ist an.</string>
-    <string name="storage_versioning_suspended">Die Versionierung ist ausgesetzt.</string>
-    <string name="storage_versioning_unavailable">Dieser Dienst bietet keine Versionierung.</string>
     <string name="storage_set_up">Einrichten</string>
     <string name="storage_dropbox_choose">Geteilten Ordner wählen</string>
     <string name="storage_dropbox_reading">Deine geteilten Dropbox-Ordner werden gelesen…</string>
