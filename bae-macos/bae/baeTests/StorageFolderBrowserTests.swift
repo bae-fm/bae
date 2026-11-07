@@ -140,8 +140,14 @@
                 title(.listing, .oneDrive)
                     == "Reading the folders on your OneDrive…"
             )
-            #expect(title(.makingFolder, .oneDrive) == "Making the folder…")
-            #expect(title(.makingFolder, .dropbox) == "Making the folder…")
+            #expect(
+                title(.makingFolder(name: "bae"), .oneDrive)
+                    == "Making the folder “bae”…"
+            )
+            #expect(
+                title(.makingFolder(name: "bae"), .dropbox)
+                    == "Making and sharing the folder “bae”…"
+            )
         }
     }
 #endif

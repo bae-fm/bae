@@ -215,11 +215,17 @@
                     comment:
                         "OneDrive setup, while bae lists the folders inside the one shown."
                 )
-            case (.makingFolder, _):
+            case (.makingFolder(let name), .dropbox):
                 LocalizedStringResource(
-                    "Making the folder…",
+                    "Making and sharing the folder “\(name)”…",
                     comment:
-                        "Dropbox or OneDrive setup, while bae makes the new folder the person named."
+                        "Dropbox setup, while bae makes the new shared folder the person named; the argument is its name."
+                )
+            case (.makingFolder(let name), .oneDrive):
+                LocalizedStringResource(
+                    "Making the folder “\(name)”…",
+                    comment:
+                        "OneDrive setup, while bae makes the new folder the person named; the argument is its name."
                 )
             }
         }

@@ -78,8 +78,8 @@ public final class StorageFolderBrowser {
         case signingIn
         /// The provider lists the folders to choose from.
         case listing
-        /// The provider makes the folder the person named.
-        case makingFolder
+        /// The provider makes the folder the person named, `name`.
+        case makingFolder(name: String)
     }
 
     public let provider: Provider
@@ -196,7 +196,7 @@ public final class StorageFolderBrowser {
         let name = newFolderName.trimmingCharacters(in: .whitespaces)
         let operations = operations
         takenName = nil
-        run(.makingFolder) {
+        run(.makingFolder(name: name)) {
             do {
                 let created = try await operations.createDropboxSharedFolder(
                     name
@@ -225,7 +225,7 @@ public final class StorageFolderBrowser {
         }
         let name = newFolderName.trimmingCharacters(in: .whitespaces)
         let operations = operations
-        run(.makingFolder) {
+        run(.makingFolder(name: name)) {
             let created = try await operations.createOneDriveFolder(
                 parent.location,
                 name
