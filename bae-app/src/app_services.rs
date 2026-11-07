@@ -544,15 +544,15 @@ impl AppServices {
     #[cfg(feature = "oauth-providers")]
     delegate_async!(manager, setup_oauth_storage => setup_oauth_storage(storage: coven::StorageConfig, device_name: &str, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
-    delegate_async!(manager, onedrive_root => onedrive_root() -> Result<coven::StorageFolder, bae_library::LibraryError>);
+    delegate_store!(onedrive_root => onedrive_root() -> coven::StorageFolder);
     #[cfg(feature = "oauth-providers")]
-    delegate_async!(manager, onedrive_folders => onedrive_folders(parent: &coven::StorageConfig) -> Result<Vec<coven::StorageFolder>, bae_library::LibraryError>);
+    delegate_store!(onedrive_folders => onedrive_folders(parent: &coven::StorageConfig) -> Vec<coven::StorageFolder>);
     #[cfg(feature = "oauth-providers")]
-    delegate_async!(manager, create_onedrive_folder => create_onedrive_folder(parent: &coven::StorageConfig, name: &str) -> Result<coven::StorageFolder, bae_library::LibraryError>);
+    delegate_store!(create_onedrive_folder => create_onedrive_folder(parent: &coven::StorageConfig, name: &str) -> coven::StorageFolder);
     #[cfg(feature = "oauth-providers")]
-    delegate_async!(manager, dropbox_shared_folders => dropbox_shared_folders() -> Result<Vec<coven::StorageFolder>, bae_library::LibraryError>);
+    delegate_store!(dropbox_shared_folders => dropbox_shared_folders() -> Vec<coven::StorageFolder>);
     #[cfg(feature = "oauth-providers")]
-    delegate_async!(manager, create_dropbox_shared_folder => create_dropbox_shared_folder(name: &str) -> Result<coven::StorageFolder, bae_library::LibraryError>);
+    delegate_store!(create_dropbox_shared_folder => create_dropbox_shared_folder(name: &str) -> coven::StorageFolder);
     delegate_async!(manager, get_album_id_for_release => get_album_id_for_release(release_id: &str) -> Result<String, bae_library::LibraryError>);
     #[cfg(desktop)]
     delegate_async!(manager, open_release_edit => open_release_edit(release_id: &str) -> Result<bae_library::ReleaseEdit, bae_library::LibraryError>);

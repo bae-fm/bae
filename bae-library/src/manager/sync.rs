@@ -166,41 +166,6 @@ impl LibraryManager {
         Ok(setup)
     }
 
-    #[cfg(feature = "oauth-providers")]
-    pub async fn onedrive_root(&self) -> Result<coven::StorageFolder, LibraryError> {
-        Ok(self.store.onedrive_root().await?)
-    }
-
-    #[cfg(feature = "oauth-providers")]
-    pub async fn onedrive_folders(
-        &self,
-        parent: &coven::StorageConfig,
-    ) -> Result<Vec<coven::StorageFolder>, LibraryError> {
-        Ok(self.store.onedrive_folders(parent).await?)
-    }
-
-    #[cfg(feature = "oauth-providers")]
-    pub async fn create_onedrive_folder(
-        &self,
-        parent: &coven::StorageConfig,
-        name: &str,
-    ) -> Result<coven::StorageFolder, LibraryError> {
-        Ok(self.store.create_onedrive_folder(parent, name).await?)
-    }
-
-    #[cfg(feature = "oauth-providers")]
-    pub async fn dropbox_shared_folders(&self) -> Result<Vec<coven::StorageFolder>, LibraryError> {
-        Ok(self.store.dropbox_shared_folders().await?)
-    }
-
-    #[cfg(feature = "oauth-providers")]
-    pub async fn create_dropbox_shared_folder(
-        &self,
-        name: &str,
-    ) -> Result<coven::StorageFolder, LibraryError> {
-        Ok(self.store.create_dropbox_shared_folder(name).await?)
-    }
-
     pub async fn use_cloudkit(
         &self,
         device_name: &str,
