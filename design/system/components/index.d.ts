@@ -321,3 +321,10 @@ export declare function Stars(props: { value?: number; size?: number; who?: stri
 export declare function Avatar(props: { name: string; image?: string; size?: number }): React.ReactElement;
 export declare function MacListRow(props: { lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; selected?: boolean }): React.ReactElement;
 export declare function AndroidListRow(props: { title: string; sub?: string; album?: string; who?: string; trailing?: string; selected?: boolean }): React.ReactElement;
+
+// ---- Logo and app icons ----
+
+/** The logo in one of its three forms: pair is the sheep over the word, sheep the sheep alone, word the word alone. size is the sheep's width. */
+export declare function Logo(props: { kind?: 'pair' | 'sheep' | 'word'; size?: number }): React.ReactElement;
+/** An app icon as a platform shows it. macOS, iOS and Android put the sheep on the pale pink tile; Windows and Linux show it with no tile. mask is Android's launcher shape. */
+export declare function AppIcon(props: { platform?: 'macos' | 'ios' | 'android' | 'windows' | 'linux'; size?: number; mask?: 'circle' | 'squircle' | 'rounded' }): React.ReactElement;

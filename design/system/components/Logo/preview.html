@@ -1,0 +1,13 @@
+<!-- @dsCard group="Logo" height=420 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Logo</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Pair', h(B.Logo, { kind: 'pair', size: 120 })), N('Sheep', h(B.Logo, { kind: 'sheep', size: 120 })), N('Word', h(B.Logo, { kind: 'word', size: 120 }))));
+</script>
+</body>
+</html>

@@ -17,9 +17,8 @@
   .card { rx: var(--radius-card); }
   .cov { rx: var(--radius-artwork); }
   .chip { rx: var(--radius-chip); }
-  .words { position: absolute; left: var(--space-section); bottom: var(--space-section); max-width: 440px; }
-  .name { margin: 0; font-size: 120px; line-height: .9; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
-  .tag { margin: var(--space-related) 0 0 4px; font-size: 14px; line-height: 20px; color: var(--text-secondary); }
+  .words { position: absolute; left: 0; top: 0; bottom: 0; width: 480px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .tag { margin: var(--space-related) 0 0; font-size: 14px; line-height: 20px; color: var(--text-secondary); }
 </style>
 </head>
 <body>
@@ -47,9 +46,12 @@
 </svg>
 </div>
 <div class="words">
-<h1 class="name">bae</h1>
+<div id="logo"></div>
 <p class="tag">Your music everywhere</p>
 </div>
 </div>
+<script>
+  ReactDOM.createRoot(document.getElementById('logo')).render(React.createElement(window.Bae.Logo, { kind: 'pair', size: 150 }));
+</script>
 </body>
 </html>

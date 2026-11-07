@@ -16,6 +16,7 @@
     AndroidSnackbar: AndroidSnackbar, AndroidErrorBanner: AndroidErrorBanner, MacWindowNotice: MacWindowNotice, MacLoadFailure: MacLoadFailure,
     MacImportSidebar: MacImportSidebar, MacImportGroupHeader: MacImportGroupHeader, MacImportRow: MacImportRow, MacImportFolderLine: MacImportFolderLine, MacImportDraft: MacImportDraft, MacImportTable: MacImportTable, MacImportTrackRow: MacImportTrackRow, MacImportSideHeader: MacImportSideHeader, MacImportSheetCaption: MacImportSheetCaption, MacFindOnline: MacFindOnline, MacIdentifierBand: MacIdentifierBand, MacReleaseCard: MacReleaseCard, MacPressingRow: MacPressingRow, MacImportBulk: MacImportBulk,
     MacModal: MacModal, MacModalHeader: MacModalHeader, MacCoverGallery: MacCoverGallery, MacLightbox: MacLightbox, MacStorageBand: MacStorageBand,
+    Logo: Logo, AppIcon: AppIcon,
     Stars: Stars, Avatar: Avatar, MacListRow: MacListRow, AndroidListRow: AndroidListRow
   });
 })();

@@ -28,6 +28,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="About" back="{{yes}}">
+  <div style="display: flex; justify-content: center; padding: 32px 0 16px"><x-import component-from-global-scope="Bae.Logo" size="96"></x-import></div>
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Version" subtitle="0.0-dev"></x-import>
   </x-import>

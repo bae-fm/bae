@@ -3226,6 +3226,54 @@
    "w": 690,
    "x": 4278,
    "y": 24632
+  },
+  "LogoForms.dc.html": {
+   "h": 640,
+   "page": "logo",
+   "title": "The logo",
+   "w": 1100,
+   "x": 0,
+   "y": 240
+  },
+  "IconMac.dc.html": {
+   "h": 640,
+   "page": "logo",
+   "title": "macOS: app icon",
+   "w": 412,
+   "x": 0,
+   "y": 1200
+  },
+  "IconIOS.dc.html": {
+   "h": 640,
+   "page": "logo",
+   "title": "iOS: app icon",
+   "w": 412,
+   "x": 492,
+   "y": 1200
+  },
+  "IconAndroid.dc.html": {
+   "h": 640,
+   "page": "logo",
+   "title": "Android: app icon",
+   "w": 412,
+   "x": 984,
+   "y": 1200
+  },
+  "IconWindows.dc.html": {
+   "h": 640,
+   "page": "logo",
+   "title": "Windows: app icon",
+   "w": 412,
+   "x": 1476,
+   "y": 1200
+  },
+  "IconLinux.dc.html": {
+   "h": 640,
+   "page": "logo",
+   "title": "Linux: app icon",
+   "w": 412,
+   "x": 1968,
+   "y": 1200
   }
  },
  "createdOnFiles": {
@@ -3375,7 +3423,11 @@
   "row-exp-credits",
   "row-exp-android",
   "exp-key",
-  "row-welcome-new"
+  "row-welcome-new",
+  "canvas-key-logo",
+  "row-logo-forms",
+  "row-logo-icons",
+  "code-logo"
  ],
  "notes": {
   "canvas-key-library": {
@@ -4532,6 +4584,42 @@
    "w": 240,
    "x": 0,
    "y": 24392
+  },
+  "canvas-key-logo": {
+   "bold": true,
+   "fill": "purple",
+   "page": "logo",
+   "size": 40,
+   "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs.",
+   "w": 720,
+   "x": 0,
+   "y": -520
+  },
+  "row-logo-forms": {
+   "kind": "title1",
+   "maxW": 1100,
+   "page": "logo",
+   "text": "The logo",
+   "w": 240,
+   "x": 0,
+   "y": 0
+  },
+  "row-logo-icons": {
+   "kind": "title1",
+   "maxW": 2380,
+   "page": "logo",
+   "text": "App icons",
+   "w": 240,
+   "x": 0,
+   "y": 960
+  },
+  "code-logo": {
+   "page": "logo",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- App icons for iOS, Windows and Linux. Today only macOS and Android have one.\n- The sheep on Welcome on macOS, and on About on both. Android’s Welcome has it, from an old PNG (drawable-xxhdpi/sheep_icon.png) that still shows the line under the player.",
+   "w": 420,
+   "x": 2460,
+   "y": 1200
   }
  },
  "order": [
@@ -4936,7 +5024,13 @@
   "ResetMacFailed.dc.html",
   "ResetMacUnfinished.dc.html",
   "WelcomeEmpty.dc.html",
-  "MacWelcomeEmpty.dc.html"
+  "MacWelcomeEmpty.dc.html",
+  "LogoForms.dc.html",
+  "IconMac.dc.html",
+  "IconIOS.dc.html",
+  "IconAndroid.dc.html",
+  "IconWindows.dc.html",
+  "IconLinux.dc.html"
  ],
  "pages": [
   {
@@ -4970,6 +5064,10 @@
   {
    "id": "library",
    "name": "Settings/Library"
+  },
+  {
+   "id": "logo",
+   "name": "Logo and icons"
   },
   {
    "id": "explore",

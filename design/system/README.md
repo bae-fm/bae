@@ -44,6 +44,8 @@ The sheep is bae's logo: `assets/Logos/bae-sheep.svg`, with no background of its
 - **Sheep alone:** where the system or the space already says the name: app icons and favicons. Never under 32px. On an app icon it sits on a pale pink tile, `#FFD6E7`.
 - **"bae" alone:** in sentences, titles and menus, as plain text in the style around it.
 
+`Logo` draws the three forms. `AppIcon` draws each platform's icon: the sheep on the pale pink tile on macOS, iOS and Android, and with no tile on Windows and Linux.
+
 ## Samples
 
 A component's sample is a set of named rows, each changing one thing.
