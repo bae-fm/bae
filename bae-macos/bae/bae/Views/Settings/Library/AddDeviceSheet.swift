@@ -145,7 +145,9 @@ struct AddDeviceSheet: View {
             -> MembershipStore
         {
             MembershipStore.stub(
-                people: PreviewData.members,
+                people: PreviewData.members(
+                    reaching: PreviewData.previewStorage
+                ),
                 selfIsAdmin: true,
                 addedDevice: addedDevice
             )

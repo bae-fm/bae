@@ -72,8 +72,27 @@
 
         /// This device's person, an admin, whose earlier registration of this
         /// device was replaced, and one other member with a removable device
-        /// and two removed ones. Ids are arbitrary UUIDs.
-        static let members: [BridgePerson] = [
+        /// and two removed ones, each reaching `storage` as its members do:
+        /// by an S3 key on S3, by their own account on Dropbox, OneDrive and
+        /// iCloud. Ids are arbitrary UUIDs.
+        static func members(reaching storage: BridgeStorageLocation)
+            -> [BridgePerson]
+        {
+            switch storage {
+            case .dropbox, .oneDrive, .cloudKit: accountMembers
+            case .s3:
+                accountMembers.map { person in
+                    var person = person
+                    person.membership.access = .s3AccessKey(
+                        accessKeyId: "AKIAPREVIEWKEY"
+                    )
+                    return person
+                }
+            }
+        }
+
+        /// `members`, each reaching the library by their own account.
+        private static let accountMembers: [BridgePerson] = [
             BridgePerson(
                 profile: BridgePersonProfile(
                     id: "4a1f2c3d-0000-4000-8000-000000000001",
@@ -89,7 +108,7 @@
                         sealing: Data()
                     ),
                     role: .admin,
-                    access: .s3AccessKey(accessKeyId: "AKIAPREVIEWKEY"),
+                    access: .providerAccount(email: "person-a@example.com"),
                     isSelf: true,
                     canRemove: false,
                     activeDevices: [
@@ -124,7 +143,7 @@
                         sealing: Data()
                     ),
                     role: .member,
-                    access: .s3AccessKey(accessKeyId: "AKIAPREVIEWKEY"),
+                    access: .providerAccount(email: "person-b@example.com"),
                     isSelf: false,
                     canRemove: true,
                     activeDevices: [

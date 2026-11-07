@@ -242,16 +242,26 @@ private struct UploadPauseToggle: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// What the Library tab's preview reads off the main thread: the
-    /// library's name and its people, each answered a step after the tab
-    /// first draws.
+    /// The Library tab's preview stores over a library whose cloud home is
+    /// `storage`, or none: its configuration, and what the tab reads off the
+    /// main thread, the library's name and its people, each answered a step
+    /// after the tab first draws. The people reach the library as `storage`'s
+    /// members do; a library with no cloud home has none.
     @MainActor
-    struct LibrarySettingsTabPreviewReads {
+    struct LibrarySettingsTabPreviewFixture {
+        let configStore: ConfigStore
         let libraryName = LibraryNameStore.stub(name: "Preview Library")
-        let membership = MembershipStore.stub(
-            people: PreviewData.members,
-            selfIsAdmin: true
-        )
+        let membership: MembershipStore
+
+        init(storage: BridgeStorageLocation?) {
+            configStore =
+                storage.map { PreviewData.connectedConfigStore(storage: $0) }
+                ?? PreviewData.configStore()
+            membership = MembershipStore.stub(
+                people: storage.map { PreviewData.members(reaching: $0) } ?? [],
+                selfIsAdmin: true
+            )
+        }
 
         /// Whether both reads have answered, so the tab shows the name and
         /// the people.
@@ -260,13 +270,11 @@ private struct UploadPauseToggle: View {
         }
     }
 
-    /// The Library tab over `configStore`'s library, its sync at `indicator`,
-    /// reading its name and people from `reads`.
+    /// The Library tab over `fixture`'s library, its sync at `indicator`.
     @MainActor
     func librarySettingsTabPreview(
-        configStore: ConfigStore,
-        indicator: BridgeSyncIndicator? = .synced,
-        reads: LibrarySettingsTabPreviewReads
+        _ fixture: LibrarySettingsTabPreviewFixture,
+        indicator: BridgeSyncIndicator? = .synced
     ) -> some View {
         LibrarySettingsTab(
             unsentBeforeRemoval: { BridgeUnsentWork(writes: 0, files: 0) },
@@ -276,11 +284,13 @@ private struct UploadPauseToggle: View {
             onCheckForUpdates: {}
         )
         .frame(width: 500, height: 640)
-        .environment(PreviewData.previewSync(storage: configStore.storage))
+        .environment(
+            PreviewData.previewSync(storage: fixture.configStore.storage)
+        )
         #if BAE_OAUTH_PROVIDERS
             .environment(CloudSyncSetup())
         #endif
-        .environment(configStore)
+        .environment(fixture.configStore)
         .environment(
             SyncStatusStore(
                 snapshot: BridgeSyncStatusSnapshot(
@@ -293,55 +303,50 @@ private struct UploadPauseToggle: View {
                 )
             )
         )
-        .environment(reads.membership)
+        .environment(fixture.membership)
         .environment(SyncActivityStore.preview(needsAttention: false))
         .environment(UiStore())
         .environment(OutboxStore(uploadsPaused: false))
-        .environment(reads.libraryName)
+        .environment(fixture.libraryName)
     }
 
     #Preview("No cloud home") {
         librarySettingsTabPreview(
-            configStore: PreviewData.configStore(),
-            indicator: nil,
-            reads: LibrarySettingsTabPreviewReads()
+            LibrarySettingsTabPreviewFixture(storage: nil),
+            indicator: nil
         )
     }
 
     #Preview("Synced") {
         librarySettingsTabPreview(
-            configStore: PreviewData.connectedConfigStore(
+            LibrarySettingsTabPreviewFixture(
                 storage: PreviewData.previewStorage
-            ),
-            reads: LibrarySettingsTabPreviewReads()
+            )
         )
     }
 
     #Preview("Dropbox") {
         librarySettingsTabPreview(
-            configStore: PreviewData.connectedConfigStore(
+            LibrarySettingsTabPreviewFixture(
                 storage: PreviewData.previewDropboxStorage
-            ),
-            reads: LibrarySettingsTabPreviewReads()
+            )
         )
     }
 
     #Preview("OneDrive") {
         librarySettingsTabPreview(
-            configStore: PreviewData.connectedConfigStore(
+            LibrarySettingsTabPreviewFixture(
                 storage: PreviewData.previewOneDriveStorage
-            ),
-            reads: LibrarySettingsTabPreviewReads()
+            )
         )
     }
 
     #Preview("Credentials gone") {
         librarySettingsTabPreview(
-            configStore: PreviewData.connectedConfigStore(
+            LibrarySettingsTabPreviewFixture(
                 storage: PreviewData.previewStorage
             ),
-            indicator: nil,
-            reads: LibrarySettingsTabPreviewReads()
+            indicator: nil
         )
     }
 

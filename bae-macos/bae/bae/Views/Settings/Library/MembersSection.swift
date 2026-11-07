@@ -509,12 +509,20 @@ private struct JoinRequestSheet: View {
         }
         .formStyle(.grouped)
         .frame(width: 500, height: 360)
-        .environment(PreviewData.previewSync(storage: nil))
+        .environment(
+            PreviewData.previewSync(storage: PreviewData.previewStorage)
+        )
         .environment(SyncActivityStore.preview(needsAttention: false))
-        .environment(PreviewData.configStore())
+        .environment(
+            PreviewData.connectedConfigStore(
+                storage: PreviewData.previewStorage
+            )
+        )
         .environment(
             MembershipStore.stub(
-                people: PreviewData.members,
+                people: PreviewData.members(
+                    reaching: PreviewData.previewStorage
+                ),
                 selfIsAdmin: true
             )
         )

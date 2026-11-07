@@ -4,23 +4,32 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// Settings panes over a library with a cloud home: the Library tab's
-    /// sync section on a Dropbox shared folder, naming the folder coven
-    /// recorded, with Open in browser.
+    /// Settings panes over a library with a cloud home: the Library tab on a
+    /// Dropbox shared folder, naming the folder coven recorded with Open in
+    /// browser, its people reaching it by their accounts; and on an S3
+    /// bucket, its people reaching it by their keys.
     static let settingsScenes: [ShotScene] = [
-        ShotScene(
-            id: "settings-sync-dropbox",
-            size: CGSize(width: 500, height: 640)
-        ) {
-            let reads = LibrarySettingsTabPreviewReads()
-            return ShotStage(
-                librarySettingsTabPreview(
-                    configStore: PreviewData.connectedConfigStore(
-                        storage: PreviewData.previewDropboxStorage
-                    ),
-                    reads: reads
-                )
-            ) { reads.answered }
-        }
+        librarySettings(
+            "settings-sync-dropbox",
+            storage: PreviewData.previewDropboxStorage
+        ),
+        librarySettings(
+            "settings-sync-s3",
+            storage: PreviewData.previewStorage
+        ),
     ]
+
+    /// The Library tab over a library whose cloud home is `storage`, once its
+    /// name and people have answered.
+    private static func librarySettings(
+        _ id: String,
+        storage: BridgeStorageLocation
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 500, height: 640)) {
+            let fixture = LibrarySettingsTabPreviewFixture(storage: storage)
+            return ShotStage(librarySettingsTabPreview(fixture)) {
+                fixture.answered
+            }
+        }
+    }
 }

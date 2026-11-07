@@ -148,7 +148,9 @@ private struct AdminChangeRow: View {
         )
         .environment(
             MembershipStore.stub(
-                people: PreviewData.members,
+                people: PreviewData.members(
+                    reaching: PreviewData.previewStorage
+                ),
                 selfIsAdmin: true,
                 adminChanges: [
                     BridgeAdminChange(

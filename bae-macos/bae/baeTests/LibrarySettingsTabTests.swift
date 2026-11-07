@@ -27,13 +27,11 @@ struct LibrarySettingsTabStorageReadTests {
     @Test("opening the tab reads the location coven recorded since")
     func openingTheTabReadsTheLocation() async throws {
         let renamed = PreviewData.previewDropboxStorage
-        let configStore = PreviewData.connectedConfigStore(storage: renamed)
+        let fixture = LibrarySettingsTabPreviewFixture(storage: renamed)
+        let configStore = fixture.configStore
         // The preview's storage answers with the renamed folder, while the
         // store still holds what the library read as it opened.
-        let tab = librarySettingsTabPreview(
-            configStore: configStore,
-            reads: LibrarySettingsTabPreviewReads()
-        )
+        let tab = librarySettingsTabPreview(fixture)
         configStore.applyStorage(
             .dropbox(
                 location: .sharedFolder(namespaceId: "1234567890"),
