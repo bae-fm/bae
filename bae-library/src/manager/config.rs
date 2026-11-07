@@ -44,11 +44,6 @@ impl LibraryManager {
         bae_preferences::preferences(&self.store).await
     }
 
-    /// The library this is, by its store id.
-    pub fn store_id(&self) -> coven::StoreId {
-        self.store.store_id()
-    }
-
     /// bae's own directory for this library, apart from coven's store: the
     /// remote image cache and the like.
     pub fn library_path(&self) -> PathBuf {

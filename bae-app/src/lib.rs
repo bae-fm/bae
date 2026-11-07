@@ -523,7 +523,7 @@ where
         })
         .map_err(classify_open_error)?;
 
-    let store_id = library_manager.store_id();
+    let store_id = store.store_id();
 
     // From here the library is open on `runtime`. A step that fails closes it
     // before the runtime ends, so nothing of it is left running for the

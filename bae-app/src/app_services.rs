@@ -383,7 +383,7 @@ impl AppServices {
 
     delegate_async!(manager, preferences => preferences() -> Result<bae_preferences::Preferences, bae_store::DbError>);
     delegate_sync!(manager, library_path => library_path() -> std::path::PathBuf);
-    delegate_sync!(manager, store_id => store_id() -> coven::StoreId);
+    delegate_sync!(store, store_id => store_id() -> coven::StoreId);
     delegate_async!(manager, ensure_mcp_token => ensure_mcp_token() -> Result<String, bae_library::LibraryError>);
     delegate_async!(manager, set_mcp_token => set_mcp_token(token: String) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, set_mcp_config => set_mcp_config(config: bae_preferences::McpConfig) -> Result<(), bae_preferences::PreferencesError>);

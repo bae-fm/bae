@@ -64,7 +64,7 @@ impl RemoteMultiWindowPlayback {
             panic!("the uploaded FLAC is stored");
         };
         let flac_object = coven::ObjectPath::file(
-            library.manager().store_id(),
+            library.store().store_id(),
             location.uploader(),
             location.object(),
         );
