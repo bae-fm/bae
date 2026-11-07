@@ -174,6 +174,8 @@
     <string name="download_waiting">ダウンロード待ち</string>
     <string name="download_ahead">前に %1$d 件</string>
     <string name="download_waiting_for_network">ネットワーク待ち</string>
+    <string name="upload_waiting_for_wifi">Wi-Fi 待ち</string>
+    <string name="upload_retrying_at">%1$s に再試行</string>
     <string name="resume">再開</string>
     <string name="downloads_empty">ダウンロードはありません</string>
     <string name="downloads_load_failed">ダウンロードを読み込めませんでした。</string>

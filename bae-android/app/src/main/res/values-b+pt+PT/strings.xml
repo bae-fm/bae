@@ -182,6 +182,8 @@
     <string name="download_waiting">À espera de transferência</string>
     <string name="download_ahead">%1$d antes</string>
     <string name="download_waiting_for_network">À espera da rede</string>
+    <string name="upload_waiting_for_wifi">À espera de Wi-Fi</string>
+    <string name="upload_retrying_at">Nova tentativa às %1$s</string>
     <string name="resume">Retomar</string>
     <string name="downloads_empty">Sem transferências</string>
     <string name="downloads_load_failed">Não foi possível carregar as suas transferências.</string>

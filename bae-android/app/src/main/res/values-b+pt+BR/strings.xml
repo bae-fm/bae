@@ -182,6 +182,8 @@
     <string name="download_waiting">Aguardando download</string>
     <string name="download_ahead">%1$d antes</string>
     <string name="download_waiting_for_network">Aguardando a rede</string>
+    <string name="upload_waiting_for_wifi">Aguardando Wi-Fi</string>
+    <string name="upload_retrying_at">Nova tentativa às %1$s</string>
     <string name="resume">Retomar</string>
     <string name="downloads_empty">Nenhum download</string>
     <string name="downloads_load_failed">Não foi possível carregar seus downloads.</string>

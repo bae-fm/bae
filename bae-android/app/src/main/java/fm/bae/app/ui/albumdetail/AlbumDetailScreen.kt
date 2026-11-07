@@ -156,7 +156,7 @@ fun AlbumDetailScreen(
                         cover = release.cover,
                         playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
                         callbacks = buildAlbumDetailCallbacks(session, release, scope) { selectedReleaseId = it },
-                        releaseDownloadControl = { rel -> ReleaseDownloadControl(session = session, release = rel) },
+                        releaseDownloadControl = { rel -> ReleaseTransferLines(session = session, release = rel) },
                     )
                 }
             }
