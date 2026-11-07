@@ -66,9 +66,6 @@ class SyncScreenTest {
             ),
             NoErrorDisplays,
         )
-        // The state's words come from the bridge's native catalog lookup, which a JVM test can't load; the page says
-        // an unreadable status in its own, and keeps the pending list the snapshot read.
-        status.fail()
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides session.bugs) {
