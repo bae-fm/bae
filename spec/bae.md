@@ -3019,9 +3019,11 @@ waiting on the person offers its own action. It retries everything at once, as
 pulling to refresh does.
 
 **The Sync page.** Sync has a page of its own, off the Library page. Its top
-is one block: *Status* with the state in words, then the state's cause, its
-fix and *Last synced*, in that order, each only when it has one. *Last synced*
-shows under a state that is a problem, amber or red, and never under Synced.
+is one block: *Status* with the state in words, then the state's cause and its
+fix, in that order, each only when it has one; on the Mac the fix is a primary
+button. *Last synced* follows the block, on the Mac as a row of its own below
+it. It shows under a state that is a problem, amber or red, and never under
+Synced.
 Under the block are the library's storage rows (§6.2).
 coven gives the state
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),

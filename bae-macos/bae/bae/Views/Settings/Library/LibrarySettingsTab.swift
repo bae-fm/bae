@@ -222,6 +222,7 @@ private struct SyncSettingsPage: View {
                     )
                 )
             }
+            SyncLastSyncedSection()
             if let location = configStore.storage {
                 Section("Storage") {
                     CloudProviderConnectedSection(location: location)
