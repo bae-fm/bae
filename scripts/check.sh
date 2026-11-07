@@ -91,7 +91,7 @@ check "source file layout"          scripts/check-source-file-size.py
 check "restricted-path visibility"  scripts/check-rust-visibility.sh
 check "reqwest error causes"       scripts/check-reqwest-error-display.py
 check "bundled-library checker"     python3 scripts/tests/check-bundled-libraries-test.py
-check "owner dependency boundary"   scripts/owner-dependency-boundary.sh
+check "owner construction check"   scripts/owner-construction-check.sh
 check "UniFFI runtime boundary"      scripts/check-uniffi-runtime-boundary.py
 check "every Rust file compiled"    sh -c 'python3 scripts/check-rust-files-compiled.py && python3 scripts/tests/check-rust-files-compiled-test.py'
 check "test keychain"                sh -c 'python3 scripts/check-test-keychain.py && python3 scripts/tests/check-test-keychain-test.py'

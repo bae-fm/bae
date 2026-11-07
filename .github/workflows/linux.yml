@@ -57,7 +57,7 @@ jobs:
       run: python3 scripts/tests/check-bundled-libraries-test.py
 
     - name: Check owner dependency boundaries
-      run: scripts/owner-dependency-boundary.sh
+      run: scripts/owner-construction-check.sh
 
     - name: Check UniFFI runtime boundaries
       run: scripts/check-uniffi-runtime-boundary.py

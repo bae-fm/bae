@@ -122,7 +122,7 @@ run_check "reqwest error causes" scripts/check-reqwest-error-display.py || {
     exit 1
 }
 
-run_check "owner dependency boundary" scripts/owner-dependency-boundary.sh || {
+run_check "owner construction check" scripts/owner-construction-check.sh || {
     exit 1
 }
 

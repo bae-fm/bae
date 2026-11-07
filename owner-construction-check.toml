@@ -1,5 +1,5 @@
 # bae's policy for coven's structural checker (owner-construction-check),
-# which scripts/owner-dependency-boundary.sh installs at a pinned coven
+# which scripts/owner-construction-check.sh installs at a pinned coven
 # revision and runs on this workspace.
 
 # The rule groups bae holds itself to: its crates depend only downward, no
