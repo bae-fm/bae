@@ -52,8 +52,9 @@ enum SessionCommand {
     Stop,
 }
 
-/// A connected remote-renderer session. Dropping it ends the poll loop and joins
-/// its thread. Commands are fire-and-forget onto the session thread.
+/// A connected remote-renderer session. Dropping it stops the renderer, ends the
+/// poll loop and joins its thread. Commands are fire-and-forget onto the session
+/// thread.
 pub struct RendererSession {
     /// `None` only transiently, during `Drop`: the sender is dropped first so
     /// the thread's `recv_timeout` sees the disconnect and exits before the
@@ -120,6 +121,11 @@ impl RendererSession {
 
 impl Drop for RendererSession {
     fn drop(&mut self) {
+        // However the session's owner ended, the renderer must not play on
+        // unattended: the stop goes ahead of the disconnect, so the thread
+        // runs it before it exits. A session whose link was lost has no
+        // thread left to take it.
+        self.stop();
         // Drop the sender first so the thread's `recv_timeout` wakes with a
         // disconnect and exits its loop; only then can the join complete.
         self.command_tx = None;

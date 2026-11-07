@@ -4077,9 +4077,10 @@ launch: the queue's tables with their repeat mode, the volume and mute of
 `playback_now`, and the resume row's entry, loaded paused at its position
 (§7.8), which is never more than a second of playing behind. Nothing plays until
 a command plays it, and a next or previous from the loaded track stays paused.
-Only the ended service held the rest, and it is gone: a session on a receiver, a
-preview, a preloaded next track, a side-pause countdown, and the side-end reason
-of a pause, which comes back as a plain pause. A play under way keeps what was
+Only the ended service held the rest, and it is gone: a session on a receiver
+(which is told to stop as the service goes, so it doesn't play on while the app
+says stopped), a preview, a preloaded next track, a side-pause countdown, and
+the side-end reason of a pause, which comes back as a plain pause. A play under way keeps what was
 last saved of it.
 
 ### 9.5 Storage and sync

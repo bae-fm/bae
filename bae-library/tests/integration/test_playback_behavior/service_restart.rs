@@ -1,6 +1,12 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
-use bae_playback::{AudioError, AudioOutput, AudioOutputDevice, PlaybackClock, PlaybackSleep};
+use bae_playback::renderer::{
+    ReceiverStatus, RendererChannel, RendererError, RendererFlavor, RendererMedia,
+    RendererMediaSource, RendererPlayerState,
+};
+use bae_playback::{
+    AudioError, AudioOutput, AudioOutputDevice, PlaybackClock, PlaybackSleep, RemoteDevice,
+};
 
 use crate::test_playback_behavior::fixtures::*;
 use crate::test_playback_behavior::support::*;
@@ -179,5 +185,161 @@ async fn a_service_that_ends_in_mid_session_is_reported_once_and_the_next_play_p
             );
         },
     )
+    .await;
+}
+
+/// A receiver that counts the stops it is told and plays the media it was
+/// given through to its end once the test says so.
+struct FakeReceiver {
+    stops: Arc<AtomicU32>,
+    finished: Arc<AtomicBool>,
+}
+
+impl RendererChannel for FakeReceiver {
+    fn load(&mut self, _media: &RendererMedia) -> Result<(), RendererError> {
+        Ok(())
+    }
+
+    fn play(&mut self) -> Result<(), RendererError> {
+        Ok(())
+    }
+
+    fn pause(&mut self) -> Result<(), RendererError> {
+        Ok(())
+    }
+
+    fn seek(&mut self, _position: Duration) -> Result<(), RendererError> {
+        Ok(())
+    }
+
+    fn set_volume(&mut self, _level: bae_playback::Volume) -> Result<(), RendererError> {
+        Ok(())
+    }
+
+    fn stop(&mut self) -> Result<(), RendererError> {
+        self.stops.fetch_add(1, Ordering::SeqCst);
+        Ok(())
+    }
+
+    fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {
+        let player_state = if self.finished.load(Ordering::SeqCst) {
+            RendererPlayerState::Finished
+        } else {
+            RendererPlayerState::Playing
+        };
+        Ok(ReceiverStatus { player_state, position: None, duration: None, volume: Some(1.0) })
+    }
+}
+
+/// A service that ends while casting tells the receiver to stop, so the
+/// receiver doesn't play on while the app says stopped. The receiver plays
+/// out the side's last track, the side-pause countdown's wait breaks the
+/// service, and the receiver has been told to stop by the time the end is
+/// told. Sabotage: drop the session without a stop, and the count is 0.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_service_that_ends_while_casting_tells_the_receiver_to_stop() {
+    with_fixture(
+        async {
+            SidePauseTestFixture::with_countdown_on(SidePauseCountdown::Seconds5, |clock| {
+                Arc::new(ClockThatBreaks(clock))
+            })
+            .await
+            .expect("side-pause fixture")
+        },
+        async |fixture| {
+            let side_a_track_id = fixture.track_ids[1].clone();
+            fixture.play_track_and_wait(&side_a_track_id).await;
+
+            let stops = Arc::new(AtomicU32::new(0));
+            let finished = Arc::new(AtomicBool::new(false));
+            fixture.playback_handle.play_on(
+                Box::new(FakeReceiver { stops: stops.clone(), finished: finished.clone() }),
+                RemoteDevice { id: "receiver".to_string(), name: "Receiver".to_string() },
+                RendererMediaSource::new(
+                    Arc::new(|track_id, _format| Ok(format!("http://receiver.test/{track_id}"))),
+                    Arc::new(|cover| format!("http://receiver.test/cover/{}", cover.id)),
+                    RendererFlavor::Cast,
+                ),
+            );
+            bae_util::test_channels::next_matching(&mut fixture.progress_rx, HANG_GUARD, |event| {
+                matches!(
+                    event,
+                    PlaybackProgress::RemoteStatusChanged {
+                        remote: bae_playback::RemotePlayback::On(_)
+                    }
+                )
+                .then_some(())
+            })
+            .await
+            .expect("playback moves to the receiver");
+            assert_eq!(stops.load(Ordering::SeqCst), 0, "casting stops nothing");
+
+            finished.store(true, Ordering::SeqCst);
+            bae_util::test_channels::next_matching(&mut fixture.progress_rx, HANG_GUARD, |event| {
+                matches!(event, PlaybackProgress::ServiceEnded).then_some(())
+            })
+            .await
+            .expect("the service's end is told");
+            assert_eq!(stops.load(Ordering::SeqCst), 1, "the receiver is told to stop once");
+        },
+    )
+    .await;
+}
+
+/// A device that can't be opened, however often it is asked.
+struct NoAudioDevice;
+
+impl AudioOutputDevice for NoAudioDevice {
+    fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError> {
+        Err(AudioError::DeviceUnavailable)
+    }
+}
+
+/// With no audio device, the service fails as the library opens, and each
+/// command after starts a service that fails too, spending the command: a
+/// burst of commands reports one failure for each, and no command's end
+/// reports twice.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_burst_of_commands_with_no_audio_device_reports_one_failure_per_command() {
+    with_fixture(PlaybackTestFixture::new(), async |playback| {
+        playback.playback_handle.shutdown().await;
+        let handle = playback
+            .library
+            .start_playback_on(
+                Box::new(NoAudioDevice),
+                bae_playback::test_capture::wall_playback_clock(),
+                false,
+            )
+            .await;
+        let mut progress_rx = handle.subscribe_progress();
+
+        // The failure as the library opens, before any command.
+        let mut failures_per_end = Vec::new();
+        let await_an_end = async |progress_rx: &mut bae_playback::PlaybackProgressFeed| {
+            let mut failures = 0;
+            bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| {
+                match event {
+                    PlaybackProgress::PlaybackError { .. } => failures += 1,
+                    PlaybackProgress::ServiceEnded => return Some(()),
+                    _ => {}
+                }
+                None
+            })
+            .await
+            .expect("the service's end is told");
+            failures
+        };
+        failures_per_end.push(await_an_end(&mut progress_rx).await);
+
+        let commands = 3;
+        for _ in 0..commands {
+            handle.play(playback.track_ids[0].clone());
+        }
+        for _ in 0..commands {
+            failures_per_end.push(await_an_end(&mut progress_rx).await);
+        }
+        assert_eq!(failures_per_end, vec![1; commands + 1]);
+        handle.shutdown().await;
+    })
     .await;
 }
