@@ -73,7 +73,7 @@ pub(super) fn load_candidate_on(
     let Some((root, stored)) = folder_scans::load_item_by_key(sql, key, RowSources::Any)? else {
         return Ok(None);
     };
-    folder_scans::validate_scan_item_ownership(&root, &stored.key, &stored.item)?;
+    folder_scans::stored_entry_belongs(&root, &stored.key, &stored.item)?;
     let (candidate, settled) = match stored.item {
         ScanItem::Valid(candidate) => (candidate, true),
         ScanItem::Discovered(candidate) => (candidate, false),

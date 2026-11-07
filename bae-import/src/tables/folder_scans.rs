@@ -120,22 +120,15 @@ pub(super) fn root_generation_on(
         .optional()?)
 }
 
-/// Refuse to write under a generation the root has moved past. Runs inside the
-/// write transaction, so a scan that lost the root after the caller's check
-/// cannot write over its successor.
-fn ensure_generation(
+/// Whether `generation` is still the root's. Read inside the write
+/// transaction, where a newer scan taking the root is decided, so a scan that
+/// lost the root writes nothing over its successor.
+fn holds_generation(
     sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     generation: i64,
-) -> Result<(), DbError> {
-    if root_generation_on(sql, watched_folder_path)? != Some(generation) {
-        return Err(DbError::Message(format!(
-            "folder scan generation {generation} is no longer {}'s: \
-             a newer scan took the root between the check and the write",
-            coven::path_text(watched_folder_path)
-        )));
-    }
-    Ok(())
+) -> Result<bool, DbError> {
+    Ok(root_generation_on(sql, watched_folder_path)? == Some(generation))
 }
 
 /// Whether `snapshot` was taken from the audio `item` holds. Only a
@@ -163,20 +156,12 @@ impl ImportTables {
         &self,
         watched_folder_path: &Path,
     ) -> Result<Option<u64>, DbError> {
-        self.current_scan_generation(watched_folder_path)
+        let watched_folder_path = watched_folder_path.to_path_buf();
+        self.store
+            .read(move |sql| root_generation_on(&sql, &watched_folder_path))
             .await?
             .map(|generation| to_u64(generation, "folder_scan_roots.generation"))
             .transpose()
-    }
-
-    /// The root's generation on the read connection, so a scan that lost the
-    /// root finds out without opening a write.
-    async fn current_scan_generation(
-        &self,
-        watched_folder_path: &Path,
-    ) -> Result<Option<i64>, DbError> {
-        let watched_folder_path = watched_folder_path.to_path_buf();
-        self.store.read(move |sql| root_generation_on(&sql, &watched_folder_path)).await
     }
 
     /// Open a new scan generation for `watched_folder_path`, recording the
@@ -219,12 +204,11 @@ impl ImportTables {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let generation = generation_column(generation)?;
         let observed_at = self.store.now_utc().timestamp_millis();
-        if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
-            return Ok(None);
-        }
         self.store
             .call(move |sql| {
-                ensure_generation(sql, &watched_folder_path, generation)?;
+                if !holds_generation(sql, &watched_folder_path, generation)? {
+                    return Ok(None);
+                }
                 let mut writes = Vec::with_capacity(items.len());
                 for to_write in items {
                     let write = write_scan_item(
@@ -352,12 +336,11 @@ impl ImportTables {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let generation = generation_column(generation)?;
         let error = error.map(str::to_string);
-        if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
-            return Ok(None);
-        }
         self.store
             .call(move |sql| {
-                ensure_generation(sql, &watched_folder_path, generation)?;
+                if !holds_generation(sql, &watched_folder_path, generation)? {
+                    return Ok(None);
+                }
                 if let Some(error) = error {
                     sql.execute(
                         "UPDATE folder_scan_roots SET status = 'failed', error = ? \
@@ -407,7 +390,7 @@ impl ImportTables {
                 process
                     .map(|process| {
                         let (root, stored) = process()?;
-                        validate_scan_item_ownership(&root, &stored.key, &stored.item)?;
+                        stored_entry_belongs(&root, &stored.key, &stored.item)?;
                         Ok(stored.item)
                     })
                     .transpose()
@@ -491,7 +474,14 @@ fn write_scan_item(
         }
     };
     let entry_key = to_write.item.key();
-    validate_scan_item_ownership(watched_folder_path, &entry_key, &to_write.item)?;
+    // The walk keys each item by its folder and reads only below the watched
+    // folder it walks.
+    if let Some(misplaced) = misplaced(watched_folder_path, &entry_key, &to_write.item) {
+        panic!(
+            "a scan of {} writes {entry_key} as {misplaced}",
+            coven::path_text(watched_folder_path)
+        );
+    }
     let EntryWrite::Stored { replaced: superseded_keys, found } = write_entry(
         sql,
         watched_folder_path,
@@ -605,12 +595,12 @@ pub(super) fn write_entry(
     }
     let file_metadata = match seed {
         ScanItemSeed::Tags(file_metadata) => file_metadata,
-        ScanItemSeed::AlreadySettled => {
-            return Err(DbError::Message(format!(
-                "{entry_key} is seeded as a tentative candidate a settled entry stands for, \
-                 and it is not tentative"
-            )))
-        }
+        // The pass seeds an entry as already settled only when it is
+        // tentative, and a tentative one returned above.
+        ScanItemSeed::AlreadySettled => panic!(
+            "{entry_key} is seeded as a tentative candidate a settled entry stands for, \
+             and it is not tentative"
+        ),
     };
     // An unchanged row only takes the stamp, so an untouched folder
     // announces nothing.
@@ -680,23 +670,41 @@ pub(super) fn load_folder_scan_items_on(
         items()?
             .into_iter()
             .map(|stored| {
-                validate_scan_item_ownership(&watched_folder_path, &stored.key, &stored.item)?;
+                stored_entry_belongs(&watched_folder_path, &stored.key, &stored.item)?;
                 Ok(stored.item)
             })
             .collect()
     })
 }
 
-pub(super) fn validate_scan_item_ownership(
+/// How an entry stands where it should not: the item names another key than
+/// the one it is stored at, another watched folder or a folder outside its
+/// own, or reads files outside its watched folder.
+enum Misplaced {
+    Key(CandidateKey),
+    Root { root: PathBuf, folder: PathBuf },
+    FilesOutside,
+}
+
+impl std::fmt::Display for Misplaced {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Key(key) => write!(f, "the item of {key}"),
+            Self::Root { root, folder } => {
+                write!(f, "{} under {}", coven::path_text(folder), coven::path_text(root))
+            }
+            Self::FilesOutside => f.write_str("files outside its watched folder"),
+        }
+    }
+}
+
+fn misplaced(
     watched_folder_path: &Path,
     entry_key: &CandidateKey,
     item: &ScanItem,
-) -> Result<(), DbError> {
+) -> Option<Misplaced> {
     if &item.key() != entry_key {
-        return Err(DbError::Message(format!(
-            "folder scan entry key {entry_key} does not match its item key {}",
-            item.key()
-        )));
+        return Some(Misplaced::Key(item.key()));
     }
     let root = watched_folder_path;
     // A grouping's release is listed under its first member's watched folder
@@ -710,30 +718,48 @@ pub(super) fn validate_scan_item_ownership(
     };
     let (item_root, item_path) = match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-            (candidate.watched_folder_path.as_path(), candidate.path.clone())
+            (candidate.watched_folder_path.as_path(), candidate.path.as_path())
         }
         ScanItem::Invalid(candidate) => {
-            (candidate.watched_folder_path.as_path(), candidate.path.clone())
+            (candidate.watched_folder_path.as_path(), candidate.path.as_path())
         }
     };
     if item_root.as_os_str() != watched_folder_path.as_os_str()
         || (!grouped && !item_path.starts_with(root))
     {
-        return Err(DbError::Message(format!(
-            "folder scan entry {entry_key} does not belong to watched folder {}",
-            coven::path_text(watched_folder_path)
-        )));
+        return Some(Misplaced::Root {
+            root: item_root.to_path_buf(),
+            folder: item_path.to_path_buf(),
+        });
     }
     if let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate), false) = (item, grouped) {
         if !candidate.file_root.starts_with(root)
             || candidate.files.parts.iter().any(|part| !part.folder.starts_with(root))
         {
-            return Err(DbError::Message(format!(
-                "folder scan entry {entry_key} reads files outside its watched folder"
-            )));
+            return Some(Misplaced::FilesOutside);
         }
     }
-    Ok(())
+    None
+}
+
+/// The entry stored at `entry_key` under `watched_folder_path` belongs
+/// there. A scan's write stores no other, so one that does not is a row no
+/// writer produces.
+pub(super) fn stored_entry_belongs(
+    watched_folder_path: &Path,
+    entry_key: &CandidateKey,
+    item: &ScanItem,
+) -> Result<(), DbError> {
+    match misplaced(watched_folder_path, entry_key, item) {
+        None => Ok(()),
+        Some(misplaced) => Err(DbError::Unreadable {
+            what: format!(
+                "folder scan entry {entry_key} under {}",
+                coven::path_text(watched_folder_path)
+            ),
+            stored: misplaced.to_string(),
+        }),
+    }
 }
 
 /// The next scan generation. An upsert, so a missing seed row is created

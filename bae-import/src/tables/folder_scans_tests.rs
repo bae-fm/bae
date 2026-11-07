@@ -222,26 +222,6 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
     );
 }
 
-#[tokio::test]
-async fn folder_scan_item_rejects_a_mismatched_embedded_root_without_changing_the_snapshot() {
-    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
-    let tables = crate::tables::ImportTables::new(db.clone());
-    let root = &host_root("/mounted/library");
-    tables.add_watched_import_folder(root).await.unwrap();
-    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
-    let existing = scanned_candidate(root, "Existing");
-    tables.save_folder_scan_item(root, generation, &existing).await.unwrap();
-
-    let mismatched = scanned_candidate(&host_root("/other/library"), "Injected");
-    let error = tables.save_folder_scan_item(root, generation, &mismatched).await.unwrap_err();
-
-    assert!(error.to_string().contains("does not belong"));
-    let snapshot = tables.load_folder_scan_snapshots().await.unwrap();
-    assert_eq!(snapshot.len(), 1);
-    assert_eq!(snapshot[0].items.len(), 1);
-    assert_eq!(snapshot[0].items[0].key(), existing.key());
-}
-
 /// An entry whose generation is ahead of its root's was written by nothing
 /// here, and fails to load.
 #[tokio::test]
