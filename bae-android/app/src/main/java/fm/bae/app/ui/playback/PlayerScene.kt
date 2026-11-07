@@ -176,7 +176,13 @@ internal fun FullPlayerScene(state: PlayerSceneState) {
                         ExpandedSecondaryControls(repeatMode = BridgeRepeatMode.OFF, onCycleRepeat = {})
                     },
                     volumeRow = {
-                        ExpandedVolumeRow(volume = SCENE_VOLUME, isMuted = false, onSetMuted = {}, onSetVolume = {})
+                        ExpandedVolumeRow(
+                            volume = SCENE_VOLUME,
+                            isMuted = false,
+                            onSetMuted = {},
+                            onDragVolume = {},
+                            onSetVolume = {},
+                        )
                     },
                 )
             }

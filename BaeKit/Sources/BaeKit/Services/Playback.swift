@@ -14,7 +14,11 @@ public final class Playback: Sendable, Observable {
     public let nextTrack: @Sendable () -> Void
     public let previousTrack: @Sendable () -> Void
     public let seekByRatio: @Sendable (_ ratio: Double) -> Void
+    /// Set the level where a volume drag ends: stored, and shown by every
+    /// screen.
     public let setVolume: @Sendable (_ volume: Float) -> Void
+    /// Move the output to the level a volume drag is at, storing nothing.
+    public let setVolumeLive: @Sendable (_ volume: Float) -> Void
     public let setMuted: @Sendable (_ muted: Bool) -> Void
     /// Set the repeat mode to an absolute value. Every caller sends the mode it
     /// wants; a cycling button passes `mode.next` computed from what it renders.
@@ -51,6 +55,7 @@ public final class Playback: Sendable, Observable {
         previousTrack: @escaping @Sendable () -> Void = {},
         seekByRatio: @escaping @Sendable (Double) -> Void = { _ in },
         setVolume: @escaping @Sendable (Float) -> Void = { _ in },
+        setVolumeLive: @escaping @Sendable (Float) -> Void = { _ in },
         setMuted: @escaping @Sendable (Bool) -> Void = { _ in },
         setRepeatMode: @escaping @Sendable (BridgeRepeatMode) -> Void = {
             _ in
@@ -83,6 +88,7 @@ public final class Playback: Sendable, Observable {
         self.previousTrack = previousTrack
         self.seekByRatio = seekByRatio
         self.setVolume = setVolume
+        self.setVolumeLive = setVolumeLive
         self.setMuted = setMuted
         self.setRepeatMode = setRepeatMode
         self.playRelease = playRelease
@@ -107,6 +113,7 @@ public final class Playback: Sendable, Observable {
             previousTrack: { handle.previousTrack() },
             seekByRatio: { handle.seekByRatio(ratio: $0) },
             setVolume: { handle.setVolume(volume: $0) },
+            setVolumeLive: { handle.setVolumeLive(volume: $0) },
             setMuted: { handle.setMuted(muted: $0) },
             setRepeatMode: { handle.setRepeatMode(mode: $0) },
             playRelease: { releaseId, startTrackId, shuffle in

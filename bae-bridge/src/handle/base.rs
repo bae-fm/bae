@@ -269,6 +269,10 @@ forward! { sync this => {
         this.services.playback_set_volume(volume);
     }
 
+    fn set_volume_live(volume: f32) {
+        this.services.playback_set_volume_live(volume);
+    }
+
     fn set_muted(muted: bool) {
         this.services.playback_set_muted(muted);
     }

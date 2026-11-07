@@ -105,6 +105,9 @@ impl PlaybackService {
             PlaybackCommand::SetVolume(volume) => {
                 self.set_volume(volume);
             }
+            PlaybackCommand::SetVolumeLive(volume) => {
+                self.set_volume_live(volume);
+            }
             PlaybackCommand::SetMuted(muted) => {
                 self.set_muted(muted);
             }

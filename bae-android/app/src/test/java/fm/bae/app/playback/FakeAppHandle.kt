@@ -450,6 +450,10 @@ internal open class FakeAppHandle(
         unfaked("setVolume")
     }
 
+    override fun setVolumeLive(volume: Float) {
+        unfaked("setVolumeLive")
+    }
+
     override suspend fun skipToEntry(entryId: String) {
         unfaked("skipToEntry")
     }

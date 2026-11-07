@@ -33,6 +33,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -160,6 +161,7 @@ private fun ExpandedPlayer(
                 volume = volume,
                 isMuted = isMuted,
                 onSetMuted = { session.appHandle.setMuted(it) },
+                onDragVolume = { session.appHandle.setVolumeLive(it) },
                 onSetVolume = { session.appHandle.setVolume(it) },
             )
         },
@@ -334,11 +336,14 @@ internal fun ExpandedVolumeRow(
     volume: Float,
     isMuted: Boolean,
     onSetMuted: (Boolean) -> Unit,
+    onDragVolume: (Float) -> Unit,
     onSetVolume: (Float) -> Unit,
 ) {
-    // Follow the finger from a local value while dragging; incoming volume
-    // updates would otherwise snap the thumb back.
+    // Follow the finger from a local value while dragging, moving the output
+    // as it goes; the level the drag ends on is set once, where it is stored,
+    // and stays shown until the stored volume changes.
     var dragVolume by remember { mutableStateOf<Float?>(null) }
+    LaunchedEffect(volume) { dragVolume = null }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { onSetMuted(!isMuted) }) {
             Icon(
@@ -351,9 +356,9 @@ internal fun ExpandedVolumeRow(
             value = dragVolume ?: volume,
             onValueChange = {
                 dragVolume = it
-                onSetVolume(it)
+                onDragVolume(it)
             },
-            onValueChangeFinished = { dragVolume = null },
+            onValueChangeFinished = { dragVolume?.let(onSetVolume) },
             valueRange = 0f..1f,
             modifier = Modifier.weight(1f).padding(horizontal = ThemeSpace.related),
         )

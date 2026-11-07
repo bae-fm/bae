@@ -636,6 +636,7 @@ impl AppServices {
     delegate_sync!(playback, playback_previous => previous() -> ());
     delegate_sync!(playback, playback_seek_by_ratio => seek_by_ratio(ratio: f64) -> ());
     delegate_sync!(playback, playback_set_volume => set_volume(volume: f32) -> ());
+    delegate_sync!(playback, playback_set_volume_live => set_volume_live(volume: f32) -> ());
     delegate_sync!(playback, playback_set_muted => set_muted(muted: bool) -> ());
     delegate_sync!(playback, playback_play_on => play_on(channel: Box<dyn bae_playback::renderer::RendererChannel>, device: bae_playback::RemoteDevice, media_source: bae_playback::renderer::RendererMediaSource) -> ());
     delegate_sync!(playback, playback_play_on_airplay => play_on_airplay(sink: Box<dyn bae_playback::airplay_output::AirPlaySink>, device: bae_playback::RemoteDevice) -> ());

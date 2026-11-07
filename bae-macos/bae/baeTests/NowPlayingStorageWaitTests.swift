@@ -98,6 +98,7 @@ struct NowPlayingStorageWaitTests {
             onPrevious: {},
             onSeek: { _ in },
             onToggleRemainingTime: {},
+            onVolumeDrag: { _ in },
             onVolumeChange: { _ in },
             onSetMuted: { _ in },
             onSetShuffle: { _ in },

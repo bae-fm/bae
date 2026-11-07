@@ -390,3 +390,29 @@ async fn a_level_out_of_range_is_held_to_silent_and_full_where_it_is_set() {
     assert_eq!(emitted, vec![1.0, 0.0]);
     assert_eq!(service.audio_output.get_volume(), 0.0);
 }
+
+/// A slider drag moves the output at every step and announces nothing; the
+/// level it ends on is announced once, which is the one write of the row.
+#[tokio::test]
+async fn a_volume_drag_moves_the_output_and_announces_only_where_it_ends() {
+    fn announced(
+        progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    ) -> Vec<f32> {
+        let mut volumes = Vec::new();
+        while let Ok(progress) = progress_rx.try_recv() {
+            if let PlaybackProgress::VolumeChanged { volume } = progress {
+                volumes.push(volume);
+            }
+        }
+        volumes
+    }
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    for step in 1..=20 {
+        let level = step as f32 / 20.0 * 0.5;
+        service.set_volume_live(crate::Volume::new(level).unwrap());
+        assert_eq!(service.audio_output.get_volume(), level);
+    }
+    assert_eq!(announced(&mut progress_rx), Vec::<f32>::new());
+    service.set_volume(crate::Volume::new(0.5).unwrap());
+    assert_eq!(announced(&mut progress_rx), vec![0.5]);
+}

@@ -164,6 +164,9 @@ pub(crate) enum PlaybackCommand {
     /// Seek by slider ratio (0.0–1.0) of the current track's duration and pregap.
     SeekByRatio(f64),
     SetVolume(crate::Volume),
+    /// Move the output to this level while a slider is dragged: nothing is
+    /// announced or stored until the drag's final `SetVolume`.
+    SetVolumeLive(crate::Volume),
     AddToQueue(Vec<String>),
     AddNext(Vec<String>),
     AddReleaseToQueue(String),
@@ -467,6 +470,15 @@ impl PlaybackHandle {
     pub fn set_volume(&self, volume: f32) {
         match crate::Volume::new(volume) {
             Some(volume) => self.dispatch(PlaybackCommand::SetVolume(volume)),
+            None => warn!(volume, "a volume that is no number sets nothing"),
+        }
+    }
+    /// Move the output to `volume` as a slider is dragged, announcing nothing
+    /// and storing nothing; [`Self::set_volume`] with the level the drag ends
+    /// on does both. A level that is no number sets nothing.
+    pub fn set_volume_live(&self, volume: f32) {
+        match crate::Volume::new(volume) {
+            Some(volume) => self.dispatch(PlaybackCommand::SetVolumeLive(volume)),
             None => warn!(volume, "a volume that is no number sets nothing"),
         }
     }

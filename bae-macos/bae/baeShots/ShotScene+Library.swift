@@ -19,7 +19,7 @@ extension ShotScene {
         },
         ShotScene(id: "volume-slider", size: CGSize(width: 152, height: 52)) {
             ShotStage(
-                SlimSlider(value: 0.6, onChange: { _ in })
+                SlimSlider(value: 0.6, onDrag: { _ in }, onChange: { _ in })
                     .frame(width: 120)
                     .padding()
                     .background(Theme.surface)

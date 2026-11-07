@@ -31,6 +31,9 @@ struct NowPlayingBar: View {
     let onPrevious: () -> Void
     let onSeek: (Double) -> Void
     let onToggleRemainingTime: () -> Void
+    /// The level a volume drag is at: moves the output, stores nothing.
+    let onVolumeDrag: (Float) -> Void
+    /// The level a volume drag or click ends on.
     let onVolumeChange: (Float) -> Void
     /// Mute or unmute: the value the mute button sets.
     let onSetMuted: (Bool) -> Void
@@ -273,9 +276,13 @@ extension NowPlayingBar {
             if let settings {
                 muteButton(settings)
 
-                SlimSlider(value: settings.volume, onChange: onVolumeChange)
-                    .frame(width: volumeWidth)
-                    .accessibilityLabel("Volume")
+                SlimSlider(
+                    value: settings.volume,
+                    onDrag: onVolumeDrag,
+                    onChange: onVolumeChange
+                )
+                .frame(width: volumeWidth)
+                .accessibilityLabel("Volume")
             }
             else {
                 controlSpace
@@ -435,6 +442,7 @@ extension NowPlayingBar {
                 onPrevious: {},
                 onSeek: { _ in },
                 onToggleRemainingTime: {},
+                onVolumeDrag: { volume = $0 },
                 onVolumeChange: { volume = $0 },
                 onSetMuted: { isMuted = $0 },
                 onSetShuffle: { _ in },

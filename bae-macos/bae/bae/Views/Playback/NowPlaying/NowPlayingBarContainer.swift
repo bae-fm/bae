@@ -63,6 +63,7 @@ struct NowPlayingBarContainer: View {
                     }
                 }
             },
+            onVolumeDrag: { playback.setVolumeLive($0) },
             onVolumeChange: { playback.setVolume($0) },
             onSetMuted: { playback.setMuted($0) },
             onSetShuffle: { queue.setShuffle($0) },

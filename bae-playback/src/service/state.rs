@@ -333,12 +333,20 @@ impl PlaybackService {
     /// too so it stays in step and survives the handoff back to local. Unmutes on
     /// a non-zero level, and always emits `VolumeChanged`.
     pub(super) fn set_volume(&mut self, volume: crate::Volume) {
+        self.set_volume_live(volume);
+        emit_progress(&self.progress_tx, PlaybackProgress::VolumeChanged { volume: volume.get() });
+    }
+
+    /// Move the output to `volume` while a slider is dragged, the device too
+    /// while playing remotely. The level is announced, and so stored, once, by
+    /// the `set_volume` the drag ends with; lifting a mute is announced here,
+    /// since the screens show it at once.
+    pub(super) fn set_volume_live(&mut self, volume: crate::Volume) {
         let lifted_mute = self.volume.set(volume, &self.audio_output);
         self.renderer.set_remote_volume(volume);
         if lifted_mute {
             emit_progress(&self.progress_tx, PlaybackProgress::MuteChanged { is_muted: false });
         }
-        emit_progress(&self.progress_tx, PlaybackProgress::VolumeChanged { volume: volume.get() });
     }
 
     /// Mute or unmute. Already in that state means nothing changes and nothing

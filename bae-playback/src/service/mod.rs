@@ -628,6 +628,7 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::ClearPlayingFrom(_)
         | PlaybackCommand::ReevaluateSidePauseStaging
         | PlaybackCommand::SetVolume(_)
+        | PlaybackCommand::SetVolumeLive(_)
         | PlaybackCommand::SetMuted(_)
         | PlaybackCommand::PreviewPlay(_)
         | PlaybackCommand::PreviewStop
@@ -690,6 +691,7 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::ReadFailed { .. }
         | PlaybackCommand::DecodeFailed { .. }
         | PlaybackCommand::SetVolume(_)
+        | PlaybackCommand::SetVolumeLive(_)
         | PlaybackCommand::SetMuted(_)
         | PlaybackCommand::SetRepeatMode(_)
         | PlaybackCommand::ReevaluateSidePauseStaging
