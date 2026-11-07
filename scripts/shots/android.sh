@@ -48,8 +48,50 @@ echo "android shots: rendering scenes (updateFullDebugScreenshotTest)..."
 
 # Scene registry: <preview-function-name>:<scene-id>. The plugin writes each
 # rendered PNG under reference/<package path>/ named "<function>_<hashes>.png",
-# so the basename starts with the preview function name.
-SCENES="Welcome:welcome WelcomeLibraries:welcome-libraries LibraryGrid:library-grid LibraryGridScrolled:library-grid-scrolled LibraryGrouped:library-grouped LibraryGroupedPinned:library-grouped-pinned LibraryMoreMenu:library-more-menu LibraryViewMenu:library-view-menu AlbumDetail:album-detail WelcomeLight:welcome-light LibraryGridLight:library-grid-light AlbumDetailLight:album-detail-light AppearanceLightNeutral:appearance-light-neutral AppearanceDarkNeutral:appearance-dark-neutral AppearanceLightSlate:appearance-light-slate AppearanceDarkSlate:appearance-dark-slate AppearanceLightPlum:appearance-light-plum AppearanceDarkPlum:appearance-dark-plum AppearanceLightMidnight:appearance-light-midnight AppearanceDarkMidnight:appearance-dark-midnight AppearanceLightForest:appearance-light-forest AppearanceDarkForest:appearance-dark-forest AppearanceLightSand:appearance-light-sand AppearanceDarkSand:appearance-dark-sand MiniPlayerWaitingOnStorage:mini-player-waiting-on-storage MiniPlayerPlayingWithAGap:mini-player-playing-with-a-gap MiniPlayerAllHere:mini-player-all-here FullPlayerWaitingOnStorage:full-player-waiting-on-storage FullPlayerPlayingWithAGap:full-player-playing-with-a-gap FullPlayerAllHere:full-player-all-here S3SetupRegionMismatch:s3-setup-region-mismatch CastingSettingsFound:settings-casting CastingSettingsLooking:settings-casting-looking Transfers:transfers TransfersWifiOnly:transfers-wifi-only RestoreCodeMasked:restore-code-masked RestoreCodeShown:restore-code-shown FolderChoiceDropbox:folder-choice-dropbox FolderChoiceOneDrive:folder-choice-onedrive"
+# so the basename starts with the preview function name. One entry per line,
+# sorted by function name, so parallel branches adding scenes merge cleanly.
+SCENES=$(cat <<'EOF'
+AlbumDetail:album-detail
+AlbumDetailLight:album-detail-light
+AppearanceDarkForest:appearance-dark-forest
+AppearanceDarkMidnight:appearance-dark-midnight
+AppearanceDarkNeutral:appearance-dark-neutral
+AppearanceDarkPlum:appearance-dark-plum
+AppearanceDarkSand:appearance-dark-sand
+AppearanceDarkSlate:appearance-dark-slate
+AppearanceLightForest:appearance-light-forest
+AppearanceLightMidnight:appearance-light-midnight
+AppearanceLightNeutral:appearance-light-neutral
+AppearanceLightPlum:appearance-light-plum
+AppearanceLightSand:appearance-light-sand
+AppearanceLightSlate:appearance-light-slate
+CastingSettingsFound:settings-casting
+CastingSettingsLooking:settings-casting-looking
+FolderChoiceDropbox:folder-choice-dropbox
+FolderChoiceOneDrive:folder-choice-onedrive
+FullPlayerAllHere:full-player-all-here
+FullPlayerPlayingWithAGap:full-player-playing-with-a-gap
+FullPlayerWaitingOnStorage:full-player-waiting-on-storage
+LibraryGrid:library-grid
+LibraryGridLight:library-grid-light
+LibraryGridScrolled:library-grid-scrolled
+LibraryGrouped:library-grouped
+LibraryGroupedPinned:library-grouped-pinned
+LibraryMoreMenu:library-more-menu
+LibraryViewMenu:library-view-menu
+MiniPlayerAllHere:mini-player-all-here
+MiniPlayerPlayingWithAGap:mini-player-playing-with-a-gap
+MiniPlayerWaitingOnStorage:mini-player-waiting-on-storage
+RestoreCodeMasked:restore-code-masked
+RestoreCodeShown:restore-code-shown
+S3SetupRegionMismatch:s3-setup-region-mismatch
+Transfers:transfers
+TransfersWifiOnly:transfers-wifi-only
+Welcome:welcome
+WelcomeLibraries:welcome-libraries
+WelcomeLight:welcome-light
+EOF
+)
 
 for entry in $SCENES; do
     func="${entry%%:*}"
