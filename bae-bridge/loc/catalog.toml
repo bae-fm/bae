@@ -12217,38 +12217,6 @@ da = "Gendan kildefil"
 nb = "Gjenopprett kildefil"
 fi = "Palauta lähdetiedosto"
 
-[messages."core.pending.action.resume_uploads"]
-value = "Resume uploads"
-
-[messages."core.pending.action.resume_uploads".translations]
-es = "Reanudar cargas"
-fr = "Reprendre les envois"
-de = "Uploads fortsetzen"
-pt-BR = "Retomar envios"
-ja = "アップロードを再開"
-ko = "업로드 재개"
-zh-Hans = "继续上传"
-ar = "استئناف الرفع"
-he = "חדש העלאות"
-uk = "Відновити передавання"
-bg = "Продължаване на качванията"
-pl = "Wznów wysyłanie"
-cs = "Pokračovat v nahrávání"
-hr = "Nastavi prijenose"
-zh-Hant = "繼續上傳"
-it = "Riprendi caricamenti"
-tr = "Yüklemeleri sürdür"
-nl = "Uploads hervatten"
-sk = "Pokračovať v nahrávaní"
-hu = "Feltöltések folytatása"
-ro = "Reia încărcările"
-el = "Συνέχιση μεταφορτώσεων"
-pt-PT = "Retomar envios"
-sv = "Återuppta uppladdningar"
-da = "Genoptag uploads"
-nb = "Gjenoppta opplastinger"
-fi = "Jatka lähetyksiä"
-
 [messages."core.pending.action.retry"]
 value = "Retry"
 

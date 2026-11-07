@@ -69,8 +69,6 @@ struct SyncStatusLine: View {
             try await signIn(provider)
         case .reconnect:
             try await sync.reconnectSync()
-        case .resumeUploads:
-            try await sync.setSyncPaused(false)
         case .retryOperation(let id):
             try await sync.pendingActions.retryOperation(id)
         case .retryDownload(let releaseId):

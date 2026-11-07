@@ -488,7 +488,6 @@ pub enum PendingAction {
     SignIn(coven::CloudProvider),
     Reconnect,
     RestoreFile,
-    ResumeUploads,
     RetryOperation(coven::OperationId),
     /// Pin the release again through the download queue: what a failed
     /// pin's download waits for.
@@ -533,7 +532,6 @@ pub fn pending_action(record: &coven::PendingRecord, release_id: Option<&str>) -
         R::UpdateRequired(_) | R::Refused(_) => PendingAction::UpdateApp,
         R::MemberKeysReplaced { .. } => PendingAction::RestoreFromCode,
         R::Removed => PendingAction::Review,
-        R::Paused if matches!(record.subject, S::Upload { .. }) => PendingAction::ResumeUploads,
         _ => match record.retry() {
             coven::Retry::Automatic => PendingAction::Wait,
             coven::Retry::AfterUpdate => PendingAction::UpdateApp,

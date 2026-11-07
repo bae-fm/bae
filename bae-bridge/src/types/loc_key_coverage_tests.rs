@@ -368,7 +368,6 @@ fn produced_keys() -> Vec<String> {
         BridgePendingAction::SignIn { provider: BridgeCloudProvider::Dropbox },
         BridgePendingAction::Reconnect,
         BridgePendingAction::RestoreFile,
-        BridgePendingAction::ResumeUploads,
         BridgePendingAction::RetryOperation { id: 1 },
         BridgePendingAction::RetryDownload { release_id: "release".to_string() },
         BridgePendingAction::CancelUpload { id: 1 },

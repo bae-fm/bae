@@ -101,10 +101,6 @@ private class PendingActionRunner(
                 perform("reconnect sync") { handle.reconnectSync() }
             }
 
-            BridgePendingAction.ResumeUploads -> {
-                perform("resume uploads") { handle.setSyncPaused(false) }
-            }
-
             is BridgePendingAction.RetryOperation -> {
                 perform("retry pending operation ${action.id}") { handle.retryPendingOperation(action.id) }
             }

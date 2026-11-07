@@ -126,7 +126,6 @@ pub enum BridgePendingAction {
     },
     Reconnect,
     RestoreFile,
-    ResumeUploads,
     RetryOperation {
         id: i64,
     },
@@ -153,7 +152,6 @@ impl BridgePendingAction {
             }
             A::Reconnect => Self::Reconnect,
             A::RestoreFile => Self::RestoreFile,
-            A::ResumeUploads => Self::ResumeUploads,
             A::RetryOperation(id) => Self::RetryOperation { id: id.0 },
             A::RetryDownload { release_id } => Self::RetryDownload { release_id },
             A::CancelUpload { id } => Self::CancelUpload { id: id.0 },
@@ -203,7 +201,6 @@ impl BridgePendingAction {
             A::SignIn { .. } => "core.pending.action.sign_in",
             A::Reconnect => "core.pending.action.reconnect",
             A::RestoreFile => "core.pending.action.restore_file",
-            A::ResumeUploads => "core.pending.action.resume_uploads",
             A::RetryOperation { .. } | A::RetryDownload { .. } => "core.pending.action.retry",
             A::CancelUpload { .. } => "core.pending.action.cancel_upload",
             A::RestoreFromCode => "core.pending.action.restore_from_code",

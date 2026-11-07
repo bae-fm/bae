@@ -3076,7 +3076,7 @@ leaves every file of the release on this device only (§4.2). A pin the download
 finish offers *Retry*, which queues the release's pin again, the failed entry
 in its place or the release anew if it left the queue (§4.3); a file coven
 keeps here after a move retries its own download. Other records offer
-*Retry*, *Reconnect*, *Resume uploads*, *Update app* or *Restore with code*. bae never asks for a storage
+*Retry*, *Reconnect*, *Update app* or *Restore with code*. bae never asks for a storage
 administrator's credentials: the person makes and deletes S3 access keys in the
 provider's console, and no record asks them to delete one
 ([coven §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).

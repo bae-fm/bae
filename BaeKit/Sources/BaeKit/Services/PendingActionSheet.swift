@@ -11,8 +11,8 @@ public enum PendingActionSheet: Identifiable {
             self = .restoreFile(record)
         case .review:
             self = .review(record)
-        case .wait, .updateApp, .signIn, .reconnect, .resumeUploads,
-            .retryOperation, .retryDownload, .cancelUpload, .restoreFromCode:
+        case .wait, .updateApp, .signIn, .reconnect, .retryOperation,
+            .retryDownload, .cancelUpload, .restoreFromCode:
             return nil
         }
     }
