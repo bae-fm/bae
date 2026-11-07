@@ -145,6 +145,18 @@
     <string name="transfers_wifi_only_footer">Le pubblicazioni fissate attendono il Wi-Fi. Riprodurre una traccia non fissata usa comunque i dati mobili.</string>
     <string name="transfers_concurrency_footer">Quanti file vengono scaricati contemporaneamente quando si fissa una pubblicazione.</string>
     <string name="members_title">Persone e dispositivi</string>
+    <string name="people_people">Persone</string>
+    <string name="people_role">Ruolo</string>
+    <string name="people_devices">Dispositivi</string>
+    <string name="people_your_devices">I tuoi dispositivi</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d dispositivo</item>
+        <item quantity="many">%1$d dispositivi</item>
+        <item quantity="other">%1$d dispositivi</item>
+    </plurals>
     <string name="members_this_device">Questo dispositivo</string>
     <string name="members_role_member">Membro</string>
     <string name="members_remove">Rimuovi</string>
@@ -310,7 +322,7 @@
     <string name="members_role_admin">Amministratore</string>
     <string name="members_make_admin">Rendi amministratore</string>
     <string name="members_make_member">Rendi membro</string>
-    <string name="members_remove_person">Rimuovi persona</string>
+    <string name="members_remove_person">Rimuovi dalla libreria</string>
     <string name="members_remove_person_confirm_title">Rimuovere %1$s?</string>
     <string name="members_remove_person_confirm_body">Perde l’accesso a questa libreria. La sua cronologia e le sue playlist private vengono eliminate; ciò che ha condiviso con la famiglia resta.</string>
     <string name="device_state_removed">Rimosso</string>
@@ -343,8 +355,7 @@
     <string name="settings_libraries_load_failed">Impossibile caricare le tue librerie.</string>
     <string name="settings_history">Cronologia di ascolto</string>
     <string name="settings_history_private">Solo io</string>
-    <string name="settings_history_household">Famiglia</string>
-    <string name="settings_history_explanation">Chi vede cosa ascolti. Una modifica vale per gli ascolti da ora in poi; quelli precedenti restano visibili a chi poteva vederli.</string>
+    <string name="settings_history_household">Tutti nella libreria</string>
     <string name="downloads_concurrency_label">Download simultanei</string>
     <string name="settings_stored_in">Archiviato in</string>
     <string name="storage_location_account">%1$s: %2$s</string>

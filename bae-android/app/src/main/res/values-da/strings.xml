@@ -146,6 +146,17 @@
     <string name="transfers_wifi_only_footer">Fastgjorte udgivelser venter på Wi-Fi. Afspilning af et nummer, der ikke er fastgjort, bruger stadig mobildata.</string>
     <string name="transfers_concurrency_footer">Hvor mange filer der downloades på én gang, når en udgivelse fastgøres.</string>
     <string name="members_title">Personer og enheder</string>
+    <string name="people_people">Personer</string>
+    <string name="people_role">Rolle</string>
+    <string name="people_devices">Enheder</string>
+    <string name="people_your_devices">Dine enheder</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d enhed</item>
+        <item quantity="other">%1$d enheder</item>
+    </plurals>
     <string name="members_this_device">Denne enhed</string>
     <string name="members_role_member">Medlem</string>
     <string name="members_remove">Fjern</string>
@@ -305,7 +316,7 @@
     <string name="members_role_admin">Administrator</string>
     <string name="members_make_admin">Gør til administrator</string>
     <string name="members_make_member">Gør til medlem</string>
-    <string name="members_remove_person">Fjern person</string>
+    <string name="members_remove_person">Fjern fra biblioteket</string>
     <string name="members_remove_person_confirm_title">Fjern %1$s?</string>
     <string name="members_remove_person_confirm_body">Personen mister adgangen til dette bibliotek. Deres private historik og playlister slettes; det, de har delt med husstanden, bliver.</string>
     <string name="device_state_removed">Fjernet</string>
@@ -338,8 +349,7 @@
     <string name="settings_libraries_load_failed">Dine biblioteker kunne ikke indlæses.</string>
     <string name="settings_history">Lyttehistorik</string>
     <string name="settings_history_private">Kun mig</string>
-    <string name="settings_history_household">Husstanden</string>
-    <string name="settings_history_explanation">Hvem der kan se, hvad du afspiller. En ændring gælder afspilninger fra nu af; tidligere afspilninger beholder, hvem der kunne se dem.</string>
+    <string name="settings_history_household">Alle i biblioteket</string>
     <string name="settings_stored_in">Gemt i</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

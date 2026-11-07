@@ -44,6 +44,7 @@ internal fun CardRow(
     tone: StatusTone? = null,
     leadingIcon: ImageVector? = null,
     action: Boolean = false,
+    destructive: Boolean = false,
     selected: Boolean = false,
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
@@ -81,7 +82,12 @@ internal fun CardRow(
             Text(
                 text = title,
                 style = ThemeText.rowTitle.style,
-                color = if (action) accent else MaterialTheme.colorScheme.onSurface,
+                color =
+                    when {
+                        destructive -> MaterialTheme.colorScheme.error
+                        action -> accent
+                        else -> MaterialTheme.colorScheme.onSurface
+                    },
             )
             subtitle?.let { Subtitle(it, tone) }
         }

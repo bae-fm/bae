@@ -29,6 +29,8 @@ import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
+import uniffi.bae_bridge.BridgeRequestedProfile
+import uniffi.bae_bridge.BridgeRequestedProfileState
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.NoHandle
@@ -141,6 +143,27 @@ class MembersModelTest {
         stop()
     }
 
+    /** The request ends in the write that makes the person's profile, so each change of it reads the people again. */
+    @Test
+    fun eachRequestedProfileValueReadsThePeopleAgain() {
+        val handle = SilentMembersHandle(answers = listOf(Result.success(emptyList()), Result.success(emptyList())))
+        val model =
+            MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+        val stop = model.subscribe()
+        val making = BridgeRequestedProfile(name = "Robin", state = BridgeRequestedProfileState.Making)
+
+        handle.requestedProfile.pulls.deliver(making)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(making, model.requestedProfile)
+        assertEquals(1, handle.reads)
+
+        handle.requestedProfile.pulls.deliver(null)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(null, model.requestedProfile)
+        assertEquals(2, handle.reads)
+        stop()
+    }
+
     /** Core's answer for what each failure shows: a cancellation shows nothing. */
     private data object TestErrorDisplays : ErrorDisplays {
         override fun display(reason: BridgePlaybackErrorReason): DisplayError? = null
@@ -156,7 +179,14 @@ class MembersModelTest {
     private fun offline() = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
 
     /** A handle whose members and profiles never change: a pull waits until cancelled. */
-    private class SilentMembersHandle : FakeAppHandle() {
+    private class SilentMembersHandle(
+        private val answers: List<Result<List<BridgePerson>>> = emptyList(),
+    ) : FakeAppHandle() {
+        var reads = 0
+            private set
+
+        override suspend fun people(): List<BridgePerson> = answers[reads++].getOrThrow()
+
         override fun subscribeMembers(): MembersSubscription =
             object : MembersSubscription(NoHandle) {
                 private val values = Channel<BridgeMembership>()

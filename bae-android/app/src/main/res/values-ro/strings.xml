@@ -150,6 +150,18 @@
     <string name="transfers_wifi_only_footer">Edițiile fixate așteaptă Wi-Fi. Redarea unei piese care nu este fixată folosește în continuare date mobile.</string>
     <string name="transfers_concurrency_footer">Câte fișiere se descarcă simultan când o ediție este fixată.</string>
     <string name="members_title">Persoane și dispozitive</string>
+    <string name="people_people">Persoane</string>
+    <string name="people_role">Rol</string>
+    <string name="people_devices">Dispozitive</string>
+    <string name="people_your_devices">Dispozitivele tale</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d dispozitiv</item>
+        <item quantity="few">%1$d dispozitive</item>
+        <item quantity="other">%1$d de dispozitive</item>
+    </plurals>
     <string name="members_this_device">Acest dispozitiv</string>
     <string name="members_role_member">Membru</string>
     <string name="members_remove">Elimină</string>
@@ -310,7 +322,7 @@
     <string name="members_role_admin">Administrator</string>
     <string name="members_make_admin">Fă administrator</string>
     <string name="members_make_member">Fă membru</string>
-    <string name="members_remove_person">Elimină persoana</string>
+    <string name="members_remove_person">Elimină din bibliotecă</string>
     <string name="members_remove_person_confirm_title">Elimini persoana %1$s?</string>
     <string name="members_remove_person_confirm_body">Persoana pierde accesul la această bibliotecă. Istoricul și playlisturile ei private se șterg; ce a partajat cu gospodăria rămâne.</string>
     <string name="device_state_removed">Eliminat</string>
@@ -344,8 +356,7 @@
     <string name="settings_libraries_load_failed">Bibliotecile tale nu au putut fi încărcate.</string>
     <string name="settings_history">Istoric de ascultare</string>
     <string name="settings_history_private">Doar eu</string>
-    <string name="settings_history_household">Gospodăria</string>
-    <string name="settings_history_explanation">Cine vede ce asculți. O schimbare se aplică redărilor de acum înainte; redările anterioare rămân vizibile pentru aceleași persoane.</string>
+    <string name="settings_history_household">Toată lumea din bibliotecă</string>
     <string name="settings_stored_in">Stocat în</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

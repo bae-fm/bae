@@ -154,6 +154,19 @@
     <string name="transfers_wifi_only_footer">Pripnuté vydania čakajú na Wi-Fi. Prehrávanie skladby, ktorá nie je pripnutá, stále používa mobilné dáta.</string>
     <string name="transfers_concurrency_footer">Koľko súborov sa sťahuje naraz, keď sa vydanie pripne.</string>
     <string name="members_title">Ľudia a zariadenia</string>
+    <string name="people_people">Ľudia</string>
+    <string name="people_role">Rola</string>
+    <string name="people_devices">Zariadenia</string>
+    <string name="people_your_devices">Vaše zariadenia</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d zariadenie</item>
+        <item quantity="few">%1$d zariadenia</item>
+        <item quantity="many">%1$d zariadenia</item>
+        <item quantity="other">%1$d zariadení</item>
+    </plurals>
     <string name="members_this_device">Toto zariadenie</string>
     <string name="members_role_member">Člen</string>
     <string name="members_remove">Odstrániť</string>
@@ -315,7 +328,7 @@
     <string name="members_role_admin">Správca</string>
     <string name="members_make_admin">Nastaviť ako správcu</string>
     <string name="members_make_member">Nastaviť ako člena</string>
-    <string name="members_remove_person">Odstrániť osobu</string>
+    <string name="members_remove_person">Odstrániť z knižnice</string>
     <string name="members_remove_person_confirm_title">Odstrániť osobu %1$s?</string>
     <string name="members_remove_person_confirm_body">Stratí prístup k tejto knižnici. Súkromná história a playlisty sa odstránia; čo zdieľal s domácnosťou, zostane.</string>
     <string name="device_state_removed">Odstránené</string>
@@ -350,8 +363,7 @@
     <string name="settings_libraries_load_failed">Vaše knižnice sa nepodarilo načítať.</string>
     <string name="settings_history">História počúvania</string>
     <string name="settings_history_private">Len ja</string>
-    <string name="settings_history_household">Domácnosť</string>
-    <string name="settings_history_explanation">Kto vidí, čo prehrávaš. Zmena platí pre prehrávania odteraz; skoršie prehrávania si ponechajú, kto ich mohol vidieť.</string>
+    <string name="settings_history_household">Všetci v knižnici</string>
     <string name="settings_stored_in">Uložené v</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

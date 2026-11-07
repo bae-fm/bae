@@ -139,6 +139,16 @@
     <string name="transfers_wifi_only_footer">고정된 릴리스는 Wi-Fi를 기다립니다. 고정되지 않은 트랙을 재생하면 계속 모바일 데이터를 사용합니다.</string>
     <string name="transfers_concurrency_footer">릴리스를 고정할 때 동시에 다운로드하는 파일 수입니다.</string>
     <string name="members_title">사람 및 기기</string>
+    <string name="people_people">사람</string>
+    <string name="people_role">역할</string>
+    <string name="people_devices">기기</string>
+    <string name="people_your_devices">내 기기</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="other">기기 %1$d대</item>
+    </plurals>
     <string name="members_this_device">이 기기</string>
     <string name="members_role_member">멤버</string>
     <string name="members_remove">제거</string>
@@ -301,7 +311,7 @@
     <string name="members_role_admin">관리자</string>
     <string name="members_make_admin">관리자로 지정</string>
     <string name="members_make_member">멤버로 지정</string>
-    <string name="members_remove_person">사람 제거</string>
+    <string name="members_remove_person">라이브러리에서 제거</string>
     <string name="members_remove_person_confirm_title">%1$s 님을 제거할까요?</string>
     <string name="members_remove_person_confirm_body">이 라이브러리에 접근할 수 없게 됩니다. 비공개 기록과 재생목록은 삭제되고, 가족과 공유한 내용은 남습니다.</string>
     <string name="device_state_removed">제거됨</string>
@@ -333,8 +343,7 @@
     <string name="settings_libraries_load_failed">보관함을 불러올 수 없습니다.</string>
     <string name="settings_history">감상 기록</string>
     <string name="settings_history_private">나만</string>
-    <string name="settings_history_household">가족</string>
-    <string name="settings_history_explanation">내가 재생한 내용을 볼 수 있는 사람입니다. 변경은 앞으로의 재생에만 적용되며, 이전 재생은 원래 볼 수 있던 사람에게 그대로 보입니다.</string>
+    <string name="settings_history_household">라이브러리의 모든 사람</string>
     <string name="downloads_concurrency_label">동시 다운로드</string>
     <string name="settings_stored_in">저장 위치</string>
     <string name="storage_location_account">%1$s: %2$s</string>

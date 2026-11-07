@@ -1,19 +1,15 @@
 package fm.bae.app.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,13 +21,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
@@ -39,12 +35,9 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
-import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
-import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.rememberScreenScope
@@ -62,9 +55,9 @@ import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteProgress
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMember
-import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgePerson
+import uniffi.bae_bridge.BridgeRequestedProfile
 import uniffi.bae_bridge.BridgeStorageLocation
 
 private const val TAG = "bae.MembersScreen"
@@ -105,6 +98,10 @@ internal class MembersModel(
     var storage by mutableStateOf<BridgeStorageLocation?>(null)
         private set
 
+    /** The profile this device's person asked for, while it isn't written yet; null before they ask and once it is. */
+    var requestedProfile by mutableStateOf<BridgeRequestedProfile?>(null)
+        private set
+
     /** The admin changes this device asked for, each until the person dismisses its outcome. */
     var adminChanges by mutableStateOf<List<BridgeAdminChange>>(emptyList())
         private set
@@ -140,6 +137,24 @@ internal class MembersModel(
         }
     }
 
+    /**
+     * Follow the profile this person asked for. The request ends in the write that makes it, so each change reads the
+     * people again.
+     */
+    private fun subscribeRequestedProfile(): ScreenSubscription<BridgeRequestedProfile?> =
+        ScreenSubscription(
+            appHandle.subscribeRequestedProfile().let { pulled(it::next, it::cancel) },
+            scope,
+            onValue = { value ->
+                requestedProfile = value
+                reload()
+            },
+            onError = { error ->
+                logger.error("reading the requested profile failed", error)
+                this@MembersModel.error = errors.display(error)
+            },
+        )
+
     fun subscribe(): () -> Unit {
         val members =
             ScreenSubscription(
@@ -174,6 +189,7 @@ internal class MembersModel(
                     this@MembersModel.error = errors.display(error)
                 },
             )
+        val requested = subscribeRequestedProfile()
         val changes =
             ScreenSubscription(
                 appHandle.subscribeAdminChanges().let { pulled(it::next, it::cancel) },
@@ -188,6 +204,7 @@ internal class MembersModel(
             members.stop()
             profiles.stop()
             open.stop()
+            requested.stop()
             changes.stop()
         }
     }
@@ -205,9 +222,9 @@ internal class MembersModel(
 }
 
 /**
- * Everyone in the library and their devices, and the invites this device has
- * open. Admins invite people, change roles and remove people; each person
- * adds and removes their own devices, and an admin removes anyone's.
+ * The library's people and devices, on pages: the first holds You and People, a person's page and this person's own
+ * devices open from it. Admins invite people, change roles and remove people; each person adds and removes their own
+ * devices, and an admin removes anyone's.
  */
 @Composable
 fun MembersScreen(
@@ -219,44 +236,133 @@ fun MembersScreen(
     DisposableEffect(model) { onDispose(model.subscribe()) }
     LaunchedEffect(model) { model.loadStorage() }
     val dialogs = remember { MembersDialogs() }
+    var pageKey by rememberSaveable { mutableStateOf(PeoplePage.People.key()) }
+    val read = model.people
+    // A person's page whose person has left the library falls back to the first page.
+    val page =
+        peoplePage(pageKey).let { requested ->
+            val people = (read as? PeopleRead.Loaded)?.people.orEmpty()
+            val gone = requested is PeoplePage.Person && people.none { it.membership.id == requested.memberId }
+            if (gone) PeoplePage.People else requested
+        }
+    val goBack = { if (page == PeoplePage.People) onBack() else pageKey = PeoplePage.People.key() }
+    BackHandler(enabled = page != PeoplePage.People, onBack = goBack)
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SettingsTopBar(title = stringResource(R.string.members_title), onBack = onBack)
+        SettingsTopBar(title = pageTitle(page, read), onBack = goBack)
         model.error?.let { shown ->
             ErrorDetailDisclosure(
                 error = shown,
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
             )
         }
-        when (val read = model.people) {
-            // Who is in the library is a local read; nothing shows until it lands.
-            PeopleRead.Loading -> {}
-
-            is PeopleRead.Failed -> {
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    ErrorDetailDisclosure(read.error)
-                    TextButton(onClick = model::retry) { Text(stringResource(R.string.retry)) }
-                }
-            }
-
-            is PeopleRead.Loaded -> {
-                MembersList(
-                    people = read.people,
-                    selfIsAdmin = model.selfIsAdmin,
-                    invites = model.invites,
-                    adminChanges = model.adminChanges,
-                    callbacks = memberCallbacks(session, model, dialogs),
-                    inviteCallbacks = inviteCallbacks(session, dialogs),
-                )
-            }
-        }
+        PeopleContent(
+            session = session,
+            model = model,
+            dialogs = dialogs,
+            page = page,
+            onOpen = { pageKey = it.key() },
+        )
     }
     MembersDialogsShown(session = session, model = model, dialogs = dialogs)
 }
+
+/** The page's body: the people read, shown or failed, and the page it names. */
+@Composable
+private fun PeopleContent(
+    session: OpenLibrary,
+    model: MembersModel,
+    dialogs: MembersDialogs,
+    page: PeoplePage,
+    onOpen: (PeoplePage) -> Unit,
+) {
+    when (val read = model.people) {
+        // Who is in the library is a local read; nothing shows until it lands.
+        PeopleRead.Loading -> {}
+
+        is PeopleRead.Failed -> {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                ErrorDetailDisclosure(read.error)
+                TextButton(onClick = model::retry) { Text(stringResource(R.string.retry)) }
+            }
+        }
+
+        is PeopleRead.Loaded -> {
+            val callbacks = memberCallbacks(session, model, dialogs)
+            when (page) {
+                PeoplePage.People -> {
+                    PeopleHome(
+                        you = youActions(session),
+                        people = read.people,
+                        selfIsAdmin = model.selfIsAdmin,
+                        requested = model.requestedProfile,
+                        invites = model.invites,
+                        adminChanges = model.adminChanges,
+                        callbacks = callbacks,
+                        inviteCallbacks = inviteCallbacks(session, dialogs),
+                        onOpen = onOpen,
+                    )
+                }
+
+                is PeoplePage.Person -> {
+                    read.people.firstOrNull { it.membership.id == page.memberId }?.let { person ->
+                        PersonPage(
+                            member = person.membership,
+                            selfIsAdmin = model.selfIsAdmin,
+                            name = person.profile?.name ?: stringResource(R.string.members_unnamed),
+                            callbacks = callbacks,
+                        )
+                    }
+                }
+
+                PeoplePage.Devices -> {
+                    read.people.firstOrNull { it.membership.isSelf }?.let { person ->
+                        DevicesPage(member = person.membership, callbacks = callbacks)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun pageTitle(
+    page: PeoplePage,
+    read: PeopleRead,
+): String =
+    when (page) {
+        PeoplePage.People -> {
+            stringResource(R.string.members_title)
+        }
+
+        PeoplePage.Devices -> {
+            stringResource(R.string.people_your_devices)
+        }
+
+        is PeoplePage.Person -> {
+            (read as? PeopleRead.Loaded)
+                ?.people
+                ?.firstOrNull { it.membership.id == page.memberId }
+                ?.profile
+                ?.name ?: stringResource(R.string.members_unnamed)
+        }
+    }
+
+private fun youActions(session: OpenLibrary): YouActions =
+    YouActions(
+        errors = session.errors,
+        rename = { name -> session.appHandle.renameProfile(name) },
+        setHistory = { chosen ->
+            session.messages.perform("set history sharing to $chosen") { session.appHandle.setHistorySharing(chosen) }
+        },
+        createProfile = { name ->
+            session.messages.perform("create the person's profile") { session.appHandle.createProfile(name) }
+        },
+    )
 
 private fun memberCallbacks(
     session: OpenLibrary,
@@ -287,7 +393,7 @@ private fun inviteCallbacks(
     )
 
 /** What this device's person can do to the library's members and their devices. */
-private class MemberCallbacks(
+internal class MemberCallbacks(
     val onInvite: () -> Unit,
     val onSetRole: (BridgeMember, BridgeMemberRole) -> Unit,
     val onRemovePerson: (BridgeMember, String) -> Unit,
@@ -297,55 +403,17 @@ private class MemberCallbacks(
 )
 
 /** What this device's person can do with an invite it has open. */
-private class InviteCallbacks(
+internal class InviteCallbacks(
     val onOpen: (BridgeInvite) -> Unit,
     val onRefresh: () -> Unit,
 )
-
-@Composable
-private fun MembersList(
-    people: List<BridgePerson>,
-    selfIsAdmin: Boolean,
-    invites: List<BridgeInvite>,
-    adminChanges: List<BridgeAdminChange>,
-    callbacks: MemberCallbacks,
-    inviteCallbacks: InviteCallbacks,
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-    ) {
-        item { AdminChangesList(changes = adminChanges, onDismiss = callbacks.onDismissChange) }
-        items(people, key = { person -> person.membership.id }) { person ->
-            HorizontalDivider()
-            MemberRow(
-                name = person.profile?.name,
-                member = person.membership,
-                selfIsAdmin = selfIsAdmin,
-                callbacks = callbacks,
-            )
-        }
-        items(invites, key = { invite -> invite.id }) { invite ->
-            HorizontalDivider()
-            InviteRow(invite = invite, callbacks = inviteCallbacks)
-        }
-        if (selfIsAdmin) {
-            item {
-                PrimaryButton(onClick = callbacks.onInvite) {
-                    Text(stringResource(R.string.members_invite))
-                }
-            }
-        }
-    }
-}
 
 /**
  * One of this device's open invites: the person's name, marked sharing access until sync has granted it, then invited,
  * or joining once approval has begun; when it expires; and why coven holds its work, when it does.
  */
 @Composable
-private fun InviteRow(
+internal fun InviteRow(
     invite: BridgeInvite,
     callbacks: InviteCallbacks,
 ) {
@@ -407,120 +475,8 @@ private fun InviteChip(shown: BridgeInviteShown) {
     }
 }
 
-/**
- * One person: their name and role, their active devices, and what this
- * device's person may change, with Add device under this device's own person
- * and their removed devices collapsed below.
- */
-@Composable
-private fun MemberRow(
-    name: String?,
-    member: BridgeMember,
-    selfIsAdmin: Boolean,
-    callbacks: MemberCallbacks,
-) {
-    val shownName = name ?: stringResource(R.string.members_unnamed)
-    val context = LocalContext.current
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        ) {
-            Text(text = shownName, style = ThemeText.strong.style, modifier = Modifier.weight(1f, fill = false))
-            StatusChip(stringResource(member.role.labelRes()))
-            if (member.isSelf) {
-                StatusChip(stringResource(R.string.members_you))
-            }
-        }
-        (member.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
-            Text(
-                text = context.coreString("core.access_key.id", mapOf("key" to key.accessKeyId)),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        member.activeDevices.forEach { device ->
-            DeviceRow(device = device, onRemove = { callbacks.onRemoveDevice(device) })
-        }
-        if (member.isSelf) {
-            TextButton(onClick = callbacks.onAddDevice, modifier = Modifier.padding(start = ThemeSpace.edge)) {
-                Text(stringResource(R.string.members_add_device))
-            }
-        }
-        if (member.formerDevices.isNotEmpty()) {
-            FormerDevices(devices = member.formerDevices)
-        }
-        if (selfIsAdmin && !member.isSelf) {
-            Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                val (nextRole, label) =
-                    when (member.role) {
-                        BridgeMemberRole.ADMIN -> BridgeMemberRole.MEMBER to R.string.members_make_member
-                        BridgeMemberRole.MEMBER -> BridgeMemberRole.ADMIN to R.string.members_make_admin
-                    }
-                TextButton(onClick = { callbacks.onSetRole(member, nextRole) }) {
-                    Text(stringResource(label))
-                }
-                if (member.canRemove) {
-                    TextButton(
-                        onClick = { callbacks.onRemovePerson(member, shownName) },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    ) {
-                        Text(stringResource(R.string.members_remove_person))
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** A device that can sync, removable when this device's person may remove it. */
-@Composable
-private fun DeviceRow(
-    device: BridgeActiveDevice,
-    onRemove: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(start = ThemeSpace.edge),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = device.name)
-            if (device.isSelf) {
-                Text(
-                    text = stringResource(R.string.members_this_device),
-                    style = ThemeText.detail.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        if (device.canRemove) {
-            TextButton(
-                onClick = onRemove,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            ) {
-                Text(stringResource(R.string.members_remove))
-            }
-        }
-    }
-}
-
-private fun BridgeMemberRole.labelRes(): Int =
+internal fun BridgeMemberRole.labelRes(): Int =
     when (this) {
         BridgeMemberRole.ADMIN -> R.string.members_role_admin
         BridgeMemberRole.MEMBER -> R.string.members_role_member
     }
-
-@Preview(showBackground = true)
-@Composable
-private fun MembersListPreview() {
-    BaeTheme {
-        MembersList(
-            people = listOf(PreviewData.person()),
-            selfIsAdmin = true,
-            invites = emptyList(),
-            adminChanges = emptyList(),
-            callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, {}, {}, {}),
-            inviteCallbacks = InviteCallbacks({}, {}),
-        )
-    }
-}

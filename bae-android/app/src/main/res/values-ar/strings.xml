@@ -154,6 +154,21 @@
     <string name="transfers_wifi_only_footer">تنتظر الإصدارات المثبّتة اتصال Wi-Fi. يظل تشغيل مقطع غير مثبّت يستخدم بيانات الجوّال.</string>
     <string name="transfers_concurrency_footer">عدد الملفات التي تُنزَّل في وقت واحد عند تثبيت إصدار.</string>
     <string name="members_title">الأشخاص والأجهزة</string>
+    <string name="people_people">الأشخاص</string>
+    <string name="people_role">الدور</string>
+    <string name="people_devices">الأجهزة</string>
+    <string name="people_your_devices">أجهزتك</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="zero">%1$d جهاز</item>
+        <item quantity="one">جهاز واحد</item>
+        <item quantity="two">جهازان</item>
+        <item quantity="few">%1$d أجهزة</item>
+        <item quantity="many">%1$d جهازًا</item>
+        <item quantity="other">%1$d جهاز</item>
+    </plurals>
     <string name="members_this_device">هذا الجهاز</string>
     <string name="members_role_member">عضو</string>
     <string name="members_remove">إزالة</string>
@@ -326,7 +341,7 @@
     <string name="members_role_admin">مسؤول</string>
     <string name="members_make_admin">جعله مسؤولًا</string>
     <string name="members_make_member">جعله عضوًا</string>
-    <string name="members_remove_person">إزالة الشخص</string>
+    <string name="members_remove_person">إزالة من المكتبة</string>
     <string name="members_remove_person_confirm_title">هل تريد إزالة %1$s؟</string>
     <string name="members_remove_person_confirm_body">سيفقد الوصول إلى هذه المكتبة. يُحذف سجله الخاص وقوائم التشغيل الخاصة؛ ويبقى ما شاركه مع أهل البيت.</string>
     <string name="device_state_removed">مُزال</string>
@@ -363,8 +378,7 @@
     <string name="settings_libraries_load_failed">تعذّر تحميل مكتباتك.</string>
     <string name="settings_history">سجل الاستماع</string>
     <string name="settings_history_private">أنا فقط</string>
-    <string name="settings_history_household">أهل البيت</string>
-    <string name="settings_history_explanation">من يرى ما تشغّله. يسري التغيير على ما تشغّله من الآن فصاعدًا؛ وتحتفظ المرات السابقة بمن كان يستطيع رؤيتها.</string>
+    <string name="settings_history_household">الجميع في المكتبة</string>
     <string name="downloads_concurrency_label">التنزيلات المتزامنة</string>
     <string name="settings_stored_in">مخزّن في</string>
     <string name="storage_location_account">%1$s: %2$s</string>

@@ -146,6 +146,17 @@
     <string name="transfers_wifi_only_footer">Fästa utgåvor väntar på Wi-Fi. Att spela ett spår som inte är fäst använder fortfarande mobildata.</string>
     <string name="transfers_concurrency_footer">Hur många filer som hämtas samtidigt när en utgåva fästs.</string>
     <string name="members_title">Personer och enheter</string>
+    <string name="people_people">Personer</string>
+    <string name="people_role">Roll</string>
+    <string name="people_devices">Enheter</string>
+    <string name="people_your_devices">Dina enheter</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d enhet</item>
+        <item quantity="other">%1$d enheter</item>
+    </plurals>
     <string name="members_this_device">Den här enheten</string>
     <string name="members_role_member">Medlem</string>
     <string name="members_remove">Ta bort</string>
@@ -305,7 +316,7 @@
     <string name="members_role_admin">Administratör</string>
     <string name="members_make_admin">Gör till administratör</string>
     <string name="members_make_member">Gör till medlem</string>
-    <string name="members_remove_person">Ta bort person</string>
+    <string name="members_remove_person">Ta bort från biblioteket</string>
     <string name="members_remove_person_confirm_title">Ta bort %1$s?</string>
     <string name="members_remove_person_confirm_body">Personen förlorar åtkomsten till det här biblioteket. Den privata historiken och spellistorna raderas; det som delats med hushållet finns kvar.</string>
     <string name="device_state_removed">Borttagen</string>
@@ -338,8 +349,7 @@
     <string name="settings_libraries_load_failed">Dina bibliotek kunde inte läsas in.</string>
     <string name="settings_history">Lyssningshistorik</string>
     <string name="settings_history_private">Bara jag</string>
-    <string name="settings_history_household">Hushållet</string>
-    <string name="settings_history_explanation">Vem som ser vad du spelar. En ändring gäller uppspelningar från och med nu; tidigare uppspelningar behåller vem som kunde se dem.</string>
+    <string name="settings_history_household">Alla i biblioteket</string>
     <string name="settings_stored_in">Lagras i</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

@@ -146,6 +146,17 @@
     <string name="transfers_wifi_only_footer">Οι καρφιτσωμένες κυκλοφορίες περιμένουν Wi-Fi. Η αναπαραγωγή ενός κομματιού που δεν είναι καρφιτσωμένο εξακολουθεί να χρησιμοποιεί δεδομένα κινητής τηλεφωνίας.</string>
     <string name="transfers_concurrency_footer">Πόσα αρχεία λαμβάνονται ταυτόχρονα όταν καρφιτσώνεται μια κυκλοφορία.</string>
     <string name="members_title">Άτομα και συσκευές</string>
+    <string name="people_people">Άτομα</string>
+    <string name="people_role">Ρόλος</string>
+    <string name="people_devices">Συσκευές</string>
+    <string name="people_your_devices">Οι συσκευές σας</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d συσκευή</item>
+        <item quantity="other">%1$d συσκευές</item>
+    </plurals>
     <string name="members_this_device">Αυτή η συσκευή</string>
     <string name="members_role_member">Μέλος</string>
     <string name="members_remove">Αφαίρεση</string>
@@ -305,7 +316,7 @@
     <string name="members_role_admin">Διαχειριστής</string>
     <string name="members_make_admin">Ορισμός ως διαχειριστή</string>
     <string name="members_make_member">Ορισμός ως μέλους</string>
-    <string name="members_remove_person">Αφαίρεση ατόμου</string>
+    <string name="members_remove_person">Αφαίρεση από τη βιβλιοθήκη</string>
     <string name="members_remove_person_confirm_title">Αφαίρεση του/της %1$s;</string>
     <string name="members_remove_person_confirm_body">Χάνει την πρόσβαση σε αυτή τη βιβλιοθήκη. Το ιδιωτικό ιστορικό και οι ιδιωτικές λίστες αναπαραγωγής διαγράφονται· ό,τι μοιράστηκε με το νοικοκυριό μένει.</string>
     <string name="device_state_removed">Αφαιρέθηκε</string>
@@ -338,8 +349,7 @@
     <string name="settings_libraries_load_failed">Δεν ήταν δυνατή η φόρτωση των βιβλιοθηκών σας.</string>
     <string name="settings_history">Ιστορικό ακρόασης</string>
     <string name="settings_history_private">Μόνο εγώ</string>
-    <string name="settings_history_household">Νοικοκυριό</string>
-    <string name="settings_history_explanation">Ποιος βλέπει τι παίζετε. Μια αλλαγή ισχύει για τις αναπαραγωγές από εδώ και πέρα· οι προηγούμενες κρατούν όσους μπορούσαν να τις δουν.</string>
+    <string name="settings_history_household">Όλοι στη βιβλιοθήκη</string>
     <string name="settings_stored_in">Αποθηκεύεται σε</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

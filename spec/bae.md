@@ -2440,7 +2440,8 @@ role and how many devices they have, and the open invites below them. An
 admin's row opens that person's page: their role, with *Make admin* or *Make
 member*, *Remove from library…* in red, and their devices, each with
 *Remove…*. A member's person rows open nothing: a member has nothing to do
-there. A person with no profile yet creates one in *You* in place of the name
+there. On Android the Name row opens the rename dialog, and
+listening history is chosen from radio rows in a dialog. A person with no profile yet creates one in *You* in place of the name
 (§5.4). Removing a person or a device still asks first.
 
 Removing a person or a device, changing a role, renaming the library and

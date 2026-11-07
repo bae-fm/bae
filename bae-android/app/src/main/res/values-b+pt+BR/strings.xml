@@ -145,6 +145,18 @@
     <string name="transfers_wifi_only_footer">Lançamentos fixados esperam pelo Wi-Fi. Tocar uma faixa que não está fixada continua usando dados móveis.</string>
     <string name="transfers_concurrency_footer">Quantos arquivos são baixados ao mesmo tempo quando um lançamento é fixado.</string>
     <string name="members_title">Pessoas e dispositivos</string>
+    <string name="people_people">Pessoas</string>
+    <string name="people_role">Função</string>
+    <string name="people_devices">Dispositivos</string>
+    <string name="people_your_devices">Seus dispositivos</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d dispositivo</item>
+        <item quantity="many">%1$d dispositivos</item>
+        <item quantity="other">%1$d dispositivos</item>
+    </plurals>
     <string name="members_this_device">Este dispositivo</string>
     <string name="members_role_member">Membro</string>
     <string name="members_remove">Remover</string>
@@ -310,7 +322,7 @@
     <string name="members_role_admin">Administrador</string>
     <string name="members_make_admin">Tornar administrador</string>
     <string name="members_make_member">Tornar membro</string>
-    <string name="members_remove_person">Remover pessoa</string>
+    <string name="members_remove_person">Remover da biblioteca</string>
     <string name="members_remove_person_confirm_title">Remover %1$s?</string>
     <string name="members_remove_person_confirm_body">A pessoa perde o acesso a esta biblioteca. O histórico e as playlists privados dela são excluídos; o que ela compartilhou com a casa continua.</string>
     <string name="device_state_removed">Removido</string>
@@ -343,8 +355,7 @@
     <string name="settings_libraries_load_failed">Não foi possível carregar suas bibliotecas.</string>
     <string name="settings_history">Histórico de reprodução</string>
     <string name="settings_history_private">Só eu</string>
-    <string name="settings_history_household">Casa</string>
-    <string name="settings_history_explanation">Quem vê o que você ouve. Uma mudança vale para as reproduções daqui em diante; as anteriores mantêm quem podia vê-las.</string>
+    <string name="settings_history_household">Todos na biblioteca</string>
     <string name="downloads_concurrency_label">Downloads simultâneos</string>
     <string name="settings_stored_in">Armazenado em</string>
     <string name="storage_location_account">%1$s: %2$s</string>

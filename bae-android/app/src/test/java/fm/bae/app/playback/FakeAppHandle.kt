@@ -715,7 +715,10 @@ internal open class FakeAppHandle(
 
     override fun subscribeProfiles(): ProfilesSubscription = unfaked("subscribeProfiles")
 
-    override fun subscribeRequestedProfile(): RequestedProfileSubscription = unfaked("subscribeRequestedProfile")
+    /** The profile this device's person asked for, which a test delivers to. */
+    val requestedProfile = FakeRequestedProfileSubscription()
+
+    override fun subscribeRequestedProfile(): RequestedProfileSubscription = requestedProfile
 
     override fun subscribeQueueUpcoming(): QueueUpcomingSubscription = unfaked("subscribeQueueUpcoming")
 

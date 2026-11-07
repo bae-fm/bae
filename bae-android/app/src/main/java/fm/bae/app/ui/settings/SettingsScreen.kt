@@ -13,7 +13,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -31,11 +30,9 @@ import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.library.LibraryDestination
-import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeTelemetryEvent
@@ -66,18 +63,11 @@ internal fun SettingsScreen(
     onPush: (LibraryDestination) -> Unit,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    val scope = rememberScreenScope()
     val config by session.configStore.config.collectAsState()
     val listing by libraries.collectAsState()
-    val model = remember(session) { SettingsLibraryModel(session.appHandle, session.errors, scope) }
 
     LaunchedEffect(session) {
         session.diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.SETTINGS))
-        model.loadSelf()
-    }
-    DisposableEffect(model) {
-        model.watchRequestedProfile()
-        onDispose { model.stopWatchingRequestedProfile() }
     }
 
     var page by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
@@ -98,12 +88,6 @@ internal fun SettingsScreen(
                         listing = listing,
                         onReloadLibraries = actions.reloadLibraries,
                         onSwitchLibrary = actions.switchLibrary,
-                    )
-                    SelfHistorySharing(
-                        session = session,
-                        self = model.self,
-                        requested = model.requestedProfile,
-                        onReloadSelf = { scope.launch { model.loadSelf() } },
                     )
                 }
 

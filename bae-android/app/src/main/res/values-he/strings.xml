@@ -145,6 +145,18 @@
     <string name="transfers_wifi_only_footer">מהדורות מוצמדות ממתינות ל-Wi-Fi. השמעת רצועה שאינה מוצמדת עדיין משתמשת בנתונים סלולריים.</string>
     <string name="transfers_concurrency_footer">כמה קבצים יורדים בו-זמנית כשמצמידים מהדורה.</string>
     <string name="members_title">אנשים ומכשירים</string>
+    <string name="people_people">אנשים</string>
+    <string name="people_role">תפקיד</string>
+    <string name="people_devices">מכשירים</string>
+    <string name="people_your_devices">המכשירים שלך</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">מכשיר אחד</item>
+        <item quantity="two">שני מכשירים</item>
+        <item quantity="other">%1$d מכשירים</item>
+    </plurals>
     <string name="members_this_device">המכשיר הזה</string>
     <string name="members_role_member">חבר</string>
     <string name="members_remove">הסר</string>
@@ -311,7 +323,7 @@
     <string name="members_role_admin">מנהל</string>
     <string name="members_make_admin">הפיכה למנהל</string>
     <string name="members_make_member">הפיכה לחבר</string>
-    <string name="members_remove_person">הסרת האדם</string>
+    <string name="members_remove_person">הסרה מהספרייה</string>
     <string name="members_remove_person_confirm_title">להסיר את %1$s?</string>
     <string name="members_remove_person_confirm_body">האדם יאבד גישה לספרייה הזו. ההיסטוריה ורשימות ההשמעה הפרטיות שלו יימחקו; מה ששיתף עם בני הבית יישאר.</string>
     <string name="device_state_removed">הוסר</string>
@@ -345,8 +357,7 @@
     <string name="settings_libraries_load_failed">לא ניתן לטעון את הספריות שלך.</string>
     <string name="settings_history">היסטוריית האזנה</string>
     <string name="settings_history_private">רק אני</string>
-    <string name="settings_history_household">בני הבית</string>
-    <string name="settings_history_explanation">מי רואה מה אתה מנגן. שינוי חל על השמעות מעכשיו והלאה; השמעות קודמות נשארות גלויות למי שראה אותן.</string>
+    <string name="settings_history_household">כולם בספרייה</string>
     <string name="downloads_concurrency_label">הורדות בו־זמנית</string>
     <string name="settings_stored_in">מאוחסן ב</string>
     <string name="storage_location_account">%1$s: %2$s</string>

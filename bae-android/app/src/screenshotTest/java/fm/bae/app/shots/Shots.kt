@@ -36,11 +36,14 @@ import fm.bae.app.ui.playback.PlayerSceneState
 import fm.bae.app.ui.settings.AppearanceSection
 import fm.bae.app.ui.settings.CastingPage
 import fm.bae.app.ui.settings.FolderChoiceScene
-import fm.bae.app.ui.settings.RestoreCodeScene
 import fm.bae.app.ui.settings.LibrarySettingsContent
+import fm.bae.app.ui.settings.PeoplePage
+import fm.bae.app.ui.settings.PeopleScene
+import fm.bae.app.ui.settings.RestoreCodeScene
 import fm.bae.app.ui.settings.S3SetupFormScene
 import fm.bae.app.ui.settings.SyncRowSummary
 import fm.bae.app.ui.settings.TransfersContent
+import fm.bae.app.ui.settings.sceneOtherPerson
 import fm.bae.app.ui.sync.SyncActivityList
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
@@ -57,7 +60,9 @@ import uniffi.bae_bridge.BridgeRendererKind
 //   library-grouped-pinned, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
 //   library-view-menu, AlbumDetail ⇒ album-detail, CastingSettingsFound ⇒
 //   settings-casting, CastingSettingsLooking ⇒ settings-casting-looking, LibrarySettings ⇒ settings-library,
-//   LibrarySettingsProblem ⇒ settings-library-problem, LibrarySettingsNotSynced ⇒ settings-library-not-synced.
+//   LibrarySettingsProblem ⇒ settings-library-problem, LibrarySettingsNotSynced ⇒ settings-library-not-synced,
+//   PeopleAndDevices ⇒ people-and-devices, PeopleAndDevicesMember ⇒ people-and-devices-member,
+//   PeopleAndDevicesPerson ⇒ people-and-devices-person, PeopleAndDevicesYours ⇒ people-and-devices-yours.
 
 private const val PHONE_SPEC = "spec:width=411dp,height=914dp,dpi=420"
 
@@ -447,4 +452,32 @@ private fun TransfersScene(wifiOnly: Boolean) {
             )
         }
     }
+}
+
+/** People and devices as an admin sees it: You, and People with a row that opens. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun PeopleAndDevices() {
+    PeopleScene(PeoplePage.People)
+}
+
+/** The same page for a member, whose person rows open nothing. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun PeopleAndDevicesMember() {
+    PeopleScene(PeoplePage.People, asAdmin = false)
+}
+
+/** Another person's page: their role, removing them, their devices. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun PeopleAndDevicesPerson() {
+    PeopleScene(sceneOtherPerson)
+}
+
+/** This person's own devices, this one reading This device, with Add device last. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun PeopleAndDevicesYours() {
+    PeopleScene(PeoplePage.Devices)
 }

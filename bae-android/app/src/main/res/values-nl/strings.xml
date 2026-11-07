@@ -142,6 +142,17 @@
     <string name="transfers_wifi_only_footer">Vastgezette releases wachten op wifi. Een track afspelen die niet is vastgezet gebruikt nog steeds mobiele data.</string>
     <string name="transfers_concurrency_footer">Hoeveel bestanden tegelijk worden gedownload wanneer een release wordt vastgezet.</string>
     <string name="members_title">Personen en apparaten</string>
+    <string name="people_people">Personen</string>
+    <string name="people_role">Rol</string>
+    <string name="people_devices">Apparaten</string>
+    <string name="people_your_devices">Je apparaten</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d apparaat</item>
+        <item quantity="other">%1$d apparaten</item>
+    </plurals>
     <string name="members_this_device">Dit apparaat</string>
     <string name="members_role_member">Lid</string>
     <string name="members_remove">Verwijderen</string>
@@ -306,7 +317,7 @@
     <string name="members_role_admin">Beheerder</string>
     <string name="members_make_admin">Beheerder maken</string>
     <string name="members_make_member">Lid maken</string>
-    <string name="members_remove_person">Persoon verwijderen</string>
+    <string name="members_remove_person">Verwijderen uit de bibliotheek</string>
     <string name="members_remove_person_confirm_title">%1$s verwijderen?</string>
     <string name="members_remove_person_confirm_body">Deze persoon verliest de toegang tot deze bibliotheek. Persoonlijke geschiedenis en afspeellijsten worden verwijderd; wat met het huishouden is gedeeld, blijft.</string>
     <string name="device_state_removed">Verwijderd</string>
@@ -339,8 +350,7 @@
     <string name="settings_libraries_load_failed">Kan je bibliotheken niet laden.</string>
     <string name="settings_history">Luistergeschiedenis</string>
     <string name="settings_history_private">Alleen ik</string>
-    <string name="settings_history_household">Huishouden</string>
-    <string name="settings_history_explanation">Wie ziet wat je afspeelt. Een wijziging geldt voor afspelingen vanaf nu; eerdere afspelingen houden wie ze kon zien.</string>
+    <string name="settings_history_household">Iedereen in de bibliotheek</string>
     <string name="downloads_concurrency_label">Gelijktijdige downloads</string>
     <string name="settings_stored_in">Opgeslagen in</string>
     <string name="storage_location_account">%1$s: %2$s</string>

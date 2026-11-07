@@ -10,11 +10,9 @@ import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
-import uniffi.bae_bridge.BridgeRequestedProfile
 
 private val logger = BaeLogger("bae.SettingsLibraryModel")
 
@@ -68,13 +66,7 @@ internal class SettingsLibraryModel(
     var name by mutableStateOf<LibraryNameRead>(LibraryNameRead.Loading)
         private set
 
-    /** The profile this device's person asked for, while it isn't written yet; null before they ask and once it is. */
-    var requestedProfile by mutableStateOf<BridgeRequestedProfile?>(null)
-        private set
-
     private var nameSubscription: ScreenSubscription<String>? = null
-
-    private var requestedProfileSubscription: ScreenSubscription<BridgeRequestedProfile?>? = null
 
     /** Which subscription a name callback belongs to; one from a replaced subscription is dropped. */
     private var nameGeneration = 0
@@ -123,32 +115,6 @@ internal class SettingsLibraryModel(
                     if (generation == nameGeneration && shown != null) name = LibraryNameRead.Failed(shown)
                 },
             )
-    }
-
-    /**
-     * Follow the profile this device's person asked for. The request ends in the write that makes their profile, so
-     * each change reads the person again.
-     */
-    fun watchRequestedProfile() {
-        stopWatchingRequestedProfile()
-        requestedProfileSubscription =
-            ScreenSubscription(
-                appHandle.subscribeRequestedProfile().let { pulled(it::next, it::cancel) },
-                scope,
-                onValue = { value ->
-                    requestedProfile = value
-                    scope.launch { loadSelf() }
-                },
-                onError = { error ->
-                    logger.error("reading the requested profile failed", error)
-                    errors.display(error)?.let { self = SelfRead.Failed(it) }
-                },
-            )
-    }
-
-    fun stopWatchingRequestedProfile() {
-        requestedProfileSubscription?.stop()
-        requestedProfileSubscription = null
     }
 
     fun stopWatchingName() {

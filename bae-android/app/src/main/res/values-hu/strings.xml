@@ -146,6 +146,17 @@
     <string name="transfers_wifi_only_footer">A rögzített kiadások Wi-Fire várnak. Egy nem rögzített szám lejátszása továbbra is mobiladatot használ.</string>
     <string name="transfers_concurrency_footer">Hány fájl töltődik le egyszerre, amikor egy kiadást rögzítenek.</string>
     <string name="members_title">Személyek és eszközök</string>
+    <string name="people_people">Személyek</string>
+    <string name="people_role">Szerepkör</string>
+    <string name="people_devices">Eszközök</string>
+    <string name="people_your_devices">Eszközeid</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d eszköz</item>
+        <item quantity="other">%1$d eszköz</item>
+    </plurals>
     <string name="members_this_device">Ez az eszköz</string>
     <string name="members_role_member">Tag</string>
     <string name="members_remove">Eltávolítás</string>
@@ -305,7 +316,7 @@
     <string name="members_role_admin">Adminisztrátor</string>
     <string name="members_make_admin">Legyen adminisztrátor</string>
     <string name="members_make_member">Legyen tag</string>
-    <string name="members_remove_person">Személy eltávolítása</string>
+    <string name="members_remove_person">Eltávolítás a könyvtárból</string>
     <string name="members_remove_person_confirm_title">Eltávolítod: %1$s?</string>
     <string name="members_remove_person_confirm_body">Elveszíti a hozzáférést ehhez a könyvtárhoz. A privát előzményei és lejátszási listái törlődnek; amit a háztartással megosztott, megmarad.</string>
     <string name="device_state_removed">Eltávolítva</string>
@@ -338,8 +349,7 @@
     <string name="settings_libraries_load_failed">Nem sikerült betölteni a könyvtáraidat.</string>
     <string name="settings_history">Hallgatási előzmények</string>
     <string name="settings_history_private">Csak én</string>
-    <string name="settings_history_household">Háztartás</string>
-    <string name="settings_history_explanation">Ki látja, mit játszol le. A változás mostantól érvényes; a korábbi lejátszásokat ugyanazok látják, mint eddig.</string>
+    <string name="settings_history_household">Mindenki a könyvtárban</string>
     <string name="settings_stored_in">Tárolás helye</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

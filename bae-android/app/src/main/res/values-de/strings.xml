@@ -142,6 +142,17 @@
     <string name="transfers_wifi_only_footer">Angeheftete Veröffentlichungen warten auf WLAN. Das Abspielen eines nicht angehefteten Titels nutzt weiterhin mobile Daten.</string>
     <string name="transfers_concurrency_footer">Wie viele Dateien gleichzeitig heruntergeladen werden, wenn eine Veröffentlichung angeheftet wird.</string>
     <string name="members_title">Personen und Geräte</string>
+    <string name="people_people">Personen</string>
+    <string name="people_role">Rolle</string>
+    <string name="people_devices">Geräte</string>
+    <string name="people_your_devices">Deine Geräte</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d Gerät</item>
+        <item quantity="other">%1$d Geräte</item>
+    </plurals>
     <string name="members_this_device">Dieses Gerät</string>
     <string name="members_role_member">Mitglied</string>
     <string name="members_remove">Entfernen</string>
@@ -306,7 +317,7 @@
     <string name="members_role_admin">Admin</string>
     <string name="members_make_admin">Zum Admin machen</string>
     <string name="members_make_member">Zum Mitglied machen</string>
-    <string name="members_remove_person">Person entfernen</string>
+    <string name="members_remove_person">Aus der Bibliothek entfernen</string>
     <string name="members_remove_person_confirm_title">%1$s entfernen?</string>
     <string name="members_remove_person_confirm_body">Die Person verliert den Zugriff auf diese Bibliothek. Ihr privater Verlauf und ihre privaten Playlists werden gelöscht; was sie mit dem Haushalt geteilt hat, bleibt.</string>
     <string name="device_state_removed">Entfernt</string>
@@ -339,8 +350,7 @@
     <string name="settings_libraries_load_failed">Deine Mediatheken konnten nicht geladen werden.</string>
     <string name="settings_history">Hörverlauf</string>
     <string name="settings_history_private">Nur ich</string>
-    <string name="settings_history_household">Haushalt</string>
-    <string name="settings_history_explanation">Wer sieht, was du abspielst. Eine Änderung gilt für Wiedergaben ab jetzt; frühere Wiedergaben behalten, wer sie sehen konnte.</string>
+    <string name="settings_history_household">Alle in der Bibliothek</string>
     <string name="downloads_concurrency_label">Gleichzeitige Downloads</string>
     <string name="settings_stored_in">Gespeichert in</string>
     <string name="storage_location_account">%1$s: %2$s</string>

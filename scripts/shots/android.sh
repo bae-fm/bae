@@ -85,6 +85,10 @@ LibraryViewMenu:library-view-menu
 MiniPlayerAllHere:mini-player-all-here
 MiniPlayerPlayingWithAGap:mini-player-playing-with-a-gap
 MiniPlayerWaitingOnStorage:mini-player-waiting-on-storage
+PeopleAndDevices:people-and-devices
+PeopleAndDevicesMember:people-and-devices-member
+PeopleAndDevicesPerson:people-and-devices-person
+PeopleAndDevicesYours:people-and-devices-yours
 RestoreCodeMasked:restore-code-masked
 RestoreCodeShown:restore-code-shown
 S3SetupRegionMismatch:s3-setup-region-mismatch

@@ -146,6 +146,17 @@
     <string name="transfers_wifi_only_footer">Kiinnitetyt julkaisut odottavat Wi-Fi-yhteyttä. Kiinnittämättömän raidan toisto käyttää edelleen mobiilidataa.</string>
     <string name="transfers_concurrency_footer">Montako tiedostoa ladataan kerralla, kun julkaisu kiinnitetään.</string>
     <string name="members_title">Ihmiset ja laitteet</string>
+    <string name="people_people">Henkilöt</string>
+    <string name="people_role">Rooli</string>
+    <string name="people_devices">Laitteet</string>
+    <string name="people_your_devices">Laitteesi</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d laite</item>
+        <item quantity="other">%1$d laitetta</item>
+    </plurals>
     <string name="members_this_device">Tämä laite</string>
     <string name="members_role_member">Jäsen</string>
     <string name="members_remove">Poista</string>
@@ -305,7 +316,7 @@
     <string name="members_role_admin">Ylläpitäjä</string>
     <string name="members_make_admin">Tee ylläpitäjäksi</string>
     <string name="members_make_member">Tee jäseneksi</string>
-    <string name="members_remove_person">Poista henkilö</string>
+    <string name="members_remove_person">Poista kirjastosta</string>
     <string name="members_remove_person_confirm_title">Poistetaanko %1$s?</string>
     <string name="members_remove_person_confirm_body">Hän menettää pääsyn tähän kirjastoon. Hänen yksityinen historiansa ja soittolistansa poistetaan; kotitalouden kanssa jaettu jää.</string>
     <string name="device_state_removed">Poistettu</string>
@@ -338,8 +349,7 @@
     <string name="settings_libraries_load_failed">Kirjastojasi ei voitu ladata.</string>
     <string name="settings_history">Kuunteluhistoria</string>
     <string name="settings_history_private">Vain minä</string>
-    <string name="settings_history_household">Kotitalous</string>
-    <string name="settings_history_explanation">Kuka näkee, mitä soitat. Muutos koskee soittoja tästä eteenpäin; aiemmat soitot näkyvät edelleen niille, jotka ne näkivät.</string>
+    <string name="settings_history_household">Kaikki kirjastossa</string>
     <string name="settings_stored_in">Tallennettu</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

@@ -139,6 +139,16 @@
     <string name="transfers_wifi_only_footer">已固定的发行会等待 Wi-Fi。播放未固定的曲目仍会使用移动数据。</string>
     <string name="transfers_concurrency_footer">固定发行时同时下载的文件数。</string>
     <string name="members_title">成员和设备</string>
+    <string name="people_people">人员</string>
+    <string name="people_role">角色</string>
+    <string name="people_devices">设备</string>
+    <string name="people_your_devices">你的设备</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="other">%1$d 台设备</item>
+    </plurals>
     <string name="members_this_device">此设备</string>
     <string name="members_role_member">成员</string>
     <string name="members_remove">移除</string>
@@ -301,7 +311,7 @@
     <string name="members_role_admin">管理员</string>
     <string name="members_make_admin">设为管理员</string>
     <string name="members_make_member">设为成员</string>
-    <string name="members_remove_person">移除成员</string>
+    <string name="members_remove_person">从库中移除</string>
     <string name="members_remove_person_confirm_title">要移除 %1$s 吗？</string>
     <string name="members_remove_person_confirm_body">此人将无法访问此库。其私人记录和播放列表会被删除；与家人共享的内容会保留。</string>
     <string name="device_state_removed">已移除</string>
@@ -333,8 +343,7 @@
     <string name="settings_libraries_load_failed">无法加载你的音乐库。</string>
     <string name="settings_history">收听记录</string>
     <string name="settings_history_private">仅自己</string>
-    <string name="settings_history_household">家人</string>
-    <string name="settings_history_explanation">谁能看到你播放的内容。更改只对今后的播放生效；之前的播放仍保持原来的可见范围。</string>
+    <string name="settings_history_household">库中的所有人</string>
     <string name="downloads_concurrency_label">同时下载数</string>
     <string name="settings_stored_in">存储于</string>
     <string name="storage_location_account">%1$s：%2$s</string>

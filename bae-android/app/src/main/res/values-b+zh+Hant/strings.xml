@@ -139,6 +139,16 @@
     <string name="transfers_wifi_only_footer">已釘選的發行會等待 Wi-Fi。播放未釘選的曲目仍會使用行動數據。</string>
     <string name="transfers_concurrency_footer">釘選發行時同時下載的檔案數。</string>
     <string name="members_title">成員和裝置</string>
+    <string name="people_people">人員</string>
+    <string name="people_role">角色</string>
+    <string name="people_devices">裝置</string>
+    <string name="people_your_devices">你的裝置</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="other">%1$d 台裝置</item>
+    </plurals>
     <string name="members_this_device">此裝置</string>
     <string name="members_role_member">成員</string>
     <string name="members_remove">移除</string>
@@ -301,7 +311,7 @@
     <string name="members_role_admin">管理員</string>
     <string name="members_make_admin">設為管理員</string>
     <string name="members_make_member">設為成員</string>
-    <string name="members_remove_person">移除成員</string>
+    <string name="members_remove_person">從資料庫中移除</string>
     <string name="members_remove_person_confirm_title">要移除 %1$s 嗎？</string>
     <string name="members_remove_person_confirm_body">此人將無法存取此資料庫。其私人紀錄和播放清單會被刪除；與家人共享的內容會保留。</string>
     <string name="device_state_removed">已移除</string>
@@ -333,8 +343,7 @@
     <string name="settings_libraries_load_failed">無法載入你的資料庫。</string>
     <string name="settings_history">收聽紀錄</string>
     <string name="settings_history_private">僅自己</string>
-    <string name="settings_history_household">家人</string>
-    <string name="settings_history_explanation">誰能看到你播放的內容。變更只對今後的播放生效；先前的播放仍維持原本的可見範圍。</string>
+    <string name="settings_history_household">資料庫中的所有人</string>
     <string name="downloads_concurrency_label">同時下載數</string>
     <string name="settings_stored_in">儲存於</string>
     <string name="storage_location_account">%1$s：%2$s</string>

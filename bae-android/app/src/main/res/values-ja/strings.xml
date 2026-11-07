@@ -139,6 +139,16 @@
     <string name="transfers_wifi_only_footer">ピン留めしたリリースはWi-Fiに接続するまで待機します。ピン留めしていないトラックの再生では、引き続きモバイルデータ通信を使います。</string>
     <string name="transfers_concurrency_footer">リリースをピン留めしたときに同時にダウンロードするファイル数です。</string>
     <string name="members_title">メンバーとデバイス</string>
+    <string name="people_people">メンバー</string>
+    <string name="people_role">役割</string>
+    <string name="people_devices">デバイス</string>
+    <string name="people_your_devices">あなたのデバイス</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="other">デバイス%1$d台</item>
+    </plurals>
     <string name="members_this_device">このデバイス</string>
     <string name="members_role_member">メンバー</string>
     <string name="members_remove">削除</string>
@@ -301,7 +311,7 @@
     <string name="members_role_admin">管理者</string>
     <string name="members_make_admin">管理者にする</string>
     <string name="members_make_member">メンバーにする</string>
-    <string name="members_remove_person">メンバーを削除</string>
+    <string name="members_remove_person">ライブラリから削除</string>
     <string name="members_remove_person_confirm_title">%1$s を削除しますか？</string>
     <string name="members_remove_person_confirm_body">このライブラリにアクセスできなくなります。非公開の履歴とプレイリストは削除され、家族と共有したものは残ります。</string>
     <string name="device_state_removed">削除済み</string>
@@ -333,8 +343,7 @@
     <string name="settings_libraries_load_failed">ライブラリを読み込めませんでした。</string>
     <string name="settings_history">再生履歴</string>
     <string name="settings_history_private">自分のみ</string>
-    <string name="settings_history_household">家族</string>
-    <string name="settings_history_explanation">あなたの再生内容を見られる人です。変更はこれからの再生に適用され、以前の再生は元の公開範囲のままです。</string>
+    <string name="settings_history_household">ライブラリの全員</string>
     <string name="downloads_concurrency_label">同時ダウンロード数</string>
     <string name="settings_stored_in">保存先</string>
     <string name="storage_location_account">%1$s：%2$s</string>

@@ -142,6 +142,17 @@
     <string name="transfers_wifi_only_footer">Sabitlenen yayınlar Wi-Fi’yi bekler. Sabitlenmemiş bir parçayı çalmak yine mobil veri kullanır.</string>
     <string name="transfers_concurrency_footer">Bir yayın sabitlendiğinde aynı anda kaç dosyanın indirileceği.</string>
     <string name="members_title">Kişiler ve cihazlar</string>
+    <string name="people_people">Kişiler</string>
+    <string name="people_role">Rol</string>
+    <string name="people_devices">Cihazlar</string>
+    <string name="people_your_devices">Cihazlarınız</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d cihaz</item>
+        <item quantity="other">%1$d cihaz</item>
+    </plurals>
     <string name="members_this_device">Bu cihaz</string>
     <string name="members_role_member">Üye</string>
     <string name="members_remove">Kaldır</string>
@@ -306,7 +317,7 @@
     <string name="members_role_admin">Yönetici</string>
     <string name="members_make_admin">Yönetici yap</string>
     <string name="members_make_member">Üye yap</string>
-    <string name="members_remove_person">Kişiyi kaldır</string>
+    <string name="members_remove_person">Kitaplıktan kaldır</string>
     <string name="members_remove_person_confirm_title">%1$s kaldırılsın mı?</string>
     <string name="members_remove_person_confirm_body">Bu kişi bu kitaplığa erişimini kaybeder. Özel geçmişi ve çalma listeleri silinir; hane halkıyla paylaştıkları kalır.</string>
     <string name="device_state_removed">Kaldırıldı</string>
@@ -339,8 +350,7 @@
     <string name="settings_libraries_load_failed">Kitaplıklarınız yüklenemedi.</string>
     <string name="settings_history">Dinleme geçmişi</string>
     <string name="settings_history_private">Yalnızca ben</string>
-    <string name="settings_history_household">Hane</string>
-    <string name="settings_history_explanation">Çaldıklarınızı kimin gördüğü. Değişiklik bundan sonraki çalmalara uygulanır; önceki çalmaları görebilenler aynı kalır.</string>
+    <string name="settings_history_household">Kitaplıktaki herkes</string>
     <string name="downloads_concurrency_label">Eş zamanlı indirmeler</string>
     <string name="settings_stored_in">Depolandığı yer</string>
     <string name="storage_location_account">%1$s: %2$s</string>

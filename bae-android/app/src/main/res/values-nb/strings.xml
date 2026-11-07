@@ -146,6 +146,17 @@
     <string name="transfers_wifi_only_footer">Festede utgivelser venter på Wi-Fi. Avspilling av et spor som ikke er festet bruker fortsatt mobildata.</string>
     <string name="transfers_concurrency_footer">Hvor mange filer som lastes ned samtidig når en utgivelse festes.</string>
     <string name="members_title">Personer og enheter</string>
+    <string name="people_people">Personer</string>
+    <string name="people_role">Rolle</string>
+    <string name="people_devices">Enheter</string>
+    <string name="people_your_devices">Enhetene dine</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d enhet</item>
+        <item quantity="other">%1$d enheter</item>
+    </plurals>
     <string name="members_this_device">Denne enheten</string>
     <string name="members_role_member">Medlem</string>
     <string name="members_remove">Fjern</string>
@@ -305,7 +316,7 @@
     <string name="members_role_admin">Administrator</string>
     <string name="members_make_admin">Gjør til administrator</string>
     <string name="members_make_member">Gjør til medlem</string>
-    <string name="members_remove_person">Fjern person</string>
+    <string name="members_remove_person">Fjern fra biblioteket</string>
     <string name="members_remove_person_confirm_title">Vil du fjerne %1$s?</string>
     <string name="members_remove_person_confirm_body">Personen mister tilgangen til dette biblioteket. Den private historikken og spillelistene slettes; det som er delt med husstanden, blir.</string>
     <string name="device_state_removed">Fjernet</string>
@@ -338,8 +349,7 @@
     <string name="settings_libraries_load_failed">Kunne ikke laste inn bibliotekene dine.</string>
     <string name="settings_history">Lyttehistorikk</string>
     <string name="settings_history_private">Bare meg</string>
-    <string name="settings_history_household">Husstanden</string>
-    <string name="settings_history_explanation">Hvem som ser hva du spiller. En endring gjelder avspillinger fra nå av; tidligere avspillinger beholder hvem som kunne se dem.</string>
+    <string name="settings_history_household">Alle i biblioteket</string>
     <string name="settings_stored_in">Lagret i</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

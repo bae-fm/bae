@@ -148,6 +148,19 @@
     <string name="transfers_wifi_only_footer">Przypięte wydania czekają na Wi-Fi. Odtwarzanie utworu, który nie jest przypięty, nadal korzysta z danych mobilnych.</string>
     <string name="transfers_concurrency_footer">Ile plików pobiera się jednocześnie po przypięciu wydania.</string>
     <string name="members_title">Osoby i urządzenia</string>
+    <string name="people_people">Osoby</string>
+    <string name="people_role">Rola</string>
+    <string name="people_devices">Urządzenia</string>
+    <string name="people_your_devices">Twoje urządzenia</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d urządzenie</item>
+        <item quantity="few">%1$d urządzenia</item>
+        <item quantity="many">%1$d urządzeń</item>
+        <item quantity="other">%1$d urządzenia</item>
+    </plurals>
     <string name="members_this_device">To urządzenie</string>
     <string name="members_role_member">Członek</string>
     <string name="members_remove">Usuń</string>
@@ -316,7 +329,7 @@
     <string name="members_role_admin">Administrator</string>
     <string name="members_make_admin">Ustaw jako administratora</string>
     <string name="members_make_member">Ustaw jako członka</string>
-    <string name="members_remove_person">Usuń osobę</string>
+    <string name="members_remove_person">Usuń z biblioteki</string>
     <string name="members_remove_person_confirm_title">Usunąć osobę %1$s?</string>
     <string name="members_remove_person_confirm_body">Ta osoba traci dostęp do tej biblioteki. Jej prywatna historia i playlisty zostaną usunięte; to, co udostępniła domownikom, zostaje.</string>
     <string name="device_state_removed">Usunięte</string>
@@ -351,8 +364,7 @@
     <string name="settings_libraries_load_failed">Nie udało się wczytać Twoich bibliotek.</string>
     <string name="settings_history">Historia słuchania</string>
     <string name="settings_history_private">Tylko ja</string>
-    <string name="settings_history_household">Domownicy</string>
-    <string name="settings_history_explanation">Kto widzi, czego słuchasz. Zmiana dotyczy odtworzeń od teraz; wcześniejsze odtworzenia pozostają widoczne dla tych samych osób.</string>
+    <string name="settings_history_household">Wszyscy w bibliotece</string>
     <string name="downloads_concurrency_label">Jednoczesne pobierania</string>
     <string name="settings_stored_in">Przechowywane w</string>
     <string name="storage_location_account">%1$s: %2$s</string>

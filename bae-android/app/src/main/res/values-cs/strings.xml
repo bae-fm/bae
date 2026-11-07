@@ -148,6 +148,19 @@
     <string name="transfers_wifi_only_footer">Připnutá vydání čekají na Wi-Fi. Přehrání skladby, která není připnutá, stále používá mobilní data.</string>
     <string name="transfers_concurrency_footer">Kolik souborů se stahuje současně při připnutí vydání.</string>
     <string name="members_title">Lidé a zařízení</string>
+    <string name="people_people">Lidé</string>
+    <string name="people_role">Role</string>
+    <string name="people_devices">Zařízení</string>
+    <string name="people_your_devices">Vaše zařízení</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d zařízení</item>
+        <item quantity="few">%1$d zařízení</item>
+        <item quantity="many">%1$d zařízení</item>
+        <item quantity="other">%1$d zařízení</item>
+    </plurals>
     <string name="members_this_device">Toto zařízení</string>
     <string name="members_role_member">Člen</string>
     <string name="members_remove">Odebrat</string>
@@ -316,7 +329,7 @@
     <string name="members_role_admin">Správce</string>
     <string name="members_make_admin">Udělat správcem</string>
     <string name="members_make_member">Udělat členem</string>
-    <string name="members_remove_person">Odebrat osobu</string>
+    <string name="members_remove_person">Odebrat z knihovny</string>
     <string name="members_remove_person_confirm_title">Odebrat osobu %1$s?</string>
     <string name="members_remove_person_confirm_body">Ztratí přístup k této knihovně. Jejich soukromá historie a playlisty se smažou; co sdíleli s domácností, zůstane.</string>
     <string name="device_state_removed">Odebráno</string>
@@ -351,8 +364,7 @@
     <string name="settings_libraries_load_failed">Vaše knihovny nelze načíst.</string>
     <string name="settings_history">Historie poslechu</string>
     <string name="settings_history_private">Jen já</string>
-    <string name="settings_history_household">Domácnost</string>
-    <string name="settings_history_explanation">Kdo vidí, co přehráváte. Změna platí pro přehrávání od teď; dřívější přehrávání si ponechá, kdo je mohl vidět.</string>
+    <string name="settings_history_household">Všichni v knihovně</string>
     <string name="downloads_concurrency_label">Souběžná stahování</string>
     <string name="settings_stored_in">Uloženo v</string>
     <string name="storage_location_account">%1$s: %2$s</string>

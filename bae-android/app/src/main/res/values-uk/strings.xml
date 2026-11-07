@@ -148,6 +148,19 @@
     <string name="transfers_wifi_only_footer">Закріплені релізи чекають на Wi-Fi. Відтворення треку, який не закріплено, як і раніше використовує мобільні дані.</string>
     <string name="transfers_concurrency_footer">Скільки файлів завантажується одночасно, коли реліз закріплюють.</string>
     <string name="members_title">Люди та пристрої</string>
+    <string name="people_people">Люди</string>
+    <string name="people_role">Роль</string>
+    <string name="people_devices">Пристрої</string>
+    <string name="people_your_devices">Ваші пристрої</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d пристрій</item>
+        <item quantity="few">%1$d пристрої</item>
+        <item quantity="many">%1$d пристроїв</item>
+        <item quantity="other">%1$d пристрою</item>
+    </plurals>
     <string name="members_this_device">Цей пристрій</string>
     <string name="members_role_member">Учасник</string>
     <string name="members_remove">Видалити</string>
@@ -316,7 +329,7 @@
     <string name="members_role_admin">Адміністратор</string>
     <string name="members_make_admin">Зробити адміністратором</string>
     <string name="members_make_member">Зробити учасником</string>
-    <string name="members_remove_person">Вилучити людину</string>
+    <string name="members_remove_person">Вилучити з бібліотеки</string>
     <string name="members_remove_person_confirm_title">Вилучити %1$s?</string>
     <string name="members_remove_person_confirm_body">Людина втрачає доступ до цієї бібліотеки. Її приватна історія та списки відтворення видаляються; те, чим вона поділилася з домівкою, лишається.</string>
     <string name="device_state_removed">Вилучено</string>
@@ -351,8 +364,7 @@
     <string name="settings_libraries_load_failed">Не вдалося завантажити ваші фонотеки.</string>
     <string name="settings_history">Історія прослуховування</string>
     <string name="settings_history_private">Лише я</string>
-    <string name="settings_history_household">Домівка</string>
-    <string name="settings_history_explanation">Хто бачить, що ви слухаєте. Зміна діє для прослуховувань відтепер; попередні лишаються видимими для тих самих людей.</string>
+    <string name="settings_history_household">Усі в бібліотеці</string>
     <string name="downloads_concurrency_label">Одночасні завантаження</string>
     <string name="settings_stored_in">Зберігається в</string>
     <string name="storage_location_account">%1$s: %2$s</string>

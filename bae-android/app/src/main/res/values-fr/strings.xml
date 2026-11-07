@@ -145,6 +145,18 @@
     <string name="transfers_wifi_only_footer">Les sorties épinglées attendent le Wi-Fi. Lire une piste non épinglée utilise toujours les données mobiles.</string>
     <string name="transfers_concurrency_footer">Nombre de fichiers téléchargés en même temps lorsqu’une sortie est épinglée.</string>
     <string name="members_title">Personnes et appareils</string>
+    <string name="people_people">Personnes</string>
+    <string name="people_role">Rôle</string>
+    <string name="people_devices">Appareils</string>
+    <string name="people_your_devices">Vos appareils</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d appareil</item>
+        <item quantity="many">%1$d appareils</item>
+        <item quantity="other">%1$d appareils</item>
+    </plurals>
     <string name="members_this_device">Cet appareil</string>
     <string name="members_role_member">Membre</string>
     <string name="members_remove">Supprimer</string>
@@ -310,7 +322,7 @@
     <string name="members_role_admin">Administrateur</string>
     <string name="members_make_admin">Nommer administrateur</string>
     <string name="members_make_member">Nommer membre</string>
-    <string name="members_remove_person">Retirer la personne</string>
+    <string name="members_remove_person">Retirer de la bibliothèque</string>
     <string name="members_remove_person_confirm_title">Retirer %1$s ?</string>
     <string name="members_remove_person_confirm_body">Cette personne perd l’accès à cette bibliothèque. Son historique et ses playlists privés sont supprimés ; ce qu’elle a partagé avec le foyer reste.</string>
     <string name="device_state_removed">Retiré</string>
@@ -343,8 +355,7 @@
     <string name="settings_libraries_load_failed">Impossible de charger vos bibliothèques.</string>
     <string name="settings_history">Historique d’écoute</string>
     <string name="settings_history_private">Moi uniquement</string>
-    <string name="settings_history_household">Foyer</string>
-    <string name="settings_history_explanation">Qui voit ce que vous écoutez. Un changement s’applique aux écoutes à partir de maintenant ; les écoutes précédentes restent visibles par les mêmes personnes.</string>
+    <string name="settings_history_household">Tout le monde dans la bibliothèque</string>
     <string name="downloads_concurrency_label">Téléchargements simultanés</string>
     <string name="settings_stored_in">Stocké dans</string>
     <string name="storage_location_account">%1$s : %2$s</string>

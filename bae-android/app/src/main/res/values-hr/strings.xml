@@ -145,6 +145,18 @@
     <string name="transfers_wifi_only_footer">Prikvačena izdanja čekaju Wi-Fi. Reprodukcija pjesme koja nije prikvačena i dalje koristi mobilne podatke.</string>
     <string name="transfers_concurrency_footer">Koliko se datoteka istodobno preuzima kad se izdanje prikvači.</string>
     <string name="members_title">Osobe i uređaji</string>
+    <string name="people_people">Osobe</string>
+    <string name="people_role">Uloga</string>
+    <string name="people_devices">Uređaji</string>
+    <string name="people_your_devices">Vaši uređaji</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d uređaj</item>
+        <item quantity="few">%1$d uređaja</item>
+        <item quantity="other">%1$d uređaja</item>
+    </plurals>
     <string name="members_this_device">Ovaj uređaj</string>
     <string name="members_role_member">Član</string>
     <string name="members_remove">Ukloni</string>
@@ -311,7 +323,7 @@
     <string name="members_role_admin">Administrator</string>
     <string name="members_make_admin">Postavi za administratora</string>
     <string name="members_make_member">Postavi za člana</string>
-    <string name="members_remove_person">Ukloni osobu</string>
+    <string name="members_remove_person">Ukloni iz fonoteke</string>
     <string name="members_remove_person_confirm_title">Ukloniti osobu %1$s?</string>
     <string name="members_remove_person_confirm_body">Gubi pristup ovoj fonoteci. Privatna povijest i popisi za reprodukciju brišu se; ono što je podijeljeno s kućanstvom ostaje.</string>
     <string name="device_state_removed">Uklonjeno</string>
@@ -345,8 +357,7 @@
     <string name="settings_libraries_load_failed">Nije moguće učitati vaše fonoteke.</string>
     <string name="settings_history">Povijest slušanja</string>
     <string name="settings_history_private">Samo ja</string>
-    <string name="settings_history_household">Kućanstvo</string>
-    <string name="settings_history_explanation">Tko vidi što puštate. Promjena vrijedi za reprodukcije od sada; ranije reprodukcije zadržavaju tko ih je mogao vidjeti.</string>
+    <string name="settings_history_household">Svi u fonoteci</string>
     <string name="downloads_concurrency_label">Istodobna preuzimanja</string>
     <string name="settings_stored_in">Pohranjeno u</string>
     <string name="storage_location_account">%1$s: %2$s</string>

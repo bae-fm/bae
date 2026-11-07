@@ -142,6 +142,17 @@
     <string name="transfers_wifi_only_footer">Закачените издания изчакват Wi-Fi. Пускането на песен, която не е закачена, пак използва мобилни данни.</string>
     <string name="transfers_concurrency_footer">Колко файла се изтеглят едновременно, когато издание се закача.</string>
     <string name="members_title">Хора и устройства</string>
+    <string name="people_people">Хора</string>
+    <string name="people_role">Роля</string>
+    <string name="people_devices">Устройства</string>
+    <string name="people_your_devices">Вашите устройства</string>
+    <!-- A person's row in People: their role, then how many devices they have. -->
+    <string name="people_role_and_devices">%1$s · %2$s</string>
+    <!-- How many devices a person has in the library. %1$d = how many. -->
+    <plurals name="people_device_count">
+        <item quantity="one">%1$d устройство</item>
+        <item quantity="other">%1$d устройства</item>
+    </plurals>
     <string name="members_this_device">Това устройство</string>
     <string name="members_role_member">Член</string>
     <string name="members_remove">Премахване</string>
@@ -306,7 +317,7 @@
     <string name="members_role_admin">Администратор</string>
     <string name="members_make_admin">Направи администратор</string>
     <string name="members_make_member">Направи член</string>
-    <string name="members_remove_person">Премахване на човека</string>
+    <string name="members_remove_person">Премахване от библиотеката</string>
     <string name="members_remove_person_confirm_title">Премахване на %1$s?</string>
     <string name="members_remove_person_confirm_body">Човекът губи достъп до тази библиотека. Личната му история и плейлисти се изтриват; споделеното с домакинството остава.</string>
     <string name="device_state_removed">Премахнато</string>
@@ -339,8 +350,7 @@
     <string name="settings_libraries_load_failed">Библиотеките ви не могат да бъдат заредени.</string>
     <string name="settings_history">История на слушането</string>
     <string name="settings_history_private">Само аз</string>
-    <string name="settings_history_household">Домакинството</string>
-    <string name="settings_history_explanation">Кой вижда какво пускате. Промяната важи за пусканията отсега нататък; по-ранните запазват кой е можел да ги вижда.</string>
+    <string name="settings_history_household">Всички в библиотеката</string>
     <string name="downloads_concurrency_label">Едновременни изтегляния</string>
     <string name="settings_stored_in">Съхранява се в</string>
     <string name="storage_location_account">%1$s: %2$s</string>
