@@ -15,16 +15,16 @@ pub(crate) async fn store_user_folder_decision(
     db: &Store,
     key: &crate::folder_scanner::FolderReleaseDecisionKey,
     decision: crate::folder_scanner::FolderReleaseDecision,
-) -> Result<(), bae_store::DbError> {
+) -> Result<(), crate::ImportError> {
     let key = key.clone();
     let grouping = crate::CandidateKey::grouping(&format!(
         "{}/{}",
         key.watched_folder_path.display(),
         key.relative_folder.text()
     ));
-    db.call(move |sql| {
+    db.write(move |sql| {
         super::store_folder_reading(
-            sql,
+            &sql,
             &key,
             decision,
             crate::folder_scanner::FolderReleaseDecisionAuthor::User,

@@ -45,7 +45,7 @@ pub use import_state::{
 pub use release_groupings::GroupingChanges;
 pub(crate) use release_groupings::GroupingFacts;
 pub use watched_folders::watched_path;
-pub use watched_folders::WatchedFoldersRemoved;
+pub use watched_folders::{WatchedFolderRefusal, WatchedFoldersRemoved};
 
 use bae_catalogs::catalog::Catalog;
 use bae_records::*;

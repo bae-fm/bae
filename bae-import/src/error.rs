@@ -126,6 +126,12 @@ pub enum ImportError {
     #[error(transparent)]
     Preparation(#[from] crate::tables::PreparationRefusal),
 
+    /// A change to the watched folders, or a write about a folder under one,
+    /// was refused.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    WatchedFolders(#[from] crate::tables::WatchedFolderRefusal),
+
     /// Releases picked to be read as one could not be combined.
     #[cfg(desktop)]
     #[error(transparent)]
@@ -533,10 +539,6 @@ impl ImportError {
             Self::Internal { .. } => C::Internal,
             #[cfg(desktop)]
             Self::Stopped | Self::WorkerFailed(_) | Self::Provenance { .. } => C::Internal,
-            // The import pane combines only what it lists, at least two, so
-            // a short pick or one that made nothing is bae's own fault; a
-            // release that moved or was taken meanwhile is the person's to
-            // pick again.
             // A candidate that left, was imported, or changed under the
             // save is the person's to work on as it now stands; a save
             // handed what no caller builds is bae's own fault.
@@ -549,6 +551,23 @@ impl ImportError {
                 | crate::tables::PreparationRefusal::DraftNotOverAudio(_)
                 | crate::tables::PreparationRefusal::SnapshotOfUnscanned => C::Internal,
             },
+            // The watched folders changed under the request, or the person
+            // asked for a folder that overlaps one; a removal naming no
+            // folder is bae's own fault.
+            #[cfg(desktop)]
+            Self::WatchedFolders(refusal) => match refusal {
+                crate::tables::WatchedFolderRefusal::NoneToRemove => C::Internal,
+                crate::tables::WatchedFolderRefusal::Unwatched(_)
+                | crate::tables::WatchedFolderRefusal::AddedMeanwhile(_)
+                | crate::tables::WatchedFolderRefusal::Overlap { .. }
+                | crate::tables::WatchedFolderRefusal::NotWatched(_)
+                | crate::tables::WatchedFolderRefusal::ParentWatched { .. }
+                | crate::tables::WatchedFolderRefusal::InsideChanged { .. } => C::Import,
+            },
+            // The import pane combines only what it lists, at least two, so
+            // a short pick or one that made nothing is bae's own fault; a
+            // release that moved or was taken meanwhile is the person's to
+            // pick again.
             #[cfg(desktop)]
             Self::Combine(refusal) => match refusal {
                 crate::grouping::CombineRefusal::TooFewFolders

@@ -78,7 +78,7 @@ impl ImportTables {
     pub(crate) async fn commit_folder_reading(
         &self,
         commit: FolderReadingCommit,
-    ) -> Result<FolderReadingWrite, DbError> {
+    ) -> Result<FolderReadingWrite, crate::ImportError> {
         let FolderReadingCommit {
             watched_folder_path,
             folder,
@@ -98,7 +98,8 @@ impl ImportTables {
                 "{} is not a folder directly under {}",
                 coven::path_text(Path::new(&folder)),
                 coven::path_text(&watched_folder_path)
-            )));
+            ))
+            .into());
         }
         let folder_path = watched_folder_path.join(&folder);
         for (key, _) in decision.iter().chain(scanned_decisions.iter()) {
@@ -113,7 +114,8 @@ impl ImportTables {
                     "folder release decision for {} is outside {}",
                     key.relative_folder.text(),
                     coven::path_text(&folder_path)
-                )));
+                ))
+                .into());
             }
         }
         for item in &items {
@@ -126,21 +128,24 @@ impl ImportTables {
                     "folder scan entry at {} is outside {}",
                     coven::path_text(&coverage.folder),
                     coven::path_text(&folder_path)
-                )));
+                ))
+                .into());
             }
         }
         let read_under = generation_column(stamp.read_under)?;
         let generation = generation_column(stamp.generation)?;
         let observed_at = self.store.now_utc().timestamp_millis();
         self.store
-            .call(move |sql| {
+            .write(move |sql| {
+                let sql = &sql;
                 let root = coven::path_bytes(&watched_folder_path);
                 if root_generation_on(sql, &watched_folder_path)? != Some(read_under) {
                     return Err(DbError::Message(format!(
                         "{} changed while it was being read again: the root's entries were \
                      written after the reading began",
                         coven::path_text(&folder_path)
-                    )));
+                    ))
+                    .into());
                 }
                 for (key, reading) in decision.iter().chain(scanned_decisions.iter()) {
                     store_folder_reading(
@@ -219,7 +224,8 @@ impl ImportTables {
                                     "recorded directory {} is outside {}",
                                     coven::path_text(path),
                                     coven::path_text(&folder_path)
-                                )));
+                                ))
+                                .into());
                             }
                             sql.execute(
                                 "INSERT INTO folder_scan_directory \

@@ -179,7 +179,16 @@ async fn overlapping_stored_roots_fail_to_load() {
     let inner = host_root("/music/artist");
     tables.add_watched_import_folder(&outer).await.unwrap();
     let error = tables.add_watched_import_folder(&inner).await.unwrap_err();
-    assert!(error.to_string().contains("cannot overlap"), "{error}");
+    assert!(
+        matches!(
+            &error,
+            crate::ImportError::WatchedFolders(crate::tables::WatchedFolderRefusal::Overlap {
+                folder,
+                watched,
+            }) if *folder == inner && *watched == outer
+        ),
+        "{error}"
+    );
     db.call(move |conn| {
         conn.execute(
             "INSERT INTO watched_import_folders (path, position) VALUES (?, 1)",

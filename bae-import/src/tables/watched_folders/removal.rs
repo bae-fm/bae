@@ -38,9 +38,7 @@ impl ImportTables {
             .map(|parent| crate::tables::watched_path::canonical_absolute_root(&parent))
             .transpose()?;
         if roots.is_empty() {
-            return Err(
-                DbError::Message("removing watched folders requires at least one".into()).into()
-            );
+            return Err(WatchedFolderRefusal::NoneToRemove.into());
         }
         let watched = self.watched_import_roots().await?;
         if roots.iter().all(|root| !is_among(&watched, root))
@@ -48,15 +46,12 @@ impl ImportTables {
         {
             return Ok(None);
         }
-        Ok(self
-            .store
-            .call(move |sql| {
+        self.store
+            .write(move |sql| {
+                let sql = &sql;
                 let watched = super::watched_roots_on(sql)?;
                 if let Some(root) = roots.iter().find(|root| !is_among(&watched, root)) {
-                    return Err(DbError::Message(format!(
-                        "{} is not a watched folder",
-                        coven::path_text(root)
-                    )));
+                    return Err(WatchedFolderRefusal::NotWatched(root.clone()).into());
                 }
                 if let Some(parent) = &parent {
                     watch_in_place_of(sql, &watched, parent, &roots)?;
@@ -69,16 +64,11 @@ impl ImportTables {
                         [&root_bytes],
                         |row| row.get::<_, CandidateKey>(0),
                     )?);
-                    let deleted = sql.execute(
+                    // Checked as watched in this write above.
+                    sql.execute(
                         "DELETE FROM watched_import_folders WHERE path = ?",
                         [&root_bytes],
                     )?;
-                    if deleted != 1 {
-                        return Err(DbError::Message(format!(
-                            "removing watched folder {} changed {deleted} rows; expected one",
-                            coven::path_text(root)
-                        )));
-                    }
                 }
                 if parent.is_none() {
                     removed.extend(forget_folders_under(sql, &roots)?);
@@ -93,7 +83,7 @@ impl ImportTables {
                 let watched = super::watched_folders_on(sql)?;
                 Ok(Some(WatchedFoldersRemoved { removed_keys: removed, watched }))
             })
-            .await?)
+            .await
     }
 }
 
@@ -109,13 +99,13 @@ fn watch_in_place_of(
     watched: &[PathBuf],
     parent: &Path,
     roots: &[PathBuf],
-) -> Result<(), DbError> {
+) -> Result<(), crate::ImportError> {
     if let Some(holder) = watched.iter().find(|root| parent.starts_with(root)) {
-        return Err(DbError::Message(format!(
-            "watching {} in place of the folders inside it: {} already watches it",
-            coven::path_text(parent),
-            coven::path_text(holder)
-        )));
+        return Err(WatchedFolderRefusal::ParentWatched {
+            parent: parent.to_path_buf(),
+            holder: holder.clone(),
+        }
+        .into());
     }
     fn spelled(mut folders: Vec<&PathBuf>) -> Vec<&PathBuf> {
         folders.sort_by_key(|folder| coven::path_bytes(folder));
@@ -128,15 +118,13 @@ fn watch_in_place_of(
         .map(|folder| folder.as_os_str())
         .eq(expected.iter().map(|folder| folder.as_os_str()))
     {
-        let shown = |folders: &[&PathBuf]| {
-            folders.iter().map(|folder| coven::path_text(folder)).collect::<Vec<_>>()
-        };
-        return Err(DbError::Message(format!(
-            "watching {} in place of the folders inside it: they are {:?}, not {:?}",
-            coven::path_text(parent),
-            shown(&inside),
-            shown(&expected)
-        )));
+        let owned = |folders: Vec<&PathBuf>| folders.into_iter().cloned().collect();
+        return Err(WatchedFolderRefusal::InsideChanged {
+            parent: parent.to_path_buf(),
+            inside: owned(inside),
+            named: owned(expected),
+        }
+        .into());
     }
     let position: i64 = sql.query_row(
         "SELECT COALESCE(MAX(position) + 1, 0) FROM watched_import_folders",

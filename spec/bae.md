@@ -794,7 +794,8 @@ two different things about one file fails the scan.
 - **A watched folder inside another.** Watching a folder that contains watched
   folders takes them over. What is known about a folder is keyed by its path on
   disk, so the person's groupings survive. Unwatching the folder that covers a
-  grouping deletes it.
+  grouping deletes it. Watching a folder inside a watched one is refused, saying
+  which folder already watches it.
 - **A dismissed candidate** is skipped by path, so a later scan doesn't offer it
   again.
 
@@ -4977,7 +4978,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device, after its warning (§6.4) |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library |
-| `Import`, `ImportData` | reads the detail: the source couldn't be read, or what the operation was prepared against changed before it was written (an import's candidate or the library's artists, a deleted release or album, a replaced cover or artist image, a release picked as its album's primary, an artist given a printed name), and asking again works on what now stands |
+| `Import`, `ImportData` | reads the detail: the source couldn't be read, or what the operation was prepared against changed before it was written (an import's candidate or the library's artists, a deleted release or album, a replaced cover or artist image, a release picked as its album's primary, an artist given a printed name, the watched folders), and asking again works on what now stands |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |

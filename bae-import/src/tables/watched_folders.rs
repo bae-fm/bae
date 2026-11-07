@@ -15,6 +15,50 @@ pub use removal::WatchedFoldersRemoved;
 pub(super) const SCHEMA: bae_store::SchemaPart =
     bae_store::SchemaPart::new(&[include_str!("watched_folders.sql")]);
 
+/// Why a change to the watched folders, or a write about a folder under one,
+/// was refused. Nothing of it was written.
+#[derive(Debug, thiserror::Error)]
+pub enum WatchedFolderRefusal {
+    /// The folder lies under no watched folder: the one it was under
+    /// stopped being watched.
+    #[error("{} is under no watched folder", coven::path_text(.0))]
+    Unwatched(PathBuf),
+    /// The folder came to be watched while the add was deciding.
+    #[error("watched folder {} was added while this add was deciding", coven::path_text(.0))]
+    AddedMeanwhile(PathBuf),
+    /// The folder holds, or lies in, a watched folder.
+    #[error(
+        "watched folders cannot overlap: {} conflicts with {}",
+        coven::path_text(folder),
+        coven::path_text(watched)
+    )]
+    Overlap { folder: PathBuf, watched: PathBuf },
+    /// A removal named no folder.
+    #[error("removing watched folders requires at least one")]
+    NoneToRemove,
+    /// A folder to stop watching is not watched: it stopped being watched
+    /// meanwhile.
+    #[error("{} is not a watched folder", coven::path_text(.0))]
+    NotWatched(PathBuf),
+    /// The folder to watch in place of the ones inside it is watched, or
+    /// lies in a watched folder.
+    #[error(
+        "watching {} in place of the folders inside it: {} already watches it",
+        coven::path_text(parent),
+        coven::path_text(holder)
+    )]
+    ParentWatched { parent: PathBuf, holder: PathBuf },
+    /// The watched folders inside the one to watch in their place are not
+    /// the ones the removal names: they changed meanwhile.
+    #[error(
+        "watching {} in place of the folders inside it: they are {:?}, not {:?}",
+        coven::path_text(parent),
+        inside.iter().map(|folder| coven::path_text(folder)).collect::<Vec<_>>(),
+        named.iter().map(|folder| coven::path_text(folder)).collect::<Vec<_>>()
+    )]
+    InsideChanged { parent: PathBuf, inside: Vec<PathBuf>, named: Vec<PathBuf> },
+}
+
 /// The folders at or below one folder, as a condition on a stored folder
 /// column: the range each owner of rows kept by folder forgets when the
 /// folder stops being watched.
@@ -55,10 +99,12 @@ pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolde
 /// The watched folder covering `folder`. A decision about a folder is deleted
 /// with the watched folder covering it, so one stored outside every watched
 /// folder would never be deleted.
-pub(super) fn require_watched(sql: &CovenWrite<'_>, folder: &Path) -> Result<PathBuf, DbError> {
-    watched_folder_among_on(sql, folder.ancestors())?.ok_or_else(|| {
-        DbError::Message(format!("{} is under no watched folder", coven::path_text(folder)))
-    })
+pub(super) fn require_watched(
+    sql: &CovenWrite<'_>,
+    folder: &Path,
+) -> Result<PathBuf, crate::ImportError> {
+    watched_folder_among_on(sql, folder.ancestors())?
+        .ok_or_else(|| WatchedFolderRefusal::Unwatched(folder.to_path_buf()).into())
 }
 
 /// The watched folder among `folders`, each looked up by the watched
@@ -181,24 +227,21 @@ impl ImportTables {
         if self.is_watched_import_folder(&path).await? {
             return Ok(None);
         }
-        Ok(self
-            .store
-            .call(move |sql| {
+        self.store
+            .write(move |sql| {
+                let sql = &sql;
                 let roots = watched_roots_on(sql)?;
                 if roots.iter().any(|root| root.as_os_str() == path.as_os_str()) {
-                    return Err(DbError::Message(format!(
-                        "watched folder {} was added while this add was deciding",
-                        coven::path_text(&path)
-                    )));
+                    return Err(WatchedFolderRefusal::AddedMeanwhile(path).into());
                 }
                 if let Some(conflict) =
                     roots.iter().find(|root| crate::watched_folder::paths_overlap(&path, root))
                 {
-                    return Err(DbError::Message(format!(
-                        "watched folders cannot overlap: {} conflicts with {}",
-                        coven::path_text(&path),
-                        coven::path_text(conflict)
-                    )));
+                    return Err(WatchedFolderRefusal::Overlap {
+                        folder: path,
+                        watched: conflict.clone(),
+                    }
+                    .into());
                 }
                 let position: i64 = sql.query_row(
                     "SELECT COALESCE(MAX(position) + 1, 0) FROM watched_import_folders",
@@ -211,7 +254,7 @@ impl ImportTables {
                 )?;
                 Ok(Some(watched_folders_on(sql)?))
             })
-            .await?)
+            .await
     }
 }
 

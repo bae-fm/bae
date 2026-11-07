@@ -17,12 +17,13 @@ pub(crate) fn store_folder_reading(
     decision: crate::folder_scanner::FolderReleaseDecision,
     author: crate::folder_scanner::FolderReleaseDecisionAuthor,
     grouping: &CandidateKey,
-) -> Result<(), DbError> {
+) -> Result<(), crate::ImportError> {
     if key.relative_folder.is_root() {
         return Err(DbError::Message(format!(
             "{} is never a release, so it has no reading to store",
             coven::path_text(&key.watched_folder_path)
-        )));
+        ))
+        .into());
     }
     let author = match author {
         crate::folder_scanner::FolderReleaseDecisionAuthor::User => "user",
@@ -39,7 +40,8 @@ pub(crate) fn store_folder_reading(
             coven::path_text(&anchor),
             coven::path_text(&covering),
             coven::path_text(&key.watched_folder_path)
-        )));
+        ))
+        .into());
     }
     let anchor = coven::path_bytes(&anchor);
     sql.execute(
@@ -61,7 +63,8 @@ pub(crate) fn store_folder_reading(
             "{} is read as grouping {stored}, not {grouping}: the store changed after the \
              reading was taken",
             key.relative_folder.text()
-        )));
+        ))
+        .into());
     }
     Ok(())
 }
@@ -89,13 +92,13 @@ impl ImportTables {
         key: &FolderReleaseDecisionKey,
         decision: FolderReleaseDecision,
         grouping: &CandidateKey,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), crate::ImportError> {
         let key = key.clone();
         let grouping = grouping.clone();
         self.store
-            .call(move |sql| {
+            .write(move |sql| {
                 store_folder_reading(
-                    sql,
+                    &sql,
                     &key,
                     decision,
                     FolderReleaseDecisionAuthor::Heuristic,
@@ -112,12 +115,18 @@ impl ImportTables {
         &self,
         key: &FolderReleaseDecisionKey,
         reading: &crate::folder_scanner::FolderReading,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), crate::ImportError> {
         let key = key.clone();
         let reading = reading.clone();
         self.store
-            .call(move |sql| {
-                store_folder_reading(sql, &key, reading.decision, reading.author, &reading.grouping)
+            .write(move |sql| {
+                store_folder_reading(
+                    &sql,
+                    &key,
+                    reading.decision,
+                    reading.author,
+                    &reading.grouping,
+                )
             })
             .await
     }

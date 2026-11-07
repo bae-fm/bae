@@ -100,7 +100,7 @@ pub(crate) async fn commit_reading(
     folder: &str,
     decision: crate::folder_scanner::FolderReleaseDecision,
     items: Vec<crate::folder_scanner::ScanItem>,
-) -> Result<crate::tables::FolderReadingWrite, bae_store::DbError> {
+) -> Result<crate::tables::FolderReadingWrite, crate::ImportError> {
     let tables = crate::tables::ImportTables::new(db.clone());
     let stamp = tables.begin_folder_reading(std::path::Path::new(root)).await?;
     commit_reading_under(db, root, folder, decision, items, stamp).await
@@ -113,7 +113,7 @@ pub(crate) async fn commit_reading_under(
     decision: crate::folder_scanner::FolderReleaseDecision,
     items: Vec<crate::folder_scanner::ScanItem>,
     stamp: crate::tables::folder_scans::FolderReadingStamp,
-) -> Result<crate::tables::FolderReadingWrite, bae_store::DbError> {
+) -> Result<crate::tables::FolderReadingWrite, crate::ImportError> {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables
         .commit_folder_reading(crate::tables::FolderReadingCommit {

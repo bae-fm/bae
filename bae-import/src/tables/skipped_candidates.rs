@@ -92,9 +92,9 @@ impl ImportTables {
         if stored == skipped {
             return Ok(false);
         }
-        Ok(self
-            .store
-            .call(move |sql| {
+        self.store
+            .write(move |sql| {
+                let sql = &sql;
                 let changed = if skipped {
                     require_watched(sql, &candidate_path)?;
                     // Set aside, the candidate is not identification's to answer:
@@ -117,7 +117,7 @@ impl ImportTables {
                 };
                 Ok(changed == 1)
             })
-            .await?)
+            .await
     }
 }
 
