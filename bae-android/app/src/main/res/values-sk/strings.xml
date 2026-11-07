@@ -118,7 +118,6 @@
     </plurals>
     <string name="settings_sync">Synchronizácia</string>
     <string name="settings_local_only">Len lokálne</string>
-    <string name="settings_sync_checking">Kontrola synchronizácie…</string>
     <string name="settings_sync_unreadable">Stav synchronizácie sa nepodarilo načítať</string>
     <string name="settings_pause_between_sides">Pauza medzi stranami a diskami</string>
     <string name="settings_side_pause_countdown">Odpočítavanie</string>
@@ -402,4 +401,12 @@
     <string name="admin_change_stopped">Zastavené</string>
     <string name="dismiss">Zavrieť</string>
     <string name="admin_change_approve">Pustiť používateľa %1$s dnu</string>
+    <string name="sync_status">Stav</string>
+    <string name="sync_last_synced">Posledná synchronizácia: %1$s</string>
+    <string name="sync_pending">Čakajúce</string>
+    <string name="sync_storage">Úložisko</string>
+    <string name="sync_fix_update">Aktualizovať</string>
+    <string name="sync_fix_sign_in">Prihlásiť sa do %1$s</string>
+    <string name="sync_fix_enter_key">Zadať prístupový kľúč</string>
+    <string name="sync_fix_remove">Odstrániť z tohto zariadenia</string>
 </resources>

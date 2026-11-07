@@ -110,7 +110,6 @@
     </plurals>
     <string name="settings_sync">Szinkronizálás</string>
     <string name="settings_local_only">Csak helyi</string>
-    <string name="settings_sync_checking">Szinkronizálás ellenőrzése…</string>
     <string name="settings_sync_unreadable">A szinkronizálás állapota nem olvasható</string>
     <string name="settings_pause_between_sides">Szünet a lemezoldalak és lemezek között</string>
     <string name="settings_side_pause_countdown">Visszaszámlálás</string>
@@ -390,4 +389,12 @@
     <string name="admin_change_stopped">Leállítva</string>
     <string name="dismiss">Bezárás</string>
     <string name="admin_change_approve">%1$s beengedése</string>
+    <string name="sync_status">Állapot</string>
+    <string name="sync_last_synced">Utolsó szinkronizálás: %1$s</string>
+    <string name="sync_pending">Függőben</string>
+    <string name="sync_storage">Tárhely</string>
+    <string name="sync_fix_update">Frissítés</string>
+    <string name="sync_fix_sign_in">Bejelentkezés: %1$s</string>
+    <string name="sync_fix_enter_key">Hozzáférési kulcs megadása</string>
+    <string name="sync_fix_remove">Eltávolítás erről az eszközről</string>
 </resources>

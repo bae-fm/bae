@@ -103,7 +103,6 @@
     </plurals>
     <string name="settings_sync">同步</string>
     <string name="settings_local_only">僅本機</string>
-    <string name="settings_sync_checking">正在檢查同步…</string>
     <string name="settings_sync_unreadable">無法讀取同步狀態</string>
     <string name="settings_pause_between_sides">面或碟片之間暫停</string>
     <string name="settings_side_pause_countdown">倒數計時</string>
@@ -386,4 +385,12 @@
     <string name="admin_change_stopped">已停止</string>
     <string name="dismiss">關閉</string>
     <string name="admin_change_approve">讓 %1$s 加入</string>
+    <string name="sync_status">狀態</string>
+    <string name="sync_last_synced">上次同步：%1$s</string>
+    <string name="sync_pending">待處理</string>
+    <string name="sync_storage">儲存空間</string>
+    <string name="sync_fix_update">更新</string>
+    <string name="sync_fix_sign_in">登入 %1$s</string>
+    <string name="sync_fix_enter_key">輸入存取金鑰</string>
+    <string name="sync_fix_remove">從此裝置移除</string>
 </resources>

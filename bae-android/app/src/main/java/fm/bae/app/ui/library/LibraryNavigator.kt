@@ -13,8 +13,7 @@ import fm.bae.app.ui.settings.MembersScreen
 import fm.bae.app.ui.settings.RestoreCodeScreen
 import fm.bae.app.ui.settings.SettingsScreen
 import fm.bae.app.ui.settings.StorageSetupScreen
-import fm.bae.app.ui.settings.SyncPendingScreen
-import fm.bae.app.ui.settings.SyncSettingsScreen
+import fm.bae.app.ui.settings.SyncScreen
 import fm.bae.app.ui.settings.TransfersScreen
 import kotlinx.coroutines.flow.StateFlow
 
@@ -50,16 +49,13 @@ internal sealed interface LibraryDestination {
     /** The open library: its name, sync, people and devices, and restore code. */
     data object Library : Setting
 
-    /** Where the library is stored and how its sync stands. */
+    /** The state sync is in, the library's storage, and what sync waits on, each with its action. */
     data object Sync : Setting
 
     /** The recovery code that restores the library. */
     data object RestoreCode : Setting
 
     data object Settings : Setting
-
-    /** What sync waits on, each with its action. */
-    data object SyncPending : Setting
 
     /** How this phone moves files: Wi-Fi only, and how many download at once. */
     data object Transfers : Setting
@@ -202,15 +198,11 @@ private fun SettingsDestinationScreen(
         }
 
         LibraryDestination.Sync -> {
-            SyncSettingsScreen(session = session, actions = actions, onBack = onBack, onPush = onPush)
+            SyncScreen(session = session, actions = actions, onBack = onBack, onPush = onPush)
         }
 
         LibraryDestination.RestoreCode -> {
             RestoreCodeScreen(session = session, onBack = onBack)
-        }
-
-        LibraryDestination.SyncPending -> {
-            SyncPendingScreen(session = session, actions = actions, onBack = onBack)
         }
 
         LibraryDestination.Transfers -> {
@@ -218,7 +210,15 @@ private fun SettingsDestinationScreen(
         }
 
         LibraryDestination.StorageSetup -> {
-            StorageSetupScreen(session = session, oauthProviders = actions.oauthProviders, onBack = onBack)
+            StorageSetupScreen(
+                session = session,
+                oauthProviders = actions.oauthProviders,
+                onBack = onBack,
+                onDone = {
+                    onBack()
+                    onPush(LibraryDestination.Sync)
+                },
+            )
         }
     }
 }

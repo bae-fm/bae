@@ -112,7 +112,6 @@
     </plurals>
     <string name="settings_sync">Синхронізація</string>
     <string name="settings_local_only">Лише локально</string>
-    <string name="settings_sync_checking">Перевірка синхронізації…</string>
     <string name="settings_sync_unreadable">Не вдалося прочитати стан синхронізації</string>
     <string name="settings_pause_between_sides">Пауза між сторонами та дисками</string>
     <string name="settings_side_pause_countdown">Зворотний відлік</string>
@@ -404,4 +403,12 @@
     <string name="admin_change_stopped">Зупинено</string>
     <string name="dismiss">Закрити</string>
     <string name="admin_change_approve">Впустити %1$s</string>
+    <string name="sync_status">Стан</string>
+    <string name="sync_last_synced">Остання синхронізація: %1$s</string>
+    <string name="sync_pending">Очікує</string>
+    <string name="sync_storage">Сховище</string>
+    <string name="sync_fix_update">Оновити</string>
+    <string name="sync_fix_sign_in">Увійти в %1$s</string>
+    <string name="sync_fix_enter_key">Ввести ключ доступу</string>
+    <string name="sync_fix_remove">Вилучити з цього пристрою</string>
 </resources>

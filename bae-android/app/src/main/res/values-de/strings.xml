@@ -106,7 +106,6 @@
     </plurals>
     <string name="settings_sync">Synchronisierung</string>
     <string name="settings_local_only">Nur lokal</string>
-    <string name="settings_sync_checking">Synchronisierung wird geprüft…</string>
     <string name="settings_sync_unreadable">Synchronisierungsstatus konnte nicht gelesen werden</string>
     <string name="settings_pause_between_sides">Pause zwischen Seiten und Discs</string>
     <string name="settings_side_pause_countdown">Countdown</string>
@@ -392,4 +391,12 @@
     <string name="admin_change_stopped">Gestoppt</string>
     <string name="dismiss">Ausblenden</string>
     <string name="admin_change_approve">%1$s hereinlassen</string>
+    <string name="sync_status">Status</string>
+    <string name="sync_last_synced">Zuletzt synchronisiert: %1$s</string>
+    <string name="sync_pending">Ausstehend</string>
+    <string name="sync_storage">Speicher</string>
+    <string name="sync_fix_update">Aktualisieren</string>
+    <string name="sync_fix_sign_in">Bei %1$s anmelden</string>
+    <string name="sync_fix_enter_key">Zugriffsschlüssel eingeben</string>
+    <string name="sync_fix_remove">Von diesem Gerät entfernen</string>
 </resources>

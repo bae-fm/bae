@@ -110,7 +110,6 @@
     </plurals>
     <string name="settings_sync">Συγχρονισμός</string>
     <string name="settings_local_only">Μόνο τοπικά</string>
-    <string name="settings_sync_checking">Έλεγχος συγχρονισμού…</string>
     <string name="settings_sync_unreadable">Δεν ήταν δυνατή η ανάγνωση της κατάστασης συγχρονισμού</string>
     <string name="settings_pause_between_sides">Παύση ανάμεσα σε πλευρές και δίσκους</string>
     <string name="settings_side_pause_countdown">Αντίστροφη μέτρηση</string>
@@ -390,4 +389,12 @@
     <string name="admin_change_stopped">Διακόπηκε</string>
     <string name="dismiss">Απόρριψη</string>
     <string name="admin_change_approve">Είσοδος του/της %1$s</string>
+    <string name="sync_status">Κατάσταση</string>
+    <string name="sync_last_synced">Τελευταίος συγχρονισμός: %1$s</string>
+    <string name="sync_pending">Σε εκκρεμότητα</string>
+    <string name="sync_storage">Αποθήκευση</string>
+    <string name="sync_fix_update">Ενημέρωση</string>
+    <string name="sync_fix_sign_in">Σύνδεση στο %1$s</string>
+    <string name="sync_fix_enter_key">Εισαγωγή κλειδιού πρόσβασης</string>
+    <string name="sync_fix_remove">Αφαίρεση από αυτή τη συσκευή</string>
 </resources>

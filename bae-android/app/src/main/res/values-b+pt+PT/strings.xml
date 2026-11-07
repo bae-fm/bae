@@ -110,7 +110,6 @@
     </plurals>
     <string name="settings_sync">Sincronização</string>
     <string name="settings_local_only">Apenas local</string>
-    <string name="settings_sync_checking">A verificar a sincronização…</string>
     <string name="settings_sync_unreadable">Não foi possível ler o estado da sincronização</string>
     <string name="settings_pause_between_sides">Pausa entre lados e discos</string>
     <string name="settings_side_pause_countdown">Contagem decrescente</string>
@@ -390,4 +389,12 @@
     <string name="admin_change_stopped">Interrompido</string>
     <string name="dismiss">Ignorar</string>
     <string name="admin_change_approve">Deixar %1$s entrar</string>
+    <string name="sync_status">Estado</string>
+    <string name="sync_last_synced">Última sincronização: %1$s</string>
+    <string name="sync_pending">Pendente</string>
+    <string name="sync_storage">Armazenamento</string>
+    <string name="sync_fix_update">Atualizar</string>
+    <string name="sync_fix_sign_in">Iniciar sessão no %1$s</string>
+    <string name="sync_fix_enter_key">Introduzir chave de acesso</string>
+    <string name="sync_fix_remove">Remover deste dispositivo</string>
 </resources>

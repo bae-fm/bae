@@ -13,6 +13,8 @@ internal class SessionActions(
     val resetDevice: (BridgeDeviceReset) -> Unit,
     /** Close the open library and ask for the person's restore code to restore it over this copy. */
     val restoreFromCode: () -> Unit,
+    /** Close the open library for the list of this device's libraries, where it is removed. */
+    val leaveLibrary: () -> Unit,
     /** List this device's libraries again, after the last listing failed. */
     val reloadLibraries: () -> Unit,
 )

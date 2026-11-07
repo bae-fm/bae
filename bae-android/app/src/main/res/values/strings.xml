@@ -141,7 +141,6 @@
     </plurals>
     <string name="settings_sync">Sync</string>
     <string name="settings_local_only">Local only</string>
-    <string name="settings_sync_checking">Checking sync…</string>
     <string name="settings_sync_unreadable">Couldn\'t read sync status</string>
     <string name="settings_pause_between_sides">Pause between sides and discs</string>
     <string name="settings_side_pause_countdown">Countdown</string>
@@ -450,4 +449,12 @@
     <string name="admin_change_stopped">Stopped</string>
     <string name="dismiss">Dismiss</string>
     <string name="admin_change_approve">Let %1$s in</string>
+    <string name="sync_status">Status</string>
+    <string name="sync_last_synced">Last synced %1$s</string>
+    <string name="sync_pending">Pending</string>
+    <string name="sync_storage">Storage</string>
+    <string name="sync_fix_update">Update</string>
+    <string name="sync_fix_sign_in">Sign in to %1$s</string>
+    <string name="sync_fix_enter_key">Enter access key</string>
+    <string name="sync_fix_remove">Remove from this device</string>
 </resources>

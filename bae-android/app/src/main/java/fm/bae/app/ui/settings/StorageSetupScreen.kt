@@ -89,13 +89,15 @@ private sealed interface SetupStep {
 /**
  * Give a library that lives on this device only storage: an S3-compatible
  * bucket, or a folder in Dropbox or OneDrive after signing in. Once set up,
- * the person's restore code is shown for them to keep.
+ * the person's restore code is shown for them to keep, and Done lands on the
+ * Sync page ([onDone]).
  */
 @Composable
 internal fun StorageSetupScreen(
     session: OpenLibrary,
     oauthProviders: OAuthProviders?,
     onBack: () -> Unit,
+    onDone: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberScreenScope()
@@ -137,7 +139,7 @@ internal fun StorageSetupScreen(
                         onChoose = flow::choose,
                         onError = { flow.error = it },
                         onCancel = cancel,
-                        onDone = onBack,
+                        onDone = onDone,
                     ),
             )
         }

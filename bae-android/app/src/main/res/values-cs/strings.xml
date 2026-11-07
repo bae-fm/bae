@@ -112,7 +112,6 @@
     </plurals>
     <string name="settings_sync">Synchronizace</string>
     <string name="settings_local_only">Pouze místně</string>
-    <string name="settings_sync_checking">Kontrola synchronizace…</string>
     <string name="settings_sync_unreadable">Stav synchronizace nelze načíst</string>
     <string name="settings_pause_between_sides">Pauza mezi stranami a disky</string>
     <string name="settings_side_pause_countdown">Odpočet</string>
@@ -404,4 +403,12 @@
     <string name="admin_change_stopped">Zastaveno</string>
     <string name="dismiss">Zavřít</string>
     <string name="admin_change_approve">Pustit uživatele %1$s dovnitř</string>
+    <string name="sync_status">Stav</string>
+    <string name="sync_last_synced">Poslední synchronizace: %1$s</string>
+    <string name="sync_pending">Čekající</string>
+    <string name="sync_storage">Úložiště</string>
+    <string name="sync_fix_update">Aktualizovat</string>
+    <string name="sync_fix_sign_in">Přihlásit se k %1$s</string>
+    <string name="sync_fix_enter_key">Zadat přístupový klíč</string>
+    <string name="sync_fix_remove">Odebrat z tohoto zařízení</string>
 </resources>

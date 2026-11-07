@@ -106,7 +106,6 @@
     </plurals>
     <string name="settings_sync">Eşitleme</string>
     <string name="settings_local_only">Yalnızca yerel</string>
-    <string name="settings_sync_checking">Eşitleme denetleniyor…</string>
     <string name="settings_sync_unreadable">Eşitleme durumu okunamadı</string>
     <string name="settings_pause_between_sides">Yüzler ve diskler arasında duraklat</string>
     <string name="settings_side_pause_countdown">Geri sayım</string>
@@ -392,4 +391,12 @@
     <string name="admin_change_stopped">Durduruldu</string>
     <string name="dismiss">Kapat</string>
     <string name="admin_change_approve">%1$s kişisini içeri al</string>
+    <string name="sync_status">Durum</string>
+    <string name="sync_last_synced">Son eşitleme: %1$s</string>
+    <string name="sync_pending">Bekleyen</string>
+    <string name="sync_storage">Depolama</string>
+    <string name="sync_fix_update">Güncelle</string>
+    <string name="sync_fix_sign_in">%1$s hesabında oturum aç</string>
+    <string name="sync_fix_enter_key">Erişim anahtarı gir</string>
+    <string name="sync_fix_remove">Bu cihazdan kaldır</string>
 </resources>

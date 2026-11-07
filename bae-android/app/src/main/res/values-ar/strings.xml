@@ -118,7 +118,6 @@
     </plurals>
     <string name="settings_sync">المزامنة</string>
     <string name="settings_local_only">محلي فقط</string>
-    <string name="settings_sync_checking">جارٍ التحقق من المزامنة…</string>
     <string name="settings_sync_unreadable">تعذّرت قراءة حالة المزامنة</string>
     <string name="settings_pause_between_sides">إيقاف مؤقت بين الجوانب والأقراص</string>
     <string name="settings_side_pause_countdown">العد التنازلي</string>
@@ -416,4 +415,12 @@
     <string name="admin_change_stopped">متوقّف</string>
     <string name="dismiss">تجاهل</string>
     <string name="admin_change_approve">السماح بدخول %1$s</string>
+    <string name="sync_status">الحالة</string>
+    <string name="sync_last_synced">آخر مزامنة: %1$s</string>
+    <string name="sync_pending">قيد الانتظار</string>
+    <string name="sync_storage">التخزين</string>
+    <string name="sync_fix_update">تحديث</string>
+    <string name="sync_fix_sign_in">تسجيل الدخول إلى %1$s</string>
+    <string name="sync_fix_enter_key">إدخال مفتاح الوصول</string>
+    <string name="sync_fix_remove">إزالة من هذا الجهاز</string>
 </resources>

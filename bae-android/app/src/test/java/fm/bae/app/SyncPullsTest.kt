@@ -18,8 +18,10 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeSyncActivity
-import uniffi.bae_bridge.BridgeSyncIndicator
+import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
+import uniffi.bae_bridge.BridgeSyncStatusWord
+import uniffi.bae_bridge.BridgeSyncTone
 import uniffi.bae_bridge.BridgeUploadsInFlight
 
 /** An open library pulls its sync status and activity into the stores its screens read, each value as it comes. */
@@ -40,13 +42,13 @@ class SyncPullsTest {
         session.wireUp(scope)
         assertEquals(SyncLine.Checking, store.line.value)
 
-        handle.syncStatus.deliver(status(BridgeSyncIndicator.Syncing))
+        handle.syncStatus.deliver(status(BridgeSyncStatusWord.SYNCING, BridgeSyncTone.NEUTRAL))
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(SyncLine.Read(BridgeSyncIndicator.Syncing), store.line.value)
+        assertEquals(BridgeSyncStatusWord.SYNCING, (store.line.value as SyncLine.Read).shown.status)
 
-        handle.syncStatus.deliver(status(BridgeSyncIndicator.Synced))
+        handle.syncStatus.deliver(status(BridgeSyncStatusWord.SYNCED, BridgeSyncTone.SUCCESS))
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(SyncLine.Read(BridgeSyncIndicator.Synced), store.line.value)
+        assertEquals(BridgeSyncStatusWord.SYNCED, (store.line.value as SyncLine.Read).shown.status)
 
         runBlocking { session.dispose(null) }
         scope.cancel()
@@ -92,13 +94,13 @@ class SyncPullsTest {
             retryOffered = false,
         )
 
-    private fun status(indicator: BridgeSyncIndicator) =
-        BridgeSyncStatusSnapshot(
-            error = null,
-            pending = emptyList(),
-            indicator = indicator,
-            reconnectOffered = false,
-            setupRunning = false,
-            undoneSetup = null,
-        )
+    private fun status(
+        status: BridgeSyncStatusWord,
+        tone: BridgeSyncTone,
+    ) = BridgeSyncStatusSnapshot(
+        shown = BridgeSyncShown(status = status, tone = tone, cause = null, fix = null, lastSynced = null),
+        pending = emptyList(),
+        setupRunning = false,
+        undoneSetup = null,
+    )
 }

@@ -26,7 +26,6 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.SyncLine
-import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.RowCard
@@ -37,7 +36,6 @@ import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.BridgeSyncIndicator
 
 /**
  * The open library: its name, with Rename for an admin, and rows that show where its sync, its people and devices and
@@ -164,8 +162,8 @@ internal data class SyncRowSummary(
 )
 
 /**
- * The Sync row's state: "Not synced" for a library with no storage, otherwise the status line's words, in green when
- * synced and in red when sync failed.
+ * The Sync row's state: "Not synced" for a library with no storage, otherwise the state's words in the color core
+ * gives it.
  */
 @Composable
 private fun syncRowSummary(
@@ -177,13 +175,7 @@ private fun syncRowSummary(
     if (storage is Storage.None && !setupRunning) {
         return SyncRowSummary(stringResource(R.string.library_not_synced), tone = null)
     }
-    val tone =
-        when ((line as? SyncLine.Read)?.indicator) {
-            BridgeSyncIndicator.Synced -> StatusTone.SUCCESS
-            BridgeSyncIndicator.Failed -> StatusTone.DANGER
-            else -> null
-        }
-    return SyncRowSummary(syncLineText(context, line), tone)
+    return SyncRowSummary(syncLineText(context, line), (line as? SyncLine.Read)?.shown?.tone?.statusTone())
 }
 
 /** "2 people · 3 devices", once the people have been read. */
@@ -194,30 +186,6 @@ private fun peopleAndDevices(people: PeopleRead): String? {
     val peopleText = pluralStringResource(R.plurals.people_count, loaded.size, loaded.size)
     val devicesText = pluralStringResource(R.plurals.device_count, devices, devices)
     return "$peopleText · $devicesText"
-}
-
-/** The Sync page: where the library is stored and how its sync stands. */
-@Composable
-internal fun SyncSettingsScreen(
-    session: OpenLibrary,
-    actions: SessionActions,
-    onBack: () -> Unit,
-    onPush: (LibraryDestination) -> Unit,
-) {
-    val scope = rememberScreenScope()
-    val model = remember(session) { SettingsLibraryModel(session.appHandle, session.errors, scope) }
-    LaunchedEffect(model) { model.loadStorage() }
-    ReloadStorageWhenSetupEnds(session = session, model = model)
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        SettingsTopBar(title = stringResource(R.string.settings_sync), onBack = onBack)
-        SettingsSyncSection(
-            onResetDevice = actions.resetDevice,
-            session = session,
-            storage = model.storage,
-            oauthProviders = actions.oauthProviders,
-            onPush = onPush,
-        )
-    }
 }
 
 /** The Restore code page: the person's recovery code, shown on request. */

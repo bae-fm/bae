@@ -106,7 +106,6 @@
     </plurals>
     <string name="settings_sync">Synchronisatie</string>
     <string name="settings_local_only">Alleen lokaal</string>
-    <string name="settings_sync_checking">Synchronisatie controleren…</string>
     <string name="settings_sync_unreadable">Synchronisatiestatus kan niet worden gelezen</string>
     <string name="settings_pause_between_sides">Pauze tussen kanten en schijven</string>
     <string name="settings_side_pause_countdown">Aftellen</string>
@@ -392,4 +391,12 @@
     <string name="admin_change_stopped">Gestopt</string>
     <string name="dismiss">Sluiten</string>
     <string name="admin_change_approve">%1$s binnenlaten</string>
+    <string name="sync_status">Status</string>
+    <string name="sync_last_synced">Laatst gesynchroniseerd: %1$s</string>
+    <string name="sync_pending">In afwachting</string>
+    <string name="sync_storage">Opslag</string>
+    <string name="sync_fix_update">Bijwerken</string>
+    <string name="sync_fix_sign_in">Aanmelden bij %1$s</string>
+    <string name="sync_fix_enter_key">Toegangssleutel invoeren</string>
+    <string name="sync_fix_remove">Verwijderen van dit apparaat</string>
 </resources>

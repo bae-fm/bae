@@ -687,6 +687,21 @@ object AppSessionHolder {
     }
 
     /**
+     * Close the open library and show the libraries on this device, where one
+     * is removed: what a library that removed this device offers.
+     */
+    suspend fun closeForLibraries(
+        context: Context,
+        onScreen: (AppScreen) -> Unit,
+    ) {
+        val open = checkNotNull(current) { "the libraries are offered from an open library" }
+        current = null
+        closeShowing(open, context, onScreen)
+        reloadLibraries(context)
+        onScreen(AppScreen.Onboarding)
+    }
+
+    /**
      * Remove [libraryId], which no session has open: open it off the main
      * thread, since core leaves the store from an open library, then remove it,
      * writing the open's steps to [opening] and the removal's to [closing]. The

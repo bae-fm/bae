@@ -23,12 +23,15 @@ import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeStorageLocation
+import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
+import uniffi.bae_bridge.BridgeSyncStatusWord
+import uniffi.bae_bridge.BridgeSyncTone
 
-/** The list of what sync waits on runs each record's action as the library's storage takes it. */
+/** The Sync page's list of what sync waits on runs each record's action as the library's storage takes it. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
-class SyncPendingScreenTest {
+class SyncScreenTest {
     @get:Rule
     val compose = createComposeRule()
 
@@ -56,20 +59,20 @@ class SyncPendingScreenTest {
         val session = openTestLibrary(handle, status)
         status.apply(
             BridgeSyncStatusSnapshot(
-                error = null,
+                shown = notSynced,
                 pending = listOf(s3SignIn()),
-                // No line, whose words come from the bridge's native catalog lookup, which a JVM test can't load.
-                indicator = null,
-                reconnectOffered = false,
                 setupRunning = false,
                 undoneSetup = null,
             ),
             NoErrorDisplays,
         )
+        // The state's words come from the bridge's native catalog lookup, which a JVM test can't load; the page says
+        // an unreadable status in its own, and keeps the pending list the snapshot read.
+        status.fail()
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides session.bugs) {
-                    SyncPendingScreen(session = session, actions = actions(), onBack = {})
+                    SyncScreen(session = session, actions = actions(), onBack = {}, onPush = {})
                 }
             }
         }
@@ -81,6 +84,15 @@ class SyncPendingScreenTest {
             .assertExists()
         compose.onNodeWithText("This library needs cloud sign-in, which isn't configured on this build.").assertDoesNotExist()
     }
+
+    private val notSynced =
+        BridgeSyncShown(
+            status = BridgeSyncStatusWord.NOT_SYNCED,
+            tone = BridgeSyncTone.NEUTRAL,
+            cause = null,
+            fix = null,
+            lastSynced = null,
+        )
 
     private fun s3SignIn() =
         BridgePendingRecord(
@@ -96,6 +108,7 @@ class SyncPendingScreenTest {
             switchLibrary = {},
             resetDevice = {},
             restoreFromCode = {},
+            leaveLibrary = {},
             reloadLibraries = {},
         )
 }

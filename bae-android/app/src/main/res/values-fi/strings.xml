@@ -110,7 +110,6 @@
     </plurals>
     <string name="settings_sync">Synkronointi</string>
     <string name="settings_local_only">Vain paikallisesti</string>
-    <string name="settings_sync_checking">Tarkistetaan synkronointia…</string>
     <string name="settings_sync_unreadable">Synkronoinnin tilaa ei voitu lukea</string>
     <string name="settings_pause_between_sides">Tauko puolten ja levyjen välissä</string>
     <string name="settings_side_pause_countdown">Lähtölaskenta</string>
@@ -390,4 +389,12 @@
     <string name="admin_change_stopped">Pysäytetty</string>
     <string name="dismiss">Hylkää</string>
     <string name="admin_change_approve">Päästä %1$s sisään</string>
+    <string name="sync_status">Tila</string>
+    <string name="sync_last_synced">Viimeksi synkronoitu: %1$s</string>
+    <string name="sync_pending">Odottaa</string>
+    <string name="sync_storage">Tallennustila</string>
+    <string name="sync_fix_update">Päivitä</string>
+    <string name="sync_fix_sign_in">Kirjaudu palveluun %1$s</string>
+    <string name="sync_fix_enter_key">Anna käyttöavain</string>
+    <string name="sync_fix_remove">Poista tältä laitteelta</string>
 </resources>

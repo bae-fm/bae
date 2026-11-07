@@ -110,7 +110,6 @@
     </plurals>
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_local_only">Endast lokalt</string>
-    <string name="settings_sync_checking">Kontrollerar synkronisering…</string>
     <string name="settings_sync_unreadable">Det gick inte att läsa synkroniseringsstatus</string>
     <string name="settings_pause_between_sides">Paus mellan sidor och skivor</string>
     <string name="settings_side_pause_countdown">Nedräkning</string>
@@ -390,4 +389,12 @@
     <string name="admin_change_stopped">Stoppad</string>
     <string name="dismiss">Avfärda</string>
     <string name="admin_change_approve">Släpp in %1$s</string>
+    <string name="sync_status">Status</string>
+    <string name="sync_last_synced">Senast synkroniserad: %1$s</string>
+    <string name="sync_pending">Väntar</string>
+    <string name="sync_storage">Lagring</string>
+    <string name="sync_fix_update">Uppdatera</string>
+    <string name="sync_fix_sign_in">Logga in på %1$s</string>
+    <string name="sync_fix_enter_key">Ange åtkomstnyckel</string>
+    <string name="sync_fix_remove">Ta bort från den här enheten</string>
 </resources>

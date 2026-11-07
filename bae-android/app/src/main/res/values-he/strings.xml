@@ -109,7 +109,6 @@
     </plurals>
     <string name="settings_sync">סנכרון</string>
     <string name="settings_local_only">מקומי בלבד</string>
-    <string name="settings_sync_checking">בודק סנכרון…</string>
     <string name="settings_sync_unreadable">לא ניתן לקרוא את מצב הסנכרון</string>
     <string name="settings_pause_between_sides">השהיה בין צדדים ודיסקים</string>
     <string name="settings_side_pause_countdown">ספירה לאחור</string>
@@ -398,4 +397,12 @@
     <string name="admin_change_stopped">נעצר</string>
     <string name="dismiss">סגור</string>
     <string name="admin_change_approve">להכניס את %1$s</string>
+    <string name="sync_status">סטטוס</string>
+    <string name="sync_last_synced">סונכרן לאחרונה: %1$s</string>
+    <string name="sync_pending">ממתין</string>
+    <string name="sync_storage">אחסון</string>
+    <string name="sync_fix_update">עדכן</string>
+    <string name="sync_fix_sign_in">היכנס ל-%1$s</string>
+    <string name="sync_fix_enter_key">הזן מפתח גישה</string>
+    <string name="sync_fix_remove">הסר ממכשיר זה</string>
 </resources>

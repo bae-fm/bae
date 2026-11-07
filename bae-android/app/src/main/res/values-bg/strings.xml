@@ -106,7 +106,6 @@
     </plurals>
     <string name="settings_sync">Синхронизиране</string>
     <string name="settings_local_only">Само локално</string>
-    <string name="settings_sync_checking">Проверка на синхронизирането…</string>
     <string name="settings_sync_unreadable">Състоянието на синхронизирането не можа да бъде прочетено</string>
     <string name="settings_pause_between_sides">Пауза между страните и дисковете</string>
     <string name="settings_side_pause_countdown">Обратно броене</string>
@@ -392,4 +391,12 @@
     <string name="admin_change_stopped">Спряно</string>
     <string name="dismiss">Отхвърляне</string>
     <string name="admin_change_approve">Пускане на %1$s</string>
+    <string name="sync_status">Състояние</string>
+    <string name="sync_last_synced">Последно синхронизиране: %1$s</string>
+    <string name="sync_pending">Чакащи</string>
+    <string name="sync_storage">Хранилище</string>
+    <string name="sync_fix_update">Актуализиране</string>
+    <string name="sync_fix_sign_in">Влизане в %1$s</string>
+    <string name="sync_fix_enter_key">Въвеждане на ключ за достъп</string>
+    <string name="sync_fix_remove">Премахване от това устройство</string>
 </resources>

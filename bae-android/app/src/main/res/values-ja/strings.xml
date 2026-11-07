@@ -103,7 +103,6 @@
     </plurals>
     <string name="settings_sync">同期</string>
     <string name="settings_local_only">ローカルのみ</string>
-    <string name="settings_sync_checking">同期を確認中…</string>
     <string name="settings_sync_unreadable">同期の状態を読み取れませんでした</string>
     <string name="settings_pause_between_sides">面やディスクの間で一時停止</string>
     <string name="settings_side_pause_countdown">カウントダウン</string>
@@ -386,4 +385,12 @@
     <string name="admin_change_stopped">停止しました</string>
     <string name="dismiss">閉じる</string>
     <string name="admin_change_approve">%1$sの参加を許可</string>
+    <string name="sync_status">状態</string>
+    <string name="sync_last_synced">最終同期: %1$s</string>
+    <string name="sync_pending">保留中</string>
+    <string name="sync_storage">ストレージ</string>
+    <string name="sync_fix_update">アップデート</string>
+    <string name="sync_fix_sign_in">%1$s にサインイン</string>
+    <string name="sync_fix_enter_key">アクセスキーを入力</string>
+    <string name="sync_fix_remove">このデバイスから削除</string>
 </resources>

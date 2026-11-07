@@ -112,7 +112,6 @@
     </plurals>
     <string name="settings_sync">Synchronizacja</string>
     <string name="settings_local_only">Tylko lokalnie</string>
-    <string name="settings_sync_checking">Sprawdzanie synchronizacji…</string>
     <string name="settings_sync_unreadable">Nie można odczytać stanu synchronizacji</string>
     <string name="settings_pause_between_sides">Pauza między stronami i płytami</string>
     <string name="settings_side_pause_countdown">Odliczanie</string>
@@ -404,4 +403,12 @@
     <string name="admin_change_stopped">Zatrzymano</string>
     <string name="dismiss">Zamknij</string>
     <string name="admin_change_approve">Wpuść %1$s</string>
+    <string name="sync_status">Stan</string>
+    <string name="sync_last_synced">Ostatnia synchronizacja: %1$s</string>
+    <string name="sync_pending">Oczekujące</string>
+    <string name="sync_storage">Magazyn</string>
+    <string name="sync_fix_update">Zaktualizuj</string>
+    <string name="sync_fix_sign_in">Zaloguj się do %1$s</string>
+    <string name="sync_fix_enter_key">Wprowadź klucz dostępu</string>
+    <string name="sync_fix_remove">Usuń z tego urządzenia</string>
 </resources>

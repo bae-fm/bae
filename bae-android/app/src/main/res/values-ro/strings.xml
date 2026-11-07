@@ -114,7 +114,6 @@
     </plurals>
     <string name="settings_sync">Sincronizare</string>
     <string name="settings_local_only">Doar local</string>
-    <string name="settings_sync_checking">Se verifică sincronizarea…</string>
     <string name="settings_sync_unreadable">Starea sincronizării nu a putut fi citită</string>
     <string name="settings_pause_between_sides">Pauză între fețe și discuri</string>
     <string name="settings_side_pause_countdown">Numărătoare inversă</string>
@@ -396,4 +395,12 @@
     <string name="admin_change_stopped">Oprit</string>
     <string name="dismiss">Închide</string>
     <string name="admin_change_approve">Lasă-l pe %1$s să intre</string>
+    <string name="sync_status">Stare</string>
+    <string name="sync_last_synced">Ultima sincronizare: %1$s</string>
+    <string name="sync_pending">În așteptare</string>
+    <string name="sync_storage">Stocare</string>
+    <string name="sync_fix_update">Actualizează</string>
+    <string name="sync_fix_sign_in">Conectează-te la %1$s</string>
+    <string name="sync_fix_enter_key">Introdu cheia de acces</string>
+    <string name="sync_fix_remove">Elimină de pe acest dispozitiv</string>
 </resources>

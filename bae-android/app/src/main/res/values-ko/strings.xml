@@ -103,7 +103,6 @@
     </plurals>
     <string name="settings_sync">동기화</string>
     <string name="settings_local_only">로컬 전용</string>
-    <string name="settings_sync_checking">동기화 확인 중…</string>
     <string name="settings_sync_unreadable">동기화 상태를 읽을 수 없음</string>
     <string name="settings_pause_between_sides">면과 디스크 사이에 일시정지</string>
     <string name="settings_side_pause_countdown">카운트다운</string>
@@ -386,4 +385,12 @@
     <string name="admin_change_stopped">중지됨</string>
     <string name="dismiss">닫기</string>
     <string name="admin_change_approve">%1$s 님 참여 허용</string>
+    <string name="sync_status">상태</string>
+    <string name="sync_last_synced">마지막 동기화: %1$s</string>
+    <string name="sync_pending">대기 중</string>
+    <string name="sync_storage">저장소</string>
+    <string name="sync_fix_update">업데이트</string>
+    <string name="sync_fix_sign_in">%1$s에 로그인</string>
+    <string name="sync_fix_enter_key">액세스 키 입력</string>
+    <string name="sync_fix_remove">이 기기에서 제거</string>
 </resources>

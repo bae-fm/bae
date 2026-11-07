@@ -357,6 +357,7 @@ private fun sessionActions(
         }
     },
     restoreFromCode = { scope.launch { AppSessionHolder.presentDeviceRestore(context, onScreen) } },
+    leaveLibrary = { scope.launch { AppSessionHolder.closeForLibraries(context, onScreen) } },
     reloadLibraries = { scope.launch { AppSessionHolder.reloadLibraries(context) } },
 )
 

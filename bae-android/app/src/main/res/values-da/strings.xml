@@ -110,7 +110,6 @@
     </plurals>
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_local_only">Kun lokalt</string>
-    <string name="settings_sync_checking">Kontrollerer synkronisering…</string>
     <string name="settings_sync_unreadable">Synkroniseringsstatus kunne ikke læses</string>
     <string name="settings_pause_between_sides">Pause mellem sider og diske</string>
     <string name="settings_side_pause_countdown">Nedtælling</string>
@@ -390,4 +389,12 @@
     <string name="admin_change_stopped">Stoppet</string>
     <string name="dismiss">Afvis</string>
     <string name="admin_change_approve">Lad %1$s komme ind</string>
+    <string name="sync_status">Status</string>
+    <string name="sync_last_synced">Senest synkroniseret: %1$s</string>
+    <string name="sync_pending">Afventer</string>
+    <string name="sync_storage">Lagring</string>
+    <string name="sync_fix_update">Opdater</string>
+    <string name="sync_fix_sign_in">Log ind på %1$s</string>
+    <string name="sync_fix_enter_key">Indtast adgangsnøgle</string>
+    <string name="sync_fix_remove">Fjern fra denne enhed</string>
 </resources>
