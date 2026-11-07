@@ -23,7 +23,7 @@ mod watch_batches;
 
 use active_roots::{ActiveRoots, RemovalOutcome};
 pub(crate) use active_roots::{FolderReadingRequest, RootPass};
-pub(crate) use coordinator::{start_watcher, WatcherCommand};
+pub(crate) use coordinator::{run_watcher, WatcherCommand};
 use folder_watcher::FolderWatchSnapshot;
 pub(crate) use folder_watcher::FolderWatcher;
 use root_change::{

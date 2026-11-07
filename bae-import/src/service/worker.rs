@@ -1,5 +1,5 @@
 use super::*;
-use crate::watching::{start_watcher, FolderWatcher, WatchReport};
+use crate::watching::{run_watcher, FolderWatcher, WatchReport};
 use bae_util::worker_thread::WorkerThread;
 
 impl ImportService {
@@ -100,40 +100,38 @@ impl ImportService {
         let bugs = diagnostics.bug_sink();
         let watcher =
             WorkerThread::spawn("folder scan coordinator", bugs.clone(), move |_, watcher_rx| {
-                start_watcher(watcher_rx, fs_rx, watched, folder_watcher, scans_in_memory_tx)
+                run_watcher(watcher_rx, fs_rx, watched, folder_watcher, scans_in_memory_tx)
             });
 
         let worker = WorkerThread::spawn("import worker thread", bugs, move |_, commands_rx| {
-            std::thread::spawn(move || {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("Failed to create import runtime");
-                rt.block_on(async move {
-                    let mut service = ImportService {
-                        commands_rx,
-                        event_tx: event_tx_for_worker,
-                        runtime: runtime_for_worker,
-                        records,
-                        tables,
-                        catalogs,
-                        remote_images,
-                        clock,
-                        ids,
-                        import_cancels,
-                        diagnostics,
-                    };
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("Failed to create import runtime");
+            rt.block_on(async move {
+                let mut service = ImportService {
+                    commands_rx,
+                    event_tx: event_tx_for_worker,
+                    runtime: runtime_for_worker,
+                    records,
+                    tables,
+                    catalogs,
+                    remote_images,
+                    clock,
+                    ids,
+                    import_cancels,
+                    diagnostics,
+                };
 
-                    while let Some(message) = service.commands_rx.recv().await {
-                        match message {
-                            ImportWorkerMessage::Import { command, expectation } => {
-                                service.do_import(command, expectation).await
-                            }
-                            ImportWorkerMessage::Shutdown => break,
+                while let Some(message) = service.commands_rx.recv().await {
+                    match message {
+                        ImportWorkerMessage::Import { command, expectation } => {
+                            service.do_import(command, expectation).await
                         }
+                        ImportWorkerMessage::Shutdown => break,
                     }
-                });
-            })
+                }
+            });
         });
 
         let release_reads =

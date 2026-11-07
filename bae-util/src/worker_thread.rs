@@ -2,7 +2,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use coven::task::{blocking_completing, report, Bug, BugSinkRef, TaskFailed};
+use coven::task::{blocking_completing, caught_sync, report, Bug, BugSinkRef, TaskFailed};
 use tokio::sync::mpsc;
 
 use crate::task_failure::panic_message;
@@ -16,10 +16,11 @@ use crate::task_failure::panic_message;
 /// clone runs teardown has both the way to stop the thread and the way to wait
 /// for it.
 pub struct WorkerThread<M> {
-    /// Names the worker in the warning a dropped message logs, and in the bug
-    /// a panic that ended its thread is reported as.
+    /// Names the worker's thread, the warning a dropped message logs, and the
+    /// bug a panic in the thread is reported as.
     name: &'static str,
-    /// Where a panic that ended the thread is reported, seen at the join.
+    /// Where a panic that escaped the thread's own catch is reported, seen at
+    /// the join.
     bugs: BugSinkRef,
     tx: mpsc::UnboundedSender<M>,
     /// Taken by whichever clone joins; a later `stop_and_join` finds `None` and
@@ -39,24 +40,36 @@ impl<M> Clone for WorkerThread<M> {
     }
 }
 
-impl<M> WorkerThread<M> {
-    /// Open the channel and hand it to `spawn`, which starts the thread that
-    /// drains it. Both ends go in: a worker whose loop sends itself messages —
-    /// or hands a sender to what it drives — gets the one paired with its own
-    /// receiver rather than a loose one the caller had to keep straight. A
-    /// panic that ended the thread goes to `bugs` at the join.
+impl<M: Send + 'static> WorkerThread<M> {
+    /// Open the channel and start the thread named `name`, which runs `body`
+    /// to drain it. Both ends go in: a worker whose loop sends itself
+    /// messages — or hands a sender to what it drives — gets the one paired
+    /// with its own receiver rather than a loose one the caller had to keep
+    /// straight. A panic in `body` goes to `bugs` as it happens, on the
+    /// thread, which then ends; the join does not report it again.
+    ///
+    /// Panics if the system refuses the thread, as `std::thread::spawn` does.
     pub fn spawn(
         name: &'static str,
         bugs: BugSinkRef,
-        spawn: impl FnOnce(
-            mpsc::UnboundedSender<M>,
-            mpsc::UnboundedReceiver<M>,
-        ) -> std::thread::JoinHandle<()>,
+        body: impl FnOnce(mpsc::UnboundedSender<M>, mpsc::UnboundedReceiver<M>) + Send + 'static,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
-        Self { name, bugs, tx: tx.clone(), thread: Arc::new(Mutex::new(Some(spawn(tx, rx)))) }
+        let body_tx = tx.clone();
+        let heard = bugs.clone();
+        let thread = std::thread::Builder::new()
+            .name(name.to_string())
+            .spawn(move || {
+                if let Err(bug) = caught_sync(name, move || body(body_tx, rx)) {
+                    report(heard.as_ref(), &bug);
+                }
+            })
+            .unwrap_or_else(|error| panic!("start the {name} thread: {error}"));
+        Self { name, bugs, tx, thread: Arc::new(Mutex::new(Some(thread))) }
     }
+}
 
+impl<M> WorkerThread<M> {
     pub fn send(&self, message: M) -> Result<(), mpsc::error::SendError<M>> {
         self.tx.send(message)
     }
@@ -80,8 +93,9 @@ impl<M> WorkerThread<M> {
     /// caller that takes the join handle, so a second `stop_and_join` neither
     /// re-sends it nor joins again.
     ///
-    /// A panic that ended the thread is reported to the worker's bug sink,
-    /// not raised again: this runs on teardown paths that must not unwind.
+    /// The thread reported its own panic as it happened; one that escaped
+    /// that catch is reported to the worker's bug sink here, not raised
+    /// again: this runs on teardown paths that must not unwind.
     pub fn stop_and_join(&self, stop: impl FnOnce(&mpsc::UnboundedSender<M>)) {
         let Some(thread) = self.thread.lock().unwrap().take() else {
             return;
@@ -97,8 +111,8 @@ impl<M> WorkerThread<M> {
     /// off-worker so it doesn't stall a runtime thread. The two share the one
     /// take-once join handle, so whichever runs first stops the thread and the
     /// other returns. The join runs to its end even when this caller stops
-    /// waiting, and a panic that ended the thread reaches the bug sink
-    /// either way.
+    /// waiting, and a panic that escaped the thread's own catch reaches the
+    /// bug sink either way.
     pub async fn stop_and_join_async<F: std::future::Future<Output = ()>>(
         &self,
         stop: impl FnOnce(&mpsc::UnboundedSender<M>) -> F,
@@ -122,9 +136,13 @@ impl<M> WorkerThread<M> {
 }
 
 /// Wait for the worker `name`'s thread to exit, and the bug its panic was if
-/// one ended it.
+/// one escaped the thread's own catch.
 fn joined_thread(name: &'static str, thread: std::thread::JoinHandle<()>) -> Result<(), Bug> {
     thread
         .join()
         .map_err(|payload| Bug { operation: name, message: panic_message(payload.as_ref()) })
 }
+
+#[cfg(test)]
+#[path = "worker_thread_tests.rs"]
+mod tests;

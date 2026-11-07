@@ -48,17 +48,17 @@ pub(crate) enum WatcherCommand {
     },
 }
 
-/// The folder-watch coordinator. The store is the one authority on what
-/// is watched, so events from a watch left on a removed folder match
-/// nothing. What it holds of each root's scan that no table does goes out on
-/// `in_memory`.
-pub(crate) fn start_watcher(
+/// The folder-watch coordinator, run on the calling thread until it is told
+/// to stop. The store is the one authority on what is watched, so events from
+/// a watch left on a removed folder match nothing. What it holds of each
+/// root's scan that no table does goes out on `in_memory`.
+pub(crate) fn run_watcher(
     cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
     fs_rx: mpsc::UnboundedReceiver<WatchReport>,
     services: crate::ImportServices,
     folder_watcher: Arc<FolderWatcher>,
     in_memory: tokio::sync::watch::Sender<crate::folder_scan_status::FolderScansInMemory>,
-) -> std::thread::JoinHandle<()> {
+) {
     let removal_backend = Arc::new(ServiceRootRemovalBackend::new(
         folder_watcher.clone(),
         services.tables.clone(),
@@ -68,97 +68,95 @@ pub(crate) fn start_watcher(
     let starter: RootScanStarter = Arc::new(move |id, path, pass, completion_tx| {
         spawn_root_pass(id, path, pass, scan.clone(), completion_tx)
     });
-    start_watcher_with_starter(cmd_rx, fs_rx, services, starter, removal_backend, in_memory)
+    run_watcher_with_starter(cmd_rx, fs_rx, services, starter, removal_backend, in_memory)
 }
 
-pub(super) fn start_watcher_with_starter(
+pub(super) fn run_watcher_with_starter(
     mut cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
     mut fs_rx: mpsc::UnboundedReceiver<WatchReport>,
     services: crate::ImportServices,
     starter: RootScanStarter,
     removal_backend: Arc<dyn RootRemovalBackend>,
     in_memory: tokio::sync::watch::Sender<crate::folder_scan_status::FolderScansInMemory>,
-) -> std::thread::JoinHandle<()> {
+) {
     let crate::ImportServices { event_tx, tables, folder_state_commit, diagnostics, clock, .. } =
         services;
-    std::thread::spawn(move || {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("folder scan coordinator runtime");
-        runtime.block_on(async move {
-            let (scan_completions, mut scan_completion_rx) = mpsc::unbounded_channel();
-            let (removal_completions, mut removal_completion_rx) = mpsc::unbounded_channel();
-            let (checked_tx, mut checked_rx) = mpsc::unbounded_channel();
-            let active_roots = ActiveRoots::new(
-                starter,
-                removal_backend,
-                folder_state_commit.clone(),
-                diagnostics.clone(),
-                scan_completions,
-                removal_completions,
-                in_memory,
-            );
-            let mut coordinator =
-                Coordinator::new(active_roots, event_tx, tables, diagnostics, checked_tx);
-            // The next check of the network folders: one period after the
-            // coordinator starts, then one period after each check is taken.
-            let mut next_check = clock.deadline(crate::volume::CHECK_PERIOD);
-            loop {
-                let event = tokio::select! {
-                    biased;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("folder scan coordinator runtime");
+    runtime.block_on(async move {
+        let (scan_completions, mut scan_completion_rx) = mpsc::unbounded_channel();
+        let (removal_completions, mut removal_completion_rx) = mpsc::unbounded_channel();
+        let (checked_tx, mut checked_rx) = mpsc::unbounded_channel();
+        let active_roots = ActiveRoots::new(
+            starter,
+            removal_backend,
+            folder_state_commit.clone(),
+            diagnostics.clone(),
+            scan_completions,
+            removal_completions,
+            in_memory,
+        );
+        let mut coordinator =
+            Coordinator::new(active_roots, event_tx, tables, diagnostics, checked_tx);
+        // The next check of the network folders: one period after the
+        // coordinator starts, then one period after each check is taken.
+        let mut next_check = clock.deadline(crate::volume::CHECK_PERIOD);
+        loop {
+            let event = tokio::select! {
+                biased;
 
-                    cmd = cmd_rx.recv() => match cmd {
-                        None => {
-                            coordinator.active_roots.cancel_scans();
-                            break;
+                cmd = cmd_rx.recv() => match cmd {
+                    None => {
+                        coordinator.active_roots.cancel_scans();
+                        break;
+                    }
+                    Some(WatcherCommand::Shutdown { completion }) => {
+                        // The thread ends here whatever the shutdown
+                        // does, since its owner joins it next.
+                        if let Err(failed) = bae_util::task_failure::caught(
+                            "stop the folder scan coordinator",
+                            coordinator.active_roots.shutdown(),
+                        )
+                        .await
+                        {
+                            coordinator.diagnostics.panicked(failed);
                         }
-                        Some(WatcherCommand::Shutdown { completion }) => {
-                            // The thread ends here whatever the shutdown
-                            // does, since its owner joins it next.
-                            if let Err(failed) = bae_util::task_failure::caught(
-                                "stop the folder scan coordinator",
-                                coordinator.active_roots.shutdown(),
-                            )
-                            .await
-                            {
-                                coordinator.diagnostics.panicked(failed);
-                            }
-                            if completion.send(()).is_err() {
-                                debug!("import handle dropped during folder scan shutdown");
-                            }
-                            return;
+                        if completion.send(()).is_err() {
+                            debug!("import handle dropped during folder scan shutdown");
                         }
-                        Some(command) => CoordinatorEvent::Command(command),
-                    },
-                    Some(completion) = removal_completion_rx.recv() => {
-                        CoordinatorEvent::RemovalFinished(completion)
+                        return;
                     }
-                    Some(completion) = scan_completion_rx.recv() => {
-                        CoordinatorEvent::ScanFinished(completion)
-                    }
-                    Some(report) = fs_rx.recv() => CoordinatorEvent::WatchReport(report),
-                    Some((root, found)) = checked_rx.recv() => {
-                        CoordinatorEvent::NetworkChecked { root, found }
-                    }
-                    () = &mut next_check => {
-                        next_check = clock.deadline(crate::volume::CHECK_PERIOD);
-                        CoordinatorEvent::Tick
-                    }
-                };
-                // One event that panics is reported and ends as its own
-                // failure would: a caller waiting on it hears the wait end
-                // when its answer is dropped. The coordinator goes on to
-                // the next.
-                let operation = event.operation();
-                if let Err(failed) =
-                    bae_util::task_failure::caught(operation, coordinator.take(event)).await
-                {
-                    coordinator.diagnostics.panicked(failed);
+                    Some(command) => CoordinatorEvent::Command(command),
+                },
+                Some(completion) = removal_completion_rx.recv() => {
+                    CoordinatorEvent::RemovalFinished(completion)
                 }
+                Some(completion) = scan_completion_rx.recv() => {
+                    CoordinatorEvent::ScanFinished(completion)
+                }
+                Some(report) = fs_rx.recv() => CoordinatorEvent::WatchReport(report),
+                Some((root, found)) = checked_rx.recv() => {
+                    CoordinatorEvent::NetworkChecked { root, found }
+                }
+                () = &mut next_check => {
+                    next_check = clock.deadline(crate::volume::CHECK_PERIOD);
+                    CoordinatorEvent::Tick
+                }
+            };
+            // One event that panics is reported and ends as its own
+            // failure would: a caller waiting on it hears the wait end
+            // when its answer is dropped. The coordinator goes on to
+            // the next.
+            let operation = event.operation();
+            if let Err(failed) =
+                bae_util::task_failure::caught(operation, coordinator.take(event)).await
+            {
+                coordinator.diagnostics.panicked(failed);
             }
-        });
-    })
+        }
+    });
 }
 
 /// One thing the coordinator's loop takes up, apart from stopping.

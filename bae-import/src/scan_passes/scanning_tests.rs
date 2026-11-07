@@ -121,13 +121,11 @@ fn start_coordinator(
     let (_fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
     let (in_memory_tx, in_memory) =
         tokio::sync::watch::channel(crate::folder_scan_status::FolderScansInMemory::new());
-    let coordinator = crate::watching::start_watcher(
-        command_rx,
-        fs_rx,
-        scan.services.services.clone(),
-        scan.services.folder_watcher.clone(),
-        in_memory_tx,
-    );
+    let services = scan.services.services.clone();
+    let folder_watcher = scan.services.folder_watcher.clone();
+    let coordinator = std::thread::spawn(move || {
+        crate::watching::run_watcher(command_rx, fs_rx, services, folder_watcher, in_memory_tx)
+    });
     (coordinator, in_memory)
 }
 

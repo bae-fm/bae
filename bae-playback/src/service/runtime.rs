@@ -750,87 +750,82 @@ impl PlaybackService {
                         }
                     }
                 });
-                std::thread::spawn(move || {
-                    let rt = tokio::runtime::Builder::new_current_thread()
-                        .enable_all()
-                        .build()
-                        .expect("Failed to create runtime");
-                    rt.block_on(async move {
-                        let Some((audio_device, audio_output)) =
-                            open_audio_device_and_output(custom_device, {
-                                let command_tx = command_tx.clone();
-                                crate::audio_output::InvalidationReport::new(move || {
-                                    dispatch_command(
-                                        &command_tx,
-                                        PlaybackCommand::OutputInvalidated,
-                                    )
-                                })
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("Failed to create runtime");
+                rt.block_on(async move {
+                    let Some((audio_device, audio_output)) =
+                        open_audio_device_and_output(custom_device, {
+                            let command_tx = command_tx.clone();
+                            crate::audio_output::InvalidationReport::new(move || {
+                                dispatch_command(&command_tx, PlaybackCommand::OutputInvalidated)
                             })
-                        else {
-                            return;
-                        };
-                        let preview = PreviewPlayer::new(
-                            progress_tx.clone(),
-                            command_tx.clone(),
-                            position_update_interval_ms,
-                            diagnostics.clone(),
-                        );
-                        let staged_sides = advance::track_infos_follow(
-                            &store,
-                            "the staged crossing's sides",
-                            &diagnostics,
-                        );
-                        let held_tracks = advance::track_infos_follow(
-                            &store,
-                            "the tracks playback holds",
-                            &diagnostics,
-                        );
-                        let mut service = PlaybackService {
-                            store,
-                            records,
-                            people,
-                            ids,
-                            diagnostics,
-                            command_tx: command_tx.clone(),
-                            command_rx,
-                            progress_tx,
-                            playback_queue,
-                            audio_focus,
-                            audio_device,
-                            audio_output,
-                            output: None,
-                            slot: PlaybackSlot::Stopped,
-                            listening: None,
-                            buffered_listening: Vec::new(),
-                            audible_completion: None,
-                            load_generation_counter: 0,
-                            preloaded_next: None,
-                            volume: OutputVolume::new(),
-                            preview,
-                            position_update_interval_ms,
-                            file_buffers: FileBuffers::new(service_arbiter, playing_bytes),
-                            starvation_episode: None,
-                            persisted_position: None,
-                            first_audio_pending: None,
-                            renderer: Renderer::Local,
-                            clock,
-                            staged_sides,
-                            held_tracks,
-                        };
-                        // "Restore on launch" off starts with nothing in playback;
-                        // opening the library emptied the queue for it.
-                        if restore_playback {
-                            let restored =
-                                caught("restore playback", service.restore_from_cache()).await;
-                            if let Err(failed) = restored {
-                                service.recover_from_panic(failed).await;
-                            }
-                        } else {
-                            debug!("restore on launch is off; starting with nothing in playback");
+                        })
+                    else {
+                        return;
+                    };
+                    let preview = PreviewPlayer::new(
+                        progress_tx.clone(),
+                        command_tx.clone(),
+                        position_update_interval_ms,
+                        diagnostics.clone(),
+                    );
+                    let staged_sides = advance::track_infos_follow(
+                        &store,
+                        "the staged crossing's sides",
+                        &diagnostics,
+                    );
+                    let held_tracks = advance::track_infos_follow(
+                        &store,
+                        "the tracks playback holds",
+                        &diagnostics,
+                    );
+                    let mut service = PlaybackService {
+                        store,
+                        records,
+                        people,
+                        ids,
+                        diagnostics,
+                        command_tx: command_tx.clone(),
+                        command_rx,
+                        progress_tx,
+                        playback_queue,
+                        audio_focus,
+                        audio_device,
+                        audio_output,
+                        output: None,
+                        slot: PlaybackSlot::Stopped,
+                        listening: None,
+                        buffered_listening: Vec::new(),
+                        audible_completion: None,
+                        load_generation_counter: 0,
+                        preloaded_next: None,
+                        volume: OutputVolume::new(),
+                        preview,
+                        position_update_interval_ms,
+                        file_buffers: FileBuffers::new(service_arbiter, playing_bytes),
+                        starvation_episode: None,
+                        persisted_position: None,
+                        first_audio_pending: None,
+                        renderer: Renderer::Local,
+                        clock,
+                        staged_sides,
+                        held_tracks,
+                    };
+                    // "Restore on launch" off starts with nothing in playback;
+                    // opening the library emptied the queue for it.
+                    if restore_playback {
+                        let restored =
+                            caught("restore playback", service.restore_from_cache()).await;
+                        if let Err(failed) = restored {
+                            service.recover_from_panic(failed).await;
                         }
-                        service.run().await;
-                    });
-                })
+                    } else {
+                        debug!("restore on launch is off; starting with nothing in playback");
+                    }
+                    service.run().await;
+                });
             },
         );
         PlaybackHandle::new(worker, progress_handle, arbiter, playing_bytes_rx)

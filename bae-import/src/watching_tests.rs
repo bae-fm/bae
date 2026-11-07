@@ -336,19 +336,23 @@ impl CoordinatorHarness {
         let events = tokio::sync::Mutex::new(test.event_tx().every_event());
         let (scans_in_memory_tx, scans_in_memory) =
             tokio::sync::watch::channel(crate::folder_scan_status::FolderScansInMemory::new());
-        let coordinator_thread = coordinator::start_watcher_with_starter(
-            command_rx,
-            fs_rx,
-            test.import_services(
-                test.event_tx().clone(),
-                Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-                Arc::new(crate::folder_scanner::OsDirectoryReader),
-                folder_state_commit.clone(),
-            ),
-            starter,
-            removal_backend.clone(),
-            scans_in_memory_tx,
+        let services = test.import_services(
+            test.event_tx().clone(),
+            Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+            Arc::new(crate::folder_scanner::OsDirectoryReader),
+            folder_state_commit.clone(),
         );
+        let coordinator_removals = removal_backend.clone();
+        let coordinator_thread = std::thread::spawn(move || {
+            coordinator::run_watcher_with_starter(
+                command_rx,
+                fs_rx,
+                services,
+                starter,
+                coordinator_removals,
+                scans_in_memory_tx,
+            )
+        });
         let TestService { db, temp, .. } = test;
         Self {
             commands,
