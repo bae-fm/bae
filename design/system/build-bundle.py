@@ -5,8 +5,8 @@ The design system's format takes one classic script, components/bundle.js. Its
 sources are split by area in components/src/, read in file-name order: the first
 opens the bundle's function and the last (99-export.js) registers every
 component on window.Bae and closes it. Line 1 of the result is the header the
-format reads: the namespace and the components, group by group. The sheep from
-assets/Logos goes in as a data URI, so the bundle needs no files beside it.
+format reads: the namespace and the components, group by group. The drawings
+from assets/Logos go in as data URIs, so the bundle needs no files beside it.
 
 Usage: build-bundle.py [components-dir]   (default: components beside this file)
 """
@@ -24,8 +24,8 @@ sources = sorted((components / "src").glob("*.js"))
 if not sources:
     sys.exit(f"no sources in {components / 'src'}")
 body = "".join(path.read_text() for path in sources)
-sheep = components.parent / "assets" / "Logos" / "bae-sheep.svg"
-body = body.replace("@@bae-sheep.svg@@", base64.b64encode(sheep.read_bytes()).decode())
+logos = components.parent / "assets" / "Logos"
+body = re.sub(r"@@([\w.-]+)@@", lambda m: base64.b64encode((logos / m.group(1)).read_bytes()).decode(), body)
 exports = body[body.rindex("window.Bae = Object.assign(window.Bae || {}, {"):]
 names = re.findall(r"(\w+): \1\b", exports)
 if not names:

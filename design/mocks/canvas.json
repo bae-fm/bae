@@ -3274,6 +3274,14 @@
    "w": 412,
    "x": 1968,
    "y": 1200
+  },
+  "IconWeb.dc.html": {
+   "h": 640,
+   "page": "logo",
+   "title": "Web: favicon",
+   "w": 412,
+   "x": 2460,
+   "y": 1200
   }
  },
  "createdOnFiles": {
@@ -4606,7 +4614,7 @@
   },
   "row-logo-icons": {
    "kind": "title1",
-   "maxW": 2380,
+   "maxW": 2872,
    "page": "logo",
    "text": "App icons",
    "w": 240,
@@ -4616,9 +4624,9 @@
   "code-logo": {
    "page": "logo",
    "size": 24,
-   "text": "What the code needs for these boards:\n- App icons for iOS, Windows and Linux. Today only macOS and Android have one.\n- The sheep on Welcome on macOS, and on About on both. Android’s Welcome has it, from an old PNG (drawable-xxhdpi/sheep_icon.png) that still shows the line under the player.",
+   "text": "What the code needs for these boards:\n- App icons for iOS, Windows and Linux. Today only macOS and Android have one.\n- The sheep on Welcome on macOS, and on About on both. Android’s Welcome has it, from an old PNG (drawable-xxhdpi/sheep_icon.png) that still shows the line under the player.\n- The small sheep as the website’s favicon. Today it’s app-icon.png.",
    "w": 420,
-   "x": 2460,
+   "x": 2952,
    "y": 1200
   }
  },
@@ -5030,7 +5038,8 @@
   "IconIOS.dc.html",
   "IconAndroid.dc.html",
   "IconWindows.dc.html",
-  "IconLinux.dc.html"
+  "IconLinux.dc.html",
+  "IconWeb.dc.html"
  ],
  "pages": [
   {

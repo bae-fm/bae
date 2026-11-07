@@ -41,10 +41,11 @@ Icons appear only when they are the control (copy, a chevron, a disclosure mark)
 The sheep is bae's logo: `assets/Logos/bae-sheep.svg`, with no background of its own. It's the product's own artwork, so Iconography's rule doesn't apply to it.
 
 - **Sheep and "bae" together:** where bae introduces itself: Welcome, About and this system's cover. The sheep on top, both centered, the word in the `wordmark` style.
-- **Sheep alone:** where the system or the space already says the name: app icons and favicons. Never under 32px. On an app icon it sits on a pale pink tile, `#FFD6E7`.
+- **Sheep alone:** where the system or the space already says the name: app icons and favicons. On an app icon it sits on a pale pink tile, `#FFD6E7`.
+- **Small sheep:** at 32px and under, the full drawing loses its detail, so favicons and small icons use `bae-favicon-16.svg` and `bae-favicon-32.svg`, drawn pixel by pixel for those sizes. Show them at exactly those sizes.
 - **"bae" alone:** in sentences, titles and menus, as plain text in the style around it.
 
-`Logo` draws the three forms. `AppIcon` draws each platform's icon: the sheep on the pale pink tile on macOS, iOS and Android, and with no tile on Windows and Linux.
+`Logo` draws these forms. `AppIcon` draws each platform's icon: the sheep on the pale pink tile on macOS, iOS and Android, and with no tile on Windows and Linux.
 
 ## Samples
 

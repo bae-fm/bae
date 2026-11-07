@@ -324,7 +324,7 @@ export declare function AndroidListRow(props: { title: string; sub?: string; alb
 
 // ---- Logo and app icons ----
 
-/** The logo in one of its three forms: pair is the sheep over the word, sheep the sheep alone, word the word alone. size is the sheep's width. */
-export declare function Logo(props: { kind?: 'pair' | 'sheep' | 'word'; size?: number }): React.ReactElement;
+/** The logo in one of its three forms: pair is the sheep over the word, sheep the sheep alone, word the word alone, small the drawing for 32 pixels and under. size is the sheep's width. */
+export declare function Logo(props: { kind?: 'pair' | 'sheep' | 'word' | 'small'; size?: number }): React.ReactElement;
 /** An app icon as a platform shows it. macOS, iOS and Android put the sheep on the pale pink tile; Windows and Linux show it with no tile. mask is Android's launcher shape. */
 export declare function AppIcon(props: { platform?: 'macos' | 'ios' | 'android' | 'windows' | 'linux'; size?: number; mask?: 'circle' | 'squircle' | 'rounded' }): React.ReactElement;
