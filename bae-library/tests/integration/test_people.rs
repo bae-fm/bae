@@ -710,7 +710,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
 }
 
 /// Rowan's join waits on the guest device when someone types the owner's
-/// recovery code there. A restore can't start on the join's installation:
+/// restore code there. A restore can't start on the join's installation:
 /// coven refuses it as another call's under way, and the join stays listed
 /// to go on with (§5.6).
 #[test]

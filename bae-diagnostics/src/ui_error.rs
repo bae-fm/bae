@@ -133,7 +133,7 @@ pub enum UiErrorCategory {
     /// this device, and only finishing it goes on.
     RestoreRegistered,
     /// The person's keys were replaced on another of their devices, so a
-    /// restore with an older recovery code, or a reset of a copy that holds
+    /// restore with an older restore code, or a reset of a copy that holds
     /// the replaced keys, can't add this device: only the current recovery
     /// code restores the library.
     MemberKeysReplaced,
