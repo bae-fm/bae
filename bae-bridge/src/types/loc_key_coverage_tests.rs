@@ -377,17 +377,30 @@ fn produced_keys() -> Vec<String> {
         keys.extend(action.key().map(str::to_string));
     }
     assert!(BridgePendingAction::Wait.key().is_none());
-    for indicator in [
-        BridgeSyncIndicator::SettingUpStorage,
-        BridgeSyncIndicator::Stopped,
-        BridgeSyncIndicator::Syncing,
-        BridgeSyncIndicator::Synced,
-        BridgeSyncIndicator::Offline,
-        BridgeSyncIndicator::Failed,
-        BridgeSyncIndicator::Waiting { items: 2 },
+    for status in [
+        BridgeSyncStatusWord::NotSynced,
+        BridgeSyncStatusWord::SettingUpStorage,
+        BridgeSyncStatusWord::Syncing,
+        BridgeSyncStatusWord::WaitingToSync,
+        BridgeSyncStatusWord::Synced,
+        BridgeSyncStatusWord::OfflineWithUnsentChanges,
+        BridgeSyncStatusWord::Offline,
+        BridgeSyncStatusWord::UpdateNeeded,
+        BridgeSyncStatusWord::SignedOutOfDropbox,
+        BridgeSyncStatusWord::SignedOutOfOneDrive,
+        BridgeSyncStatusWord::SignedOutOfICloud,
+        BridgeSyncStatusWord::AccessKeyNotAccepted,
+        BridgeSyncStatusWord::DeviceNeedsReset,
+        BridgeSyncStatusWord::NoAccess,
+        BridgeSyncStatusWord::FolderMissing,
+        BridgeSyncStatusWord::ClockWrong,
+        BridgeSyncStatusWord::RemovedFromTheLibrary,
+        BridgeSyncStatusWord::StorageFull,
+        BridgeSyncStatusWord::SyncFailed,
     ] {
-        keys.push(bridge_sync_indicator_key(&indicator));
+        keys.push(bridge_sync_status_key(status));
     }
+    keys.extend(sync_cause_messages().into_iter().map(|message| message.key));
     for outcome in [
         BridgeSyncRetryOutcome::Synced,
         BridgeSyncRetryOutcome::Failed { error: BridgeError::Cancelled },
@@ -664,6 +677,44 @@ fn playback_error_reason_lines() -> Vec<BridgeMessage> {
     .collect()
 }
 
+/// Every cause a sync state gives, as a UI makes it a message: a cause that
+/// names when sync resumes takes that time as its last argument.
+fn sync_cause_messages() -> Vec<BridgeMessage> {
+    use bae_sync_status::SyncCauseLine as C;
+    [
+        C::UploadsPaused,
+        C::UploadFailedWillRetry,
+        C::ProviderWait { provider: coven::CloudProvider::Dropbox, until: std::time::UNIX_EPOCH },
+        C::UpdateBae,
+        C::AskForAccess,
+        C::CheckTheClock,
+        C::OldCopy,
+        C::FreeStorageSpace,
+        C::EnterAccessKey,
+        C::SignInToICloud,
+        C::FileMissingOrChanged { file: Some("Cover.jpg".to_string()) },
+        C::FileMissingOrChanged { file: None },
+        C::DeviceDiskFailed,
+        C::DeviceKeysUnreadable,
+        C::LibraryUnreadable,
+        C::ProviderError {
+            provider: coven::CloudProvider::Dropbox,
+            detail: "Internal server error".to_string(),
+        },
+        C::ChangeDamaged,
+        C::SomethingWentWrong,
+    ]
+    .into_iter()
+    .map(|cause| {
+        let BridgeSyncCause { mut message, resumes_at } = BridgeSyncCause::from_core(cause);
+        if resumes_at.is_some() {
+            message.args.push(BridgeMessageArg { name: "time".to_string(), value: "3:40".into() });
+        }
+        message
+    })
+    .collect()
+}
+
 fn catalog() -> bae_loc::Catalog {
     bae_loc::Catalog::from_toml(include_str!("../../loc/catalog.toml")).expect("catalog parses")
 }
@@ -708,6 +759,7 @@ fn message_arguments_follow_the_source_message() {
         .chain(playability_messages())
         .chain(playback_error_reason_lines())
         .chain(catalog_apply_step_lines())
+        .chain(sync_cause_messages())
     {
         let source = &cat.messages[&message.key].value;
         let expected = bae_loc::mf1::referenced_args(

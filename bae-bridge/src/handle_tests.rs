@@ -560,50 +560,57 @@ fn work_detail_conversion_preserves_work_release_rows() {
     assert_eq!(release.media, two_cds);
 }
 
-/// A failing sync cycle's diagnostic detail crosses beside the category the UI
-/// localizes.
+/// A start that failed crosses as sync failed, its cause the category line
+/// the UI localizes, with Retry now while sync runs.
 #[test]
-fn a_failed_sync_status_crosses_with_its_fault() {
-    let fault = "sync cycle: pull Store commits: database: retained Merge replay \
-                 has an unresolved foreign-key dependency";
+fn a_failed_start_crosses_as_sync_failed_with_its_category_line() {
     let snapshot = bae_sync_status::SyncStatusSnapshot {
-        error: Some(bae_diagnostics::UiError::internal(fault)),
-        coven: coven::SyncStatus { state: coven::SyncState::NotSynced, last_synced: None },
-        pending: Vec::new(),
-        retry_effect: coven::RetryEffect::Pass,
-        storage_setup: None,
-    };
-
-    let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
-
-    assert_eq!(bridge.indicator, None);
-    let Some(crate::types::BridgeError::Diagnostic { category, detail }) = bridge.error else {
-        panic!("a recorded sync failure crosses as a diagnostic");
-    };
-    assert_eq!(category, crate::types::BridgeErrorCategory::Internal);
-    assert_eq!(detail, fault, "the fault crosses whole, never summarized away");
-}
-
-/// A healthy cycle carries no error, so no surface renders a failure for it.
-#[test]
-fn a_healthy_sync_status_crosses_without_an_error() {
-    let snapshot = bae_sync_status::SyncStatusSnapshot {
-        error: None,
+        error: Some(bae_diagnostics::UiError::internal("sync cycle: pull Store commits")),
         coven: coven::SyncStatus { state: coven::SyncState::Synced, last_synced: None },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
+        provider: Some(coven::CloudProvider::S3),
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
-    assert!(bridge.error.is_none());
-    assert_eq!(bridge.indicator, Some(crate::types::BridgeSyncIndicator::Synced));
-    assert!(!bridge.reconnect_offered);
+    assert_eq!(bridge.shown.status, crate::types::BridgeSyncStatusWord::SyncFailed);
+    assert_eq!(bridge.shown.tone, crate::types::BridgeSyncTone::Danger);
+    assert_eq!(
+        bridge.shown.cause.map(|cause| cause.message.key),
+        Some("core.error.category.internal".to_string())
+    );
+    assert_eq!(bridge.shown.fix, Some(crate::types::BridgeSyncFix::RetryNow));
+}
+
+/// A healthy cycle crosses as Synced, green, with nothing to say or do and no
+/// time of its last sync.
+#[test]
+fn a_healthy_sync_status_crosses_as_synced() {
+    let snapshot = bae_sync_status::SyncStatusSnapshot {
+        error: None,
+        coven: coven::SyncStatus {
+            state: coven::SyncState::Synced,
+            last_synced: Some(std::time::UNIX_EPOCH),
+        },
+        pending: Vec::new(),
+        retry_effect: coven::RetryEffect::Pass,
+        storage_setup: None,
+        provider: Some(coven::CloudProvider::Dropbox),
+    };
+
+    let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
+
+    assert_eq!(bridge.shown.status, crate::types::BridgeSyncStatusWord::Synced);
+    assert_eq!(bridge.shown.tone, crate::types::BridgeSyncTone::Success);
+    assert_eq!(bridge.shown.cause, None);
+    assert_eq!(bridge.shown.fix, None);
+    assert_eq!(bridge.shown.last_synced, None);
 }
 
 /// A setup that ended undone crosses with the operation that dismisses it
-/// and its own line; one running crosses as the status line naming it.
+/// and its own line; one running crosses as the status naming it.
 #[test]
 fn a_storage_setup_crosses_undone_or_running() {
     let snapshot = |storage_setup| bae_sync_status::SyncStatusSnapshot {
@@ -612,6 +619,7 @@ fn a_storage_setup_crosses_undone_or_running() {
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: Some(storage_setup),
+        provider: None,
     };
     let undone = bae_sync_status::StorageSetupState::Undone {
         operation: coven::OperationId(7),
@@ -630,18 +638,18 @@ fn a_storage_setup_crosses_undone_or_running() {
         panic!("the undone setup crosses with its operation and why");
     };
     assert_eq!(category, crate::types::BridgeErrorCategory::StorageSetupUndone);
-    assert_eq!(bridge.indicator, None);
+    assert_eq!(bridge.shown.status, crate::types::BridgeSyncStatusWord::NotSynced);
     assert!(!bridge.setup_running);
 
     let running = snapshot(bae_sync_status::StorageSetupState::Running);
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(running);
     assert!(bridge.undone_setup.is_none());
     assert!(bridge.setup_running);
-    assert_eq!(bridge.indicator, Some(crate::types::BridgeSyncIndicator::SettingUpStorage));
+    assert_eq!(bridge.shown.status, crate::types::BridgeSyncStatusWord::SettingUpStorage);
 }
 
-/// A start that failed with storage set up crosses with why and with
-/// Reconnect offered beside it.
+/// A start that failed with sync not running crosses with Reconnect offered
+/// beside why.
 #[test]
 fn a_failed_start_crosses_offering_reconnect() {
     let snapshot = bae_sync_status::SyncStatusSnapshot {
@@ -650,19 +658,19 @@ fn a_failed_start_crosses_offering_reconnect() {
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::NotSyncing,
         storage_setup: None,
+        provider: Some(coven::CloudProvider::S3),
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
-    assert_eq!(bridge.indicator, Some(crate::types::BridgeSyncIndicator::Failed));
-    assert!(bridge.error.is_some());
-    assert!(bridge.reconnect_offered);
+    assert_eq!(bridge.shown.status, crate::types::BridgeSyncStatusWord::SyncFailed);
+    assert_eq!(bridge.shown.fix, Some(crate::types::BridgeSyncFix::Reconnect));
 }
 
-/// The status line shows a failure the connection's pending record shows
-/// already only once, as that record.
+/// A pass the provider failed crosses as sync failed with the provider's
+/// error told as it told it, and the pending record beside it.
 #[test]
-fn a_failure_its_record_shows_crosses_only_as_the_record() {
+fn a_provider_failure_crosses_as_sync_failed_with_the_providers_words() {
     let failure = coven::StorageFailure::Protocol;
     let snapshot = bae_sync_status::SyncStatusSnapshot {
         error: None,
@@ -671,7 +679,7 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
                 failure: coven::StatusFailure::Storage(failure),
                 error: "storage refused the pass".into(),
             })),
-            last_synced: None,
+            last_synced: Some(std::time::UNIX_EPOCH),
         },
         pending: vec![bae_sync_status::PendingItem::before_open(coven::PendingRecord::new(
             coven::PendingSubject::Connection,
@@ -683,12 +691,25 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
         ))],
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
+        provider: Some(coven::CloudProvider::S3),
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
-    assert!(bridge.error.is_none());
-    assert_eq!(bridge.indicator, Some(crate::types::BridgeSyncIndicator::Waiting { items: 1 }));
+    assert_eq!(bridge.pending.len(), 1);
+    let cause = bridge.shown.cause.expect("a failure says why");
+    assert_eq!(cause.message.key, "core.sync.cause.provider_error");
+    assert_eq!(
+        cause.message.args,
+        vec![
+            crate::types::BridgeMessageArg { name: "provider".into(), value: "S3".into() },
+            crate::types::BridgeMessageArg {
+                name: "detail".into(),
+                value: "storage refused the pass".into()
+            },
+        ]
+    );
+    assert_eq!(bridge.shown.last_synced, Some(std::time::UNIX_EPOCH));
 }
 
 /// One candidate's runtime pulled end to end: a claim crosses as its import

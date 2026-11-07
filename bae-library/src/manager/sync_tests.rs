@@ -351,7 +351,10 @@ async fn only_a_failed_start_with_storage_set_up_offers_reconnect() {
     manager.start().unwrap();
     manager.attach_and_start_sync_at_startup().await;
     let status = manager.sync_status().await.unwrap();
-    assert!(status.indicator().is_some() && !status.running(), "{status:?}");
+    assert!(
+        status.shown().status != bae_sync_status::SyncStatusWord::NotSynced && !status.running(),
+        "{status:?}"
+    );
     assert!(status.error.is_some(), "the failed start is recorded: {status:?}");
     assert!(status.reconnect_offered(), "{status:?}");
 
@@ -403,13 +406,14 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
         // write, which ends the failed start, and the status reads its rows
         // after the state it shows.
         assert!(
-            value.indicator().is_none() || value.error.is_none(),
+            value.shown().status == bae_sync_status::SyncStatusWord::NotSynced
+                || value.error.is_none(),
             "sync set up shows a failed start: {value:?}"
         );
         value.coven.state == coven::SyncState::Synced
     })
     .await;
-    assert_eq!(synced.indicator(), Some(bae_sync_status::SyncIndicator::Synced), "{synced:?}");
+    assert_eq!(synced.shown().status, bae_sync_status::SyncStatusWord::Synced, "{synced:?}");
     manager.library.manager().close().await.unwrap();
 }
 

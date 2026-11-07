@@ -369,18 +369,11 @@ pub struct BridgePlaybackContext {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSyncStatusSnapshot {
-    pub error: Option<BridgeError>,
+    /// The top block of the Sync page: the state in words, its color, its
+    /// cause and its fix, and when sync last finished.
+    pub shown: BridgeSyncShown,
     /// What coven waits on, each with the action the person can take.
     pub pending: Vec<crate::types::BridgePendingRecord>,
-    /// What the status line names, or `None` while this device has no
-    /// storage set up. A library with a recorded location in that state has
-    /// lost this device's credentials for it: the app offers signing in to
-    /// that location again.
-    pub indicator: Option<BridgeSyncIndicator>,
-    /// Whether the app offers Reconnect beside `error`: a start failed and
-    /// left sync not running with storage set up on this device.
-    /// `AppHandle::reconnect_sync` starts it again.
-    pub reconnect_offered: bool,
     /// A storage setup runs: a setup screen's, or one past its point of no
     /// return that sync's connection finishes after a relaunch. It records
     /// the library's location as it finishes, so a surface that shows the
@@ -404,15 +397,14 @@ pub struct BridgeUndoneStorageSetup {
 
 impl BridgeSyncStatusSnapshot {
     pub(crate) fn from_core(snapshot: bae_sync_status::SyncStatusSnapshot) -> Self {
-        let indicator = snapshot.indicator().map(crate::types::BridgeSyncIndicator::from_core);
-        let error = snapshot.shown_failure();
-        let reconnect_offered = snapshot.reconnect_offered();
+        let shown = BridgeSyncShown::from_core(snapshot.shown());
         let bae_sync_status::SyncStatusSnapshot {
             coven: _,
             pending,
             error: _,
             retry_effect: _,
             storage_setup,
+            provider: _,
         } = snapshot;
         let setup_running = storage_setup == Some(bae_sync_status::StorageSetupState::Running);
         let undone_setup = match storage_setup {
@@ -425,11 +417,9 @@ impl BridgeSyncStatusSnapshot {
             Some(bae_sync_status::StorageSetupState::Running) | None => None,
         };
         Self {
-            indicator,
-            reconnect_offered,
+            shown,
             setup_running,
             undone_setup,
-            error: error.map(crate::types::BridgeError::from_core),
             pending: pending
                 .into_iter()
                 .map(crate::types::BridgePendingRecord::from_core)
@@ -438,47 +428,237 @@ impl BridgeSyncStatusSnapshot {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSyncIndicator {
+/// The color a sync state reads in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSyncTone {
+    Neutral,
+    Success,
+    Warning,
+    Danger,
+}
+
+/// The sync state, named; `bridge_sync_status_key` gives its words.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSyncStatusWord {
+    /// No storage is set up on this device. The Mac makes libraries; a
+    /// phone joins one, so it never reads this.
+    NotSynced,
     /// A storage setup runs: its call's, or one past its point of no return
     /// that sync's connection finishes.
     SettingUpStorage,
-    Stopped,
     Syncing,
+    WaitingToSync,
     Synced,
+    OfflineWithUnsentChanges,
     Offline,
-    Failed,
-    Waiting {
-        items: u64,
-    },
+    UpdateNeeded,
+    SignedOutOfDropbox,
+    SignedOutOfOneDrive,
+    SignedOutOfICloud,
+    /// An S3 library has no sign-in: its key was not accepted.
+    AccessKeyNotAccepted,
+    DeviceNeedsReset,
+    NoAccess,
+    FolderMissing,
+    ClockWrong,
+    RemovedFromTheLibrary,
+    StorageFull,
+    SyncFailed,
 }
-impl BridgeSyncIndicator {
-    pub(crate) fn from_core(value: bae_sync_status::SyncIndicator) -> Self {
-        match value {
-            bae_sync_status::SyncIndicator::SettingUpStorage => Self::SettingUpStorage,
-            bae_sync_status::SyncIndicator::Stopped => Self::Stopped,
-            bae_sync_status::SyncIndicator::Syncing => Self::Syncing,
-            bae_sync_status::SyncIndicator::Synced => Self::Synced,
-            bae_sync_status::SyncIndicator::Offline => Self::Offline,
-            bae_sync_status::SyncIndicator::Failed => Self::Failed,
-            bae_sync_status::SyncIndicator::Waiting { items } => {
-                Self::Waiting { items: items as u64 }
-            }
+
+/// Why a sync state is what it is: a catalog message, whose arguments are
+/// the message's own. A cause that names when sync resumes also carries that
+/// moment: the UI formats it in the person's locale and passes it as the
+/// message's last argument.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeSyncCause {
+    pub message: BridgeMessage,
+    pub resumes_at: Option<std::time::SystemTime>,
+}
+
+/// What the person can do about a sync state. The button's words are the
+/// platform's own.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSyncFix {
+    ResumeUploads,
+    RetryNow,
+    /// Start sync again after a start that failed.
+    Reconnect,
+    CheckForUpdates,
+    /// Dropbox and OneDrive sign in from bae.
+    SignIn {
+        provider: BridgeCloudProvider,
+    },
+    EnterAccessKey,
+    /// iCloud signs in from the system's settings.
+    OpenSystemSettings,
+    ResetDevice,
+    RemoveFromThisDevice,
+    OpenInBrowser,
+}
+
+/// The top block of the Sync page.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeSyncShown {
+    pub status: BridgeSyncStatusWord,
+    pub tone: BridgeSyncTone,
+    pub cause: Option<BridgeSyncCause>,
+    pub fix: Option<BridgeSyncFix>,
+    /// When sync last finished, under a state that is a problem, never
+    /// under Synced.
+    pub last_synced: Option<std::time::SystemTime>,
+}
+
+impl BridgeSyncShown {
+    pub(crate) fn from_core(shown: bae_sync_status::SyncShown) -> Self {
+        Self {
+            status: BridgeSyncStatusWord::from_core(shown.status),
+            tone: match shown.tone {
+                bae_sync_status::SyncTone::Neutral => BridgeSyncTone::Neutral,
+                bae_sync_status::SyncTone::Success => BridgeSyncTone::Success,
+                bae_sync_status::SyncTone::Warning => BridgeSyncTone::Warning,
+                bae_sync_status::SyncTone::Danger => BridgeSyncTone::Danger,
+            },
+            cause: shown.cause.map(BridgeSyncCause::from_core),
+            fix: shown.fix.map(BridgeSyncFix::from_core),
+            last_synced: shown.last_synced,
         }
     }
 }
 
-/// Waiting uses the indicator's `items` as the catalog's `count` argument.
+impl BridgeSyncStatusWord {
+    pub(crate) fn from_core(word: bae_sync_status::SyncStatusWord) -> Self {
+        use bae_sync_status::SyncStatusWord as W;
+        match word {
+            W::NotSynced => Self::NotSynced,
+            W::SettingUpStorage => Self::SettingUpStorage,
+            W::Syncing => Self::Syncing,
+            W::WaitingToSync => Self::WaitingToSync,
+            W::Synced => Self::Synced,
+            W::OfflineWithUnsentChanges => Self::OfflineWithUnsentChanges,
+            W::Offline => Self::Offline,
+            W::UpdateNeeded => Self::UpdateNeeded,
+            W::SignedOut(coven::CloudProvider::Dropbox) => Self::SignedOutOfDropbox,
+            W::SignedOut(coven::CloudProvider::OneDrive) => Self::SignedOutOfOneDrive,
+            W::SignedOut(coven::CloudProvider::CloudKit) => Self::SignedOutOfICloud,
+            W::SignedOut(coven::CloudProvider::S3) => Self::AccessKeyNotAccepted,
+            W::DeviceNeedsReset => Self::DeviceNeedsReset,
+            W::NoAccess => Self::NoAccess,
+            W::FolderMissing => Self::FolderMissing,
+            W::ClockWrong => Self::ClockWrong,
+            W::RemovedFromTheLibrary => Self::RemovedFromTheLibrary,
+            W::StorageFull => Self::StorageFull,
+            W::SyncFailed => Self::SyncFailed,
+        }
+    }
+}
+
+/// The name a provider goes by in a sentence, the same in every language.
+fn provider_name(provider: coven::CloudProvider) -> &'static str {
+    match provider {
+        coven::CloudProvider::S3 => "S3",
+        coven::CloudProvider::Dropbox => "Dropbox",
+        coven::CloudProvider::OneDrive => "OneDrive",
+        coven::CloudProvider::CloudKit => "iCloud",
+    }
+}
+
+impl BridgeSyncCause {
+    pub(crate) fn from_core(cause: bae_sync_status::SyncCauseLine) -> Self {
+        use bae_sync_status::SyncCauseLine as C;
+        let plain = |key: &str| BridgeMessage { key: key.to_string(), args: Vec::new() };
+        let mut resumes_at = None;
+        let message = match cause {
+            C::UploadsPaused => plain("core.sync.cause.uploads_paused"),
+            C::UploadFailedWillRetry => plain("core.sync.cause.upload_failed"),
+            C::ProviderWait { provider, until } => {
+                resumes_at = Some(until);
+                BridgeMessage {
+                    key: "core.sync.cause.provider_wait".to_string(),
+                    args: vec![BridgeMessageArg::new("provider", provider_name(provider).into())],
+                }
+            }
+            C::UpdateBae => plain("core.sync.cause.update_bae"),
+            C::AskForAccess => plain("core.sync.cause.ask_for_access"),
+            C::CheckTheClock => plain("core.error.storage.clock_skew"),
+            C::OldCopy => plain("core.sync.cause.old_copy"),
+            C::FreeStorageSpace => plain("core.sync.cause.free_space"),
+            C::EnterAccessKey => plain("core.sync.cause.enter_key"),
+            C::SignInToICloud => plain("core.sync.cause.sign_in_icloud"),
+            C::FileMissingOrChanged { file: Some(file) } => BridgeMessage {
+                key: "core.sync.cause.file_changed".to_string(),
+                args: vec![BridgeMessageArg::new("file", file)],
+            },
+            C::FileMissingOrChanged { file: None } => plain("core.sync.cause.file_changed_unnamed"),
+            C::DeviceDiskFailed => plain("core.sync.cause.disk_failed"),
+            C::DeviceKeysUnreadable => plain("core.sync.cause.keys_unreadable"),
+            C::LibraryUnreadable => plain("core.sync.cause.library_unreadable"),
+            C::ProviderError { provider, detail } => BridgeMessage {
+                key: "core.sync.cause.provider_error".to_string(),
+                args: vec![
+                    BridgeMessageArg::new("provider", provider_name(provider).into()),
+                    BridgeMessageArg::new("detail", detail),
+                ],
+            },
+            C::ChangeDamaged => plain("core.sync.cause.change_damaged"),
+            C::SomethingWentWrong => plain("core.sync.cause.went_wrong"),
+            C::Pending(reason) => plain(&BridgePendingReason::from_core(reason, None).key),
+            C::Failure(error) => match crate::types::BridgeError::from_core(error) {
+                BridgeError::Diagnostic { category, .. } => {
+                    plain(&bridge_error_category_key(category))
+                }
+                BridgeError::Cancelled | BridgeError::NotFound { .. } => {
+                    plain("core.sync.cause.went_wrong")
+                }
+            },
+        };
+        Self { message, resumes_at }
+    }
+}
+
+impl BridgeSyncFix {
+    pub(crate) fn from_core(fix: bae_sync_status::SyncFix) -> Self {
+        use bae_sync_status::SyncFix as F;
+        match fix {
+            F::ResumeUploads => Self::ResumeUploads,
+            F::RetryNow => Self::RetryNow,
+            F::Reconnect => Self::Reconnect,
+            F::CheckForUpdates => Self::CheckForUpdates,
+            F::SignIn(provider) => {
+                Self::SignIn { provider: crate::types::BridgeCloudProvider::from_core(&provider) }
+            }
+            F::EnterAccessKey => Self::EnterAccessKey,
+            F::OpenSystemSettings => Self::OpenSystemSettings,
+            F::ResetDevice => Self::ResetDevice,
+            F::RemoveFromThisDevice => Self::RemoveFromThisDevice,
+            F::OpenInBrowser => Self::OpenInBrowser,
+        }
+    }
+}
+
+/// The catalog key of a sync state's words.
 #[uniffi::export]
-pub fn bridge_sync_indicator_key(indicator: &BridgeSyncIndicator) -> String {
-    match indicator {
-        BridgeSyncIndicator::SettingUpStorage => "core.sync.setting_up_storage",
-        BridgeSyncIndicator::Stopped => "core.sync.stopped",
-        BridgeSyncIndicator::Syncing => "core.sync.syncing",
-        BridgeSyncIndicator::Synced => "core.sync.synced",
-        BridgeSyncIndicator::Offline => "core.sync.offline",
-        BridgeSyncIndicator::Failed => "core.sync.failed",
-        BridgeSyncIndicator::Waiting { .. } => "core.sync.waiting",
+pub fn bridge_sync_status_key(status: BridgeSyncStatusWord) -> String {
+    match status {
+        BridgeSyncStatusWord::NotSynced => "core.sync.status.not_synced",
+        BridgeSyncStatusWord::SettingUpStorage => "core.sync.setting_up_storage",
+        BridgeSyncStatusWord::Syncing => "core.sync.syncing",
+        BridgeSyncStatusWord::WaitingToSync => "core.sync.status.waiting_to_sync",
+        BridgeSyncStatusWord::Synced => "core.sync.synced",
+        BridgeSyncStatusWord::OfflineWithUnsentChanges => "core.sync.status.offline_unsent",
+        BridgeSyncStatusWord::Offline => "core.sync.offline",
+        BridgeSyncStatusWord::UpdateNeeded => "core.sync.status.update_needed",
+        BridgeSyncStatusWord::SignedOutOfDropbox => "core.sync.status.signed_out_dropbox",
+        BridgeSyncStatusWord::SignedOutOfOneDrive => "core.sync.status.signed_out_onedrive",
+        BridgeSyncStatusWord::SignedOutOfICloud => "core.sync.status.signed_out_icloud",
+        BridgeSyncStatusWord::AccessKeyNotAccepted => "core.sync.status.access_key_not_accepted",
+        BridgeSyncStatusWord::DeviceNeedsReset => "core.sync.status.device_needs_reset",
+        BridgeSyncStatusWord::NoAccess => "core.sync.status.no_access",
+        BridgeSyncStatusWord::FolderMissing => "core.sync.status.folder_missing",
+        BridgeSyncStatusWord::ClockWrong => "core.sync.status.clock_wrong",
+        BridgeSyncStatusWord::RemovedFromTheLibrary => "core.sync.status.removed",
+        BridgeSyncStatusWord::StorageFull => "core.sync.status.storage_full",
+        BridgeSyncStatusWord::SyncFailed => "core.sync.failed",
     }
     .to_string()
 }

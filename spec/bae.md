@@ -2824,9 +2824,9 @@ setup the same way: coven would otherwise run it to its end with nobody
 waiting. A setup bae was stopped partway through is undone as the
 library opens if it hadn't reached that point, and otherwise finishes once
 sync starts, which the library does at launch for it as for a library with
-storage set up. While a setup runs, the status line says "Setting up storage…"
+storage set up. While a setup runs, the Sync page says "Setting up storage…"
 in place of any state that names no problem; a library with no location
-recorded yet shows that line where Settings would offer setting up sync, and
+recorded yet shows that where Settings would offer setting up sync, and
 Settings reads the location again once the setup stops running, since it
 records the location as it ends. A setup's call hears how it ended, and
 acknowledges it in coven's list of operations; one that finished or was
@@ -2957,8 +2957,8 @@ neither it is absent. A pass alone doesn't spin it: an idle library runs one
 every half minute, and the indicator would blink for nothing.
 
 Clicking it opens what sync is doing, a popover on macOS and a sheet on the
-phones, updating as it changes. What it shows is the sync status the status
-line reads (below), with the upload and download queues' counts read in the
+phones, updating as it changes. What it shows is the sync status the Sync
+page reads (below), with the upload and download queues' counts read in the
 same read of the library's tables. Bytes moving change none of them, so they
 send it nothing. What needs the person comes first, under
 *Needs attention*: the failure's line and each pending record in plain words, with
@@ -2988,36 +2988,77 @@ never shows it, nor does a record waiting on another device's work; a record
 waiting on the person offers its own action. It retries everything at once, as
 pulling to refresh does.
 
-**The status line.** Settings shows one line for sync. With records pending it
-says "Waiting: 3 items". With none it names coven's sync state
-([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)):
-Syncing while a pass moves or a file is sent or downloaded; Offline, with or
-without changes waiting to go out; Sync failed for any failure coven names
-(signed out, no access, storage full, the folder gone, the clock wrong, an
-update needed, removed, a reset needed, or any other); and Synced, or Sync
-stopped when the library has storage but isn't syncing, for synced or
-waiting to sync. A failure shows above activity, as coven ranks its own sync
-state, and the line never works out that state again from coven's tables.
-While a storage setup runs, the line says Setting up storage in place of
-syncing, synced, waiting to sync or no storage (§6.2). A
-failure's error is the last pass's when the pass names the state, and sits
-under the line unless a pending record shows it; a state a pending record
-names shows its error in that record. The line is made from two sources, each
-followed as it changes: coven's sync state, which coven computes and follows
-itself (it changes as a file starts or ends a transfer, which no table the
-library reads shows), and one read of the library's tables: what a retry
-would do
+**The Sync page.** Sync has a page of its own, off the Library page. Its top
+is one block: *Status* with the state in words, then the state's cause, its
+fix and *Last synced*, in that order, each only when it has one. *Last synced*
+shows under a state that is a problem, amber or red, and never under Synced.
+Under the block are the library's storage rows (§6.2).
+coven gives the state
+([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
+and when several hold the first of these shows: Not synced, Removed from the
+library, Device needs reset, Update needed, Signed out, No access, Folder
+missing, Clock is wrong, Storage full, Offline · unsent changes, Offline, Sync
+failed, Syncing…, Waiting to sync, Synced. core picks the words, the color and
+the fix; the apps draw what core sends and add nothing of their own but the
+words of a button, which are each platform's.
+
+- **Gray.** Not synced, on the Mac only: a phone joins a library and never
+  makes one. Syncing…, only while something is sent or received, not on quiet
+  passes. Waiting to sync, online with changes held back: with *Uploads are
+  paused.* and *Resume uploads* when uploads are paused, with *An upload
+  failed. bae will try again shortly.* and *Retry now* when an upload waits to
+  retry, and with nothing else when sync waits its turn. A phone never
+  uploads files, so its only reason to wait is the provider's. While a storage
+  setup runs, "Setting up storage…" takes the place of any state that is no
+  problem (§6.2).
+- **Green.** Synced, with a dot. It means data and files both: a file still
+  uploading is Syncing….
+- **Amber.** Offline, and Offline · unsent changes when changes or files
+  wait to go out, with no count. Waiting to sync while the provider asked
+  bae to wait, saying who asked and when sync resumes ("Dropbox asked bae to
+  wait. Syncing resumes at 3:40."). Update needed, with *Update bae to keep
+  syncing.* and the check for updates. Signed out, naming the provider:
+  Dropbox and OneDrive sign in from bae, with *Sign in to Dropbox…*; iCloud
+  signs in from System Settings; an S3 library has no sign-in, so it reads
+  *Access key not accepted* and asks for a new key for the same bucket. A
+  sign-in that expired reads the same as none saved.
+- **Red.** Device needs reset, with the reset. No access to storage, Storage
+  folder missing and Clock is wrong, each with its cause. Removed from the
+  library, with *An admin removed this device. What's here is an old copy.*
+  and the list of libraries on this device, where it is removed. Storage full, with *Free up space in this
+  storage.* and, for Dropbox and OneDrive, *Open in browser*. Sync failed: any
+  failure with no state of its own, its cause in plain words, always with
+  *Retry now*, which it also does by itself. A file that can't be uploaded,
+  missing or changed since import, is named until it is back as it was, and
+  nothing skips it. A provider's error is told as the provider told it ("Dropbox
+  returned an error: Internal server error."). The other causes read: a change
+  from another device is damaged and can't be applied; bae couldn't read the
+  library, or its saved keys, on this device; the device ran out of space;
+  something went wrong in bae. A phone never uploads, so its causes are local
+  ones, a provider error or a damaged change. A start that failed with sync
+  not running is Sync failed with the start's own line as its cause and
+  *Reconnect* as its fix.
+
+The page never says "Sync stopped", "Checking sync…" or "Disconnect". Until
+the status is first read it shows nothing in the block, and if it can't be
+read the block says "Couldn't read sync status", which is the app's own
+state around the read, with the words in the app's own catalog: core sends
+only the status it read. The Library page's Sync row shows the state only,
+and the Library row in Android's settings and the Library item in the Mac's
+settings sidebar show it only while it is amber or red.
+
+The state is made from two sources, each followed as it changes: coven's sync
+state, which coven computes and follows itself (it changes as a file starts or
+ends a transfer, which no table the library reads shows), and one read of the
+library's tables: what a retry would do
 ([coven api.md
 E5](https://github.com/bae-fm/coven/blob/main/spec/api.md#e5-storage-and-sync)),
-its pending records, and why this device last failed to start sync. Each
-value's read of the tables is made after the sync state it carries arrived,
-so the rows are never older than the state: a start's failure that the
-start or setup after it ended never shows beside the state that ended it,
-while a record read before the state names it shows as waiting. "Checking
-sync…" shows only until that is first read, and if it can't be read the line
-says "Couldn't read sync status", opening onto the error, until a read
-succeeds. Those two are each app's own states around the read, with the
-words in the app's own catalog: core sends only the status it read. Opening it lists each thing coven is waiting on, one of its pending
+its pending records, the provider of the recorded location, and why this
+device last failed to start sync. Each value's read of the tables is made
+after the sync state it carries arrived, so the rows are never older than the
+state: a start's failure that the start or setup after it ended never shows
+beside the state that ended it. The activity list (above) lists each thing
+coven is waiting on, one of its pending
 records
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
 in plain words, in the order they arose, with an action wherever the person
@@ -3038,16 +3079,13 @@ replaces any banner of blocked work: there is one place to look.
 storage sign-in and stay in the library: removing the library from the device
 is how it leaves. Its credentials can still go missing on their own, such as
 a keychain entry deleted by hand, while coven keeps the location it recorded.
-coven then reports no storage set up on this device
+coven then reports the state Signed out, with no cause
 ([coven F.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#f4-opening-closing-and-sync)),
-and core sends no status line for it: there is no sync to describe. In its
-place Settings shows the recorded storage's rows and *Sign in*, which connects
-that location again, never other storage: a new access key for its S3 bucket,
-the provider's sign-in for Dropbox and OneDrive, iCloud's own setup for
-iCloud. Why a start failed there, such as on a keychain locked for the
-session, shows under *Sign in* as it would under the line, with no
-*Reconnect*: there is no storage on this device to start sync with. A
-library with no recorded location offers setting up sync instead.
+and the Sync page shows it as it shows any sign-out: the recorded storage's
+rows and the fix that connects that location again, never other storage: a
+new access key for its S3 bucket, the provider's sign-in for Dropbox and
+OneDrive, iCloud's own setup for iCloud. A library with no recorded location
+is Not synced, and offers setting up sync instead.
 
 Each record names what it is about in plain words. A file is named by the row
 on this device that references it: a release file by its file name and album, a
@@ -3078,7 +3116,7 @@ album or track is marked as on its way. No device waits for another's upload,
 and a read of a file that fails leaves nothing pending, so no pending record
 is about another device's upload.
 
-Ben's laptop shows "Waiting: 2 items": Dropbox wants him to sign in again, and
+Ben's laptop has two records in its activity list: Dropbox wants him to sign in again, and
 a file of his vinyl rip moved before it uploaded. The list offers *Sign in* for
 the first: core signs in with the access the library's folder needs, then
 connects that location again under this device's name. On a library in an S3
@@ -3141,8 +3179,8 @@ it has. While Android removes a release's download,
 its control says so in core's words for that transfer.
 
 - **Launching offline.** A failed connect at start-up opens the library with
-  sync not running, and the status line says why, with *Reconnect* under the
-  failure, which starts sync again. Core offers it while a failed start leaves
+  sync not running, and the Sync page says why, with *Reconnect* as the fix,
+  which starts sync again. Core offers it while a failed start leaves
   sync stopped with storage set up on this device, and the apps show it
   where core offers it: a running loop retries a failed pass by itself, and
   with no storage set up on this device there is nothing to start, so signing
@@ -3195,7 +3233,7 @@ its control says so in core's words for that transfer.
   opening a library, only ask for a pass.
 - **How the retry went.** The pull's spinner stays until the first pass after
   the retry ends, however long that takes; there is no timer. Under it, the
-  sync status line says what sync is doing meanwhile. A pass already
+  Sync page says what sync is doing meanwhile. A pass already
   running when the person pulls doesn't count: it read the store before they
   asked, so the next one answers. If the retry didn't sync, the reason shows
   once it's known: on Android a snackbar, whose *Retry* asks again. The reason
@@ -4481,7 +4519,7 @@ bindings export none of their symbols.
 | bae-store | the library's store over coven, with no table: the `Store` every read, write and live query runs through, the coven calls bae makes on a library (storage setup, sync, keys, files, pins, uploads, invites, restore codes), the schema's shape (each crate's parts, run in crate order as one migration) and the SQL functions and collation the parts declare, list windows, the cancellable live queries a surface pulls values from and the live reads over them, whose request moves in place and says whether a read that finished after it was replaced still answers (a window's rows do; another id's detail does not), and the names a person enters |
 | bae-records | the library's records and where each release's files are: artists, albums, releases, tracks, works and labels with their files, the rules that resolve credits and labels and merge identities, the row writers an import and an edit call inside their own writes, and release storage, with the `Records` owner over them |
 | bae-people | the library's members and each person's own data: who is in the library and on which devices, the admin changes this device asked for, profiles, plays, ratings and playlists, with the `Membership` and `People` owners |
-| bae-sync-status | the sync status as the status line and the activity list show it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do, why this device's last start failed and where its storage setup stands, with the `SyncStatus` owner |
+| bae-sync-status | the sync status as the Sync page and the activity list show it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do, why this device's last start failed and where its storage setup stands, with the `SyncStatus` owner |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the tasks and threads whose panics are reported, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through, which reports a panic in its own disk work; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |

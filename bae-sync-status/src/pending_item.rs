@@ -105,6 +105,9 @@ fn reports_failure(reason: &coven::PendingReason) -> bool {
 pub struct PendingItem {
     pub subject: PendingSubjectName,
     pub wait: PendingWait,
+    /// The subject of the coven record this is, for finding the item of a
+    /// record.
+    pub record_subject: coven::PendingSubject,
 }
 
 impl PendingItem {
@@ -127,6 +130,7 @@ impl PendingItem {
             _ => None,
         };
         let wait = PendingWait::of(&record, release_id);
+        let record_subject = record.subject.clone();
         let subject = match record.subject {
             S::Write(_) => PendingSubjectName::LocalChanges,
             S::Slot(_) => PendingSubjectName::LibraryChanges,
@@ -141,7 +145,7 @@ impl PendingItem {
             S::Audience(coven::Audience::Circle(_)) => PendingSubjectName::CircleData,
             S::Connection => PendingSubjectName::Connection,
         };
-        Self { subject, wait }
+        Self { subject, wait, record_subject }
     }
 }
 

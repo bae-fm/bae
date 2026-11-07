@@ -121,12 +121,14 @@ fn the_sync_status_follows_storage_being_set_up() {
 
     let status = handle.subscribe_sync_status();
     let unset = handle.runtime.block_on(status.clone().next()).unwrap();
-    assert_eq!(unset.indicator, None, "{unset:?}");
+    assert_eq!(unset.shown.status, crate::types::BridgeSyncStatusWord::NotSynced, "{unset:?}");
 
     handle.runtime.block_on(bae_library::test_libraries::connect_storage(&setup, &storage));
     pull_until(
         &handle,
         || Box::pin(status.clone().next()),
-        |status: &crate::types::BridgeSyncStatusSnapshot| status.indicator.is_some(),
+        |status: &crate::types::BridgeSyncStatusSnapshot| {
+            status.shown.status != crate::types::BridgeSyncStatusWord::NotSynced
+        },
     );
 }

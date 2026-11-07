@@ -59,24 +59,8 @@ pub struct SyncStatusSnapshot {
     /// A storage setup running, or one that ended undone and that the
     /// person hasn't dismissed.
     pub storage_setup: Option<StorageSetupState>,
-}
-
-/// The settings status line. Platforms localize these cases and the item count.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SyncIndicator {
-    /// A storage setup runs: its call's, or one past its point of no return
-    /// that sync's connection finishes.
-    SettingUpStorage,
-    /// Storage is set up, but the sync loop isn't running.
-    Stopped,
-    Syncing,
-    Synced,
-    Offline,
-    /// The failure is the snapshot's `shown_failure()`.
-    Failed,
-    Waiting {
-        items: usize,
-    },
+    /// The provider of the location recorded on this device, while one is.
+    pub provider: Option<coven::CloudProvider>,
 }
 
 /// The category a whole-pass sync failure shows under.
@@ -174,6 +158,7 @@ pub struct SyncStatusRows {
     pub start_failure: Option<UiError>,
     pub retry_effect: coven::RetryEffect,
     pub storage_setup: Option<StorageSetupState>,
+    pub provider: Option<coven::CloudProvider>,
 }
 
 /// The sync status's rows as one read of the library's tables sees them.
@@ -183,8 +168,26 @@ pub fn sync_status_rows_on(
     let pending = pending::pending_rows_on(&sql)?.into_iter().map(PendingItem::listed).collect();
     let start_failure = start_failure::start_failure_on(&sql)?;
     let storage_setup = storage_setup::storage_setup_on(&sql)?;
+    let provider = recorded_provider_on(&sql)?;
     let retry_effect = coven::RetryEffect::read(sql)?;
-    Ok(SyncStatusRows { pending, start_failure, retry_effect, storage_setup })
+    Ok(SyncStatusRows { pending, start_failure, retry_effect, storage_setup, provider })
+}
+
+/// The provider of the location recorded on this device, as coven's sync
+/// status row names it.
+fn recorded_provider_on(
+    sql: &coven::SqlReadContext<'_>,
+) -> Result<Option<coven::CloudProvider>, DbError> {
+    let name: Option<String> =
+        sql.query_row("SELECT provider FROM coven_sync_status", [], |row| row.get(0))?;
+    name.map(|name| match name.as_str() {
+        "S3" => Ok(coven::CloudProvider::S3),
+        "Dropbox" => Ok(coven::CloudProvider::Dropbox),
+        "OneDrive" => Ok(coven::CloudProvider::OneDrive),
+        "CloudKit" => Ok(coven::CloudProvider::CloudKit),
+        _ => Err(DbError::Unreadable { what: "coven_sync_status.provider".into(), stored: name }),
+    })
+    .transpose()
 }
 
 impl SyncStatusSnapshot {
@@ -193,9 +196,9 @@ impl SyncStatusSnapshot {
     /// attempt to start sync failed, while that stands, what a retry would
     /// do, and where this device's storage setup stands.
     pub fn read(coven: coven::SyncStatus, rows: SyncStatusRows) -> Self {
-        let SyncStatusRows { pending, start_failure, retry_effect, storage_setup } = rows;
+        let SyncStatusRows { pending, start_failure, retry_effect, storage_setup, provider } = rows;
         let mut snapshot =
-            Self { coven, pending, error: start_failure, retry_effect, storage_setup };
+            Self { coven, pending, error: start_failure, retry_effect, storage_setup, provider };
         snapshot.name_connection_cause();
         snapshot
     }
@@ -422,55 +425,6 @@ impl SyncStatusSnapshot {
         }
         self.failure()
     }
-
-    /// What the status line names, or `None` while coven reports no storage
-    /// set up on this device and no setup runs: there is no sync to
-    /// describe. A library with a recorded location in that state has lost
-    /// this device's credentials for it, and signs in to it again.
-    ///
-    /// Pending records come first, since the list shows what each waits on.
-    /// With none, the line names coven's sync state: syncing; offline, with
-    /// or without changes waiting to go out; a failure coven names, ranked
-    /// above activity; and synced, or waiting to sync, which is stopped
-    /// while the loop isn't running. Its error, when it has one, is
-    /// `failure()`. While a setup runs, the line names it in place of any
-    /// state that names no problem: the setup is what sync is doing.
-    pub fn indicator(&self) -> Option<SyncIndicator> {
-        use coven::SyncState as S;
-        let setting_up = self.storage_setup == Some(StorageSetupState::Running);
-        let named = match &self.coven.state {
-            S::Offline(_) | S::OfflineWithUnsentChanges(_) => SyncIndicator::Offline,
-            S::NotSynced
-            | S::SignedOut { cause: None, .. }
-            | S::Syncing
-            | S::Synced
-            | S::WaitingToSync(_)
-                if setting_up =>
-            {
-                SyncIndicator::SettingUpStorage
-            }
-            S::NotSynced | S::SignedOut { cause: None, .. } => return None,
-            S::Syncing => SyncIndicator::Syncing,
-            S::Synced | S::WaitingToSync(_) if !self.running() => SyncIndicator::Stopped,
-            S::Synced | S::WaitingToSync(_) => SyncIndicator::Synced,
-            S::SignedOut { cause: Some(_), .. }
-            | S::NoAccess(_)
-            | S::StorageFull(_)
-            | S::FolderMissing(_)
-            | S::ClockWrong(_)
-            | S::UpdateNeeded(_)
-            | S::Removed(_)
-            | S::NeedsReset(_)
-            | S::Failed(_) => SyncIndicator::Failed,
-        };
-        if !self.pending.is_empty() {
-            return Some(SyncIndicator::Waiting { items: self.pending.len() });
-        }
-        if self.error.is_some() {
-            return Some(SyncIndicator::Failed);
-        }
-        Some(named)
-    }
 }
 
 /// The action a pending record offers. The record itself retains the subject
@@ -550,4 +504,4 @@ pub fn pending_action(record: &coven::PendingRecord, release_id: Option<&str>) -
 
 #[cfg(test)]
 #[path = "sync_status_tests.rs"]
-mod tests;
+pub(crate) mod tests;

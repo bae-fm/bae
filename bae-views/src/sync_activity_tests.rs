@@ -17,6 +17,7 @@ fn status() -> SyncStatusSnapshot {
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         error: None,
+        provider: None,
     }
 }
 
