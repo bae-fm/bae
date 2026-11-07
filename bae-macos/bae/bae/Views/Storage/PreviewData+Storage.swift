@@ -240,7 +240,8 @@
                 summary: [
                     transferCount("core.queue.uploading", 1, .moving),
                     transferCount("core.queue.queued", 1, .waiting),
-                ]
+                ],
+                wait: nil
             ),
             files: [
                 "rel-row-1-audio": BridgeFileUpload(
@@ -265,7 +266,8 @@
                     uploading: 0,
                     activity: .queued
                 ),
-                summary: [transferCount("core.queue.queued", 1, .waiting)]
+                summary: [transferCount("core.queue.queued", 1, .waiting)],
+                wait: .paused
             ),
             files: [
                 "rel-row-2-audio": BridgeFileUpload(
@@ -285,7 +287,8 @@
                     uploading: 0,
                     activity: .queued
                 ),
-                summary: [transferCount("core.queue.queued", 1, .waiting)]
+                summary: [transferCount("core.queue.queued", 1, .waiting)],
+                wait: nil
             ),
             files: [
                 "rel-row-3-audio": BridgeFileUpload(

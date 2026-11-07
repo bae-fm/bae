@@ -26,8 +26,13 @@ struct StorageStatusBand: View {
                 }
                 else {
                     // Files only waiting: nothing is moving to measure.
-                    UploadActivityLabel(phaseOf: upload.progress)
-                        .themeText(.body)
+                    HStack(spacing: ThemeSpace.related) {
+                        UploadActivityLabel(phaseOf: upload.progress)
+                            .themeText(.body)
+                        if let wait = upload.wait {
+                            UploadWaitChip(wait: wait)
+                        }
+                    }
                 }
             }
             else {

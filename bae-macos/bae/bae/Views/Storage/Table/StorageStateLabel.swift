@@ -15,7 +15,12 @@ struct StorageStateLabel: View {
             StatusChip("Download failed", tone: .danger)
                 .help(error)
         case .uploading:
-            StorageUploadingChip(releaseId: release.id)
+            HStack(spacing: ThemeSpace.inline) {
+                StorageUploadingChip(releaseId: release.id)
+                if let wait = release.upload?.wait {
+                    UploadWaitChip(wait: wait)
+                }
+            }
         case .pinning(.queued(let ahead, let wait)):
             QueuedPinChips(ahead: ahead, wait: wait)
         case .pinning(.running(let wait)):

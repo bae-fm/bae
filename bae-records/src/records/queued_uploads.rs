@@ -31,11 +31,25 @@ pub const RELEASES_SENDING: &str = "SELECT f.release_id, COUNT(*) AS files \
 /// joined to [`RELEASES_SENDING`] as `sending`, which
 /// [`release_upload_in_row`] maps: how many of its files are queued, how
 /// many of those only wait and how many are being sent, and how many are
-/// stored. How far the files being sent have got is the release's transfer.
+/// stored, and, while none is being sent, why the waiting ones are not
+/// moving: whether any of their uploads is held by the pause or by a
+/// metered network, the earliest retry time, and whether coven says the
+/// network is usable. How far the files being sent have got is the
+/// release's transfer.
 pub const RELEASE_UPLOAD_COLUMNS: &str = "storage.queued_count AS queued_count, \
      storage.queued_count - COALESCE(sending.files, 0) AS waiting_files, \
      COALESCE(sending.files, 0) AS sending_files, \
-     storage.file_count - storage.queued_count AS stored_files";
+     storage.file_count - storage.queued_count AS stored_files, \
+     (SELECT MAX(upload.paused) FROM release_files AS f \
+         JOIN coven_uploads AS upload ON upload.file = f.file \
+         WHERE f.release_id = storage.release_id) AS uploads_paused, \
+     (SELECT MAX(upload.metered) FROM release_files AS f \
+         JOIN coven_uploads AS upload ON upload.file = f.file \
+         WHERE f.release_id = storage.release_id) AS uploads_metered, \
+     (SELECT MIN(upload.retry_at) FROM release_files AS f \
+         JOIN coven_uploads AS upload ON upload.file = f.file \
+         WHERE f.release_id = storage.release_id) AS uploads_retry_at, \
+     (SELECT usable FROM coven_network) AS upload_network_usable";
 
 /// The release's upload as [`RELEASE_UPLOAD_COLUMNS`] read it; `None` when
 /// none of its files waits. A count below zero, or past a `u32`, is a
@@ -45,10 +59,22 @@ pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbRelease
     if queued == 0 {
         return Ok(None);
     }
+    let sending = bae_store::read::count_column(row, "sending_files")?;
+    let wait = if sending > 0 {
+        None
+    } else {
+        UploadWait::pick(
+            row.get("upload_network_usable")?,
+            row.get::<_, Option<bool>>("uploads_paused")?.unwrap_or(false),
+            row.get::<_, Option<bool>>("uploads_metered")?.unwrap_or(false),
+            row.get("uploads_retry_at")?,
+        )
+    };
     Ok(Some(DbReleaseUpload {
         waiting: bae_store::read::count_column(row, "waiting_files")?,
-        sending: bae_store::read::count_column(row, "sending_files")?,
+        sending,
         stored: bae_store::read::count_column(row, "stored_files")?,
+        wait,
     }))
 }
 

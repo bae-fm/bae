@@ -365,6 +365,23 @@ pub struct BridgeReleaseUpload {
     /// How many of the release's files are uploading, queued and stored,
     /// each left out at zero.
     pub summary: Vec<crate::types::BridgeTransferCount>,
+    /// Why its waiting files are not moving, while none is being sent.
+    pub wait: Option<BridgeUploadWait>,
+}
+
+/// What keeps a release's waiting files from being sent. Mirrors
+/// `UploadWait`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeUploadWait {
+    /// The device has no usable network.
+    Offline,
+    /// The person paused uploads.
+    Paused,
+    /// Files move only on unmetered networks, and this one is metered.
+    Metered,
+    /// A failed attempt is held until `at_ms`, in milliseconds since the
+    /// epoch; the surface words the time.
+    Retrying { at_ms: i64 },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

@@ -186,6 +186,8 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
                 },
                 stage: bae_transfers::TransferStage::Waiting,
             }],
+            // The helper queues them with uploads paused, to hold them in the queue.
+            wait: Some(bae_records::UploadWait::Paused),
         })
     );
     assert!(queued.transitioning);
@@ -195,6 +197,52 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
     let uploaded = summary(row(test.library.manager().clone(), release.id.clone()).await);
     assert_eq!(uploaded.upload, None);
     assert!(!uploaded.transitioning);
+}
+
+/// A release with files waiting to upload says why they do not move: the
+/// network when there is none, else the pause; and nothing once uploads run.
+#[tokio::test]
+async fn an_uploads_row_says_it_waits_while_uploads_are_paused() {
+    use bae_records::UploadWait;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    manager.store.set_uploads_paused(true).await.unwrap();
+    let release = insert_release_with_queued_uploads(
+        manager,
+        &temp_dir.path().join("paused"),
+        "Album Title",
+        &[("a.flac", b"bytes-a")],
+    )
+    .await;
+    let wait = || async {
+        views(manager)
+            .get_storage_page(
+                &bae_views::StorageSortCriterion {
+                    field: bae_views::StorageSortField::AlbumTitle,
+                    direction: bae_store::SortDirection::Ascending,
+                },
+                bae_views::StorageFilter::All,
+                0,
+                50,
+            )
+            .await
+            .unwrap()
+            .rows
+            .into_iter()
+            .find(|row| row.release.id == release.id)
+            .and_then(|row| row.release.upload)
+            .expect("the release has files waiting")
+            .wait
+    };
+    assert_eq!(wait().await, Some(UploadWait::Paused));
+
+    test.installation.lose_network();
+    assert_eq!(wait().await, Some(UploadWait::Offline), "the network outranks the pause");
+
+    test.installation.join_network(false);
+    manager.store.set_uploads_paused(false).await.unwrap();
+    assert_eq!(wait().await, None);
 }
 
 /// A file being sent counts as uploading in its release's row while its

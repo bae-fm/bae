@@ -653,6 +653,18 @@ impl crate::types::BridgeReleaseUpload {
                 .into_iter()
                 .map(crate::types::BridgeTransferCount::from_core)
                 .collect(),
+            wait: upload.wait.map(crate::types::BridgeUploadWait::from_core),
         }
     }
+}
+
+mirror_enum! {
+    crate::types::BridgeUploadWait = bae_records::UploadWait,
+    from_core: fn,
+    variants: {
+        Offline,
+        Paused,
+        Metered,
+        Retrying { at_ms },
+    },
 }

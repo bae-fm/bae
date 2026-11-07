@@ -1986,7 +1986,11 @@ storage band, how many wait and how many are being sent (its Done row in the
 import list shows the phase that makes, §3.2), and while any is
 being sent, how many bytes of its whole size are stored or sent. The counts
 are read in the same query as the row: which files are being sent comes
-from coven's `coven_sending`, a live view of the uploads in flight. How far
+from coven's `coven_sending`, a live view of the uploads in flight. While none
+is being sent, the row says why the waiting files do not move, from coven's
+`coven_uploads` and `coven_network`: Waiting for network, or Paused, or Waiting
+for Wi-Fi when files move only on unmetered networks and this one is metered,
+or Retrying at the time of the earliest retry, the first of these that holds. How far
 the bytes have got is not in any table: coven's upload watch tells, file by
 file, how much of each file's encrypted object has gone to the connection,
 whether the file goes in parts or in one request. A release's bytes are its

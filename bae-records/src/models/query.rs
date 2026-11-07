@@ -124,4 +124,44 @@ pub struct DbReleaseUpload {
     pub sending: u32,
     /// How many of the release's files are stored: those not queued.
     pub stored: u32,
+    /// Why its waiting files are not moving; `None` while one is being sent,
+    /// or when nothing holds them back.
+    pub wait: Option<UploadWait>,
+}
+
+/// What keeps a release's waiting files from being sent, as coven says it
+/// of their uploads and the network.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UploadWait {
+    /// The device has no usable network.
+    Offline,
+    /// The person paused uploads.
+    Paused,
+    /// Files move only on unmetered networks, and this one is metered.
+    Metered,
+    /// A failed attempt is held until `at_ms`, in milliseconds since the
+    /// epoch.
+    Retrying { at_ms: i64 },
+}
+
+impl UploadWait {
+    /// The reason that holds the files, when several do: the network first,
+    /// since it makes the rest moot, then the pause, the metered network
+    /// and last the retry time.
+    pub fn pick(
+        network_usable: Option<bool>,
+        paused: bool,
+        metered: bool,
+        retry_at_ms: Option<i64>,
+    ) -> Option<Self> {
+        if network_usable == Some(false) {
+            Some(Self::Offline)
+        } else if paused {
+            Some(Self::Paused)
+        } else if metered {
+            Some(Self::Metered)
+        } else {
+            retry_at_ms.map(|at_ms| Self::Retrying { at_ms })
+        }
+    }
 }
