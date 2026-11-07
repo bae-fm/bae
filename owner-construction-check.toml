@@ -266,6 +266,9 @@ task_types = [
     "FillTask",
     # One track's decode for a caller outside the library.
     "TrackDecode",
+    # One device reset the app confirms once, or again to finish one that
+    # stopped partway.
+    "BridgeDeviceReset",
     # One background task or thread a caller started, reporting its failure.
     "ReportedTask",
     "ReportedThread",
@@ -367,7 +370,6 @@ ImageHold = "RemoteImageHost"
     "BridgeHost::resume_join",
     "BridgeHost::resume_replacement",
     "BridgeHost::resume_restore",
-    "BridgeHost::prepare_device_reset",
     "BridgeDeviceReset::confirm",
 ]
 # The sink the app built at launch, taken back as core's by the host the app
