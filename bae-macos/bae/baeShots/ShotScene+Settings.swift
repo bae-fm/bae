@@ -48,6 +48,11 @@ extension ShotScene {
             ]
         ),
         castingSettings("settings-casting-looking", devices: []),
+        transfersSettings("settings-transfers", uploadsPaused: false),
+        transfersSettings(
+            "settings-transfers-uploads-paused",
+            uploadsPaused: true
+        ),
         librarySettings(
             "settings-sync-dropbox",
             storage: PreviewData.previewDropboxStorage
@@ -76,6 +81,24 @@ extension ShotScene {
                             castEnabled: true
                         )
                     )
+                    .environment(UiStore())
+            )
+        }
+    }
+
+    /// The Transfers pane with uploads paused or running and downloads running.
+    private static func transfersSettings(
+        _ id: String,
+        uploadsPaused: Bool
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 500, height: 420)) {
+            ShotStage(
+                TransfersSettingsTab()
+                    .environment(PreviewData.configStore())
+                    .environment(Downloads.stub())
+                    .environment(DownloadStore())
+                    .environment(OutboxStore(uploadsPaused: uploadsPaused))
+                    .environment(Sync.stub())
                     .environment(UiStore())
             )
         }

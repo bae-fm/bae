@@ -1921,6 +1921,12 @@ Other devices go on showing the release without playing it.
   and they go on at the next unmetered one. It is off by default, lasts across
   restarts, and doesn't hold playing a track that isn't pinned, which still
   streams.
+- **Transfers on the Mac.** Settings' Transfers pane holds Pause uploads and
+  Pause downloads, then how many files upload and download at once. Either
+  pause lasts across restarts, and while either holds, the sidebar says Paused
+  beside Transfers with ↑ for uploads, ↓ for downloads or ⇅ for both. A paused
+  file keeps its place; changes to the library still sync. Neither limits
+  speed.
 
 **The Storage manager** lists every release with its album's title and
 credits, its media, its files' count and total size, whether it is uploaded,

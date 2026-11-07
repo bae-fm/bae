@@ -84,7 +84,6 @@ struct LibrarySettingsTab: View {
                             onRestoreFromCode: onRestoreFromCode,
                             onCheckForUpdates: onCheckForUpdates
                         )
-                        UploadPauseToggle()
                     }
                 }
                 else if syncStatus.snapshot?.setupRunning == true {
@@ -209,36 +208,6 @@ struct LibrarySettingsTab: View {
     }
 }
 
-/// Pausing keeps every queued upload in its place; metadata keeps syncing.
-private struct UploadPauseToggle: View {
-    @Environment(OutboxStore.self)
-    private var outboxStore
-    @Environment(Sync.self)
-    private var sync
-    @Environment(UiStore.self)
-    private var uiStore
-
-    var body: some View {
-        Toggle(
-            "Pause uploads",
-            isOn: Binding(
-                get: { outboxStore.uploadsPaused },
-                set: { paused in
-                    Task {
-                        do { try await sync.setSyncPaused(paused) }
-                        catch {
-                            logger.error(
-                                "Failed to set upload pause: \(String(reflecting: error))"
-                            )
-                            uiStore.showError(error)
-                        }
-                    }
-                }
-            )
-        )
-    }
-}
-
 #if DEBUG
     // MARK: - Previews
 
@@ -306,7 +275,6 @@ private struct UploadPauseToggle: View {
         .environment(fixture.membership)
         .environment(SyncActivityStore.preview(needsAttention: false))
         .environment(UiStore())
-        .environment(OutboxStore(uploadsPaused: false))
         .environment(fixture.libraryName)
     }
 

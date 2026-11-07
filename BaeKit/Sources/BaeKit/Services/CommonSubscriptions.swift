@@ -18,6 +18,7 @@ final class CommonSubscriptions {
     private var config: ScreenSubscription<ConfigSubscription>?
     private var queue: ScreenSubscription<QueueSubscription>?
     private var uploadsPaused: ScreenSubscription<UploadsPausedSubscription>?
+    private var downloadCounts: ScreenSubscription<DownloadCountsSubscription>?
     private var syncStatus: ScreenSubscription<SyncStatusSubscription>?
     private var syncActivity: ScreenSubscription<SyncActivitySubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
@@ -91,6 +92,13 @@ final class CommonSubscriptions {
             appHandle.subscribeUploadsPaused(),
             onValue: { [outboxStore] paused in
                 outboxStore.applyUploadsPaused(paused)
+            },
+            onError: onError
+        )
+        downloadCounts = ScreenSubscription(
+            appHandle.subscribeDownloadCounts(),
+            onValue: { [downloadStore] counts in
+                downloadStore.applyDownloadsPaused(counts.paused)
             },
             onError: onError
         )

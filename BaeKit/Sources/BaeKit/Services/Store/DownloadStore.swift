@@ -5,6 +5,8 @@ import SwiftUI
 /// view drawing that release or file reads it once per display frame, so
 /// arriving bytes run no SwiftUI update and no main-thread hop. The queue's
 /// entries are the Storage Manager inspector's, read for one release in core.
+/// Also whether the person paused the download queue, which the Transfers
+/// pane and the Settings sidebar read.
 @MainActor
 @Observable
 public class DownloadStore {
@@ -16,19 +18,28 @@ public class DownloadStore {
     /// The latest progress of each release being made local.
     public nonisolated let makeLocalTransfers:
         LatestStream<BridgeMakeLocalProgress>
+    /// Whether the person paused the download queue, as the retained
+    /// subscription last said.
+    public private(set) var downloadsPaused: Bool
 
     /// A store whose streams the subscriptions fill, or, for a preview,
     /// streams holding fixed values.
     public init(
+        downloadsPaused: Bool = false,
         fileShares: LatestStream<Double> = .fileShares(),
         releaseProgress: LatestStream<BridgeDownloadTransferProgress> =
             .downloads(),
         makeLocalTransfers: LatestStream<BridgeMakeLocalProgress> =
             .makeLocals()
     ) {
+        self.downloadsPaused = downloadsPaused
         self.fileShares = fileShares
         self.releaseProgress = releaseProgress
         self.makeLocalTransfers = makeLocalTransfers
+    }
+
+    public func applyDownloadsPaused(_ paused: Bool) {
+        downloadsPaused = paused
     }
 
     /// The latest progress of a downloading release, for the native views

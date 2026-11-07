@@ -246,6 +246,28 @@ final class SilentUploadsPaused: UploadsPausedSubscription,
     override func cancel() async throws { values.cancel() }
 }
 
+/// The download queue's counts, which never change: a pull waits until it is
+/// cancelled.
+final class SilentDownloadCounts: DownloadCountsSubscription,
+    @unchecked Sendable
+{
+    private let values = PullQueue<BridgeDownloadCounts>()
+
+    init() {
+        super.init(noHandle: DownloadCountsSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> BridgeDownloadCounts {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
+}
+
 /// The library's name, which never changes: a pull waits until it is
 /// cancelled.
 final class SilentLibraryName: LibraryNameSubscription,

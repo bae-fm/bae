@@ -561,6 +561,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         SilentUploadsPaused()
     }
 
+    override func subscribeDownloadCounts() -> DownloadCountsSubscription {
+        SilentDownloadCounts()
+    }
+
     override func feedReleaseUploadTransfers() -> KeyedValueStream {
         NoopKeyedValueStream()
     }

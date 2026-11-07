@@ -51,6 +51,23 @@ final class SettingsNavigation {
     }
 }
 
+/// The amber Paused beside Transfers in the sidebar, with the arrows for
+/// which transfers are paused.
+private struct PausedBadge: View {
+    let paused: PausedTransfers
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Text(verbatim: paused.arrow)
+            Text("Paused")
+        }
+        .themeText(.detail)
+        .foregroundStyle(Theme.warning)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(paused.accessibilityLabel)
+    }
+}
+
 /// The settings window: the panes down the side, the chosen one beside them.
 ///
 /// A sidebar and not the toolbar strip a settings window usually has, because
@@ -70,6 +87,10 @@ struct SettingsView: View {
 
     @Environment(SettingsNavigation.self)
     private var navigation
+    @Environment(DownloadStore.self)
+    private var downloadStore
+    @Environment(OutboxStore.self)
+    private var outboxStore
 
     var body: some View {
         @Bindable
@@ -81,8 +102,19 @@ struct SettingsView: View {
                 selection: $navigation.selectedTab
             ) {
                 tab in
-                Label(tab.title, systemImage: tab.symbol)
-                    .tag(tab)
+                HStack {
+                    Label(tab.title, systemImage: tab.symbol)
+                    if tab == .transfers,
+                        let paused = PausedTransfers(
+                            uploads: outboxStore.uploadsPaused,
+                            downloads: downloadStore.downloadsPaused
+                        )
+                    {
+                        Spacer()
+                        PausedBadge(paused: paused)
+                    }
+                }
+                .tag(tab)
             }
             .navigationSplitViewColumnWidth(190)
         } detail: {
