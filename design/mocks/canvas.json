@@ -3162,6 +3162,70 @@
    "w": 412,
    "x": 1968,
    "y": 8304
+  },
+  "CutOffStep.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Removed: cut it off",
+   "w": 412,
+   "x": 0,
+   "y": 24632
+  },
+  "CutOffOther.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Removed: someone else’s device",
+   "w": 412,
+   "x": 492,
+   "y": 24632
+  },
+  "CutOffRunning.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Cut off: a request running",
+   "w": 412,
+   "x": 984,
+   "y": 24632
+  },
+  "CutOffNotGone.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Cut off: not here yet",
+   "w": 412,
+   "x": 1476,
+   "y": 24632
+  },
+  "MacCutOffStep.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Removed: cut it off",
+   "w": 690,
+   "x": 1968,
+   "y": 24632
+  },
+  "MacCutOffOther.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Removed: someone else’s device",
+   "w": 690,
+   "x": 2738,
+   "y": 24632
+  },
+  "MacCutOffRunning.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Cut off: a request running",
+   "w": 690,
+   "x": 3508,
+   "y": 24632
+  },
+  "MacCutOffNotGone.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Cut off: not here yet",
+   "w": 690,
+   "x": 4278,
+   "y": 24632
   }
  },
  "createdOnFiles": {
@@ -3207,6 +3271,7 @@
   "row-library-7",
   "row-library-8",
   "row-library-9",
+  "row-library-10",
   "row-welcome-0",
   "row-home-switch",
   "sync-rules",
@@ -4458,6 +4523,15 @@
    "x": 0,
    "y": 20,
    "maxW": 7620
+  },
+  "row-library-10": {
+   "kind": "title1",
+   "maxW": 4968,
+   "page": "library",
+   "text": "Removing a device",
+   "w": 240,
+   "x": 0,
+   "y": 24392
   }
  },
  "order": [
@@ -4635,6 +4709,14 @@
   "AddDeviceRequest.dc.html",
   "MacAddDeviceRequest.dc.html",
   "RestoreCodePrint.dc.html",
+  "CutOffStep.dc.html",
+  "CutOffOther.dc.html",
+  "CutOffRunning.dc.html",
+  "CutOffNotGone.dc.html",
+  "MacCutOffStep.dc.html",
+  "MacCutOffOther.dc.html",
+  "MacCutOffRunning.dc.html",
+  "MacCutOffNotGone.dc.html",
   "CastingOn.dc.html",
   "MacCastingOn.dc.html",
   "CastingLooking.dc.html",
