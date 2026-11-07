@@ -201,6 +201,14 @@ non_owner_types = [
     # app's object, held for the one call, and the call's writer made from it.
     "ClosingFeed",
     "SetupFeed",
+    # Plain data the owner that holds it guards with its own lock: the
+    # holder is built at its root, the data starts empty inside it.
+    "WorkInFlight",
+    "DiscogsKey",
+    "Queue",
+    "Queued",
+    # The recorded routes and requests of the test host, behind its lock.
+    "FakeState",
 ]
 
 # Values an owner makes for its caller's one operation, view or read and
