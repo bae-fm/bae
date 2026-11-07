@@ -43,70 +43,30 @@ pub enum IdentityRefusal {
 }
 
 /// Why a write that decides which library artist each credit and which
-/// library label each release label names did not commit. Nothing of the
-/// write landed; the initiator sees this and may retry once the library or
-/// the statement changes.
+/// library label each release label names was refused. Nothing of the write
+/// landed; the initiator sees this and may retry once the library or the
+/// statement changes.
 #[derive(Debug, thiserror::Error)]
-pub enum IdentityWriteError {
+pub enum IdentityWriteRefusal {
     #[error(transparent)]
-    Refused(#[from] IdentityRefusal),
+    Identity(#[from] IdentityRefusal),
     #[error(transparent)]
     StoredName(#[from] crate::stored_name::StoredNameError),
-    #[error(transparent)]
-    Db(#[from] DbError),
-    /// The write was refused, and rolling it back failed too.
-    #[error("{operation}; rollback failed: {rollback}")]
-    Rollback {
-        operation: Box<IdentityWriteError>,
-        #[source]
-        rollback: rusqlite::Error,
-    },
-    /// The write was refused, and removing the bytes it staged failed too,
-    /// each failure kept.
-    #[error("file cleanup failed: {failures:?}; write: {write}")]
-    FileCleanup { write: Box<IdentityWriteError>, failures: Vec<coven::DbError> },
 }
 
-impl From<rusqlite::Error> for IdentityWriteError {
-    fn from(error: rusqlite::Error) -> Self {
-        Self::Db(error.into())
+/// Why a write that decides which library artist each credit and which
+/// library label each release label names did not commit.
+pub type IdentityWriteError = WriteError<IdentityWriteRefusal>;
+
+impl From<IdentityRefusal> for IdentityWriteError {
+    fn from(refusal: IdentityRefusal) -> Self {
+        Self::Refused(refusal.into())
     }
 }
 
-impl From<coven::DbError> for IdentityWriteError {
-    fn from(error: coven::DbError) -> Self {
-        Self::Db(error.into())
-    }
-}
-
-impl coven::task::CarriesBug for IdentityWriteError {
-    fn bug(&self) -> Option<&coven::task::Bug> {
-        match self {
-            Self::Db(error) => error.bug(),
-            Self::Rollback { operation, .. } => operation.bug(),
-            Self::FileCleanup { write, failures } => {
-                write.bug().or_else(|| failures.iter().find_map(coven::task::CarriesBug::bug))
-            }
-            Self::Refused(_) | Self::StoredName(_) => None,
-        }
-    }
-}
-
-/// A failed rollback or byte removal is kept beside the failure it followed:
-/// a database failure keeps it in its own, a refusal stays the refusal it is.
-impl coven::WriteFailure for IdentityWriteError {
-    fn with_rollback(self, rollback: rusqlite::Error) -> Self {
-        match self {
-            Self::Db(error) => Self::Db(error.with_rollback(rollback)),
-            operation => Self::Rollback { operation: Box::new(operation), rollback },
-        }
-    }
-
-    fn with_cleanup(write: Self, failures: Vec<coven::DbError>) -> Self {
-        match write {
-            Self::Db(error) => Self::Db(DbError::with_cleanup(error, failures)),
-            write => Self::FileCleanup { write: Box::new(write), failures },
-        }
+impl From<crate::stored_name::StoredNameError> for IdentityWriteError {
+    fn from(error: crate::stored_name::StoredNameError) -> Self {
+        Self::Refused(error.into())
     }
 }
 

@@ -373,11 +373,12 @@ impl ImportError {
 #[cfg(desktop)]
 impl From<bae_records::IdentityWriteError> for ImportError {
     fn from(error: bae_records::IdentityWriteError) -> Self {
-        use bae_records::IdentityWriteError as E;
+        use bae_records::IdentityWriteRefusal as R;
+        use bae_store::WriteError as E;
         match error {
-            E::Refused(refusal) => Self::Identity(refusal),
-            E::StoredName(error) => Self::StoredName(error),
-            E::Db(error) => Self::Database(error),
+            E::Refused(R::Identity(refusal)) => Self::Identity(refusal),
+            E::Refused(R::StoredName(error)) => Self::StoredName(error),
+            E::Database(error) => Self::Database(error),
             E::Rollback { operation, rollback } => {
                 Self::Rollback { operation: Box::new((*operation).into()), rollback }
             }

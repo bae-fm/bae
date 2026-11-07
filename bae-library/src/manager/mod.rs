@@ -301,11 +301,12 @@ impl From<coven::CovenError> for LibraryError {
 /// with each failed cleanup after it.
 impl From<bae_records::IdentityWriteError> for LibraryError {
     fn from(error: bae_records::IdentityWriteError) -> Self {
-        use bae_records::IdentityWriteError as E;
+        use bae_records::IdentityWriteRefusal as R;
+        use bae_store::WriteError as E;
         match error {
-            E::Db(error) => Self::Database(error),
-            E::Refused(refusal) => Self::Identity(refusal),
-            E::StoredName(error) => error.into(),
+            E::Database(error) => Self::Database(error),
+            E::Refused(R::Identity(refusal)) => Self::Identity(refusal),
+            E::Refused(R::StoredName(error)) => error.into(),
             E::Rollback { operation, rollback } => Self::Cleanup {
                 operation: Box::new((*operation).into()),
                 cleanup: Box::new(Self::Database(rollback.into())),

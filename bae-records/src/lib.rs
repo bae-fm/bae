@@ -30,8 +30,9 @@ pub use records::ArtistCredits;
 pub use records::RecordsChange;
 pub use records::ReleaseMetadataRows;
 pub use records::{
-    Deleted, DeletionError, DeletionRefusal, IdentityRefusal, IdentityWriteError, ImageWriteError,
-    ImageWriteRefusal, LabelParts, OtherDeviceError, PrimaryReleaseError, Records, ReleaseDeletion,
+    Deleted, DeletionError, DeletionRefusal, IdentityRefusal, IdentityWriteError,
+    IdentityWriteRefusal, ImageWriteError, ImageWriteRefusal, LabelParts, OtherDeviceError,
+    PrimaryReleaseError, Records, ReleaseDeletion,
 };
 #[cfg(desktop)]
 pub use records::{ReleaseEditSaveError, ReleaseEditWrite};
