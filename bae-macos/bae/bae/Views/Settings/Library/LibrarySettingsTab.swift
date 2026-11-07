@@ -217,11 +217,31 @@ private struct UploadPauseToggle: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// The Library tab over `configStore`'s library, its sync at `indicator`.
+    /// What the Library tab's preview reads off the main thread: the
+    /// library's name and its people, each answered a step after the tab
+    /// first draws.
+    @MainActor
+    struct LibrarySettingsTabPreviewReads {
+        let libraryName = LibraryNameStore.stub(name: "Preview Library")
+        let membership = MembershipStore.stub(
+            people: PreviewData.members,
+            selfIsAdmin: true
+        )
+
+        /// Whether both reads have answered, so the tab shows the name and
+        /// the people.
+        var answered: Bool {
+            libraryName.name != nil && membership.members != nil
+        }
+    }
+
+    /// The Library tab over `configStore`'s library, its sync at `indicator`,
+    /// reading its name and people from `reads`.
     @MainActor
     func librarySettingsTabPreview(
         configStore: ConfigStore,
-        indicator: BridgeSyncIndicator? = .synced
+        indicator: BridgeSyncIndicator? = .synced,
+        reads: LibrarySettingsTabPreviewReads
     ) -> some View {
         LibrarySettingsTab(
             unsentBeforeRemoval: { BridgeUnsentWork(writes: 0, files: 0) },
@@ -248,22 +268,18 @@ private struct UploadPauseToggle: View {
                 )
             )
         )
-        .environment(
-            MembershipStore.stub(
-                people: PreviewData.members,
-                selfIsAdmin: true
-            )
-        )
+        .environment(reads.membership)
         .environment(SyncActivityStore.preview(needsAttention: false))
         .environment(UiStore())
         .environment(OutboxStore(uploadsPaused: false))
-        .environment(LibraryNameStore.stub(name: "Preview Library"))
+        .environment(reads.libraryName)
     }
 
     #Preview("No cloud home") {
         librarySettingsTabPreview(
             configStore: PreviewData.configStore(),
-            indicator: nil
+            indicator: nil,
+            reads: LibrarySettingsTabPreviewReads()
         )
     }
 
@@ -271,7 +287,8 @@ private struct UploadPauseToggle: View {
         librarySettingsTabPreview(
             configStore: PreviewData.connectedConfigStore(
                 storage: PreviewData.previewStorage
-            )
+            ),
+            reads: LibrarySettingsTabPreviewReads()
         )
     }
 
@@ -279,7 +296,8 @@ private struct UploadPauseToggle: View {
         librarySettingsTabPreview(
             configStore: PreviewData.connectedConfigStore(
                 storage: PreviewData.previewDropboxStorage
-            )
+            ),
+            reads: LibrarySettingsTabPreviewReads()
         )
     }
 
@@ -287,7 +305,8 @@ private struct UploadPauseToggle: View {
         librarySettingsTabPreview(
             configStore: PreviewData.connectedConfigStore(
                 storage: PreviewData.previewOneDriveStorage
-            )
+            ),
+            reads: LibrarySettingsTabPreviewReads()
         )
     }
 
@@ -296,7 +315,8 @@ private struct UploadPauseToggle: View {
             configStore: PreviewData.connectedConfigStore(
                 storage: PreviewData.previewStorage
             ),
-            indicator: nil
+            indicator: nil,
+            reads: LibrarySettingsTabPreviewReads()
         )
     }
 

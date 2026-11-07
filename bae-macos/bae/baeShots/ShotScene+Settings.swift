@@ -12,13 +12,15 @@ extension ShotScene {
             id: "settings-sync-dropbox",
             size: CGSize(width: 500, height: 640)
         ) {
-            ShotStage(
+            let reads = LibrarySettingsTabPreviewReads()
+            return ShotStage(
                 librarySettingsTabPreview(
                     configStore: PreviewData.connectedConfigStore(
                         storage: PreviewData.previewDropboxStorage
-                    )
+                    ),
+                    reads: reads
                 )
-            )
+            ) { reads.answered }
         }
     ]
 }

@@ -130,8 +130,9 @@ public final class MembershipStore {
     }
 
     #if DEBUG
-        /// A store showing `people` and `invites` from the start, with no
-        /// subscriptions; watching for an added device finds `addedDevice`.
+        /// A store showing `invites` from the start and `people` once its
+        /// read of them answers, with no subscriptions; watching for an added
+        /// device finds `addedDevice`.
         public static func stub(
             people: [BridgePerson],
             selfIsAdmin: Bool,

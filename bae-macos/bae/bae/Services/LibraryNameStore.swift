@@ -76,7 +76,8 @@ final class LibraryNameStore {
     }
 
     #if DEBUG
-        /// A store whose name is `name` from the start, for previews.
+        /// A store whose name is `name` once a screen follows it, for
+        /// previews.
         static func stub(name: String) -> LibraryNameStore {
             LibraryNameStore(
                 subscribe: { PulledValues(FixedLibraryName(name: name)) },
