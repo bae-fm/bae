@@ -185,7 +185,14 @@ async fn a_release_made_local_moves_back_to_the_cloud() {
 
     let local = f.temp_path().join("Made Local");
     fs::create_dir_all(&local).unwrap();
-    f.library.manager().detach_release_audio(&id, &local).await.unwrap();
+    f.library.manager().make_releases_local(vec![id.clone()], &local).await.unwrap();
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+        while !f.library.manager().download_snapshot().await.unwrap().rows.is_empty() {
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("the download queue makes the release local");
     let copies = local.join(
         f.library
             .manager()

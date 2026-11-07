@@ -138,7 +138,8 @@ fn sync_activity_rows_on(
     sql: coven::SqlReadContext<'_>,
 ) -> Result<SyncActivityRows, bae_store::DbError> {
     let uploads = upload_queue_counts_on(&sql)?;
-    let downloads = bae_transfers::tables::release_queue_counts_on::<()>(&sql)?;
+    let downloads =
+        bae_transfers::tables::release_queue_counts_on::<bae_transfers::DownloadRequest>(&sql)?;
     let status = bae_sync_status::sync_status_rows_on(sql)?;
     Ok(SyncActivityRows { uploads, downloads, status })
 }

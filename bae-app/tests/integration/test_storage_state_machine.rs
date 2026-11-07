@@ -4,7 +4,7 @@
 //! Pins independently keep its audio available offline; covers remain shared.
 
 use bae_app::live_reads::LiveStorageBrowse;
-use bae_library::{CancellationToken, LibraryManager};
+use bae_library::LibraryManager;
 use bae_store::SortDirection;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
@@ -69,6 +69,35 @@ async fn create_remote_cloud_only_release(
         "release is in storage once the transition is accepted"
     );
     (release_id, captured)
+}
+
+/// Queue `release_ids` to be made local into `folder` and wait until the
+/// download queue has run them: `Ok` when it holds none waiting or running
+/// and none failed, else the first failure's error.
+async fn make_local_and_wait(
+    mgr: &bae_library::test_libraries::TestLibrary,
+    release_ids: &[String],
+    folder: &std::path::Path,
+) -> Result<(), String> {
+    mgr.manager().make_releases_local(release_ids.to_vec(), folder).await.unwrap();
+    tokio::time::timeout(HANG_GUARD, async {
+        loop {
+            let rows = mgr.manager().download_snapshot().await.unwrap().rows;
+            if rows
+                .iter()
+                .all(|row| matches!(row.op.state, bae_transfers::DownloadPhase::Failed { .. }))
+            {
+                return rows.into_iter().find_map(|row| match row.op.state {
+                    bae_transfers::DownloadPhase::Failed { error } => Some(Err(error)),
+                    _ => None,
+                });
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("the download queue runs the make-locals")
+    .unwrap_or(Ok(()))
 }
 
 // ---------------------------------------------------------------------------
@@ -310,18 +339,56 @@ async fn detaching_audio_updates_summary_and_original_paths() {
     )
     .await;
 
+    mgr.records().set_source_folder_name_for_test(&release_id, "Exported Release").await.unwrap();
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
-    mgr.manager()
-        .detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
-        .await
-        .unwrap();
+    make_local_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await.unwrap();
 
-    // Release is Local, and each file's original path names its new copy.
+    // Release is Local, and each file's original path names its new copy in
+    // the release's own folder.
     assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
     for (file_id, name, _) in &files {
         let path = mgr.manager().file_local_path(file_id).await.unwrap().unwrap();
-        assert_eq!(path, new_path.join(name), "device-local path names the new copy");
+        assert_eq!(
+            path,
+            new_path.join("Exported Release").join(name),
+            "device-local path names the new copy"
+        );
+    }
+}
+
+/// Two releases made local into one picked folder each go in a folder of
+/// their own, named for the release, so their `01.flac` do not collide.
+#[tokio::test]
+async fn making_two_releases_local_puts_each_in_its_own_folder() {
+    let tmp = TempDir::new().unwrap();
+    let (mgr, _cloud) = setup_with_cloud(&tmp).await;
+    let db = mgr.store().clone();
+    let mut releases = Vec::new();
+    for (name, bytes) in [("Name A", b"first".as_slice()), ("Name B", b"second".as_slice())] {
+        let (release_id, _files) = create_remote_cloud_only_release(
+            &db,
+            mgr.manager(),
+            &tmp.path().join(format!("originals-{name}")),
+            &[("01.flac", bytes)],
+        )
+        .await;
+        mgr.records().set_source_folder_name_for_test(&release_id, name).await.unwrap();
+        releases.push((release_id, name));
+    }
+
+    let folder = tmp.path().join("exported");
+    std::fs::create_dir(&folder).unwrap();
+    let ids: Vec<String> = releases.iter().map(|(release_id, _)| release_id.clone()).collect();
+    make_local_and_wait(&mgr, &ids, &folder).await.unwrap();
+
+    for ((release_id, name), bytes) in releases.iter().zip([b"first".as_slice(), b"second"]) {
+        assert_eq!(
+            std::fs::read(folder.join(name).join("01.flac")).unwrap(),
+            bytes,
+            "{name} has its own folder"
+        );
+        assert_eq!(crate::release_storage(&db, release_id).await, ReleaseStorageState::OnOneDevice);
     }
 }
 
@@ -346,13 +413,11 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     // `files` carries `(file_id, original_filename, plaintext)`.
     bae_library::test_libraries::remove_uploaded_file(mgr.manager(), &cloud, &files[1].0).await;
 
+    mgr.records().set_source_folder_name_for_test(&release_id, "Exported Release").await.unwrap();
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
-    let result = mgr
-        .manager()
-        .detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
-        .await;
-    assert!(result.is_err(), "missing file must be a hard error");
+    let result = make_local_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await;
+    assert!(result.is_err(), "missing file must fail the entry");
 
     assert_eq!(
         crate::release_storage(&db, &release_id).await,
@@ -378,22 +443,14 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
     )
     .await;
 
+    mgr.records().set_source_folder_name_for_test(&release_id, "Exported Release").await.unwrap();
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
-    let error = mgr
-        .manager()
-        .detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
+    let error = make_local_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path)
         .await
         .expect_err("two copies at one path can't both be made");
 
-    assert!(
-        matches!(
-            &error,
-            bae_library::LibraryError::MakeLocal(error)
-                if matches!(**error, coven::DeviceOnlyError::Path(coven::CopyPathError::Clash { .. }))
-        ),
-        "{error:?}"
-    );
+    assert!(error.contains("name one path"), "{error}");
     assert_eq!(
         crate::release_storage(&db, &release_id).await,
         ReleaseStorageState::InStorage { pinned: false }

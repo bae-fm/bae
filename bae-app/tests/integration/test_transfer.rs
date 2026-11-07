@@ -4,7 +4,7 @@
 
 use bae_app::live_reads::LiveStorageBrowse;
 use bae_library::storage::transfer::TransferProgress;
-use bae_library::{CancellationToken, LibraryManager};
+use bae_library::LibraryManager;
 use bae_records::GallerySource;
 use bae_store::SortDirection;
 use bae_util::test_channels::HANG_GUARD;
@@ -84,10 +84,16 @@ async fn pin_with_events(
     let started = release_id.to_string();
     library
         .store()
-        .call(move |sql| bae_transfers::tables::worker_moves::activate_on::<()>(sql, &started))
+        .call(move |sql| {
+            bae_transfers::tables::worker_moves::activate_on::<bae_transfers::DownloadRequest>(
+                sql, &started,
+            )
+        })
         .await
         .unwrap();
-    let entry = bae_transfers::tables::worker_moves::active_entry::<()>(release_id);
+    let entry = bae_transfers::tables::worker_moves::active_entry::<bae_transfers::DownloadRequest>(
+        release_id,
+    );
     let events = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let sink = events.clone();
     let outcome = manager
@@ -489,10 +495,8 @@ async fn transition_completions_deliver_storage_values() {
 
     let dest = tmp.path().join("brought-back");
     std::fs::create_dir(&dest).unwrap();
-    mgr.manager()
-        .detach_release_audio_into(&release_id, &dest, &CancellationToken::new())
-        .await
-        .unwrap();
+    mgr.records().set_source_folder_name_for_test(&release_id, "Brought Back").await.unwrap();
+    mgr.manager().make_releases_local(vec![release_id.clone()], &dest).await.unwrap();
     expect_storage_state(&values, &release_id, ReleaseStorageState::OnOneDevice).await;
 }
 

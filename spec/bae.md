@@ -2005,19 +2005,13 @@ measured beside the database from the same watch's bytes, file by file, as
 each step of them goes, so a file sent in one request has a rate too: a
 rate for each release, its files being sent together, and for every file
 being sent together; no screen shows one file's rate, so none is sent. A
-file that only waits has no rate, and a pause ends every measurement. While its files wait, or a transfer runs,
+file that only waits has no rate, and a pause ends every measurement. While its files wait, or a download holds it,
 the release offers no storage action but cancelling, which would race it
-otherwise. Which transition a release is in is a device-local row: written
-in the write that admits making the release local, which a release already
-in one refuses, and deleted as the transition ends, however it ends: in the
-write that switches its files, so the row and coven's change commit together and the
-release never shows a transition its files have finished; one whose work
-fails ends in a write of its own. That write refuses a release not in the
-transition it ends, and then changes no file. A pin in flight is
-the download queue's active entry. The storage rows and the album and
-release detail read the transition in their own query. No transition
-outlives the process that ran it, so the `release_storage_action` rows are
-emptied as the library opens.
+otherwise. A release in a download is the download queue's entry for it
+(§4.3, §4.4), a pin or a make-local, ended in the write that changes its
+files, so the entry and coven's change commit together and the release never
+shows a download its files have finished. The storage rows and the album and
+release detail read the entry in their own query.
 
 Each row's storage state is the place it sorts by, which core reads with the
 row: Download failed, with its error, or Move failed, naming the file whose
@@ -2026,10 +2020,11 @@ as its bytes have come while any file is being sent; Pinning, either queued,
 with the number of entries ahead of it that have not failed, or filled as far
 as its download has come once it starts, and in either case Paused while the
 queue is paused or Waiting for network while the device has none (the network
-first, since it makes the pause moot); making local, filled as far as its copies have downloaded (§4.4);
-Local, Pinned or In storage at rest, or, while another transition this process
-runs leaves the files where they are, that transition's words. No rate shows
-beside it. A move fails when a file's original changed before its upload
+first, since it makes the pause moot); making local, either queued, with the entries ahead of it and what holds the
+queue back, as a pin is, or filled as far as its copies have downloaded
+(§4.4), or Couldn't make local with its error, in the first place with
+Download failed; Local, Pinned or In storage at rest. No rate shows beside it.
+A move fails when a file's original changed before its upload
 (coven lists the failed move's files in `coven_moves` until it is cancelled,
 and its pending record names the original, §6.4); the release stays on this
 device only, its row sorts first beside a failed download, and its Cancel ends
@@ -2075,7 +2070,8 @@ never pinned; an evicted one is fetched again the next time it is shown.
 Shown large, in the lightbox on the Mac or the gallery on Android, an image
 the app is still loading is named under its spinner.
 
-Pins download one release at a time from a queue that can be paused,
+The download queue holds pins and make-locals (§4.4) and downloads one release
+at a time. Pins download from a queue that can be paused,
 cancelled and retried. Pausing stops the download that is running at once
 rather than after its file, and its release stays queued in its place; resuming
 starts it again from the beginning, since a stopped download does not yet
@@ -2121,8 +2117,23 @@ queued; the person sees the error and the failure is reported as a bug.
 Making an uploaded release local again brings its files into a folder the
 person picks, and leaves them on this device only. Only the desktop apps offer it.
 
-Carol wants her box set out of storage. She picks a folder on her drive. bae
-hands coven the folder and each file's path below it, in one call
+Carol wants her box set out of storage. She picks a folder on her drive. Each
+release she selects goes in a folder of its own below it, named for the
+release's source folder, so two releases that both hold `01.flac` do not
+collide; a release with no source folder name fails its entry. One request
+queues the whole selection in the download queue (§4.3), in one write that
+passes over a release that is local, deleted meanwhile, or already waiting or
+downloading, and makes a failed pin's entry this make-local in its place. The
+queue makes them local one release at a time, in the order asked, and its
+pause, cancel, retry and restarts are the pins': pausing stops the download
+that is running at once and its entry stays queued; resuming starts it again
+from its start; the queue is kept across restarts, its entries and pause, and
+the entry that was running starts again. A queued make-local reads Queued to
+make local, with the entries ahead of it and Paused or Waiting for network
+when the queue is held back; one that fails stays with its error, reading
+Couldn't make local, until retried or cancelled. A cancel takes the entry out
+and stops the download. bae hands coven the folder and each release's file
+paths below it, in one call
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
 coven downloads every file, checking its content hash as every download does,
 writes it under a temporary name in its final folder, and renames it once it
@@ -2130,16 +2141,15 @@ is whole and synced. While it downloads, the release's Storage manager row and
 its storage band show how far: a bar and the bytes of the whole release, and
 the bytes of the file being downloaded. coven reports both as each file's
 bytes arrive, a few times a second; they are kept only in memory, keyed by
-release, beside the tables, and the release leaves them as its transition
-ends, however it ends. Then one write switches every file to
-Carol's device only, coven recording each copy as the file's original there,
-and ends the release's transition (§4.2), and the same write takes the
-release out of the download queue; no synced row of the release
-changes. Other devices see the files on Carol's device,
+release, beside the tables, in the stream of the active download's progress,
+and the release leaves them as its entry ends, however it ends. Then one
+write switches every file to Carol's device only, coven recording each copy as
+the file's original there, and takes the release out of the download queue
+(§4.3); no synced row of the release changes. Other devices see the files on Carol's device,
 drop their pins and cached bytes of them, and can't play the release. The
 stored bytes go once nothing names them. A cancel or failure before that write
-removes every copy and every folder the call made, and leaves the release
-uploaded. The cover keeps its coven file: it is bae's own, and every device
+removes every copy and every folder the call made, a cancel's at the next
+write, and leaves the release uploaded. The cover keeps its coven file: it is bae's own, and every device
 shows it. If two devices make one release local at once, the later write wins
 on both; coven deletes the losing device's copies it left as it wrote them,
 with the folders it made for them once empty, and a copy the person changed
@@ -4577,7 +4587,7 @@ bindings export none of their symbols.
 | bae-identify | identification, desktop only: the reducer that asks every key a candidate's signals put in effect and ranks what the catalogs return, the release groups and pressing evidence it ranks by, the view a surface shows of a run, and the verdict a finished run stores |
 | bae-track-audio | reading a track's stored audio for a decode, for playback, a save or export, import's loudness pass and a transcode: the readers that fill a sparse buffer from a release file or a local path, what of the buffers a decode reads, the stretch of a file a preview plays, and why a read failed |
 | bae-preferences | this device's preferences for a library: the `preferences` row and its save presets, the values they hold, which catalogs a lookup asks, and the transfer concurrency the setters accept |
-| bae-transfers | the transfer queues and storage transitions: the download queue that keeps releases on this device and the export and save queue, each worked through one release at a time, paused, cancelled and retried, their entries as this device's tables hold them, and the storage transition each release is in, ended in the write that changes its files |
+| bae-transfers | the transfer queues: the download queue that keeps releases on this device or makes them local and the export and save queue, each worked through one release at a time, paused, cancelled and retried, their entries as this device's tables hold them, each ended in the write that does its work, and the writes that move a selection's files to the cloud or out of the pinned cache |
 | bae-store | the library's store over coven, with no table: the `Store` every read, write and live query runs through, the coven calls bae makes on a library (storage setup, sync, keys, files, pins, uploads, invites, restore codes), the schema's shape (each crate's parts, run in crate order as one migration) and the SQL functions and collation the parts declare, list windows, the cancellable live queries a surface pulls values from and the live reads over them, whose request moves in place and says whether a read that finished after it was replaced still answers (a window's rows do; another id's detail does not), and the names a person enters |
 | bae-records | the library's records and where each release's files are: artists, albums, releases, tracks, works and labels with their files, the rules that resolve credits and labels and merge identities, the row writers an import and an edit call inside their own writes, and release storage, with the `Records` owner over them |
 | bae-people | the library's members and each person's own data: who is in the library and on which devices, the admin changes this device asked for, profiles, plays, ratings and playlists, with the `Membership` and `People` owners |
@@ -4730,8 +4740,7 @@ row files in `import_state/`), the source releases' (`source_releases.sql`,
 `source_releases/tracklist.sql` and `album_link_rows.sql`), the import origin's
 (`import_origin.sql`) and the import list's (`import_list/`), then
 bae-transfers', under `bae-transfers/src/`: the transfer queues'
-(`queued_releases/tables.sql`) and the storage transitions'
-(`release_storage_action.sql`), and bae-views',
+(`queued_releases/tables.sql`), and bae-views',
 under `bae-views/src/`: the album grid's (`album/listing.sql`), the artist
 list's (`artist.sql`), the composer list's (`composer.sql`), a composer's
 page's (`composer_detail.sql`), the Storage manager's (`storage.sql`), library
@@ -4998,12 +5007,11 @@ write commits, so the release and the row naming it land in either order.
 |---|---|
 | `release_queues` | whether the pin queue and the export and save queue are paused |
 | `release_queue_versions` | queue table (`download_queue`, `output_queue`): how many writes have added, removed or moved its entries, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
-| `download_queue` | release queued to pin, in the order queued: queued, downloading, or failed with its error (§4.3) |
-| `release_storage_action` | release making itself local, a storage transition this process runs while its files rest where they are (§4.2) |
+| `download_queue` | release queued to pin or to make local, in the order queued: pin or make local, with a make-local's folder, a BLOB of coven's bytes for its path; and queued, downloading, or failed with its error (§4.3, §4.4) |
 | `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |
 
 The download queue keeps its entries and its pause across restarts; the export
-queue opens empty and running, and no release is in a storage transition.
+queue opens empty and running.
 
 ### A.10 Settings
 
@@ -5175,7 +5183,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `import_start` | import a candidate as stored, or once the pick its run is reading is stored |
 | `release_detail_get` | read a library release |
 | `release_export` | queue an export of a release's files |
-| `release_storage_action` | move to storage, pin, unpin, make local, or cancel |
+| `release_storage_action` | move to storage, pin, unpin, queue a make-local, or cancel |
 | `output_status` | read the export queue |
 | `release_reidentify` | re-identify a release as a MusicBrainz or Discogs release: apply its every value in an edit session of its own and save it, records and album with it, into the album its records name or a library album given over them |
 | `release_album_set` | move a release into a library album, which keeps its own title and artists, as the editor's album picker does |

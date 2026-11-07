@@ -3,7 +3,7 @@
 
 use super::*;
 use bae_diagnostics::{LocalId, TelemetryEvent};
-use bae_transfers::release_storage_action::MoveRefusal;
+use bae_transfers::storage_moves::MoveRefusal;
 use tracing::{error, info};
 
 /// What a release's refusal to move to the cloud tells the person.
@@ -110,15 +110,15 @@ impl LibraryManager {
         &self,
         release_ids: &[String],
         pin: bool,
-    ) -> Result<bae_transfers::release_storage_action::MovedToCloud, LibraryError> {
+    ) -> Result<bae_transfers::storage_moves::MovedToCloud, LibraryError> {
         let store = self.store.clone();
         let release_ids = release_ids.to_vec();
         self.run_file_operation("move releases to the cloud", move |_closing| async move {
-            bae_transfers::release_storage_action::move_releases_to_cloud(&store, release_ids, pin)
+            bae_transfers::storage_moves::move_releases_to_cloud(&store, release_ids, pin)
                 .await
                 .map_err(|error| match error {
                     bae_store::WriteError::Refused(
-                        bae_transfers::StorageTransitionRefusal::NoStorage,
+                        bae_transfers::StorageMoveRefusal::NoStorage,
                     ) => coven::SyncError::NoStorage.into(),
                     error => error.into(),
                 })

@@ -341,7 +341,6 @@ pub struct BridgeReleaseSummary {
     /// syncs, and empty while the release is `transitioning`. The Storage
     /// Manager row context menu renders these.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
-    pub transfer_action: Option<BridgeReleaseStorageAction>,
     /// What of the release waits in this device's upload queue; `None` when
     /// nothing does.
     pub upload: Option<BridgeReleaseUpload>,
@@ -416,7 +415,6 @@ pub struct BridgeRelease {
     /// Storage transitions available right now, gated by the core on whether the library
     /// syncs, and empty while the release is `transitioning`.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
-    pub transfer_action: Option<BridgeReleaseStorageAction>,
     /// What of the release waits in this device's upload queue; `None` when
     /// nothing does.
     pub upload: Option<BridgeReleaseUpload>,
@@ -436,6 +434,10 @@ pub struct BridgeRelease {
     pub gallery_items: Vec<BridgeGalleryItem>,
     /// Whether this device can play the release now, and why not.
     pub playability: BridgeReleasePlayability,
+    /// Where the release stands in being made local, which core decides from
+    /// its entry in the download queue; `None` when it is not being made
+    /// local.
+    pub make_local: Option<crate::types::BridgeMakeLocalStatus>,
     /// The download control's state for the release, which core decides from
     /// its entry in the download queue; `None` when there is no control to
     /// show.

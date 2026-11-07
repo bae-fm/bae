@@ -91,13 +91,13 @@ fn resolve_release_detail(
     context: ReleaseDetailContext,
     syncs: bool,
 ) -> ReleaseDetail {
-    let ReleaseDetailContext { detail, transfers, release_index, is_compilation } = context;
+    let ReleaseDetailContext { detail, download, release_index, is_compilation } = context;
     let ctx = ReleaseResolveCtx {
         syncs,
         cover: bae_records::cover_ref(release_id, detail.cover_version.clone()),
         is_compilation,
     };
-    ReleaseDetail::from_raw(detail, transfers, release_index, &ctx)
+    ReleaseDetail::from_raw(detail, download, release_index, &ctx)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -148,35 +148,35 @@ pub(crate) struct ReleaseContextRows {
 
 impl ReleaseContextRows {
     pub(crate) fn process(self) -> ReleaseDetailContext {
-        let ReleaseDetailRead { detail, transfers } = self.detail.process();
+        let ReleaseDetailRead { detail, download } = self.detail.process();
         ReleaseDetailContext {
             detail,
-            transfers,
+            download,
             release_index: self.release_index,
             is_compilation: self.is_compilation,
         }
     }
 }
 
-/// The release's rows as its detail reads them, beside what the transfer
-/// queues and the storage transitions say of it.
+/// The release's rows as its detail reads them, beside its entry in the
+/// download queue.
 pub(crate) fn build_release_detail_on(
     sql: &SqlReadContext<'_>,
     release: DbRelease,
 ) -> Result<ReleaseDetailRows, DbError> {
-    let transfers = bae_transfers::release_transfer_state_on(sql, &release.id)?;
-    Ok(ReleaseDetailRows { rows: release_detail_rows_on(sql, release)?, transfers })
+    let download = bae_transfers::release_download_entry_on(sql, &release.id)?;
+    Ok(ReleaseDetailRows { rows: release_detail_rows_on(sql, release)?, download })
 }
 
 #[derive(Clone, PartialEq)]
 pub(crate) struct ReleaseDetailRows {
     rows: DbReleaseDetailRows,
-    transfers: bae_transfers::ReleaseTransferState,
+    download: Option<bae_transfers::DownloadEntry>,
 }
 
 impl ReleaseDetailRows {
     pub(crate) fn process(self) -> ReleaseDetailRead {
-        ReleaseDetailRead { detail: self.rows.process(), transfers: self.transfers }
+        ReleaseDetailRead { detail: self.rows.process(), download: self.download }
     }
 }
 

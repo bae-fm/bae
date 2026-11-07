@@ -1,13 +1,14 @@
-//! The download (pin) queue.
+//! The download queue, of pins and make-locals.
 //!
-//! Pinning routes through a serial queue rather than an ephemeral
-//! per-release task: one release downloads at a time, the rest wait, and the
-//! user can pause/cancel/retry. The queue is the `download_queue` table, which
+//! Pinning and making a release local route through a serial queue rather
+//! than an ephemeral per-release task: one release downloads at a time, the
+//! rest wait, and the user can pause/cancel/retry. The queue is the `download_queue` table, which
 //! the library keeps as it opens, with its pause: a release that wasn't fully
 //! pinned stays as it was, since a pin flips a release to pinned only once
 //! every file lands, and its entry runs again.
 
 use super::*;
+use bae_transfers::{DownloadRequest, DownloadTransfer};
 
 impl LibraryManager {
     /// Enqueue releases to pin for offline, in one write that passes over ids
@@ -40,7 +41,8 @@ impl LibraryManager {
     }
 
     /// Cancel a release's download. Drops a queued or failed entry; cancelling
-    /// an active pin signals its worker to restore the previous pin state.
+    /// an active one aborts its work, which pins nothing and makes nothing
+    /// local.
     pub async fn cancel_download(&self, release_id: &str) -> Result<(), LibraryError> {
         // An active entry needs no follow-up here: the aborted pin task closes its
         // progress channel, and the worker's drain clears the streamed transfer
@@ -54,44 +56,55 @@ impl LibraryManager {
         Ok(self.downloads.retry_failed().await?)
     }
 
-    /// The serial download worker: drains the pin queue one release at a time
-    /// through [`QueuedReleases::run_serial`], which owns the queue protocol
+    /// The serial download worker: drains the download queue one release at a
+    /// time through [`QueuedReleases::run_serial`], which owns the queue protocol
     /// (the activate/cancel race, cancel-is-not-a-failure, remove vs
     /// mark-failed).
     ///
     /// [`QueuedReleases::run_serial`]: bae_transfers::QueuedReleases::run_serial
     ///
-    /// All this supplies is how a pin runs: resolve the release's byte totals,
-    /// ask [`LibraryManager::start_pin_transfer`] to compose the pin task with this worker's progress
-    /// drain, and yield the resulting operation. The
-    /// outcome comes from draining the transfer's progress channel — that drain
-    /// also publishes the action the storage row reads — and then joining the pin
-    /// task, so a panicked pin reports the panic rather than "the channel closed".
+    /// All this supplies is how an entry runs by its kind. A pin: resolve the
+    /// release's byte totals, ask [`LibraryManager::start_pin_transfer`] to
+    /// compose the pin task with this worker's progress drain, and yield the
+    /// resulting operation. The outcome comes from draining the transfer's
+    /// progress channel and then joining the pin task, so a panicked pin
+    /// reports the panic rather than "the channel closed". A make-local: list
+    /// the copies and run the download and its write on a task of its own
+    /// ([`LibraryManager::start_make_local`]).
     ///
-    /// Success needs no follow-up here: `pin_release_files_with_progress`
-    /// pins the files and ends the queue entry in one write, so the release
-    /// subscription updates its `pinned` flag as the entry leaves.
-    /// Completion and failure reach diagnostics from inside the transfer
-    /// (`StorageTransferCompleted` / `StorageTransferFailed`), so there is nothing
-    /// to report on the way out.
+    /// Success needs no follow-up here: each work ends its queue entry in the
+    /// write that changes the release's files (`pin_release_files_with_progress`
+    /// pins them, a make-local switches them to this device only), so the
+    /// release subscription updates as the entry leaves. Completion and
+    /// failure reach diagnostics from inside the work
+    /// (`StorageTransferCompleted` / `StorageTransferFailed`), so there is
+    /// nothing to report on the way out.
     pub(super) async fn run_download_worker(&self) {
         self.downloads
             .run_serial(
-                "Pin",
+                "Download",
                 |op, entry| async move {
                     let release_id = op.release_id;
-                    let initial_progress = self.initial_download_progress(&release_id).await?;
-                    let drive_release_id = release_id.clone();
-                    let running =
-                        self.start_pin_transfer(release_id, entry, move |progress| async move {
-                            self.drive_transfer(
-                                &drive_release_id,
-                                ReleaseStorageAction::Pin,
-                                progress,
-                            )
-                            .await
-                        });
-                    Ok((initial_progress, running))
+                    match op.payload {
+                        DownloadRequest::Pin => {
+                            let initial_progress =
+                                self.initial_download_progress(&release_id).await?;
+                            let drive_release_id = release_id.clone();
+                            let manager = self.clone();
+                            let running = self.start_pin_transfer(
+                                release_id,
+                                entry,
+                                move |progress| async move {
+                                    manager.drive_pin(&drive_release_id, progress).await
+                                },
+                            );
+                            Ok((DownloadTransfer::Pin(initial_progress), running.boxed()))
+                        }
+                        #[cfg(desktop)]
+                        DownloadRequest::MakeLocal { target_dir } => {
+                            self.start_make_local(release_id, target_dir, entry).await
+                        }
+                    }
                 },
                 |_release_id, _result| {},
                 |label, error| self.report_queue_store_failure(label, error),

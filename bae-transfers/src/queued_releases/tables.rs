@@ -1,9 +1,7 @@
 //! The transfer queues' tables: `download_queue` and `output_queue`, each
 //! entry a release in the order queued with its phase, and whether each queue
 //! is paused (`release_queues`), as functions over coven's SQL contexts. The
-//! queue owners ([`crate::QueuedReleases`]) are the only writers, but for the
-//! write that makes a release local, which ends the release's download entry
-//! ([`end_download_entry_on`]); the panes,
+//! queue owners ([`crate::QueuedReleases`]) are the only writers; the panes,
 //! the detail views and the sync activity read the same tables through live
 //! queries.
 //!
@@ -12,6 +10,7 @@
 /// The SQL creating this part's tables and triggers.
 pub(crate) const SQL: &str = include_str!("tables.sql");
 
+use crate::download_snapshot::DownloadRequest;
 use crate::output_snapshot::{OutputKind, OutputRequest};
 #[cfg(any(desktop, test, feature = "test-utils"))]
 use crate::release_queue::ReleaseQueueSnapshot;
@@ -47,20 +46,37 @@ pub trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
     fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self>;
 }
 
-/// A download carries nothing beyond its release.
-impl QueuedPayload for () {
+/// A download carries what it does: a pin nothing more, a make-local its
+/// folder.
+impl QueuedPayload for DownloadRequest {
     const QUEUE: &'static str = "download";
     const TABLE: &'static str = "download_queue";
-    const COLUMNS: &'static [&'static str] = &[];
+    const COLUMNS: &'static [&'static str] = &["kind", "target_dir"];
     const NEEDS_NETWORK: bool = true;
 
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError> {
-        Ok(Vec::new())
+        Ok(match self {
+            Self::Pin => vec![Value::Text("pin".to_string()), Value::Null],
+            Self::MakeLocal { target_dir } => vec![
+                Value::Text("make_local".to_string()),
+                Value::Blob(coven::path_bytes(target_dir)),
+            ],
+        })
     }
 
-    fn from_row(_row: &Row<'_>, _at: usize) -> rusqlite::Result<Self> {
-        Ok(())
+    fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self> {
+        let kind: String = row.get(at)?;
+        match (kind.as_str(), bae_store::path_column::get_optional(row, at + 1)?) {
+            ("pin", None) => Ok(Self::Pin),
+            #[cfg(desktop)]
+            ("make_local", Some(target_dir)) => Ok(Self::MakeLocal { target_dir }),
+            (kind, target_dir) => Err(column_conversion_error(
+                row,
+                at,
+                format!("download kind {kind:?} with folder {target_dir:?}"),
+            )),
+        }
     }
 }
 
@@ -298,7 +314,8 @@ pub fn release_queue_entries_on(
     release_id: &str,
 ) -> Result<crate::release_queue::ReleaseQueueEntries, DbError> {
     Ok(crate::release_queue::ReleaseQueueEntries {
-        download: queue_rows_on::<()>(sql, "WHERE q.release_id = ?1", [release_id])?.pop(),
+        download: queue_rows_on::<DownloadRequest>(sql, "WHERE q.release_id = ?1", [release_id])?
+            .pop(),
         output: queue_rows_on::<OutputRequest>(sql, "WHERE q.release_id = ?1", [release_id])?.pop(),
     })
 }
@@ -341,13 +358,14 @@ pub(crate) fn enqueue_pinnable_releases_on(
     let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
     Ok(sql.execute(
         &format!(
-            "INSERT INTO download_queue (release_id, created_at, state) \
-             SELECT requested.value, :created_at, 'queued' \
+            "INSERT INTO download_queue (release_id, created_at, state, kind) \
+             SELECT requested.value, :created_at, 'queued', 'pin' \
              FROM json_each(:release_ids) AS requested \
              JOIN release_storage AS storage ON storage.release_id = requested.value \
              WHERE storage.stored = 1 AND NOT {pinned} \
              ORDER BY requested.key \
-             ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL \
+             ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL, \
+                 kind = 'pin', target_dir = NULL \
              WHERE download_queue.state = 'failed'",
             pinned = bae_records::records::query::RELEASE_STORAGE_PINNED,
         ),
@@ -504,21 +522,43 @@ pub(crate) fn cancel_queued_release_on<P: QueuedPayload>(
     Ok(sql.execute(&format!("DELETE FROM {} WHERE release_id = ?", P::TABLE), [release_id])? > 0)
 }
 
-/// Take `release_id` out of the download queue in any phase, as the write that
-/// makes the release local does: a release held here has nothing to download,
-/// so its entry, failed or not, can't outlive that write.
-pub(crate) fn end_download_entry_on(sql: &CovenWrite<'_>, release_id: &str) -> Result<(), DbError> {
-    cancel_queued_release_on::<()>(sql, release_id)?;
-    Ok(())
+/// Queue to make local into `target_dir`, in the order given, each of
+/// `release_ids` that is stored in the cloud, in one write that decides which:
+/// one the library no longer holds or that is local is passed over, and so is
+/// one waiting or downloading; one whose download failed becomes this
+/// make-local in its place. `true` when any went in or was queued again.
+#[cfg(desktop)]
+pub(crate) fn enqueue_make_locals_on(
+    sql: &CovenWrite<'_>,
+    release_ids: &[String],
+    target_dir: &std::path::Path,
+    created_at: i64,
+) -> Result<bool, DbError> {
+    let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
+    Ok(sql.execute(
+        "INSERT INTO download_queue (release_id, created_at, state, kind, target_dir) \
+         SELECT requested.value, :created_at, 'queued', 'make_local', :target_dir \
+         FROM json_each(:release_ids) AS requested \
+         JOIN release_storage AS storage ON storage.release_id = requested.value \
+         WHERE storage.stored = 1 \
+         ORDER BY requested.key \
+         ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL, \
+             kind = 'make_local', target_dir = excluded.target_dir \
+         WHERE download_queue.state = 'failed'",
+        rusqlite::named_params! {
+            ":created_at": created_at,
+            ":release_ids": release_ids,
+            ":target_dir": coven::path_bytes(target_dir),
+        },
+    )? > 0)
 }
 
-/// Empty the export and save queue, let it run, and end every storage
-/// transition: what the library opens with, since those do not outlive the
-/// process that ran them. The download queue and its pause are kept, as
-/// coven's upload pause is: the entry that was downloading runs again.
+/// Empty the export and save queue and let it run: what the library opens
+/// with, since it does not outlive the process that ran it. The download
+/// queue and its pause are kept, as coven's upload pause is: the entry that
+/// was downloading runs again.
 pub fn clear_transfers_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
     sql.execute("DELETE FROM output_queue", [])?;
-    sql.execute("DELETE FROM release_storage_action", [])?;
     sql.execute("UPDATE release_queues SET paused = 0 WHERE queue = 'output'", [])?;
     Ok(())
 }
@@ -582,8 +622,8 @@ pub mod bulk {
     ) -> Result<(), DbError> {
         let rows = bae_store::test_fixtures::window_cost::numbered(start, end);
         sql.execute_batch(&format!(
-            "{rows} INSERT INTO download_queue (position, release_id, created_at, state) \
-                 SELECT i, {release_id_sql}, i, 'queued' FROM k;"
+            "{rows} INSERT INTO download_queue (position, release_id, created_at, state, kind) \
+                 SELECT i, {release_id_sql}, i, 'queued', 'pin' FROM k;"
         ))?;
         Ok(())
     }

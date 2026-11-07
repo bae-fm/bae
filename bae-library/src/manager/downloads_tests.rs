@@ -312,7 +312,7 @@ async fn download_transfers_report_each_driven_file_progress() {
         .enqueue_all(vec![bae_transfers::QueuedPin {
             release_id: release_id.clone(),
             created_at: 0,
-            payload: (),
+            payload: bae_transfers::DownloadRequest::Pin,
         }])
         .await
         .unwrap());
@@ -322,18 +322,23 @@ async fn download_transfers_report_each_driven_file_progress() {
         .activate_for_test(
             &release_id,
             pending.abort_handle(),
-            bae_transfers::DownloadTransferProgress::new(&release_id, 0, 7).unwrap(),
+            bae_transfers::DownloadTransfer::Pin(
+                bae_transfers::DownloadTransferProgress::new(&release_id, 0, 7).unwrap(),
+            ),
         )
         .await
         .unwrap());
 
     let mut transfers = manager.downloads.watch_transfers();
-    let bytes_done = |transfers: &std::collections::BTreeMap<
-        String,
-        bae_transfers::DownloadTransferProgress,
-    >| {
-        transfers.get("release-progress").expect("the active download has progress").clone()
-    };
+    let bytes_done =
+        |transfers: &std::collections::BTreeMap<String, bae_transfers::DownloadTransfer>| {
+            let Some(bae_transfers::DownloadTransfer::Pin(progress)) =
+                transfers.get("release-progress")
+            else {
+                panic!("the active download has a pin's progress");
+            };
+            progress.clone()
+        };
     assert_eq!(bytes_done(&transfers.until(|_| true).await.unwrap()).bytes_done, 0);
 
     let (progress_tx, progress_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -342,9 +347,8 @@ async fn download_transfers_report_each_driven_file_progress() {
         let release_id = release_id.clone();
         tokio::spawn(async move {
             manager
-                .drive_transfer(
+                .drive_pin(
                     &release_id,
-                    ReleaseStorageAction::Pin,
                     crate::storage::transfer::TransferProgressFeed::of_test_channel(progress_rx),
                 )
                 .await
@@ -382,7 +386,9 @@ async fn download_bytes_send_no_new_sync_activity() {
     let manager = test.library.manager();
     let release_id = "release-activity".to_string();
     let progress = |bytes_done| {
-        bae_transfers::DownloadTransferProgress::new(&release_id, bytes_done, 7).unwrap()
+        bae_transfers::DownloadTransfer::Pin(
+            bae_transfers::DownloadTransferProgress::new(&release_id, bytes_done, 7).unwrap(),
+        )
     };
     let mut activity = views(test.library.manager()).subscribe_sync_activity();
     assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.downloads, None);
@@ -394,7 +400,7 @@ async fn download_bytes_send_no_new_sync_activity() {
         .enqueue_all(vec![bae_transfers::QueuedPin {
             release_id: release_id.clone(),
             created_at: 0,
-            payload: (),
+            payload: bae_transfers::DownloadRequest::Pin,
         }])
         .await
         .unwrap());
@@ -727,7 +733,12 @@ async fn activate_download(
     let release_id = release_id.to_string();
     manager
         .store
-        .call(move |sql| bae_transfers::tables::worker_moves::activate_on::<()>(sql, &release_id))
+        .call(move |sql| {
+            bae_transfers::tables::worker_moves::activate_on::<bae_transfers::DownloadRequest>(
+                sql,
+                &release_id,
+            )
+        })
         .await
 }
 
@@ -739,7 +750,12 @@ async fn finish_download(
     let release_id = release_id.to_string();
     manager
         .store
-        .call(move |sql| bae_transfers::tables::worker_moves::finish_on::<()>(sql, &release_id))
+        .call(move |sql| {
+            bae_transfers::tables::worker_moves::finish_on::<bae_transfers::DownloadRequest>(
+                sql,
+                &release_id,
+            )
+        })
         .await
 }
 
@@ -753,7 +769,11 @@ async fn fail_download(
     manager
         .store
         .call(move |sql| {
-            bae_transfers::tables::worker_moves::fail_on::<()>(sql, &release_id, &error)
+            bae_transfers::tables::worker_moves::fail_on::<bae_transfers::DownloadRequest>(
+                sql,
+                &release_id,
+                &error,
+            )
         })
         .await
 }

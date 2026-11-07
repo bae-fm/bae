@@ -57,6 +57,20 @@ pub fn folder_path(release_id: &str, folder_name: &str) -> Result<RelativePath, 
     })
 }
 
+/// The path below a person's folder that a local copy of a release's file
+/// goes to: the release's folder name, then the file's names.
+pub fn copy_path(
+    release_id: &str,
+    folder_name: &str,
+    file_id: &str,
+    original_filename: &str,
+) -> Result<RelativePath, StoredNameError> {
+    let folder = folder_path(release_id, folder_name)?;
+    let file = file_path(release_id, file_id, original_filename)?;
+    Ok(RelativePath::new(folder.names().chain(file.names()))
+        .expect("two paths of non-empty names join to one"))
+}
+
 /// The extension a file's name in its release ends on, lowercased and
 /// without its dot: its own name's (not a folder's above it) text after its
 /// last dot. `None` for a name with no dot past its first character (`track`,

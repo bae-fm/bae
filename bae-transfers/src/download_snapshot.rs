@@ -88,19 +88,72 @@ impl DownloadRate {
     }
 }
 
+/// How far one release being made local has come: the bytes of the file
+/// coven is downloading into the person's folder, and of the whole release.
+/// Held only in memory while the copies download, before the write that
+/// switches the files; no table holds it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MakeLocalTransferProgress {
+    /// The bytes of the file being downloaded that are down.
+    pub file_bytes_done: u64,
+    /// The file's bytes in all.
+    pub file_bytes_total: u64,
+    /// The bytes of every file of the release that are down.
+    pub bytes_done: u64,
+    /// The bytes of every file the release downloads.
+    pub bytes_total: u64,
+}
+
+impl MakeLocalTransferProgress {
+    /// Nothing down yet, of a release of `bytes_total`.
+    pub fn begin(bytes_total: u64) -> Self {
+        Self { file_bytes_done: 0, file_bytes_total: 0, bytes_done: 0, bytes_total }
+    }
+
+    /// The progress coven reports of one step of preparing the copies.
+    pub fn of(progress: coven::Progress<coven::DeviceOnlyStep>) -> Self {
+        let coven::DeviceOnlyStep::Downloading { before, all, .. } = progress.step;
+        Self {
+            file_bytes_done: progress.done,
+            file_bytes_total: progress.total,
+            bytes_done: before + progress.done,
+            bytes_total: all,
+        }
+    }
+}
+
+/// How far the active download has come, by what it does: a pin's bytes and
+/// rate, or a make-local's bytes of the release and of its current file.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DownloadTransfer {
+    Pin(DownloadTransferProgress),
+    MakeLocal(MakeLocalTransferProgress),
+}
+
+/// What a queued download does, and what it needs to.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DownloadRequest {
+    /// Keep the release's files whole on this device.
+    Pin,
+    /// Download the release's files into a folder of their own below
+    /// `target_dir`, and switch them to this device only.
+    #[cfg(desktop)]
+    MakeLocal { target_dir: std::path::PathBuf },
+}
+
 /// A release to queue for download.
-pub type QueuedPin = ReleaseQueueEntry<()>;
+pub type QueuedPin = ReleaseQueueEntry<DownloadRequest>;
 pub type DownloadProgress = ReleaseQueueProgress;
 /// A download as the Downloads pane lists it: its phase without the active
 /// one's bytes, which travel apart, keyed by release
 /// (the library's download transfers watch).
-pub type QueuedDownload = ReleaseQueueOp<(), ()>;
+pub type QueuedDownload = ReleaseQueueOp<DownloadRequest, ()>;
 pub type DownloadPhase = ReleaseQueueState<()>;
-pub type DownloadRow = ReleaseQueueRow<(), ()>;
+pub type DownloadRow = ReleaseQueueRow<DownloadRequest, ()>;
 /// The download queue as the Downloads pane shows it: its entries and their
 /// phases, each beside its release. It changes as entries come, go, start or
 /// fail, not as bytes arrive.
-pub type DownloadSnapshot = ReleaseQueueSnapshot<(), ()>;
+pub type DownloadSnapshot = ReleaseQueueSnapshot<DownloadRequest, ()>;
 
 #[cfg(test)]
 #[path = "download_snapshot_tests.rs"]

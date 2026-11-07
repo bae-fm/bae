@@ -49,23 +49,23 @@ fn in_storage_offers_pin_or_unpin_and_detach_audio() {
     assert_eq!(available_storage_actions(NOT_PINNED, &Playable, true), vec![Pin, DetachAudio]);
 }
 
-/// The whole point of the join: on pin success the release value and
-/// the queue-drop snapshot arrive in either order, so while an entry is still
-/// in the queue it decides the control — even once the release reads pinned.
+/// A pin's entry in the queue decides the control, whatever the release's
+/// pin state reads.
 #[test]
-fn a_queue_entry_outranks_pinned() {
-    use bae_transfers::{DownloadEntry, QueueWait};
+fn a_pin_entry_decides_the_control() {
+    use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep, QueueWait};
+    let pin = |step| DownloadEntry { kind: DownloadKind::Pin, step };
     let cases = [
         (
-            DownloadEntry::Queued { ahead: 2, wait: Some(QueueWait::Paused) },
+            pin(DownloadStep::Queued { ahead: 2, wait: Some(QueueWait::Paused) }),
             ReleaseDownloadStatus::Queued { ahead: 2, wait: Some(QueueWait::Paused) },
         ),
         (
-            DownloadEntry::Running { wait: Some(QueueWait::Offline) },
+            pin(DownloadStep::Running { wait: Some(QueueWait::Offline) }),
             ReleaseDownloadStatus::Downloading { wait: Some(QueueWait::Offline) },
         ),
         (
-            DownloadEntry::Failed { error: "read failed".to_string() },
+            pin(DownloadStep::Failed { error: "read failed".to_string() }),
             ReleaseDownloadStatus::Failed { error: "read failed".to_string() },
         ),
     ];
@@ -78,6 +78,35 @@ fn a_queue_entry_outranks_pinned() {
             );
         }
     }
+}
+
+/// A make-local's entry is not the download control's to show; its own
+/// status says where the release stands in being made local.
+#[test]
+fn a_make_local_entry_is_its_own_status() {
+    use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep, QueueWait};
+    let make_local = |step| DownloadEntry { kind: DownloadKind::MakeLocal, step };
+    let waiting = make_local(DownloadStep::Queued { ahead: 1, wait: Some(QueueWait::Offline) });
+    let running = make_local(DownloadStep::Running { wait: None });
+    let failed = make_local(DownloadStep::Failed { error: "disk full".to_string() });
+    for entry in [&waiting, &running, &failed] {
+        assert_eq!(release_download_status(NOT_PINNED, &[Pin, DetachAudio], Some(entry)), None);
+    }
+    assert_eq!(
+        release_make_local_status(Some(&waiting)),
+        Some(MakeLocalStatus::Queued { ahead: 1, wait: Some(QueueWait::Offline) })
+    );
+    assert_eq!(
+        release_make_local_status(Some(&running)),
+        Some(MakeLocalStatus::Making { wait: None })
+    );
+    assert_eq!(
+        release_make_local_status(Some(&failed)),
+        Some(MakeLocalStatus::Failed { error: "disk full".to_string() })
+    );
+    let pin = DownloadEntry { kind: DownloadKind::Pin, step: DownloadStep::Running { wait: None } };
+    assert_eq!(release_make_local_status(Some(&pin)), None);
+    assert_eq!(release_make_local_status(None), None);
 }
 
 /// Pinned with nothing in flight is the settled offline state.

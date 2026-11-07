@@ -185,26 +185,15 @@ pub(crate) fn download_transfers(
         let mut transfers = services.watch_download_transfers();
         async move {
             while let Some(changes) = transfers.next().await {
-                write_release_changes(&writer, changes, |progress| BridgeFastValue::Download {
-                    progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
-                });
-            }
-        }
-    })
-}
-
-#[cfg(desktop)]
-/// The stream [`AppHandle::feed_make_local_transfers`](crate::AppHandle::feed_make_local_transfers) hands out.
-pub(crate) fn make_local_transfers(
-    runtime: OperationRuntime,
-    run: impl RunFeed,
-) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| {
-        let mut transfers = services.watch_make_local_transfers();
-        async move {
-            while let Some(changes) = transfers.next().await {
-                write_release_changes(&writer, changes, |progress| BridgeFastValue::MakeLocal {
-                    progress: crate::types::BridgeMakeLocalProgress::from_core(progress),
+                write_release_changes(&writer, changes, |progress| match progress {
+                    bae_transfers::DownloadTransfer::Pin(progress) => BridgeFastValue::Download {
+                        progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
+                    },
+                    bae_transfers::DownloadTransfer::MakeLocal(progress) => {
+                        BridgeFastValue::MakeLocal {
+                            progress: crate::types::BridgeMakeLocalProgress::from_core(progress),
+                        }
+                    }
                 });
             }
         }

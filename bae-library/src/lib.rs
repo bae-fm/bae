@@ -2,7 +2,6 @@ mod album_selection;
 mod assembly;
 mod bootstrap;
 mod closing_step;
-pub(crate) mod detach_cancels;
 mod detail;
 #[cfg(all(feature = "dev-reset", unix))]
 pub mod dev_reset;
@@ -13,7 +12,6 @@ pub mod keys;
 pub mod library_name;
 mod library_status;
 mod local_lifecycle;
-pub(crate) mod make_local_transfers;
 pub mod manager;
 mod outbox_watch;
 pub mod people;
@@ -48,7 +46,6 @@ pub use local_lifecycle::{
     finish_deletion, finish_removals, remove_unopenable_library, unsent_before_removal,
     LibraryRemovalError, UnfinishedRemoval,
 };
-pub use make_local_transfers::MakeLocalTransferProgress;
 pub use manager::*;
 pub use outbox_watch::{
     OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfers, OutboxTransfersWatch,

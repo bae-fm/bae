@@ -5,7 +5,7 @@ use super::*;
 /// The Storage Manager list as it changes, read in the view the
 /// subscription is asked for: its rows, whose pin markers the query reads
 /// from the listing's pinned counts, whose uploads from coven's upload
-/// queue and whose transitions from `release_storage_action` and the
+/// queue and whose pins and make-locals from the
 /// download queue, and whether the library syncs — the state the
 /// rows are resolved against. One query serves every window: a new view
 /// points it at what that reads.

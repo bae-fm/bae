@@ -36,7 +36,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    crate::types::BridgeMakeLocalProgress = bae_library::MakeLocalTransferProgress,
+    crate::types::BridgeMakeLocalProgress = bae_transfers::MakeLocalTransferProgress,
     from_core: pub(crate) fn,
     fields: { file_bytes_done, file_bytes_total, bytes_done, bytes_total },
 }
@@ -54,15 +54,17 @@ impl crate::types::BridgeDownloadState {
 impl crate::types::BridgeDownloadOp {
     pub(crate) fn from_core(row: bae_transfers::DownloadRow) -> Self {
         let bae_transfers::ReleaseQueueRow { op, release } = row;
-        let bae_transfers::ReleaseQueueOp {
-            release_id,
-            created_at,
-            // Downloads carry no operation-specific payload.
-            payload: (),
-            state,
-        } = op;
+        let bae_transfers::ReleaseQueueOp { release_id, created_at, payload, state } = op;
+        let kind = match payload {
+            bae_transfers::DownloadRequest::Pin => crate::types::BridgeDownloadKind::Pin,
+            #[cfg(desktop)]
+            bae_transfers::DownloadRequest::MakeLocal { .. } => {
+                crate::types::BridgeDownloadKind::MakeLocal
+            }
+        };
         crate::types::BridgeDownloadOp {
             release_id,
+            kind,
             release: release.map(crate::types::BridgeQueuedRelease::from_core),
             created_at,
             state: crate::types::BridgeDownloadState::from_core(state),

@@ -260,7 +260,7 @@ fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
         remote: row.get("remote")?,
         pinned: row.get("pinned")?,
         upload: bae_records::records::queued_uploads::release_upload_in_row(row)?,
-        transfer_action: transfer_action_column(row, "transfer_action")?,
+        download: bae_transfers::download_entry_column(row)?,
         file_count: row.get("file_count")?,
         total_size: row.get("total_size")?,
     })
@@ -287,10 +287,9 @@ fn storage_status(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::Storag
             ))
         }
     };
-    let transfer = transfer_action_column(row, "transfer_action")?;
     let download = bae_transfers::download_entry_column(row)?;
     let failed_move_file = bae_records::records::queued_uploads::changed_original_in_row(row)?;
-    StorageRowStatus::of(place, transfer, download, failed_move_file)
+    StorageRowStatus::of(place, download, failed_move_file)
         .map_err(|reason| bae_store::read::column_conversion_error(row, column, reason))
 }
 
@@ -370,7 +369,6 @@ fn storage_row_select(
             listing.created_at AS date_added, \
             {release_cover} AS release_cover_version, \
             {RELEASE_UPLOAD_COLUMNS}, \
-            {transfer_action} AS transfer_action, \
             {download_entry}, \
             {album_columns}{extra} \
         FROM {listing} \
@@ -381,7 +379,6 @@ fn storage_row_select(
         WHERE {filter} AND {searched} AND ({condition})",
         release_cover = cover_version_sql("r.id"),
         release_media = release_media_sql("r.id"),
-        transfer_action = transfer_action_sql("r.id"),
         download_entry = download_entry_sql("r.id"),
     )
 }

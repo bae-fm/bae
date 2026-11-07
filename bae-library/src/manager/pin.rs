@@ -74,7 +74,7 @@ impl LibraryManager {
     pub(crate) async fn pin_release_files_with_progress(
         &self,
         release: &str,
-        entry: bae_transfers::ActiveEntry<()>,
+        entry: bae_transfers::ActiveEntry<bae_transfers::DownloadRequest>,
         mut on_progress: impl FnMut(bae_transfers::DownloadTransferProgress) + Send,
     ) -> Result<bae_transfers::Finished, LibraryError> {
         let pinnable = self.release_pinnable_files(release).await?;

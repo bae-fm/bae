@@ -1,11 +1,12 @@
 use super::*;
+use crate::download_snapshot::DownloadRequest;
 use crate::release_queue::ReleaseQueueState;
 use std::collections::BTreeMap;
 
 const RELEASE_A: &str = "0252dedb-ee39-4547-8803-438dbeb57a64";
 const RELEASE_B: &str = "64e79a1f-404a-4c34-809a-a3cb44bf1942";
 
-async fn queue() -> (QueuedReleases<(), u8>, tempfile::TempDir) {
+async fn queue() -> (QueuedReleases<DownloadRequest, u8>, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
     let db = Store::new_test(crate::TEST_SCHEMA, tmp.path(), Arc::new(coven::SystemClock))
         .await
@@ -13,12 +14,18 @@ async fn queue() -> (QueuedReleases<(), u8>, tempfile::TempDir) {
     (QueuedReleases::new(db), tmp)
 }
 
-fn entry(release_id: &str) -> ReleaseQueueEntry<()> {
-    ReleaseQueueEntry { release_id: release_id.to_string(), created_at: 0, payload: () }
+fn entry(release_id: &str) -> ReleaseQueueEntry<DownloadRequest> {
+    ReleaseQueueEntry {
+        release_id: release_id.to_string(),
+        created_at: 0,
+        payload: DownloadRequest::Pin,
+    }
 }
 
 /// Each entry's phase in the table, in order.
-async fn phases(queue: &QueuedReleases<(), u8>) -> Vec<(String, ReleaseQueueState<()>)> {
+async fn phases(
+    queue: &QueuedReleases<DownloadRequest, u8>,
+) -> Vec<(String, ReleaseQueueState<()>)> {
     queue
         .snapshot()
         .await
@@ -31,7 +38,7 @@ async fn phases(queue: &QueuedReleases<(), u8>) -> Vec<(String, ReleaseQueueStat
 
 /// Wait until the table holds what `done` looks for.
 async fn until(
-    queue: &QueuedReleases<(), u8>,
+    queue: &QueuedReleases<DownloadRequest, u8>,
     done: impl Fn(&[(String, ReleaseQueueState<()>)]) -> bool,
 ) -> Vec<(String, ReleaseQueueState<()>)> {
     let mut values = queue.subscribe();
@@ -83,11 +90,11 @@ type Outcomes = Arc<OutcomeLog>;
 /// Run the worker over `queue` with `start`, recording each outcome it
 /// reports.
 fn worker<Start, StartFut, Fut>(
-    queue: &QueuedReleases<(), u8>,
+    queue: &QueuedReleases<DownloadRequest, u8>,
     mut start: Start,
 ) -> (tokio::task::JoinHandle<()>, Outcomes)
 where
-    Start: FnMut(ReleaseQueueEntry<()>, Ending) -> StartFut + Send + 'static,
+    Start: FnMut(ReleaseQueueEntry<DownloadRequest>, Ending) -> StartFut + Send + 'static,
     StartFut: Future<Output = Result<(u8, RunningOp<Fut>), WorkError>> + Send,
     Fut: Future<Output = Result<Finished, WorkError>> + Send,
 {
@@ -137,8 +144,8 @@ async fn reported(done: &Outcomes, count: usize) -> Vec<(String, Result<(), Stri
 
 /// What a test's operation ends its entry with.
 struct Ending {
-    queue: QueuedReleases<(), u8>,
-    active: ActiveEntry<()>,
+    queue: QueuedReleases<DownloadRequest, u8>,
+    active: ActiveEntry<DownloadRequest>,
 }
 
 impl Ending {
@@ -227,7 +234,7 @@ async fn an_entry_that_panics_fails_and_the_next_one_runs() {
         worker_queue
             .run_serial(
                 "Test",
-                move |entry: ReleaseQueueEntry<()>, active| {
+                move |entry: ReleaseQueueEntry<DownloadRequest>, active| {
                     let ending = Ending { queue: ending_queue.clone(), active };
                     async move {
                         let abort = tokio::spawn(async {}).abort_handle();

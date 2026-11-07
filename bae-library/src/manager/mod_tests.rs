@@ -486,17 +486,46 @@ pub(super) async fn insert_pinnable_release(manager: &TestManager) -> String {
 pub(super) async fn started_pin_entry(
     manager: &LibraryManager,
     release_id: &str,
-) -> bae_transfers::ActiveEntry<()> {
+) -> bae_transfers::ActiveEntry<bae_transfers::DownloadRequest> {
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![release_id.to_string()]).await.unwrap();
     let started = release_id.to_string();
     let activated = manager
         .store
-        .call(move |sql| bae_transfers::tables::worker_moves::activate_on::<()>(sql, &started))
+        .call(move |sql| {
+            bae_transfers::tables::worker_moves::activate_on::<bae_transfers::DownloadRequest>(
+                sql, &started,
+            )
+        })
         .await
         .unwrap();
     assert!(activated, "the pin's release is in the download queue");
-    bae_transfers::tables::worker_moves::active_entry::<()>(release_id)
+    bae_transfers::tables::worker_moves::active_entry::<bae_transfers::DownloadRequest>(release_id)
+}
+
+/// Queue `release_ids` to be made local into `folder` and wait until the
+/// download queue has run them: `Ok` when it holds none waiting or running
+/// and none failed, else the first failure's error.
+pub(super) async fn make_local_and_wait(
+    manager: &LibraryManager,
+    release_ids: &[String],
+    folder: &std::path::Path,
+) -> Result<(), String> {
+    manager.make_releases_local(release_ids.to_vec(), folder).await.map_err(|e| e.to_string())?;
+    let queue = download_queue_until(manager, |queue| {
+        queue
+            .rows
+            .iter()
+            .all(|row| matches!(row.op.state, bae_transfers::DownloadPhase::Failed { .. }))
+    })
+    .await;
+    match queue.rows.into_iter().find_map(|row| match row.op.state {
+        bae_transfers::DownloadPhase::Failed { error } => Some(error),
+        _ => None,
+    }) {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
 }
 
 /// Insert `n` plain track rows on the release's one CD. Mirrors the row shape

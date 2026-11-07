@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::DbStorageRow;
-use bae_transfers::{DownloadEntry, QueueWait};
+use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep, QueueWait};
 
 /// Where a release's files are, as the Storage Manager sorts its rows by
 /// storage, in that order: its listing works it out from the upload queue,
@@ -12,13 +12,13 @@ use bae_transfers::{DownloadEntry, QueueWait};
 /// changes any of them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoragePlace {
-    /// This device's download queue holds it failed, or coven lists a file of
-    /// it in a failed move.
+    /// This device's download queue holds it failed, a pin or a make-local,
+    /// or coven lists a file of it in a failed move.
     Failed,
     /// Files of it wait in this device's upload queue.
     Uploading,
-    /// Its files are coming to this device: this device's download queue
-    /// holds it, waiting or downloading.
+    /// Its files are coming to this device, or into the person's folder:
+    /// this device's download queue holds it, waiting or downloading.
     Pinning,
     OnOneDevice,
     /// Uploaded, every file pinned on this device.
@@ -28,7 +28,7 @@ pub enum StoragePlace {
 }
 
 /// Where a release stands in the download queue while its files are coming to
-/// this device, and what holds the queue back.
+/// this device or into a folder, and what holds the queue back.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DownloadEntryStep {
     /// Waiting, with `ahead` entries before it that have not failed.
@@ -38,10 +38,10 @@ pub enum DownloadEntryStep {
 }
 
 /// What a Storage Manager row's storage state shows: where its files are,
-/// and while they rest, a transition this process runs for it.
+/// and while they move, the download queue's entry for it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorageRowStatus {
-    /// The download queue holds it failed, with the error.
+    /// The download queue holds a pin of it failed, with the error.
     DownloadFailed {
         error: String,
     },
@@ -50,51 +50,69 @@ pub enum StorageRowStatus {
     MoveFailed {
         file_name: String,
     },
+    /// The download queue holds a make-local of it failed, with the error.
+    MakeLocalFailed {
+        error: String,
+    },
     Uploading,
     Pinning(DownloadEntryStep),
-    /// A transition under way while the files rest where they are: unpinning,
-    /// making the release local, or admitting it for upload.
-    Transferring(ReleaseStorageAction),
+    /// The download queue holds a make-local of it, waiting or downloading.
+    MakingLocal(DownloadEntryStep),
     OnOneDevice,
     Pinned,
     InStorage,
 }
 
 impl StorageRowStatus {
-    /// The status of a release at `place`, in the transition `transfer`
-    /// (when it rests), with the download queue entry `download` and, when
-    /// its move failed, the name of the file whose original changed. A failed
-    /// download reads first when both failed. A place that names a failure
-    /// without the entry or file that puts it there is a row the queue and
-    /// the listing disagree on: the reason it fails.
+    /// The status of a release at `place` with the download queue entry
+    /// `download` and, when its move failed, the name of the file whose
+    /// original changed. A failed download reads first when both failed. A
+    /// place that names a failure or the download queue without the entry or
+    /// file that puts it there is a row the queue and the listing disagree
+    /// on: the reason it fails.
     pub(crate) fn of(
         place: StoragePlace,
-        transfer: Option<ReleaseStorageAction>,
         download: Option<DownloadEntry>,
         failed_move_file: Option<String>,
     ) -> Result<Self, String> {
-        Ok(match (place, transfer, download, failed_move_file) {
-            (StoragePlace::Failed, _, Some(DownloadEntry::Failed { error }), _) => {
-                Self::DownloadFailed { error }
-            }
-            (StoragePlace::Failed, _, _, Some(file_name)) => Self::MoveFailed { file_name },
+        Ok(match (place, download, failed_move_file) {
+            (
+                StoragePlace::Failed,
+                Some(DownloadEntry { kind, step: DownloadStep::Failed { error } }),
+                _,
+            ) => match kind {
+                DownloadKind::Pin => Self::DownloadFailed { error },
+                DownloadKind::MakeLocal => Self::MakeLocalFailed { error },
+            },
+            (StoragePlace::Failed, _, Some(file_name)) => Self::MoveFailed { file_name },
             (StoragePlace::Failed, ..) => {
                 return Err("the listing says a download or move failed but neither is held".into())
             }
             (StoragePlace::Uploading, ..) => Self::Uploading,
-            (StoragePlace::Pinning, _, Some(DownloadEntry::Queued { ahead, wait }), _) => {
-                Self::Pinning(DownloadEntryStep::Queued { ahead, wait })
-            }
-            (StoragePlace::Pinning, _, Some(DownloadEntry::Running { wait }), _) => {
-                Self::Pinning(DownloadEntryStep::Running { wait })
+            (StoragePlace::Pinning, Some(DownloadEntry { kind, step }), _) => {
+                let step = match step {
+                    DownloadStep::Queued { ahead, wait } => {
+                        DownloadEntryStep::Queued { ahead, wait }
+                    }
+                    DownloadStep::Running { wait } => DownloadEntryStep::Running { wait },
+                    DownloadStep::Failed { .. } => {
+                        return Err(
+                            "the listing says a download waits but the queue holds a failure"
+                                .into(),
+                        )
+                    }
+                };
+                match kind {
+                    DownloadKind::Pin => Self::Pinning(step),
+                    DownloadKind::MakeLocal => Self::MakingLocal(step),
+                }
             }
             (StoragePlace::Pinning, ..) => {
                 return Err("the listing says a download waits but the queue holds none".into())
             }
-            (_, Some(action), ..) => Self::Transferring(action),
-            (StoragePlace::OnOneDevice, None, ..) => Self::OnOneDevice,
-            (StoragePlace::Pinned, None, ..) => Self::Pinned,
-            (StoragePlace::InStorage, None, ..) => Self::InStorage,
+            (StoragePlace::OnOneDevice, ..) => Self::OnOneDevice,
+            (StoragePlace::Pinned, ..) => Self::Pinned,
+            (StoragePlace::InStorage, ..) => Self::InStorage,
         })
     }
 }

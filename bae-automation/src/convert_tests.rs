@@ -152,7 +152,6 @@ fn release_storage_state_and_actions_serialize_snake_case() {
             ReleaseStorageAction::Upload,
             ReleaseStorageAction::Pin,
         ],
-        transfer_action: Some(ReleaseStorageAction::DetachAudio),
         upload: None,
         transitioning: true,
         file_count: 2,
@@ -166,8 +165,6 @@ fn release_storage_state_and_actions_serialize_snake_case() {
         json["storage_actions"],
         serde_json::json!(["unpin", "detach_audio", "upload", "pin"]),
     );
-    // The in-flight transition the desktop shows.
-    assert_eq!(json["transfer_action"], "detach_audio");
 }
 
 #[test]
@@ -178,7 +175,6 @@ fn a_local_release_serializes_its_state_and_absent_transfer() {
         media: Vec::new(),
         storage_state: ReleaseStorageState::OnOneDevice,
         storage_actions: Vec::new(),
-        transfer_action: None,
         upload: None,
         transitioning: false,
         file_count: 0,
@@ -188,5 +184,4 @@ fn a_local_release_serializes_its_state_and_absent_transfer() {
     let json = serde_json::to_value(summary).unwrap();
 
     assert_eq!(json["storage_state"], serde_json::json!({"place": "on_one_device"}));
-    assert_eq!(json["transfer_action"], serde_json::Value::Null);
 }

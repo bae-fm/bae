@@ -48,8 +48,6 @@ impl LibraryManager {
         #[cfg(desktop)] release_reads: bae_import::ReleaseReads,
         downloads: bae_transfers::Downloads,
         #[cfg(desktop)] outputs: bae_transfers::Outputs,
-        make_local_transfers: bae_transfers::ReleaseTransfers<crate::MakeLocalTransferProgress>,
-        detach_cancels: crate::detach_cancels::DetachCancels,
         closing: tokio_util::sync::CancellationToken,
     ) -> Result<Self, bae_store::DbError> {
         // The store opens running one transfer per direction, the least any
@@ -57,8 +55,7 @@ impl LibraryManager {
         store.set_transfer_limits(bae_preferences::preferences(&store).await?.transfer_limits());
         // The download queue and its pause are kept: a release not fully
         // pinned stays as it was and its entry runs again. The library opens
-        // with the export queue empty and running, before the workers start,
-        // and with no release in a storage transition.
+        // with the export queue empty and running, before the workers start.
         store.call(bae_transfers::tables::clear_transfers_on).await?;
         // Nor does an attempt to start sync: a failed start stands only in
         // the process that made it.
@@ -80,8 +77,6 @@ impl LibraryManager {
             diagnostics,
             runtime_handle,
             tasks: BackgroundTasks::new(closing),
-            detach_cancels,
-            make_local_transfers,
             downloads,
             #[cfg(desktop)]
             outputs,
@@ -466,7 +461,7 @@ impl LibraryManager {
         initial: bae_store::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
         bae_store::LibraryPageWindows,
-        bae_transfers::ReleaseQueueWindows<()>,
+        bae_transfers::ReleaseQueueWindows<bae_transfers::DownloadRequest>,
         bae_store::DbError,
     > {
         self.downloads.subscribe_windows(initial)
@@ -486,20 +481,12 @@ impl LibraryManager {
         self.downloads.subscribe_counts()
     }
 
-    /// Hear the bytes the active download has moved, by release, and each
-    /// change to them.
+    /// Hear how far the active download has come (a pin's bytes, or a
+    /// make-local's), by release, and each change to it.
     pub fn watch_download_transfers(
         &self,
-    ) -> bae_transfers::ReleaseTransfersWatch<bae_transfers::DownloadTransferProgress> {
+    ) -> bae_transfers::ReleaseTransfersWatch<bae_transfers::DownloadTransfer> {
         self.downloads.watch_transfers()
-    }
-
-    /// Hear the bytes each release this process is making local has
-    /// downloaded, by release, and each change to them.
-    pub fn watch_make_local_transfers(
-        &self,
-    ) -> bae_transfers::ReleaseTransfersWatch<crate::MakeLocalTransferProgress> {
-        self.make_local_transfers.watch()
     }
 
     /// The export queue as it stands now, each entry beside its release, the

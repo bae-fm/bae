@@ -253,9 +253,8 @@ pub struct ArtistSortCriterion {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailContext {
     pub detail: DbReleaseDetail,
-    /// What the transfer queues and the storage transitions say of the
-    /// release.
-    pub transfers: bae_transfers::ReleaseTransferState,
+    /// The release's entry in the download queue.
+    pub download: Option<bae_transfers::DownloadEntry>,
     pub release_index: usize,
     pub is_compilation: bool,
 }
@@ -276,9 +275,9 @@ pub struct DbReleaseSummary {
     /// What of the release waits in this device's upload queue; `None` when
     /// nothing does.
     pub upload: Option<DbReleaseUpload>,
-    /// The storage transition this process runs for the release; `None`
-    /// when it runs none.
-    pub transfer_action: Option<bae_types::release_storage::ReleaseStorageAction>,
+    /// The release's entry in this device's download queue; `None` when it
+    /// has none.
+    pub download: Option<bae_transfers::DownloadEntry>,
     pub file_count: i64,
     pub total_size: i64,
     /// What the library records this device holding for each audio file whose
@@ -367,10 +366,10 @@ pub struct DbFileUpload {
     pub pending: Option<coven::PendingRecord>,
 }
 
-/// A release's rows as its detail reads them, beside what the transfer
-/// queues and the storage transitions say of it.
+/// A release's rows as its detail reads them, beside its entry in the
+/// download queue.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailRead {
     pub detail: DbReleaseDetail,
-    pub transfers: bae_transfers::ReleaseTransferState,
+    pub download: Option<bae_transfers::DownloadEntry>,
 }

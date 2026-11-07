@@ -5,6 +5,7 @@
 
 pub mod tables;
 
+use crate::download_snapshot::DownloadRequest;
 #[cfg(any(desktop, test, feature = "test-utils"))]
 use crate::release_queue::ReleaseQueueSnapshot;
 use crate::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
@@ -29,6 +30,15 @@ pub struct RunningOp<Fut> {
 impl<Fut> RunningOp<Fut> {
     pub fn new(abort: tokio::task::AbortHandle, outcome: Fut) -> Self {
         Self { abort, outcome }
+    }
+
+    /// The same operation with its outcome boxed, for a worker whose entries
+    /// run different futures.
+    pub fn boxed(self) -> RunningOp<std::pin::Pin<Box<dyn Future<Output = Fut::Output> + Send>>>
+    where
+        Fut: Future + Send + 'static,
+    {
+        RunningOp { abort: self.abort, outcome: Box::pin(self.outcome) }
     }
 
     pub async fn finish(self) -> Fut::Output
@@ -536,7 +546,7 @@ where
     }
 }
 
-impl<Progress> QueuedReleases<(), Progress>
+impl<Progress> QueuedReleases<DownloadRequest, Progress>
 where
     Progress: Clone + PartialEq + Send + Sync + 'static,
 {
@@ -554,6 +564,30 @@ where
         self.store
             .call(move |sql| tables::enqueue_pinnable_releases_on(sql, &release_ids, created_at))
             .await
+    }
+
+    /// Queue to make local into `target_dir`, in the order given, each of
+    /// `release_ids` that is stored in the cloud, in one write that decides
+    /// which: one the library no longer holds, one local, and one waiting or
+    /// downloading are passed over, and one whose download failed becomes this
+    /// make-local in its place. `true` when any went in or was queued again.
+    #[cfg(desktop)]
+    pub async fn enqueue_make_locals(
+        &self,
+        release_ids: Vec<String>,
+        target_dir: std::path::PathBuf,
+        created_at: i64,
+    ) -> Result<bool, DbError> {
+        let added = self
+            .store
+            .call(move |sql| {
+                tables::enqueue_make_locals_on(sql, &release_ids, &target_dir, created_at)
+            })
+            .await?;
+        if added {
+            self.shared.wake.notify_one();
+        }
+        Ok(added)
     }
 }
 

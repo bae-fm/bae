@@ -40,7 +40,6 @@ pub struct ReleaseSummary {
     /// the release is `transitioning`. The UI renders these and never
     /// re-derives availability.
     pub storage_actions: Vec<ReleaseStorageAction>,
-    pub transfer_action: Option<ReleaseStorageAction>,
     /// What of the release waits in this device's upload queue; `None` when
     /// nothing does.
     pub upload: Option<ReleaseUpload>,
@@ -62,7 +61,8 @@ impl ReleaseSummary {
     pub(crate) fn from_raw(raw: DbReleaseSummary, ctx: &ReleaseResolveCtx) -> ReleaseSummary {
         let storage_state = storage_state(raw.remote, raw.pinned);
         let upload = raw.upload.map(ReleaseUpload::from_raw);
-        let transitioning = upload.is_some() || raw.transfer_action.is_some();
+        let transitioning = upload.is_some()
+            || raw.download.as_ref().is_some_and(bae_transfers::DownloadEntry::holds_the_release);
         ReleaseSummary {
             id: raw.id,
             album_id: raw.album_id,
@@ -77,7 +77,6 @@ impl ReleaseSummary {
                     ctx.syncs,
                 )
             },
-            transfer_action: raw.transfer_action,
             upload,
             transitioning,
             file_count: raw.file_count,
@@ -149,6 +148,9 @@ pub struct ReleaseDetail {
     /// The download control's state for the release, from its entry in the
     /// download queue as it was read; `None` when there is no control to show.
     pub download_status: Option<ReleaseDownloadStatus>,
+    /// Where the release stands in being made local, in the download queue;
+    /// `None` when it is not being.
+    pub make_local: Option<MakeLocalStatus>,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<bae_catalogs::records::ReleaseRecord>,
@@ -163,7 +165,7 @@ impl ReleaseDetail {
     /// logic stays in one place.
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
-        transfers: bae_transfers::ReleaseTransferState,
+        download: Option<bae_transfers::DownloadEntry>,
         release_index: usize,
         ctx: &ReleaseResolveCtx,
     ) -> ReleaseDetail {
@@ -258,7 +260,7 @@ impl ReleaseDetail {
                 remote,
                 pinned: raw.pinned,
                 upload: raw.upload,
-                transfer_action: transfers.action,
+                download: download.clone(),
                 file_count,
                 total_size,
                 unstored_audio: raw.unstored_audio,
@@ -269,10 +271,12 @@ impl ReleaseDetail {
         let download_status = release_download_status(
             summary.storage_state,
             &summary.storage_actions,
-            transfers.download.as_ref(),
+            download.as_ref(),
         );
+        let make_local = release_make_local_status(download.as_ref());
         ReleaseDetail {
             download_status,
+            make_local,
             summary,
             name,
             year: release.pressing.year,

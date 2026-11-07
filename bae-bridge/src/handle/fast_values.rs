@@ -46,8 +46,10 @@ impl AppHandle {
         crate::screens::pin_file_shares(self.runtime.clone(), self.run_feed())
     }
 
-    /// Write each downloading release's bytes and rate into a stream by
-    /// release id.
+    /// Write how far each downloading release has come into a stream by
+    /// release id: a pin's bytes and rate, or, for a release being made local,
+    /// the bytes of the file coven is downloading into the person's folder
+    /// and of the whole release.
     pub fn feed_download_transfers(&self) -> Arc<KeyedValueStream> {
         crate::screens::download_transfers(self.runtime.clone(), self.run_feed())
     }
@@ -83,14 +85,6 @@ impl AppHandle {
     /// while a preview is loaded.
     pub fn feed_preview_position(&self) -> Arc<KeyedValueStream> {
         crate::screens::preview_position(self.runtime.clone(), self.run_feed())
-    }
-
-    /// Write how far each release being made local has downloaded into the
-    /// person's folder, the file coven is downloading and the whole release,
-    /// into a stream by release id. Only the desktop apps make releases
-    /// local.
-    pub fn feed_make_local_transfers(&self) -> Arc<KeyedValueStream> {
-        crate::screens::make_local_transfers(self.runtime.clone(), self.run_feed())
     }
 
     /// Write how far through its step each running import is into a stream

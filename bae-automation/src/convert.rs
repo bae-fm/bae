@@ -596,7 +596,6 @@ mirror_struct! {
         media,
         storage_state: (into),
         storage_actions: (each AutomationReleaseStorageAction),
-        transfer_action: (opt AutomationReleaseStorageAction),
         upload: (opt AutomationReleaseUpload),
         transitioning,
         file_count,

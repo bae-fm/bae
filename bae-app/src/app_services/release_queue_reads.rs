@@ -19,7 +19,7 @@ impl AppServices {
             .until_closed(manager.subscribe_download_windows(bae_store::LibraryPageWindows::new()));
         bae_views::LiveDownloadBrowse::new(
             query,
-            |read, queue: bae_transfers::ReleaseQueueWindows<()>| {
+            |read, queue: bae_transfers::ReleaseQueueWindows<bae_transfers::DownloadRequest>| {
                 Some(bae_views::LibraryBrowseSnapshot {
                     windows: queue.windows,
                     total_count: queue.total_count,
@@ -46,19 +46,12 @@ impl AppServices {
         manager.values_until_closed(manager.subscribe_download_counts())
     }
 
-    /// The bytes each downloading release has moved, sent as they move.
+    /// How far each downloading release has come (a pin's bytes, or a
+    /// make-local's), sent as they move.
     pub fn watch_download_transfers(
         &self,
-    ) -> bae_transfers::ReleaseTransfersWatch<bae_transfers::DownloadTransferProgress> {
+    ) -> bae_transfers::ReleaseTransfersWatch<bae_transfers::DownloadTransfer> {
         self.inner.manager.watch_download_transfers()
-    }
-
-    /// The bytes each release this process is making local has downloaded,
-    /// sent as they move.
-    pub fn watch_make_local_transfers(
-        &self,
-    ) -> bae_transfers::ReleaseTransfersWatch<bae_library::MakeLocalTransferProgress> {
-        self.inner.manager.watch_make_local_transfers()
     }
 
     /// The export queue as it stands now, each entry beside its release, the

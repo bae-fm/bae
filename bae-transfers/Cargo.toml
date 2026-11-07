@@ -42,6 +42,8 @@ bae-preferences = { workspace = true, features = ["test-utils"] }
 # Fresh release ids for the window tests.
 bae-util = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
+# The ids coven's progress steps name.
+uuid = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 

@@ -1,12 +1,10 @@
-//! A release's storage transitions: the row each transition shows until the
-//! write that finishes it, making uploaded audio local again, unpinning,
-//! cancelling a transition, and a release whose audio is on another device.
+//! A release's storage transitions: making uploaded audio local again
+//! through the download queue, unpinning, cancelling a transition, and a
+//! release whose audio is on another device.
 
-use super::*;
 use crate::manager::tests::*;
 use bae_records::OtherDevice;
 use bae_store::FormerDeviceState;
-use bae_transfers::StoredTransition;
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_views::album_detail::ReleasePlayability;
 use tempfile::TempDir;
@@ -25,6 +23,9 @@ fn making_uploaded_audio_local_keeps_only_this_device_playable() {
     });
 }
 
+/// The folder name the releases made local in these tests are placed in.
+const FOLDER: &str = "Release Folder";
+
 async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, uploaded: bool) {
     devices.pause().await;
     let manager = devices.a().manager();
@@ -40,6 +41,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         &[("a.flac", b"first audio"), ("b.flac", b"second audio")],
     )
     .await;
+    manager.records.set_source_folder_name_for_test(&release.id, FOLDER).await.unwrap();
     store_test_cover(manager, &release.id, b"cover").await;
     let cover = cover_file(manager, &release.id).await.id();
     manager.upload_release(&release.id, false).await.unwrap();
@@ -64,7 +66,9 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         }
         devices.pause().await;
         manager.store.unlock_store_key().await.unwrap();
-        manager.detach_release_audio(&release.id, destination.path()).await.unwrap();
+        make_local_and_wait(manager, std::slice::from_ref(&release.id), destination.path())
+            .await
+            .unwrap();
     } else {
         manager.cancel_release_transition(&release.id).await.unwrap();
         // Retrying the command cannot undo the local state.
@@ -79,8 +83,11 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         let row = manager.records.find_file_by_id(&file.id).await.unwrap().unwrap();
         assert_eq!(row.file, file.file);
         assert!(!manager.records.find_file_by_id(&file.id).await.unwrap().unwrap().stored);
-        let path = if uploaded { destination.path() } else { original.path() }
-            .join(&file.original_filename);
+        let path = if uploaded {
+            destination.path().join(FOLDER).join(&file.original_filename)
+        } else {
+            original.path().join(&file.original_filename)
+        };
         assert_eq!(manager.file_local_path(&file.id).await.unwrap(), Some(path));
         let expected = std::fs::read(original.path().join(&file.original_filename)).unwrap();
         assert_eq!(manager.records.read_release_file(&file.id).await.unwrap(), expected);
@@ -334,54 +341,8 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
     );
 }
 
-/// A transition's row is there while its work runs; a work that fails or
-/// panics has it deleted in a write of its own. A work that succeeds deletes
-/// it in the write that finishes it, as the make-local test below
-/// show.
-#[tokio::test]
-async fn a_failed_transition_ends_in_a_write_of_its_own() {
-    let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    let shown = || async {
-        bae_transfers::release_storage_action::release_transfer_action(
-            &manager.library.manager().store,
-            &release.id,
-        )
-        .await
-        .unwrap()
-    };
-
-    let failed = manager
-        .library
-        .manager()
-        .run_storage_action(&release.id, StoredTransition::DetachAudio, async {
-            Err::<(), _>(LibraryError::Storage(format!(
-                "the work failed, showing {:?}",
-                shown().await
-            )))
-        })
-        .await;
-    let Err(LibraryError::Storage(failure)) = failed else {
-        panic!("{failed:?}");
-    };
-    assert!(failure.ends_with("Some(DetachAudio)"), "the row is there while it runs: {failure}");
-    assert_eq!(shown().await, None, "a failure ends it");
-
-    let panicked = manager
-        .library
-        .manager()
-        .run_storage_action(&release.id, StoredTransition::DetachAudio, async {
-            if release.id.is_empty() {
-                return Ok(());
-            }
-            panic!("the work panicked")
-        })
-        .await;
-    assert!(panicked.is_err());
-    assert_eq!(shown().await, None, "a panic ends it");
-}
-
 /// Unpinning a selection releases every pin in one write: no release shows an
-/// unpin on the way, because no row of one is written.
+/// unpin on the way, because no entry of one is written.
 #[tokio::test]
 async fn unpinning_a_selection_releases_every_pin_in_one_write() {
     let (test, temp_dir) = setup_test_manager().await;
@@ -436,10 +397,10 @@ async fn unpinning_a_selection_releases_every_pin_in_one_write() {
 }
 
 /// Making a release local switches its files in the write that ends its
-/// transition: a write that can't end it switches nothing, so the release
-/// never shows the transition once its files are here.
+/// queue entry: a write that can't end it switches nothing, so the release
+/// is never local with its entry still queued.
 #[tokio::test]
-async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
+async fn the_write_that_switches_a_releases_files_ends_its_entry() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
@@ -450,107 +411,65 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
         &[("track.flac", b"track-bytes")],
     )
     .await;
+    manager.records.set_source_folder_name_for_test(&release.id, FOLDER).await.unwrap();
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     let files = release_files(manager, &release.id).await;
     assert!(files.iter().all(|file| file.stored));
 
+    // The copies are ready, but the release has no entry in the queue to end:
+    // the write is refused and switches no file.
     let refused_folder = temp_dir.path().join("refused");
     std::fs::create_dir(&refused_folder).unwrap();
     let paths = files
         .iter()
         .map(|file| {
-            let path =
-                bae_records::stored_name::file_path(&release.id, &file.id, &file.original_filename)
-                    .unwrap();
+            let path = bae_records::stored_name::copy_path(
+                &release.id,
+                FOLDER,
+                &file.id,
+                &file.original_filename,
+            )
+            .unwrap();
             (file.file, path)
         })
         .collect();
     let (_stop, stopped) = tokio::sync::watch::channel(false);
     let prepared =
         manager.store.prepare_device_only(&refused_folder, paths, &stopped, |_| {}).await.unwrap();
-    let refused = bae_transfers::release_storage_action::make_release_local(
-        &manager.store,
+    let entry = bae_transfers::tables::worker_moves::active_entry::<bae_transfers::DownloadRequest>(
         &release.id,
-        prepared,
-    )
-    .await;
+    );
+    let refused = manager
+        .store
+        .call(move |sql| {
+            sql.make_device_only(prepared)?;
+            entry.finish_on(sql)
+        })
+        .await;
     assert!(
-        matches!(
-            refused,
-            Err(bae_store::WriteError::Refused(
-                bae_transfers::StorageTransitionRefusal::NotInTransition {
-                    transition: bae_transfers::StoredTransition::DetachAudio,
-                    ..
-                }
-            ))
-        ),
-        "no make-local was admitted for the write to end: {refused:?}"
+        matches!(refused, Err(bae_store::DbError::EntryCancelled { .. })),
+        "no entry was queued for the write to end: {refused:?}"
     );
     assert!(
         release_files(manager, &release.id).await.iter().all(|file| file.stored),
-        "a write that can't end the transition switches no file"
+        "a write that can't end the entry switches no file"
     );
 
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
-    manager
-        .detach_release_audio_into(&release.id, &folder, &crate::CancellationToken::new())
-        .await
-        .unwrap();
+    make_local_and_wait(manager, std::slice::from_ref(&release.id), &folder).await.unwrap();
     assert!(
         release_files(manager, &release.id).await.iter().all(|file| !file.stored),
         "making it local switched every file here"
     );
-    assert_eq!(
-        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &release.id)
-            .await
-            .unwrap(),
-        None,
-        "and ended the transition"
-    );
+    assert!(download_queue_now(manager).await.rows.is_empty(), "and took it out of the queue");
 }
 
-/// A release in a transition refuses another, whose work never runs, and
-/// keeps the transition it is in.
+/// A move to the cloud queues its files in one write; a release with no
+/// files has none to queue.
 #[tokio::test]
-async fn a_release_in_a_transition_refuses_another() {
-    let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    assert!(bae_transfers::release_storage_action::begin_release_storage_action(
-        &manager.library.manager().store,
-        &release.id,
-        StoredTransition::DetachAudio
-    )
-    .await
-    .unwrap());
-
-    let ran = std::sync::atomic::AtomicBool::new(false);
-    let refused = manager
-        .library
-        .manager()
-        .run_storage_action(&release.id, StoredTransition::DetachAudio, async {
-            ran.store(true, std::sync::atomic::Ordering::SeqCst);
-            Ok(())
-        })
-        .await;
-    assert!(matches!(refused, Err(LibraryError::Storage(_))), "{refused:?}");
-    assert!(!ran.load(std::sync::atomic::Ordering::SeqCst), "the refused work never runs");
-    assert_eq!(
-        bae_transfers::release_storage_action::release_transfer_action(
-            &manager.library.manager().store,
-            &release.id
-        )
-        .await
-        .unwrap(),
-        Some(ReleaseStorageAction::DetachAudio)
-    );
-}
-
-/// A move to the cloud shows as a transition until the write that queues its
-/// files, which ends it; one whose files can't be queued ends it in a write
-/// of its own.
-#[tokio::test]
-async fn the_write_that_queues_a_moves_files_ends_its_transition() {
+async fn the_write_that_queues_a_moves_files_is_the_move() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
@@ -563,22 +482,10 @@ async fn the_write_that_queues_a_moves_files_ends_its_transition() {
     .await;
     manager.upload_release(&release.id, false).await.unwrap();
     assert_eq!(moving_file_count(manager, &release.id).await, 1);
-    assert_eq!(
-        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &release.id)
-            .await
-            .unwrap(),
-        None
-    );
 
     let empty = insert_release_without_files(&test).await;
     let refused = manager.upload_release(&empty, false).await;
     assert!(refused.is_err(), "a release with no files has none to queue");
-    assert_eq!(
-        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &empty)
-            .await
-            .unwrap(),
-        None
-    );
 }
 
 /// A release with no files, in an album of its own in `manager`'s library.
@@ -600,6 +507,7 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
     let home = connect_test_cloud(&test).await;
     let release_id =
         uploaded_release(manager, &temp_dir.path().join("made-local"), "Made Local", false).await;
+    manager.records.set_source_folder_name_for_test(&release_id, FOLDER).await.unwrap();
     let file = release_files(manager, &release_id).await.remove(0);
     let reference = manager.release_file_ref(&file.id).await.unwrap();
     manager.evict_file_for_test(file.file).await.unwrap();
@@ -621,33 +529,33 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
         resumed,
     )
     .await;
-    let mut transfers = manager.watch_make_local_transfers();
+    let mut transfers = manager.watch_download_transfers();
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
-    let making = tokio::spawn({
-        let manager = test.library.manager().clone();
-        let release_id = release_id.clone();
-        async move {
-            manager
-                .detach_release_audio_into(&release_id, &folder, &crate::CancellationToken::new())
-                .await
-        }
-    });
+    manager.make_releases_local(vec![release_id.clone()], &folder).await.unwrap();
     observed.await.unwrap();
     let listed = tokio::time::timeout(
         bae_util::test_channels::HANG_GUARD,
-        transfers.until(|transfers| transfers.contains_key(&release_id)),
+        transfers.until(|transfers| {
+            matches!(
+                transfers.get(&release_id),
+                Some(bae_transfers::DownloadTransfer::MakeLocal(progress))
+                    if progress.file_bytes_total > 0
+            )
+        }),
     )
     .await
     .expect("the release is listed while its copy downloads")
-    .unwrap()[&release_id];
-    assert!(listed.file_bytes_total > 0, "{listed:?}");
+    .unwrap()[&release_id]
+        .clone();
+    let bae_transfers::DownloadTransfer::MakeLocal(listed) = listed else {
+        panic!("a make-local lists its own progress: {listed:?}");
+    };
     assert!(listed.file_bytes_done < listed.file_bytes_total, "{listed:?}");
     assert!(listed.bytes_done < listed.bytes_total, "{listed:?}");
     assert!(listed.bytes_total >= listed.file_bytes_total, "{listed:?}");
 
     resume.send(()).unwrap();
-    making.await.unwrap().unwrap();
     tokio::time::timeout(
         bae_util::test_channels::HANG_GUARD,
         transfers.until(|transfers| transfers.is_empty()),
@@ -655,51 +563,58 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
     .await
     .expect("a release whose files switched is listed no more")
     .unwrap();
+    assert!(download_queue_now(manager).await.rows.is_empty());
 }
 
 #[tokio::test]
-async fn cancel_release_transition_fires_a_registered_transfer_token() {
+async fn cancelling_a_release_nothing_runs_for_is_no_error() {
     let (test, _temp_dir) = setup_test_manager().await;
-    let manager = test.library.manager();
-
-    // A registered audio detachment token is fired by the unified cancel.
-    let token = crate::CancellationToken::new();
-    let _registration = manager
-        .detach_cancels
-        .register(REL_X, token.clone())
-        .expect("no other transfer of the release holds a token");
-    manager.cancel_release_transition(REL_X).await.unwrap();
-    assert!(token.is_cancelled(), "transfer token fired");
-
     // Nothing in progress for an unknown release → no-op, no error.
-    manager.cancel_release_transition(REL_NONE).await.unwrap();
+    test.library.manager().cancel_release_transition(REL_NONE).await.unwrap();
 }
 
-// Needs the mock storage with uploads running: audio detachment is only
-// offered a release whose upload has been accepted, so the transition has
-// to run all the way through a cycle and retire its intent first.
+/// Cancelling a make-local while its copies download stops it: no copy is
+/// left, the release stays in the cloud, and its entry is gone.
 #[tokio::test]
-async fn unmanage_cancelled_before_copy_leaves_release_remote() {
+async fn cancelling_a_make_local_leaves_the_release_in_the_cloud() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    connect_test_cloud_uploading(&test).await;
-    // Really Remote, through the real transition: audio detachment resolves the
-    // release's current locality from coven, which a fabricated `remote` column
-    // with no cloud objects behind it cannot answer.
+    let home = connect_test_cloud(&test).await;
     let release_id =
-        upload_release_unpaused(manager, &temp_dir.path().join("r1"), "Album One", false).await;
+        uploaded_release(manager, &temp_dir.path().join("r1"), "Album One", false).await;
+    manager.records.set_source_folder_name_for_test(&release_id, FOLDER).await.unwrap();
+    let file = release_files(manager, &release_id).await.remove(0);
+    let reference = manager.release_file_ref(&file.id).await.unwrap();
+    manager.evict_file_for_test(file.file).await.unwrap();
+    let coven::FilePlace::Cloud { location, .. } = reference.place() else {
+        panic!("the uploaded file is stored");
+    };
+    let (reached, observed) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    home.hold_body_at(
+        coven::ObjectPath::file(
+            manager.store.store_id_for_test(),
+            location.uploader(),
+            location.object(),
+        ),
+        12,
+        reached,
+        resumed,
+    )
+    .await;
 
-    // A token cancelled before coven downloads anything: the call stops
-    // before its write and removes whatever it made.
-    let token = crate::CancellationToken::new();
-    token.cancel();
     let dest = temp_dir.path().join("out");
     std::fs::create_dir(&dest).unwrap();
-    manager
-        .detach_release_audio_into(&release_id, &dest, &token)
-        .await
-        .expect_err("a cancelled audio detachment must not report completion");
+    manager.make_releases_local(vec![release_id.clone()], &dest).await.unwrap();
+    observed.await.unwrap();
+    manager.cancel_release_transition(&release_id).await.unwrap();
+    // The aborted download dropped the held read with it.
+    drop(resume);
 
+    assert!(download_queue_now(manager).await.rows.is_empty(), "the cancel took the entry out");
+    // Coven removes what a dropped call made in the next write.
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.set_downloads_paused(false).await.unwrap();
     assert!(
         release_files(manager, &release_id).await.iter().all(|file| file.stored),
         "cancellation leaves every file in the cloud"
@@ -709,16 +624,15 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
 
 const REL_NONE: &str = "cdb5eed8-db50-45f6-814a-dc623215ae04"; // was "rel-none"
 
-const REL_X: &str = "e6b79143-6ab2-4358-8f53-460594936d69"; // was "rel-x"
-
-/// A release whose pin failed has a failed entry in the download queue; making
-/// it local leaves nothing to download, so the entry goes with the write that
-/// switches its files.
+/// A release whose pin failed has a failed entry in the download queue;
+/// making it local queues the make-local in the entry's place, and the
+/// write that switches its files takes it out.
 #[tokio::test]
-async fn making_a_release_local_ends_its_failed_download() {
+async fn making_a_release_local_replaces_its_failed_pin() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let release_id = insert_pinnable_release(&test).await;
+    manager.records.set_source_folder_name_for_test(&release_id, FOLDER).await.unwrap();
     test.storage.set_online(false);
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
     download_queue_until(manager, |queue| {
@@ -732,13 +646,28 @@ async fn making_a_release_local_ends_its_failed_download() {
 
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
-    manager
-        .detach_release_audio_into(&release_id, &folder, &crate::CancellationToken::new())
-        .await
-        .unwrap();
+    make_local_and_wait(manager, std::slice::from_ref(&release_id), &folder).await.unwrap();
 
     assert!(
         download_queue_now(manager).await.rows.is_empty(),
         "a release made local has no download entry"
     );
+    assert!(release_files(manager, &release_id).await.iter().all(|file| !file.stored));
+}
+
+/// A make-local waits behind the entry already downloading, and is passed over
+/// for a release that already has an entry waiting or running.
+#[tokio::test]
+async fn a_make_local_passes_over_a_release_already_queued() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = insert_pinnable_release(&test).await;
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
+
+    manager.make_releases_local(vec![release_id.clone()], temp_dir.path()).await.unwrap();
+
+    let rows = download_queue_now(manager).await.rows;
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].op.payload, bae_transfers::DownloadRequest::Pin, "the pin is still queued");
 }

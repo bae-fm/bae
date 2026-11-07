@@ -194,11 +194,10 @@ pub enum LibraryError {
     /// planned, or the store failed.
     #[error(transparent)]
     Deletion(bae_records::DeletionError),
-    /// A write ending a release's storage transition, or moving releases to
-    /// the cloud, did not commit: the release was in no such transition, no
-    /// storage is set up, or the store failed.
+    /// A write moving releases to the cloud did not commit: no storage is set
+    /// up, or the store failed.
     #[error(transparent)]
-    StorageTransition(bae_transfers::StorageTransitionError),
+    StorageMove(bae_transfers::StorageMoveError),
     /// A dismissal of a storage setup that ended undone did not commit: the
     /// operation is no such setup, or the store failed.
     #[error(transparent)]
@@ -362,7 +361,7 @@ impl bae_util::task_failure::ReportedBug for LibraryError {
             LibraryError::Import(error) => error.reported_bug(),
             LibraryError::FileRead { error, .. } => error.reported_bug(),
             LibraryError::MakeLocal(error) => error.reported_bug(),
-            LibraryError::StorageTransition(error) => error.reported_bug(),
+            LibraryError::StorageMove(error) => error.reported_bug(),
             LibraryError::SetupDismiss(error) => error.reported_bug(),
             LibraryError::AdminChangeDismiss(error) => error.reported_bug(),
             LibraryError::PrimaryRelease(error) => error.reported_bug(),
@@ -422,8 +421,8 @@ impl LibraryError {
             LibraryError::Save(_) => C::Save,
             LibraryError::FileRead { error, .. } => file_read_category(error),
             LibraryError::MakeLocal(error) => device_only_category(error),
-            LibraryError::StorageTransition(error) => {
-                write_error_category(error, storage_transition_refusal_category)
+            LibraryError::StorageMove(error) => {
+                write_error_category(error, storage_move_refusal_category)
             }
             LibraryError::SetupDismiss(error) => setup_dismiss_category(error),
             LibraryError::AdminChangeDismiss(error) => admin_change_dismiss_category(error),
@@ -531,30 +530,22 @@ impl From<bae_records::DeletionError> for LibraryError {
     }
 }
 
-/// The class a surface words a storage transition's refused write in. Its
-/// work runs only for a transition the library admitted, so that refusal is
-/// the library breaking its own guarantee; a move needs storage, which is for
-/// the person to set up.
-fn storage_transition_refusal_category(
-    refusal: &bae_transfers::StorageTransitionRefusal,
+/// The class a surface words a refused move of releases' files in: a move
+/// needs storage, which is for the person to set up.
+fn storage_move_refusal_category(
+    refusal: &bae_transfers::StorageMoveRefusal,
 ) -> bae_diagnostics::UiErrorCategory {
     match refusal {
-        bae_transfers::StorageTransitionRefusal::NotInTransition { .. } => {
-            bae_diagnostics::UiErrorCategory::Internal
-        }
-        bae_transfers::StorageTransitionRefusal::NoStorage => {
-            bae_diagnostics::UiErrorCategory::Config
-        }
+        bae_transfers::StorageMoveRefusal::NoStorage => bae_diagnostics::UiErrorCategory::Config,
     }
 }
 
-/// A storage transition's write that failed in the store is the library's
-/// store failure.
-impl From<bae_transfers::StorageTransitionError> for LibraryError {
-    fn from(error: bae_transfers::StorageTransitionError) -> Self {
+/// A move's write that failed in the store is the library's store failure.
+impl From<bae_transfers::StorageMoveError> for LibraryError {
+    fn from(error: bae_transfers::StorageMoveError) -> Self {
         match error {
             bae_store::WriteError::Database(error) => Self::Database(error),
-            error => Self::StorageTransition(error),
+            error => Self::StorageMove(error),
         }
     }
 }
@@ -735,17 +726,6 @@ pub enum CoverSelection {
     RemoteCover { url: String },
 }
 
-/// Verb for a storage transition, used to name the operation in the "ended
-/// without completion" guard.
-fn verb(action: ReleaseStorageAction) -> &'static str {
-    match action {
-        ReleaseStorageAction::Pin => "Pin",
-        ReleaseStorageAction::Unpin => "Unpin",
-        ReleaseStorageAction::Upload => "Upload",
-        ReleaseStorageAction::DetachAudio => "Detach Audio",
-    }
-}
-
 /// Persistence and queries for albums, tracks, and files: import state
 /// transitions, library browsing, and deletion with cloud-storage cleanup.
 #[derive(Clone)]
@@ -770,11 +750,6 @@ pub struct LibraryManager {
     /// pending subscriptions, startup sync), which each hold a clone of it and
     /// so of the store. [`LibraryManager::close`] ends them all.
     tasks: service::BackgroundTasks,
-    /// How to stop each transfer making a release local that this process
-    /// runs.
-    detach_cancels: crate::detach_cancels::DetachCancels,
-    /// How far each release this process is making local has come.
-    make_local_transfers: bae_transfers::ReleaseTransfers<crate::MakeLocalTransferProgress>,
     /// The "Pin for offline" queue: its table, which the Downloads pane and
     /// the detail views read, and the bytes its active download has moved. A
     /// single serial worker drains it one release at a time. Shared across

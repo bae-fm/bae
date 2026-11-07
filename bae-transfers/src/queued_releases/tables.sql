@@ -12,7 +12,7 @@ INSERT OR IGNORE INTO release_queue_versions (source, version) VALUES
     ('download_queue', 0), ('output_queue', 0);
 
 -- The queues this device works through one release at a time: downloads to
--- keep releases offline, and exports and saves. Whether each is paused. Never
+-- keep releases offline or to make them local, and exports and saves. Whether each is paused. Never
 -- synced. The download queue and its pause are kept across restarts; the
 -- export and save queue opens empty and running.
 CREATE TABLE IF NOT EXISTS release_queues (
@@ -21,10 +21,11 @@ CREATE TABLE IF NOT EXISTS release_queues (
 ) STRICT;
 INSERT OR IGNORE INTO release_queues (queue, paused) VALUES ('download', 0), ('output', 0);
 
--- A release queued to download for offline, in the order queued. It names its
--- release by id alone: an entry whose release leaves the library stays listed,
--- for it to be cancelled. One entry at most downloads; how far it has got is
--- not here, since it moves with every byte.
+-- A release queued to download, in the order queued: to keep offline (a pin),
+-- or into a folder the person picked, to make it local. It names its release
+-- by id alone: an entry whose release leaves the library stays listed, for it
+-- to be cancelled. One entry at most downloads; how far it has got is not
+-- here, since it moves with every byte.
 CREATE TABLE IF NOT EXISTS download_queue (
     position   INTEGER PRIMARY KEY,
     release_id TEXT NOT NULL UNIQUE,
@@ -32,7 +33,12 @@ CREATE TABLE IF NOT EXISTS download_queue (
     created_at INTEGER NOT NULL,
     state      TEXT NOT NULL CHECK (state IN ('queued', 'active', 'failed')),
     error      TEXT,
-    CHECK ((state = 'failed') = (error IS NOT NULL))
+    kind       TEXT NOT NULL CHECK (kind IN ('pin', 'make_local')),
+    -- A make-local's folder, as coven's bytes for the path
+    -- (`coven::path_bytes`); the release goes in a folder of its own below it.
+    target_dir BLOB,
+    CHECK ((state = 'failed') = (error IS NOT NULL)),
+    CHECK ((kind = 'make_local') = (target_dir IS NOT NULL))
 ) STRICT;
 CREATE UNIQUE INDEX IF NOT EXISTS download_queue_active
     ON download_queue (state) WHERE state = 'active';

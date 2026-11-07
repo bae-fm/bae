@@ -33,9 +33,6 @@ pub struct AutomationReleaseSummary {
     pub storage_state: AutomationReleaseStorageState,
     /// The transitions available right now, derived by the core.
     pub storage_actions: Vec<AutomationReleaseStorageAction>,
-    /// The transition currently in flight, if any — so a client can tell a release
-    /// is mid-transfer rather than reading `storage_actions` and guessing.
-    pub transfer_action: Option<AutomationReleaseStorageAction>,
     /// How many of the release's files wait in this device's upload queue,
     /// and how many of those are being sent now; `None` when none waits.
     pub upload: Option<AutomationReleaseUpload>,

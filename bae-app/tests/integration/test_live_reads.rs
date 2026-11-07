@@ -6,9 +6,7 @@ use bae_library::test_libraries::{
     insert_local_release_with_files, insert_release, insert_release_with_queued_uploads,
     storage_library, test_album, test_release, TestLibrary,
 };
-use bae_records::{DbAlbum, DbRelease};
-use bae_transfers::StoredTransition;
-use bae_types::release_storage::ReleaseStorageAction;
+use bae_records::DbRelease;
 use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::StorageRowStatus;
 use bae_views::LibraryViews;
@@ -31,16 +29,6 @@ async fn open_library() -> (TestLibrary, Arc<MemoryStorage>, TempDir) {
 /// The library's views over its store.
 fn views(library: &TestLibrary) -> LibraryViews {
     LibraryViews::new(library.store().clone())
-}
-
-/// A library holding one album with one release.
-async fn library_with_release() -> (TestLibrary, TempDir, DbAlbum, DbRelease) {
-    let (library, _storage, dir) = open_library().await;
-    let album = test_album();
-    let release = test_release(&album.id);
-    library.records().insert_album(&album).await.unwrap();
-    insert_release(library.records(), &release).await;
-    (library, dir, album, release)
 }
 
 /// `count` albums titled "Album 0", "Album 1", …, each with one release.
@@ -101,7 +89,7 @@ async fn until<Value, Error: std::fmt::Debug>(
 /// The load here is sync-shaped without a sync loop: reads keeping coven's
 /// reader connection busy so the query's read waits its turn behind them, and
 /// a steady stream of writes to a row the query reads, a release of the album
-/// entering and leaving a storage transition. Both are paced by something
+/// entering and leaving the download queue. Both are paced by something
 /// other than the CPU — the reads by the connection thread, the writes by a
 /// timer — so this runtime stays able to schedule the deadline below, and a
 /// regression fails on it instead of hanging.
@@ -133,19 +121,19 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
         }));
     }
     let db = manager.store().clone();
-    let transitioning = releases[0].clone();
+    let queued = releases[0].clone();
+    let queueing = manager.manager().clone();
+    // The worker leaves the entry to this load.
+    queueing.set_downloads_paused(true).await.unwrap();
     load.push(tokio::spawn(async move {
         loop {
-            bae_transfers::release_storage_action::begin_release_storage_action(
-                &db,
-                &transitioning,
-                bae_transfers::StoredTransition::DetachAudio,
-            )
+            let release = format!("'{queued}'");
+            db.call(move |sql| {
+                bae_transfers::tables::bulk::queue_downloads_on(sql, 1, 2, &release)
+            })
             .await
             .unwrap();
-            bae_transfers::release_storage_action::end_release_storage_action(&db, &transitioning)
-                .await
-                .unwrap();
+            queueing.cancel_download(&queued).await.unwrap();
             tokio::time::sleep(std::time::Duration::from_millis(1)).await;
         }
     }));
@@ -387,18 +375,33 @@ async fn the_storage_view_moves_one_subscription() {
     assert_eq!(filtered.total_size, views(&manager).get_storage_total_size(local).await.unwrap());
 }
 
-/// Beginning and ending a release's transition reaches the album detail,
-/// the release detail and the Storage Manager, each read from the row: while
-/// it runs the release shows it and offers no storage action.
+/// A release queued to be made local reaches the album detail, the release
+/// detail and the Storage Manager, each read from its download queue entry:
+/// while it waits the release shows it and offers no storage action, and a
+/// cancel takes it out of all three.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn a_transition_reaches_the_reads_from_its_row() {
-    let (manager, _temp_dir, album, release) = library_with_release().await;
+async fn a_make_local_entry_reaches_the_reads() {
+    let (manager, storage, dir) = open_library().await;
+    bae_library::test_libraries::connect_storage(manager.manager(), manager.store(), &storage)
+        .await;
+    let (release_id, _files) = crate::create_local_release(
+        manager.manager(),
+        &dir.path().join("originals"),
+        &[("a.flac", b"audio")],
+    )
+    .await;
+    manager.records().set_source_folder_name_for_test(&release_id, "Folder").await.unwrap();
+    manager.manager().upload_release(&release_id, false).await.unwrap();
+    manager.manager().drain_uploads_expecting_work().await.unwrap();
+    let album_id =
+        manager.records().find_release_by_id(&release_id).await.unwrap().unwrap().album_id;
+
     let views = views(&manager);
     let album_detail = bae_app::live_reads::subscribe_album_detail(manager.manager(), &views);
-    album_detail.set(Some(album.id.clone())).unwrap();
+    album_detail.set(Some(album_id)).unwrap();
     let release_detail = bae_app::live_reads::subscribe_release_detail(manager.manager(), &views);
-    release_detail.set(Some(release.id.clone())).unwrap();
-    let storage = bae_app::live_reads::subscribe_storage_browse(
+    release_detail.set(Some(release_id.clone())).unwrap();
+    let storage_browse = bae_app::live_reads::subscribe_storage_browse(
         manager.manager(),
         &views,
         bae_views::StorageBrowseRequest {
@@ -412,17 +415,24 @@ async fn a_transition_reaches_the_reads_from_its_row() {
             selected: Default::default(),
         },
     );
-    let album_shows = |action: Option<ReleaseStorageAction>| {
+    let waiting = Some(bae_views::album_detail::MakeLocalStatus::Queued {
+        ahead: 0,
+        wait: Some(bae_transfers::QueueWait::Paused),
+    });
+    let album_shows = |status: Option<bae_views::album_detail::MakeLocalStatus>| {
         move |snapshot: &bae_library::DetailSnapshot<bae_views::album_detail::AlbumDetail>| {
             snapshot.value.as_ref().is_some_and(|detail| {
-                detail.releases[0].summary.transfer_action == action
-                    && detail.releases[0].summary.transitioning == action.is_some()
+                detail.releases[0].make_local == status
+                    && detail.releases[0].summary.transitioning == status.is_some()
             })
         }
     };
-    let release_shows = |action: Option<ReleaseStorageAction>| {
+    let release_shows = |status: Option<bae_views::album_detail::MakeLocalStatus>| {
         move |snapshot: &bae_library::DetailSnapshot<bae_views::album_detail::ReleaseDetail>| {
-            snapshot.value.as_ref().is_some_and(|detail| detail.summary.transfer_action == action)
+            snapshot.value.as_ref().is_some_and(|detail| {
+                detail.make_local == status
+                    && detail.summary.storage_actions.is_empty() == status.is_some()
+            })
         }
     };
     let row_shows = |status: StorageRowStatus| {
@@ -431,34 +441,40 @@ async fn a_transition_reaches_the_reads_from_its_row() {
         }
     };
 
-    until("the album shows no transition", || album_detail.next(), album_shows(None)).await;
-    until("the release shows no transition", || release_detail.next(), release_shows(None)).await;
-    until("the row rests", || storage.next(), row_shows(StorageRowStatus::OnOneDevice)).await;
+    until("the album shows no make-local", || album_detail.next(), album_shows(None)).await;
+    until("the release shows no make-local", || release_detail.next(), release_shows(None)).await;
+    until("the row rests", || storage_browse.next(), row_shows(StorageRowStatus::InStorage)).await;
 
-    assert!(bae_transfers::release_storage_action::begin_release_storage_action(
-        manager.store(),
-        &release.id,
-        StoredTransition::DetachAudio
-    )
-    .await
-    .unwrap());
-    let detaching = Some(ReleaseStorageAction::DetachAudio);
-    until("the album shows the transition", || album_detail.next(), album_shows(detaching)).await;
-    until("the release shows the transition", || release_detail.next(), release_shows(detaching))
+    // The worker leaves the entry waiting.
+    manager.manager().set_downloads_paused(true).await.unwrap();
+    let folder = dir.path().join("local");
+    std::fs::create_dir(&folder).unwrap();
+    manager.manager().make_releases_local(vec![release_id.clone()], &folder).await.unwrap();
+    until("the album shows the make-local", || album_detail.next(), album_shows(waiting.clone()))
         .await;
     until(
-        "the row shows the transition",
-        || storage.next(),
-        row_shows(StorageRowStatus::Transferring(ReleaseStorageAction::DetachAudio)),
+        "the release shows the make-local",
+        || release_detail.next(),
+        release_shows(waiting.clone()),
+    )
+    .await;
+    until(
+        "the row shows the make-local",
+        || storage_browse.next(),
+        row_shows(StorageRowStatus::MakingLocal(
+            bae_views::album_detail::DownloadEntryStep::Queued {
+                ahead: 0,
+                wait: Some(bae_transfers::QueueWait::Paused),
+            },
+        )),
     )
     .await;
 
-    bae_transfers::release_storage_action::end_release_storage_action(manager.store(), &release.id)
-        .await
-        .unwrap();
-    until("the album's transition ends", || album_detail.next(), album_shows(None)).await;
-    until("the release's transition ends", || release_detail.next(), release_shows(None)).await;
-    until("the row rests again", || storage.next(), row_shows(StorageRowStatus::OnOneDevice)).await;
+    manager.manager().cancel_release_transition(&release_id).await.unwrap();
+    until("the album's make-local ends", || album_detail.next(), album_shows(None)).await;
+    until("the release's make-local ends", || release_detail.next(), release_shows(None)).await;
+    until("the row rests again", || storage_browse.next(), row_shows(StorageRowStatus::InStorage))
+        .await;
 }
 
 /// Follow the inspector until it shows a value `accept` takes.

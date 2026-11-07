@@ -25,7 +25,6 @@ mod release_storage_action {
             media: Vec::new(),
             storage_state: AutomationReleaseStorageState::InStorage { pinned: false },
             storage_actions: actions,
-            transfer_action: None,
             upload: None,
             transitioning: false,
             file_count: 11,

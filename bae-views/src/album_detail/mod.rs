@@ -174,6 +174,38 @@ pub enum ReleaseDownloadStatus {
     Available,
 }
 
+/// Where a release stands in being made local: its entry in the download
+/// queue, when it is a make-local.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MakeLocalStatus {
+    /// Waiting, with `ahead` entries before it that have not failed.
+    Queued { ahead: u32, wait: Option<bae_transfers::QueueWait> },
+    /// Downloading its files into the person's folder. How many bytes is the
+    /// release's download transfer.
+    Making { wait: Option<bae_transfers::QueueWait> },
+    /// Stopped by its error, until retried.
+    Failed { error: String },
+}
+
+/// The release's make-local status from its entry in the download queue;
+/// `None` when the entry is not a make-local, or there is none.
+pub fn release_make_local_status(
+    download: Option<&bae_transfers::DownloadEntry>,
+) -> Option<MakeLocalStatus> {
+    use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep};
+
+    let Some(DownloadEntry { kind: DownloadKind::MakeLocal, step }) = download else {
+        return None;
+    };
+    Some(match step {
+        DownloadStep::Queued { ahead, wait } => {
+            MakeLocalStatus::Queued { ahead: *ahead, wait: *wait }
+        }
+        DownloadStep::Running { wait } => MakeLocalStatus::Making { wait: *wait },
+        DownloadStep::Failed { error } => MakeLocalStatus::Failed { error: error.clone() },
+    })
+}
+
 /// The control's state for one release, or `None` when there is no control to
 /// show at all — no storage, or a release whose audio is already local.
 ///
@@ -188,18 +220,20 @@ pub fn release_download_status(
     storage_actions: &[ReleaseStorageAction],
     download: Option<&bae_transfers::DownloadEntry>,
 ) -> Option<ReleaseDownloadStatus> {
-    use bae_transfers::DownloadEntry;
+    use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep};
 
     match download {
-        Some(DownloadEntry::Queued { ahead, wait }) => {
-            Some(ReleaseDownloadStatus::Queued { ahead: *ahead, wait: *wait })
-        }
-        Some(DownloadEntry::Running { wait }) => {
-            Some(ReleaseDownloadStatus::Downloading { wait: *wait })
-        }
-        Some(DownloadEntry::Failed { error }) => {
-            Some(ReleaseDownloadStatus::Failed { error: error.clone() })
-        }
+        Some(DownloadEntry { kind: DownloadKind::Pin, step }) => Some(match step {
+            DownloadStep::Queued { ahead, wait } => {
+                ReleaseDownloadStatus::Queued { ahead: *ahead, wait: *wait }
+            }
+            DownloadStep::Running { wait } => ReleaseDownloadStatus::Downloading { wait: *wait },
+            DownloadStep::Failed { error } => {
+                ReleaseDownloadStatus::Failed { error: error.clone() }
+            }
+        }),
+        // Making the release local is not this control's to show.
+        Some(DownloadEntry { kind: DownloadKind::MakeLocal, .. }) => None,
         None if state == (ReleaseStorageState::InStorage { pinned: true }) => {
             Some(ReleaseDownloadStatus::Downloaded)
         }

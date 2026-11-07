@@ -722,7 +722,7 @@ mod window_cost {
             "queued",
             n,
             bae_transfers::tables::queue_order(),
-            bae_transfers::tables::queue_window_rows_on::<()>,
+            bae_transfers::tables::queue_window_rows_on::<bae_transfers::DownloadRequest>,
         )
         .await;
     }

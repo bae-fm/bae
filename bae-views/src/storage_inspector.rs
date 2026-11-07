@@ -5,7 +5,7 @@ use super::*;
 use crate::album_detail::{FileDetail, FilePin, ReleaseUpload};
 use bae_sync_status::PendingWait;
 use bae_transfers::ReleaseQueueState;
-use bae_transfers::{DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
+use bae_transfers::{DownloadRequest, DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
 use coven::UploadPhase;
 
 /// What the inspector shows of one release, read in core for the release id
@@ -46,7 +46,7 @@ pub struct StorageInspectorUpload {
 #[derive(Debug, Clone, PartialEq)]
 pub enum StorageInspectorTransfer {
     /// `summary` counts the release's files downloading, waiting and kept,
-    /// each left out at zero, while its download waits or runs.
+    /// each left out at zero, while its pin waits or runs.
     Download {
         operation: DownloadRow,
         summary: Option<Vec<bae_transfers::TransferCount>>,
@@ -85,11 +85,12 @@ impl StorageInspector {
         entries: &ReleaseQueueEntries,
         upload: Option<ReleaseUpload>,
     ) -> Self {
-        let pinning = if entries
-            .download
-            .as_ref()
-            .is_some_and(|row| !matches!(row.op.state, ReleaseQueueState::Failed { .. }))
-        {
+        // Only a pin brings files to this device's pins; a make-local brings
+        // them into a folder.
+        let pinning = if entries.download.as_ref().is_some_and(|row| {
+            matches!(row.op.payload, DownloadRequest::Pin)
+                && !matches!(row.op.state, ReleaseQueueState::Failed { .. })
+        }) {
             Some(Pinning::Download)
         } else if files.iter().any(|file| file.pin.is_some_and(|pin| pin != FilePin::Kept)) {
             Some(Pinning::Fetch)

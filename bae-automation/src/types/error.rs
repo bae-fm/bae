@@ -87,7 +87,7 @@ impl From<LibraryError> for AutomationError {
             error @ LibraryError::FileRead { .. } => Self::Unavailable(error.to_string()),
             error @ LibraryError::MakeLocal(_) => Self::Unavailable(error.to_string()),
             error @ (LibraryError::Cleanup { .. }
-            | LibraryError::StorageTransition(_)
+            | LibraryError::StorageMove(_)
             | LibraryError::SetupDismiss(_)
             | LibraryError::AdminChangeDismiss(_)
             | LibraryError::PrimaryRelease(_)

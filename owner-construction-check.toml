@@ -331,8 +331,9 @@ task_types = [
     # One background task or thread a caller started, reporting its failure.
     "ReportedTask",
     "ReportedThread",
-    # One running pin of a release.
+    # One running pin of a release, and the progress it reports.
     "RunningOp",
+    "TransferProgressFeed",
     # One scan pass's file reads, and what one finished removal leaves to
     # announce.
     "FileReads",
@@ -471,9 +472,6 @@ ProgressWriter = "ProgressStream"
 # every release's progress.
 ReleaseTransferReport = "ReleaseTransfers"
 ReleaseTransfersWatch = "ReleaseTransfers"
-# A release's place in the transfers this process can stop between files,
-# held while its transfer runs; dropping it removes the release's token.
-DetachRegistration = "DetachCancels"
 # One read's wait on storage, counted in the storage waits while it runs,
 # and a watch on the track whose load waits on storage.
 FetchProgress = "StorageWaits"
@@ -502,8 +500,6 @@ ExtractionWatch = "ExtractionService"
 # Where one pane tells the identification queue which candidate it shows,
 # held while the pane's read lives.
 ShownCandidate = "IdentificationHandle"
-# One pin, unpin or audio detachment's progress.
-TransferProgressFeed = "LibraryManager"
 # One request a rate limiter let through, settled against the limiter.
 Admitted = "RateLimiter"
 # One reader of a sparse buffer, with its own slot in the buffer's demands.
@@ -601,12 +597,8 @@ ImageHold = "RemoteImageHost"
 # An owner's constructor builds the owner and the parts it holds that nothing
 # else shares.
 "bae-import/src/watching/folder_watcher.rs" = ["FolderWatcher::new"]
-# Opens the library manager over the store, building its transfer queues and
-# cancellation once.
+# Opens the library manager over the store, building its transfer queues once.
 "bae-library/src/assembly.rs" = ["open_library_manager"]
-# An owner's constructor builds the owner and the parts it holds that nothing
-# else shares.
-"bae-library/src/detach_cancels.rs" = ["DetachCancels::new"]
 # The UI-test fixture seeds the library through the tables of the store it was
 # opened on. It exists only in debug and test builds, like the test fixtures
 # listed here.
@@ -1033,7 +1025,6 @@ homes = [
     "bae-import/src/tables/",
     "bae-transfers/src/download_entry.rs",
     "bae-transfers/src/queued_releases/",
-    "bae-transfers/src/release_storage_action.rs",
     "bae-views/src/",
 ]
 
@@ -1343,14 +1334,11 @@ owner = "QueuedReleases"
 homes = [
     "bae-transfers/src/queued_releases.rs",
     "bae-transfers/src/queued_releases/",
-    "bae-transfers/src/release_storage_action.rs",
-    "bae-transfers/src/release_storage_action.sql",
 ]
 tables = [
     "release_queues",
     "download_queue",
     "output_queue",
-    "release_storage_action",
     "release_queue_versions",
 ]
 

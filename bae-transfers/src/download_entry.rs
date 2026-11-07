@@ -4,9 +4,41 @@
 
 use rusqlite::Row;
 
-/// A release's entry in the download queue.
+/// What a release's entry in the download queue does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DownloadKind {
+    /// Keeps the release's files whole on this device.
+    Pin,
+    /// Downloads the release's files into the person's folder and makes the
+    /// release local.
+    MakeLocal,
+}
+
+/// A release's entry in the download queue: what it does, and where it
+/// stands.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DownloadEntry {
+pub struct DownloadEntry {
+    pub kind: DownloadKind,
+    pub step: DownloadStep,
+}
+
+impl DownloadEntry {
+    /// Whether the release's storage actions wait on this entry: it is
+    /// downloading, or it is a make-local waiting, which would be undone by
+    /// another action. A pin waiting, or an entry that failed, leaves the
+    /// release to its actions.
+    pub fn holds_the_release(&self) -> bool {
+        match (self.kind, &self.step) {
+            (_, DownloadStep::Running { .. }) => true,
+            (DownloadKind::MakeLocal, DownloadStep::Queued { .. }) => true,
+            (_, DownloadStep::Queued { .. } | DownloadStep::Failed { .. }) => false,
+        }
+    }
+}
+
+/// Where a release's entry in the download queue stands.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DownloadStep {
     /// Waiting, with `ahead` entries before it that have not failed.
     Queued { ahead: u32, wait: Option<QueueWait> },
     /// Downloading.
@@ -25,13 +57,14 @@ pub enum QueueWait {
 }
 
 /// The columns [`download_entry_column`] reads, for the release `release` (an
-/// SQL expression naming its id): the entry's state and error, the number of
+/// SQL expression naming its id): the entry's kind, state and error, the number of
 /// entries ahead of it that have not failed, whether the download queue is
 /// paused, and whether coven says the network is usable (NULL when it cannot
 /// tell).
 pub fn download_entry_sql(release: &str) -> String {
     format!(
-        "(SELECT q.state FROM download_queue q WHERE q.release_id = {release}) AS download_state, \
+        "(SELECT q.kind FROM download_queue q WHERE q.release_id = {release}) AS download_kind, \
+         (SELECT q.state FROM download_queue q WHERE q.release_id = {release}) AS download_state, \
          (SELECT q.error FROM download_queue q WHERE q.release_id = {release}) AS download_error, \
          (SELECT COUNT(*) FROM download_queue a \
           JOIN download_queue q ON q.release_id = {release} \
@@ -59,16 +92,29 @@ pub fn download_entry_column(row: &Row<'_>) -> rusqlite::Result<Option<DownloadE
             None
         })
     };
-    match state.as_str() {
-        "queued" => {
-            Ok(Some(DownloadEntry::Queued { ahead: row.get("download_ahead")?, wait: wait()? }))
+    let kind_column = row.as_ref().column_index("download_kind")?;
+    let kind = match row.get::<_, String>(kind_column)?.as_str() {
+        "pin" => DownloadKind::Pin,
+        "make_local" => DownloadKind::MakeLocal,
+        other => {
+            return Err(bae_store::read::column_conversion_error(
+                row,
+                kind_column,
+                format!("download kind {other} names no kind"),
+            ))
         }
-        "active" => Ok(Some(DownloadEntry::Running { wait: wait()? })),
-        "failed" => Ok(Some(DownloadEntry::Failed { error: row.get("download_error")? })),
-        other => Err(bae_store::read::column_conversion_error(
-            row,
-            state_column,
-            format!("download state {other} names no phase"),
-        )),
-    }
+    };
+    let step = match state.as_str() {
+        "queued" => DownloadStep::Queued { ahead: row.get("download_ahead")?, wait: wait()? },
+        "active" => DownloadStep::Running { wait: wait()? },
+        "failed" => DownloadStep::Failed { error: row.get("download_error")? },
+        other => {
+            return Err(bae_store::read::column_conversion_error(
+                row,
+                state_column,
+                format!("download state {other} names no phase"),
+            ))
+        }
+    };
+    Ok(Some(DownloadEntry { kind, step }))
 }

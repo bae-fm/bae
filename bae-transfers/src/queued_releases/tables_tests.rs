@@ -1,6 +1,7 @@
 //! The transfer queues' tables: what an entry is, what one move does to it,
 //! what opening the library leaves, and how the reads are planned.
 
+use crate::download_snapshot::DownloadRequest;
 use crate::output_snapshot::{OutputKind, OutputRequest};
 use crate::queued_releases::tables::{self, QueuedPayload};
 use crate::release_queue::{ReleaseQueueEntry, ReleaseQueueState};
@@ -75,14 +76,18 @@ async fn clear_transfers(db: &Store) -> Result<(), DbError> {
     db.call(tables::clear_transfers_on).await
 }
 
-fn download(release_id: &str) -> ReleaseQueueEntry<()> {
-    ReleaseQueueEntry { release_id: release_id.to_string(), created_at: 7, payload: () }
+fn download(release_id: &str) -> ReleaseQueueEntry<DownloadRequest> {
+    ReleaseQueueEntry {
+        release_id: release_id.to_string(),
+        created_at: 7,
+        payload: DownloadRequest::Pin,
+    }
 }
 
 /// The download queue's entries as the Downloads pane lists them: each
 /// release and its phase, in the order queued.
 async fn downloads(db: &Store) -> Vec<(String, ReleaseQueueState<()>)> {
-    release_queue::<()>(db)
+    release_queue::<DownloadRequest>(db)
         .await
         .unwrap()
         .rows
@@ -108,7 +113,10 @@ async fn a_queued_release_is_a_row_in_the_order_queued() {
         .await
         .unwrap();
     assert_eq!(rows, vec![RELEASE_A.to_string(), RELEASE_B.to_string()]);
-    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), Some(download(RELEASE_A)));
+    assert_eq!(
+        next_queued_release::<DownloadRequest>(&db).await.unwrap(),
+        Some(download(RELEASE_A))
+    );
 }
 
 /// The worker's moves: the first queued entry starts, and an active one
@@ -120,19 +128,23 @@ async fn an_entry_starts_fails_retries_and_finishes() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
 
-    assert!(activate_queued_release::<()>(&db, RELEASE_A).await.unwrap());
+    assert!(activate_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap());
     assert!(
-        activate_queued_release::<()>(&db, RELEASE_A).await.unwrap(),
+        activate_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap(),
         "an active entry starts again, as it does after a restart"
     );
     assert_eq!(
-        next_queued_release::<()>(&db).await.unwrap(),
+        next_queued_release::<DownloadRequest>(&db).await.unwrap(),
         Some(download(RELEASE_A)),
         "the active entry is taken before the queued one"
     );
-    assert!(fail_queued_release::<()>(&db, RELEASE_A, "the cloud refused".to_string())
-        .await
-        .unwrap());
+    assert!(fail_queued_release::<DownloadRequest>(
+        &db,
+        RELEASE_A,
+        "the cloud refused".to_string()
+    )
+    .await
+    .unwrap());
     assert_eq!(
         downloads(&db).await,
         vec![
@@ -144,16 +156,16 @@ async fn an_entry_starts_fails_retries_and_finishes() {
         ]
     );
 
-    assert!(retry_failed_releases::<()>(&db).await.unwrap());
-    assert!(!retry_failed_releases::<()>(&db).await.unwrap(), "none failed");
-    assert!(activate_queued_release::<()>(&db, RELEASE_A).await.unwrap());
-    assert!(finish_queued_release::<()>(&db, RELEASE_A).await.unwrap());
+    assert!(retry_failed_releases::<DownloadRequest>(&db).await.unwrap());
+    assert!(!retry_failed_releases::<DownloadRequest>(&db).await.unwrap(), "none failed");
+    assert!(activate_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap());
+    assert!(finish_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap());
     assert!(
-        !finish_queued_release::<()>(&db, RELEASE_A).await.unwrap(),
+        !finish_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap(),
         "a finished entry is gone"
     );
     assert!(
-        !activate_queued_release::<()>(&db, RELEASE_Z).await.unwrap(),
+        !activate_queued_release::<DownloadRequest>(&db, RELEASE_Z).await.unwrap(),
         "a release never queued does not start"
     );
     assert_eq!(downloads(&db).await, vec![(RELEASE_B.to_string(), ReleaseQueueState::Queued)]);
@@ -164,7 +176,7 @@ async fn an_entry_starts_fails_retries_and_finishes() {
 async fn a_queue_holds_one_active_entry_at_most() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
-    activate_queued_release::<()>(&db, RELEASE_A).await.unwrap();
+    activate_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap();
     let second = db
         .call(|sql| {
             Ok(sql.execute(
@@ -182,13 +194,16 @@ async fn a_queue_holds_one_active_entry_at_most() {
 async fn a_paused_queue_offers_nothing_to_start() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
-    assert!(!set_release_queue_paused::<()>(&db, true).await.unwrap());
-    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), None);
-    let queue = release_queue::<()>(&db).await.unwrap();
+    assert!(!set_release_queue_paused::<DownloadRequest>(&db, true).await.unwrap());
+    assert_eq!(next_queued_release::<DownloadRequest>(&db).await.unwrap(), None);
+    let queue = release_queue::<DownloadRequest>(&db).await.unwrap();
     assert!(queue.paused);
     assert_eq!(queue.total.queued, 1);
-    assert!(set_release_queue_paused::<()>(&db, false).await.unwrap());
-    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), Some(download(RELEASE_A)));
+    assert!(set_release_queue_paused::<DownloadRequest>(&db, false).await.unwrap());
+    assert_eq!(
+        next_queued_release::<DownloadRequest>(&db).await.unwrap(),
+        Some(download(RELEASE_A))
+    );
 }
 
 /// Cancelling takes an entry out in any phase.
@@ -198,9 +213,9 @@ async fn cancelling_takes_entries_out() {
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B), download(RELEASE_Z)])
         .await
         .unwrap();
-    activate_queued_release::<()>(&db, RELEASE_A).await.unwrap();
-    assert!(cancel_queued_release::<()>(&db, RELEASE_A).await.unwrap());
-    assert!(!cancel_queued_release::<()>(&db, RELEASE_A).await.unwrap());
+    activate_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap();
+    assert!(cancel_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap());
+    assert!(!cancel_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap());
     assert_eq!(
         downloads(&db).await,
         vec![
@@ -219,7 +234,7 @@ async fn an_entry_shows_its_release_or_none_once_it_is_gone() {
     let gone = "0f0b3c1e-5a07-4a8e-9a43-3d2d64d1e7a1";
     enqueue_releases(&db, vec![download(RELEASE_A), download(gone)]).await.unwrap();
 
-    let queue = release_queue::<()>(&db).await.unwrap();
+    let queue = release_queue::<DownloadRequest>(&db).await.unwrap();
     let release = queue.rows[0].release.as_ref().expect("RELEASE_A is held");
     assert_eq!(release.file_count, 0);
     assert_eq!(queue.rows[1].op.release_id, gone);
@@ -270,7 +285,7 @@ async fn opening_keeps_the_download_queue_and_its_pause() {
     };
     enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
     enqueue_releases(&db, vec![export]).await.unwrap();
-    assert!(activate_queued_release::<()>(&db, RELEASE_A).await.unwrap());
+    assert!(activate_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap());
 
     // A quit while the download ran.
     clear_transfers(&db).await.unwrap();
@@ -278,40 +293,24 @@ async fn opening_keeps_the_download_queue_and_its_pause() {
         downloads(&db).await,
         vec![(RELEASE_A.to_string(), ReleaseQueueState::Active { progress: () })]
     );
-    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), Some(download(RELEASE_A)));
+    assert_eq!(
+        next_queued_release::<DownloadRequest>(&db).await.unwrap(),
+        Some(download(RELEASE_A))
+    );
     assert!(release_queue::<OutputRequest>(&db).await.unwrap().rows.is_empty());
 
     // A quit while both queues were paused.
-    set_release_queue_paused::<()>(&db, true).await.unwrap();
+    set_release_queue_paused::<DownloadRequest>(&db, true).await.unwrap();
     set_release_queue_paused::<OutputRequest>(&db, true).await.unwrap();
     clear_transfers(&db).await.unwrap();
-    assert!(release_queue::<()>(&db).await.unwrap().paused);
+    assert!(release_queue::<DownloadRequest>(&db).await.unwrap().paused);
     assert_eq!(downloads(&db).await.len(), 1);
-    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), None, "paused");
+    assert_eq!(next_queued_release::<DownloadRequest>(&db).await.unwrap(), None, "paused");
     assert!(!release_queue::<OutputRequest>(&db).await.unwrap().paused);
-    set_release_queue_paused::<()>(&db, false).await.unwrap();
-    assert_eq!(next_queued_release::<()>(&db).await.unwrap(), Some(download(RELEASE_A)));
-}
-
-/// Opening the library ends every storage transition: none outlives the
-/// process that ran it.
-#[tokio::test]
-async fn opening_ends_every_transition() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    album_with_releases(&test_records(&db), ALBUM_A, "Album Title A", &[RELEASE_A]).await;
-    crate::release_storage_action::begin_release_storage_action(
-        &db,
-        RELEASE_A,
-        crate::StoredTransition::DetachAudio,
-    )
-    .await
-    .unwrap();
-
-    clear_transfers(&db).await.unwrap();
-
+    set_release_queue_paused::<DownloadRequest>(&db, false).await.unwrap();
     assert_eq!(
-        crate::release_storage_action::release_transfer_action(&db, RELEASE_A).await.unwrap(),
-        None
+        next_queued_release::<DownloadRequest>(&db).await.unwrap(),
+        Some(download(RELEASE_A))
     );
 }
 
@@ -339,7 +338,7 @@ async fn the_queue_reads_are_planned_on_their_keys() {
         by_release.contains("USING INDEX sqlite_autoindex_download_queue_1 (release_id=?)"),
         "{by_release}"
     );
-    let pane = plan(crate::queued_releases::tables::queue_rows_sql::<()>(
+    let pane = plan(crate::queued_releases::tables::queue_rows_sql::<DownloadRequest>(
         None,
         "ORDER BY q.position LIMIT 100 OFFSET 0",
     ))

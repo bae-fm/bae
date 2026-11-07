@@ -5,7 +5,7 @@ use crate::album_detail::FilePin;
 use bae_records::test_fixtures::*;
 use bae_records::UploadProgress;
 use bae_store::test_fixtures::*;
-use bae_transfers::ReleaseQueueEntries;
+use bae_transfers::{DownloadRequest, ReleaseQueueEntries};
 use bae_transfers::{OutputKind, OutputRequest, ReleaseQueueEntry};
 use bae_transfers::{ReleaseQueueOp, ReleaseQueueRow, ReleaseQueueState};
 
@@ -63,12 +63,37 @@ fn shown(
     StorageInspector::of("selected", files, entries, upload)
 }
 
+/// A make-local brings a release's files into a folder, not into this
+/// device's pins: its entry shows, and no file's pin does.
+#[cfg(desktop)]
+#[test]
+fn a_make_local_entry_shows_no_file_pins() {
+    let inspector = shown(
+        vec![file("a", None), file("b", Some(FilePin::Kept))],
+        &ReleaseQueueEntries {
+            download: Some(row(
+                DownloadRequest::MakeLocal { target_dir: "/music".into() },
+                "selected",
+                ReleaseQueueState::Queued,
+            )),
+            output: None,
+        },
+        None,
+    );
+
+    assert!(inspector.files.iter().all(|file| file.pin.is_none()));
+    assert!(matches!(
+        inspector.transfers.as_slice(),
+        [StorageInspectorTransfer::Download { summary: None, .. }]
+    ));
+}
+
 #[test]
 fn each_queue_shows_the_selected_releases_entry() {
     let inspector = shown(
         Vec::new(),
         &ReleaseQueueEntries {
-            download: Some(row((), "selected", ReleaseQueueState::Queued)),
+            download: Some(row(DownloadRequest::Pin, "selected", ReleaseQueueState::Queued)),
             output: Some(row(export(), "selected", ReleaseQueueState::Queued)),
         },
         Some(waiting()),
@@ -124,7 +149,10 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
     for state in [ReleaseQueueState::Queued, ReleaseQueueState::Active { progress: () }] {
         let inspector = shown(
             files(),
-            &ReleaseQueueEntries { download: Some(row((), "selected", state)), output: None },
+            &ReleaseQueueEntries {
+                download: Some(row(DownloadRequest::Pin, "selected", state)),
+                output: None,
+            },
             None,
         );
         assert_eq!(
@@ -151,7 +179,7 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
         files(),
         &ReleaseQueueEntries {
             download: Some(row(
-                (),
+                DownloadRequest::Pin,
                 "selected",
                 ReleaseQueueState::Failed { error: "the network connection was lost".into() },
             )),
@@ -205,8 +233,12 @@ fn a_release_whose_pins_wait_for_their_copies_shows_coven_fetching_them() {
     assert!(kept.files.iter().all(|file| file.pin.is_none()));
 }
 
-fn download(release_id: &str) -> ReleaseQueueEntry<()> {
-    ReleaseQueueEntry { release_id: release_id.to_string(), created_at: 7, payload: () }
+fn download(release_id: &str) -> ReleaseQueueEntry<DownloadRequest> {
+    ReleaseQueueEntry {
+        release_id: release_id.to_string(),
+        created_at: 7,
+        payload: DownloadRequest::Pin,
+    }
 }
 
 /// The inspector's read of one release holds its entry in each queue and

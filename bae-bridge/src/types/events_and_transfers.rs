@@ -122,10 +122,10 @@ pub enum BridgeFastValue {
     /// The share of a file in flight its object has moved, from 0 to 1;
     /// keyed by file.
     FileShare { fraction: f64 },
-    /// A downloading release's bytes and rate; keyed by release.
+    /// A pinning release's bytes and rate; keyed by release.
     Download { progress: BridgeDownloadTransferProgress },
     /// How far a release being made local has downloaded into the
-    /// person's folder; keyed by release.
+    /// person's folder; keyed by release, in the download stream.
     MakeLocal { progress: BridgeMakeLocalProgress },
     /// An exporting release's percent; keyed by release.
     ExportPercent { percent: u8 },
@@ -215,10 +215,56 @@ mirror_struct! {
     fields: { title, file_count, total_size },
 }
 
-/// One queued download: a whole release being pinned. Mirrors `DownloadRow`.
+/// What a queued download does. Mirrors `DownloadKind`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeDownloadKind {
+    /// Keeps the release's files on this device.
+    Pin,
+    /// Downloads the release's files into the person's folder and makes the
+    /// release local.
+    MakeLocal,
+}
+
+mirror_enum! {
+    BridgeDownloadKind = bae_transfers::DownloadKind,
+    from_core: pub(crate) fn,
+    variants: { Pin, MakeLocal },
+}
+
+/// Where a release stands in being made local. Mirrors `MakeLocalStatus`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeMakeLocalStatus {
+    /// Waiting, with `ahead` entries before it that have not failed.
+    Queued {
+        ahead: u32,
+        wait: Option<BridgeQueueWait>,
+    },
+    /// Downloading its files into the person's folder; how many bytes is the
+    /// release's value in the download `KeyedValueStream`.
+    Making {
+        wait: Option<BridgeQueueWait>,
+    },
+    Failed {
+        error: String,
+    },
+}
+
+mirror_enum! {
+    BridgeMakeLocalStatus = bae_views::album_detail::MakeLocalStatus,
+    from_core: pub(crate) fn,
+    variants: {
+        Queued { ahead, wait: (opt BridgeQueueWait) },
+        Making { wait: (opt BridgeQueueWait) },
+        Failed { error },
+    },
+}
+
+/// One queued download: a whole release being pinned or made local. Mirrors
+/// `DownloadRow`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDownloadOp {
     pub release_id: String,
+    pub kind: BridgeDownloadKind,
     /// The release as the library holds it now; `None` once the library no
     /// longer has it.
     pub release: Option<BridgeQueuedRelease>,

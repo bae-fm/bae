@@ -604,14 +604,20 @@ async fn a_scrolled_search_holds_its_offsets_rows_across_a_printed_name() {
 async fn the_download_queue_seeks_its_windows_through_its_key() {
     let (db, _tmp) = library().await;
     let order = bae_transfers::tables::queue_order();
-    let key = key_at(&db, &order, bae_transfers::tables::queue_window_rows_on::<()>, 150).await;
+    let key = key_at(
+        &db,
+        &order,
+        bae_transfers::tables::queue_window_rows_on::<bae_transfers::DownloadRequest>,
+        150,
+    )
+    .await;
     assert_seeks_search(
         &db,
         "downloads",
         &order,
         key,
         |seek| {
-            bae_transfers::tables::queue_rows_sql::<()>(
+            bae_transfers::tables::queue_rows_sql::<bae_transfers::DownloadRequest>(
                 Some(&order),
                 &format!(
                     "WHERE {} ORDER BY {} LIMIT :limit OFFSET :offset",

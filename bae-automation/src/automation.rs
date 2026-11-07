@@ -402,10 +402,15 @@ impl Automation {
                     AutomationReleaseStorageAction::DetachAudio,
                     "detach audio",
                 )?;
+                // The make-local joins the download queue rather than running
+                // inline, as the Storage Manager's Make local does.
                 self.services
-                    .detach_release_audio(&release_id, std::path::Path::new(&destination_dir))
+                    .make_releases_local(
+                        vec![release_id.clone()],
+                        std::path::Path::new(&destination_dir),
+                    )
                     .await?;
-                Ok(AutomationStorageActionOutcome::AudioDetached { release_id })
+                Ok(AutomationStorageActionOutcome::MakeLocalQueued { release_id })
             }
             AutomationStorageAction::Cancel => {
                 self.services.cancel_release_transition(&release_id).await?;

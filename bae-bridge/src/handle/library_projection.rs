@@ -106,6 +106,7 @@ impl BridgeRelease {
             gallery_items,
             playability,
             download_status,
+            make_local,
             records,
         } = rel;
         // Single-source the summary-derived fields through BridgeReleaseSummary,
@@ -118,7 +119,6 @@ impl BridgeRelease {
             media_terms,
             storage_state,
             storage_actions,
-            transfer_action,
             upload,
             transitioning,
             file_count,
@@ -143,7 +143,6 @@ impl BridgeRelease {
             facts,
             storage_state,
             storage_actions,
-            transfer_action,
             upload,
             transitioning,
             total_duration: bae_util::duration::DurationUnits::from_millis(total_duration_ms)
@@ -155,6 +154,7 @@ impl BridgeRelease {
             source_audio: source_audio.map(crate::types::BridgeSourceAudioSummary::from_core),
             gallery_items: gallery_items.into_iter().map(BridgeGalleryItem::from_core).collect(),
             playability: crate::types::BridgeReleasePlayability::from_core(playability),
+            make_local: make_local.map(crate::types::BridgeMakeLocalStatus::from_core),
             download_status: download_status
                 .map(crate::types::BridgeReleaseDownloadStatus::from_core),
             records: records
@@ -243,9 +243,10 @@ mirror_enum! {
     variants: {
         DownloadFailed { error },
         MoveFailed { file_name },
+        MakeLocalFailed { error },
         Uploading,
         Pinning(step: (crate::types::BridgeDownloadEntryStep)),
-        Transferring(action: (crate::types::BridgeReleaseStorageAction)),
+        MakingLocal(step: (crate::types::BridgeDownloadEntryStep)),
         OnOneDevice,
         Pinned,
         InStorage,
@@ -262,7 +263,6 @@ impl BridgeReleaseSummary {
             media,
             storage_state,
             storage_actions,
-            transfer_action,
             upload,
             transitioning,
             file_count,
@@ -281,8 +281,6 @@ impl BridgeReleaseSummary {
                 .into_iter()
                 .map(crate::types::BridgeReleaseStorageAction::from_core)
                 .collect(),
-            transfer_action: transfer_action
-                .map(crate::types::BridgeReleaseStorageAction::from_core),
             upload: upload.map(crate::types::BridgeReleaseUpload::from_core),
             transitioning,
             file_count,

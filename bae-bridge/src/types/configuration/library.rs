@@ -238,11 +238,11 @@ pub struct BridgeStorageRow {
 }
 
 /// What a Storage Manager row's storage state shows: where its files are, in
-/// the order the list sorts by storage, or a transition this process runs
-/// while they rest. Mirrors `StorageRowStatus`.
+/// the order the list sorts by storage, or the download queue's entry for it.
+/// Mirrors `StorageRowStatus`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeStorageRowStatus {
-    /// The download queue holds it failed, with the error.
+    /// The download queue holds a pin of it failed, with the error.
     DownloadFailed {
         error: String,
     },
@@ -251,12 +251,17 @@ pub enum BridgeStorageRowStatus {
     MoveFailed {
         file_name: String,
     },
+    /// The download queue holds a make-local of it failed, with the error.
+    MakeLocalFailed {
+        error: String,
+    },
     Uploading,
     Pinning {
         step: BridgeDownloadEntryStep,
     },
-    Transferring {
-        action: crate::types::BridgeReleaseStorageAction,
+    /// The download queue holds a make-local of it, waiting or downloading.
+    MakingLocal {
+        step: BridgeDownloadEntryStep,
     },
     OnOneDevice,
     Pinned,
@@ -264,7 +269,7 @@ pub enum BridgeStorageRowStatus {
 }
 
 /// Where a release stands in the download queue while its files are coming to
-/// this device. Mirrors `DownloadEntryStep`.
+/// this device or into a folder. Mirrors `DownloadEntryStep`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDownloadEntryStep {
     /// Waiting, with `ahead` entries before it that have not failed.

@@ -29,7 +29,7 @@ async fn opening_a_library_keeps_its_download_queue() {
     left.enqueue_all(vec![bae_transfers::QueuedPin {
         release_id: REL_1.to_string(),
         created_at: 0,
-        payload: (),
+        payload: bae_transfers::DownloadRequest::Pin,
     }])
     .await
     .unwrap();

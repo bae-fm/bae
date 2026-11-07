@@ -32,12 +32,7 @@ fn detail(tracks: Vec<bae_records::DbTrackWithArtists>) -> ReleaseDetail {
         cover_version: None,
     };
     let ctx = ReleaseResolveCtx { syncs: false, cover: None, is_compilation: false };
-    ReleaseDetail::from_raw(
-        raw,
-        bae_transfers::ReleaseTransferState { download: None, action: None },
-        0,
-        &ctx,
-    )
+    ReleaseDetail::from_raw(raw, None, 0, &ctx)
 }
 
 /// The release's total and each side's are its tracks' summed lengths.

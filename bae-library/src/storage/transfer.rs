@@ -1,10 +1,8 @@
-//! Release file attachment, verified local copies, and offline pins.
+//! Release file attachment and offline pins.
 //!
 //! Every release's rows sync. Making a release Remote attaches all of its local
-//! files in one write; coven then uploads their bytes. Making it Local first
-//! writes and verifies every destination, then atomically clears the attachments
-//! and records this device's paths. A failure removes the copies it created.
-//! Covers remain attached throughout both transitions.
+//! files in one write; coven then uploads their bytes. Making it local again
+//! runs in the download queue (see `locality.rs`).
 //!
 //! Pins keep attached files available offline. Coven owns their cache and pin
 //! state; bae owns the release-level progress and cancellation controls.
@@ -23,7 +21,7 @@ use tracing::{debug, error, info};
 
 type ProgressTx = mpsc::UnboundedSender<TransferProgress>;
 
-/// Progress updates emitted during a pin or audio detachment operation. A
+/// Progress updates emitted during a pin. A
 /// failure carries the typed error, so the caller reports why it failed —
 /// the cloud out of reach, its credentials, or this device's own store.
 #[derive(Debug)]
@@ -33,7 +31,7 @@ pub enum TransferProgress {
     Failed { release_id: String, error: LibraryError },
 }
 
-/// The progress one pin or audio detachment reports, until it says how
+/// The progress one pin reports, until it says how
 /// it ended, from the library manager that started it.
 pub struct TransferProgressFeed(mpsc::UnboundedReceiver<TransferProgress>);
 
@@ -59,7 +57,7 @@ impl LibraryManager {
     pub fn start_pin_transfer<Drive, DriveFuture>(
         &self,
         release_id: String,
-        entry: bae_transfers::ActiveEntry<()>,
+        entry: bae_transfers::ActiveEntry<bae_transfers::DownloadRequest>,
         drive: Drive,
     ) -> RunningOp<impl Future<Output = Result<Finished, LibraryError>>>
     where
@@ -68,16 +66,14 @@ impl LibraryManager {
     {
         let library_manager = self.clone();
         let pinned_release_id = release_id.clone();
-        let (progress, task) = spawn_transfer(
-            ReleaseTransfer::new(self.clone(), release_id, ReleaseStorageAction::Pin),
-            move |tx| async move {
+        let (progress, task) =
+            spawn_transfer(ReleaseTransfer::new(self.clone(), release_id), move |tx| async move {
                 library_manager
                     .pin_release_files_with_progress(&pinned_release_id, entry, |progress| {
                         send_progress(&tx, TransferProgress::Progress { progress });
                     })
                     .await
-            },
-        );
+            });
         let abort = task.abort_handle();
         let manager = self.clone();
         let outcome = async move {
@@ -101,60 +97,26 @@ impl LibraryManager {
         };
         RunningOp::new(abort, outcome)
     }
-
-    /// Make a Remote release Local, as the release's transition: coven
-    /// downloads its files into `new_path` and switches them to this device
-    /// only in one write. `cancel` stops it; the transfer's task holds
-    /// `registration`, which makes `cancel` reachable, until it ends.
-    /// Returns a receiver for progress updates.
-    pub(crate) fn start_detach_transfer(
-        &self,
-        release_id: String,
-        new_path: std::path::PathBuf,
-        cancel: crate::CancellationToken,
-        registration: crate::detach_cancels::DetachRegistration,
-    ) -> TransferProgressFeed {
-        let library_manager = self.clone();
-        let localized_release_id = release_id.clone();
-        let (rx, _) = spawn_transfer(
-            ReleaseTransfer::new(self.clone(), release_id, ReleaseStorageAction::DetachAudio),
-            move |_tx| async move {
-                let _registration = registration;
-                // coven removes every copy and folder it made if the call
-                // fails or is cancelled before its write.
-                library_manager
-                    .detach_release_audio_into(&localized_release_id, &new_path, &cancel)
-                    .await
-            },
-        );
-        TransferProgressFeed(rx)
-    }
 }
 
-/// One release transfer in flight: which release, what is being done to it, and
-/// the library it is guarded and recorded against.
+/// One pin in flight: which release, and the library it is guarded and
+/// recorded against.
 ///
 /// Whoever runs a transfer holds one of these from the precondition check
 /// through to the terminal record, so a completion or a failure can only ever
-/// name the transfer that was started. Which release is in a transition at
-/// all is its `release_storage_action` row, or for a pin its download queue
-/// entry; this owns what one transfer checks, logs, and reports.
+/// name the transfer that was started. Which release is pinning is its
+/// download queue entry; this owns what the pin checks, logs, and reports.
 ///
-/// A pin or audio detachment is handed to [`spawn_transfer`], which drives it
-/// on its own task and reports on a progress channel.
+/// A pin is handed to [`spawn_transfer`], which drives it on its own task and
+/// reports on a progress channel.
 pub(crate) struct ReleaseTransfer {
     library_manager: LibraryManager,
     release_id: String,
-    action: ReleaseStorageAction,
 }
 
 impl ReleaseTransfer {
-    pub(crate) fn new(
-        library_manager: LibraryManager,
-        release_id: String,
-        action: ReleaseStorageAction,
-    ) -> Self {
-        Self { library_manager, release_id, action }
+    pub(crate) fn new(library_manager: LibraryManager, release_id: String) -> Self {
+        Self { library_manager, release_id }
     }
 
     /// Guard the transfer's preconditions; returns the release's file count so
@@ -168,14 +130,14 @@ impl ReleaseTransfer {
             return Err(LibraryError::Storage("Release has no files".to_string()));
         }
 
-        // Pin and detach act on files stored in the cloud.
+        // A pin acts on files stored in the cloud.
         let mut ready = true;
         for file in &files {
             let file = self.library_manager.release_file_ref(&file.id).await?;
             ready &= matches!(file.place(), coven::FilePlace::Cloud { .. });
         }
         if !ready {
-            return Err(LibraryError::Storage(wrong_state_error(self.action).to_string()));
+            return Err(LibraryError::Storage("Cannot pin a local release".to_string()));
         }
 
         Ok(files.len() as u32)
@@ -183,12 +145,11 @@ impl ReleaseTransfer {
 
     pub(crate) fn complete(&self, file_count: u32) {
         info!(
-            action = ?self.action,
             release_id = %self.release_id,
             "release transfer complete"
         );
         self.library_manager.record_telemetry(TelemetryEvent::StorageTransferCompleted {
-            action: self.action,
+            action: ReleaseStorageAction::Pin,
             release_id: LocalId(self.release_id.clone()),
             file_count,
         });
@@ -196,13 +157,12 @@ impl ReleaseTransfer {
 
     pub(crate) fn fail(&self, failure: &dyn std::fmt::Display) {
         error!(
-            action = ?self.action,
             release_id = %self.release_id,
             failure = %failure,
             "release transfer failed"
         );
         self.library_manager.record_telemetry(TelemetryEvent::StorageTransferFailed {
-            action: self.action,
+            action: ReleaseStorageAction::Pin,
             release_id: LocalId(self.release_id.clone()),
         });
     }
@@ -225,10 +185,9 @@ where
 {
     let (tx, rx) = mpsc::unbounded_channel();
     let task = tokio::spawn(async move {
-        let result = caught(transfer_operation(transfer.action), async {
+        let result = caught("pin a release", async {
             let file_count = transfer.start().await?;
             info!(
-                action = ?transfer.action,
                 release_id = %transfer.release_id,
                 file_count,
                 "release transfer started"
@@ -257,25 +216,6 @@ where
     });
 
     (rx, task)
-}
-
-/// What a transfer of `action` is called where its panic is reported.
-fn transfer_operation(action: ReleaseStorageAction) -> &'static str {
-    match action {
-        ReleaseStorageAction::Pin => "pin a release",
-        ReleaseStorageAction::Unpin => unreachable!("an unpin is no spawned transfer"),
-        ReleaseStorageAction::Upload => unreachable!("a move to the cloud is no spawned transfer"),
-        ReleaseStorageAction::DetachAudio => "make a release local",
-    }
-}
-
-fn wrong_state_error(action: ReleaseStorageAction) -> &'static str {
-    match action {
-        ReleaseStorageAction::Pin => "Cannot pin a local release",
-        ReleaseStorageAction::Unpin => unreachable!("an unpin is no spawned transfer"),
-        ReleaseStorageAction::Upload => unreachable!("a move to the cloud is no spawned transfer"),
-        ReleaseStorageAction::DetachAudio => "Release is already local",
-    }
 }
 
 fn send_progress(tx: &ProgressTx, progress: TransferProgress) {
