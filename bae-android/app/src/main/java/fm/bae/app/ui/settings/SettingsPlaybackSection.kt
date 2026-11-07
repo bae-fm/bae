@@ -50,8 +50,11 @@ internal fun SettingsPlaybackSection(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         Eyebrow(text = stringResource(R.string.settings_playback))
-        PauseBetweenSidesRow(session = session, config = config, ioDispatcher = ioDispatcher)
-        SidePauseCountdownRow(session = session, config = config, ioDispatcher = ioDispatcher)
+        // Countdown belongs to the pause, so it sits right under the switch, in one group with it.
+        Column {
+            PauseBetweenSidesRow(session = session, config = config, ioDispatcher = ioDispatcher)
+            SidePauseCountdownRow(session = session, config = config, ioDispatcher = ioDispatcher)
+        }
         RestoreOnLaunchRow()
         Text(
             text = stringResource(R.string.settings_restore_on_launch_help),

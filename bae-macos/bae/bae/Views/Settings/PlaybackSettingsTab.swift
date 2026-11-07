@@ -15,20 +15,24 @@ struct PlaybackSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                PauseBetweenSidesToggle(
-                    configStore: configStore,
-                    setEnabled: playback.setPauseBetweenSides,
-                    showError: { @MainActor error in
-                        uiStore.showError(error)
-                    }
-                )
-                SidePauseCountdownPicker(
-                    configStore: configStore,
-                    setCountdown: playback.setSidePauseCountdown,
-                    showError: { @MainActor error in
-                        uiStore.showError(error)
-                    }
-                )
+                // Countdown belongs to the pause: one row holds both, so no
+                // divider comes between them.
+                VStack(spacing: ThemeSpace.compact) {
+                    PauseBetweenSidesToggle(
+                        configStore: configStore,
+                        setEnabled: playback.setPauseBetweenSides,
+                        showError: { @MainActor error in
+                            uiStore.showError(error)
+                        }
+                    )
+                    SidePauseCountdownPicker(
+                        configStore: configStore,
+                        setCountdown: playback.setSidePauseCountdown,
+                        showError: { @MainActor error in
+                            uiStore.showError(error)
+                        }
+                    )
+                }
                 Toggle("Restore on launch", isOn: $persistPlayback)
             } footer: {
                 Text(
@@ -48,7 +52,12 @@ struct PlaybackSettingsTab: View {
         let uiStore = UiStore()
         PlaybackSettingsTab()
             .environment(Playback.stub())
-            .environment(PreviewData.configStore())
+            .environment(
+                PreviewData.makeConfigStore(
+                    libraryFullWidth: false,
+                    pauseBetweenSides: true
+                )
+            )
             .environment(uiStore)
             .frame(width: 500, height: 300)
     }
