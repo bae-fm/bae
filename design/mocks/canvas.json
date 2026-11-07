@@ -40,7 +40,7 @@
    "title": "Add this device: code ended",
    "w": 412,
    "x": 492,
-   "y": 3052
+   "y": 4448
   },
   "AddWaiting.dc.html": {
    "h": 916,
@@ -48,7 +48,7 @@
    "title": "Add this device: waiting",
    "w": 412,
    "x": 0,
-   "y": 3052
+   "y": 4448
   },
   "AlbAndroidDelete.dc.html": {
    "h": 916,
@@ -224,7 +224,7 @@
    "title": "Enter a code",
    "w": 412,
    "x": 0,
-   "y": 6924
+   "y": 8320
   },
   "CodeAndroidRunning.dc.html": {
    "h": 916,
@@ -232,7 +232,7 @@
    "title": "Adding this device",
    "w": 412,
    "x": 1476,
-   "y": 6924
+   "y": 8320
   },
   "CodeAndroidS3.dc.html": {
    "h": 916,
@@ -240,7 +240,7 @@
    "title": "The code read, S3 key needed",
    "w": 412,
    "x": 984,
-   "y": 6924
+   "y": 8320
   },
   "CodeAndroidScan.dc.html": {
    "h": 916,
@@ -248,7 +248,7 @@
    "title": "Scanning a code",
    "w": 412,
    "x": 492,
-   "y": 6924
+   "y": 8320
   },
   "CodeMacEmpty.dc.html": {
    "h": 600,
@@ -256,7 +256,7 @@
    "title": "macOS: Add device, before a code",
    "w": 900,
    "x": 0,
-   "y": 8320
+   "y": 9716
   },
   "CodeMacJoin.dc.html": {
    "h": 600,
@@ -264,7 +264,7 @@
    "title": "macOS: Join library",
    "w": 900,
    "x": 4900,
-   "y": 8320
+   "y": 9716
   },
   "CodeMacRunning.dc.html": {
    "h": 600,
@@ -272,7 +272,7 @@
    "title": "macOS: adding, downloading the library",
    "w": 900,
    "x": 3920,
-   "y": 8320
+   "y": 9716
   },
   "CodeMacS3.dc.html": {
    "h": 600,
@@ -280,7 +280,7 @@
    "title": "macOS: the code read, S3 key needed",
    "w": 900,
    "x": 1960,
-   "y": 8320
+   "y": 9716
   },
   "CodeMacScan.dc.html": {
    "h": 600,
@@ -288,7 +288,7 @@
    "title": "macOS: scanning a code",
    "w": 900,
    "x": 2940,
-   "y": 8320
+   "y": 9716
   },
   "CodeMacTyping.dc.html": {
    "h": 600,
@@ -296,7 +296,7 @@
    "title": "macOS: a code half typed",
    "w": 900,
    "x": 980,
-   "y": 8320
+   "y": 9716
   },
   "Devices.dc.html": {
    "h": 916,
@@ -872,7 +872,7 @@
    "title": "Join: invite ended",
    "w": 412,
    "x": 984,
-   "y": 1656
+   "y": 3052
   },
   "JoinName.dc.html": {
    "h": 916,
@@ -880,7 +880,7 @@
    "title": "Join: your name",
    "w": 412,
    "x": 0,
-   "y": 1656
+   "y": 3052
   },
   "JoinWaiting.dc.html": {
    "h": 916,
@@ -888,7 +888,7 @@
    "title": "Join: waiting",
    "w": 412,
    "x": 492,
-   "y": 1656
+   "y": 3052
   },
   "LibAndroidAlbum.dc.html": {
    "h": 916,
@@ -1264,7 +1264,7 @@
    "title": "macOS: Add this device: code ended",
    "w": 690,
    "x": 1914,
-   "y": 3052
+   "y": 4448
   },
   "MacAddWaiting.dc.html": {
    "h": 600,
@@ -1272,7 +1272,7 @@
    "title": "macOS: Add this device: waiting",
    "w": 690,
    "x": 1144,
-   "y": 3052
+   "y": 4448
   },
   "MacAppearance.dc.html": {
    "h": 600,
@@ -1440,7 +1440,7 @@
    "title": "macOS: Join: invite ended",
    "w": 690,
    "x": 3176,
-   "y": 1656
+   "y": 3052
   },
   "MacJoinName.dc.html": {
    "h": 600,
@@ -1448,7 +1448,7 @@
    "title": "macOS: Join: your name",
    "w": 690,
    "x": 1636,
-   "y": 1656
+   "y": 3052
   },
   "MacJoinWaiting.dc.html": {
    "h": 600,
@@ -1456,7 +1456,7 @@
    "title": "macOS: Join: waiting",
    "w": 690,
    "x": 2406,
-   "y": 1656
+   "y": 3052
   },
   "MacLibrary.dc.html": {
    "h": 600,
@@ -2144,7 +2144,7 @@
    "title": "macOS: Welcome: your libraries",
    "w": 690,
    "x": 2620,
-   "y": 260
+   "y": 1656
   },
   "MacWelcomeDelete.dc.html": {
    "h": 600,
@@ -2152,7 +2152,7 @@
    "title": "macOS: Delete: never synced",
    "w": 690,
    "x": 4930,
-   "y": 260
+   "y": 1656
   },
   "MacWelcomeRemove.dc.html": {
    "h": 600,
@@ -2160,7 +2160,7 @@
    "title": "macOS: Remove: confirm",
    "w": 690,
    "x": 3390,
-   "y": 260
+   "y": 1656
   },
   "MacWelcomeRemoveFailed.dc.html": {
    "h": 600,
@@ -2168,7 +2168,7 @@
    "title": "macOS: Remove: failed",
    "w": 690,
    "x": 6470,
-   "y": 260
+   "y": 1656
   },
   "MacWelcomeRemoveUnsent.dc.html": {
    "h": 600,
@@ -2176,7 +2176,7 @@
    "title": "macOS: Remove: confirm, unsent changes",
    "w": 690,
    "x": 4160,
-   "y": 260
+   "y": 1656
   },
   "MacWelcomeRemoving.dc.html": {
    "h": 600,
@@ -2184,7 +2184,7 @@
    "title": "macOS: Remove: removing",
    "w": 690,
    "x": 5700,
-   "y": 260
+   "y": 1656
   },
   "Main.dc.html": {
    "h": 916,
@@ -2216,7 +2216,7 @@
    "title": "The library didn’t open: no way out",
    "w": 412,
    "x": 984,
-   "y": 4448
+   "y": 5844
   },
   "OpenAndroidFinding.dc.html": {
    "h": 916,
@@ -2224,7 +2224,7 @@
    "title": "Finding your libraries",
    "w": 412,
    "x": 0,
-   "y": 4448
+   "y": 5844
   },
   "OpenAndroidStartFailed.dc.html": {
    "h": 916,
@@ -2232,7 +2232,7 @@
    "title": "bae couldn’t start",
    "w": 412,
    "x": 1476,
-   "y": 4448
+   "y": 5844
   },
   "OpenAndroidSteps.dc.html": {
    "h": 916,
@@ -2240,7 +2240,7 @@
    "title": "Opening, rebuilding indexes",
    "w": 412,
    "x": 492,
-   "y": 4448
+   "y": 5844
   },
   "OpenMacFinding.dc.html": {
    "h": 600,
@@ -2248,7 +2248,7 @@
    "title": "macOS: finding your libraries",
    "w": 900,
    "x": 0,
-   "y": 5844
+   "y": 7240
   },
   "OpenMacKeychain.dc.html": {
    "h": 600,
@@ -2256,7 +2256,7 @@
    "title": "macOS: Library Locked",
    "w": 900,
    "x": 1960,
-   "y": 5844
+   "y": 7240
   },
   "OpenMacSteps.dc.html": {
    "h": 600,
@@ -2264,7 +2264,7 @@
    "title": "macOS: opening, updating the library",
    "w": 900,
    "x": 980,
-   "y": 5844
+   "y": 7240
   },
   "People.dc.html": {
    "h": 916,
@@ -2528,7 +2528,7 @@
    "title": "Reset this device?",
    "w": 412,
    "x": 492,
-   "y": 9400
+   "y": 10796
   },
   "ResetAndroidOffered.dc.html": {
    "h": 916,
@@ -2536,7 +2536,7 @@
    "title": "Reset offered: no Back",
    "w": 412,
    "x": 0,
-   "y": 9400
+   "y": 10796
   },
   "ResetAndroidUnfinished.dc.html": {
    "h": 916,
@@ -2544,7 +2544,7 @@
    "title": "Finish resetting",
    "w": 412,
    "x": 1476,
-   "y": 9400
+   "y": 10796
   },
   "ResetAndroidWorking.dc.html": {
    "h": 916,
@@ -2552,7 +2552,7 @@
    "title": "Resetting",
    "w": 412,
    "x": 984,
-   "y": 9400
+   "y": 10796
   },
   "ResetMacFailed.dc.html": {
    "h": 600,
@@ -2560,7 +2560,7 @@
    "title": "macOS: reset failed",
    "w": 900,
    "x": 1960,
-   "y": 10796
+   "y": 12192
   },
   "ResetMacOffered.dc.html": {
    "h": 600,
@@ -2568,7 +2568,7 @@
    "title": "macOS: Reset this device?",
    "w": 900,
    "x": 0,
-   "y": 10796
+   "y": 12192
   },
   "ResetMacUnfinished.dc.html": {
    "h": 600,
@@ -2576,7 +2576,7 @@
    "title": "macOS: finish resetting",
    "w": 900,
    "x": 2940,
-   "y": 10796
+   "y": 12192
   },
   "ResetMacWorking.dc.html": {
    "h": 600,
@@ -2584,7 +2584,7 @@
    "title": "macOS: resetting",
    "w": 900,
    "x": 980,
-   "y": 10796
+   "y": 12192
   },
   "RestoreCode.dc.html": {
    "h": 150,
@@ -2993,7 +2993,7 @@
    "title": "Welcome: your libraries",
    "w": 412,
    "x": 0,
-   "y": 260
+   "y": 1656
   },
   "WelcomeRemove.dc.html": {
    "h": 916,
@@ -3001,7 +3001,7 @@
    "title": "Remove: confirm",
    "w": 412,
    "x": 492,
-   "y": 260
+   "y": 1656
   },
   "WelcomeRemoveFailed.dc.html": {
    "h": 916,
@@ -3009,7 +3009,7 @@
    "title": "Remove: failed",
    "w": 412,
    "x": 1968,
-   "y": 260
+   "y": 1656
   },
   "WelcomeRemoveUnsent.dc.html": {
    "h": 916,
@@ -3017,7 +3017,7 @@
    "title": "Remove: confirm, unsent changes",
    "w": 412,
    "x": 984,
-   "y": 260
+   "y": 1656
   },
   "WelcomeRemoving.dc.html": {
    "h": 916,
@@ -3025,7 +3025,7 @@
    "title": "Remove: removing",
    "w": 412,
    "x": 1476,
-   "y": 260
+   "y": 1656
   },
   "storage/Main.dc.html": {
    "h": 900,
@@ -3098,6 +3098,22 @@
    "w": 1040,
    "x": 1120,
    "y": 7892
+  },
+  "WelcomeEmpty.dc.html": {
+   "page": "welcome",
+   "title": "Welcome: a new device",
+   "x": 0,
+   "y": 260,
+   "w": 412,
+   "h": 916
+  },
+  "MacWelcomeEmpty.dc.html": {
+   "page": "welcome",
+   "title": "macOS: Welcome: a new Mac",
+   "x": 492,
+   "y": 260,
+   "w": 690,
+   "h": 600
   }
  },
  "createdOnFiles": {
@@ -3245,7 +3261,8 @@
   "row-exp-profile",
   "row-exp-credits",
   "row-exp-android",
-  "exp-key"
+  "exp-key",
+  "row-welcome-new"
  ],
  "notes": {
   "canvas-key-library": {
@@ -3414,7 +3431,7 @@
    "text": "What the code needs for these boards:\n- Both: the welcome's buttons are Scan a code and Enter a code, and the code says what it is for (spec/bae.md §5.6 “A new phone's first screen”). macOS keeps Create new library beside them. Android has them today (61f24e6a1); macOS shows Join library and Add device, which open the same scan-or-type screen (WelcomeChooseView.swift). bae change, the spec's macOS sentence in the same commit.\n- Android: the welcome screen has no library list (ui/onboarding). It gets one, with Remove. bae change.\n- macOS: “Remove library from this Mac?” / “The library will remain in storage and on your other devices.” Today “Remove this library from this Mac?” (LibrarySettingsTab.swift:133) and “This Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage. …” (LibraryRemovalConfirmation.swift:22). bae change.\n- Joining from an invite: after the code reads, the person types their name, then waits on the number. Today the name comes from the invite and the person types none; a name is asked only when joining failed to write the profile (profile_required_title, LibraryLifecycleScreens.kt:157). The waiting screen is built: the number, until when it waits, the next check and Check now (OnboardingScreen.kt:321, BootstrapCodeView.swift). coven change, then bae (the People note).\n- Invite ended: one screen, “This invite has ended. Ask the person who invited you for a new one.”, for a decline, a cancel, an expiry, or the inviting device gone. It shows when the waiting device finds the ended marker where its request was, or loses access to the storage: the decline takes the sharing back in the same pass, so access can go before the marker is read. Today a permission error reaches the app as it is (coven spec §13.2: “Provider permission errors reach the app, even when they come from access being taken back”), and the ended text lists every cause (strings.xml onboarding_invite_ended). coven change (a join whose storage access is gone ends as an ended invite does), then bae.\n- Queued: plans/invites.md; coven in todo.md §2 #214 (the name in the request) and #177 (a join whose access was revoked ends, the same as a marker), bae in #215.\n- Adding this device (a pairing code, scanned or typed on the welcome): “Check that your other device shows this number, then add this device there.”, the number, “Waiting for your other device.”, no Check now: it checks every 5 seconds while open. Declined, closed on the other device or lost access: “This code has ended. Open Add device on your other device for a new one.” Today Welcome's Add device takes a restore code. coven #227, bae #228.",
    "w": 420,
    "x": 7700,
-   "y": 260
+   "y": 1656
   },
   "composers-today": {
    "fill": "blue",
@@ -3491,7 +3508,7 @@
   "row-code-android": {
    "page": "welcome",
    "x": 0,
-   "y": 6684,
+   "y": 8080,
    "text": "Entering a code: Android",
    "kind": "title1",
    "w": 240,
@@ -3500,7 +3517,7 @@
   "row-code-mac": {
    "page": "welcome",
    "x": 0,
-   "y": 8080,
+   "y": 9476,
    "text": "Entering a code: macOS",
    "kind": "title1",
    "w": 240,
@@ -3513,7 +3530,7 @@
    "text": "What looks unintended:\n- A half-typed code shows “Something went wrong with your settings.” while you type.\n- File ▸ Restore from Code… opens a screen titled Add device.\n- After a menu-opened Join or Restore, Back and a failed open land on that screen with the failure hidden.",
    "w": 460,
    "x": 5880,
-   "y": 8320
+   "y": 9716
   },
   "row-composers-android": {
    "kind": "title1",
@@ -3914,7 +3931,7 @@
   "row-open-android": {
    "page": "welcome",
    "x": 0,
-   "y": 4208,
+   "y": 5604,
    "text": "Opening: Android",
    "kind": "title1",
    "w": 240,
@@ -3927,12 +3944,12 @@
    "text": "What looks unintended:\n- A library that won't open leaves Android on this screen with no button: no way to other libraries or to restore.\n- Android has no way to create a library.\n- A step with nothing to count draws an empty bar, both apps.",
    "w": 460,
    "x": 1968,
-   "y": 4448
+   "y": 5844
   },
   "row-open-mac": {
    "page": "welcome",
    "x": 0,
-   "y": 5604,
+   "y": 7000,
    "text": "Opening: macOS",
    "kind": "title1",
    "w": 240,
@@ -3977,7 +3994,7 @@
   "row-reset-android": {
    "page": "welcome",
    "x": 0,
-   "y": 9160,
+   "y": 10556,
    "text": "Resetting this device: Android",
    "kind": "title1",
    "w": 240,
@@ -3990,12 +4007,12 @@
    "text": "What looks unintended:\n- Reset offered has no Cancel and no Back.\n- Reset is started inside a tap with nothing catching a refused library id.",
    "w": 460,
    "x": 1968,
-   "y": 9400
+   "y": 10796
   },
   "row-reset-mac": {
    "page": "welcome",
    "x": 0,
-   "y": 10556,
+   "y": 11952,
    "text": "Resetting this device: macOS",
    "kind": "title1",
    "w": 240,
@@ -4242,7 +4259,7 @@
    "text": "Your libraries and removing one",
    "w": 240,
    "x": 0,
-   "y": 20
+   "y": 1416
   },
   "row-welcome-add": {
    "kind": "title1",
@@ -4251,7 +4268,7 @@
    "text": "Adding this device from another of yours",
    "w": 240,
    "x": 0,
-   "y": 2812
+   "y": 4208
   },
   "row-welcome-join": {
    "kind": "title1",
@@ -4260,7 +4277,7 @@
    "text": "Joining from an invite",
    "w": 240,
    "x": 0,
-   "y": 1416
+   "y": 2812
   },
   "search-today": {
    "fill": "blue",
@@ -4356,7 +4373,7 @@
    "text": "Removing and deleting:\nneither asks for device authentication. A library that was never synced offers Delete instead of Remove, on Android and macOS.",
    "w": 380,
    "x": 7240,
-   "y": 260
+   "y": 1656
   },
   "work-folder-name": {
    "fill": "blue",
@@ -4384,6 +4401,15 @@
    "w": 380,
    "x": 2192,
    "y": 4148
+  },
+  "row-welcome-new": {
+   "kind": "title1",
+   "page": "welcome",
+   "text": "A new device",
+   "w": 240,
+   "x": 0,
+   "y": 20,
+   "maxW": 7620
   }
  },
  "order": [
@@ -4772,7 +4798,9 @@
   "ResetMacOffered.dc.html",
   "ResetMacWorking.dc.html",
   "ResetMacFailed.dc.html",
-  "ResetMacUnfinished.dc.html"
+  "ResetMacUnfinished.dc.html",
+  "WelcomeEmpty.dc.html",
+  "MacWelcomeEmpty.dc.html"
  ],
  "pages": [
   {
