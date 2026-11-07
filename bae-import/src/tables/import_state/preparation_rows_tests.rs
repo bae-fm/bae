@@ -253,3 +253,40 @@ async fn a_run_verdict_keeping_a_cover_the_scan_does_not_hold_is_refused_as_the_
         before
     );
 }
+
+/// A file-tag reading taken at another revision of the candidate's files
+/// than the save writes is refused as the candidate having changed, and
+/// nothing of the save lands.
+#[tokio::test]
+async fn a_tag_reading_of_another_file_revision_refuses_the_save_as_changed() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (candidate, generation) = scanned_tagged_candidate(&db, &root).await;
+    let hash = candidate.files.content_hash();
+    let before = tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
+    let expected = save_expectation(&candidate, &before);
+    let mut prep = before.clone();
+    prep.metadata_revision += 1;
+    let reading = tag_snapshot(generation, prep.file_edits.revision + 1);
+
+    let error = tables
+        .save_candidate_preparation(
+            prep,
+            expected,
+            crate::tables::CandidateSaveExtras {
+                file_tag_snapshot: Some(reading),
+                ..Default::default()
+            },
+        )
+        .await
+        .expect_err("the reading is of other files than the save writes");
+
+    assert!(
+        matches!(&error, crate::ImportError::Preparation(crate::tables::PreparationRefusal::TagsChanged(key)) if *key == crate::CandidateKey::folder(&candidate.path)),
+        "{error:?}"
+    );
+    assert_eq!(
+        tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap(),
+        before
+    );
+}

@@ -121,6 +121,11 @@ pub enum ImportError {
     #[error("{reason}")]
     GroupingBlocked { reason: crate::grouping::GroupingBlock },
 
+    /// A save of a candidate's whole state was refused.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    Preparation(#[from] crate::tables::PreparationRefusal),
+
     /// Releases picked to be read as one could not be combined.
     #[cfg(desktop)]
     #[error(transparent)]
@@ -508,6 +513,18 @@ impl ImportError {
             // a short pick or one that made nothing is bae's own fault; a
             // release that moved or was taken meanwhile is the person's to
             // pick again.
+            // A candidate that left, was imported, or changed under the
+            // save is the person's to work on as it now stands; a save
+            // handed what no caller builds is bae's own fault.
+            #[cfg(desktop)]
+            Self::Preparation(refusal) => match refusal {
+                crate::tables::PreparationRefusal::NoState(_)
+                | crate::tables::PreparationRefusal::Imported(_)
+                | crate::tables::PreparationRefusal::TagsChanged(_) => C::Import,
+                crate::tables::PreparationRefusal::DuplicateScanKeys
+                | crate::tables::PreparationRefusal::DraftNotOverAudio(_)
+                | crate::tables::PreparationRefusal::SnapshotOfUnscanned => C::Internal,
+            },
             #[cfg(desktop)]
             Self::Combine(refusal) => match refusal {
                 crate::grouping::CombineRefusal::TooFewFolders

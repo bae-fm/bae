@@ -66,6 +66,7 @@ pub(crate) use import_commit::{
 pub(super) use pane_rows::load_pane_rows_on;
 pub use pane_rows::DbCandidatePaneRows;
 pub(super) use pane_rows::{read_provenance, PROVENANCE_COLUMNS};
+pub use preparation_rows::PreparationRefusal;
 pub(crate) use preparation_rows::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, RunVerdictSaved, ScannedCandidateKey,

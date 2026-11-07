@@ -40,7 +40,7 @@ pub(crate) use import_state::{
 };
 pub use import_state::{
     DbCandidateIdentifyResult, DbCandidatePaneRows, DbImportCandidateState, ImportCommitError,
-    NewImportCandidateVerdict, VerdictPick,
+    NewImportCandidateVerdict, PreparationRefusal, VerdictPick,
 };
 pub use release_groupings::GroupingChanges;
 pub(crate) use release_groupings::GroupingFacts;

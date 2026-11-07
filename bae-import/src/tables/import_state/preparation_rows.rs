@@ -169,6 +169,31 @@ pub(super) fn load_preparation_on(
     })))
 }
 
+/// Why a save of a candidate's whole state was refused. Nothing of it was
+/// written.
+#[derive(Debug, thiserror::Error)]
+pub enum PreparationRefusal {
+    /// The candidate holds no state to save over: it left the scan.
+    #[error("candidate {0} has no state row to save into")]
+    NoState(String),
+    /// The candidate's files were imported, and it holds no draft.
+    #[error("candidate {0} was imported, and holds no draft to save over")]
+    Imported(String),
+    /// The settled candidates a file decision hands the save name one scan
+    /// entry twice.
+    #[error("candidate file decision received duplicate scan entry keys")]
+    DuplicateScanKeys,
+    /// A reshape's draft is not drawn over the audio the reshape produced.
+    #[error("the draft stored for candidate {0} is not drawn over its audio")]
+    DraftNotOverAudio(crate::CandidateKey),
+    /// A file-tag snapshot came with a save of a candidate no scan keys.
+    #[error("a file-tag snapshot is stored under a scanned candidate key")]
+    SnapshotOfUnscanned,
+    /// The candidate changed after its file tags were read.
+    #[error("candidate {0} changed before its file tags were stored")]
+    TagsChanged(crate::CandidateKey),
+}
+
 /// Write `prep` over what is stored, provided the stored revisions still
 /// match `expected`: every row that differs, and no other.
 pub(super) fn save_preparation_on(
@@ -225,10 +250,7 @@ pub(super) fn save_preparation_on(
             .optional()?
             .is_some();
         if !exists {
-            return Err(DbError::Message(format!(
-                "candidate {content_hash} has no state row to save into"
-            ))
-            .into());
+            return Err(PreparationRefusal::NoState(content_hash.to_string()).into());
         }
         return Ok(CandidateSaved::Superseded);
     }
@@ -241,17 +263,9 @@ pub(super) fn save_preparation_on(
     let stored = match load_preparation_on(sql, content_hash)? {
         Some(CandidatePreparationRead::Stored(stored)) => stored,
         Some(CandidatePreparationRead::Imported { .. }) => {
-            return Err(DbError::Message(format!(
-                "candidate {content_hash} was imported, and holds no draft to save over"
-            ))
-            .into())
+            return Err(PreparationRefusal::Imported(content_hash.to_string()).into())
         }
-        None => {
-            return Err(DbError::Message(format!(
-                "candidate {content_hash} has no state row to save into"
-            ))
-            .into())
-        }
+        None => return Err(PreparationRefusal::NoState(content_hash.to_string()).into()),
     };
     if stored.identification != prep.identification {
         match &prep.identification {
@@ -336,10 +350,7 @@ pub(super) fn save_preparation_on(
         Some(settled_candidates) => {
             let settled_by_key: HashMap<_, _> = settled_candidates.iter().cloned().collect();
             if settled_by_key.len() != settled_candidates.len() {
-                return Err(DbError::Message(
-                    "candidate file decision received duplicate scan entry keys".to_string(),
-                )
-                .into());
+                return Err(PreparationRefusal::DuplicateScanKeys.into());
             }
             settle_scanned_candidates(sql, content_hash, expected_edit, next_edit, &settled_by_key)?
         }
@@ -350,17 +361,11 @@ pub(super) fn save_preparation_on(
         let units = crate::audio_layout::audio_units(&candidate.files);
         let drawn = prep.metadata.draft.tracks.iter().map(|track| &track.edit.file);
         if !drawn.eq(units.iter()) {
-            return Err(DbError::Message(format!(
-                "the draft stored for candidate {} is not drawn over its audio",
-                candidate.key(),
-            ))
-            .into());
+            return Err(PreparationRefusal::DraftNotOverAudio(candidate.key()).into());
         }
     }
     if let Some(snapshot) = &extras.file_tag_snapshot {
-        let scanned = expected.scanned.as_ref().ok_or_else(|| {
-            DbError::Message("a file-tag snapshot is stored under a scanned candidate key".into())
-        })?;
+        let scanned = expected.scanned.as_ref().ok_or(PreparationRefusal::SnapshotOfUnscanned)?;
         if !prep.file_edits.is_at_revision(snapshot.file_edit_revision)
             || Some(snapshot.scan_generation) != scan_generation
             || !super::folder_scans::tag_snapshot::replace_candidate_file_tag_snapshot_on(
@@ -370,11 +375,7 @@ pub(super) fn save_preparation_on(
                 snapshot,
             )?
         {
-            return Err(DbError::Message(format!(
-                "candidate {} changed before its file tags were stored",
-                scanned.candidate_path,
-            ))
-            .into());
+            return Err(PreparationRefusal::TagsChanged(scanned.candidate_path.clone()).into());
         }
     }
     // The verdict, link and provenance written above name these, or some
