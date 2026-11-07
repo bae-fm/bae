@@ -161,54 +161,9 @@ impl Records {
         &self,
         rows: crate::test_fixtures::library::LibraryRows,
     ) -> Result<(), IdentityWriteError> {
-        let now = self.store.now_utc();
-        let labels: Vec<LabelParts> = rows
-            .releases
-            .iter()
-            .map(|release| LabelParts::new(&*self.ids, now, &release.pressing.labels))
-            .collect();
+        let labels = rows.label_parts(&*self.ids, self.store.now_utc());
         super::artist_resolution::write_resolving_identities(&self.store, move |sql| {
-            let conn = &sql;
-            for artist in &rows.artists {
-                insert_artist_row(conn, artist)?;
-            }
-            for album in &rows.albums {
-                insert_album_row(conn, album)?;
-            }
-            for credit in &rows.album_artists {
-                insert_album_artist_row(conn, credit)?;
-            }
-            for (release, labels) in rows.releases.iter().zip(&labels) {
-                insert_release_row(conn, release, &label_write(labels))?;
-            }
-            for medium in &rows.mediums {
-                insert_release_medium_row(conn, medium)?;
-            }
-            for track in &rows.tracks {
-                insert_track_row(conn, track)?;
-            }
-            for credit in &rows.track_artists {
-                insert_track_artist_row(conn, credit)?;
-            }
-            for work in &rows.works {
-                insert_work_row(conn, work)?;
-            }
-            for link in &rows.work_artists {
-                insert_work_artist_row(conn, link)?;
-            }
-            for part in &rows.work_parts {
-                insert_work_part_row(conn, part)?;
-            }
-            for link in &rows.track_works {
-                insert_track_work_row(conn, link)?;
-            }
-            for role in &rows.release_artist_roles {
-                insert_release_artist_role_row(conn, role)?;
-            }
-            for role in &rows.track_artist_roles {
-                insert_track_artist_role_row(conn, role)?;
-            }
-            Ok(())
+            rows.write_on(&sql, &labels)
         })
         .await
     }
@@ -453,5 +408,70 @@ fn file_column_for_test(table: &str) -> &'static str {
         "release_files" | "covers" | "artist_images" => "file",
         "people" => "avatar_id",
         other => panic!("{other} references no coven file"),
+    }
+}
+
+impl crate::test_fixtures::library::LibraryRows {
+    /// The parts of each release's labels, in order: ids from `ids` for the
+    /// labels a write may make, at `now`.
+    pub fn label_parts(
+        &self,
+        ids: &dyn coven::IdSource,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Vec<LabelParts> {
+        self.releases
+            .iter()
+            .map(|release| LabelParts::new(ids, now, &release.pressing.labels))
+            .collect()
+    }
+
+    /// Write the rows inside `conn`'s write through the records' own row
+    /// inserts, each kind in the order this lists them; `labels` holds
+    /// [`Self::label_parts`].
+    pub fn write_on(
+        &self,
+        conn: &CovenWrite<'_>,
+        labels: &[LabelParts],
+    ) -> Result<(), IdentityWriteError> {
+        for artist in &self.artists {
+            insert_artist_row(conn, artist)?;
+        }
+        for album in &self.albums {
+            insert_album_row(conn, album)?;
+        }
+        for credit in &self.album_artists {
+            insert_album_artist_row(conn, credit)?;
+        }
+        for (release, labels) in self.releases.iter().zip(labels) {
+            insert_release_row(conn, release, &label_write(labels))?;
+        }
+        for medium in &self.mediums {
+            insert_release_medium_row(conn, medium)?;
+        }
+        for track in &self.tracks {
+            insert_track_row(conn, track)?;
+        }
+        for credit in &self.track_artists {
+            insert_track_artist_row(conn, credit)?;
+        }
+        for work in &self.works {
+            insert_work_row(conn, work)?;
+        }
+        for link in &self.work_artists {
+            insert_work_artist_row(conn, link)?;
+        }
+        for part in &self.work_parts {
+            insert_work_part_row(conn, part)?;
+        }
+        for link in &self.track_works {
+            insert_track_work_row(conn, link)?;
+        }
+        for role in &self.release_artist_roles {
+            insert_release_artist_role_row(conn, role)?;
+        }
+        for role in &self.track_artist_roles {
+            insert_track_artist_role_row(conn, role)?;
+        }
+        Ok(())
     }
 }

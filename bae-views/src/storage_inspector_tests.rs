@@ -212,12 +212,7 @@ fn download(release_id: &str) -> ReleaseQueueEntry<()> {
 #[tokio::test]
 async fn the_inspectors_read_holds_the_releases_own_entries() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    db.call(|sql| {
-        seed_artist_album_release(sql)?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    seed_artist_album_release(&db).await;
     bae_transfers::Downloads::new(db.clone())
         .enqueue_all(vec![download(RELEASE_A), download(RELEASE_B)])
         .await

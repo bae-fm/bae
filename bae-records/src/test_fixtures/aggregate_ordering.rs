@@ -43,8 +43,8 @@ pub async fn aggregate_db(schema: bae_store::Schema) -> (bae_store::Store, tempf
 
 pub async fn queue_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
     let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
+    super::seed_artist_album_release(&db).await;
     db.call(|conn| {
-        super::seed_artist_album_release(conn)?;
         conn.execute_batch(
             "
             INSERT INTO artists (id, name, name_key, created_at) VALUES ('5b5f8c38-5237-4187-895c-28b1b2a43672', 'Track Artist Name First', 'track artist name first', '2026-01-01T00:00:00Z'),
@@ -68,8 +68,8 @@ pub async fn queue_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile:
 /// The aggregate library with a release's detail seeded on it, on `schema`.
 pub async fn release_detail_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
     let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
+    super::seed_artist_album_release(&db).await;
     db.call(|conn| {
-        super::seed_artist_album_release(conn)?;
         conn.execute_batch(
             "
             INSERT INTO artists (id, name, name_key, created_at) VALUES ('5b5f8c38-5237-4187-895c-28b1b2a43672', 'Track Artist Name First', 'track artist name first', '2026-01-01T00:00:00Z'),

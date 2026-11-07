@@ -210,12 +210,7 @@ async fn cancelling_takes_entries_out() {
 #[tokio::test]
 async fn an_entry_shows_its_release_or_none_once_it_is_gone() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    db.call(|sql| {
-        seed_artist_album_release(sql)?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    seed_artist_album_release(&db).await;
     let gone = "0f0b3c1e-5a07-4a8e-9a43-3d2d64d1e7a1";
     enqueue_releases(&db, vec![download(RELEASE_A), download(gone)]).await.unwrap();
 

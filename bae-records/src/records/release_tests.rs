@@ -20,19 +20,25 @@ fn medium_id(position: u16) -> String {
 }
 
 /// The seeded release with two CDs and one track on each.
-fn seed_two_discs(conn: &coven::CovenWrite<'_>) -> Result<(), bae_store::DbError> {
-    seed_artist_album_release(conn)?;
+async fn seed_two_discs(db: &bae_store::Store) {
+    seed_artist_album_release(db).await;
+    let records = crate::test_fixtures::test_records(db);
     for position in [1u16, 2] {
-        conn.execute(
-            "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) \
-             VALUES (?1, ?2, ?3, 'cd', 1, '2026-01-01T00:00:00Z')",
-            rusqlite::params![medium_id(position), RELEASE, position],
-        )?;
+        let medium = crate::DbReleaseMedium::new(
+            RELEASE,
+            std::num::NonZeroU16::new(position).unwrap(),
+            bae_types::mediums::ReleaseMedium::one_sided(Some(Medium::Cd)),
+            chrono::Utc::now(),
+        );
+        records.insert_release_medium(&medium).await.unwrap();
     }
-    for (position, track, medium) in [(0, KEPT_TRACK, 1u16), (1, MOVED_TRACK, 2)] {
-        insert_track(conn, track, position, medium)?;
+    for (track, medium) in [(KEPT_TRACK, 1u16), (MOVED_TRACK, 2)] {
+        let track = crate::DbTrack {
+            medium_id: medium_id(medium),
+            ..crate::DbTrack::new_test(RELEASE, track, "Track Title", 1)
+        };
+        records.insert_track(&track).await.unwrap();
     }
-    Ok(())
 }
 
 fn insert_track(
@@ -56,7 +62,7 @@ fn insert_track(
 async fn a_medium_still_holding_a_track_cannot_be_removed() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
-    db.call(seed_two_discs).await.unwrap();
+    seed_two_discs(&db).await;
 
     let refused = db
         .call(|conn| {
@@ -114,7 +120,7 @@ fn concurrent_medium_removal_and_track_write_leave_no_track_on_a_missing_medium(
 }
 
 async fn check_concurrent_medium_removal(devices: &bae_store::test_devices::TwoStores) {
-    devices.a().call(seed_two_discs).await.unwrap();
+    seed_two_discs(devices.a()).await;
     let rows = "SELECT t.id || ':' || t.medium_id FROM tracks t \
          UNION ALL SELECT 'medium:' || m.id FROM release_mediums m";
     devices.converge(rows).await;
@@ -175,7 +181,7 @@ fn a_media_edit_reaches_the_other_device() {
 }
 
 async fn check_media_edit_reaches(devices: &bae_store::test_devices::TwoStores) {
-    devices.a().call(seed_artist_album_release).await.unwrap();
+    seed_artist_album_release(devices.a()).await;
     set_media(devices.a(), vec![count(Medium::Cd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
 
@@ -199,7 +205,7 @@ fn concurrent_edits_of_different_places_both_stay() {
 }
 
 async fn check_concurrent_places(devices: &bae_store::test_devices::TwoStores) {
-    devices.a().call(seed_artist_album_release).await.unwrap();
+    seed_artist_album_release(devices.a()).await;
     set_media(devices.a(), vec![count(Medium::Cd, 1), count(Medium::Dvd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
 
@@ -239,7 +245,7 @@ fn barcode_edits_merge_by_place_and_reach_the_other_device() {
 }
 
 async fn check_barcodes(devices: &bae_store::test_devices::TwoStores) {
-    devices.a().call(seed_artist_album_release).await.unwrap();
+    seed_artist_album_release(devices.a()).await;
     set_barcodes(devices.a(), &["0123456789012", "5012345678900"]).await;
     devices.converge(BARCODE_ROWS).await;
 
@@ -300,7 +306,7 @@ async fn check_labels(devices: &bae_store::test_devices::TwoStores) {
             .unwrap()
             .with_ids(None, Some("7190".to_string()))
     };
-    devices.a().call(seed_artist_album_release).await.unwrap();
+    seed_artist_album_release(devices.a()).await;
     devices.converge(LABEL_ROWS).await;
 
     devices.pause().await;

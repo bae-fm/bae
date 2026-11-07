@@ -18,7 +18,7 @@ pub(super) async fn queue_items(db: &Store, track_ids: &[&str]) -> Vec<crate::Qu
 /// `RELEASE_A` holding `count` tracks, in order, and their ids.
 pub(super) async fn release_db(count: usize) -> (Store, tempfile::TempDir, Vec<String>) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
-    db.call(seed_artist_album_release).await.unwrap();
+    seed_artist_album_release(&db).await;
     let records = test_records(&db);
     records
         .insert_release_medium(&bae_records::DbReleaseMedium::new_test(RELEASE_A))
@@ -39,7 +39,7 @@ pub(super) async fn single_track_releases_db(
     count: usize,
 ) -> (Store, tempfile::TempDir, Vec<String>) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
-    db.call(seed_artist_album_release).await.unwrap();
+    seed_artist_album_release(&db).await;
     let records = test_records(&db);
     let mut track_ids = Vec::new();
     for index in 0..count {

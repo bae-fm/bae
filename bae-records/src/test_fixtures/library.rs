@@ -272,4 +272,11 @@ impl RecordsFixture {
     pub async fn write(self, records: &Records) {
         records.insert_library_rows_for_test(self.rows).await.unwrap();
     }
+
+    /// Write the library inside `conn`'s write, its labels made at the time
+    /// its last rows were described.
+    pub fn write_on(self, conn: &coven::CovenWrite<'_>) -> Result<(), crate::IdentityWriteError> {
+        let labels = self.rows.label_parts(&coven::UuidIds, self.at);
+        self.rows.write_on(conn, &labels)
+    }
 }
