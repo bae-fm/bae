@@ -8,6 +8,8 @@ import SwiftUI
 private enum WizardStep: Equatable {
     case selectProvider
     case configure(BridgeCloudProvider)
+    /// The storage is connected: the last screen shows the restore code.
+    case restoreCode(BridgeCloudProvider)
 }
 
 // MARK: - Provider Row
@@ -42,7 +44,9 @@ private struct ProviderRow: View {
 // MARK: - SyncSetupWizard
 
 /// Sets up the library's storage: choose a provider and Continue, then its
-/// short form or sign-in and folder choice. Success records the location coven connected.
+/// short form or sign-in and folder choice, then the restore code, which is
+/// where setup ends for every provider. Success records the location coven
+/// connected.
 struct SyncSetupWizard: View {
     let onDone: () -> Void
 
@@ -57,6 +61,9 @@ struct SyncSetupWizard: View {
 
     @State
     private var step: WizardStep = .selectProvider
+    /// The restore code the last screen shows, made once setup is done.
+    @State
+    private var restoreCode = RecoveryCodeReveal()
     /// The provider the list has selected, which Continue opens.
     @State
     private var choice: BridgeCloudProvider = providerOptions.first ?? .s3
@@ -89,6 +96,8 @@ struct SyncSetupWizard: View {
                     providerList
                 case .configure(let provider):
                     configureStep(for: provider)
+                case .restoreCode:
+                    RestoreCodeStep(onDone: onDone, reveal: restoreCode)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -124,7 +133,7 @@ struct SyncSetupWizard: View {
         switch step {
         case .selectProvider:
             String(localized: "Set up sync")
-        case .configure(let provider):
+        case .configure(let provider), .restoreCode(let provider):
             String(
                 localized: "Set up sync: \(provider.displayName)",
                 comment:
@@ -229,9 +238,14 @@ struct SyncSetupWizard: View {
         return S3SetupForm(leave: leave, onConnected: connected)
     }
 
+    /// The storage is connected: record its location, and show the restore
+    /// code before the sheet closes, whether or not the Mac's keychain
+    /// carries it anywhere else.
     private func connected(_ setup: BridgeStorageSetup) {
         configStore.applyStorage(setup.location)
-        onDone()
+        withAnimation(.easeInOut(duration: 0.15)) {
+            step = .restoreCode(choice)
+        }
     }
 }
 
@@ -264,6 +278,33 @@ struct SyncSetupWizard: View {
         }
     }
 #endif
+
+/// Setup's last screen, for every provider: the library's restore code, which
+/// gets the person back in if they lose every device. bae can't tell whether
+/// the Mac's keychain carries it anywhere else, so setup ends here, and Done
+/// lands on the Library settings, which hold the code too.
+private struct RestoreCodeStep: View {
+    let onDone: () -> Void
+    let reveal: RecoveryCodeReveal
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Form {
+                RecoveryCodeSection(reveal: reveal)
+            }
+            .formStyle(.grouped)
+
+            MacSheetFooter {
+                Button("Done") { onDone() }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, ThemeSpace.section)
+        }
+        .onDisappear { reveal.hide() }
+    }
+}
 
 /// A setup step's fields above its footer: Cancel, which goes back one screen
 /// and, while the connection is set up, stops it, and the one action. The
@@ -432,6 +473,17 @@ struct SetupStep<Fields: View>: View {
             _step = State(initialValue: .configure(provider))
             _run = State(initialValue: run)
         }
+
+        private init(
+            restoreCode: RecoveryCodeReveal,
+            provider: BridgeCloudProvider,
+            onDone: @escaping () -> Void
+        ) {
+            self.onDone = onDone
+            _step = State(initialValue: .restoreCode(provider))
+            _run = State(initialValue: StorageSetupRun(onCancelled: {}))
+            _restoreCode = State(initialValue: restoreCode)
+        }
     }
 
     extension SyncSetupWizard {
@@ -456,6 +508,26 @@ struct SetupStep<Fields: View>: View {
     }
 
     extension SyncSetupWizard {
+        /// Setup's last screen for `provider`, in `state`: a fixture code in
+        /// a preview or a shot, never a real one.
+        static func finished(
+            on provider: BridgeCloudProvider,
+            holding state: RecoveryCodeReveal.State
+        ) -> some View {
+            SyncSetupWizard(
+                restoreCode: RecoveryCodeReveal(previewState: state),
+                provider: provider,
+                onDone: {}
+            )
+            .environment(PreviewData.configStore())
+            .environment(PreviewData.previewSync(storage: nil))
+            #if BAE_OAUTH_PROVIDERS
+                .environment(CloudSyncSetup())
+            #endif
+        }
+    }
+
+    extension SyncSetupWizard {
         /// The wizard as it opens, on its list of providers.
         static func choosing() -> some View {
             SyncSetupWizard(onDone: {})
@@ -465,6 +537,13 @@ struct SetupStep<Fields: View>: View {
                     .environment(CloudSyncSetup())
                 #endif
         }
+    }
+
+    #Preview("Restore code") {
+        SyncSetupWizard.finished(
+            on: .s3,
+            holding: .shown(code: PreviewData.recoveryCode)
+        )
     }
 
     #Preview("Provider Selection") {

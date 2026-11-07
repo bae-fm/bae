@@ -2743,6 +2743,13 @@ stays under it. Setting up is the form's one action, *Set up*. A build that
 offers one provider, as baeium offers S3, has no list: the sheet opens on that
 provider's screen, and *Cancel* closes it.
 
+Setup ends on the library's recovery code, for every provider, because bae
+can't tell whether the Mac's keychain carries the code anywhere else, and
+losing the Mac could otherwise lose the library. Once the storage is connected
+the sheet shows the code, hidden until the person asks, as Settings does, with
+*Done*, which closes the sheet onto Library settings, where the code can be
+shown again.
+
 **What setup shows while it runs.** Setting storage up, or reconnecting
 it after signing in again or with a new S3 key, waits on the provider, at
 most a minute of rate limits, and on a reconnect loading what other devices

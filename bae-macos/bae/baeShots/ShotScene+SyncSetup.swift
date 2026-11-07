@@ -11,6 +11,17 @@ extension ShotScene {
     static let syncSetupScenes: [ShotScene] =
         signingInScenes + [
             ShotScene(
+                id: "sync-setup-s3-restore-code",
+                size: CGSize(width: 460, height: 560)
+            ) {
+                ShotStage(
+                    SyncSetupWizard.finished(
+                        on: .s3,
+                        holding: .shown(code: PreviewData.recoveryCode)
+                    )
+                )
+            },
+            ShotScene(
                 id: "sync-setup-choose",
                 size: CGSize(width: 460, height: 560)
             ) {
