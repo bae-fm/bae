@@ -277,7 +277,7 @@ struct SetupStep<Fields: View>: View {
             }
             HStack(spacing: ThemeSpace.related) {
                 Spacer()
-                Button(run.isRunning ? "Connecting…" : actionTitle) {
+                Button(actionLabel) {
                     connect()
                 }
                 .buttonStyle(PrimaryButtonStyle())
@@ -288,6 +288,16 @@ struct SetupStep<Fields: View>: View {
             .padding(.bottom, ThemeSpace.section)
         }
         .onDisappear { run.leave() }
+    }
+
+    /// The action's words: its title, then what the running setup does,
+    /// connecting or, once the person cancelled it, cancelling.
+    private var actionLabel: LocalizedStringKey {
+        switch run.state {
+        case .idle: actionTitle
+        case .running: "Connecting…"
+        case .cancelling: "Cancelling…"
+        }
     }
 
     private func connect() {

@@ -2746,7 +2746,8 @@ core tells the sheet, beside the setup's steps, whether the setup is past it,
 and from then the sheet hides Cancel and stays to show the setup finishing.
 Cancel asks core to cancel the setup. coven undoes it between setup's steps,
 not in the middle of a request, so the sheet says "Cancelling…" in place of
-the step until the call ends as cancelled, which shows nothing; then the macOS
+the step, and the macOS setup sheet's button, which reads "Connecting…" while
+the setup runs, reads the same, until the call ends as cancelled, which shows nothing; then the macOS
 sheet closes and Android goes back to choosing a provider. On Android, Back
 while a setup runs is its Cancel, and does nothing once Cancel isn't offered.
 A setup call that is dropped, as closing its screen drops it, cancels its
