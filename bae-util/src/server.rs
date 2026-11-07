@@ -57,7 +57,7 @@ pub enum ServerStatus {
     Error { error: ServerError },
 }
 
-enum State<I> {
+enum ServerState<I> {
     Disabled,
     Running {
         /// The config the running server is bound to. A config that differs
@@ -72,7 +72,7 @@ enum State<I> {
     },
 }
 
-impl<I> State<I> {
+impl<I> ServerState<I> {
     fn status(&self) -> ServerStatus {
         match self {
             Self::Disabled => ServerStatus::Disabled,
@@ -93,7 +93,7 @@ pub struct ServerController<I> {
     /// The service's name in log messages ("MCP", "Subsonic"), and the
     /// operation a panic of its serve future is reported as.
     name: &'static str,
-    inner: Arc<Mutex<State<I>>>,
+    inner: Arc<Mutex<ServerState<I>>>,
     bug: ReportBug,
     /// Woken when a serve future's ending moves the state, for a test.
     #[cfg(test)]
@@ -107,7 +107,7 @@ where
     pub fn new(name: &'static str, bug: ReportBug) -> Self {
         Self {
             name,
-            inner: Arc::new(Mutex::new(State::Disabled)),
+            inner: Arc::new(Mutex::new(ServerState::Disabled)),
             bug,
             #[cfg(test)]
             ended: Arc::default(),
@@ -132,7 +132,7 @@ where
     {
         {
             let state = self.inner.lock().await;
-            if let State::Running { identity: running, .. } = &*state {
+            if let ServerState::Running { identity: running, .. } = &*state {
                 if *running == identity {
                     return state.status();
                 }
@@ -146,8 +146,8 @@ where
     pub async fn shutdown(&self) {
         let task = {
             let mut state = self.inner.lock().await;
-            match std::mem::replace(&mut *state, State::Disabled) {
-                State::Running { cancellation, task, .. } => {
+            match std::mem::replace(&mut *state, ServerState::Disabled) {
+                ServerState::Running { cancellation, task, .. } => {
                     cancellation.cancel();
                     Some(task)
                 }
@@ -165,7 +165,7 @@ where
     pub async fn record_error(&self, error: ServerError) -> ServerStatus {
         self.shutdown().await;
         let mut state = self.inner.lock().await;
-        *state = State::Error { error: error.clone() };
+        *state = ServerState::Error { error: error.clone() };
         ServerStatus::Error { error }
     }
 
@@ -212,9 +212,9 @@ where
                 },
             };
             let mut state = task_state.lock().await;
-            if let State::Running { identity: running, .. } = &*state {
+            if let ServerState::Running { identity: running, .. } = &*state {
                 if *running == task_identity {
-                    *state = State::Error { error };
+                    *state = ServerState::Error { error };
                 }
             }
             #[cfg(test)]
@@ -222,7 +222,7 @@ where
         });
 
         let status = ServerStatus::Running { url: url.clone() };
-        *self.inner.lock().await = State::Running { identity, url, cancellation, task };
+        *self.inner.lock().await = ServerState::Running { identity, url, cancellation, task };
         status
     }
 }

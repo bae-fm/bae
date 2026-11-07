@@ -209,6 +209,8 @@ non_owner_types = [
     "Queued",
     # The recorded routes and requests of the test host, behind its lock.
     "FakeState",
+    # A server controller's state, plain data behind its lock.
+    "ServerState",
 ]
 
 # Values an owner makes for its caller's one operation, view or read and
