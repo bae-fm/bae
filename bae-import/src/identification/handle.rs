@@ -9,6 +9,9 @@ pub struct IdentificationHandle {
     tasks: TaskTracker,
     executor_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
     commands: mpsc::UnboundedSender<Command>,
+    /// The import service the queue runs over, for the pane's identification
+    /// commands.
+    import: ImportServiceHandle,
 }
 
 impl IdentificationHandle {
@@ -17,12 +20,14 @@ impl IdentificationHandle {
         tasks: TaskTracker,
         executor_thread: std::thread::JoinHandle<()>,
         commands: mpsc::UnboundedSender<Command>,
+        import: ImportServiceHandle,
     ) -> Self {
         Self {
             token,
             tasks,
             executor_thread: Arc::new(Mutex::new(Some(executor_thread))),
             commands,
+            import,
         }
     }
 
@@ -56,6 +61,74 @@ impl IdentificationHandle {
         if sent.is_err() {
             warn!("identification: the queue has stopped; {candidate_key} was not identified");
         }
+    }
+
+    /// Make one change to what the candidate's identification asks about or
+    /// counts, and run it again when what it looks up changed.
+    pub async fn pane_edit_lookup_choices(
+        &self,
+        candidate_key: crate::CandidateKey,
+        edit: bae_identify::LookupChoiceEdit,
+    ) -> Result<crate::PaneOutcome, crate::ImportError> {
+        use bae_identify::LookupChoiceEdit;
+        let command = match &edit {
+            LookupChoiceEdit::ToggleDiscId
+            | LookupChoiceEdit::ToggleBarcode { .. }
+            | LookupChoiceEdit::ToggleCatalog { .. } => crate::PaneCommand::ChangeLookups,
+            LookupChoiceEdit::SearchBy { .. } => crate::PaneCommand::ChangeSearchWords,
+            LookupChoiceEdit::ToggleDiscounted { .. } => crate::PaneCommand::ChangeAgreements,
+        };
+        let key = candidate_key.clone();
+        self.import
+            .run_pane_command(
+                &key,
+                command,
+                self.edit_candidate_lookup_choices(candidate_key, edit),
+            )
+            .await
+    }
+
+    /// Show identification's results for the candidate: the stored verdict as
+    /// it stood, picked row and all, when there is one, and a run started
+    /// when there is none. A stored verdict is not asked again: the person
+    /// looks at what it found, and picks from it.
+    pub async fn pane_identify_automatically(
+        &self,
+        candidate_key: crate::CandidateKey,
+    ) -> Result<(), crate::ImportError> {
+        if self.import.open_automatic(&candidate_key).await? {
+            self.rerun_identify(candidate_key);
+        }
+        Ok(())
+    }
+
+    /// Stop identifying the candidate — take it off the identification queue,
+    /// ending its run if one started — storing nothing, and go back to the
+    /// draft. The pane stays where it is when the cancel fails.
+    pub async fn pane_cancel_identification(
+        &self,
+        candidate_key: &crate::CandidateKey,
+    ) -> Result<(), crate::ImportError> {
+        self.cancel(vec![candidate_key.clone()]).await?;
+        self.import.move_candidate_pane(candidate_key, crate::PaneMove::Back).await
+    }
+
+    /// Make one change to what a candidate's identification asks about, and
+    /// run it again when what it looks up has changed: a run takes its choices
+    /// at its start, so a person changing one is asking for a run that reads
+    /// it. Any run already going for this candidate is superseded. Striking
+    /// a catalog number out is such a change: a struck number is searched by
+    /// nobody.
+    async fn edit_candidate_lookup_choices(
+        &self,
+        candidate_key: crate::CandidateKey,
+        edit: bae_identify::LookupChoiceEdit,
+    ) -> Result<(), crate::ImportError> {
+        let change = self.import.edit_candidate_lookup_choices(&candidate_key, edit).await?;
+        if change == bae_identify::ChoiceChange::Lookups {
+            self.rerun_identify(candidate_key);
+        }
+        Ok(())
     }
 
     /// Where one pane says which candidate it shows, for as long as the pane

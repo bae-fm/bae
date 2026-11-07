@@ -75,23 +75,12 @@ impl AppServices {
     }
 
     /// Identify an existing library release after the person opens the
-    /// re-identify sheet, asking about what this session's choices say —
-    /// none made yet on its first run. Extraction resolves the disc ID and
-    /// artwork from the library rather than from a scanned folder, so —
-    /// unlike [`Self::rerun_identify`] — this does not go through the
-    /// identification queue: there is no candidate folder to key a stored
-    /// verdict by. Its runs go under the release's re-identify key
-    /// ([`bae_import::CandidateKey::reidentify`]).
+    /// re-identify sheet, asking about what this session's choices say.
     pub async fn identify_release_for_lookup(
         &self,
         release_id: String,
     ) -> Result<(), bae_library::LibraryError> {
-        let choices = self
-            .release_lookup_choices()
-            .entry(bae_import::CandidateKey::reidentify(&release_id))
-            .or_default()
-            .clone();
-        self.start_release_identification(release_id, choices).await
+        Ok(self.inner.import.identify_release(release_id).await?)
     }
 
     /// Make one change to what a library release's session asks about, and
@@ -101,67 +90,10 @@ impl AppServices {
         release_id: String,
         edit: bae_identify::LookupChoiceEdit,
     ) -> Result<(), bae_library::LibraryError> {
-        let choices = {
-            let mut held = self.release_lookup_choices();
-            let choices =
-                held.entry(bae_import::CandidateKey::reidentify(&release_id)).or_default();
-            *choices = choices.clone().edited(edit);
-            choices.clone()
-        };
-        self.start_release_identification(release_id, choices).await
+        Ok(self.inner.import.edit_release_lookup_choices(release_id, edit).await?)
     }
 
-    /// End a library release's re-identify session: stop its identification
-    /// and forget what it asked about, so the next session starts afresh.
-    pub async fn end_release_identification(
-        &self,
-        release_id: &str,
-    ) -> Result<(), bae_import::ImportError> {
-        let candidate_key = bae_import::CandidateKey::reidentify(release_id);
-        self.release_lookup_choices().remove(&candidate_key);
-        self.inner.identification.cancel(vec![candidate_key]).await
-    }
-
-    pub(super) fn release_lookup_choices(
-        &self,
-    ) -> std::sync::MutexGuard<
-        '_,
-        std::collections::HashMap<bae_import::CandidateKey, bae_identify::LookupChoices>,
-    > {
-        self.inner.release_lookup_choices.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-    }
-
-    async fn start_release_identification(
-        &self,
-        release_id: String,
-        choices: bae_identify::LookupChoices,
-    ) -> Result<(), bae_library::LibraryError> {
-        let candidate_key = bae_import::CandidateKey::reidentify(&release_id);
-        let run = self.inner.import.new_identification_run();
-        // The sheet names a release, not a draft, so no title is read back: a
-        // re-identify run searches by words the person typed, else asks its
-        // identifiers and stops there.
-        let title_search = choices
-            .search_words
-            .as_ref()
-            .and_then(|words| bae_identify::TitleSearch::of(&words.album, &words.artist));
-        if !self
-            .inner
-            .import
-            .start_identification(
-                run,
-                candidate_key.clone(),
-                bae_import::extraction::ExtractionSource::Release { release_id },
-                bae_catalogs::rate_limiter::CallClass::AWAITED,
-                choices,
-                title_search,
-            )
-            .await?
-        {
-            tracing::warn!("re-identify for {candidate_key} has no source to ask; no run started");
-        }
-        Ok(())
-    }
+    delegate_async!(import, end_release_identification => end_release_identification(release_id: &str) -> Result<(), bae_import::ImportError>);
 
     /// Identify a folder candidate again, reading what the candidate says its
     /// lookup asks about and the sources the library asks now. A run takes its

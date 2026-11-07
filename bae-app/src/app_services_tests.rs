@@ -215,39 +215,6 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
     assert!(cleared.windows.iter().all(|window| window.rows.is_empty()));
 }
 
-/// A library release's re-identify session keeps its choices in core: each
-/// change is made to the ones before it, a run started afterwards reads them
-/// without being handed them, and ending the session forgets them.
-#[cfg(desktop)]
-#[tokio::test(flavor = "multi_thread")]
-async fn a_release_session_keeps_its_choices_in_core() {
-    use bae_identify::LookupChoiceEdit;
-    let (services, _track_ids, _temp_dir) = playing_app_services(1).await;
-    let key = bae_import::CandidateKey::reidentify("release-1");
-    let release = "release-1".to_string();
-
-    services
-        .edit_release_lookup_choices(release.clone(), LookupChoiceEdit::ToggleDiscId)
-        .await
-        .unwrap();
-    services
-        .edit_release_lookup_choices(
-            release.clone(),
-            LookupChoiceEdit::ToggleCatalog { number: "WPCR-80001".to_string() },
-        )
-        .await
-        .unwrap();
-    services.identify_release_for_lookup(release.clone()).await.unwrap();
-
-    let held = services.release_lookup_choices().get(&key).cloned();
-    let held = held.expect("the session's choices are held");
-    assert!(held.disc_id_excluded);
-    assert_eq!(held.chosen_catalogs, vec!["WPCR-80001".to_string()]);
-
-    services.end_release_identification(&release).await.unwrap();
-    assert!(services.release_lookup_choices().get(&key).is_none());
-}
-
 /// Wait until the storage inspector, set to one release, shows its export
 /// entry as `matches` looks for.
 #[cfg(desktop)]

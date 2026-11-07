@@ -25,7 +25,9 @@ mod identification;
 mod import;
 mod list;
 mod lookup_choices;
+mod pane_commands;
 mod picks;
+mod release_identification;
 mod runtime;
 mod search;
 mod session;
@@ -70,6 +72,8 @@ pub struct ImportServiceHandle {
     /// their own write.
     identify: crate::IdentifyService,
     extraction: crate::extraction::ExtractionService,
+    /// What each library release's re-identify session asks about.
+    release_lookup_choices: release_identification::ReleaseLookupChoices,
     watcher: WorkerThread<WatcherCommand>,
     /// What the folder scan coordinator holds of each root's scan that no
     /// table does, which the scan progress puts beside the stored scans.
@@ -123,6 +127,7 @@ impl ImportServiceHandle {
             runtime,
             identify,
             extraction,
+            release_lookup_choices: Default::default(),
             watcher,
             scans_in_memory,
             runtime_handle,

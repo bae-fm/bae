@@ -82,13 +82,6 @@ struct AppServicesInner {
     /// opening a view is not what starts it.
     #[cfg(desktop)]
     identification: IdentificationHandle,
-    /// What each library release being identified again asks about, by its
-    /// session's candidate key. A release has no candidate row to store them
-    /// on, so they are held here from the session's first run to its end.
-    #[cfg(desktop)]
-    release_lookup_choices: std::sync::Mutex<
-        std::collections::HashMap<bae_import::CandidateKey, bae_identify::LookupChoices>,
-    >,
 }
 
 impl Drop for AppServicesInner {
@@ -147,8 +140,6 @@ impl AppServices {
                 import,
                 #[cfg(desktop)]
                 identification,
-                #[cfg(desktop)]
-                release_lookup_choices: Default::default(),
             }),
         }
     }

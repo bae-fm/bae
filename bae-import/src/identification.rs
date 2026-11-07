@@ -158,7 +158,7 @@ pub(crate) fn start(
         .spawn(move || runtime.block_on(completion_tasks.wait()))
         .expect("identification queue executor thread");
 
-    IdentificationHandle::new(token, tasks, executor_thread, command_tx)
+    IdentificationHandle::new(token, tasks, executor_thread, command_tx, context.import.clone())
 }
 
 #[cfg(test)]
