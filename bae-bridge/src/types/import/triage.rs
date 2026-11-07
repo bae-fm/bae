@@ -462,14 +462,10 @@ pub fn bridge_candidate_selection_offers(
         .collect()
 }
 
-impl BridgeSelectionOffer {
-    pub(crate) fn from_core(offer: bae_import::triage::SelectionOffer) -> Self {
-        Self {
-            action: BridgeCandidateAction::from_core(offer.action),
-            count: offer.count,
-            enabled: offer.enabled,
-        }
-    }
+mirror_struct! {
+    BridgeSelectionOffer = bae_import::triage::SelectionOffer,
+    from_core: pub(crate) fn,
+    fields: { action: (BridgeCandidateAction), count, enabled },
 }
 
 /// What is running for one candidate right now, and the commands its row

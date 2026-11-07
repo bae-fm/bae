@@ -35,8 +35,14 @@ impl SelectionPart {
     /// Whether this part's rows take part in `action`: those that offer it,
     /// or every row for combining, which acts on the whole selection.
     fn takes(&self, action: CandidateAction) -> bool {
-        action == CandidateAction::Combine || self.actions.contains(&action)
+        takes_part(&self.actions, action)
     }
+}
+
+/// Whether a row offering `offered` takes part in `action`: it offers it, or
+/// the action is combining, which acts on the whole selection.
+fn takes_part(offered: &[CandidateAction], action: CandidateAction) -> bool {
+    action == CandidateAction::Combine || offered.contains(&action)
 }
 
 /// The keys `action` runs on over `members`: those that offer it, or every
@@ -44,7 +50,7 @@ impl SelectionPart {
 pub fn keys_for(members: &[SelectionMember], action: CandidateAction) -> Vec<crate::CandidateKey> {
     members
         .iter()
-        .filter(|member| action == CandidateAction::Combine || member.actions.contains(&action))
+        .filter(|member| takes_part(&member.actions, action))
         .map(|member| member.candidate_key.clone())
         .collect()
 }
