@@ -656,9 +656,11 @@ async fn an_automatic_start_a_damaged_row_refuses_records_the_failure_and_report
         .await
         .expect_err("a candidate that cannot be read does not start an import");
 
-    assert!(matches!(error, crate::ImportError::Database(_)), "{error:?}");
-    let failure = fixture.import_failure(&dir).await.expect("the refused start is recorded");
-    assert!(failure.reason.detail.contains("cannot be read from"), "{failure:?}");
+    assert!(
+        matches!(error, crate::ImportError::Database(bae_store::DbError::Unreadable { .. })),
+        "{error:?}"
+    );
+    fixture.import_failure(&dir).await.expect("the refused start is recorded");
     let bugs = fixture.bugs.reports();
     assert_eq!(bugs.len(), 1, "{bugs:?}");
     assert!(bugs[0].0.contains("start the automatic import"), "{bugs:?}");
