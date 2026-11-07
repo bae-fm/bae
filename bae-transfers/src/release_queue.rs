@@ -111,6 +111,12 @@ impl ReleaseQueueProgress {
         .filter_map(|(key, count)| CountLabel::nonzero(key, count))
         .collect()
     }
+
+    /// The summary parts of the download queue: `summary_parts` with the
+    /// downloading verb, which the downloads line and the bridge both show.
+    pub fn download_summary_parts(&self) -> Vec<CountLabel> {
+        self.summary_parts("core.queue.downloading")
+    }
 }
 
 /// One queue entry as the pane shows it: the entry, and its release as the

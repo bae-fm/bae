@@ -29,7 +29,7 @@ fn a_transfer_summary_leaves_out_zero_counts() {
 fn summary_parts_order_drop_and_active_verb() {
     let progress = ReleaseQueueProgress { queued: 3, active: 2, failed: 0 };
     assert_eq!(
-        progress.summary_parts("core.queue.downloading"),
+        progress.download_summary_parts(),
         vec![
             CountLabel { key: "core.queue.downloading".to_string(), count: 2 },
             CountLabel { key: "core.queue.queued".to_string(), count: 3 },

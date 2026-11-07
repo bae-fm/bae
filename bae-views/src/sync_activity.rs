@@ -73,7 +73,7 @@ impl DownloadsInFlight {
     /// wait behind them, a zero dropped.
     pub fn summary_parts(&self) -> Vec<CountLabel> {
         ReleaseQueueProgress { queued: self.queued, active: self.active, failed: 0 }
-            .summary_parts("core.queue.downloading")
+            .download_summary_parts()
     }
 }
 

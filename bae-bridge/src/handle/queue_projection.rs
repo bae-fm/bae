@@ -74,7 +74,7 @@ impl crate::types::BridgeDownloadCounts {
     pub(crate) fn from_core(counts: bae_transfers::ReleaseQueueCounts) -> Self {
         let summary_parts = counts
             .total
-            .summary_parts("core.queue.downloading")
+            .download_summary_parts()
             .into_iter()
             .map(crate::types::BridgeCountLabel::from_core)
             .collect();
