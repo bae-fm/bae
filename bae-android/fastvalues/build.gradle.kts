@@ -31,6 +31,11 @@ android {
     kotlinOptions {
         jvmTarget = javaVersion
     }
+
+    testOptions {
+        // Robolectric reads the merged manifest and resources.
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -40,4 +45,5 @@ dependencies {
     implementation("androidx.annotation:annotation:1.9.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
+    testImplementation("org.robolectric:robolectric:4.15.1")
 }

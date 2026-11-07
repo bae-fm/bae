@@ -50,8 +50,7 @@ class FrameFollowing<V : Any>(
 
     override fun doFrame(frameTimeNanos: Long) {
         if (!ticking) return
-        showLatest()
-        if (source?.latest != null && view.isAttachedToWindow) {
+        if (showLatest() != null && view.isAttachedToWindow) {
             Choreographer.getInstance().postFrameCallback(this)
         } else {
             ticking = false
@@ -60,8 +59,7 @@ class FrameFollowing<V : Any>(
 
     /** Start reading each frame as the key starts, and stop as it goes idle, showing what it holds either way. */
     private fun activityChanged() {
-        showLatest()
-        if (source?.latest != null && view.isAttachedToWindow) {
+        if (showLatest() != null && view.isAttachedToWindow) {
             if (!ticking) {
                 ticking = true
                 Choreographer.getInstance().postFrameCallback(this)
@@ -76,11 +74,14 @@ class FrameFollowing<V : Any>(
         ticking = false
     }
 
-    private fun showLatest() {
+    /** Show the key's latest value if it changed, and return it: one read of the key. */
+    private fun showLatest(): V? {
         val latest = source?.latest
-        if (shown != UNSHOWN && shown == latest) return
-        shown = latest
-        show(latest)
+        if (shown == UNSHOWN || shown != latest) {
+            shown = latest
+            show(latest)
+        }
+        return latest
     }
 
     private companion object {
