@@ -628,6 +628,7 @@ ImageHold = "RemoteImageHost"
     "Diagnostics::with_transport",
     "DiagnosticsWorker::new",
     "RecordingTransport::new",
+    "HeardBugReports::new",
 ]
 "bae-import/src/assemble.rs" = ["ArtistRows::new"]
 "bae-import/src/catalog_sessions.rs" = ["CatalogSessions::new"]
