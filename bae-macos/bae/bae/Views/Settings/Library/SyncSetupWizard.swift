@@ -71,6 +71,9 @@ struct SyncSetupWizard: View {
 
     init(onDone: @escaping () -> Void) {
         self.onDone = onDone
+        if let only = providerOptions.first, providerOptions.count == 1 {
+            _step = State(initialValue: .configure(only))
+        }
         _run = State(initialValue: StorageSetupRun(onCancelled: {}))
     }
 
@@ -105,8 +108,13 @@ struct SyncSetupWizard: View {
         .padding()
     }
 
-    /// One screen back: from a provider's screen to the list of providers.
+    /// One screen back: from a provider's screen to the list of providers, or
+    /// out of the sheet when the build offers one provider and has no list.
     private func leave() {
+        guard providerOptions.count > 1 else {
+            onDone()
+            return
+        }
         withAnimation(.easeInOut(duration: 0.15)) {
             step = .selectProvider
         }

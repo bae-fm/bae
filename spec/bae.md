@@ -2727,7 +2727,8 @@ any other reason at the top of the form. The reason sits in its field's own
 row on macOS, and under the field on Android.
 
 **Choosing where, on macOS.** *Set up sync…* opens a sheet that lists the
-providers this build offers, one row each with a line saying what it is (iCloud
+providers this build offers, in the order iCloud, Dropbox, OneDrive and
+S3-compatible, one row each with a line saying what it is (iCloud
 uses the Apple Account the Mac is signed in to; Dropbox, a shared folder in the
 person's Dropbox; OneDrive, a folder in their OneDrive; S3, a bucket they
 manage), and choosing a row only selects it. *Continue* opens the selected
@@ -2738,7 +2739,9 @@ sheet, and on a provider's screen it goes back one screen, to the list. A
 screen that waits says what it waits on, in place of the form: signing in to
 the provider in the browser, with a line saying to finish there and come back,
 reading the folders, or the setup's own step over its bar; only *Cancel*
-stays under it. Setting up is the form's one action, *Set up*.
+stays under it. Setting up is the form's one action, *Set up*. A build that
+offers one provider, as baeium offers S3, has no list: the sheet opens on that
+provider's screen, and *Cancel* closes it.
 
 **What setup shows while it runs.** Setting storage up, or reconnecting
 it after signing in again or with a new S3 key, waits on the provider, at

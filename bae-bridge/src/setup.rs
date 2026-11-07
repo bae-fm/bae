@@ -8,13 +8,13 @@ use std::sync::Arc;
 #[uniffi::export]
 pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
     vec![
-        BridgeCloudProvider::S3,
         #[cfg(feature = "cloudkit")]
         BridgeCloudProvider::CloudKit,
         #[cfg(feature = "oauth-providers")]
         BridgeCloudProvider::Dropbox,
         #[cfg(feature = "oauth-providers")]
         BridgeCloudProvider::OneDrive,
+        BridgeCloudProvider::S3,
     ]
 }
 
