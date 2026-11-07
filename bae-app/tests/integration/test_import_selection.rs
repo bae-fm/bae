@@ -35,17 +35,24 @@ pub(crate) async fn scan_albums(services: &AppServices, collection: &Path, count
         std::fs::write(album.join(format!("01 Track {n}.flac")), &flac).unwrap();
     }
     services.import_add_watched_folder(collection.to_path_buf()).await.unwrap();
-    let list = services.subscribe_import_list(ImportListView::default()).await.unwrap();
+    tab_counts_until(services, |counts| counts.pending as usize == count).await;
+}
+
+/// The tab counts until `accept` admits some.
+async fn tab_counts_until(
+    services: &AppServices,
+    accept: impl Fn(&bae_import::TriageTabCounts) -> bool,
+) {
+    let counts = services.subscribe_tab_counts();
     tokio::time::timeout(HANG_GUARD, async {
         loop {
-            let snapshot = list.next().await.expect("the list answers");
-            if snapshot.summary.counts.pending as usize == count {
+            if accept(&counts.next().await.expect("the tab counts answer")) {
                 return;
             }
         }
     })
     .await
-    .expect("the scan lists every album");
+    .expect("the tab counts get there");
 }
 
 /// The list's snapshots until one `accept` admits.
@@ -137,8 +144,8 @@ async fn a_bulk_action_runs_over_every_selected_row() {
         .unwrap();
 
     assert!(failures.is_empty(), "{failures:?}");
-    let settled = until(&list, |snapshot| snapshot.summary.counts.pending == 0).await;
-    assert_eq!(settled.summary.counts.skipped, 3);
+    let settled = until(&list, |snapshot| snapshot.total_count == 0).await;
+    tab_counts_until(&services, |counts| counts.pending == 0 && counts.skipped == 3).await;
     assert_eq!(settled.selection, SelectionSummary::default());
     assert!(list.selected().await.unwrap().candidates.is_empty());
     services.close().await.unwrap();

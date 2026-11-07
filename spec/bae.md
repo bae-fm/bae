@@ -959,7 +959,10 @@ stored releases name, not the releases whole.
 Its counts — each tab's, each filter entry's, how many items the list holds
 and how many releases its filters keep, and how many each group's header
 counts — are kept beside the placement as rows move, so reading them costs
-the same however long the queue is. A search counts the rows its index finds:
+the same however long the queue is. Each tab's count is not part of the
+list's value: it moves with every commit of a scan, so it is a read of its
+own, sent on a stream keyed by tab, and the tab bar's labels read it each
+display frame. A search counts the rows its index finds:
 each release's shown text is kept, case folded, in a trigram index beside its
 placement (Appendix A.7), so a search of three characters or more reads the
 rows holding it, and a shorter one reads every release's text from the

@@ -483,12 +483,6 @@ impl crate::types::BridgeImportListItem {
     }
 }
 
-mirror_struct! {
-    crate::types::BridgeTriageTabCounts = bae_import::TriageTabCounts,
-    from_core: fn,
-    fields: { pending, done, skipped },
-}
-
 impl crate::types::BridgeActiveFolderScan {
     fn from_core(scan: bae_import::ActiveFolderScan) -> Self {
         let bae_import::ActiveFolderScan { watched_folder_path, watched_folder_name } = scan;
@@ -528,7 +522,6 @@ mirror_struct! {
 impl crate::types::BridgeImportQueueSummary {
     fn from_core(summary: bae_import::ImportQueueSummary) -> Self {
         let bae_import::ImportQueueSummary {
-            counts,
             watched_folders,
             has_groups,
             narrowed,
@@ -536,7 +529,6 @@ impl crate::types::BridgeImportQueueSummary {
             opened_at,
         } = summary;
         Self {
-            counts: crate::types::BridgeTriageTabCounts::from_core(counts),
             watched_folders: watched_folders
                 .into_iter()
                 .map(crate::types::BridgeWatchedFolder::from_core)

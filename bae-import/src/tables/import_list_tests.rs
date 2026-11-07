@@ -99,6 +99,11 @@ impl Library {
         ImportTables::new(self.db.clone())
     }
 
+    /// How many entries each tab holds now.
+    pub(crate) async fn tab_counts(&self) -> crate::TriageTabCounts {
+        self.tables().load_tab_counts().await.unwrap()
+    }
+
     fn preparations(&self) -> crate::tables::ImportTables {
         crate::tables::ImportTables::new(self.db.clone())
     }

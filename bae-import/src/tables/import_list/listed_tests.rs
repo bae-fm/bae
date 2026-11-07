@@ -78,7 +78,7 @@ async fn an_imported_content_hash_puts_its_row_in_done() {
         row.import_status,
         Some(TriageImportStatus::Complete { ref release }) if release.release_id == lib.release_id("Release")
     ));
-    assert_eq!(read.summary.counts.done, 1);
+    assert_eq!(lib.tab_counts().await.done, 1);
 }
 
 #[tokio::test]
@@ -87,7 +87,7 @@ async fn a_skipped_candidate_lands_in_skipped() {
     lib.run(lib.scan("Release") + lib.skip("Release")).await;
     let read = lib.shown(view(TriageTab::Skipped)).await;
     assert_eq!(row_at(&read, "Release").0.placement, TriagePlacement::Skipped);
-    assert_eq!(read.summary.counts.skipped, 1);
+    assert_eq!(lib.tab_counts().await.skipped, 1);
 }
 
 /// An import running for a candidate places nothing: until it writes the
@@ -132,7 +132,7 @@ async fn a_failed_import_stays_pending_until_its_retry_lands_in_done() {
     );
     assert_eq!(live.standing, Some(crate::PendingStanding::ImportError));
     assert!(offers_import(live));
-    assert_eq!(read.summary.counts.pending, 1);
+    assert_eq!(lib.tab_counts().await.pending, 1);
 
     lib.run(lib.imported("Release", "2026-01-02T00:00:00Z")).await;
     let done = lib.shown(view(TriageTab::Done)).await;
@@ -140,7 +140,7 @@ async fn a_failed_import_stays_pending_until_its_retry_lands_in_done() {
         row_at(&done, "Release").0.import_status,
         Some(TriageImportStatus::Complete { .. })
     ));
-    assert_eq!(done.summary.counts.pending, 0);
+    assert_eq!(lib.tab_counts().await.pending, 0);
 }
 
 /// Import is offered by one rule, whoever wrote the draft and whatever

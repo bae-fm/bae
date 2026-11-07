@@ -54,28 +54,14 @@ struct ImportPreviewDataTests {
     @MainActor
     @Test("smoke preview combines every queue state")
     func smokePreviewCombinesProductionShapes() {
-        let base = PreviewData.importTabScene()
         let smoke = PreviewData.importSmokeTestScene()
         // The smoke scene is the Import tab's own rows under a second watched
         // root: every state it draws is one the tab reads in production, and
         // the second root is the only thing it adds.
         #expect(smoke.store.watchedFolders.count == 2)
-        #expect(
-            smoke.store.summary.counts.pending
-                == base.store.summary.counts.pending
-        )
-        #expect(
-            smoke.store.summary.counts.done == base.store.summary.counts.done
-        )
-        #expect(
-            smoke.store.summary.counts.skipped
-                == base.store.summary.counts.skipped
-        )
         // The identify count is over the whole queue, one row short of done.
-        let queue =
-            smoke.store.summary.counts.pending
-            + smoke.store.summary.counts.done
-            + smoke.store.summary.counts.skipped
+        let counts = PreviewData.importTabCounts
+        let queue = counts.pending + counts.done + counts.skipped
         #expect(smoke.store.identificationProgress?.total == queue)
         #expect(smoke.store.identificationProgress?.identified == queue - 1)
     }

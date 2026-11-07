@@ -9,9 +9,6 @@ import Testing
 struct NarrowedCountTests {
     private func summary(text: String) -> BridgeImportQueueSummary {
         PreviewData.importQueueSummary(
-            pending: 84,
-            done: 0,
-            skipped: 0,
             watchedFolders: [],
             narrowed: BridgeNarrowedCount(shown: 7, total: 84),
             filterText: text

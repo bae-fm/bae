@@ -373,7 +373,6 @@ extension ImportCandidateTablePlaceTests {
         narrowedBy filterText: String
     ) -> BridgeImportQueueSummary {
         BridgeImportQueueSummary(
-            counts: BridgeTriageTabCounts(pending: 80, done: 0, skipped: 0),
             watchedFolders: [],
             hasGroups: false,
             narrowed: nil,

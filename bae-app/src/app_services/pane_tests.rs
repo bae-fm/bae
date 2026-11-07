@@ -113,11 +113,8 @@ impl Library {
         self.services.import_refresh_watched_folder(self.root.clone()).await.unwrap();
         tokio::time::timeout(
             HANG_GUARD,
-            self.import.wait_for_list(bae_import::ImportListView::default(), |projection| {
-                projection.summary.counts.pending as usize
-                    + projection.summary.counts.done as usize
-                    + projection.summary.counts.skipped as usize
-                    == expected
+            self.import.wait_for_tab_counts(|counts| {
+                counts.pending as usize + counts.done as usize + counts.skipped as usize == expected
             }),
         )
         .await

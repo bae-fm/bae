@@ -38,8 +38,8 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
         tables.subscribe_import_list(list_request(&db, crate::TriageTab::Pending, [(0, 50)]).await);
     let initial = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.total_count, 1);
-    assert_eq!(initial.summary.counts.pending, 1);
-    assert_eq!(initial.summary.counts.done, 0);
+    let initial_counts = tables.load_tab_counts().await.unwrap();
+    assert_eq!((initial_counts.pending, initial_counts.done), (1, 0));
 
     imported_release(&db, &candidate).await;
 
@@ -50,7 +50,7 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
         .result
         .unwrap();
     assert_eq!(imported.total_count, 0, "Pending no longer holds the row");
-    assert_eq!(imported.summary.counts.done, 1);
+    assert_eq!(tables.load_tab_counts().await.unwrap().done, 1);
 }
 
 /// A release in the library that this device did not import — one another
@@ -66,12 +66,8 @@ async fn a_release_this_device_did_not_import_leaves_the_folder_in_found() {
     let candidate = scan_finished(&db, root, "release").await;
     assert!(records.find_release_by_id(RELEASE_ID).await.unwrap().is_some());
 
-    let projection = tables
-        .load_import_list(list_request(&db, crate::TriageTab::Pending, [(0, 50)]).await)
-        .await
-        .unwrap();
-    assert_eq!(projection.summary.counts.pending, 1);
-    assert_eq!(projection.summary.counts.done, 0);
+    let counts = tables.load_tab_counts().await.unwrap();
+    assert_eq!((counts.pending, counts.done), (1, 0));
     let detail = tables.load_import_candidate(&candidate.key()).await.unwrap().unwrap();
     assert!(detail.draft().is_some(), "the folder holds a draft, as one nobody imported does");
 }
@@ -94,7 +90,7 @@ async fn a_moved_folder_stays_done() {
         .await
         .unwrap();
     assert_eq!(candidate_names(&projection), vec!["renamed".to_string()]);
-    assert_eq!(projection.summary.counts.pending, 0);
+    assert_eq!(tables.load_tab_counts().await.unwrap().pending, 0);
 }
 
 /// Deleting the release takes this device's record of the import with it, so
@@ -124,7 +120,7 @@ async fn deleting_the_release_puts_its_folder_back_in_found() {
         .result
         .unwrap();
     assert_eq!(deleted.total_count, 0, "Done no longer holds the row");
-    assert_eq!(deleted.summary.counts.pending, 1);
+    assert_eq!(tables.load_tab_counts().await.unwrap().pending, 1);
 }
 
 /// Moving the window is a request change, not a commit: the query reruns and

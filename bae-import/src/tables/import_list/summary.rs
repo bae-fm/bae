@@ -19,8 +19,9 @@ pub(super) struct Counts {
     pub(super) has_groups: bool,
 }
 
-/// The counts kept beside the placement.
-pub(super) fn counts(sql: &SqlReadContext<'_>) -> Result<Counts, DbError> {
+/// Every tab's count, and whether Found has any group, from the counts kept
+/// beside the placement.
+fn tab_rows(sql: &SqlReadContext<'_>) -> Result<(TriageTabCounts, bool), DbError> {
     let mut tabs = TriageTabCounts::default();
     let mut has_groups = false;
     for (tab, item, count) in
@@ -35,6 +36,17 @@ pub(super) fn counts(sql: &SqlReadContext<'_>) -> Result<Counts, DbError> {
             }
         }
     }
+    Ok((tabs, has_groups))
+}
+
+/// Every tab's count: what the tab bar shows, whatever a list is narrowed by.
+fn tab_counts_on(sql: &SqlReadContext<'_>) -> Result<TriageTabCounts, DbError> {
+    Ok(tab_rows(sql)?.0)
+}
+
+/// The counts kept beside the placement.
+pub(super) fn counts(sql: &SqlReadContext<'_>) -> Result<Counts, DbError> {
+    let (tabs, has_groups) = tab_rows(sql)?;
     let in_entries = sql
         .query("SELECT pending_entry, count FROM import_list_entry_count", [], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
@@ -264,6 +276,19 @@ pub(super) fn first_identifying(
 }
 
 impl ImportTables {
+    /// How many entries each tab holds now.
+    pub async fn load_tab_counts(&self) -> Result<TriageTabCounts, DbError> {
+        self.store.read(move |sql| tab_counts_on(&sql)).await
+    }
+
+    /// How many entries each tab holds, live: a value for every write that
+    /// moves one. Read apart from the list, and sent on its own, because a
+    /// scan moves them at every commit and a list narrowed to one tab has no
+    /// other use for the rest.
+    pub fn subscribe_tab_counts(&self) -> coven::LiveQuery<TriageTabCounts, bae_store::DbError> {
+        self.store.subscribe(move |sql| tab_counts_on(&sql))
+    }
+
     /// Where the candidate at `candidate_key` sits in the list `list` once
     /// revealed: on the tab its placement puts it on, with the filters
     /// cleared and its group opened, the list's other folds kept. `None` when

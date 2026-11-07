@@ -20,7 +20,7 @@ struct TriageTabBarTests {
                     get: { selection.tab },
                     set: { selection.tab = $0 }
                 ),
-                counts: BridgeTriageTabCounts(
+                counts: PreviewData.tabCounts(
                     pending: 170,
                     done: 32,
                     skipped: 19

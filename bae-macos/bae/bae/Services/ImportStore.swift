@@ -48,7 +48,6 @@ class ImportStore {
     /// re-delivers this whole value, and an equal write would still invalidate
     /// everything reading it.
     private(set) var summary = BridgeImportQueueSummary(
-        counts: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0),
         watchedFolders: [],
         hasGroups: false,
         narrowed: nil,
@@ -184,6 +183,11 @@ class ImportStore {
     /// folder's path, for the native labels that read it each display frame.
     @ObservationIgnored
     var scanFoundCounts = LatestStream<UInt64>.scanFoundCounts()
+
+    /// How many entries each tab holds, by the tab's name, for the native
+    /// labels of the tab bar that read it each display frame.
+    @ObservationIgnored
+    var tabCounts = LatestStream<UInt32>.tabCounts()
 
     /// Look up a candidate by key across both source dicts. Used when the
     /// caller doesn't know (or doesn't care about) the candidate's source —

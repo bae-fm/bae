@@ -16,7 +16,7 @@
 //! it as its [`CandidateLiveState`], and the selection's offers read it.
 
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
-use super::triage::{CandidateLiveState, TriageGroup, TriageRow, TriageTabCounts};
+use super::triage::{CandidateLiveState, TriageGroup, TriageRow};
 use super::watched_folder::WatchedFolder;
 use bae_store::{LibraryBrowseWindow, LibraryPageWindows};
 
@@ -153,7 +153,6 @@ pub struct ImportCandidateListLocation {
 /// of it can drift from them.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportQueueSummary {
-    pub counts: TriageTabCounts,
     pub watched_folders: Vec<WatchedFolder>,
     /// Whether Found has any group, which folding every group acts on.
     pub has_groups: bool,

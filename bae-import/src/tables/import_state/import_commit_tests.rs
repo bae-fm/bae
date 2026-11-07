@@ -404,7 +404,8 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
     let list = list_subscription(&fixture, page_window(0, 50)).await;
     let initial = next_page(&list).await;
     assert!(!page_rows(&initial)[&key].1.facts.importing());
-    assert_eq!(initial.summary.counts.done, 0);
+    let tables = crate::tables::ImportTables::new(fixture.db.clone());
+    assert_eq!(tables.load_tab_counts().await.unwrap().done, 0);
     // The pane reads where the candidate stands and whether this device
     // imported it in one read; it is followed beside the list so no read of
     // it is passed over.
@@ -439,7 +440,8 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
             None => {
                 assert!(importing > 0, "the import read as importing");
                 assert_eq!(
-                    snapshot.summary.counts.done, 1,
+                    tables.load_tab_counts().await.unwrap().done,
+                    1,
                     "the row left Found without its release"
                 );
                 break;

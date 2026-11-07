@@ -620,9 +620,6 @@
 
         @MainActor
         private static let importTabSummary = importQueueSummary(
-            pending: 11,
-            done: 1,
-            skipped: 1 + UInt32(invalidCandidates.count),
             watchedFolders: [importWatchedFolder],
             hasGroups: true
         )
@@ -696,10 +693,22 @@
             }
         }
 
+        /// How many entries each tab of the Import tab preview holds.
+        static let importTabCounts = (
+            pending: UInt32(11),
+            done: UInt32(1),
+            skipped: UInt32(1 + invalidCandidates.count)
+        )
+
         @MainActor
         static func importTabScene() -> ImportPreviewFixture {
             let store = ImportStore()
             store.applySummary(importTabSummary)
+            store.tabCounts = tabCounts(
+                pending: importTabCounts.pending,
+                done: importTabCounts.done,
+                skipped: importTabCounts.skipped
+            )
             let rows = importTabRowsByKey()
             for var candidate in importTabCandidates {
                 candidate.placement = rows[candidate.key]

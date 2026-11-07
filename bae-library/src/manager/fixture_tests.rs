@@ -252,7 +252,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
             ("Import Error".to_string(), Some(PendingStanding::ImportError)),
         ])
     );
-    assert_eq!(projection.summary.counts.pending, states.len() as u32);
+    assert_eq!(tables.load_tab_counts().await.unwrap().pending, states.len() as u32);
     assert_eq!(
         projection
             .summary

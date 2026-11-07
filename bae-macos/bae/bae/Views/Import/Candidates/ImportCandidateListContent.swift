@@ -156,7 +156,7 @@ struct ImportCandidateListContent: View {
             VStack(spacing: 0) {
                 TriageTabBar(
                     activeTab: activeTabBinding,
-                    counts: summary.counts
+                    counts: importStore.tabCounts
                 )
                 .padding(ThemeSpace.related)
 

@@ -326,11 +326,8 @@ impl Fixture {
     pub(crate) async fn await_listed(&self, import: &ImportServiceHandle, expected: usize) {
         tokio::time::timeout(
             HANG_GUARD,
-            import.wait_for_list(crate::ImportListView::default(), |projection| {
-                projection.summary.counts.pending as usize
-                    + projection.summary.counts.done as usize
-                    + projection.summary.counts.skipped as usize
-                    == expected
+            import.wait_for_tab_counts(|counts| {
+                counts.pending as usize + counts.done as usize + counts.skipped as usize == expected
             }),
         )
         .await

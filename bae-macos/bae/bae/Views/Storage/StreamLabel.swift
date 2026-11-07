@@ -2,6 +2,12 @@ import AppKit
 import BaeKit
 import SwiftUI
 
+/// Which stream a `StreamLabel` follows, whatever its source.
+enum StreamLabelKind: CaseIterable {
+    case uploadRate, uploadBytes, pinRate, exportPercent
+    case scanFoundCount, tabCount
+}
+
 /// A label that reads a fast stream's latest value once per display frame
 /// while the stream is active, with no SwiftUI update. Its width is the
 /// widest text the stream can show, so a changing value never asks SwiftUI
@@ -23,6 +29,10 @@ final class StreamLabelNSView: NSTextField {
     private lazy var uploads = FrameFollowing<BridgeUploadTransfer>(
         view: self
     ) { [weak self] transfer in self?.showRate(transfer?.throughputBps) }
+    private lazy var tabCounts = FrameFollowing<UInt32>(view: self) {
+        [weak self] count in
+        self?.stringValue = count.map { $0.formatted() } ?? ""
+    }
     private lazy var foundCounts = FrameFollowing<UInt64>(view: self) {
         [weak self] count in
         self?.stringValue =
@@ -50,48 +60,63 @@ final class StreamLabelNSView: NSTextField {
         fatalError()
     }
 
+    /// The label only shows a value: a click on it is the click of the view
+    /// it sits in, such as the tab a count belongs to.
+    override func hitTest(_: NSPoint) -> NSView? { nil }
+
     func follow(_ stream: StreamLabel.Stream) {
+        stopAllBut(stream)
         switch stream {
         case .uploadRate(let total):
-            releaseUploads.stop()
-            downloads.stop()
-            percents.stop()
-            foundCounts.stop()
             uploads.follow(total)
         case .uploadBytes(let source):
-            uploads.stop()
-            downloads.stop()
-            percents.stop()
-            foundCounts.stop()
             releaseUploads.follow(source)
         case .pinRate(let source):
-            uploads.stop()
-            releaseUploads.stop()
-            percents.stop()
-            foundCounts.stop()
             downloads.follow(source)
         case .exportPercent(let source):
-            uploads.stop()
-            releaseUploads.stop()
-            downloads.stop()
-            foundCounts.stop()
             percents.follow(source)
         case .scanFoundCount(let source):
-            uploads.stop()
-            releaseUploads.stop()
-            downloads.stop()
-            percents.stop()
             alignment = .right
             foundCounts.follow(source)
+        case .tabCount(let source, let tone):
+            alignment = .center
+            textColor = NSColor(tone.color)
+            font = Self.chipFont
+            tabCounts.follow(source)
+        }
+    }
+
+    /// Stop what the label followed before, unless it is what `stream`
+    /// follows: a label is handed its stream again by each SwiftUI update.
+    private func stopAllBut(_ stream: StreamLabel.Stream) {
+        for kind in StreamLabelKind.allCases where kind != stream.kind {
+            stop(kind)
         }
     }
 
     func stopFollowing() {
-        uploads.stop()
-        releaseUploads.stop()
-        downloads.stop()
-        percents.stop()
-        foundCounts.stop()
+        for kind in StreamLabelKind.allCases {
+            stop(kind)
+        }
+    }
+
+    private func stop(_ kind: StreamLabelKind) {
+        switch kind {
+        case .uploadRate: uploads.stop()
+        case .uploadBytes: releaseUploads.stop()
+        case .pinRate: downloads.stop()
+        case .exportPercent: percents.stop()
+        case .scanFoundCount: foundCounts.stop()
+        case .tabCount: tabCounts.stop()
+        }
+    }
+
+    /// The font a chip's text is set in, with digits of one width.
+    static var chipFont: NSFont {
+        NSFont.monospacedDigitSystemFont(
+            ofSize: ThemeText.chip.nsFont.pointSize,
+            weight: ThemeText.chip.nsWeight
+        )
     }
 
     /// A zero or unknown rate shows nothing rather than a stalled speed.
@@ -119,6 +144,20 @@ struct StreamLabel: NSViewRepresentable {
         case exportPercent(LatestSource<UInt8>)
         /// How many folders the scan of one watched folder has stored.
         case scanFoundCount(LatestSource<UInt64>)
+        /// How many entries one tab of the import list holds, as a chip of
+        /// `tone` shows it.
+        case tabCount(LatestSource<UInt32>, tone: StatusTone)
+
+        var kind: StreamLabelKind {
+            switch self {
+            case .uploadRate: .uploadRate
+            case .uploadBytes: .uploadBytes
+            case .pinRate: .pinRate
+            case .exportPercent: .exportPercent
+            case .scanFoundCount: .scanFoundCount
+            case .tabCount: .tabCount
+            }
+        }
     }
 
     let stream: Stream
@@ -156,6 +195,8 @@ struct StreamLabel: NSViewRepresentable {
                 (1.0).formatted(.percent)
             case .scanFoundCount:
                 localizedCoreString("ui.import.scan.found", 9_999_999)
+            case .tabCount:
+                (99_999 as UInt32).formatted()
             }
         let font = view.font ?? .systemFont(ofSize: NSFont.systemFontSize)
         let size = (widest as NSString).size(withAttributes: [.font: font])

@@ -77,7 +77,6 @@ fn load_import_list_on(
         windows,
         total_count: listed.total,
         summary: ImportQueueSummary {
-            counts: counts.tabs,
             watched_folders,
             has_groups: counts.has_groups,
             narrowed: listed.narrowed,

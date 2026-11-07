@@ -132,21 +132,27 @@
             }
         }
 
-        static func importQueueSummary(
+        /// The tab counts a preview's tab bar reads, as the stream core feeds
+        /// holds them.
+        static func tabCounts(
             pending: UInt32,
             done: UInt32,
-            skipped: UInt32,
+            skipped: UInt32
+        ) -> LatestStream<UInt32> {
+            .tabCounts(holding: [
+                BridgeTriageTab.pending.countKey: pending,
+                BridgeTriageTab.done.countKey: done,
+                BridgeTriageTab.skipped.countKey: skipped,
+            ])
+        }
+
+        static func importQueueSummary(
             watchedFolders: [BridgeWatchedFolder],
             hasGroups: Bool = false,
             narrowed: BridgeNarrowedCount? = nil,
             filterText: String = ""
         ) -> BridgeImportQueueSummary {
             BridgeImportQueueSummary(
-                counts: BridgeTriageTabCounts(
-                    pending: pending,
-                    done: done,
-                    skipped: skipped
-                ),
                 watchedFolders: watchedFolders,
                 hasGroups: hasGroups,
                 narrowed: narrowed,

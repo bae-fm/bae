@@ -71,6 +71,18 @@ impl ImportServiceHandle {
         )
     }
 
+    /// How many entries each tab holds: the first value at once, then a
+    /// value after each write that moves one. Closing the library ends it.
+    pub fn subscribe_tab_counts(
+        &self,
+    ) -> bae_store::live_query::LiveValues<crate::TriageTabCounts> {
+        bae_store::live_query::LiveValues::new(
+            self.services.tables.subscribe_tab_counts(),
+            self.services.closing.child_token(),
+            self.bugs(),
+        )
+    }
+
     /// How far the identifications and imports in flight have got: the
     /// first value at once, then a value after each write that moves them.
     /// Closing the library ends it.
@@ -162,9 +174,26 @@ impl ImportServiceHandle {
             .expect("the import list opens")
     }
 
-    /// The first import list `accept` admits, waiting through the query's
-    /// values until one does. The list lands after the commit it reflects, so
-    /// a test that just observed a scan event waits here for the read.
+    /// The first tab counts `accept` admits, waiting through the query's
+    /// values until one does. The counts land after the commit they reflect,
+    /// so a test that just observed a scan event waits here for the read.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn wait_for_tab_counts(
+        &self,
+        mut accept: impl FnMut(&crate::TriageTabCounts) -> bool,
+    ) -> crate::TriageTabCounts {
+        let counts = self.subscribe_tab_counts();
+        loop {
+            let counts = counts.next().await.expect("the tab counts query stays open");
+            if accept(&counts) {
+                return counts;
+            }
+        }
+    }
+
+    /// The list for `view`, read through every row, once `accept` admits one
+    /// of its values. The list lands after the commit it reflects, so a test
+    /// that just observed a scan event waits here for the read.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn wait_for_list(
         &self,

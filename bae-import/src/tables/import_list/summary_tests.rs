@@ -96,7 +96,7 @@ async fn a_tentative_candidate_is_neither_a_row_nor_a_count() {
     let read = lib.shown(view(TriageTab::Pending)).await;
     assert!(sequence(&read).is_empty());
     assert_eq!(read.total_count, 0);
-    assert_eq!(read.summary.counts, crate::TriageTabCounts::default());
+    assert_eq!(lib.tab_counts().await, crate::TriageTabCounts::default());
     assert!(!read.summary.has_groups);
 }
 
@@ -105,7 +105,7 @@ async fn a_release_counts_pending_and_an_invalid_folder_counts_skipped() {
     let lib = Library::new().await;
     lib.run(lib.scan("Release") + lib.scan_as("Broken", "invalid")).await;
     let pending = lib.shown(view(TriageTab::Pending)).await;
-    assert_eq!(pending.summary.counts, crate::TriageTabCounts { pending: 1, done: 0, skipped: 1 });
+    assert_eq!(lib.tab_counts().await, crate::TriageTabCounts { pending: 1, done: 0, skipped: 1 });
     assert_eq!(sequence(&pending), ["candidate Release"]);
     assert_eq!(lib.items(view(TriageTab::Skipped)).await, ["invalid Broken"]);
 }
@@ -121,7 +121,7 @@ async fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
         .await;
     assert_eq!(narrowed.summary.narrowed, Some(crate::NarrowedCount { shown: 1, total: 3 }));
     assert_eq!(narrowed.total_count, 2, "the header and its matching member");
-    assert_eq!(narrowed.summary.counts.pending, 3, "the counts are the whole queue's");
+    assert_eq!(lib.tab_counts().await.pending, 3, "the counts are the whole queue's");
     assert!(narrowed.summary.has_groups);
     let whole = lib.shown(view(TriageTab::Pending)).await;
     assert_eq!(whole.summary.narrowed, None);
@@ -310,7 +310,7 @@ async fn each_entry_counts_the_rows_it_holds() {
             (PendingFilter::NotLookedUp, 1),
         ]
     );
-    assert_eq!(read.summary.counts.pending, 14);
+    assert_eq!(lib.tab_counts().await.pending, 14);
     assert!(read.pending_filter_entries.iter().all(|entry| entry.selectable));
     for entry in &read.pending_filter_entries {
         let shown = lib.shown(under(TriageTab::Pending, entry.filter)).await;
@@ -387,7 +387,7 @@ async fn the_text_filter_composes_with_the_pending_filter() {
         ["candidate Failed Import", "candidate Several Tagged"],
         "of the Needs You rows only the drafted ones read Album"
     );
-    assert_eq!(needs_you.summary.counts.pending, 14);
+    assert_eq!(lib.tab_counts().await.pending, 14);
     assert!(lib.items(texted(PendingFilter::Identified, "nothing")).await.is_empty());
     assert_eq!(
         lib.shown(texted(PendingFilter::All, "several")).await.summary.narrowed,
@@ -521,4 +521,32 @@ async fn locating_a_candidate_ignores_the_pending_filter() {
         .unwrap()
         .expect("the candidate is found");
     assert_eq!(location.tab, TriageTab::Pending);
+}
+
+/// The tab counts are a live read of their own: a candidate placed on Found
+/// moves Found's count, and skipping it moves the count to Skipped, without
+/// any list open.
+#[tokio::test]
+async fn the_tab_counts_follow_the_placement() {
+    let lib = Library::new().await;
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
+    let mut live = tables.subscribe_tab_counts();
+    let none = live.next().await.expect("the query stays open").unwrap();
+    assert_eq!(none, crate::TriageTabCounts::default());
+
+    lib.run(lib.scan("Release")).await;
+    let found = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next())
+        .await
+        .expect("a placed candidate wakes the counts")
+        .expect("the query stays open")
+        .unwrap();
+    assert_eq!(found, crate::TriageTabCounts { pending: 1, done: 0, skipped: 0 });
+
+    lib.run(lib.skip("Release")).await;
+    let skipped = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next())
+        .await
+        .expect("a skip wakes the counts")
+        .expect("the query stays open")
+        .unwrap();
+    assert_eq!(skipped, crate::TriageTabCounts { pending: 0, done: 0, skipped: 1 });
 }

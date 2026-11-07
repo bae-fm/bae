@@ -143,6 +143,10 @@ pub enum BridgeFastValue {
     PreviewPosition { position: BridgePreviewPosition },
     /// How far through its step a running import is; keyed by candidate.
     ImportPercent { percent: u32 },
+    /// How many entries one tab of the import list holds; keyed by the
+    /// tab's name: `pending`, `done` or `skipped`. Skipped counts the skipped
+    /// rows plus the invalid folders.
+    TabCount { count: u32 },
     /// How many folders a scan under way has stored; keyed by the watched
     /// folder's path.
     ScanFoundCount { count: u64 },

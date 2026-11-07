@@ -183,3 +183,18 @@ fn a_scans_found_count_is_held_under_its_root() {
     );
     assert!(scan_found_held(bae_import::ScanFoundCounts::new()).is_empty());
 }
+
+/// Every tab's count is held under the tab's name, a tab with none too.
+#[cfg(desktop)]
+#[test]
+fn every_tabs_count_is_held_under_its_name() {
+    let held = tab_counts_held(bae_import::TriageTabCounts { pending: 5, done: 0, skipped: 2 });
+    assert_eq!(
+        held,
+        HashMap::from([
+            (b"pending".to_vec(), BridgeFastValue::TabCount { count: 5 }),
+            (b"done".to_vec(), BridgeFastValue::TabCount { count: 0 }),
+            (b"skipped".to_vec(), BridgeFastValue::TabCount { count: 2 }),
+        ])
+    );
+}

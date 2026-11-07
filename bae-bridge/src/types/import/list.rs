@@ -106,10 +106,9 @@ pub struct BridgeImportCandidateListLocation {
 /// Everything the chrome around the list shows, read with the items, so none
 /// of it can drift from them. Where the folder scans stand
 /// is [`BridgeFolderScans`], sent on its own: a scan's progress moves no row.
+/// How many entries each tab holds is a stream of its own, the tab counts.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportQueueSummary {
-    /// `skipped` counts the Skipped rows **plus** the invalid folders.
-    pub counts: BridgeTriageTabCounts,
     pub watched_folders: Vec<BridgeWatchedFolder>,
     /// Whether Found has any group, which folding every group acts on.
     pub has_groups: bool,

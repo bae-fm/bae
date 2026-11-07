@@ -207,11 +207,6 @@ struct ImportListPageSourceTests {
             },
             totalCount: totalCount,
             summary: BridgeImportQueueSummary(
-                counts: BridgeTriageTabCounts(
-                    pending: UInt32(totalCount),
-                    done: 0,
-                    skipped: 0
-                ),
                 watchedFolders: [
                     BridgeWatchedFolder(
                         path: Data("/w".utf8),
@@ -555,7 +550,7 @@ extension ImportListPageSourceTests {
         #expect(first == ["candidate:/w/a", "candidate:/w/b"])
         #expect(second == ["candidate:/w/c"])
         #expect(totals == [3, 3])
-        #expect(summaries.last?.counts.pending == 3)
+        #expect(summaries.last?.watchedFolders.count == 1)
     }
 
     @MainActor

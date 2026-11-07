@@ -447,9 +447,6 @@
             + [candidateItem(releaseQueueRows[2])]
 
         private static let releaseQueueSummary = importQueueSummary(
-            pending: 3,
-            done: 0,
-            skipped: 0,
             watchedFolders: [releaseQueueWatchedFolder],
             hasGroups: true
         )
@@ -463,10 +460,12 @@
         @MainActor
         private static func releaseQueueScene(
             items: [BridgeImportListItem],
-            summary: BridgeImportQueueSummary
+            summary: BridgeImportQueueSummary,
+            pending: UInt32
         ) -> ImportPreviewFixture {
             let store = ImportStore()
             store.applySummary(summary)
+            store.tabCounts = tabCounts(pending: pending, done: 0, skipped: 0)
             for candidate in releaseQueueCandidates {
                 store.selectedCandidates[candidate.key] = candidate
             }
@@ -480,7 +479,8 @@
         static func releaseQueueScene() -> ImportPreviewFixture {
             releaseQueueScene(
                 items: releaseQueueItems,
-                summary: releaseQueueSummary
+                summary: releaseQueueSummary,
+                pending: 3
             )
         }
 
@@ -489,12 +489,10 @@
             let scene = releaseQueueScene(
                 items: releaseQueueItems,
                 summary: importQueueSummary(
-                    pending: 3,
-                    done: 0,
-                    skipped: 0,
                     watchedFolders: [releaseQueueWatchedFolder],
                     hasGroups: true
-                )
+                ),
+                pending: 3
             )
             scene.store.applyFolderScans(
                 BridgeFolderScans(
@@ -529,11 +527,9 @@
             releaseQueueScene(
                 items: [candidateItem(releaseQueueResolvedRow)],
                 summary: importQueueSummary(
-                    pending: 1,
-                    done: 0,
-                    skipped: 0,
                     watchedFolders: [releaseQueueWatchedFolder]
-                )
+                ),
+                pending: 1
             )
         }
 
@@ -545,9 +541,6 @@
             let base = scene.store.summary
             scene.store.applySummary(
                 importQueueSummary(
-                    pending: base.counts.pending,
-                    done: base.counts.done,
-                    skipped: base.counts.skipped,
                     watchedFolders: base.watchedFolders
                         + [releaseQueueWatchedFolder],
                     hasGroups: base.hasGroups
@@ -556,7 +549,8 @@
             // Counted off the scene's rows, with the one still identifying
             // yet to land.
             let queue =
-                base.counts.pending + base.counts.done + base.counts.skipped
+                importTabCounts.pending + importTabCounts.done
+                + importTabCounts.skipped
             scene.store.identificationProgress = (
                 identified: queue - 1, total: queue
             )

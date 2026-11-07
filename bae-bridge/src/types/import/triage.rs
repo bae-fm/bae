@@ -724,11 +724,3 @@ pub struct BridgeTriageGroup {
     /// releases, which the header offers to read as one.
     pub combinable: bool,
 }
-
-/// How many rows each tab holds, unfiltered.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeTriageTabCounts {
-    pub pending: u32,
-    pub done: u32,
-    pub skipped: u32,
-}

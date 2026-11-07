@@ -98,6 +98,13 @@ impl AppHandle {
         crate::screens::import_percents(self.runtime.clone(), self.run_feed())
     }
 
+    /// Write how many entries each tab of the import list holds into a
+    /// stream by tab name. A failed read empties the stream and is pulled as
+    /// an error; the next read fills it again.
+    pub fn feed_tab_counts(&self) -> Arc<KeyedValueStream> {
+        crate::screens::tab_counts(self.runtime.clone(), self.run_feed())
+    }
+
     /// Write how many folders each scan under way has stored into a stream
     /// by watched folder path. A failed read empties the stream and is
     /// pulled as an error; the next read fills it again.
