@@ -4884,8 +4884,9 @@ files' extension, and whether its codec can write one file with a CUE sheet
 (not AAC or Opus), come from core too.
 
 Platform settings, such as the appearance and restoring playback on launch,
-live in each app. The apps start in the system's light or dark mode with the
-Pink accent and the Plum background tone.
+live in each app. Appearance reads Theme (System, Light, Dark), then Tone, then
+Accent, so named in every locale. The apps start with the System theme, the Plum
+tone and the Pink accent.
 
 ---
 

@@ -182,12 +182,12 @@
     <string name="settings_cast_transcode_wav">WAV (verlustfrei)</string>
     <string name="settings_cast_transcode_help">Titel, die ein Cast- oder UPnP-Gerät nicht direkt abspielen kann, etwa Titel aus einer Einzeldatei + CUE, werden während der Wiedergabe umgewandelt. WAV ist verlustfrei, braucht aber ein Vielfaches der Datenmenge von MP3. UPnP-Geräte erhalten immer MP3, da sie WAV nicht abspielen können müssen.</string>
     <string name="appearance_title">Erscheinungsbild</string>
-    <string name="appearance_mode">Modus</string>
+    <string name="appearance_theme">Design</string>
     <string name="appearance_system">System</string>
     <string name="appearance_light">Hell</string>
     <string name="appearance_dark">Dunkel</string>
-    <string name="appearance_accent">Akzentfarbe</string>
-    <string name="appearance_tone">Hintergrundton</string>
+    <string name="appearance_accent">Akzent</string>
+    <string name="appearance_tone">Ton</string>
     <string name="appearance_neutral">Neutral</string>
     <string name="appearance_slate">Schiefer</string>
     <string name="appearance_plum">Pflaume</string>

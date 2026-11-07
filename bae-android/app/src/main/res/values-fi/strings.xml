@@ -181,12 +181,12 @@
     <string name="settings_cast_transcode_wav">WAV (häviötön)</string>
     <string name="settings_cast_transcode_help">Raidat, joita Cast- tai UPnP-laite ei voi toistaa suoraan, kuten raidat yhdestä tiedostosta + CUE, muunnetaan toiston aikana. WAV on häviötön, mutta vie moninkertaisesti dataa MP3:een verrattuna. UPnP-laitteet saavat aina MP3:n, koska niiden ei tarvitse toistaa WAV:ia.</string>
     <string name="appearance_title">Ulkoasu</string>
-    <string name="appearance_mode">Tila</string>
+    <string name="appearance_theme">Teema</string>
     <string name="appearance_system">Järjestelmä</string>
     <string name="appearance_light">Vaalea</string>
     <string name="appearance_dark">Tumma</string>
-    <string name="appearance_accent">Korostusväri</string>
-    <string name="appearance_tone">Taustan sävy</string>
+    <string name="appearance_accent">Korostus</string>
+    <string name="appearance_tone">Sävy</string>
     <string name="appearance_neutral">Neutraali</string>
     <string name="appearance_slate">Liuskekivi</string>
     <string name="appearance_plum">Luumu</string>

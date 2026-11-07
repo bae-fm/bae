@@ -181,12 +181,12 @@
     <string name="settings_cast_transcode_wav">WAV (tapsfri)</string>
     <string name="settings_cast_transcode_help">Spor som en Cast- eller UPnP-enhet ikke kan spille av direkte, for eksempel spor fra én fil + CUE, konverteres mens de spilles. WAV er tapsfritt, men tar flere ganger så mye data som MP3. UPnP-enheter får alltid MP3, siden de ikke er pålagt å spille av WAV.</string>
     <string name="appearance_title">Utseende</string>
-    <string name="appearance_mode">Modus</string>
+    <string name="appearance_theme">Tema</string>
     <string name="appearance_system">System</string>
     <string name="appearance_light">Lys</string>
     <string name="appearance_dark">Mørk</string>
-    <string name="appearance_accent">Aksentfarge</string>
-    <string name="appearance_tone">Bakgrunnstone</string>
+    <string name="appearance_accent">Aksent</string>
+    <string name="appearance_tone">Tone</string>
     <string name="appearance_neutral">Nøytral</string>
     <string name="appearance_slate">Skifer</string>
     <string name="appearance_plum">Plomme</string>

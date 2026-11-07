@@ -188,12 +188,12 @@
     <string name="settings_cast_transcode_wav">WAV (bezstratny)</string>
     <string name="settings_cast_transcode_help">Utwory, których urządzenie Cast lub UPnP nie może odtworzyć bezpośrednio, np. utwory z jednego pliku + CUE, są konwertowane podczas odtwarzania. WAV jest bezstratny, ale zajmuje kilka razy więcej danych niż MP3. Urządzenia UPnP zawsze dostają MP3, bo nie muszą odtwarzać WAV.</string>
     <string name="appearance_title">Wygląd</string>
-    <string name="appearance_mode">Tryb</string>
+    <string name="appearance_theme">Motyw</string>
     <string name="appearance_system">Systemowy</string>
     <string name="appearance_light">Jasny</string>
     <string name="appearance_dark">Ciemny</string>
-    <string name="appearance_accent">Kolor akcentu</string>
-    <string name="appearance_tone">Odcień tła</string>
+    <string name="appearance_accent">Akcent</string>
+    <string name="appearance_tone">Odcień</string>
     <string name="appearance_neutral">Neutralny</string>
     <string name="appearance_slate">Łupkowy</string>
     <string name="appearance_plum">Śliwkowy</string>

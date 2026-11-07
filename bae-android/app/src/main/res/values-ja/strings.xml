@@ -179,12 +179,12 @@
     <string name="settings_cast_transcode_wav">WAV（ロスレス）</string>
     <string name="settings_cast_transcode_help">Cast または UPnP デバイスが直接再生できないトラック（単一ファイル + CUE のトラックなど）は、再生中に変換されます。WAV はロスレスですが、MP3 の数倍のデータ量になります。UPnP デバイスは WAV の再生に対応している必要がないため、常に MP3 を受け取ります。</string>
     <string name="appearance_title">外観</string>
-    <string name="appearance_mode">モード</string>
+    <string name="appearance_theme">テーマ</string>
     <string name="appearance_system">システム</string>
     <string name="appearance_light">ライト</string>
     <string name="appearance_dark">ダーク</string>
-    <string name="appearance_accent">アクセントカラー</string>
-    <string name="appearance_tone">背景の色調</string>
+    <string name="appearance_accent">アクセント</string>
+    <string name="appearance_tone">色調</string>
     <string name="appearance_neutral">ニュートラル</string>
     <string name="appearance_slate">スレート</string>
     <string name="appearance_plum">プラム</string>

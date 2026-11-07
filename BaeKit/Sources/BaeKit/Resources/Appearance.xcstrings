@@ -1,174 +1,174 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "Mode": {
+    "Theme": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mode"
+            "value": "Theme"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الوضع"
+            "value": "السمة"
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "Режим"
+            "value": "Тема"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Režim"
+            "value": "Motiv"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tilstand"
+            "value": "Tema"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modus"
+            "value": "Design"
           }
         },
         "el": {
           "stringUnit": {
             "state": "translated",
-            "value": "Λειτουργία"
+            "value": "Θέμα"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modo"
+            "value": "Tema"
           }
         },
         "fi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tila"
+            "value": "Teema"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mode"
+            "value": "Thème"
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "מצב"
+            "value": "ערכת נושא"
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Način"
+            "value": "Tema"
           }
         },
         "hu": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mód"
+            "value": "Téma"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modalità"
+            "value": "Tema"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "モード"
+            "value": "テーマ"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "모드"
+            "value": "테마"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modus"
+            "value": "Tema"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modus"
+            "value": "Thema"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tryb"
+            "value": "Motyw"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modo"
+            "value": "Tema"
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modo"
+            "value": "Tema"
           }
         },
         "ro": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mod"
+            "value": "Temă"
           }
         },
         "sk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Režim"
+            "value": "Motív"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Läge"
+            "value": "Tema"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mod"
+            "value": "Tema"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Режим"
+            "value": "Тема"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "模式"
+            "value": "主题"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "模式"
+            "value": "主題"
           }
         }
       }
@@ -689,346 +689,346 @@
         }
       }
     },
-    "Accent color": {
+    "Accent": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accent color"
+            "value": "Accent"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لون التمييز"
+            "value": "التمييز"
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "Акцентен цвят"
+            "value": "Акцент"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Barva zvýraznění"
+            "value": "Zvýraznění"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fremhævningsfarve"
+            "value": "Fremhævning"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Akzentfarbe"
+            "value": "Akzent"
           }
         },
         "el": {
           "stringUnit": {
             "state": "translated",
-            "value": "Χρώμα τονισμού"
+            "value": "Τονισμός"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Color de acento"
+            "value": "Acento"
           }
         },
         "fi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Korostusväri"
+            "value": "Korostus"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couleur d’accentuation"
+            "value": "Accentuation"
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "צבע הדגשה"
+            "value": "הדגשה"
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Boja naglaska"
+            "value": "Naglasak"
           }
         },
         "hu": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kiemelőszín"
+            "value": "Kiemelés"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Colore di risalto"
+            "value": "Risalto"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アクセントカラー"
+            "value": "アクセント"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "강조 색상"
+            "value": "강조"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aksentfarge"
+            "value": "Aksent"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accentkleur"
+            "value": "Accent"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kolor akcentu"
+            "value": "Akcent"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cor de destaque"
+            "value": "Destaque"
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cor de destaque"
+            "value": "Destaque"
           }
         },
         "ro": {
           "stringUnit": {
             "state": "translated",
-            "value": "Culoare de accent"
+            "value": "Accent"
           }
         },
         "sk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zvýrazňovacia farba"
+            "value": "Zvýraznenie"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accentfärg"
+            "value": "Accent"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vurgu rengi"
+            "value": "Vurgu"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Акцентний колір"
+            "value": "Акцент"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "强调色"
+            "value": "强调"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "強調色"
+            "value": "強調"
           }
         }
       }
     },
-    "Background tone": {
+    "Tone": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background tone"
+            "value": "Tone"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "درجة لون الخلفية"
+            "value": "درجة اللون"
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тон на фона"
+            "value": "Тон"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Odstín pozadí"
+            "value": "Odstín"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Baggrundstone"
+            "value": "Tone"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hintergrundton"
+            "value": "Ton"
           }
         },
         "el": {
           "stringUnit": {
             "state": "translated",
-            "value": "Απόχρωση φόντου"
+            "value": "Απόχρωση"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tono del fondo"
+            "value": "Tono"
           }
         },
         "fi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Taustan sävy"
+            "value": "Sävy"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Teinte du fond"
+            "value": "Teinte"
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "גוון הרקע"
+            "value": "גוון"
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ton pozadine"
+            "value": "Ton"
           }
         },
         "hu": {
           "stringUnit": {
             "state": "translated",
-            "value": "Háttérárnyalat"
+            "value": "Árnyalat"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tonalità dello sfondo"
+            "value": "Tonalità"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景の色調"
+            "value": "色調"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "배경 색조"
+            "value": "색조"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bakgrunnstone"
+            "value": "Tone"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Achtergrondtint"
+            "value": "Tint"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Odcień tła"
+            "value": "Odcień"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tom do fundo"
+            "value": "Tom"
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tom de fundo"
+            "value": "Tom"
           }
         },
         "ro": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nuanța fundalului"
+            "value": "Nuanță"
           }
         },
         "sk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Odtieň pozadia"
+            "value": "Odtieň"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bakgrundston"
+            "value": "Ton"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arka plan tonu"
+            "value": "Ton"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тон тла"
+            "value": "Тон"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景色调"
+            "value": "色调"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景色調"
+            "value": "色調"
           }
         }
       }

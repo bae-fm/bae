@@ -79,14 +79,12 @@ internal fun AppearanceSection() {
     ) {
         Eyebrow(text = stringResource(R.string.appearance_title))
         AppearancePicker(
-            title = stringResource(R.string.appearance_mode),
+            title = stringResource(R.string.appearance_theme),
             selected = preferences.mode,
             choices = AppearanceMode.entries,
             label = { it.label },
             onSelect = { save { store.setMode(it) } },
         )
-        Text(stringResource(R.string.appearance_accent), style = ThemeText.body.style)
-        AccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
         AppearancePicker(
             title = stringResource(R.string.appearance_tone),
             selected = preferences.tone,
@@ -94,6 +92,8 @@ internal fun AppearanceSection() {
             label = { it.label },
             onSelect = { save { store.setTone(it) } },
         )
+        Text(stringResource(R.string.appearance_accent), style = ThemeText.body.style)
+        AccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
         error?.let { ErrorDetailDisclosure(it) }
     }
 }

@@ -181,12 +181,12 @@
     <string name="settings_cast_transcode_wav">WAV (sem perdas)</string>
     <string name="settings_cast_transcode_help">As faixas que um dispositivo Cast ou UPnP não consegue reproduzir diretamente, como as de um ficheiro único + CUE, são convertidas durante a reprodução. O WAV é sem perdas, mas ocupa várias vezes os dados de um MP3. Os dispositivos UPnP recebem sempre MP3, pois não são obrigados a reproduzir WAV.</string>
     <string name="appearance_title">Aspeto</string>
-    <string name="appearance_mode">Modo</string>
+    <string name="appearance_theme">Tema</string>
     <string name="appearance_system">Sistema</string>
     <string name="appearance_light">Claro</string>
     <string name="appearance_dark">Escuro</string>
-    <string name="appearance_accent">Cor de destaque</string>
-    <string name="appearance_tone">Tom de fundo</string>
+    <string name="appearance_accent">Destaque</string>
+    <string name="appearance_tone">Tom</string>
     <string name="appearance_neutral">Neutro</string>
     <string name="appearance_slate">Ardósia</string>
     <string name="appearance_plum">Ameixa</string>

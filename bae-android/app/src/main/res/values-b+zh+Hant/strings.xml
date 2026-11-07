@@ -179,12 +179,12 @@
     <string name="settings_cast_transcode_wav">WAV（無損）</string>
     <string name="settings_cast_transcode_help">Cast 或 UPnP 裝置無法直接播放的曲目（例如單一檔案 + CUE 中的曲目）會在播放時轉換。WAV 無損，但資料量是 MP3 的數倍。UPnP 裝置不一定支援 WAV，因此一律接收 MP3。</string>
     <string name="appearance_title">外觀</string>
-    <string name="appearance_mode">模式</string>
+    <string name="appearance_theme">主題</string>
     <string name="appearance_system">跟隨系統</string>
     <string name="appearance_light">淺色</string>
     <string name="appearance_dark">深色</string>
-    <string name="appearance_accent">強調色</string>
-    <string name="appearance_tone">背景色調</string>
+    <string name="appearance_accent">強調</string>
+    <string name="appearance_tone">色調</string>
     <string name="appearance_neutral">中性</string>
     <string name="appearance_slate">石板灰</string>
     <string name="appearance_plum">梅紫</string>

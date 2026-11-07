@@ -231,12 +231,12 @@
     <string name="settings_cast_transcode_wav">WAV (lossless)</string>
     <string name="settings_cast_transcode_help">Tracks a Cast or UPnP device can\'t play directly, such as tracks from a single file + CUE, are converted while they play. WAV is lossless but takes several times the data of MP3. UPnP devices always get MP3, since they aren\'t required to play WAV.</string>
     <string name="appearance_title">Appearance</string>
-    <string name="appearance_mode">Mode</string>
+    <string name="appearance_theme">Theme</string>
     <string name="appearance_system">System</string>
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>
-    <string name="appearance_accent">Accent color</string>
-    <string name="appearance_tone">Background tone</string>
+    <string name="appearance_accent">Accent</string>
+    <string name="appearance_tone">Tone</string>
     <string name="appearance_neutral">Neutral</string>
     <string name="appearance_slate">Slate</string>
     <string name="appearance_plum">Plum</string>

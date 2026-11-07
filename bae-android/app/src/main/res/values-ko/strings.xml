@@ -179,12 +179,12 @@
     <string name="settings_cast_transcode_wav">WAV(무손실)</string>
     <string name="settings_cast_transcode_help">Cast 또는 UPnP 기기가 직접 재생할 수 없는 트랙(예: 단일 파일 + CUE의 트랙)은 재생 중에 변환됩니다. WAV는 무손실이지만 MP3보다 몇 배 많은 데이터를 사용합니다. UPnP 기기는 WAV 재생이 필수가 아니므로 항상 MP3를 받습니다.</string>
     <string name="appearance_title">화면 모양</string>
-    <string name="appearance_mode">모드</string>
+    <string name="appearance_theme">테마</string>
     <string name="appearance_system">시스템</string>
     <string name="appearance_light">라이트</string>
     <string name="appearance_dark">다크</string>
-    <string name="appearance_accent">강조 색상</string>
-    <string name="appearance_tone">배경 색조</string>
+    <string name="appearance_accent">강조</string>
+    <string name="appearance_tone">색조</string>
     <string name="appearance_neutral">중립</string>
     <string name="appearance_slate">슬레이트</string>
     <string name="appearance_plum">자두색</string>

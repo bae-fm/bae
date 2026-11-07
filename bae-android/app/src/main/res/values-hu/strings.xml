@@ -181,12 +181,12 @@
     <string name="settings_cast_transcode_wav">WAV (veszteségmentes)</string>
     <string name="settings_cast_transcode_help">Azokat a számokat, amelyeket egy Cast- vagy UPnP-eszköz nem tud közvetlenül lejátszani – például egy fájl + CUE számait –, a bae lejátszás közben átalakítja. A WAV veszteségmentes, de az MP3 adatmennyiségének többszörösét foglalja. Az UPnP-eszközök mindig MP3-at kapnak, mert nem kötelesek lejátszani a WAV-ot.</string>
     <string name="appearance_title">Megjelenés</string>
-    <string name="appearance_mode">Mód</string>
+    <string name="appearance_theme">Téma</string>
     <string name="appearance_system">Rendszer</string>
     <string name="appearance_light">Világos</string>
     <string name="appearance_dark">Sötét</string>
-    <string name="appearance_accent">Kiemelőszín</string>
-    <string name="appearance_tone">Háttérárnyalat</string>
+    <string name="appearance_accent">Kiemelés</string>
+    <string name="appearance_tone">Árnyalat</string>
     <string name="appearance_neutral">Semleges</string>
     <string name="appearance_slate">Palaszürke</string>
     <string name="appearance_plum">Szilva</string>

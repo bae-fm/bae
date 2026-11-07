@@ -185,12 +185,12 @@
     <string name="settings_cast_transcode_wav">WAV (bez gubitaka)</string>
     <string name="settings_cast_transcode_help">Pjesme koje uređaj Cast ili UPnP ne može reproducirati izravno, poput pjesama iz jedne datoteke + CUE, pretvaraju se tijekom reprodukcije. WAV je bez gubitaka, ali zauzima višestruko više podataka od MP3-a. UPnP uređaji uvijek dobivaju MP3 jer ne moraju reproducirati WAV.</string>
     <string name="appearance_title">Izgled</string>
-    <string name="appearance_mode">Način</string>
+    <string name="appearance_theme">Tema</string>
     <string name="appearance_system">Sustav</string>
     <string name="appearance_light">Svijetli</string>
     <string name="appearance_dark">Tamni</string>
-    <string name="appearance_accent">Boja naglaska</string>
-    <string name="appearance_tone">Ton pozadine</string>
+    <string name="appearance_accent">Naglasak</string>
+    <string name="appearance_tone">Ton</string>
     <string name="appearance_neutral">Neutralni</string>
     <string name="appearance_slate">Škriljevac</string>
     <string name="appearance_plum">Šljiva</string>

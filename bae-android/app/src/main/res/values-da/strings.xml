@@ -181,12 +181,12 @@
     <string name="settings_cast_transcode_wav">WAV (tabsfri)</string>
     <string name="settings_cast_transcode_help">Spor, som en Cast- eller UPnP-enhed ikke kan afspille direkte, f.eks. spor fra én fil + CUE, konverteres, mens de afspilles. WAV er tabsfrit, men fylder flere gange så meget som MP3. UPnP-enheder får altid MP3, da de ikke er forpligtet til at afspille WAV.</string>
     <string name="appearance_title">Udseende</string>
-    <string name="appearance_mode">Tilstand</string>
+    <string name="appearance_theme">Tema</string>
     <string name="appearance_system">System</string>
     <string name="appearance_light">Lys</string>
     <string name="appearance_dark">Mørk</string>
-    <string name="appearance_accent">Fremhævningsfarve</string>
-    <string name="appearance_tone">Baggrundstone</string>
+    <string name="appearance_accent">Fremhævning</string>
+    <string name="appearance_tone">Tone</string>
     <string name="appearance_neutral">Neutral</string>
     <string name="appearance_slate">Skifer</string>
     <string name="appearance_plum">Blomme</string>

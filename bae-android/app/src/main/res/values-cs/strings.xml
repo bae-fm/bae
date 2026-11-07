@@ -188,12 +188,12 @@
     <string name="settings_cast_transcode_wav">WAV (bezeztrátový)</string>
     <string name="settings_cast_transcode_help">Skladby, které zařízení Cast nebo UPnP nedokáže přehrát přímo, například skladby z jednoho souboru + CUE, se převádějí během přehrávání. WAV je bezeztrátový, ale zabírá několikanásobek dat oproti MP3. Zařízení UPnP vždy dostanou MP3, protože WAV přehrávat nemusejí.</string>
     <string name="appearance_title">Vzhled</string>
-    <string name="appearance_mode">Režim</string>
+    <string name="appearance_theme">Motiv</string>
     <string name="appearance_system">Podle systému</string>
     <string name="appearance_light">Světlý</string>
     <string name="appearance_dark">Tmavý</string>
-    <string name="appearance_accent">Barva zvýraznění</string>
-    <string name="appearance_tone">Odstín pozadí</string>
+    <string name="appearance_accent">Zvýraznění</string>
+    <string name="appearance_tone">Odstín</string>
     <string name="appearance_neutral">Neutrální</string>
     <string name="appearance_slate">Břidlicový</string>
     <string name="appearance_plum">Švestkový</string>

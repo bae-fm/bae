@@ -184,12 +184,12 @@
     <string name="settings_cast_transcode_wav">WAV (fără pierderi)</string>
     <string name="settings_cast_transcode_help">Piesele pe care un dispozitiv Cast sau UPnP nu le poate reda direct, cum ar fi piesele dintr-un singur fișier + CUE, sunt convertite în timpul redării. WAV este fără pierderi, dar ocupă de câteva ori mai multe date decât MP3. Dispozitivele UPnP primesc mereu MP3, deoarece nu sunt obligate să redea WAV.</string>
     <string name="appearance_title">Aspect</string>
-    <string name="appearance_mode">Mod</string>
+    <string name="appearance_theme">Temă</string>
     <string name="appearance_system">Sistem</string>
     <string name="appearance_light">Luminos</string>
     <string name="appearance_dark">Întunecat</string>
-    <string name="appearance_accent">Culoare de accent</string>
-    <string name="appearance_tone">Nuanța fundalului</string>
+    <string name="appearance_accent">Accent</string>
+    <string name="appearance_tone">Nuanță</string>
     <string name="appearance_neutral">Neutru</string>
     <string name="appearance_slate">Ardezie</string>
     <string name="appearance_plum">Prună</string>

@@ -181,12 +181,12 @@
     <string name="settings_cast_transcode_wav">WAV (förlustfri)</string>
     <string name="settings_cast_transcode_help">Spår som en Cast- eller UPnP-enhet inte kan spela direkt, till exempel spår från en fil + CUE, konverteras medan de spelas. WAV är förlustfritt men tar flera gånger så mycket data som MP3. UPnP-enheter får alltid MP3, eftersom de inte måste kunna spela WAV.</string>
     <string name="appearance_title">Utseende</string>
-    <string name="appearance_mode">Läge</string>
+    <string name="appearance_theme">Tema</string>
     <string name="appearance_system">System</string>
     <string name="appearance_light">Ljust</string>
     <string name="appearance_dark">Mörkt</string>
-    <string name="appearance_accent">Accentfärg</string>
-    <string name="appearance_tone">Bakgrundston</string>
+    <string name="appearance_accent">Accent</string>
+    <string name="appearance_tone">Ton</string>
     <string name="appearance_neutral">Neutral</string>
     <string name="appearance_slate">Skiffer</string>
     <string name="appearance_plum">Plommon</string>

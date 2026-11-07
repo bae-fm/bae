@@ -12,13 +12,21 @@ public struct AppearanceControls: View {
                 Text(mode.title).tag(mode)
             }
         } label: {
-            Text("Mode", tableName: "Appearance", bundle: .module)
+            Text("Theme", tableName: "Appearance", bundle: .module)
         }
         .pickerStyle(.segmented)
         .tint(preferences.accent.buttonColor)
 
+        Picker(selection: preferences.$tone) {
+            ForEach(SurfaceTone.allCases, id: \.self) { tone in
+                Text(tone.title).tag(tone)
+            }
+        } label: {
+            Text("Tone", tableName: "Appearance", bundle: .module)
+        }
+
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            Text("Accent color", tableName: "Appearance", bundle: .module)
+            Text("Accent", tableName: "Appearance", bundle: .module)
             HStack(spacing: 0) {
                 ForEach(AccentChoice.allCases, id: \.self) { accent in
                     Button {
@@ -49,14 +57,6 @@ public struct AppearanceControls: View {
                     .help(accent.title)
                 }
             }
-        }
-
-        Picker(selection: preferences.$tone) {
-            ForEach(SurfaceTone.allCases, id: \.self) { tone in
-                Text(tone.title).tag(tone)
-            }
-        } label: {
-            Text("Background tone", tableName: "Appearance", bundle: .module)
         }
     }
 }

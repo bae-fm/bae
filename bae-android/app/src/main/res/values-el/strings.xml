@@ -181,12 +181,12 @@
     <string name="settings_cast_transcode_wav">WAV (χωρίς απώλειες)</string>
     <string name="settings_cast_transcode_help">Τα κομμάτια που μια συσκευή Cast ή UPnP δεν μπορεί να αναπαραγάγει απευθείας, όπως κομμάτια από ένα αρχείο + CUE, μετατρέπονται κατά την αναπαραγωγή. Το WAV είναι χωρίς απώλειες, αλλά καταλαμβάνει πολλαπλάσια δεδομένα από το MP3. Οι συσκευές UPnP λαμβάνουν πάντα MP3, καθώς δεν υποχρεούνται να αναπαράγουν WAV.</string>
     <string name="appearance_title">Εμφάνιση</string>
-    <string name="appearance_mode">Λειτουργία</string>
+    <string name="appearance_theme">Θέμα</string>
     <string name="appearance_system">Σύστημα</string>
     <string name="appearance_light">Φωτεινή</string>
     <string name="appearance_dark">Σκοτεινή</string>
-    <string name="appearance_accent">Χρώμα τονισμού</string>
-    <string name="appearance_tone">Απόχρωση φόντου</string>
+    <string name="appearance_accent">Τονισμός</string>
+    <string name="appearance_tone">Απόχρωση</string>
     <string name="appearance_neutral">Ουδέτερο</string>
     <string name="appearance_slate">Σχιστόλιθος</string>
     <string name="appearance_plum">Δαμάσκηνο</string>
