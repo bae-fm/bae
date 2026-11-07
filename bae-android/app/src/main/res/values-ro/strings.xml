@@ -340,6 +340,8 @@
     <string name="device_cut_off_not_yet">Încă nu</string>
     <string name="device_cut_off_running_title">O cerere către spațiul tău de stocare încă rulează</string>
     <string name="device_cut_off_running_body">Așteaptă să se termine, apoi încearcă din nou.</string>
+    <string name="device_cut_off_not_gone_title">Eliminarea nu a ajuns încă pe acest dispozitiv</string>
+    <string name="device_cut_off_not_gone_body">Încearcă din nou după următoarea sincronizare.</string>
     <string name="members_invite">Invită o persoană</string>
     <string name="invite_name">Nume</string>
     <string name="invite_lifetime_hour">1 oră</string>

@@ -327,6 +327,8 @@
     <string name="device_cut_off_not_yet">まだ</string>
     <string name="device_cut_off_running_title">ストレージへのリクエストがまだ実行中です</string>
     <string name="device_cut_off_running_body">終了するまで待ってから、もう一度お試しください。</string>
+    <string name="device_cut_off_not_gone_title">削除はまだこのデバイスに届いていません</string>
+    <string name="device_cut_off_not_gone_body">次の同期のあとでもう一度お試しください。</string>
     <string name="members_invite">メンバーを招待</string>
     <string name="invite_name">名前</string>
     <string name="invite_lifetime_hour">1時間</string>

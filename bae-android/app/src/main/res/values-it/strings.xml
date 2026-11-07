@@ -339,6 +339,8 @@
     <string name="device_cut_off_not_yet">Non ancora</string>
     <string name="device_cut_off_running_title">Una richiesta al tuo spazio di archiviazione è ancora in corso</string>
     <string name="device_cut_off_running_body">Attendi che finisca, poi riprova.</string>
+    <string name="device_cut_off_not_gone_title">La rimozione non è ancora arrivata su questo dispositivo</string>
+    <string name="device_cut_off_not_gone_body">Riprova dopo la prossima sincronizzazione.</string>
     <string name="members_invite">Invita una persona</string>
     <string name="invite_name">Nome</string>
     <string name="invite_lifetime_hour">1 ora</string>

@@ -333,6 +333,8 @@
     <string name="device_cut_off_not_yet">Még nem</string>
     <string name="device_cut_off_running_title">A tárhelyedre irányuló egyik kérés még fut</string>
     <string name="device_cut_off_running_body">Várd meg, amíg befejeződik, aztán próbáld újra.</string>
+    <string name="device_cut_off_not_gone_title">Az eltávolítás még nem érkezett meg erre az eszközre</string>
+    <string name="device_cut_off_not_gone_body">Próbáld újra a következő szinkronizálás után.</string>
     <string name="members_invite">Személy meghívása</string>
     <string name="invite_name">Név</string>
     <string name="invite_lifetime_hour">1 óra</string>

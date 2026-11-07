@@ -348,6 +348,8 @@
     <string name="device_cut_off_not_yet">Jeszcze nie</string>
     <string name="device_cut_off_running_title">Żądanie do Twojego magazynu wciąż trwa</string>
     <string name="device_cut_off_running_body">Poczekaj, aż się zakończy, i spróbuj ponownie.</string>
+    <string name="device_cut_off_not_gone_title">Usunięcie nie dotarło jeszcze na to urządzenie</string>
+    <string name="device_cut_off_not_gone_body">Spróbuj ponownie po następnej synchronizacji.</string>
     <string name="members_invite">Zaproś osobę</string>
     <string name="invite_name">Imię</string>
     <string name="invite_lifetime_hour">1 godzina</string>

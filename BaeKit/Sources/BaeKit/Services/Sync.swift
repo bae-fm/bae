@@ -28,6 +28,9 @@ public final class Sync: Sendable, Observable {
     /// it sent can land any more.
     public let confirmDeviceCutOff:
         @Sendable (UInt64) async throws -> BridgeDeviceCutOff
+    /// Whether this device's person's account holds the library's storage:
+    /// only then can they confirm a device cut off.
+    public let holdsStore: @Sendable () async throws -> Bool
     public let setMemberRole:
         @Sendable (String, BridgeMemberRole) async throws -> Void
     /// Dismiss a finished admin change by its operation.
@@ -96,6 +99,9 @@ public final class Sync: Sendable, Observable {
         confirmDeviceCutOff:
             @escaping @Sendable (UInt64) async throws -> BridgeDeviceCutOff =
             { _ in throw StubError.notImplemented },
+        holdsStore: @escaping @Sendable () async throws -> Bool = {
+            throw StubError.notImplemented
+        },
         setMemberRole:
             @escaping @Sendable (String, BridgeMemberRole) async throws -> Void =
             { _, _ in throw StubError.notImplemented },
@@ -166,6 +172,7 @@ public final class Sync: Sendable, Observable {
         self.removeMember = removeMember
         self.removeDevice = removeDevice
         self.confirmDeviceCutOff = confirmDeviceCutOff
+        self.holdsStore = holdsStore
         self.setMemberRole = setMemberRole
         self.acknowledgeAdminChange = acknowledgeAdminChange
         self.invitePerson = invitePerson
@@ -187,8 +194,9 @@ public final class Sync: Sendable, Observable {
     }
 
     /// The production wiring over the open library's handle; a storage
-    /// setup's steps are pulled on `host`'s runtime.
-    public convenience init(
+    /// setup's steps are pulled on `host`'s runtime. It has one closure for
+    /// each of the handle's calls, so it grows with them.
+    public convenience init(  // swiftlint:disable:this function_body_length
         handle: any AppHandleProtocol,
         deviceName: String,
         host: BridgeHost
@@ -213,6 +221,7 @@ public final class Sync: Sendable, Observable {
             confirmDeviceCutOff: {
                 try await handle.confirmDeviceCutOff(device: $0)
             },
+            holdsStore: { try await handle.holdsStore() },
             setMemberRole: {
                 try await handle.setMemberRole(member: $0, role: $1)
             },

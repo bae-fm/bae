@@ -158,12 +158,16 @@ pub enum BridgeDeviceCutOff {
     /// A provider request to one of the accounts runs; nothing changed, and
     /// confirming again works once it ends.
     ProviderRequestRunning,
+    /// The device's removal hasn't reached this device yet, or it was never
+    /// removed; nothing changed, and after the next sync it may work.
+    DeviceNotGone,
 }
 impl BridgeDeviceCutOff {
     pub(crate) fn from_core(value: bae_library::DeviceCutOff) -> Self {
         match value {
             bae_library::DeviceCutOff::Confirmed => Self::Confirmed,
             bae_library::DeviceCutOff::ProviderRequestRunning => Self::ProviderRequestRunning,
+            bae_library::DeviceCutOff::DeviceNotGone => Self::DeviceNotGone,
         }
     }
 }

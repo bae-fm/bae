@@ -339,6 +339,8 @@
     <string name="device_cut_off_not_yet">Ainda não</string>
     <string name="device_cut_off_running_title">Uma solicitação ao seu armazenamento ainda está em andamento</string>
     <string name="device_cut_off_running_body">Aguarde o término e tente novamente.</string>
+    <string name="device_cut_off_not_gone_title">A remoção ainda não chegou a este dispositivo</string>
+    <string name="device_cut_off_not_gone_body">Tente novamente após a próxima sincronização.</string>
     <string name="members_invite">Convidar uma pessoa</string>
     <string name="invite_name">Nome</string>
     <string name="invite_lifetime_hour">1 hora</string>

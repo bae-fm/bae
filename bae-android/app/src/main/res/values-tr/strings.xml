@@ -334,6 +334,8 @@
     <string name="device_cut_off_not_yet">Henüz değil</string>
     <string name="device_cut_off_running_title">Depolamanıza yönelik bir istek hâlâ çalışıyor</string>
     <string name="device_cut_off_running_body">Bitmesini bekleyin, sonra tekrar deneyin.</string>
+    <string name="device_cut_off_not_gone_title">Kaldırma işlemi henüz bu cihaza ulaşmadı</string>
+    <string name="device_cut_off_not_gone_body">Bir sonraki senkronizasyondan sonra tekrar deneyin.</string>
     <string name="members_invite">Bir kişiyi davet et</string>
     <string name="invite_name">Ad</string>
     <string name="invite_lifetime_hour">1 saat</string>

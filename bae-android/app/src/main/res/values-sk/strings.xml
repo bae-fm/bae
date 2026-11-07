@@ -347,6 +347,8 @@
     <string name="device_cut_off_not_yet">Ešte nie</string>
     <string name="device_cut_off_running_title">Požiadavka na vaše úložisko stále beží</string>
     <string name="device_cut_off_running_body">Počkajte, kým skončí, a skúste to znova.</string>
+    <string name="device_cut_off_not_gone_title">Odstránenie ešte nedorazilo na toto zariadenie</string>
+    <string name="device_cut_off_not_gone_body">Skúste to znova po ďalšej synchronizácii.</string>
     <string name="members_invite">Pozvať osobu</string>
     <string name="invite_name">Meno</string>
     <string name="invite_lifetime_hour">1 hodina</string>

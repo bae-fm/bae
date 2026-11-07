@@ -339,6 +339,8 @@
     <string name="device_cut_off_not_yet">Pas encore</string>
     <string name="device_cut_off_running_title">Une requête vers votre stockage est toujours en cours</string>
     <string name="device_cut_off_running_body">Attendez qu’elle se termine, puis réessayez.</string>
+    <string name="device_cut_off_not_gone_title">La suppression n’est pas encore arrivée sur cet appareil</string>
+    <string name="device_cut_off_not_gone_body">Réessayez après la prochaine synchronisation.</string>
     <string name="members_invite">Inviter une personne</string>
     <string name="invite_name">Nom</string>
     <string name="invite_lifetime_hour">1 heure</string>

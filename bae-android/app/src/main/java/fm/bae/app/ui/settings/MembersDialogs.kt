@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -21,13 +22,17 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.LabeledValueRow
+import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeDeviceCutOff
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeProviderSignOut
 import uniffi.bae_bridge.bridgeProviderSignOutKey
+
+private val logger = BaeLogger("bae.MembersDialogs")
 
 /** A removal waiting on the person's confirmation. */
 internal sealed interface PendingRemoval {
@@ -43,11 +48,20 @@ internal sealed interface PendingRemoval {
     ) : PendingRemoval
 }
 
-/** The provider step a removed device needs; its own person, who did the step, tells the library it is done. */
+/**
+ * The provider step a removed device needs; its own person, who did the step, tells the library it is done when
+ * their account holds the library's storage.
+ */
 internal data class CutOffStep(
     val device: ULong,
     val instruction: BridgeProviderSignOut,
-    val own: Boolean,
+    val offersCutOff: Boolean,
+)
+
+/** A removed device whose cut-off confirmation changed nothing, and why. */
+internal data class CutOffRetry(
+    val device: ULong,
+    val reason: BridgeDeviceCutOff,
 )
 
 /** Which dialog the people screen shows, if any. */
@@ -57,8 +71,8 @@ internal class MembersDialogs {
     var pendingRemoval by mutableStateOf<PendingRemoval?>(null)
     var signOut by mutableStateOf<CutOffStep?>(null)
 
-    /** The removed device whose cut-off was confirmed while a request to the provider ran; nothing changed. */
-    var cutOffRunning by mutableStateOf<ULong?>(null)
+    /** The removed device whose cut-off confirmation changed nothing: confirming again works later. */
+    var cutOffRetry by mutableStateOf<CutOffRetry?>(null)
 
     /** The open invite shown again, by id; it closes when the invite ends. */
     var shownInvite by mutableStateOf<String?>(null)
@@ -129,13 +143,14 @@ internal fun MembersDialogsShown(
             onDismiss = { dialogs.signOut = null },
         )
     }
-    dialogs.cutOffRunning?.let { device ->
-        CutOffRunningDialog(
+    dialogs.cutOffRetry?.let { retry ->
+        CutOffRetryDialog(
+            reason = retry.reason,
             onTryAgain = {
-                dialogs.cutOffRunning = null
-                confirmCutOff(model, session, dialogs, device)
+                dialogs.cutOffRetry = null
+                confirmCutOff(model, session, dialogs, retry.device)
             },
-            onDismiss = { dialogs.cutOffRunning = null },
+            onDismiss = { dialogs.cutOffRetry = null },
         )
     }
 }
@@ -153,25 +168,52 @@ private fun remove(
 
         is PendingRemoval.Device -> {
             model.perform("remove a device") {
-                dialogs.signOut =
-                    session.appHandle.removeDevice(removal.device.id)?.let {
-                        CutOffStep(removal.device.id, it, removal.own)
-                    }
+                val instruction = session.appHandle.removeDevice(removal.device.id)
+                val offersCutOff = removal.own && holdsStore(session)
+                dialogs.signOut = instruction?.let { CutOffStep(removal.device.id, it, offersCutOff) }
             }
         }
     }
 }
 
-/** A request to the provider ran as the person confirmed the cut-off, which changed nothing. */
+/**
+ * Whether this person's account holds the library's storage. When the read fails nothing is offered, since confirming
+ * would only be refused.
+ */
+private suspend fun holdsStore(session: OpenLibrary): Boolean =
+    try {
+        session.appHandle.holdsStore()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: BridgeException) {
+        logger.error("reading whether this account holds the storage failed", e)
+        false
+    }
+
+/** The cut-off confirmation changed nothing: a request to the provider ran, or the removal hasn't arrived yet. */
 @Composable
-private fun CutOffRunningDialog(
+private fun CutOffRetryDialog(
+    reason: BridgeDeviceCutOff,
     onTryAgain: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val notGone = reason == BridgeDeviceCutOff.DEVICE_NOT_GONE
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.device_cut_off_running_title)) },
-        text = { Text(stringResource(R.string.device_cut_off_running_body)) },
+        title = {
+            Text(
+                stringResource(
+                    if (notGone) R.string.device_cut_off_not_gone_title else R.string.device_cut_off_running_title,
+                ),
+            )
+        },
+        text = {
+            Text(
+                stringResource(
+                    if (notGone) R.string.device_cut_off_not_gone_body else R.string.device_cut_off_running_body,
+                ),
+            )
+        },
         confirmButton = { TextButton(onClick = onTryAgain) { Text(stringResource(R.string.retry)) } },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.device_cut_off_not_yet)) }
@@ -187,11 +229,14 @@ private fun confirmCutOff(
     device: ULong,
 ) {
     model.perform("confirm a device cut off") {
-        when (session.appHandle.confirmDeviceCutOff(device)) {
+        val outcome = session.appHandle.confirmDeviceCutOff(device)
+        when (outcome) {
             BridgeDeviceCutOff.CONFIRMED -> {}
 
-            BridgeDeviceCutOff.PROVIDER_REQUEST_RUNNING -> {
-                dialogs.cutOffRunning = device
+            BridgeDeviceCutOff.PROVIDER_REQUEST_RUNNING,
+            BridgeDeviceCutOff.DEVICE_NOT_GONE,
+            -> {
+                dialogs.cutOffRetry = CutOffRetry(device, outcome)
             }
         }
     }
@@ -262,14 +307,14 @@ private fun SignOutDialog(
             }
         },
         confirmButton = {
-            if (step.own) {
+            if (step.offersCutOff) {
                 TextButton(onClick = onConfirm) { Text(stringResource(R.string.device_cut_off_confirm)) }
             } else {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
             }
         },
         dismissButton =
-            if (step.own) {
+            if (step.offersCutOff) {
                 { TextButton(onClick = onDismiss) { Text(stringResource(R.string.device_cut_off_not_yet)) } }
             } else {
                 null

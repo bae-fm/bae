@@ -327,6 +327,8 @@
     <string name="device_cut_off_not_yet">暫不</string>
     <string name="device_cut_off_running_title">對你的儲存空間的請求仍在執行</string>
     <string name="device_cut_off_running_body">請等它結束後再試一次。</string>
+    <string name="device_cut_off_not_gone_title">移除尚未傳到此裝置</string>
+    <string name="device_cut_off_not_gone_body">請在下次同步後再試。</string>
     <string name="members_invite">邀請成員</string>
     <string name="invite_name">姓名</string>
     <string name="invite_lifetime_hour">1 小時</string>

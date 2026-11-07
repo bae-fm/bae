@@ -333,6 +333,8 @@
     <string name="device_cut_off_not_yet">Όχι ακόμα</string>
     <string name="device_cut_off_running_title">Ένα αίτημα προς τον αποθηκευτικό σας χώρο εκτελείται ακόμα</string>
     <string name="device_cut_off_running_body">Περιμένετε να ολοκληρωθεί και δοκιμάστε ξανά.</string>
+    <string name="device_cut_off_not_gone_title">Η αφαίρεση δεν έχει φτάσει ακόμα σε αυτή τη συσκευή</string>
+    <string name="device_cut_off_not_gone_body">Δοκιμάστε ξανά μετά τον επόμενο συγχρονισμό.</string>
     <string name="members_invite">Πρόσκληση ατόμου</string>
     <string name="invite_name">Όνομα</string>
     <string name="invite_lifetime_hour">1 ώρα</string>

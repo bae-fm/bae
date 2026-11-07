@@ -96,6 +96,12 @@ impl LibraryManager {
         self.membership.subscribe_admin_changes()
     }
 
+    /// Whether this device's person's account holds the library's storage:
+    /// only then can they confirm a device cut off (coven §20.9).
+    pub async fn holds_store(&self) -> Result<bool, LibraryError> {
+        Ok(self.store.holds_store().await?)
+    }
+
     /// The person did the provider step for a device they removed, so
     /// nothing it sent can land any more (coven §14.2). While a provider
     /// request to one of the accounts it shared runs, nothing changes and
@@ -126,9 +132,13 @@ pub enum DeviceCutOff {
     Confirmed,
     /// A provider request to one of those accounts runs; nothing changed.
     ProviderRequestRunning,
+    /// The device's removal hasn't reached this device's history yet, or it
+    /// was never removed; nothing changed, and after the next sync it may work.
+    DeviceNotGone,
 }
 
-/// A request running is the only refusal that asks the person to try again.
+/// A request running, and a device the history doesn't have gone yet, are the
+/// refusals that ask the person to try again; the others can't succeed.
 pub(super) fn device_cut_off(
     result: Result<(), coven::SyncError>,
 ) -> Result<DeviceCutOff, LibraryError> {
@@ -136,6 +146,9 @@ pub(super) fn device_cut_off(
         Ok(()) => Ok(DeviceCutOff::Confirmed),
         Err(coven::SyncError::Database(coven::DbError::ProviderRequestRunning)) => {
             Ok(DeviceCutOff::ProviderRequestRunning)
+        }
+        Err(coven::SyncError::CutOffRefused(coven::CutOffRefusal::DeviceNotGone)) => {
+            Ok(DeviceCutOff::DeviceNotGone)
         }
         Err(error) => Err(error.into()),
     }

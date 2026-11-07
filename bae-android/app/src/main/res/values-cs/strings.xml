@@ -348,6 +348,8 @@
     <string name="device_cut_off_not_yet">Ještě ne</string>
     <string name="device_cut_off_running_title">Požadavek na vaše úložiště stále běží</string>
     <string name="device_cut_off_running_body">Počkejte, až skončí, a zkuste to znovu.</string>
+    <string name="device_cut_off_not_gone_title">Odebrání ještě nedorazilo na toto zařízení</string>
+    <string name="device_cut_off_not_gone_body">Zkuste to znovu po další synchronizaci.</string>
     <string name="members_invite">Pozvat osobu</string>
     <string name="invite_name">Jméno</string>
     <string name="invite_lifetime_hour">1 hodina</string>

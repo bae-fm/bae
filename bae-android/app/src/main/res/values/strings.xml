@@ -388,6 +388,8 @@
     <string name="device_cut_off_not_yet">Not yet</string>
     <string name="device_cut_off_running_title">A request to your storage is still running</string>
     <string name="device_cut_off_running_body">Wait for it to end, then try again.</string>
+    <string name="device_cut_off_not_gone_title">The removal hasn\'t reached this device yet</string>
+    <string name="device_cut_off_not_gone_body">Try again after the next sync.</string>
     <string name="members_invite">Invite a person</string>
     <string name="invite_name">Name</string>
     <string name="invite_lifetime_hour">1 hour</string>

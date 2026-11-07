@@ -4,6 +4,26 @@ import os.log
 
 private let logger = Logger.bae("PeopleAndDevicesPage")
 
+/// The provider step a removed device needs. Its own person, who did the
+/// step, tells the library it is done, when their account holds the
+/// library's storage.
+private struct CutOffStep {
+    let device: UInt64
+    let instruction: BridgeProviderSignOut
+    let offersCutOff: Bool
+}
+
+private enum CutOffReason {
+    case providerRequestRunning
+    case deviceNotGone
+}
+
+/// A removed device whose cut-off confirmation changed nothing, and why.
+private struct CutOffRetry {
+    let device: UInt64
+    let reason: CutOffReason
+}
+
 /// The library's people and devices, on pages of their own. The first page has
 /// You (name, role, listening history, devices) and People, one row for each
 /// other person, with the invites this device has open; an admin's person row
@@ -64,11 +84,10 @@ struct PeopleAndDevicesPage: View {
     /// device.
     @State
     private var signOut: CutOffStep?
-    /// The removed device whose cut-off was confirmed while a request to the
-    /// provider ran: nothing changed, and confirming again works once it
-    /// ends.
+    /// The removed device whose cut-off confirmation changed nothing, and why:
+    /// confirming again works once it ends or after the next sync.
     @State
-    private var cutOffRunning: UInt64?
+    private var cutOffRetry: CutOffRetry?
     @State
     private var task: Task<Void, Never>?
     @State
@@ -78,14 +97,6 @@ struct PeopleAndDevicesPage: View {
         case person(BridgeMember, name: String)
         /// A device, and whether it is this person's own.
         case device(BridgeActiveDevice, own: Bool)
-    }
-
-    /// The provider step a removed device needs. Its own person, who did
-    /// the step, tells the library it is done.
-    private struct CutOffStep {
-        let device: UInt64
-        let instruction: BridgeProviderSignOut
-        let own: Bool
     }
 
     init(
@@ -213,7 +224,7 @@ struct PeopleAndDevicesPage: View {
             ),
             presenting: signOut
         ) { step in
-            if step.own {
+            if step.offersCutOff {
                 Button("I cut off this device") {
                     confirmCutOff(step.device)
                 }
@@ -226,17 +237,24 @@ struct PeopleAndDevicesPage: View {
             Text(step.instruction.text)
         }
         .alert(
-            "A request to your storage is still running",
+            cutOffRetry?.reason == .deviceNotGone
+                ? "This device's removal hasn't reached this Mac yet"
+                : "A request to your storage is still running",
             isPresented: Binding(
-                get: { cutOffRunning != nil },
-                set: { if !$0 { cutOffRunning = nil } }
+                get: { cutOffRetry != nil },
+                set: { if !$0 { cutOffRetry = nil } }
             ),
-            presenting: cutOffRunning
-        ) { device in
-            Button("Try again") { confirmCutOff(device) }
+            presenting: cutOffRetry
+        ) { retry in
+            Button("Try again") { confirmCutOff(retry.device) }
             Button("Not yet", role: .cancel) {}
-        } message: { _ in
-            Text("Wait for it to end, then try again.")
+        } message: { retry in
+            switch retry.reason {
+            case .providerRequestRunning:
+                Text("Wait for it to end, then try again.")
+            case .deviceNotGone:
+                Text("Try again after the next sync.")
+            }
         }
     }
 
@@ -511,11 +529,30 @@ extension PeopleAndDevicesPage {
             subpage = .people
         case .device(let device, let own):
             run {
-                signOut = try await sync.removeDevice(device.id)
-                    .map {
-                        CutOffStep(device: device.id, instruction: $0, own: own)
-                    }
+                let instruction = try await sync.removeDevice(device.id)
+                let offersCutOff = own ? await holdsStore() : false
+                signOut = instruction.map {
+                    CutOffStep(
+                        device: device.id,
+                        instruction: $0,
+                        offersCutOff: offersCutOff
+                    )
+                }
             }
+        }
+    }
+
+    /// Whether this person's account holds the library's storage. When the
+    /// read fails nothing is offered, since confirming would only be refused.
+    private func holdsStore() async -> Bool {
+        do {
+            return try await sync.holdsStore()
+        }
+        catch {
+            logger.error(
+                "Couldn't read whether this account holds the storage: \(String(reflecting: error))"
+            )
+            return false
         }
     }
 
@@ -524,7 +561,16 @@ extension PeopleAndDevicesPage {
         run {
             switch try await sync.confirmDeviceCutOff(device) {
             case .confirmed: break
-            case .providerRequestRunning: cutOffRunning = device
+            case .providerRequestRunning:
+                cutOffRetry = CutOffRetry(
+                    device: device,
+                    reason: .providerRequestRunning
+                )
+            case .deviceNotGone:
+                cutOffRetry = CutOffRetry(
+                    device: device,
+                    reason: .deviceNotGone
+                )
             }
         }
     }

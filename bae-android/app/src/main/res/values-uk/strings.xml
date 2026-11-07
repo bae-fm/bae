@@ -348,6 +348,8 @@
     <string name="device_cut_off_not_yet">Ще ні</string>
     <string name="device_cut_off_running_title">Запит до вашого сховища ще виконується</string>
     <string name="device_cut_off_running_body">Зачекайте, поки він завершиться, і спробуйте ще раз.</string>
+    <string name="device_cut_off_not_gone_title">Видалення ще не дійшло до цього пристрою</string>
+    <string name="device_cut_off_not_gone_body">Спробуйте ще раз після наступної синхронізації.</string>
     <string name="members_invite">Запросити людину</string>
     <string name="invite_name">Ім’я</string>
     <string name="invite_lifetime_hour">1 година</string>

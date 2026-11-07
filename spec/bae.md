@@ -2506,18 +2506,23 @@ do at the provider, titled as a removal still to happen
 names the step for Dropbox, OneDrive and iCloud, and on S3 there is none).
 
 **Cutting off a lost device.** When the step is for one of the person's own
-devices, the same message offers **I cut off this device** beside **Not yet**:
-the person does the step at the provider and presses it, and the app calls
-coven's `confirm_device_cut_off`, which says nothing more of that device can
-land, so this device takes back every account the lost device's shares named
-that no member or open invite uses
+devices and their account holds the library's storage, the same message offers
+**I cut off this device** beside **Not yet**: the person does the step at the
+provider and presses it, and the app calls coven's `confirm_device_cut_off`,
+which says nothing more of that device can land, so this device takes back
+every account the lost device's shares named that no member or open invite
+uses
 ([coven §14.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#142-provider-access),
 [§20.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#209-sharing-with-accounts)).
-It works only for a device removed from the library, on a device of the person
-whose account holds the store; coven refuses it otherwise, and the app shows
-that refusal as any other. While a request to one of those accounts runs, coven
-changes nothing and the app says a request to the storage is still running,
-asking to **Try again** once it ends, or **Not yet**. Another person's device
+The app asks coven's `holds_store` as the message is made: only the member
+whose account holds the store has devices that change sharing, so for anyone
+else, and on S3, the button would only be refused and isn't offered. When that
+read fails the app logs it and offers nothing. Coven refuses a device the
+history doesn't have removed yet, which the removal on this device may not have
+reached; the app then says the removal hasn't reached this device yet and asks
+to **Try again** after the next sync, or **Not yet**. While a request to one of
+the accounts runs, coven changes nothing and the app says a request to the
+storage is still running, with the same two buttons. Another person's device
 removed by an admin gets only **OK**: its person does the step.
 
 A new phone's first screen is bae's sheep and name over **Scan code** and

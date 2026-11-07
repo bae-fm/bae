@@ -610,6 +610,8 @@ internal open class FakeAppHandle(
 
     override suspend fun confirmDeviceCutOff(device: ULong): BridgeDeviceCutOff = unfaked("confirmDeviceCutOff")
 
+    override suspend fun holdsStore(): Boolean = unfaked("holdsStore")
+
     override suspend fun removeMember(member: String) {
         unfaked("removeMember")
     }

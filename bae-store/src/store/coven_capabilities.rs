@@ -462,6 +462,12 @@ impl Store {
     /// intends now (coven §14.2, §20.9). Fails with
     /// `DbError::ProviderRequestRunning` while a request to one of those
     /// accounts runs, changing nothing.
+    /// Whether this device's member reaches storage through the account that
+    /// holds the store (coven §20.9).
+    pub async fn holds_store(&self) -> Result<bool, coven::SyncError> {
+        self.reported(self.inner.handle.holds_store().await)
+    }
+
     pub async fn confirm_device_cut_off(
         &self,
         device: coven::DeviceId,

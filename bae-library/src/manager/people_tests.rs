@@ -1,6 +1,7 @@
 //! People and devices: the Add Device watch, the admin changes a device asks
 //! for, invites, a profile request, and the membership read without a provider.
 
+use super::DeviceCutOff;
 use crate::manager::tests::*;
 use crate::test_libraries::run_two_device_test;
 use crate::test_libraries::{run_library_test, TestDevice};
@@ -390,35 +391,24 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
     });
 }
 
-/// Robin tells her laptop a device is cut off while it is still in the
-/// library. Coven refuses: only a device gone for good can have been cut off,
-/// so the call changes nothing and fails with coven's refusal (§14.2).
+/// Robin's library is on S3, where no account is shared and none holds the
+/// storage: her laptop says so, so it doesn't offer to confirm a cut-off, and
+/// confirming one is refused as an error, since it can't succeed (§14.2).
 #[test]
-fn confirming_a_cut_off_for_a_device_still_in_the_library_is_refused() {
+fn on_s3_no_member_holds_the_storage_and_a_cut_off_cant_be_confirmed() {
     run_two_device_test(async |devices| {
         let (laptop, tablet) = (devices.a(), devices.b());
-        let tablet_id = tablet.store().device_id();
-        laptop
-            .wait_until("the tablet's registration", || async {
-                laptop
-                    .membership()
-                    .members()
-                    .await
-                    .unwrap()
-                    .members
-                    .iter()
-                    .any(|member| member.active_devices.iter().any(|d| d.id == tablet_id))
-            })
-            .await;
-        let refused = laptop.manager().confirm_device_cut_off(tablet_id).await;
+        let holds = laptop.manager().holds_store().await;
+        assert!(matches!(holds, Ok(false)), "{holds:?}");
+        let answer = laptop.manager().confirm_device_cut_off(tablet.store().device_id()).await;
         assert!(
             matches!(
-                refused,
-                Err(crate::manager::LibraryError::Sync(coven::SyncError::Rejected(
-                    coven::OperationRejection::NotAllowed
+                answer,
+                Err(crate::manager::LibraryError::Sync(coven::SyncError::CutOffRefused(
+                    coven::CutOffRefusal::NoAccountShared
                 )))
             ),
-            "{refused:?}"
+            "{answer:?}"
         );
     });
 }
@@ -428,7 +418,12 @@ fn confirming_a_cut_off_for_a_device_still_in_the_library_is_refused() {
 /// of the library, so the person is asked to try again.
 #[test]
 fn a_running_provider_request_asks_to_confirm_again() {
-    use super::{device_cut_off, DeviceCutOff};
+    use super::device_cut_off;
+    let not_gone = coven::SyncError::CutOffRefused(coven::CutOffRefusal::DeviceNotGone);
+    assert_eq!(device_cut_off(Err(not_gone)).unwrap(), DeviceCutOff::DeviceNotGone);
+    let refused =
+        device_cut_off(Err(coven::SyncError::CutOffRefused(coven::CutOffRefusal::NotStoreOwner)));
+    assert!(matches!(refused, Err(crate::manager::LibraryError::Sync(_))), "{refused:?}");
     let running = Err(coven::SyncError::from(coven::DbError::ProviderRequestRunning));
     assert_eq!(device_cut_off(running).unwrap(), DeviceCutOff::ProviderRequestRunning);
     assert_eq!(device_cut_off(Ok(())).unwrap(), DeviceCutOff::Confirmed);
