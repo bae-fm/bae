@@ -418,6 +418,8 @@ task_types = [
     "FolderScansLive",
     # A streamed track's encoded chunks on their way to the response.
     "ChannelSink",
+    # One MCP client session's server, built when the session opens.
+    "BaeMcpServer",
 ]
 
 # Handles (Appendix F.3): what an owner makes from its own state to hand out.
@@ -830,7 +832,10 @@ ImageHold = "RemoteImageHost"
 ]
 "bae-library/src/manager/service.rs" = ["BackgroundTasks::new"]
 "bae-library/src/storage/transfer.rs" = ["ReleaseTransfer::new"]
-"bae-mcp/src/lib.rs" = ["BaeMcpServer::new"]
+"bae-mcp/src/lib.rs" = [
+    "BaeMcpServer::new",
+    "McpServerController::new",
+]
 "bae-playback/src/airplay_output.rs" = [
     "AirPlayControl::new",
     "AirPlayOutput::new",
