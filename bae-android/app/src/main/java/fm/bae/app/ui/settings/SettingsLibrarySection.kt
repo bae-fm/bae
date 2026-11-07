@@ -1,15 +1,11 @@
 package fm.bae.app.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -21,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -37,8 +32,11 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.launch
@@ -111,31 +109,24 @@ private fun LibrarySwitcher(
         style = ThemeText.detail.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    libraries.forEach { library ->
-        // The active library comes from the open session; BridgeLibrary.isActive goes stale after an in-app switch.
-        val isActive = library.id == activeLibraryId
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    // A library whose settings can't be read offers nothing; one
-                    // whose reset or restore stopped partway offers to finish it.
-                    .clickable(enabled = !isActive && library.state !is BridgeLibraryState.Unreadable) {
-                        onSwitchLibrary(library)
+    RowCard {
+        libraries.forEach { library ->
+            // The active library comes from the open session; BridgeLibrary.isActive goes stale after an in-app switch.
+            val isActive = library.id == activeLibraryId
+            val detail = libraryDetail(library.state)
+            CardRow(
+                title = library.name,
+                subtitle = detail.text,
+                tone = detail.tone,
+                selected = isActive,
+                // A library whose settings can't be read offers nothing; one
+                // whose reset or restore stopped partway offers to finish it.
+                onClick =
+                    if (!isActive && library.state !is BridgeLibraryState.Unreadable) {
+                        { onSwitchLibrary(library) }
+                    } else {
+                        null
                     },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = library.name)
-                // Every row keeps the detail line so rows share one height.
-                LibraryDetailLine(library.state)
-            }
-            // Always present but alpha-toggled so switching the active row
-            // never re-measures the row heights.
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = null,
-                modifier = Modifier.alpha(if (isActive) 1f else 0f),
             )
         }
     }
@@ -309,41 +300,39 @@ private fun LibrarySwitcherPreview() {
  * removing it from this device stopped partway.
  */
 @Composable
-private fun LibraryDetailLine(state: BridgeLibraryState) {
-    when (state) {
+private fun libraryDetail(state: BridgeLibraryState): LibraryDetail {
+    val context = LocalContext.current
+    return when (state) {
         is BridgeLibraryState.Openable -> {
-            Text(
-                text = state.storage?.let { location -> storageLocationLabel(location) } ?: "",
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            LibraryDetail(state.storage?.let { location -> storageLocationLabel(location) } ?: "", tone = null)
         }
 
         is BridgeLibraryState.Unreadable -> {
             val line =
-                checkNotNull(LocalContext.current.localizedLine(state.error)) {
+                checkNotNull(context.localizedLine(state.error)) {
                     "unreadable settings are a diagnostic, never a cancellation"
                 }
-            Text(text = line, style = ThemeText.detail.style, color = MaterialTheme.colorScheme.error)
+            LibraryDetail(line, StatusTone.DANGER)
         }
 
         is BridgeLibraryState.ReplacementUnfinished -> {
-            Text(
-                text =
-                    LocalContext.current.coreString(
-                        bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(state.by)),
-                    ),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.error,
+            LibraryDetail(
+                context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(state.by))),
+                StatusTone.DANGER,
             )
         }
 
         is BridgeLibraryState.DeletionUnfinished -> {
-            Text(
-                text = LocalContext.current.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeletionUnfinished)),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.error,
+            LibraryDetail(
+                context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeletionUnfinished)),
+                StatusTone.DANGER,
             )
         }
     }
 }
+
+/** The line a library row shows under its name, and the tone it is in. */
+private data class LibraryDetail(
+    val text: String,
+    val tone: StatusTone?,
+)

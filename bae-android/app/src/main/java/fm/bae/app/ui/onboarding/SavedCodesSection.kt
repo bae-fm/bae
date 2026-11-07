@@ -1,15 +1,11 @@
 package fm.bae.app.ui.onboarding
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -17,21 +13,19 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.storageLocationLabel
 import uniffi.bae_bridge.BridgeDropboxAccess
 import uniffi.bae_bridge.BridgeDropboxLocation
@@ -117,12 +111,14 @@ private fun SavedCodesContent(
                     )
                     ErrorDetailDisclosure(error)
                 }
-                list.entries.forEach { entry ->
-                    SavedCodeRow(
-                        entry = entry,
-                        enabled = deletingLibraryId == null,
-                        callbacks = callbacks,
-                    )
+                RowCard {
+                    list.entries.forEach { entry ->
+                        SavedCodeRow(
+                            entry = entry,
+                            enabled = deletingLibraryId == null,
+                            callbacks = callbacks,
+                        )
+                    }
                 }
             }
         }
@@ -142,47 +138,27 @@ private fun SavedCodeRow(
     enabled: Boolean,
     callbacks: SavedCodesCallbacks,
 ) {
-    val open =
-        when (entry) {
-            is SavedRestoreEntry.Readable -> {
-                Modifier.clickable(
-                    enabled = enabled,
-                    onClickLabel = stringResource(R.string.onboarding_restore_action),
-                ) { callbacks.onOpen(entry.saved) }
-            }
-
-            is SavedRestoreEntry.Unreadable -> {
-                Modifier
-            }
+    val title: String
+    val subtitle: String
+    var onClick: (() -> Unit)? = null
+    when (entry) {
+        is SavedRestoreEntry.Readable -> {
+            title = entry.saved.info.name
+            subtitle = storageLocationLabel(entry.saved.info.location)
+            if (enabled) onClick = { callbacks.onOpen(entry.saved) }
         }
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(ThemeRadius.card))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .then(open)
-                .padding(start = ThemeSpace.edge, top = ThemeSpace.related, bottom = ThemeSpace.related),
-        verticalAlignment = Alignment.CenterVertically,
+
+        is SavedRestoreEntry.Unreadable -> {
+            title = stringResource(R.string.onboarding_saved_code_unusable)
+            subtitle = "${stringResource(entry.reason.labelRes())} · ${entry.libraryId}"
+        }
+    }
+    CardRow(
+        title = title,
+        subtitle = subtitle,
+        onClick = onClick,
+        onClickLabel = stringResource(R.string.onboarding_restore_action),
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
-            when (entry) {
-                is SavedRestoreEntry.Readable -> {
-                    RowLine(entry.saved.info.name, ThemeText.rowTitle, secondary = false)
-                    RowLine(storageLocationLabel(entry.saved.info.location), ThemeText.detail, secondary = true)
-                }
-
-                is SavedRestoreEntry.Unreadable -> {
-                    RowLine(
-                        stringResource(R.string.onboarding_saved_code_unusable),
-                        ThemeText.rowTitle,
-                        secondary = false,
-                    )
-                    RowLine(stringResource(entry.reason.labelRes()), ThemeText.detail, secondary = true)
-                    RowLine(entry.libraryId, ThemeText.detail, secondary = true)
-                }
-            }
-        }
         TextButton(
             onClick = { callbacks.onDelete(entry) },
             enabled = enabled,
@@ -191,21 +167,6 @@ private fun SavedCodeRow(
             Text(stringResource(R.string.onboarding_saved_code_delete))
         }
     }
-}
-
-@Composable
-private fun RowLine(
-    text: String,
-    role: ThemeText,
-    secondary: Boolean,
-) {
-    Text(
-        text = text,
-        style = role.style,
-        color = if (secondary) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
 }
 
 /**

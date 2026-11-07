@@ -14,8 +14,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,8 +46,12 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.appearance.colors
+import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.RadioRow
+import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.cardRowDivider
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -78,22 +81,30 @@ internal fun AppearanceSection() {
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         Eyebrow(text = stringResource(R.string.appearance_title))
-        AppearancePicker(
-            title = stringResource(R.string.appearance_theme),
-            selected = preferences.mode,
-            choices = AppearanceMode.entries,
-            label = { it.label },
-            onSelect = { save { store.setMode(it) } },
-        )
-        AppearancePicker(
-            title = stringResource(R.string.appearance_tone),
-            selected = preferences.tone,
-            choices = SurfaceTone.entries,
-            label = { it.label },
-            onSelect = { save { store.setTone(it) } },
-        )
-        Text(stringResource(R.string.appearance_accent), style = ThemeText.body.style)
-        AccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
+        RowCard {
+            AppearancePicker(
+                title = stringResource(R.string.appearance_theme),
+                selected = preferences.mode,
+                choices = AppearanceMode.entries,
+                label = { it.label },
+                onSelect = { save { store.setMode(it) } },
+            )
+            AppearancePicker(
+                title = stringResource(R.string.appearance_tone),
+                selected = preferences.tone,
+                choices = SurfaceTone.entries,
+                label = { it.label },
+                onSelect = { save { store.setTone(it) } },
+            )
+            Column(modifier = Modifier.cardRowDivider().padding(top = ThemeSpace.group, bottom = ThemeSpace.related)) {
+                Text(
+                    text = stringResource(R.string.appearance_accent),
+                    style = ThemeText.rowTitle.style,
+                    modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+                )
+                AccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
+            }
+        }
         error?.let { ErrorDetailDisclosure(it) }
     }
 }
@@ -132,6 +143,7 @@ private fun AccentPicker(
     }
 }
 
+/** A row naming the choice made, which opens a dialog of the choices. */
 @Composable
 private fun <T> AppearancePicker(
     title: String,
@@ -140,23 +152,29 @@ private fun <T> AppearancePicker(
     label: (T) -> Int,
     onSelect: (T) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, modifier = Modifier.weight(1f))
-        Box {
-            TextButton(onClick = { expanded = true }) { Text(stringResource(label(selected))) }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                choices.forEach { choice ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(label(choice))) },
-                        onClick = {
-                            expanded = false
-                            onSelect(choice)
-                        },
-                    )
+    var open by remember { mutableStateOf(false) }
+    CardRow(title = title, subtitle = stringResource(label(selected)), onClick = { open = true })
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(title) },
+            text = {
+                Column(modifier = Modifier.selectableGroup()) {
+                    choices.forEach { choice ->
+                        RadioRow(
+                            label = stringResource(label(choice)),
+                            checked = choice == selected,
+                            onClick = {
+                                open = false
+                                onSelect(choice)
+                            },
+                        )
+                    }
                 }
-            }
-        }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.cancel)) } },
+        )
     }
 }
 
