@@ -85,12 +85,6 @@
             android:strokeLineCap="round"
             android:strokeLineJoin="round" />
         <path
-            android:pathData="M204 468C201 482 203 500 212 516"
-            android:strokeColor="#40183D"
-            android:strokeWidth="12"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
             android:pathData="M58 301.6C29.9 304.7 2.7 284 17.2 254.3C29.6 228.8 64.4 213.3 81 186.3C85.8 178.5 89.5 173.5 98.9 178.3C101.5 179.7 104 181.1 105 184C107.8 191.6 98.4 215.7 96.5 224.5C94.2 235.5 92.3 246.8 92 258.1C91.9 264.4 94.8 271.4 93.1 277.7C89.2 291.8 71.3 300.2 58 301.6Z"
             android:fillColor="#F6D9D2" />
         <group>
