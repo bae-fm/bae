@@ -3456,7 +3456,7 @@
    "page": "home",
    "x": 0,
    "y": 14176,
-   "text": "Album actions: Android (today)",
+   "text": "Album actions: Android",
    "kind": "title1",
    "w": 240,
    "maxW": 2960
@@ -3465,7 +3465,7 @@
    "page": "home",
    "x": 0,
    "y": 15572,
-   "text": "Album actions: macOS (today)",
+   "text": "Album actions: macOS",
    "kind": "title1",
    "w": 240,
    "maxW": 14580
@@ -3474,7 +3474,7 @@
    "kind": "title1",
    "maxW": 1888,
    "page": "home",
-   "text": "Album states: Android (today)",
+   "text": "Album states: Android",
    "w": 240,
    "x": 0,
    "y": 8064
@@ -3483,7 +3483,7 @@
    "kind": "title1",
    "maxW": 2480,
    "page": "home",
-   "text": "Album states: macOS (today)",
+   "text": "Album states: macOS",
    "w": 240,
    "x": 0,
    "y": 9460
@@ -3492,7 +3492,7 @@
    "page": "welcome",
    "x": 0,
    "y": 6684,
-   "text": "Entering a code: Android (today)",
+   "text": "Entering a code: Android",
    "kind": "title1",
    "w": 240,
    "maxW": 2468
@@ -3501,7 +3501,7 @@
    "page": "welcome",
    "x": 0,
    "y": 8080,
-   "text": "Entering a code: macOS (today)",
+   "text": "Entering a code: macOS",
    "kind": "title1",
    "w": 240,
    "maxW": 6380
@@ -3519,7 +3519,7 @@
    "kind": "title1",
    "maxW": 2380,
    "page": "home",
-   "text": "Composers → composer → work: Android (today)",
+   "text": "Composers → composer → work: Android",
    "w": 240,
    "x": 0,
    "y": 10940
@@ -3528,7 +3528,7 @@
    "kind": "title1",
    "maxW": 4960,
    "page": "home",
-   "text": "Composers → composer → work: macOS (today)",
+   "text": "Composers → composer → work: macOS",
    "w": 240,
    "x": 0,
    "y": 12336
@@ -3537,7 +3537,7 @@
    "kind": "title1",
    "maxW": 1400,
    "page": "storage",
-   "text": "Downloads: Android (today)",
+   "text": "Downloads: Android",
    "w": 240,
    "x": 0,
    "y": 4916
@@ -3546,7 +3546,7 @@
    "page": "home",
    "x": 0,
    "y": 17052,
-   "text": "Errors: Android (today)",
+   "text": "Errors: Android",
    "kind": "title1",
    "w": 240,
    "maxW": 3944
@@ -3564,7 +3564,7 @@
    "page": "home",
    "x": 0,
    "y": 18448,
-   "text": "Errors: macOS (today)",
+   "text": "Errors: macOS",
    "kind": "title1",
    "w": 240,
    "maxW": 8180
@@ -3654,7 +3654,7 @@
    "kind": "title1",
    "maxW": 1364,
    "page": "home",
-   "text": "Switch library (Android, proposed)",
+   "text": "Switch library: Android",
    "w": 240,
    "x": 0,
    "y": 19688
@@ -3663,7 +3663,7 @@
    "page": "import",
    "x": 0,
    "y": 1380,
-   "text": "Identify: macOS (today)",
+   "text": "Identify: macOS",
    "kind": "title1",
    "w": 240,
    "maxW": 7900
@@ -3672,7 +3672,7 @@
    "page": "import",
    "x": 0,
    "y": 0,
-   "text": "Import, the list: macOS only (today)",
+   "text": "Import, the list: macOS only",
    "kind": "title1",
    "w": 240,
    "maxW": 7500
@@ -3681,7 +3681,7 @@
    "page": "import",
    "x": 0,
    "y": 2760,
-   "text": "Several selected, importing, done, skipped: macOS (today)",
+   "text": "Several selected, importing, done, skipped: macOS",
    "kind": "title1",
    "w": 240,
    "maxW": 7900
@@ -3690,7 +3690,7 @@
    "kind": "title1",
    "maxW": 1396,
    "page": "home",
-   "text": "Albums → album → artist: Android (today)",
+   "text": "Albums → album → artist: Android",
    "w": 240,
    "x": 0,
    "y": 0
@@ -3699,7 +3699,7 @@
    "kind": "title1",
    "maxW": 3760,
    "page": "home",
-   "text": "Albums → album → artist: macOS (today)",
+   "text": "Albums → album → artist: macOS",
    "w": 240,
    "x": 0,
    "y": 1396
@@ -3708,7 +3708,7 @@
    "kind": "title1",
    "maxW": 2872,
    "page": "home",
-   "text": "Heading, menus, grouping, search: Android (today)",
+   "text": "Heading, menus, grouping, search: Android",
    "w": 240,
    "x": 0,
    "y": 2792
@@ -3717,7 +3717,7 @@
    "kind": "title1",
    "maxW": 4920,
    "page": "home",
-   "text": "Heading, sort, grouping: macOS (today)",
+   "text": "Heading, sort, grouping: macOS",
    "w": 240,
    "x": 0,
    "y": 4188
@@ -3726,7 +3726,7 @@
    "kind": "title1",
    "maxW": 1396,
    "page": "home",
-   "text": "Library states: Android (today)",
+   "text": "Library states: Android",
    "w": 240,
    "x": 0,
    "y": 5428
@@ -3735,7 +3735,7 @@
    "kind": "title1",
    "maxW": 4960,
    "page": "home",
-   "text": "Library states: macOS (today)",
+   "text": "Library states: macOS",
    "w": 240,
    "x": 0,
    "y": 6824
@@ -3915,7 +3915,7 @@
    "page": "welcome",
    "x": 0,
    "y": 4208,
-   "text": "Opening: Android (today)",
+   "text": "Opening: Android",
    "kind": "title1",
    "w": 240,
    "maxW": 2468
@@ -3933,7 +3933,7 @@
    "page": "welcome",
    "x": 0,
    "y": 5604,
-   "text": "Opening: macOS (today)",
+   "text": "Opening: macOS",
    "kind": "title1",
    "w": 240,
    "maxW": 3440
@@ -3942,7 +3942,7 @@
    "kind": "title1",
    "maxW": 1888,
    "page": "loading",
-   "text": "Queue, full player, cast picker, pause between sides: Android (today)",
+   "text": "Queue, full player, cast picker, pause between sides: Android",
    "w": 240,
    "x": 0,
    "y": 2636
@@ -3951,7 +3951,7 @@
    "kind": "title1",
    "maxW": 7600,
    "page": "loading",
-   "text": "Queue, cast, pause between sides: macOS (today)",
+   "text": "Queue, cast, pause between sides: macOS",
    "w": 240,
    "x": 0,
    "y": 4032
@@ -3960,7 +3960,7 @@
    "kind": "title1",
    "maxW": 1396,
    "page": "loading",
-   "text": "Now playing: Android (today)",
+   "text": "Now playing: Android",
    "w": 240,
    "x": 0,
    "y": 0
@@ -3969,7 +3969,7 @@
    "kind": "title1",
    "maxW": 3760,
    "page": "loading",
-   "text": "Now playing: macOS (today)",
+   "text": "Now playing: macOS",
    "w": 240,
    "x": 0,
    "y": 1396
@@ -3978,7 +3978,7 @@
    "page": "welcome",
    "x": 0,
    "y": 9160,
-   "text": "Resetting this device: Android (today)",
+   "text": "Resetting this device: Android",
    "kind": "title1",
    "w": 240,
    "maxW": 2468
@@ -3996,7 +3996,7 @@
    "page": "welcome",
    "x": 0,
    "y": 10556,
-   "text": "Resetting this device: macOS (today)",
+   "text": "Resetting this device: macOS",
    "kind": "title1",
    "w": 240,
    "maxW": 4420
@@ -4005,7 +4005,7 @@
    "kind": "title1",
    "maxW": 1888,
    "page": "search",
-   "text": "Search: Android (today)",
+   "text": "Search: Android",
    "w": 240,
    "x": 0,
    "y": 0
@@ -4014,7 +4014,7 @@
    "kind": "title1",
    "maxW": 2480,
    "page": "search",
-   "text": "Search: macOS (today)",
+   "text": "Search: macOS",
    "w": 240,
    "x": 0,
    "y": 1396
@@ -4023,7 +4023,7 @@
    "page": "settings",
    "x": 0,
    "y": 11296,
-   "text": "Automation: macOS only (today)",
+   "text": "Automation: macOS only",
    "kind": "title1",
    "w": 240,
    "maxW": 2810
@@ -4041,7 +4041,7 @@
    "page": "settings",
    "x": 0,
    "y": 9136,
-   "text": "Formats: macOS only (today)",
+   "text": "Formats: macOS only",
    "kind": "title1",
    "w": 240,
    "maxW": 3580
@@ -4059,7 +4059,7 @@
    "page": "settings",
    "x": 0,
    "y": 7896,
-   "text": "Import: macOS only (today)",
+   "text": "Import: macOS only",
    "kind": "title1",
    "w": 240,
    "maxW": 4350
@@ -4077,7 +4077,7 @@
    "page": "settings",
    "x": 0,
    "y": 10216,
-   "text": "Subsonic: macOS only (today)",
+   "text": "Subsonic: macOS only",
    "kind": "title1",
    "w": 240,
    "maxW": 2810
@@ -4203,7 +4203,7 @@
    "kind": "title1",
    "maxW": 4600,
    "page": "storage",
-   "text": "Storage Manager: macOS (today)",
+   "text": "Storage Manager: macOS",
    "w": 240,
    "x": 0,
    "y": 0
@@ -4212,7 +4212,7 @@
    "kind": "title1",
    "maxW": 5000,
    "page": "storage",
-   "text": "Storage Manager states: macOS (today)",
+   "text": "Storage Manager states: macOS",
    "w": 240,
    "x": 0,
    "y": 1140
@@ -4221,7 +4221,7 @@
    "kind": "title1",
    "maxW": 1400,
    "page": "storage",
-   "text": "Sync activity: Android (today)",
+   "text": "Sync activity: Android",
    "w": 240,
    "x": 0,
    "y": 3520
@@ -4230,7 +4230,7 @@
    "kind": "title1",
    "maxW": 5000,
    "page": "storage",
-   "text": "Sync activity: macOS (today)",
+   "text": "Sync activity: macOS",
    "w": 240,
    "x": 0,
    "y": 2280
