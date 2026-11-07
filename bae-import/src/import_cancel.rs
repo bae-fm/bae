@@ -87,7 +87,7 @@ pub(crate) enum ImportRunEnd<T> {
 /// before the worker reaches the command it left in the queue; that command
 /// must find nothing of its own and be skipped, not take up the entry of the
 /// import that followed it.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub(crate) struct ImportCancels {
     entries: Arc<Mutex<HashMap<crate::CandidateKey, RegisteredImport>>>,
     /// Holds every run after it starts, until a test lets it through — so a
@@ -97,6 +97,14 @@ pub(crate) struct ImportCancels {
 }
 
 impl ImportCancels {
+    pub(crate) fn new() -> Self {
+        Self {
+            entries: Arc::new(Mutex::new(HashMap::new())),
+            #[cfg(test)]
+            running_gate: Arc::new(Mutex::new(None)),
+        }
+    }
+
     /// An import of `candidate_key` was claimed and is on its way to the
     /// worker.
     pub(crate) fn register(&self, candidate_key: &crate::CandidateKey, import_id: &str) {

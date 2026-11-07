@@ -578,7 +578,6 @@ ImageHold = "RemoteImageHost"
     "RendererDiscovery::reported",
     "ReportedDiscovery::new",
 ]
-"bae-cast/src/renderer/protocol_discovery.rs" = ["ProtocolDiscovery::default"]
 "bae-cast/src/renderer/published_devices.rs" = ["PublishedDevices::new"]
 "bae-catalogs/src/discogs/client.rs" = [
     "Discogs::for_test",
@@ -619,7 +618,6 @@ ImageHold = "RemoteImageHost"
 "bae-import/src/event_bus.rs" = [
     "EventDelivery::new",
     "ImportEventBus::new",
-    "SendHold::default",
 ]
 "bae-import/src/extraction/candidate_text.rs" = [
     "BRACKET_RE",
@@ -660,7 +658,6 @@ ImageHold = "RemoteImageHost"
 "bae-import/src/watching/root_removal.rs" = ["ServiceRootRemovalBackend::new"]
 "bae-library/examples/bench_library/mod.rs" = ["BenchLibrary::create"]
 "bae-library/src/bootstrap.rs" = [
-    "JoinControl::default",
     "JoinControl::new",
 ]
 "bae-library/src/manager/service.rs" = ["BackgroundTasks::new"]
@@ -681,7 +678,6 @@ ImageHold = "RemoteImageHost"
     "PlayerOutput::new",
 ]
 "bae-playback/src/capture_output.rs" = [
-    "AudioClock::default",
     "AudioClock::new",
     "CaptureAudioDevice::new",
     "CaptureAudioOutput::new",
@@ -733,7 +729,6 @@ ImageHold = "RemoteImageHost"
 ]
 "bae-transfers/src/release_transfers.rs" = [
     "ReleaseTransfers::clone",
-    "ReleaseTransfers::default",
     "ReleaseTransfers::new",
     "ReleaseTransfers::report",
 ]

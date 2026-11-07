@@ -39,7 +39,7 @@ fn bug_does_not_report_a_runtime_shutting_down() {
 /// `coven::task::blocking`, and the panic goes nowhere once the caller drops.
 #[tokio::test]
 async fn blocking_reports_a_panic_its_caller_stopped_waiting_for() {
-    let reports = Arc::new(crate::HeardBugReports::default());
+    let reports = Arc::new(crate::HeardBugReports::new());
     let diagnostics = Diagnostics::noop().reporting_bugs_to(reports.clone());
     let (started_tx, started) = tokio::sync::oneshot::channel();
     let (go, wait) = std::sync::mpsc::channel::<()>();

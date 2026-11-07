@@ -30,7 +30,7 @@ pub async fn open_library_manager(
 ) -> Result<LibraryManager, DbError> {
     let downloads = bae_transfers::Downloads::new(store.clone());
     let make_local_transfers = bae_transfers::ReleaseTransfers::new();
-    let detach_cancels = crate::detach_cancels::DetachCancels::default();
+    let detach_cancels = crate::detach_cancels::DetachCancels::new();
     #[cfg(desktop)]
     let outputs = bae_transfers::Outputs::new(store.clone());
     LibraryManager::open(

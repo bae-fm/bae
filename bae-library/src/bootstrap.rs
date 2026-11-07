@@ -173,12 +173,6 @@ pub fn join_cancellable(status: &coven::BootstrapStatus) -> bool {
     matches!(status, coven::BootstrapStatus::Opening(_) | coven::BootstrapStatus::Connecting)
 }
 
-impl Default for JoinControl {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Join a library from an invite. The person's profile takes the name the
 /// admin typed in the invite (§5.4). Dropping the call keeps the join for
 /// `resume_join`. An invite that has ended by `clock`, with no join for its

@@ -8,7 +8,7 @@ use crate::CancellationToken;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub(crate) struct DetachCancels {
     tokens: Arc<Mutex<HashMap<String, CancellationToken>>>,
 }
@@ -27,6 +27,10 @@ impl Drop for DetachRegistration {
 }
 
 impl DetachCancels {
+    pub(crate) fn new() -> Self {
+        Self { tokens: Arc::new(Mutex::new(HashMap::new())) }
+    }
+
     /// Make `cancel` what stops `release_id`'s transfer until the returned
     /// registration drops. `None` while another transfer of the release
     /// holds its token.

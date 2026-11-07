@@ -2,7 +2,7 @@ use super::*;
 
 #[tokio::test]
 async fn a_waiting_import_cancelled_never_runs() {
-    let cancels = ImportCancels::default();
+    let cancels = ImportCancels::new();
     cancels.register(&crate::CandidateKey::test("Album"), "import-1");
 
     assert_eq!(
@@ -20,7 +20,7 @@ async fn a_waiting_import_cancelled_never_runs() {
 
 #[tokio::test]
 async fn a_running_import_cancelled_is_dropped_before_it_writes() {
-    let cancels = ImportCancels::default();
+    let cancels = ImportCancels::new();
     cancels.register(&crate::CandidateKey::test("Album"), "import-1");
     let (started_tx, started) = tokio::sync::oneshot::channel();
     let run = {
@@ -46,7 +46,7 @@ async fn a_running_import_cancelled_is_dropped_before_it_writes() {
 
 #[tokio::test]
 async fn an_import_writing_its_release_is_not_cancelled() {
-    let cancels = ImportCancels::default();
+    let cancels = ImportCancels::new();
     cancels.register(&crate::CandidateKey::test("Album"), "import-1");
     let writing = cancels.clone();
     let end = cancels
@@ -61,7 +61,7 @@ async fn an_import_writing_its_release_is_not_cancelled() {
 
 #[test]
 fn a_cancelled_import_cannot_begin_writing() {
-    let cancels = ImportCancels::default();
+    let cancels = ImportCancels::new();
     cancels.register(&crate::CandidateKey::test("Album"), "import-1");
     cancels.entries.lock().unwrap().get_mut(&crate::CandidateKey::test("Album")).unwrap().stage =
         Stage::Running;
@@ -80,7 +80,7 @@ fn a_cancelled_import_cannot_begin_writing() {
 /// refused at the write, and the run ends cancelled, not failed.
 #[tokio::test]
 async fn a_run_refused_its_write_ends_cancelled() {
-    let cancels = ImportCancels::default();
+    let cancels = ImportCancels::new();
     cancels.register(&crate::CandidateKey::test("Album"), "import-1");
     let writing = cancels.clone();
     let end = cancels
@@ -95,7 +95,7 @@ async fn a_run_refused_its_write_ends_cancelled() {
 
 #[test]
 fn cancelling_everything_spares_only_what_is_writing() {
-    let cancels = ImportCancels::default();
+    let cancels = ImportCancels::new();
     cancels.register(&crate::CandidateKey::test("Album 1"), "import-1");
     cancels.register(&crate::CandidateKey::test("Album 2"), "import-2");
     cancels.register(&crate::CandidateKey::test("Album 3"), "import-3");
@@ -120,7 +120,7 @@ fn cancelling_everything_spares_only_what_is_writing() {
 /// holds the candidate now runs when the worker reaches it.
 #[tokio::test]
 async fn a_command_cancelled_while_waiting_leaves_the_next_import_alone() {
-    let cancels = ImportCancels::default();
+    let cancels = ImportCancels::new();
     cancels.register(&crate::CandidateKey::test("Album"), "import-1");
     cancels.cancel(&crate::CandidateKey::test("Album"));
     cancels.register(&crate::CandidateKey::test("Album"), "import-2");

@@ -125,7 +125,7 @@ fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
 #[test]
 fn a_feed_that_panics_is_reported_and_others_go_on() {
     let root = tempfile::tempdir().unwrap();
-    let reports = Arc::new(bae_diagnostics::HeardBugReports::default());
+    let reports = Arc::new(bae_diagnostics::HeardBugReports::new());
     let app =
         open_library_reporting(&root, crate::BridgeDiagnostics::reporting_bugs_to(reports.clone()));
 

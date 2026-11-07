@@ -305,12 +305,6 @@ pub struct AudioClock {
     shared: Arc<ClockShared>,
 }
 
-impl Default for AudioClock {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl AudioClock {
     /// A clock that lets nothing play yet.
     pub fn new() -> Self {

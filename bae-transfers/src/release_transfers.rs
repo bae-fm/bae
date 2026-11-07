@@ -80,12 +80,6 @@ impl<Progress: Clone + PartialEq> ReleaseTransfers<Progress> {
     }
 }
 
-impl<Progress: Clone + PartialEq> Default for ReleaseTransfers<Progress> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// One release's progress while its transfer runs. Dropping it removes the
 /// release.
 pub struct ReleaseTransferReport<Progress: Clone + PartialEq> {

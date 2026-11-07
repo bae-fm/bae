@@ -25,12 +25,12 @@ pub(super) const FOLDERS_AT_ONCE: usize = 8;
 
 /// What stops a scan pass: the import service cancelling it, or, for the
 /// folders a pass reads at once, one of them failing.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub(crate) struct ScanCancellation(tokio_util::sync::CancellationToken);
 
 impl ScanCancellation {
     pub(crate) fn new() -> Self {
-        Self::default()
+        Self(tokio_util::sync::CancellationToken::new())
     }
 
     /// A cancellation that cancelling this one cancels too, and that cancels

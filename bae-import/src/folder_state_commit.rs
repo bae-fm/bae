@@ -17,7 +17,7 @@ use tokio::time::Instant;
 const NOTICEABLE_HOLD: Duration = Duration::from_millis(250);
 
 /// The folder-state commit lock. Clones share the one lock.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub(crate) struct FolderStateCommit {
     lock: Arc<tokio::sync::Mutex<()>>,
     #[cfg(test)]
@@ -33,6 +33,14 @@ struct Waiting {
 }
 
 impl FolderStateCommit {
+    pub(crate) fn new() -> Self {
+        Self {
+            lock: Arc::new(tokio::sync::Mutex::new(())),
+            #[cfg(test)]
+            waiting: Arc::default(),
+        }
+    }
+
     /// Wait for the lock and hold it for `operation`, which names the holder
     /// in the log lines its release writes.
     pub(crate) async fn lock(&self, operation: &'static str) -> FolderStateCommitGuard {

@@ -193,11 +193,11 @@ struct SendHold {
 }
 
 #[cfg(any(test, feature = "test-utils"))]
-impl Default for SendHold {
-    fn default() -> Self {
+impl SendHold {
+    fn new() -> Self {
         Self {
-            state: Default::default(),
-            changed: Default::default(),
+            state: std::sync::Mutex::new(HoldState::default()),
+            changed: std::sync::Condvar::new(),
             held: tokio::sync::watch::Sender::new(false),
         }
     }
@@ -308,7 +308,7 @@ impl ImportEventBus {
             delivery: EventDelivery::new(feed_reader, ImportEvents(feed)),
             runtime,
             #[cfg(any(test, feature = "test-utils"))]
-            send_hold: Arc::default(),
+            send_hold: Arc::new(SendHold::new()),
         }
     }
 

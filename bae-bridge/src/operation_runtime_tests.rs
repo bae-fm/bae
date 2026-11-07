@@ -155,7 +155,7 @@ async fn a_panicking_operation_fails_as_internal_and_is_reported() {
 #[tokio::test]
 async fn a_persistent_operation_panicking_after_its_caller_left_is_reported() {
     let owned = owned_runtime();
-    let reports = Arc::new(bae_diagnostics::HeardBugReports::default());
+    let reports = Arc::new(bae_diagnostics::HeardBugReports::new());
     let operations = OperationRuntime::new(
         owned.handle().clone(),
         Diagnostics::noop().reporting_bugs_to(reports.clone()),

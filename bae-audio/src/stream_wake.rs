@@ -15,12 +15,11 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 
 /// Counts the changes that could give a player's drain work. Clones share one
 /// count.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct StreamWake {
     shared: Arc<WakeState>,
 }
 
-#[derive(Default)]
 struct WakeState {
     counts: Mutex<WakeCounts>,
     changed: Condvar,
@@ -35,7 +34,12 @@ struct WakeCounts {
 
 impl StreamWake {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            shared: Arc::new(WakeState {
+                counts: Mutex::new(WakeCounts::default()),
+                changed: Condvar::new(),
+            }),
+        }
     }
 
     fn counts(&self) -> MutexGuard<'_, WakeCounts> {

@@ -61,6 +61,11 @@ pub(crate) struct ProtocolDiscovery<B: Browse> {
 }
 
 impl<B: Browse> ProtocolDiscovery<B> {
+    /// A discovery that is not browsing and lists no device.
+    pub(crate) fn new() -> Self {
+        Self { devices: PublishedDevices::new(), running: None }
+    }
+
     /// Follow the live device list.
     pub(crate) fn subscribe(&self) -> crate::renderer::DeviceListWatch {
         self.devices.subscribe()
@@ -86,12 +91,6 @@ impl<B: Browse> ProtocolDiscovery<B> {
         if let Some(running) = self.running.take() {
             running.stop();
         }
-    }
-}
-
-impl<B: Browse> Default for ProtocolDiscovery<B> {
-    fn default() -> Self {
-        Self { devices: PublishedDevices::new(), running: None }
     }
 }
 

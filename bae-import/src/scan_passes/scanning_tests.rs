@@ -44,7 +44,7 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
 /// carry no bug, and the panic goes nowhere.
 #[tokio::test]
 async fn a_walk_its_pass_stopped_waiting_for_reports_its_threads_panic() {
-    let reports = Arc::new(bae_diagnostics::HeardBugReports::default());
+    let reports = Arc::new(bae_diagnostics::HeardBugReports::new());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(reports.clone());
     let (go, wait) = std::sync::mpsc::channel::<()>();
     let walk = start_folder_walk(&diagnostics, move || {

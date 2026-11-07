@@ -190,8 +190,8 @@ impl ImportServices {
             ids,
             file_tags,
             directories: std::sync::Arc::new(folder_scanner::OsDirectoryReader),
-            folder_state_commit: folder_state_commit::FolderStateCommit::default(),
-            import_cancels: import_cancel::ImportCancels::default(),
+            folder_state_commit: folder_state_commit::FolderStateCommit::new(),
+            import_cancels: import_cancel::ImportCancels::new(),
             diagnostics,
             closing,
         }

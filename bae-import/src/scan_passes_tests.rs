@@ -17,7 +17,7 @@ pub(crate) fn test_scan_services(
     directories: Arc<dyn crate::folder_scanner::DirectoryReader>,
 ) -> ScanServices {
     ScanServices::new(
-        test.import_services(event_tx, file_tags, directories, crate::FolderStateCommit::default()),
+        test.import_services(event_tx, file_tags, directories, crate::FolderStateCommit::new()),
         folder_watcher,
     )
 }

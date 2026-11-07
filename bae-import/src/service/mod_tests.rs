@@ -66,7 +66,7 @@ impl TestService {
             file_tags,
             directories,
             folder_state_commit,
-            import_cancels: Default::default(),
+            import_cancels: crate::import_cancel::ImportCancels::new(),
             diagnostics: service.diagnostics.clone(),
             closing: tokio_util::sync::CancellationToken::new(),
         }
@@ -138,7 +138,7 @@ pub(crate) async fn setup_import_service() -> TestService {
             ),
             clock: Arc::new(coven::SystemClock),
             ids: Arc::new(coven::UuidIds),
-            import_cancels: Default::default(),
+            import_cancels: crate::import_cancel::ImportCancels::new(),
             diagnostics: bae_diagnostics::Diagnostics::noop(),
         },
         preparations,

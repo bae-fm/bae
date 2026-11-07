@@ -330,7 +330,7 @@ impl CoordinatorHarness {
             .unwrap()
             .expect("the seeded scan generation is current");
         }
-        let folder_state_commit = crate::FolderStateCommit::default();
+        let folder_state_commit = crate::FolderStateCommit::new();
         let (scans, starter) = FakeScanStarter::new();
         let removal_backend = Arc::new(FakeRemovalBackend::default());
         let events = tokio::sync::Mutex::new(test.event_tx().every_event());

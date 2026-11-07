@@ -10,7 +10,7 @@ fn logs_of_a_hold(level: tracing::Level, held_for: Duration) -> String {
             .build()
             .unwrap()
             .block_on(async {
-                let commit = FolderStateCommit::default();
+                let commit = FolderStateCommit::new();
                 let guard = commit.lock("store scan items").await;
                 tokio::time::advance(held_for).await;
                 drop(guard);
@@ -37,7 +37,7 @@ fn a_short_hold_is_logged_at_debug_only() {
 
 #[tokio::test(start_paused = true)]
 async fn the_wait_is_how_long_the_lock_was_held_by_another() {
-    let commit = FolderStateCommit::default();
+    let commit = FolderStateCommit::new();
     let first = commit.lock("hold for a test").await;
     let waiter = tokio::spawn({
         let commit = commit.clone();

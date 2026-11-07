@@ -283,7 +283,7 @@ impl BridgeHost {
             #[cfg(not(desktop))]
             presenter: Mutex::new(None),
             audio_focus,
-            closing_libraries: Default::default(),
+            closing_libraries: closing_libraries::ClosingLibraries::new(),
         }))
     }
 }

@@ -89,11 +89,20 @@ pub struct ReportedRenderer {
 /// bae's own network browsing: the three protocol discoveries running side by
 /// side, their device lists merged into one for the picker — a speaker is a
 /// speaker, whatever its protocol.
-#[derive(Default)]
 pub struct BuiltinDiscovery {
     cast: CastDiscovery,
     dlna: DlnaDiscovery,
     airplay: AirPlayDiscovery,
+}
+
+impl BuiltinDiscovery {
+    fn new() -> Self {
+        Self {
+            cast: CastDiscovery::new(),
+            dlna: DlnaDiscovery::new(),
+            airplay: AirPlayDiscovery::new(),
+        }
+    }
 }
 
 /// One resolved service, at the type its mapping produced.
@@ -259,7 +268,7 @@ pub enum RendererDiscovery {
 impl RendererDiscovery {
     /// bae browses the network itself.
     pub fn builtin() -> Self {
-        Self::Builtin(BuiltinDiscovery::default())
+        Self::Builtin(BuiltinDiscovery::new())
     }
 
     /// The host's browser finds the services and reports them in.

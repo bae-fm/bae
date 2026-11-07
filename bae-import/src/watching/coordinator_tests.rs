@@ -239,7 +239,7 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
     let active_roots = ActiveRoots::new(
         starter,
         Arc::new(FakeRemovalBackend::default()),
-        crate::FolderStateCommit::default(),
+        crate::FolderStateCommit::new(),
         bae_diagnostics::Diagnostics::noop(),
         scan_completions,
         removal_completions,

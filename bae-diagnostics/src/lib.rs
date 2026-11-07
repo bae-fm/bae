@@ -683,7 +683,6 @@ impl BugReporter for RecordingBugReporter {
 /// is reported after the call it made returned, by work its caller stopped
 /// waiting for.
 #[cfg(any(test, feature = "test-utils"))]
-#[derive(Default)]
 pub struct HeardBugReports {
     heard: std::sync::Mutex<VecDeque<(String, String)>>,
     /// Told of each report as it is heard.
@@ -692,6 +691,11 @@ pub struct HeardBugReports {
 
 #[cfg(any(test, feature = "test-utils"))]
 impl HeardBugReports {
+    /// A reporter that has heard nothing.
+    pub fn new() -> Self {
+        Self { heard: std::sync::Mutex::new(VecDeque::new()), notice: tokio::sync::Notify::new() }
+    }
+
     /// Whether every report heard so far has been taken.
     pub fn all_taken(&self) -> bool {
         self.heard.lock().expect("bug reports mutex poisoned").is_empty()
