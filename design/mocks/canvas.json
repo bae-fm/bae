@@ -3256,7 +3256,7 @@
    "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs, queued in todo.md §2 \"Settings from the canvas\" (#232-#248), with invites #214/#215 and Add device #227/#228.",
    "w": 720,
    "x": 0,
-   "y": -320
+   "y": -520
   },
   "canvas-key-settings": {
    "bold": true,
@@ -3266,7 +3266,7 @@
    "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs, queued in todo.md §2 \"Settings from the canvas\" (#232-#248), with invites #214/#215 and Add device #227/#228.",
    "w": 720,
    "x": 0,
-   "y": -320
+   "y": -520
   },
   "canvas-key-shared": {
    "bold": true,
@@ -3286,7 +3286,7 @@
    "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs, queued in todo.md §2 \"Settings from the canvas\" (#232-#248), with invites #214/#215 and Add device #227/#228.",
    "w": 720,
    "x": 0,
-   "y": -320
+   "y": -520
   },
   "code-appearance": {
    "page": "settings",
