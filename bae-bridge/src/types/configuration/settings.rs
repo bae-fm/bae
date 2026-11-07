@@ -8,7 +8,7 @@ pub enum BridgeSortField {
     DateAdded,
 }
 
-#[derive(Debug, Clone, uniffi::Enum)]
+#[derive(Debug, Clone, Copy, uniffi::Enum)]
 pub enum BridgeSortDirection {
     Ascending,
     Descending,
@@ -856,20 +856,13 @@ mirror_enum! {
     variants: { AlbumTitle, ArtistNames, Media, FileCount, TotalSize, Storage, DateAdded },
 }
 
-mirror_enum! {
-    BridgeStorageSortDirection = bae_store::SortDirection,
-    from_core: fn,
-    into_core: fn,
-    variants: { Ascending, Descending },
-}
-
 mirror_struct! {
     BridgeStorageSort = bae_views::StorageSortCriterion,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: {
         field: (BridgeStorageSortField),
-        direction: (BridgeStorageSortDirection),
+        direction: (BridgeSortDirection),
     },
 }
 
@@ -912,6 +905,7 @@ mirror_struct! {
 
 mirror_enum! {
     BridgeSortDirection = bae_store::SortDirection,
+    from_core: fn,
     into_core: pub(crate) fn,
     variants: { Ascending, Descending },
 }

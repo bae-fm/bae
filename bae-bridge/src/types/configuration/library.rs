@@ -282,16 +282,10 @@ pub enum BridgeStorageSortField {
     DateAdded,
 }
 
-#[derive(Debug, Clone, Copy, uniffi::Enum)]
-pub enum BridgeStorageSortDirection {
-    Ascending,
-    Descending,
-}
-
 #[derive(Debug, Clone, Copy, uniffi::Record)]
 pub struct BridgeStorageSort {
     pub field: BridgeStorageSortField,
-    pub direction: BridgeStorageSortDirection,
+    pub direction: BridgeSortDirection,
 }
 
 /// Filter applied to the Storage Manager list: every release, the uploaded
