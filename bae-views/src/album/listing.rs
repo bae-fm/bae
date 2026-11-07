@@ -92,15 +92,36 @@ pub(super) fn album_appearance_count_on(sql: &SqlReadContext<'_>) -> Result<u64,
 /// The statement reading the album list's rows `seek` reads over
 /// `relation` (grouped by artist or not) in `order`, at most `:limit` from
 /// `:offset`, each with the artist whose group lists it and its key.
+///
+/// The window is picked by an inner statement that reads only the ids of its
+/// rows, so a row `:offset` skips costs its place in the order and nothing
+/// else; the outer statement reads the columns of just the picked rows, in
+/// the same order.
 pub(crate) fn album_window_statement(
     relation: &str,
     group_by_artist: bool,
     order: &ListOrder,
     seek: &Seek,
 ) -> String {
+    let (picked, picked_ids) = if group_by_artist {
+        (
+            "artist.artist_id AS picked_artist_id, listing.album_id AS picked_album_id",
+            "CROSS JOIN artist_listing artist ON artist.artist_id = picked.picked_artist_id \
+             CROSS JOIN album_listing listing ON listing.album_id = picked.picked_album_id",
+        )
+    } else {
+        (
+            "listing.album_id AS picked_album_id",
+            "CROSS JOIN album_listing listing ON listing.album_id = picked.picked_album_id",
+        )
+    };
     format!(
-        "{select}, {group} AS group_artist_id, {keys} {relation} WHERE {condition} \
-         ORDER BY {ordering} LIMIT :limit OFFSET :offset",
+        "{select}, {group} AS group_artist_id, {keys} \
+         FROM (SELECT {picked} {relation} WHERE {condition} \
+               ORDER BY {ordering} LIMIT :limit OFFSET :offset) picked \
+         {picked_ids} \
+         JOIN albums a ON a.id = picked.picked_album_id \
+         ORDER BY {ordering}",
         select = album_summary_select(),
         group = album_group_artist_sql(group_by_artist),
         keys = order.key_columns(),

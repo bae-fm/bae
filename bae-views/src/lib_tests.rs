@@ -172,7 +172,14 @@ pub(super) async fn assert_seeks_search_sorting(
     for seek in order.seeks_beside(&key) {
         let sorts_by_artist = sorted_within != usize::MAX;
         let sorts = seek.held_equal() >= sorted_within;
-        let steps = plan(db, statement(&seek), seek.clone(), extra.clone()).await;
+        let mut steps = plan(db, statement(&seek), seek.clone(), extra.clone()).await;
+        // A statement that picks its window in an inner statement and reads the
+        // picked rows' columns outside it (`SCAN picked`) orders those rows
+        // again: that last sort holds the window's rows alone, and the inner
+        // statement's steps are held to the index as any statement's are.
+        if steps.iter().any(|step| step == "SCAN picked") {
+            assert_eq!(steps.pop().as_deref(), Some("USE TEMP B-TREE FOR ORDER BY"));
+        }
         // The grid grouped by artist sorts each artist's albums as it reaches
         // the artist (`RIGHT PART`); nothing sorts the list whole.
         assert!(
