@@ -23,25 +23,10 @@ async fn add_artist(
     discogs_artist_id: Option<&str>,
     musicbrainz_artist_id: Option<&str>,
 ) {
-    let (id, name) = (id.to_string(), name.to_string());
-    let (discogs_artist_id, musicbrainz_artist_id) =
-        (discogs_artist_id.map(str::to_string), musicbrainz_artist_id.map(str::to_string));
-    db.call(move |sql| {
-        sql.execute(
-            "INSERT INTO artists (id, name, name_key, discogs_artist_id, musicbrainz_artist_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                id,
-                name,
-                bae_types::text_match::artist_name_key(&name),
-                discogs_artist_id,
-                musicbrainz_artist_id,
-                NOW
-            ],
-        )?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    crate::test_fixtures::test_records(db)
+        .insert_artist(&credit(id, name, discogs_artist_id, musicbrainz_artist_id))
+        .await
+        .unwrap();
 }
 
 fn credit(
@@ -167,17 +152,15 @@ async fn a_catalog_id_wins_over_the_name() {
 #[tokio::test]
 async fn an_absorbed_artist_is_not_matched_by_its_name() {
     let (db, _tmp) = library().await;
-    add_artist(&db, "absorbed", "Artist Name", None, None).await;
-    add_artist(&db, "survivor", "Other Name", None, None).await;
-    db.call(|sql| {
-        sql.execute(
-            "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES ('absorbed', 'survivor', ?)",
-            params![NOW],
-        )?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    add_artist(&db, "first", "Other Name", Some("discogs-1"), None).await;
+    add_artist(&db, "second", "Artist Name", Some("discogs-1"), None).await;
+    // The write crediting the id both hold merges the second into the first,
+    // the smaller id.
+    let credited = crate::test_fixtures::test_records(&db)
+        .find_or_create_artists(&[credit("merging", "Other Name", Some("discogs-1"), None)])
+        .await
+        .unwrap();
+    assert_eq!(credited, ["first"]);
 
     let resolved = resolve(&db, &[credit("credit", "Artist Name", None, None)]).await;
 
@@ -683,10 +666,10 @@ async fn test_new_artist_inserts() {
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-999"));
 }
 
-/// Two devices apart each give one Discogs id to a different artist of one
-/// name. Once each has the other's write, the next write crediting that id
-/// merges the two into the smaller id and credits it, and the other device
-/// reads the credit as that artist.
+/// Two devices apart each give one Discogs id to a different artist. Once
+/// each has the other's write, the next write crediting that id merges the
+/// two into the smaller id, which a later write credits and both devices
+/// read the credit as.
 #[test]
 fn a_catalog_id_two_devices_gave_two_artists_merges_them() {
     bae_store::test_devices::run_two_store_test(
@@ -696,37 +679,26 @@ fn a_catalog_id_two_devices_gave_two_artists_merges_them() {
 }
 
 async fn check_two_devices_give_one_artist_id(devices: &bae_store::test_devices::TwoStores) {
-    for id in ["artist-a", "artist-b"] {
+    for (id, name) in [("artist-a", "Artist Name A"), ("artist-b", "Artist Name B")] {
         crate::test_fixtures::test_records(devices.a())
-            .insert_artist(&credit(id, "Artist Name", None, None))
+            .insert_artist(&credit(id, name, None, None))
             .await
             .unwrap();
     }
-    let artists = "SELECT id || ':' || COALESCE(discogs_artist_id, '') FROM artists";
-    devices.converge(artists).await;
+    devices.converge("SELECT id FROM artists").await;
 
-    devices.pause().await;
-    for (device, id) in [(devices.a(), "artist-a"), (devices.b(), "artist-b")] {
-        device
-            .call(move |sql| {
-                sql.execute(
-                    "UPDATE artists SET discogs_artist_id = 'discogs-1' WHERE id = ?",
-                    [id],
-                )?;
-                Ok(())
-            })
-            .await
-            .unwrap();
-    }
-    devices.resume().await;
-    devices.converge(artists).await;
+    crate::test_fixtures::artists_apart::merge_apart(
+        devices,
+        ("Artist Name A", "Artist Name B"),
+        "discogs-1",
+    )
+    .await;
 
     let credited = crate::test_fixtures::test_records(devices.a())
         .find_or_create_artists(&[credit("credit", "Artist Name", Some("discogs-1"), None)])
         .await
         .unwrap();
     assert_eq!(credited, ["artist-a"]);
-    devices.converge("SELECT id || '>' || into_artist_id FROM artist_merges").await;
 
     let read = bae_catalogs::credits::ArtistCredit {
         discogs_artist_id: Some("discogs-1".to_string()),

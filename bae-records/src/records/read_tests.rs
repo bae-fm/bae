@@ -1,18 +1,13 @@
 use crate::records::*;
 use rusqlite::Connection;
 
-/// An in-memory DB on the real schema with one artist/album/release whose
+/// An in-memory DB on the real schema with one album and release whose
 /// `created_at` is valid, so a test can corrupt one column and prove the
 /// mapper rejects it.
 fn seeded_conn() -> Connection {
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
     crate::test_fixtures::bare_library::open_bare_library(&conn);
     let now = "2026-01-01T00:00:00Z";
-    conn.execute(
-        "INSERT INTO artists (id, name, name_key, created_at) VALUES ('6c441836-aef7-4239-8a84-5336c4cce52c', 'Artist Name', 'artist name', ?)",
-        params![now],
-    )
-    .unwrap();
     conn.execute(
         "INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('9644b84d-94b2-4b3b-863a-d6583931920c', 'Album Title', 0, ?)",
         params![now],
