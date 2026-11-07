@@ -542,14 +542,16 @@ pub(crate) fn storage_totals_on(
                 |row| Ok((row.get::<_, i64>(0)? as u64, row.get::<_, i64>(1)? as u64)),
             )?;
             let kept_size = storage_total_size_on(sql, filter)?;
+            // The releases a search leaves out are among those the list
+            // holds, so leaving out more is a bug of bae's: the counts kept
+            // beside the listing or this count disagree with the listing.
+            // The panic comes back from the store's work as a bug.
             match (kept.checked_sub(unfound), kept_size.checked_sub(unfound_size)) {
                 (Some(found), Some(size)) => (found, size),
-                _ => {
-                    return Err(DbError::Message(format!(
-                        "the search leaves out {unfound} releases of {unfound_size} bytes, \
-                         more than the {kept} releases of {kept_size} bytes the list holds"
-                    )))
-                }
+                _ => panic!(
+                    "the search leaves out {unfound} releases of {unfound_size} bytes, \
+                     more than the {kept} releases of {kept_size} bytes the list holds"
+                ),
             }
         }
     };
