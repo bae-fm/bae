@@ -127,8 +127,10 @@
     <string name="settings_folder">Kansio</string>
     <string name="settings_open_in_browser">Avaa selaimessa</string>
     <string name="settings_folder_no_app">Mikään tämän laitteen ohjelma ei avannut kansion sivua.</string>
-    <string name="settings_pause_uploads">Keskeytä lähetykset</string>
-    <string name="settings_pause_uploads_footer">Kun lähetykset ovat tauolla, muutokset odottavat tällä laitteella ja lähtevät, kun jatkat.</string>
+    <string name="settings_transfers">Siirrot</string>
+    <string name="transfers_wifi_only">Lataa vain Wi-Fi-yhteydellä</string>
+    <string name="transfers_wifi_only_footer">Kiinnitetyt julkaisut odottavat Wi-Fi-yhteyttä. Kiinnittämättömän raidan toisto käyttää edelleen mobiilidataa.</string>
+    <string name="transfers_concurrency_footer">Montako tiedostoa ladataan kerralla, kun julkaisu kiinnitetään.</string>
     <string name="members_title">Ihmiset ja laitteet</string>
     <string name="members_this_device">Tämä laite</string>
     <string name="members_role_member">Jäsen</string>

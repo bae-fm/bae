@@ -12,6 +12,7 @@ import fm.bae.app.ui.settings.MembersScreen
 import fm.bae.app.ui.settings.SettingsScreen
 import fm.bae.app.ui.settings.StorageSetupScreen
 import fm.bae.app.ui.settings.SyncPendingScreen
+import fm.bae.app.ui.settings.TransfersScreen
 import kotlinx.coroutines.flow.StateFlow
 
 internal data class AlbumTarget(
@@ -47,6 +48,9 @@ internal sealed interface LibraryDestination {
 
     /** What sync waits on, each with its action. */
     data object SyncPending : Setting
+
+    /** How this phone moves files: Wi-Fi only, and how many download at once. */
+    data object Transfers : Setting
 
     /** Choosing and setting up storage for a library without one. */
     data object StorageSetup : Setting
@@ -183,6 +187,10 @@ private fun SettingsDestinationScreen(
 
         LibraryDestination.SyncPending -> {
             SyncPendingScreen(session = session, actions = actions, onBack = onBack)
+        }
+
+        LibraryDestination.Transfers -> {
+            TransfersScreen(session = session, onBack = onBack)
         }
 
         LibraryDestination.StorageSetup -> {

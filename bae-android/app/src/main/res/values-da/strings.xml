@@ -127,8 +127,10 @@
     <string name="settings_folder">Mappe</string>
     <string name="settings_open_in_browser">Åbn i browser</string>
     <string name="settings_folder_no_app">Ingen app på denne enhed åbnede mappens side.</string>
-    <string name="settings_pause_uploads">Sæt uploads på pause</string>
-    <string name="settings_pause_uploads_footer">Mens de er på pause, venter ændringerne på denne enhed og uploades, når du fortsætter.</string>
+    <string name="settings_transfers">Overførsler</string>
+    <string name="transfers_wifi_only">Download kun via Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Fastgjorte udgivelser venter på Wi-Fi. Afspilning af et nummer, der ikke er fastgjort, bruger stadig mobildata.</string>
+    <string name="transfers_concurrency_footer">Hvor mange filer der downloades på én gang, når en udgivelse fastgøres.</string>
     <string name="members_title">Personer og enheder</string>
     <string name="members_this_device">Denne enhed</string>
     <string name="members_role_member">Medlem</string>

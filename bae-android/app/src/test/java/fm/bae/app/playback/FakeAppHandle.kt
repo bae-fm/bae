@@ -101,6 +101,7 @@ import uniffi.bae_bridge.RequestedProfileSubscription
 import uniffi.bae_bridge.StorageBrowseSubscription
 import uniffi.bae_bridge.SyncActivitySubscription
 import uniffi.bae_bridge.SyncStatusSubscription
+import uniffi.bae_bridge.UnmeteredOnlySubscription
 import uniffi.bae_bridge.UploadsPausedSubscription
 import uniffi.bae_bridge.WorkDetailSubscription
 
@@ -173,6 +174,8 @@ internal open class FakeAppHandle(
     override fun feedDownloadTransfers(): KeyedValueStream = FakeKeyedValueStream()
 
     override fun subscribeUploadsPaused(): UploadsPausedSubscription = FakeUploadsPausedSubscription()
+
+    override fun subscribeUnmeteredOnly(): UnmeteredOnlySubscription = FakeUnmeteredOnlySubscription()
 
     override fun feedReleaseUploadTransfers(): KeyedValueStream = FakeKeyedValueStream()
 
@@ -731,6 +734,8 @@ internal open class FakeAppHandle(
 
     override suspend fun getUploadsPaused(): Boolean = unfaked("getUploadsPaused")
 
+    override suspend fun getUnmeteredOnly(): Boolean = unfaked("getUnmeteredOnly")
+
     override suspend fun reconnectSync() {
         unfaked("reconnectSync")
     }
@@ -757,6 +762,10 @@ internal open class FakeAppHandle(
 
     override suspend fun cancelFailedReleaseMove(id: Long) {
         unfaked("cancelFailedReleaseMove")
+    }
+
+    override suspend fun setUnmeteredOnly(unmeteredOnly: Boolean) {
+        unfaked("setUnmeteredOnly")
     }
 
     override suspend fun setSyncPaused(paused: Boolean) {

@@ -49,7 +49,7 @@ private val logger = BaeLogger("bae.SettingsSyncSection")
 
 /**
  * Where the library is stored and how its sync stands: the storage's
- * details, the one status line and upload pause — or, when this device no
+ * details and the one status line — or, when this device no
  * longer holds its credentials for that storage, signing in to it again; or,
  * without storage, the way to set one up. Under either, the last sync
  * failure, such as a start that failed on a locked keychain.
@@ -106,7 +106,6 @@ internal fun SettingsSyncSection(
                 } else {
                     SyncStatusLine(line = line, onOpenPending = { onPush(LibraryDestination.SyncPending) })
                     SyncFailureOffers(session = session, onResetDevice = onResetDevice)
-                    SyncUploadPauseControl(session)
                 }
             }
         }

@@ -129,8 +129,10 @@
     <string name="settings_folder">Dosar</string>
     <string name="settings_open_in_browser">Deschide în browser</string>
     <string name="settings_folder_no_app">Nicio aplicație de pe acest dispozitiv nu a deschis pagina dosarului.</string>
-    <string name="settings_pause_uploads">Suspendă încărcările</string>
-    <string name="settings_pause_uploads_footer">Cât timp sunt suspendate, modificările așteaptă pe acest dispozitiv și se încarcă la reluare.</string>
+    <string name="settings_transfers">Transferuri</string>
+    <string name="transfers_wifi_only">Descarcă doar prin Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Edițiile fixate așteaptă Wi-Fi. Redarea unei piese care nu este fixată folosește în continuare date mobile.</string>
+    <string name="transfers_concurrency_footer">Câte fișiere se descarcă simultan când o ediție este fixată.</string>
     <string name="members_title">Persoane și dispozitive</string>
     <string name="members_this_device">Acest dispozitiv</string>
     <string name="members_role_member">Membru</string>

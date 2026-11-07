@@ -158,8 +158,10 @@
     <string name="settings_folder">Folder</string>
     <string name="settings_open_in_browser">Open in browser</string>
     <string name="settings_folder_no_app">No app on this device opened the folder\'s page.</string>
-    <string name="settings_pause_uploads">Pause uploads</string>
-    <string name="settings_pause_uploads_footer">While paused, changes wait on this device and upload when you resume.</string>
+    <string name="settings_transfers">Transfers</string>
+    <string name="transfers_wifi_only">Download over Wi-Fi only</string>
+    <string name="transfers_wifi_only_footer">Pinned releases wait for Wi-Fi. Playing a track that isn\'t pinned still uses mobile data.</string>
+    <string name="transfers_concurrency_footer">How many files download at once when a release is pinned.</string>
 
     <!-- People and devices (membership) -->
     <string name="members_title">People and devices</string>

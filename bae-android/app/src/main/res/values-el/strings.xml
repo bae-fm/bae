@@ -127,8 +127,10 @@
     <string name="settings_folder">Φάκελος</string>
     <string name="settings_open_in_browser">Άνοιγμα στο πρόγραμμα περιήγησης</string>
     <string name="settings_folder_no_app">Καμία εφαρμογή σε αυτήν τη συσκευή δεν άνοιξε τη σελίδα του φακέλου.</string>
-    <string name="settings_pause_uploads">Παύση μεταφορτώσεων</string>
-    <string name="settings_pause_uploads_footer">Όσο είναι σε παύση, οι αλλαγές περιμένουν σε αυτή τη συσκευή και μεταφορτώνονται όταν συνεχίσετε.</string>
+    <string name="settings_transfers">Μεταφορές</string>
+    <string name="transfers_wifi_only">Λήψη μόνο μέσω Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Οι καρφιτσωμένες κυκλοφορίες περιμένουν Wi-Fi. Η αναπαραγωγή ενός κομματιού που δεν είναι καρφιτσωμένο εξακολουθεί να χρησιμοποιεί δεδομένα κινητής τηλεφωνίας.</string>
+    <string name="transfers_concurrency_footer">Πόσα αρχεία λαμβάνονται ταυτόχρονα όταν καρφιτσώνεται μια κυκλοφορία.</string>
     <string name="members_title">Άτομα και συσκευές</string>
     <string name="members_this_device">Αυτή η συσκευή</string>
     <string name="members_role_member">Μέλος</string>

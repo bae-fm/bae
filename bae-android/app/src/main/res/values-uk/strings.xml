@@ -125,8 +125,10 @@
     <string name="settings_folder">Папка</string>
     <string name="settings_open_in_browser">Відкрити в браузері</string>
     <string name="settings_folder_no_app">Жоден застосунок на цьому пристрої не відкрив сторінку папки.</string>
-    <string name="settings_pause_uploads">Призупинити вивантаження</string>
-    <string name="settings_pause_uploads_footer">Під час паузи зміни очікують на цьому пристрої й вивантажуються, коли ви відновите.</string>
+    <string name="settings_transfers">Передавання</string>
+    <string name="transfers_wifi_only">Завантажувати лише через Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Закріплені релізи чекають на Wi-Fi. Відтворення треку, який не закріплено, як і раніше використовує мобільні дані.</string>
+    <string name="transfers_concurrency_footer">Скільки файлів завантажується одночасно, коли реліз закріплюють.</string>
     <string name="members_title">Люди та пристрої</string>
     <string name="members_this_device">Цей пристрій</string>
     <string name="members_role_member">Учасник</string>

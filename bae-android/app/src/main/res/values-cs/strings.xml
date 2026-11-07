@@ -125,8 +125,10 @@
     <string name="settings_folder">Složka</string>
     <string name="settings_open_in_browser">Otevřít v prohlížeči</string>
     <string name="settings_folder_no_app">Žádná aplikace v tomto zařízení neotevřela stránku složky.</string>
-    <string name="settings_pause_uploads">Pozastavit nahrávání</string>
-    <string name="settings_pause_uploads_footer">Během pozastavení změny čekají na tomto zařízení a nahrají se, až budete pokračovat.</string>
+    <string name="settings_transfers">Přenosy</string>
+    <string name="transfers_wifi_only">Stahovat jen přes Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Připnutá vydání čekají na Wi-Fi. Přehrání skladby, která není připnutá, stále používá mobilní data.</string>
+    <string name="transfers_concurrency_footer">Kolik souborů se stahuje současně při připnutí vydání.</string>
     <string name="members_title">Lidé a zařízení</string>
     <string name="members_this_device">Toto zařízení</string>
     <string name="members_role_member">Člen</string>

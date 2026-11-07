@@ -124,8 +124,10 @@
     <string name="settings_folder">תיקייה</string>
     <string name="settings_open_in_browser">פתח בדפדפן</string>
     <string name="settings_folder_no_app">אף אפליקציה במכשיר הזה לא פתחה את דף התיקייה.</string>
-    <string name="settings_pause_uploads">השהיית העלאות</string>
-    <string name="settings_pause_uploads_footer">בזמן ההשהיה, השינויים ממתינים במכשיר הזה ומועלים כשתמשיך.</string>
+    <string name="settings_transfers">העברות</string>
+    <string name="transfers_wifi_only">הורדה דרך Wi-Fi בלבד</string>
+    <string name="transfers_wifi_only_footer">מהדורות מוצמדות ממתינות ל-Wi-Fi. השמעת רצועה שאינה מוצמדת עדיין משתמשת בנתונים סלולריים.</string>
+    <string name="transfers_concurrency_footer">כמה קבצים יורדים בו-זמנית כשמצמידים מהדורה.</string>
     <string name="members_title">אנשים ומכשירים</string>
     <string name="members_this_device">המכשיר הזה</string>
     <string name="members_role_member">חבר</string>

@@ -830,7 +830,7 @@ object AppSessionHolder {
             throw e
         }
         val config: BridgeConfig = handle.currentConfig()
-        val initialUploadsPaused = handle.getUploadsPaused()
+        val initialUnmeteredOnly = handle.getUnmeteredOnly()
         val initialDownloads = handle.getDownloadCounts()
         val previous = current
         current = null
@@ -847,7 +847,7 @@ object AppSessionHolder {
                 libraryId = libraryId,
                 appHandle = BridgeLibraryHandle(handle),
                 diagnostics = diagnostics,
-                stores = buildStores(config, handle, initialUploadsPaused, initialDownloads, messages),
+                stores = buildStores(config, handle, initialUnmeteredOnly, initialDownloads, messages),
                 runtime =
                     OpenLibraryRuntime(
                         playback =
@@ -879,7 +879,7 @@ object AppSessionHolder {
     private fun buildStores(
         config: BridgeConfig,
         handle: AppHandle,
-        initialUploadsPaused: Boolean,
+        initialUnmeteredOnly: Boolean,
         initialDownloads: uniffi.bae_bridge.BridgeDownloadCounts,
         messages: SessionMessages,
     ): OpenLibraryStores =
@@ -892,8 +892,8 @@ object AppSessionHolder {
                 ),
             transfers =
                 LibraryTransferStores(
-                    downloads = DownloadStore(initialDownloads),
-                    outbox = OutboxStore(initialUploadsPaused),
+                    downloads = DownloadStore(initialDownloads, initialUnmeteredOnly),
+                    outbox = OutboxStore(),
                 ),
             cast = CastStore(),
         )

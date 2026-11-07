@@ -150,7 +150,6 @@ nl	onboarding_invite_provider
 nl	downloads
 nl	onboarding_invite_provider_mismatch
 nl	settings_copy_recovery_code
-nl	settings_pause_uploads
 nl	onboarding_join_copy_code
 nl	download_remove
 nl	downloads_empty
@@ -229,7 +228,7 @@ zh-Hans	cloud_provider_s3
 zh-Hant	S3-compatible
 zh-Hant	cloud_provider_s3
 da	Pause uploads
-da	settings_pause_uploads
+da	Pause downloads
 da	Rip log
 fr	PDF document
 nl	PDF document

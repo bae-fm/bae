@@ -127,8 +127,10 @@
     <string name="settings_folder">Mappa</string>
     <string name="settings_open_in_browser">Megnyitás böngészőben</string>
     <string name="settings_folder_no_app">Az eszközön egyetlen alkalmazás sem nyitotta meg a mappa oldalát.</string>
-    <string name="settings_pause_uploads">Feltöltések szüneteltetése</string>
-    <string name="settings_pause_uploads_footer">Szüneteltetés alatt a módosítások ezen az eszközön várakoznak, és a folytatáskor töltődnek fel.</string>
+    <string name="settings_transfers">Átvitelek</string>
+    <string name="transfers_wifi_only">Letöltés csak Wi-Fi-n</string>
+    <string name="transfers_wifi_only_footer">A rögzített kiadások Wi-Fire várnak. Egy nem rögzített szám lejátszása továbbra is mobiladatot használ.</string>
+    <string name="transfers_concurrency_footer">Hány fájl töltődik le egyszerre, amikor egy kiadást rögzítenek.</string>
     <string name="members_title">Személyek és eszközök</string>
     <string name="members_this_device">Ez az eszköz</string>
     <string name="members_role_member">Tag</string>

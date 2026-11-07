@@ -123,8 +123,10 @@
     <string name="settings_folder">Папка</string>
     <string name="settings_open_in_browser">Отваряне в браузъра</string>
     <string name="settings_folder_no_app">Нито едно приложение на това устройство не отвори страницата на папката.</string>
-    <string name="settings_pause_uploads">Пауза на качванията</string>
-    <string name="settings_pause_uploads_footer">Докато е на пауза, промените изчакват на това устройство и се качват, когато възобновите.</string>
+    <string name="settings_transfers">Трансфери</string>
+    <string name="transfers_wifi_only">Изтегляне само през Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Закачените издания изчакват Wi-Fi. Пускането на песен, която не е закачена, пак използва мобилни данни.</string>
+    <string name="transfers_concurrency_footer">Колко файла се изтеглят едновременно, когато издание се закача.</string>
     <string name="members_title">Хора и устройства</string>
     <string name="members_this_device">Това устройство</string>
     <string name="members_role_member">Член</string>

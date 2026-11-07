@@ -122,8 +122,10 @@
     <string name="settings_folder">文件夹</string>
     <string name="settings_open_in_browser">在浏览器中打开</string>
     <string name="settings_folder_no_app">此设备上没有应用打开文件夹的页面。</string>
-    <string name="settings_pause_uploads">暂停上传</string>
-    <string name="settings_pause_uploads_footer">暂停期间，更改会在此设备上等待，恢复后上传。</string>
+    <string name="settings_transfers">传输</string>
+    <string name="transfers_wifi_only">仅通过 Wi-Fi 下载</string>
+    <string name="transfers_wifi_only_footer">已固定的发行会等待 Wi-Fi。播放未固定的曲目仍会使用移动数据。</string>
+    <string name="transfers_concurrency_footer">固定发行时同时下载的文件数。</string>
     <string name="members_title">成员和设备</string>
     <string name="members_this_device">此设备</string>
     <string name="members_role_member">成员</string>

@@ -131,8 +131,10 @@
     <string name="settings_folder">Priečinok</string>
     <string name="settings_open_in_browser">Otvoriť v prehliadači</string>
     <string name="settings_folder_no_app">Žiadna aplikácia v tomto zariadení neotvorila stránku priečinka.</string>
-    <string name="settings_pause_uploads">Pozastaviť odosielanie</string>
-    <string name="settings_pause_uploads_footer">Kým je pozastavené, zmeny čakajú na tomto zariadení a odošlú sa, keď budeš pokračovať.</string>
+    <string name="settings_transfers">Prenosy</string>
+    <string name="transfers_wifi_only">Sťahovať iba cez Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Pripnuté vydania čakajú na Wi-Fi. Prehrávanie skladby, ktorá nie je pripnutá, stále používa mobilné dáta.</string>
+    <string name="transfers_concurrency_footer">Koľko súborov sa sťahuje naraz, keď sa vydanie pripne.</string>
     <string name="members_title">Ľudia a zariadenia</string>
     <string name="members_this_device">Toto zariadenie</string>
     <string name="members_role_member">Člen</string>

@@ -1927,6 +1927,9 @@ Other devices go on showing the release without playing it.
   beside Transfers with ↑ for uploads, ↓ for downloads or ⇅ for both. A paused
   file keeps its place; changes to the library still sync. Neither limits
   speed.
+- **Transfers on Android.** Settings opens a Transfers page with Download over
+  Wi-Fi only, the setting above, and how many files download at once. A phone
+  never uploads release files, so Android has no pause.
 
 **The Storage manager** lists every release with its album's title and
 credits, its media, its files' count and total size, whether it is uploaded,

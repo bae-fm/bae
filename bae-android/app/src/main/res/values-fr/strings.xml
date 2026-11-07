@@ -124,8 +124,10 @@
     <string name="settings_folder">Dossier</string>
     <string name="settings_open_in_browser">Ouvrir dans le navigateur</string>
     <string name="settings_folder_no_app">Aucune application de cet appareil n\'a ouvert la page du dossier.</string>
-    <string name="settings_pause_uploads">Suspendre les envois</string>
-    <string name="settings_pause_uploads_footer">En pause, les modifications attendent sur cet appareil et sont envoyées à la reprise.</string>
+    <string name="settings_transfers">Transferts</string>
+    <string name="transfers_wifi_only">Télécharger uniquement en Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Les sorties épinglées attendent le Wi-Fi. Lire une piste non épinglée utilise toujours les données mobiles.</string>
+    <string name="transfers_concurrency_footer">Nombre de fichiers téléchargés en même temps lorsqu’une sortie est épinglée.</string>
     <string name="members_title">Personnes et appareils</string>
     <string name="members_this_device">Cet appareil</string>
     <string name="members_role_member">Membre</string>

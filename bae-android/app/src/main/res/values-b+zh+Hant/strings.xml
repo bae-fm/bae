@@ -122,8 +122,10 @@
     <string name="settings_folder">資料夾</string>
     <string name="settings_open_in_browser">在瀏覽器中開啟</string>
     <string name="settings_folder_no_app">此裝置上沒有應用程式開啟資料夾的頁面。</string>
-    <string name="settings_pause_uploads">暫停上傳</string>
-    <string name="settings_pause_uploads_footer">暫停期間，變更會在此裝置上等待，恢復後上傳。</string>
+    <string name="settings_transfers">傳輸</string>
+    <string name="transfers_wifi_only">僅透過 Wi-Fi 下載</string>
+    <string name="transfers_wifi_only_footer">已釘選的發行會等待 Wi-Fi。播放未釘選的曲目仍會使用行動數據。</string>
+    <string name="transfers_concurrency_footer">釘選發行時同時下載的檔案數。</string>
     <string name="members_title">成員和裝置</string>
     <string name="members_this_device">此裝置</string>
     <string name="members_role_member">成員</string>

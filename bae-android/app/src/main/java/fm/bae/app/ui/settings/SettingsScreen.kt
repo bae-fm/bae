@@ -133,6 +133,8 @@ internal fun SettingsScreen(
             onReloadSelf = { scope.launch { model.loadSelf() } },
         )
         SettingsPlaybackSections(session = session, config = config, ioDispatcher = ioDispatcher, onPush = onPush)
+        SectionDivider()
+        SettingsTransfersEntry(onOpen = { onPush(LibraryDestination.Transfers) })
         // People, devices and the recovery code live in the library's store, which only storage has.
         (model.storage as? Storage.At)?.let { home ->
             SettingsStoreSections(session = session, home = home, adminChanges = model.adminChanges, onPush = onPush)

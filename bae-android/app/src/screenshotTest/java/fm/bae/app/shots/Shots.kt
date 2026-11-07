@@ -14,6 +14,7 @@ import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.LocalBugReports
 import fm.bae.app.coreString
+import fm.bae.app.data.LiveValue
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumDetailScene
@@ -33,6 +34,7 @@ import fm.bae.app.ui.playback.PlayerSceneState
 import fm.bae.app.ui.settings.AppearanceSection
 import fm.bae.app.ui.settings.CastingPage
 import fm.bae.app.ui.settings.S3SetupFormScene
+import fm.bae.app.ui.settings.TransfersContent
 import fm.bae.app.ui.sync.SyncActivityList
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
@@ -317,4 +319,32 @@ fun FullPlayerPlayingWithAGap() {
 @Composable
 fun FullPlayerAllHere() {
     FullPlayerScene(PlayerSceneState.ALL_HERE)
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun Transfers() {
+    TransfersScene(wifiOnly = false)
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun TransfersWifiOnly() {
+    TransfersScene(wifiOnly = true)
+}
+
+@Composable
+private fun TransfersScene(wifiOnly: Boolean) {
+    BaeTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            TransfersContent(
+                unmeteredOnly = LiveValue.Current(wifiOnly),
+                concurrency = 3u,
+                limit = 8u,
+                onBack = {},
+                onSetUnmeteredOnly = {},
+                onSelectConcurrency = {},
+            )
+        }
+    }
 }

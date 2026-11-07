@@ -123,8 +123,10 @@
     <string name="settings_folder">Klasör</string>
     <string name="settings_open_in_browser">Tarayıcıda aç</string>
     <string name="settings_folder_no_app">Bu cihazdaki hiçbir uygulama klasörün sayfasını açmadı.</string>
-    <string name="settings_pause_uploads">Yüklemeleri duraklat</string>
-    <string name="settings_pause_uploads_footer">Duraklatıldığında değişiklikler bu cihazda bekler ve devam ettiğinizde yüklenir.</string>
+    <string name="settings_transfers">Aktarımlar</string>
+    <string name="transfers_wifi_only">Yalnızca Wi-Fi ile indir</string>
+    <string name="transfers_wifi_only_footer">Sabitlenen yayınlar Wi-Fi’yi bekler. Sabitlenmemiş bir parçayı çalmak yine mobil veri kullanır.</string>
+    <string name="transfers_concurrency_footer">Bir yayın sabitlendiğinde aynı anda kaç dosyanın indirileceği.</string>
     <string name="members_title">Kişiler ve cihazlar</string>
     <string name="members_this_device">Bu cihaz</string>
     <string name="members_role_member">Üye</string>

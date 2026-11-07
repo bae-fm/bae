@@ -124,8 +124,10 @@
     <string name="settings_folder">Cartella</string>
     <string name="settings_open_in_browser">Apri nel browser</string>
     <string name="settings_folder_no_app">Nessuna app su questo dispositivo ha aperto la pagina della cartella.</string>
-    <string name="settings_pause_uploads">Sospendi i caricamenti</string>
-    <string name="settings_pause_uploads_footer">In pausa, le modifiche restano in attesa su questo dispositivo e vengono caricate alla ripresa.</string>
+    <string name="settings_transfers">Trasferimenti</string>
+    <string name="transfers_wifi_only">Scarica solo con Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Le pubblicazioni fissate attendono il Wi-Fi. Riprodurre una traccia non fissata usa comunque i dati mobili.</string>
+    <string name="transfers_concurrency_footer">Quanti file vengono scaricati contemporaneamente quando si fissa una pubblicazione.</string>
     <string name="members_title">Persone e dispositivi</string>
     <string name="members_this_device">Questo dispositivo</string>
     <string name="members_role_member">Membro</string>

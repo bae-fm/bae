@@ -12,6 +12,7 @@ import uniffi.bae_bridge.LibraryNameSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.RequestedProfileSubscription
+import uniffi.bae_bridge.UnmeteredOnlySubscription
 import uniffi.bae_bridge.UploadsPausedSubscription
 
 /**
@@ -90,6 +91,17 @@ internal class FakeDownloadCountsSubscription : DownloadCountsSubscription(NoHan
     private val pulls = PullChannel<BridgeDownloadCounts>()
 
     override suspend fun next(): BridgeDownloadCounts = pulls.next()
+
+    override suspend fun cancel() = pulls.cancel()
+
+    override fun close() = pulls.cancel()
+}
+
+/** Whether files move only on unmetered networks, which nothing delivers: each pull waits until cancelled. */
+internal class FakeUnmeteredOnlySubscription : UnmeteredOnlySubscription(NoHandle) {
+    private val pulls = PullChannel<Boolean>()
+
+    override suspend fun next(): Boolean = pulls.next()
 
     override suspend fun cancel() = pulls.cancel()
 

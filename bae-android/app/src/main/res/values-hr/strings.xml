@@ -124,8 +124,10 @@
     <string name="settings_folder">Mapa</string>
     <string name="settings_open_in_browser">Otvori u pregledniku</string>
     <string name="settings_folder_no_app">Nijedna aplikacija na ovom uređaju nije otvorila stranicu mape.</string>
-    <string name="settings_pause_uploads">Pauziraj prijenose</string>
-    <string name="settings_pause_uploads_footer">Dok je pauzirano, promjene čekaju na ovom uređaju i prenose se kada nastavite.</string>
+    <string name="settings_transfers">Prijenosi</string>
+    <string name="transfers_wifi_only">Preuzimaj samo putem Wi-Fi-ja</string>
+    <string name="transfers_wifi_only_footer">Prikvačena izdanja čekaju Wi-Fi. Reprodukcija pjesme koja nije prikvačena i dalje koristi mobilne podatke.</string>
+    <string name="transfers_concurrency_footer">Koliko se datoteka istodobno preuzima kad se izdanje prikvači.</string>
     <string name="members_title">Osobe i uređaji</string>
     <string name="members_this_device">Ovaj uređaj</string>
     <string name="members_role_member">Član</string>

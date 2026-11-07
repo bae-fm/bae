@@ -127,8 +127,10 @@
     <string name="settings_folder">Mapp</string>
     <string name="settings_open_in_browser">Öppna i webbläsaren</string>
     <string name="settings_folder_no_app">Ingen app på den här enheten öppnade mappens sida.</string>
-    <string name="settings_pause_uploads">Pausa uppladdningar</string>
-    <string name="settings_pause_uploads_footer">Under pausen väntar ändringarna på den här enheten och skickas upp när du fortsätter.</string>
+    <string name="settings_transfers">Överföringar</string>
+    <string name="transfers_wifi_only">Hämta endast via Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Fästa utgåvor väntar på Wi-Fi. Att spela ett spår som inte är fäst använder fortfarande mobildata.</string>
+    <string name="transfers_concurrency_footer">Hur många filer som hämtas samtidigt när en utgåva fästs.</string>
     <string name="members_title">Personer och enheter</string>
     <string name="members_this_device">Den här enheten</string>
     <string name="members_role_member">Medlem</string>

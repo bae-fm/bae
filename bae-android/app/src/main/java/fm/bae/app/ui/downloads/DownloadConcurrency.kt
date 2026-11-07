@@ -29,12 +29,18 @@ internal fun DownloadConcurrencyRow(
     DownloadConcurrencySelector(
         value = value,
         limit = limit,
-        onSelect = { option ->
-            session.messages.perform("set download concurrency") {
-                withContext(Dispatchers.IO) { session.appHandle.setMaxConcurrentDownloads(option) }
-            }
-        },
+        onSelect = { option -> setDownloadConcurrency(session, option) },
     )
+}
+
+/** Sets how many files a pin fetches at once, reporting a failure to the person. */
+internal fun setDownloadConcurrency(
+    session: OpenLibrary,
+    option: UInt,
+) {
+    session.messages.perform("set download concurrency") {
+        withContext(Dispatchers.IO) { session.appHandle.setMaxConcurrentDownloads(option) }
+    }
 }
 
 /** The concurrency picker, offering 1 up to [limit], with [value] selected and each tap reported

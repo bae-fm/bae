@@ -122,8 +122,10 @@
     <string name="settings_folder">폴더</string>
     <string name="settings_open_in_browser">브라우저에서 열기</string>
     <string name="settings_folder_no_app">이 기기의 앱이 폴더 페이지를 열지 못했습니다.</string>
-    <string name="settings_pause_uploads">업로드 일시정지</string>
-    <string name="settings_pause_uploads_footer">일시정지된 동안 변경 사항은 이 기기에서 대기하며 다시 시작하면 업로드됩니다.</string>
+    <string name="settings_transfers">전송</string>
+    <string name="transfers_wifi_only">Wi-Fi에서만 다운로드</string>
+    <string name="transfers_wifi_only_footer">고정된 릴리스는 Wi-Fi를 기다립니다. 고정되지 않은 트랙을 재생하면 계속 모바일 데이터를 사용합니다.</string>
+    <string name="transfers_concurrency_footer">릴리스를 고정할 때 동시에 다운로드하는 파일 수입니다.</string>
     <string name="members_title">사람 및 기기</string>
     <string name="members_this_device">이 기기</string>
     <string name="members_role_member">멤버</string>

@@ -124,8 +124,10 @@
     <string name="settings_folder">Pasta</string>
     <string name="settings_open_in_browser">Abrir no navegador</string>
     <string name="settings_folder_no_app">Nenhum app deste dispositivo abriu a página da pasta.</string>
-    <string name="settings_pause_uploads">Pausar envios</string>
-    <string name="settings_pause_uploads_footer">Enquanto pausado, as alterações aguardam neste dispositivo e são enviadas quando você retomar.</string>
+    <string name="settings_transfers">Transferências</string>
+    <string name="transfers_wifi_only">Baixar apenas por Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Lançamentos fixados esperam pelo Wi-Fi. Tocar uma faixa que não está fixada continua usando dados móveis.</string>
+    <string name="transfers_concurrency_footer">Quantos arquivos são baixados ao mesmo tempo quando um lançamento é fixado.</string>
     <string name="members_title">Pessoas e dispositivos</string>
     <string name="members_this_device">Este dispositivo</string>
     <string name="members_role_member">Membro</string>

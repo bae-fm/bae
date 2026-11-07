@@ -123,8 +123,10 @@
     <string name="settings_folder">Map</string>
     <string name="settings_open_in_browser">Openen in webbrowser</string>
     <string name="settings_folder_no_app">Geen app op dit apparaat heeft de pagina van de map geopend.</string>
-    <string name="settings_pause_uploads">Uploads pauzeren</string>
-    <string name="settings_pause_uploads_footer">Terwijl gepauzeerd wachten wijzigingen op dit apparaat en worden ze geüpload wanneer je hervat.</string>
+    <string name="settings_transfers">Overdrachten</string>
+    <string name="transfers_wifi_only">Alleen downloaden via wifi</string>
+    <string name="transfers_wifi_only_footer">Vastgezette releases wachten op wifi. Een track afspelen die niet is vastgezet gebruikt nog steeds mobiele data.</string>
+    <string name="transfers_concurrency_footer">Hoeveel bestanden tegelijk worden gedownload wanneer een release wordt vastgezet.</string>
     <string name="members_title">Personen en apparaten</string>
     <string name="members_this_device">Dit apparaat</string>
     <string name="members_role_member">Lid</string>

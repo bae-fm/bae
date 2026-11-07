@@ -123,8 +123,10 @@
     <string name="settings_folder">Ordner</string>
     <string name="settings_open_in_browser">Im Browser öffnen</string>
     <string name="settings_folder_no_app">Keine App auf diesem Gerät hat die Seite des Ordners geöffnet.</string>
-    <string name="settings_pause_uploads">Uploads pausieren</string>
-    <string name="settings_pause_uploads_footer">Solange pausiert, warten Änderungen auf diesem Gerät und werden hochgeladen, wenn du fortsetzt.</string>
+    <string name="settings_transfers">Übertragungen</string>
+    <string name="transfers_wifi_only">Nur über WLAN herunterladen</string>
+    <string name="transfers_wifi_only_footer">Angeheftete Veröffentlichungen warten auf WLAN. Das Abspielen eines nicht angehefteten Titels nutzt weiterhin mobile Daten.</string>
+    <string name="transfers_concurrency_footer">Wie viele Dateien gleichzeitig heruntergeladen werden, wenn eine Veröffentlichung angeheftet wird.</string>
     <string name="members_title">Personen und Geräte</string>
     <string name="members_this_device">Dieses Gerät</string>
     <string name="members_role_member">Mitglied</string>

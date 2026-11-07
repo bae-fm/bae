@@ -189,7 +189,7 @@ class OpenLibrary internal constructor(
         screenSubscriptions += queue(scope)
     }
 
-    /** The downloads and uploads: their counts, whether uploads are paused, and their fast transfers. */
+    /** The downloads and uploads: the download counts, whether files wait for Wi-Fi, and their fast transfers. */
     private fun subscribeToTransfers(scope: CoroutineScope) {
         screenSubscriptions +=
             ScreenSubscription(
@@ -203,10 +203,12 @@ class OpenLibrary internal constructor(
                 .feed(appHandle, scope) { bugs.report("read the download transfers", it) }
         screenSubscriptions +=
             ScreenSubscription(
-                appHandle.subscribeUploadsPaused().let { pulled(it::next, it::cancel) },
+                appHandle.subscribeUnmeteredOnly().let { pulled(it::next, it::cancel) },
                 scope,
-                onValue = stores.transfers.outbox::setUploadsPaused,
-                onError = { error -> subscriptionFailed("outbox", error)?.let(stores.transfers.outbox::fail) },
+                onValue = stores.transfers.downloads::setUnmeteredOnly,
+                onError = { error ->
+                    subscriptionFailed("Wi-Fi only", error)?.let(stores.transfers.downloads::failUnmeteredOnly)
+                },
             )
         // Nothing on Android draws one file's or release's upload, so only the total crosses.
         streamFeeds +=

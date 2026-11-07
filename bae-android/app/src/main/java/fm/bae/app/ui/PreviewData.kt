@@ -354,6 +354,7 @@ object PreviewData {
     ): DownloadStore =
         DownloadStore(
             counts,
+            initialUnmeteredOnly = false,
             releaseProgress = LatestStream.downloads(mapOf(downloadingReleaseId to downloadTransferProgress())),
         )
 

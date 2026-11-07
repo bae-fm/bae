@@ -127,8 +127,10 @@
     <string name="settings_folder">المجلد</string>
     <string name="settings_open_in_browser">فتح في المتصفح</string>
     <string name="settings_folder_no_app">لم يفتح أي تطبيق على هذا الجهاز صفحة المجلد.</string>
-    <string name="settings_pause_uploads">إيقاف الرفع مؤقتًا</string>
-    <string name="settings_pause_uploads_footer">أثناء الإيقاف المؤقت، تنتظر التغييرات على هذا الجهاز وتُرفع عند الاستئناف.</string>
+    <string name="settings_transfers">عمليات النقل</string>
+    <string name="transfers_wifi_only">التنزيل عبر Wi-Fi فقط</string>
+    <string name="transfers_wifi_only_footer">تنتظر الإصدارات المثبّتة اتصال Wi-Fi. يظل تشغيل مقطع غير مثبّت يستخدم بيانات الجوّال.</string>
+    <string name="transfers_concurrency_footer">عدد الملفات التي تُنزَّل في وقت واحد عند تثبيت إصدار.</string>
     <string name="members_title">الأشخاص والأجهزة</string>
     <string name="members_this_device">هذا الجهاز</string>
     <string name="members_role_member">عضو</string>

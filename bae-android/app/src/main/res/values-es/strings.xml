@@ -124,8 +124,10 @@
     <string name="settings_folder">Carpeta</string>
     <string name="settings_open_in_browser">Abrir en el navegador</string>
     <string name="settings_folder_no_app">Ninguna app de este dispositivo abrió la página de la carpeta.</string>
-    <string name="settings_pause_uploads">Pausar subidas</string>
-    <string name="settings_pause_uploads_footer">Mientras esté en pausa, los cambios esperan en este dispositivo y se suben cuando reanudes.</string>
+    <string name="settings_transfers">Transferencias</string>
+    <string name="transfers_wifi_only">Descargar solo con Wi-Fi</string>
+    <string name="transfers_wifi_only_footer">Los lanzamientos fijados esperan a tener Wi-Fi. Reproducir una pista que no está fijada sigue usando datos móviles.</string>
+    <string name="transfers_concurrency_footer">Cuántos archivos se descargan a la vez al fijar un lanzamiento.</string>
     <string name="members_title">Personas y dispositivos</string>
     <string name="members_this_device">Este dispositivo</string>
     <string name="members_role_member">Miembro</string>
