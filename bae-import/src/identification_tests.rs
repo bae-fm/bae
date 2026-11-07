@@ -760,9 +760,7 @@ pub(crate) async fn assert_no_import(
     after: &str,
 ) {
     let import = fixture.import.clone();
-    tokio::task::spawn_blocking(move || import.stop_and_join())
-        .await
-        .expect("the import worker stops");
+    bae_util::test_blocking::on_blocking_pool(move || import.stop_and_join()).await;
     for event in drain_events(events) {
         if let ImportEvent::ImportProgress { candidate_key, progress } = event {
             assert_ne!(

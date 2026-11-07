@@ -469,14 +469,13 @@ async fn a_served_mp3_decode_holds_the_files_samples() {
     .expect("import the release");
     let audio = tracks(library.manager(), &imported.release_id).await.remove(0);
     let decode = library.manager().open_track_decode(&audio);
-    let served = tokio::task::spawn_blocking(move || {
+    let served = bae_util::test_blocking::on_blocking_pool(move || {
         let mut sink = Collected::default();
         decode
             .run_to_sink(&mut sink, std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)))
             .map(|()| sink.samples)
     })
     .await
-    .expect("the decode task runs")
     .expect("the track decodes");
 
     let whole =

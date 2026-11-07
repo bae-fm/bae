@@ -205,11 +205,10 @@ fn spawn_ring_filling_decoder(
 async fn await_decoder_exit(handle: std::thread::JoinHandle<()>, why: &str) {
     tokio::time::timeout(
         bae_util::test_channels::HANG_GUARD,
-        tokio::task::spawn_blocking(move || handle.join().unwrap()),
+        bae_util::test_blocking::on_blocking_pool(move || handle.join().unwrap()),
     )
     .await
-    .unwrap_or_else(|_| panic!("{why}"))
-    .unwrap();
+    .unwrap_or_else(|_| panic!("{why}"));
 }
 
 /// `stop()` must cancel the output's `PlaybackSource` before dropping it, so the

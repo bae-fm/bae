@@ -73,7 +73,7 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
 
     // Ground truth: the same window over a fully pre-filled buffer.
     let prefilled = filled_sparse_buffer(&wav);
-    let expected = tokio::task::spawn_blocking({
+    let expected = bae_util::test_blocking::on_blocking_pool({
         let cancel = never();
         move || {
             let mut sink = DigestSink::default();
@@ -81,8 +81,7 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
             sink
         }
     })
-    .await
-    .expect("prefilled decode task");
+    .await;
 
     // Live fill: the decoder starts against an empty buffer and blocks on the
     // LocalReader's windows as they land.
@@ -93,7 +92,7 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
     Box::new(LocalReader::new(temp.path(), bae_diagnostics::Diagnostics::noop()))
         .start_reading(buffer.clone(), Box::new(|_| {}));
 
-    let streamed = tokio::task::spawn_blocking({
+    let streamed = bae_util::test_blocking::on_blocking_pool({
         let buffer = buffer.clone();
         let cancel = never();
         move || {
@@ -102,8 +101,7 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
             sink
         }
     })
-    .await
-    .expect("streamed decode task");
+    .await;
 
     assert_eq!(streamed.format, expected.format);
     assert_eq!(
@@ -146,9 +144,10 @@ async fn i32_decode_names_the_read_error_when_the_first_read_fails() {
     Box::new(LocalReader::new(dir.path(), bae_diagnostics::Diagnostics::noop()))
         .start_reading(buffer.clone(), Box::new(|_| {}));
 
-    let result = tokio::task::spawn_blocking(move || decode_audio(buffer, None, None).map(|_| ()))
-        .await
-        .expect("decode task");
+    let result = bae_util::test_blocking::on_blocking_pool(move || {
+        decode_audio(buffer, None, None).map(|_| ())
+    })
+    .await;
 
     let (kind, text) = source_read_failure(result.clone())
         .unwrap_or_else(|| panic!("an unreadable source is a read failure: {result:?}"));
@@ -195,16 +194,14 @@ async fn local_seek_into_large_file_serves_target_via_shared_fill() {
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
 
     let chunk_len = 4096usize;
-    let read = tokio::task::spawn_blocking(move || {
+    let read = bae_util::test_blocking::on_blocking_pool(move || {
         let mut out = vec![0u8; chunk_len];
         let n = seek_reader.read(&mut out).ok();
         drop(seek_reader);
         (n, out)
     });
-    let (n, out) = timeout(HANG_GUARD, read)
-        .await
-        .expect("a deep local seek must be served, not hang")
-        .expect("seek read task");
+    let (n, out) =
+        timeout(HANG_GUARD, read).await.expect("a deep local seek must be served, not hang");
 
     let n = n.expect("seek read returned data");
     let target = 6 * WINDOW as usize;

@@ -666,15 +666,14 @@ impl ImportTables {
             })
             .collect();
         let directory = directory.to_path_buf();
-        tokio::task::spawn_blocking(move || {
+        bae_util::test_blocking::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "import_candidate_standing",
                 &triggers,
             )
         })
-        .await
-        .unwrap();
+        .await;
     }
 }
 

@@ -188,10 +188,10 @@ async fn a_persistent_operation_panicking_after_its_caller_left_is_reported() {
     caller.abort();
     continue_tx.send(()).expect("release owned operation");
 
-    let operation = tokio::task::spawn_blocking(move || reports.recv_timeout(HANG_GUARD))
-        .await
-        .expect("the wait joins")
-        .expect("the panic is reported");
+    let operation =
+        bae_util::test_blocking::on_blocking_pool(move || reports.recv_timeout(HANG_GUARD))
+            .await
+            .expect("the panic is reported");
     assert_eq!(operation, "test persistent operation");
     owned.shutdown_background();
 }

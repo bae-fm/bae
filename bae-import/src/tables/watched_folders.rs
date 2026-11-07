@@ -246,7 +246,7 @@ impl ImportTables {
     /// watched too, which every read of the watched folders refuses.
     pub(crate) async fn plant_overlap_in_every_add_for_test(directory: &Path) {
         let directory = directory.to_path_buf();
-        tokio::task::spawn_blocking(move || {
+        bae_util::test_blocking::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "watched_import_folders",
@@ -256,8 +256,7 @@ impl ImportTables {
                  VALUES (CAST(CAST(NEW.path AS TEXT) || '/inner' AS BLOB), 99); END;",
             )
         })
-        .await
-        .unwrap();
+        .await;
     }
 }
 

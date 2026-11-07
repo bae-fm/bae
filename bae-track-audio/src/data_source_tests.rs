@@ -76,7 +76,7 @@ fn drain(buffer: &SharedSparseBuffer) -> Vec<u8> {
 }
 
 pub(super) async fn drain_async(buffer: SharedSparseBuffer) -> Vec<u8> {
-    tokio::task::spawn_blocking(move || drain(&buffer)).await.expect("drain task")
+    bae_util::test_blocking::on_blocking_pool(move || drain(&buffer)).await
 }
 
 /// A fill-error handler that forwards the error into a channel, plus the
@@ -208,15 +208,14 @@ async fn seek_fetches_only_the_demanded_window_not_the_skipped_prefix() {
     let read_log = start_recording_fill(contents, None, &buffer);
 
     // Read one byte at the seek target from the real blocking unit.
-    let one = tokio::task::spawn_blocking(move || {
+    let one = bae_util::test_blocking::on_blocking_pool(move || {
         let mut b = [0u8; 1];
         let n = reader.read(&mut b).ok();
         // Hold the reader until after the read so its demand stays registered.
         drop(reader);
         n
     })
-    .await
-    .expect("seek read task");
+    .await;
     assert_eq!(one, Some(1), "the seek target byte must be served");
 
     // Stop the fill, then snapshot the fetch order.
@@ -261,7 +260,7 @@ async fn read_at_the_ceiling_is_served_not_starved() {
 
     let read_result = timeout(
         HANG_GUARD,
-        tokio::task::spawn_blocking(move || {
+        bae_util::test_blocking::on_blocking_pool(move || {
             let mut b = [0u8; 1];
             let n = reader.read(&mut b).ok();
             drop(reader);
@@ -272,8 +271,7 @@ async fn read_at_the_ceiling_is_served_not_starved() {
     // Unblock the parked reader before asserting, so a starved (failing)
     // run doesn't wedge the runtime's blocking pool on shutdown.
     buffer.cancel();
-    let one =
-        read_result.expect("a read at the ceiling must be served, not starved").expect("read task");
+    let one = read_result.expect("a read at the ceiling must be served, not starved");
     assert_eq!(one, Some(1));
 }
 
@@ -298,14 +296,13 @@ async fn prefetched_start_window_removes_the_seek_target_fetch() {
         let mut reader = buffer.new_reader();
         assert!(reader.seek(start_byte));
         let read_log = start_recording_fill(contents, None, &buffer);
-        let served = tokio::task::spawn_blocking(move || {
+        let served = bae_util::test_blocking::on_blocking_pool(move || {
             let mut b = [0u8; 1];
             let n = reader.read(&mut b).ok();
             drop(reader);
             n
         })
-        .await
-        .expect("seek read task");
+        .await;
         assert_eq!(served, Some(1), "the seek target byte must be served");
         // The dropped reader woke the fill; once it settles, its read-ahead
         // fetches are recorded.
@@ -386,7 +383,7 @@ async fn a_jump_to_the_end_and_back_fetches_the_head_once() {
     let read_log = start_recording_fill(contents.clone(), None, &buffer);
 
     let reader_buffer = buffer.clone();
-    let (tail, back) = tokio::task::spawn_blocking(move || {
+    let (tail, back) = bae_util::test_blocking::on_blocking_pool(move || {
         let mut reader = reader_buffer.new_reader();
         let mut head = [0u8; 4096];
         assert_eq!(reader.read(&mut head).ok(), Some(head.len()));
@@ -404,8 +401,7 @@ async fn a_jump_to_the_end_and_back_fetches_the_head_once() {
         let n = reader.read(&mut back).expect("the head is read again");
         (tail, back[..n].to_vec())
     })
-    .await
-    .expect("head, end and back task");
+    .await;
 
     assert_eq!(&tail[..], &contents[(source_size - 128) as usize..]);
     assert_eq!(&back[..], &contents[4096..4096 + back.len()]);
@@ -473,7 +469,7 @@ async fn backward_seek_into_evicted_region_refetches_the_window() {
     let read_log = start_recording_fill(contents.clone(), None, &buffer);
 
     let reader_buffer = buffer.clone();
-    let (n, got) = tokio::task::spawn_blocking(move || {
+    let (n, got) = bae_util::test_blocking::on_blocking_pool(move || {
         let mut reader = reader_buffer.new_reader();
         // Play forward well past the third window so [2*WINDOW, 3*WINDOW) is
         // evicted (it is past the head and more than a window behind the
@@ -493,8 +489,7 @@ async fn backward_seek_into_evicted_region_refetches_the_window() {
         let n = reader.read(&mut b).ok();
         (n, b)
     })
-    .await
-    .expect("forward-then-back task");
+    .await;
 
     let n = n.expect("the backward-seek read returned data, not EOF/cancel");
     let target = 2 * WINDOW;
@@ -572,7 +567,7 @@ async fn blocked_reader_unblocks_on_demanded_window_not_sequential_catch_up() {
     // Release ONLY the demanded window; everything else stays parked.
     gate.release(6 * WINDOW);
 
-    let read_handle = tokio::task::spawn_blocking(move || {
+    let read_handle = bae_util::test_blocking::on_blocking_pool(move || {
         let mut b = [0u8; 1];
         let n = reader.read(&mut b).ok();
         drop(reader);
@@ -588,9 +583,8 @@ async fn blocked_reader_unblocks_on_demanded_window_not_sequential_catch_up() {
     buffer.cancel();
     gate.release(0);
 
-    let served = outcome
-        .expect("a blocked reader must unblock once its demanded window lands, not hang")
-        .expect("read task");
+    let served =
+        outcome.expect("a blocked reader must unblock once its demanded window lands, not hang");
     assert_eq!(served, Some(1), "the demanded window served the read");
 
     // The skipped prefix [WINDOW, 6*WINDOW) must still be unfetched — the
@@ -631,14 +625,13 @@ async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
 
     let stop = timeout(
         HANG_GUARD,
-        tokio::task::spawn_blocking(move || {
+        bae_util::test_blocking::on_blocking_pool(move || {
             let mut b = [0u8; 1];
             reader.read(&mut b)
         }),
     )
     .await
-    .expect("a failed fetch must unblock the reader")
-    .expect("read task");
+    .expect("a failed fetch must unblock the reader");
     let Err(bae_audio::sparse_buffer::BufferStop::Failed(seen)) = stop else {
         panic!("the reader must get the read failure, got {stop:?}");
     };

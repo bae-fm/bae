@@ -484,14 +484,13 @@ async fn bound_reached_and_held(
     entries: std::sync::mpsc::Receiver<()>,
     image_reads: &tokio::sync::Semaphore,
 ) -> std::sync::mpsc::Receiver<()> {
-    let entries = tokio::task::spawn_blocking(move || {
+    let entries = bae_util::test_blocking::on_blocking_pool(move || {
         for _ in 0..IMAGES_IN_FLIGHT {
             entries.recv_timeout(HANG_GUARD).expect("the bound's worth of images are read at once");
         }
         entries
     })
-    .await
-    .unwrap();
+    .await;
     assert_eq!(
         image_reads.available_permits(),
         0,

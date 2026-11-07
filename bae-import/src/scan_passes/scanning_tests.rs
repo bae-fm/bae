@@ -10,10 +10,6 @@ use bae_util::test_channels::HANG_GUARD;
 
 #[tokio::test]
 async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
-    async fn panic_during_walk() -> crate::scan_passes::FolderWalkOutcome {
-        panic!("folder walk panic");
-    }
-
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let cancellation = crate::folder_scanner::ScanCancellation::new();
@@ -22,7 +18,7 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
     let error = cancel_and_join_folder_walk(
         &cancellation,
         &mut item_rx,
-        tokio::spawn(panic_during_walk()),
+        start_folder_walk(&diagnostics, || panic!("folder walk panic")),
         &diagnostics,
     )
     .await
@@ -39,6 +35,36 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
             "walk a watched folder".to_string(),
             "walk a watched folder panicked: folder walk panic".to_string()
         )]
+    );
+}
+
+/// A walk whose pass stopped waiting for it runs to its end, and the panic
+/// of one of its threads still reaches the crash reporter. Sabotage: start
+/// the walk with `tokio::task::spawn_blocking`, or have `FolderScanError`
+/// carry no bug, and the panic goes nowhere.
+#[tokio::test]
+async fn a_walk_its_pass_stopped_waiting_for_reports_its_threads_panic() {
+    let reports = Arc::new(bae_diagnostics::HeardBugReports::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(reports.clone());
+    let (go, wait) = std::sync::mpsc::channel::<()>();
+    let walk = start_folder_walk(&diagnostics, move || {
+        wait.recv().expect("the test lets the walk end");
+        Err(crate::folder_scanner::FolderScanError::Panicked(bae_util::task_failure::Bug {
+            operation: "read folders' dates",
+            message: "a folder vanished mid-read".to_string(),
+        }))
+    });
+    // The pass stops waiting; the walk runs on, and reports.
+    drop(walk);
+    go.send(()).expect("the walk is waiting");
+    let report =
+        tokio::time::timeout(HANG_GUARD, reports.next()).await.expect("the panic is reported");
+    assert_eq!(
+        report,
+        (
+            "read folders' dates".to_string(),
+            "read folders' dates panicked: a folder vanished mid-read".to_string()
+        )
     );
 }
 
@@ -124,12 +150,11 @@ async fn stop_coordinator(
 ) {
     let (completion, stopped) = std::sync::mpsc::channel();
     commands.send(crate::watching::WatcherCommand::Shutdown { completion }).unwrap();
-    tokio::task::spawn_blocking(move || {
+    bae_util::test_blocking::on_blocking_pool(move || {
         stopped.recv().unwrap();
         coordinator.join().unwrap();
     })
-    .await
-    .unwrap();
+    .await;
 }
 
 /// A refresh whose pass panics partway through the walk is answered, the

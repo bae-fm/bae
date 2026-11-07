@@ -408,9 +408,10 @@ async fn scrub_fetching(
         let points = points.to_vec();
         let mp3 =
             Mp3 { name: mp3.name, layout: mp3.layout, seconds: mp3.seconds, bytes: Vec::new() };
-        tokio::task::spawn_blocking(move || scrub_from(buffer, &mp3, &points, target, end))
-            .await
-            .expect("the scrub")
+        bae_util::test_blocking::on_blocking_pool(move || {
+            scrub_from(buffer, &mp3, &points, target, end)
+        })
+        .await
     };
     let ranges = log.lock().unwrap().clone();
     buffer.cancel();

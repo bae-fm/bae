@@ -679,6 +679,43 @@ impl BugReporter for RecordingBugReporter {
     }
 }
 
+/// A bug reporter a test waits on for its next report: for a test whose bug
+/// is reported after the call it made returned, by work its caller stopped
+/// waiting for.
+#[cfg(any(test, feature = "test-utils"))]
+#[derive(Default)]
+pub struct HeardBugReports {
+    heard: std::sync::Mutex<VecDeque<(String, String)>>,
+    /// Told of each report as it is heard.
+    notice: tokio::sync::Notify,
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl HeardBugReports {
+    /// Wait for the first `(operation, detail)` not yet taken, and take it.
+    pub async fn next(&self) -> (String, String) {
+        loop {
+            let notified = self.notice.notified();
+            if let Some(report) = self.heard.lock().expect("bug reports mutex poisoned").pop_front()
+            {
+                return report;
+            }
+            notified.await;
+        }
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl BugReporter for HeardBugReports {
+    fn report(&self, operation: &str, detail: &str) {
+        self.heard
+            .lock()
+            .expect("bug reports mutex poisoned")
+            .push_back((operation.to_string(), detail.to_string()));
+        self.notice.notify_waiters();
+    }
+}
+
 /// A transport that records the requests it's handed and replays a fixed queue
 /// of outcomes (defaulting to success once the queue drains). Shared by the
 /// diagnostics worker tests and the service-level emission tests, which assert

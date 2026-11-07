@@ -34,22 +34,13 @@ fn bug_does_not_report_a_runtime_shutting_down() {
     assert!(reports.reports().is_empty());
 }
 
-/// A crash reporter that tells the test of each report as it arrives.
-struct HeardReports(tokio::sync::mpsc::UnboundedSender<(String, String)>);
-
-impl crate::BugReporter for HeardReports {
-    fn report(&self, operation: &str, detail: &str) {
-        self.0.send((operation.to_string(), detail.to_string())).expect("the test is listening");
-    }
-}
-
 /// Work on the blocking pool runs to its end after its caller stops waiting,
 /// and its panic still reaches the crash reporter. Sabotage: run it under
 /// `coven::task::blocking`, and the panic goes nowhere once the caller drops.
 #[tokio::test]
 async fn blocking_reports_a_panic_its_caller_stopped_waiting_for() {
-    let (heard_tx, mut heard) = tokio::sync::mpsc::unbounded_channel();
-    let diagnostics = Diagnostics::noop().reporting_bugs_to(Arc::new(HeardReports(heard_tx)));
+    let reports = Arc::new(crate::HeardBugReports::default());
+    let diagnostics = Diagnostics::noop().reporting_bugs_to(reports.clone());
     let (started_tx, started) = tokio::sync::oneshot::channel();
     let (go, wait) = std::sync::mpsc::channel::<()>();
     let mut work = Box::pin(diagnostics.blocking("resize the cover", move || {
@@ -61,17 +52,15 @@ async fn blocking_reports_a_panic_its_caller_stopped_waiting_for() {
         _ = &mut work => panic!("the work waits for the test"),
         started = started => started.expect("the work started"),
     }
-    // The caller stops waiting, and nothing else in the test holds the
-    // reporter: only the work running on can still report.
+    // The caller stops waiting; the work runs on, and reports.
     drop(work);
-    drop(diagnostics);
     go.send(()).expect("the work is waiting");
-    let report = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, heard.recv())
+    let report = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, reports.next())
         .await
-        .expect("the work ends");
+        .expect("the panic is reported");
     assert_eq!(
         report,
-        Some(("resize the cover".to_string(), "resize the cover panicked: zero width".to_string()))
+        ("resize the cover".to_string(), "resize the cover panicked: zero width".to_string())
     );
 }
 

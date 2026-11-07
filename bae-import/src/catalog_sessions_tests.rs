@@ -230,11 +230,10 @@ async fn a_signal_that_cannot_be_recorded_is_reported() {
     let session = sessions.session().await.unwrap();
     host.route("/masters/", 401, REJECTED);
     let directory = temp_dir.path().to_path_buf();
-    tokio::task::spawn_blocking(move || {
+    bae_util::test_blocking::on_blocking_pool(move || {
         bae_preferences::fail_preferences_writes_for_test(&directory)
     })
-    .await
-    .unwrap();
+    .await;
 
     session.master_covers("909", CallClass::REQUESTED).await.unwrap_err();
     sessions.signals_recorded().await;

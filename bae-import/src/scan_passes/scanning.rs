@@ -95,6 +95,16 @@ fn sqlite_is_the_disk(error: &rusqlite::Error) -> bool {
     )
 }
 
+/// Start `walk` on the blocking pool. A pass that stops waiting for it, on
+/// an error of its own, leaves it to run to its end, and a panic in it or in
+/// its threads goes to `diagnostics`.
+fn start_folder_walk(
+    diagnostics: &bae_diagnostics::Diagnostics,
+    walk: impl FnOnce() -> FolderWalkOutcome + Send + 'static,
+) -> FolderWalk {
+    coven::task::blocking_completing(FOLDER_WALK, diagnostics.bug_sink(), walk)
+}
+
 pub(super) async fn cancel_and_join_folder_walk(
     cancellation: &crate::folder_scanner::ScanCancellation,
     item_rx: &mut mpsc::Receiver<crate::folder_scanner::WalkItem>,
@@ -103,16 +113,14 @@ pub(super) async fn cancel_and_join_folder_walk(
 ) -> Result<(), crate::ImportError> {
     cancellation.cancel();
     while item_rx.recv().await.is_some() {}
-    let (walked, _, _) = bae_util::task_failure::joined(FOLDER_WALK, walk)
-        .await
-        .map_err(|failed| diagnostics.bug(failed))?;
+    let walked = walk.await.map_err(|failed| diagnostics.bug(failed))?;
     // The walk was stopped, so its own error says only that, unless one
     // of its threads panicked first.
     match walked {
         Err(crate::folder_scanner::FolderScanError::Panicked(bug)) => {
             Err(TaskFailed::Panicked(diagnostics.panicked(bug)).into())
         }
-        Ok(()) | Err(_) => Ok(()),
+        Ok(_) | Err(_) => Ok(()),
     }
 }
 
@@ -266,7 +274,7 @@ async fn walk_and_reconcile(
     // The blocking producer naturally pauses when the async consumer falls
     // behind, which caps memory on fast local trees.
     let (item_tx, mut item_rx) = mpsc::channel(SCAN_ITEMS_WAITING);
-    let walk = tokio::task::spawn_blocking(move || {
+    let walk = start_folder_walk(&services.diagnostics, move || {
         let mut seen_directories = HashSet::new();
         // When each directory was last touched, for the cheap check that
         // stands in for a walk of a network folder. One directory whose
@@ -331,7 +339,7 @@ async fn walk_and_reconcile(
                 warn!("could not reconcile folder watches for {}: {error}", walk_root.display());
             }
         }
-        (result, seen_directories, directory_mtimes)
+        result.map(|()| directory_mtimes)
     });
 
     // A stale generation is found out by the write: `save_folder_scan_items`
@@ -408,19 +416,16 @@ async fn walk_and_reconcile(
     // channel above. A root read failure preserves the progressive items
     // already committed by this pass plus older items that were not
     // explicitly replaced.
-    let walked = bae_util::task_failure::joined(FOLDER_WALK, walk)
-        .await
-        .map_err(|failed| services.diagnostics.bug(failed))?;
-    let (seen_directories, directory_mtimes) = match walked {
-        (Ok(()), seen_directories, directory_mtimes) => (seen_directories, directory_mtimes),
+    let walked = walk.await.map_err(|failed| services.diagnostics.bug(failed))?;
+    let directory_mtimes = match walked {
+        Ok(directory_mtimes) => directory_mtimes,
         // One of the walk's threads panicked; the rest stopped with it.
-        (Err(crate::folder_scanner::FolderScanError::Panicked(bug)), _, _) => {
+        Err(crate::folder_scanner::FolderScanError::Panicked(bug)) => {
             return Err(TaskFailed::Panicked(services.diagnostics.panicked(bug)).into())
         }
-        (Err(e), _, _) => return Err(e.into()),
+        Err(e) => return Err(e.into()),
     };
 
-    drop(seen_directories);
     // What this pass saw, so the next one can ask whether anything moved
     // instead of walking. Cleared when the walk could not read every
     // directory, which leaves the next pass with nothing to conclude from

@@ -12,26 +12,27 @@ use crate::extraction::candidate_text::{Source, SourcedLine};
 use crate::extraction::fast_pass::ArtworkImage;
 use bae_catalogs::InternalFailure;
 use bae_identify::signals::{ArtworkScan, BarcodeSignal, Signals, SourcedValue, TextSignal};
+use coven::task::{BugSinkRef, CompletingTask};
 use std::collections::VecDeque;
+use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::runtime::Handle;
 use tokio::sync::{OwnedSemaphorePermit, TryAcquireError};
-use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
 /// One image's reading, as its failure names it.
 const READ_IMAGE: &str = "read an image's text";
 
 /// One image being read on the blocking pool, holding one of the service's
-/// image-read permits until the analyzer returns.
+/// image-read permits until the analyzer returns. A read its pass stops
+/// waiting for runs to its end, and its panic goes to the crash reporter.
 struct ImageRead<'a> {
     image: &'a ArtworkImage,
-    task: JoinHandle<ArtworkAnalysis>,
+    task: CompletingTask<Result<ArtworkAnalysis, Infallible>>,
 }
 
 impl<'a> ImageRead<'a> {
     fn start(
-        runtime_handle: &Handle,
+        bugs: BugSinkRef,
         analyzer: &Arc<dyn ArtworkAnalyzer>,
         image: &'a ArtworkImage,
         permit: OwnedSemaphorePermit,
@@ -40,10 +41,10 @@ impl<'a> ImageRead<'a> {
         let path = image.path.clone();
         ImageRead {
             image,
-            task: runtime_handle.spawn_blocking(move || {
+            task: coven::task::blocking_completing(READ_IMAGE, bugs, move || {
                 let analysis = analyzer.analyze(&path);
                 drop(permit);
-                analysis
+                Ok(analysis)
             }),
         }
     }
@@ -54,11 +55,13 @@ impl<'a> ImageRead<'a> {
         self,
         diagnostics: &bae_diagnostics::Diagnostics,
     ) -> Result<ArtworkAnalysis, InternalFailure> {
-        bae_util::task_failure::joined(READ_IMAGE, self.task).await.map_err(|failed| {
-            InternalFailure {
+        match self.task.await {
+            Ok(Ok(analysis)) => Ok(analysis),
+            Ok(Err(never)) => match never {},
+            Err(failed) => Err(InternalFailure {
                 detail: format!("{:?}: {}", self.image.path, diagnostics.bug(failed)),
-            }
-        })
+            }),
+        }
     }
 }
 
@@ -68,7 +71,7 @@ impl<'a> ImageRead<'a> {
 /// `diagnostics`.
 async fn abandon(reads: VecDeque<ImageRead<'_>>, diagnostics: &bae_diagnostics::Diagnostics) {
     for read in reads {
-        if let Err(failed) = bae_util::task_failure::joined(READ_IMAGE, read.task).await {
+        if let Err(failed) = read.task.await {
             diagnostics.bug(failed);
         }
     }
@@ -161,7 +164,7 @@ pub(super) async fn stream_extraction(
                 };
                 unstarted.next();
                 in_flight.push_back(ImageRead::start(
-                    &inner.runtime_handle,
+                    inner.diagnostics.bug_sink(),
                     &analyzer,
                     image,
                     permit,

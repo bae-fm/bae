@@ -688,7 +688,7 @@ async fn i32_decode_names_the_read_error_when_a_later_read_fails() {
     // the first, well after the demuxer opened.
     spawn_fill_failing_from(&buffer, wav, 2 * TEST_WINDOW);
 
-    let result = tokio::task::spawn_blocking(move || {
+    let result = bae_util::test_blocking::on_blocking_pool(move || {
         decode_audio_to_sink(
             buffer,
             None,
@@ -697,8 +697,7 @@ async fn i32_decode_names_the_read_error_when_a_later_read_fails() {
             Arc::new(std::sync::atomic::AtomicBool::new(false)),
         )
     })
-    .await
-    .expect("decode task");
+    .await;
 
     let (kind, text) = source_read_failure(result.clone())
         .unwrap_or_else(|| panic!("a mid-stream read failure is a read failure: {result:?}"));
@@ -718,7 +717,7 @@ async fn verifying_decode_reports_a_first_read_failure_as_a_read_failure() {
     let buffer = create_sparse_buffer(wav.len() as u64);
     spawn_fill_failing_from(&buffer, wav, 0);
 
-    let result = tokio::task::spawn_blocking(move || {
+    let result = bae_util::test_blocking::on_blocking_pool(move || {
         decode_audio_to_verifying_sink(
             buffer,
             DecodeStart::Sample(0),
@@ -728,8 +727,7 @@ async fn verifying_decode_reports_a_first_read_failure_as_a_read_failure() {
             Arc::new(std::sync::atomic::AtomicBool::new(false)),
         )
     })
-    .await
-    .expect("decode task");
+    .await;
 
     let (kind, text) = source_read_failure(result.clone())
         .unwrap_or_else(|| panic!("an unreadable source is a read failure: {result:?}"));
@@ -754,15 +752,14 @@ async fn streaming_decode_stops_on_a_read_failure_as_a_read_failure() {
     // the first, well after the demuxer opened.
     spawn_fill_failing_from(&buffer, wav, 2 * TEST_WINDOW);
 
-    let result = tokio::task::spawn_blocking(move || {
+    let result = bae_util::test_blocking::on_blocking_pool(move || {
         let (mut sink, _source, _ready) =
             create_track_stream_pair_with_capacity(44_100, 2, 1 << 22);
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
         decode_audio_streaming(buffer, &mut sink, DecodeStart::StreamStart, None, None, None, token)
             .map(|_| ())
     })
-    .await
-    .expect("decode task");
+    .await;
 
     let (kind, _) = source_read_failure(result.clone())
         .unwrap_or_else(|| panic!("a mid-stream read failure is a read failure: {result:?}"));

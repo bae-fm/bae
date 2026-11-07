@@ -757,15 +757,14 @@ impl ImportTables {
     /// the last scan saw fails.
     pub(crate) async fn lose_scan_directories_for_test(directory: &Path) {
         let directory = directory.to_path_buf();
-        tokio::task::spawn_blocking(move || {
+        bae_util::test_blocking::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "folder_scan_directory",
                 "DROP TABLE folder_scan_directory;",
             )
         })
-        .await
-        .unwrap();
+        .await;
     }
 
     /// Plant damage for a test: each file named `name` a sidecar in the
@@ -785,15 +784,14 @@ impl ImportTables {
              relative_path = REPLACE(relative_path, '{name}', '{as_name}') \
              WHERE relative_path LIKE '%{name}';"
         );
-        tokio::task::spawn_blocking(move || {
+        bae_util::test_blocking::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "scan_sidecar_file",
                 &damage,
             )
         })
-        .await
-        .unwrap();
+        .await;
     }
 
     /// Plant damage for a test: every scan that would open a watched folder's
@@ -801,7 +799,7 @@ impl ImportTables {
     /// statement nothing should refuse.
     pub(crate) async fn fail_first_scan_begins_for_test(directory: &Path) {
         let directory = directory.to_path_buf();
-        tokio::task::spawn_blocking(move || {
+        bae_util::test_blocking::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "folder_scan_roots",
@@ -809,8 +807,7 @@ impl ImportTables {
                  BEGIN SELECT RAISE(ABORT, 'the scan could not begin'); END;",
             )
         })
-        .await
-        .unwrap();
+        .await;
     }
 
     /// Plant damage for a test: every write that stores a scan as failed, in
@@ -818,7 +815,7 @@ impl ImportTables {
     /// refuse.
     pub(crate) async fn fail_failed_scan_writes_for_test(directory: &Path) {
         let directory = directory.to_path_buf();
-        tokio::task::spawn_blocking(move || {
+        bae_util::test_blocking::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "folder_scan_roots",
@@ -827,8 +824,7 @@ impl ImportTables {
                  BEGIN SELECT RAISE(ABORT, 'the failed scan was refused'); END;",
             )
         })
-        .await
-        .unwrap();
+        .await;
     }
 }
 

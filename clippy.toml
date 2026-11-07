@@ -9,4 +9,7 @@ disallowed-methods = [
     # A dropped caller of `blocking` loses its work's panic with the join
     # handle; bae's work runs under Diagnostics::blocking, which reports it.
     { path = "coven::task::blocking", reason = "use Diagnostics::blocking, or blocking_completing with a bug sink" },
+    # A dropped JoinHandle loses its work's panic the same way.
+    { path = "tokio::task::spawn_blocking", reason = "use Diagnostics::blocking, or blocking_completing with a bug sink" },
+    { path = "tokio::runtime::Handle::spawn_blocking", reason = "use Diagnostics::blocking, or blocking_completing with a bug sink" },
 ]

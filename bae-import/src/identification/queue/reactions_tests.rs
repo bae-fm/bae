@@ -417,9 +417,8 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_queue() {
     // Start the pass and hold extraction inside OCR, so the candidate is
     // genuinely mid-flight when the folder goes.
     let pass = fixture.drain_automatic_task();
-    tokio::task::spawn_blocking(move || entered.recv_timeout(HANG_GUARD))
+    bae_util::test_blocking::on_blocking_pool(move || entered.recv_timeout(HANG_GUARD))
         .await
-        .unwrap()
         .expect("extraction reaches the artwork");
     std::fs::remove_dir_all(&dir).unwrap();
     // What the folder watcher does when a candidate's directory goes: read

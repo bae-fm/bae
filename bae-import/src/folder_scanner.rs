@@ -84,6 +84,17 @@ pub enum FolderScanError {
     Panicked(bae_util::task_failure::Bug),
 }
 
+/// A walk's error carries the panic of one of its threads, which the walk's
+/// caller reports, or, once no caller waits, the bug sink it ran under.
+impl coven::task::CarriesBug for FolderScanError {
+    fn bug(&self) -> Option<&bae_util::task_failure::Bug> {
+        match self {
+            Self::Panicked(bug) => Some(bug),
+            Self::Io { .. } | Self::NotADirectory { .. } | Self::Cancelled | Self::Other(_) => None,
+        }
+    }
+}
+
 impl FolderScanError {
     pub(crate) fn io(path: impl Into<PathBuf>, source: io::Error) -> Self {
         Self::Io { path: path.into(), source }

@@ -395,14 +395,14 @@ impl CoordinatorHarness {
     pub(crate) async fn shutdown(&self) {
         let (completion, done) = std::sync::mpsc::channel();
         self.commands.send(WatcherCommand::Shutdown { completion }).unwrap();
-        tokio::task::spawn_blocking(move || done.recv()).await.unwrap().unwrap();
+        bae_util::test_blocking::on_blocking_pool(move || done.recv()).await.unwrap();
         let thread = self
             .coordinator_thread
             .lock()
             .unwrap()
             .take()
             .expect("coordinator has not already shut down");
-        tokio::task::spawn_blocking(move || thread.join()).await.unwrap().unwrap();
+        bae_util::test_blocking::on_blocking_pool(move || thread.join()).await.unwrap();
     }
 }
 

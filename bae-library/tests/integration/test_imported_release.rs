@@ -115,7 +115,7 @@ impl ImportingLibrary {
     /// Stop the import service, which joins its threads, off the runtime.
     async fn shut_down(self) {
         let import = self.import;
-        tokio::task::spawn_blocking(move || import.stop_and_join()).await.unwrap();
+        bae_util::test_blocking::on_blocking_pool(move || import.stop_and_join()).await;
     }
 }
 

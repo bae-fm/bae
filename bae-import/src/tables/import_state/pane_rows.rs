@@ -833,15 +833,14 @@ impl ImportTables {
     ) {
         let directory = directory.to_path_buf();
         let damage = format!("UPDATE import_candidate_track SET file_id = '{file_id}';");
-        tokio::task::spawn_blocking(move || {
+        bae_util::test_blocking::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "import_candidate_track",
                 &damage,
             )
         })
-        .await
-        .unwrap();
+        .await;
     }
 }
 

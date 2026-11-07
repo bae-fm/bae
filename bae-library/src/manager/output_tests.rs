@@ -565,6 +565,6 @@ mod imported_names {
             std::fs::read(target.join("Album").join("Caf＼xED＼xA0＼x80.flac")).unwrap(),
             flac
         );
-        tokio::task::spawn_blocking(move || import.stop_and_join()).await.unwrap();
+        bae_util::test_blocking::on_blocking_pool(move || import.stop_and_join()).await;
     }
 }

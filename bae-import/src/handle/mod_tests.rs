@@ -588,7 +588,7 @@ pub(super) async fn pane(
 }
 
 pub(crate) async fn shut_down(handle: ImportServiceHandle) {
-    tokio::task::spawn_blocking(move || handle.stop_and_join()).await.unwrap();
+    bae_util::test_blocking::on_blocking_pool(move || handle.stop_and_join()).await;
 }
 
 pub(super) struct CountingFileTagReader {

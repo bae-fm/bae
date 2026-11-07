@@ -2,7 +2,7 @@ use crate::SaveTrackPlan;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::{EncodeFormat, StreamingEncoder};
 use bae_track_audio::track_sources::{run_tracks_over_sources, SourceStream};
-use bae_util::task_failure::{joined, Bug, TaskFailed};
+use bae_util::task_failure::{Bug, TaskFailed};
 use coven::task::{blocking_completing, BugSinkRef};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
@@ -257,8 +257,8 @@ impl SaveService {
     /// indexing them. Tracks stream into the image one at a time; a source
     /// file is open only while a track reading it is being encoded. A track
     /// whose work panics fails the save as unfinished, which the caller
-    /// reports; once the caller stops waiting, writing the sheet and tags
-    /// that panics goes to `bugs`.
+    /// reports; once the caller stops waiting, an encode of the image or a
+    /// write of its sheet and tags that panics goes to `bugs`.
     pub(crate) async fn save_release_image_with_cue(
         plans: Vec<SaveTrackPlan>,
         cover_image_bytes: Option<Vec<u8>>,
@@ -320,10 +320,10 @@ impl SaveService {
         // contexts cannot move between threads); tracks reach it in order,
         // one at a time, each while its sources are open.
         let (tracks_tx, tracks_rx) = std::sync::mpsc::channel::<ImageTrack>();
-        let encode = tokio::task::spawn_blocking({
+        let encode = blocking_completing("encode a release image", bugs.clone(), {
             let output_audio_path = output_audio_path.clone();
             let cancel = cancel.clone();
-            move || -> Result<(), String> {
+            move || -> Result<(), SaveError> {
                 let file = std::fs::File::create(&output_audio_path)
                     .map_err(|e| format!("Failed to create release image: {e}"))?;
                 let mut encoder =
@@ -351,7 +351,7 @@ impl SaveService {
                 if failed {
                     return Ok(());
                 }
-                encoder.finish()
+                Ok(encoder.finish()?)
             }
         });
 
@@ -388,7 +388,7 @@ impl SaveService {
         drop(tracks_tx);
         // The encoder's own failure (it could not create the image, or finish
         // it) explains a track's "stopped" better than the track does.
-        joined("encode a release image", encode).await??;
+        encode.await??;
         let cue_tracks = tracks?;
 
         blocking_completing(

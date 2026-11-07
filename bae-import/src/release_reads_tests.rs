@@ -8,11 +8,10 @@ use bae_catalogs::catalog::LookupCatalog;
 async fn a_release_read_fails_when_the_preferences_cannot_be_read() {
     let (sessions, database, temp_dir) = crate::catalog_sessions::tests::test_sessions().await;
     let directory = temp_dir.path().to_path_buf();
-    tokio::task::spawn_blocking(move || {
+    bae_util::test_blocking::on_blocking_pool(move || {
         bae_preferences::plant_unknown_replay_gain_mode_for_test(&directory)
     })
-    .await
-    .unwrap();
+    .await;
     let reads = ReleaseReads::new(crate::tables::ImportTables::new(database), sessions);
 
     let error = reads
