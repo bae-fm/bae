@@ -69,7 +69,14 @@ pub enum SyncCauseLine {
     FileMissingOrChanged {
         file: Option<String>,
     },
-    /// The device's disk failed.
+    /// The disk on this device is full.
+    DeviceDiskFull,
+    /// The operating system refused bae a file it needs. The file's name,
+    /// when a row on this device names it.
+    DeviceDiskDenied {
+        file: Option<String>,
+    },
+    /// The disk on this device failed for any other reason.
     DeviceDiskFailed,
     DeviceKeysUnreadable,
     LibraryUnreadable,
@@ -321,9 +328,11 @@ impl SyncStatusSnapshot {
                 }
             }
             PendingReason::Refused(_) => SyncCauseLine::ChangeDamaged,
-            PendingReason::Failed(
-                LocalFailure::DiskFull | LocalFailure::DiskDenied | LocalFailure::DiskOther,
-            ) => SyncCauseLine::DeviceDiskFailed,
+            PendingReason::Failed(LocalFailure::DiskFull) => SyncCauseLine::DeviceDiskFull,
+            PendingReason::Failed(LocalFailure::DiskDenied) => {
+                SyncCauseLine::DeviceDiskDenied { file: record.and_then(|r| self.file_named(r)) }
+            }
+            PendingReason::Failed(LocalFailure::DiskOther) => SyncCauseLine::DeviceDiskFailed,
             PendingReason::Failed(LocalFailure::KeyCustody) => SyncCauseLine::DeviceKeysUnreadable,
             PendingReason::Failed(LocalFailure::Database) => SyncCauseLine::LibraryUnreadable,
             PendingReason::Failed(

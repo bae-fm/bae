@@ -608,6 +608,12 @@ impl BridgeSyncCause {
                 args: vec![BridgeMessageArg::new("file", file)],
             },
             C::FileMissingOrChanged { file: None } => plain("core.sync.cause.file_changed_unnamed"),
+            C::DeviceDiskFull => plain("core.sync.cause.disk_full"),
+            C::DeviceDiskDenied { file: Some(file) } => BridgeMessage {
+                key: "core.sync.cause.disk_denied".to_string(),
+                args: vec![BridgeMessageArg::new("file", file)],
+            },
+            C::DeviceDiskDenied { file: None } => plain("core.sync.cause.disk_denied_unnamed"),
             C::DeviceDiskFailed => plain("core.sync.cause.disk_failed"),
             C::DeviceKeysUnreadable => plain("core.sync.cause.keys_unreadable"),
             C::LibraryUnreadable => plain("core.sync.cause.library_unreadable"),

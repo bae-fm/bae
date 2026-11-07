@@ -218,6 +218,14 @@ fn sync_failed_says_why_and_offers_retry_now() {
         SyncCauseLine::FileMissingOrChanged { file: None }
     );
     assert_eq!(
+        cause(coven::PendingReason::Failed(coven::LocalFailure::DiskFull)),
+        SyncCauseLine::DeviceDiskFull
+    );
+    assert_eq!(
+        cause(coven::PendingReason::Failed(coven::LocalFailure::DiskDenied)),
+        SyncCauseLine::DeviceDiskDenied { file: None }
+    );
+    assert_eq!(
         cause(coven::PendingReason::Failed(coven::LocalFailure::DiskOther)),
         SyncCauseLine::DeviceDiskFailed
     );
@@ -247,21 +255,15 @@ fn sync_failed_says_why_and_offers_retry_now() {
     );
 }
 
-/// A file that can't be uploaded is named by the row on this device that
-/// references it.
-#[test]
-fn sync_failed_names_the_file_that_cannot_be_uploaded() {
+/// A failed sync whose pending record is a file upload, with the row on this
+/// device that references the file.
+fn failed_upload_of_cover(reason: coven::PendingReason) -> SyncStatusSnapshot {
     let subject = coven::PendingSubject::Upload {
         device: coven::DeviceId(1),
         object: coven::ObjectId(uuid::Uuid::from_u128(5)),
     };
-    let record = coven::PendingRecord::new(
-        subject,
-        coven::PendingReason::FileUnavailable(coven::FileMissingReason::Source(
-            coven::FileSourceFailure::Changed,
-        )),
-    );
-    let mut status = SyncStatusSnapshot::read(
+    let record = coven::PendingRecord::new(subject, reason);
+    SyncStatusSnapshot::read(
         coven::SyncStatus {
             state: named_by(record.clone(), coven::SyncState::Failed),
             last_synced: None,
@@ -280,13 +282,36 @@ fn sync_failed_names_the_file_that_cannot_be_uploaded() {
             storage_setup: None,
             provider: Some(coven::CloudProvider::Dropbox),
         },
-    );
+    )
+}
+
+/// A file that can't be uploaded is named by the row on this device that
+/// references it.
+#[test]
+fn sync_failed_names_the_file_that_cannot_be_uploaded() {
+    let mut status = failed_upload_of_cover(coven::PendingReason::FileUnavailable(
+        coven::FileMissingReason::Source(coven::FileSourceFailure::Changed),
+    ));
     assert_eq!(
         status.shown().cause,
         Some(SyncCauseLine::FileMissingOrChanged { file: Some("Cover.jpg".into()) })
     );
     status.pending.clear();
     assert_eq!(status.shown().cause, Some(SyncCauseLine::FileMissingOrChanged { file: None }));
+}
+
+/// A file the operating system refuses bae is named by the row on this device
+/// that references it.
+#[test]
+fn sync_failed_names_the_file_the_system_refuses_bae() {
+    let mut status =
+        failed_upload_of_cover(coven::PendingReason::Failed(coven::LocalFailure::DiskDenied));
+    assert_eq!(
+        status.shown().cause,
+        Some(SyncCauseLine::DeviceDiskDenied { file: Some("Cover.jpg".into()) })
+    );
+    status.pending.clear();
+    assert_eq!(status.shown().cause, Some(SyncCauseLine::DeviceDiskDenied { file: None }));
 }
 
 /// When sync last finished shows under a problem state, amber or red, and

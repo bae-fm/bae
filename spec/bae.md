@@ -3085,8 +3085,12 @@ words of a button, which are each platform's.
   nothing skips it. A provider's error is told as the provider told it ("Dropbox
   returned an error: Internal server error."). The other causes read: a change
   from another device is damaged and can't be applied; bae couldn't read the
-  library, or its saved keys, on this device; the device ran out of space;
-  something went wrong in bae. A phone never uploads, so its causes are local
+  library, or its saved keys, on this device; the device has no space left
+  (*There's no space left on this device. Free some space and bae will try
+  again.*); the operating system won't let bae open a file it needs, named when
+  a row on this device names it (*Couldn't read "Cover.jpg": bae isn't allowed
+  to open it.*); the device's disk failed some other way; something went wrong
+  in bae. A phone never uploads, so its causes are local
   ones, a provider error or a damaged change. A start that failed with sync
   not running is Sync failed with the start's own line as its cause and
   *Reconnect* as its fix.
