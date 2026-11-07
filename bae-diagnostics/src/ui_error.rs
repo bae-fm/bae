@@ -59,6 +59,9 @@ pub enum UiErrorCategory {
     ConflictingSourceIds,
     /// What the person typed can't be saved; the line says what it needs.
     InvalidEdit(bae_types::edit_validation::EditValidationError),
+    /// A folder to watch holds, or lies in, a watched folder; the detail
+    /// names both.
+    WatchedFolderOverlap,
     /// A release read from several folders cannot be worked on as it stands,
     /// or cannot be made, for a reason the person can act on.
     GroupingBlocked(GroupingBlockReason),

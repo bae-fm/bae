@@ -11,7 +11,9 @@
 mod pane_edits;
 mod preparation;
 
-pub(crate) use preparation::{stored_preparation, CandidateWrite};
+use crate::tables::CandidateStateRefusal;
+pub use pane_edits::TrackEditRefusal;
+pub(crate) use preparation::stored_preparation;
 pub use preparation::{
     CandidateAsRead, CandidatePreparation, MetadataAuthor, ProvenanceContradiction,
 };
@@ -164,13 +166,11 @@ impl ImportTables {
         settled_candidates: &[(crate::CandidateKey, crate::folder_scanner::CategorizedFiles)],
         draft: crate::CandidateDraft,
     ) -> Result<(u64, Vec<crate::folder_scanner::FolderCandidate>), ImportError> {
-        let next_revision = read.file_edit_revision.checked_add(1).ok_or_else(|| {
-            ImportError::Refused("candidate edit revision exhausted the u64 range".to_string())
-        })?;
+        let next_revision = read.file_edit_revision + 1;
         let mut prep = self.load_stored(&read.content_hash).await?.ok_or_else(|| {
-            CandidateAsRead::files_moved(read.file_edit_revision, CandidateWrite::FileDecisions)
+            CandidateAsRead::files_moved(&read.content_hash, read.file_edit_revision)
         })?;
-        read.verify(&prep, CandidateWrite::FileDecisions)?;
+        read.verify(&prep)?;
         let expected = CandidateSaveExpectation {
             edit_revision: read.file_edit_revision,
             metadata_revision: read.metadata_revision,
@@ -190,10 +190,9 @@ impl ImportTables {
         };
         match self.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(candidates) => Ok((next_revision, candidates)),
-            CandidateSaved::Superseded => Err(CandidateAsRead::files_moved(
-                read.file_edit_revision,
-                CandidateWrite::FileDecisions,
-            )),
+            CandidateSaved::Superseded => {
+                Err(CandidateAsRead::files_moved(&read.content_hash, read.file_edit_revision))
+            }
             CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }
     }
@@ -211,9 +210,10 @@ impl ImportTables {
         provenance: Option<&crate::MetadataProvenance>,
         releases: &[bae_catalogs::source_release::SourceRelease],
     ) -> Result<u64, ImportError> {
-        let prep = self.load_stored(content_hash).await?.ok_or_else(|| {
-            ImportError::Refused("metadata replacement has no candidate state row".into())
-        })?;
+        let prep = self
+            .load_stored(content_hash)
+            .await?
+            .ok_or_else(|| CandidateStateRefusal::NoState(content_hash.to_string()))?;
         let draft = super::pane::edit_over_audio(draft.clone(), &prep.metadata.draft)?;
         let metadata =
             crate::CandidateMetadataDraft { draft, provenance: provenance.cloned(), cover: None };
@@ -231,9 +231,10 @@ impl ImportTables {
         link: Option<&crate::ReleaseLink>,
         releases: &[bae_catalogs::source_release::SourceRelease],
     ) -> Result<(), ImportError> {
-        let mut prep = self.load_stored(content_hash).await?.ok_or_else(|| {
-            ImportError::Refused("link replacement has no candidate state row".into())
-        })?;
+        let mut prep = self
+            .load_stored(content_hash)
+            .await?
+            .ok_or_else(|| CandidateStateRefusal::NoState(content_hash.to_string()))?;
         prep.link = link.cloned();
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
@@ -244,9 +245,9 @@ impl ImportTables {
             CandidateSaveExtras { releases: releases.to_vec(), ..CandidateSaveExtras::default() };
         match self.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(()),
-            CandidateSaved::Superseded => Err(ImportError::Refused(format!(
-                "{content_hash} changed while its link was replaced"
-            ))),
+            CandidateSaved::Superseded => {
+                Err(CandidateStateRefusal::Superseded(content_hash.to_string()).into())
+            }
             CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }
     }
@@ -331,12 +332,10 @@ impl ImportTables {
         let mut prep = self.loaded_at(read).await?;
         // Linking the album answers the folder, so the person keeping their
         // own draft over the verdict stands no more.
-        let identification = prep.identification.as_mut().ok_or_else(|| {
-            ImportError::Refused(format!(
-                "{} has no lookup whose pressings to link the album of",
-                read.content_hash
-            ))
-        })?;
+        let identification = prep
+            .identification
+            .as_mut()
+            .ok_or_else(|| CandidateStateRefusal::NoLookup(read.content_hash.clone()))?;
         identification.kept_own_draft = false;
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
@@ -361,10 +360,9 @@ impl ImportTables {
         };
         match self.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(revision),
-            CandidateSaved::Superseded => Err(ImportError::Refused(format!(
-                "{} changed while its album was being linked",
-                read.content_hash
-            ))),
+            CandidateSaved::Superseded => {
+                Err(CandidateStateRefusal::Superseded(read.content_hash.clone()).into())
+            }
             CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }
     }
@@ -375,10 +373,7 @@ impl ImportTables {
     pub(crate) async fn keep_own_draft(&self, read: &CandidateAsRead) -> Result<u64, ImportError> {
         let prep = self.loaded_at(read).await?;
         if prep.identification.is_none() {
-            return Err(ImportError::Refused(format!(
-                "{} has no lookup whose offer to set aside",
-                read.content_hash
-            )));
+            return Err(CandidateStateRefusal::NoLookup(read.content_hash.clone()).into());
         }
         self.set_link_aside(prep, read).await
     }
@@ -411,10 +406,9 @@ impl ImportTables {
             .await?
         {
             CandidateSaved::Landed(_) => Ok(revision),
-            CandidateSaved::Superseded => Err(ImportError::Refused(format!(
-                "{} changed while its release link was being set aside",
-                read.content_hash
-            ))),
+            CandidateSaved::Superseded => {
+                Err(CandidateStateRefusal::Superseded(read.content_hash.clone()).into())
+            }
             CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }
     }
@@ -459,8 +453,8 @@ impl ImportTables {
         let prep = self
             .load_stored(&read.content_hash)
             .await?
-            .ok_or_else(|| ImportError::Refused("candidate metadata row is missing".into()))?;
-        read.verify(&prep, CandidateWrite::Metadata)?;
+            .ok_or_else(|| CandidateStateRefusal::NoState(read.content_hash.clone()))?;
+        read.verify(&prep)?;
         Ok(prep)
     }
 
@@ -479,6 +473,7 @@ impl ImportTables {
         releases: Vec<bae_catalogs::source_release::SourceRelease>,
     ) -> Result<u64, ImportError> {
         settle_cover(&mut metadata, &mut prep.metadata);
+        let content_hash = prep.content_hash.clone();
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
@@ -501,7 +496,7 @@ impl ImportTables {
         match self.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(revision),
             CandidateSaved::Superseded => {
-                Err(ImportError::Refused("candidate changed before its metadata was stored".into()))
+                Err(CandidateStateRefusal::Superseded(content_hash).into())
             }
             CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }

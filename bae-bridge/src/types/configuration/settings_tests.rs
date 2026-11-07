@@ -37,7 +37,7 @@ fn internal_import_failure_retains_its_category() {
 #[test]
 fn store_internal_and_refused_failures_keep_their_category() {
     use bae_library::LibraryError;
-    let cases: [(BridgeError, BridgeErrorCategory); 6] = [
+    let cases: [(BridgeError, BridgeErrorCategory); 5] = [
         (
             LibraryError::Database(bae_store::DbError::unreadable("a column", "a value")).into(),
             BridgeErrorCategory::Database,
@@ -55,7 +55,6 @@ fn store_internal_and_refused_failures_keep_their_category() {
             BridgeErrorCategory::Internal,
         ),
         (LibraryError::Refused("identity needs review".into()).into(), BridgeErrorCategory::Import),
-        (ImportError::Refused("identity needs review".into()).into(), BridgeErrorCategory::Import),
     ];
     for (error, category) in cases {
         assert!(

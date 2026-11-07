@@ -204,10 +204,7 @@ impl ImportServiceHandle {
         let current_files = &current_candidate.files;
         let expected_revision = current_candidate.file_edit_revision;
         if current_files.content_hash() != content_hash || expected_revision != offered_revision {
-            return Err(crate::CandidateAsRead::files_moved(
-                offered_revision,
-                crate::preparations::CandidateWrite::FileDecisions,
-            ));
+            return Err(crate::CandidateAsRead::files_moved(&content_hash, offered_revision));
         }
         let preparation =
             crate::preparations::stored_preparation(&self.services.tables, &content_hash)

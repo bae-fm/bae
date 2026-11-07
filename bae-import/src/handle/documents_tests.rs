@@ -40,6 +40,15 @@ async fn audio_is_not_read_as_a_document() {
     let missing = handle.read_candidate_document(&key, "absent.log").await;
     shut_down(handle).await;
 
-    assert!(matches!(audio, Err(crate::ImportError::Refused(_))), "{audio:?}");
-    assert!(matches!(missing, Err(crate::ImportError::Refused(_))), "{missing:?}");
+    assert!(
+        matches!(audio, Err(crate::ImportError::Document(crate::DocumentRefusal::NotADocument(_)))),
+        "{audio:?}"
+    );
+    assert!(
+        matches!(
+            missing,
+            Err(crate::ImportError::Document(crate::DocumentRefusal::FileGone { .. }))
+        ),
+        "{missing:?}"
+    );
 }

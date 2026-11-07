@@ -84,6 +84,7 @@ impl FailureColumns {
             | K::ChangedMeanwhile
             | K::ConflictingSourceIds
             | K::InvalidEdit
+            | K::WatchedFolderOverlap
             | K::GroupingBlocked
             | K::Export
             | K::Save

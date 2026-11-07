@@ -176,11 +176,15 @@ pub enum ImportError {
     #[error(transparent)]
     Edit(#[from] crate::EditValidationError),
 
-    /// A change to a candidate could not go ahead as asked: what it names
-    /// moved under it, or is not there, with why as text.
+    /// A candidate's document could not be opened to read.
     #[cfg(desktop)]
-    #[error("{0}")]
-    Refused(String),
+    #[error(transparent)]
+    Document(#[from] crate::DocumentRefusal),
+
+    /// A pane's edit of a draft's tracks named what the draft doesn't hold.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    TrackEdit(#[from] crate::preparations::TrackEditRefusal),
 
     /// The release's credits cannot be written as the library stands.
     #[cfg(desktop)]
@@ -532,9 +536,23 @@ impl ImportError {
             #[cfg(desktop)]
             Self::GroupingBlocked { reason } => reason.category(),
             #[cfg(desktop)]
-            Self::Refused(_) | Self::LibraryChanged | Self::CandidateMoved(_) => C::Import,
+            Self::LibraryChanged | Self::CandidateMoved(_) => C::Import,
+            // What the person opened left, or the pane offered what it holds
+            // no such thing of, which is bae's own fault.
+            #[cfg(desktop)]
+            Self::Document(refusal) => match refusal {
+                crate::DocumentRefusal::CandidateGone(_)
+                | crate::DocumentRefusal::FileGone { .. } => C::ChangedMeanwhile,
+                crate::DocumentRefusal::NotADocument(_) => C::Internal,
+            },
+            #[cfg(desktop)]
+            Self::TrackEdit(_) => C::Internal,
             #[cfg(desktop)]
             Self::Edit(reason) => C::InvalidEdit(*reason),
+            // Each names what the folder held when it was offered and no
+            // longer holds.
+            #[cfg(desktop)]
+            Self::Cover(_) | Self::SheetBinding { .. } => C::ChangedMeanwhile,
             #[cfg(desktop)]
             Self::Identity(bae_records::IdentityRefusal::ArtistGone(_)) => C::ChangedMeanwhile,
             #[cfg(desktop)]
@@ -561,8 +579,9 @@ impl ImportError {
             Self::Rollback { operation: failed, .. } | Self::FileCleanup { write: failed, .. } => {
                 failed.category()
             }
+            // A cancel that came too late: the import moved on from it.
             #[cfg(desktop)]
-            Self::ImportWriting => C::Import,
+            Self::ImportWriting => C::ChangedMeanwhile,
             #[cfg(desktop)]
             Self::CandidateImportInProgress => C::CandidateImportInProgress,
             #[cfg(desktop)]
@@ -591,23 +610,25 @@ impl ImportError {
                 crate::tables::PreparationRefusal::NoState(_)
                 | crate::tables::PreparationRefusal::Imported(_)
                 | crate::tables::PreparationRefusal::TagsChanged(_)
-                | crate::tables::PreparationRefusal::Changed(_) => C::Import,
+                | crate::tables::PreparationRefusal::Changed(_) => C::ChangedMeanwhile,
                 crate::tables::PreparationRefusal::DuplicateScanKeys
                 | crate::tables::PreparationRefusal::DraftNotOverAudio(_)
                 | crate::tables::PreparationRefusal::SnapshotOfUnscanned => C::Internal,
             },
-            // The watched folders changed under the request, or the person
-            // asked for a folder that overlaps one; a removal naming no
-            // folder is bae's own fault.
+            // The watched folders changed under the request; a folder that
+            // overlaps one has its own line; a removal naming no folder is
+            // bae's own fault.
             #[cfg(desktop)]
             Self::WatchedFolders(refusal) => match refusal {
                 crate::tables::WatchedFolderRefusal::NoneToRemove => C::Internal,
+                crate::tables::WatchedFolderRefusal::Overlap { .. }
+                | crate::tables::WatchedFolderRefusal::ParentWatched { .. } => {
+                    C::WatchedFolderOverlap
+                }
                 crate::tables::WatchedFolderRefusal::Unwatched(_)
                 | crate::tables::WatchedFolderRefusal::AddedMeanwhile(_)
-                | crate::tables::WatchedFolderRefusal::Overlap { .. }
                 | crate::tables::WatchedFolderRefusal::NotWatched(_)
-                | crate::tables::WatchedFolderRefusal::ParentWatched { .. }
-                | crate::tables::WatchedFolderRefusal::InsideChanged { .. } => C::Import,
+                | crate::tables::WatchedFolderRefusal::InsideChanged { .. } => C::ChangedMeanwhile,
             },
             // The watched folders or the folder's grouping changed after the
             // reading was taken; a reading of another watched folder's
@@ -615,7 +636,9 @@ impl ImportError {
             #[cfg(desktop)]
             Self::FolderReading(refusal) => match refusal {
                 crate::tables::FolderReadingRefusal::WatchedElsewhere { .. }
-                | crate::tables::FolderReadingRefusal::GroupedElsewhere { .. } => C::Import,
+                | crate::tables::FolderReadingRefusal::GroupedElsewhere { .. } => {
+                    C::ChangedMeanwhile
+                }
                 crate::tables::FolderReadingRefusal::OtherRoot { .. } => C::Internal,
             },
             // The watched folder was removed, or read again, under the
@@ -624,7 +647,7 @@ impl ImportError {
             #[cfg(desktop)]
             Self::FolderReread(refusal) => match refusal {
                 crate::tables::FolderRereadRefusal::NeverRead(_)
-                | crate::tables::FolderRereadRefusal::RootMoved(_) => C::Import,
+                | crate::tables::FolderRereadRefusal::RootMoved(_) => C::ChangedMeanwhile,
                 crate::tables::FolderRereadRefusal::NotDirectlyUnder { .. }
                 | crate::tables::FolderRereadRefusal::DecisionOutside { .. }
                 | crate::tables::FolderRereadRefusal::EntryOutside { .. } => C::Internal,
@@ -639,21 +662,24 @@ impl ImportError {
                 | crate::grouping::CombineRefusal::BuiltNothing(_) => C::Internal,
                 crate::grouping::CombineRefusal::AlreadyPresent
                 | crate::grouping::CombineRefusal::MemberChanged(_)
-                | crate::grouping::CombineRefusal::MemberTaken(_) => C::Import,
+                | crate::grouping::CombineRefusal::MemberTaken(_) => C::ChangedMeanwhile,
             },
             // The release was read apart meanwhile.
             #[cfg(desktop)]
-            Self::Separation(crate::tables::SeparationRefusal::NotPicked(_)) => C::Import,
+            Self::Separation(crate::tables::SeparationRefusal::NotPicked(_)) => C::ChangedMeanwhile,
             // The candidate left, was imported or changed under the request,
             // or the import asking ended meanwhile.
             #[cfg(desktop)]
             Self::CandidateState(
                 crate::tables::CandidateStateRefusal::NoState(_)
                 | crate::tables::CandidateStateRefusal::FilesChanged { .. }
+                | crate::tables::CandidateStateRefusal::MetadataChanged { .. }
+                | crate::tables::CandidateStateRefusal::Superseded(_)
+                | crate::tables::CandidateStateRefusal::NoLookup(_)
                 | crate::tables::CandidateStateRefusal::NotScanned(_)
                 | crate::tables::CandidateStateRefusal::NotOwner { .. }
                 | crate::tables::CandidateStateRefusal::NoDraft(_),
-            ) => C::Import,
+            ) => C::ChangedMeanwhile,
             #[cfg(desktop)]
             Self::DiscogsKey(error) => match **error {
                 crate::DiscogsKeyError::Keyring(_) | crate::DiscogsKeyError::Preferences(_) => {
@@ -671,8 +697,6 @@ impl ImportError {
             | Self::LocalCover { .. }
             | Self::DecodeVerification { .. }
             | Self::SourceRead { .. }
-            | Self::Cover(_)
-            | Self::SheetBinding { .. }
             | Self::WatchedFolder(_)
             | Self::Watch { .. } => C::Import,
         }

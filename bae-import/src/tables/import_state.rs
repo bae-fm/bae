@@ -42,6 +42,17 @@ pub enum CandidateStateRefusal {
     /// was made against.
     #[error("candidate {content_hash}'s file decisions changed from revision {revision}")]
     FilesChanged { content_hash: String, revision: u64 },
+    /// The candidate's metadata moved past the revision the request was made
+    /// against.
+    #[error("candidate {content_hash}'s metadata changed from revision {revision}")]
+    MetadataChanged { content_hash: String, revision: u64 },
+    /// Another write of the candidate landed while this one was being stored.
+    #[error("candidate {0} changed while this write was being stored")]
+    Superseded(String),
+    /// The candidate holds no lookup for the answer to act on: its lookup
+    /// ended meanwhile.
+    #[error("candidate {0} holds no lookup")]
+    NoLookup(String),
     /// The key names no release the scan holds.
     #[error("{0} is no candidate a search can be of")]
     NotScanned(CandidateKey),

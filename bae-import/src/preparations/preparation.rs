@@ -33,55 +33,35 @@ pub struct CandidateAsRead {
     pub metadata_revision: u64,
 }
 
-/// What a write was about to store, named in the refusal when the candidate
-/// moved out from under it.
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum CandidateWrite {
-    /// A source's projection replacing the candidate's metadata.
-    Metadata,
-    /// One pane control's edit to the draft.
-    PaneEdit,
-    /// The person's file decisions, which advance the file revision.
-    FileDecisions,
-}
-
 impl CandidateAsRead {
     /// `Ok` while the stored candidate still stands at both revisions this
     /// read, otherwise the refusal naming which one moved.
-    pub(crate) fn verify(
-        &self,
-        prep: &CandidatePreparation,
-        write: CandidateWrite,
-    ) -> Result<(), crate::ImportError> {
+    pub(crate) fn verify(&self, prep: &CandidatePreparation) -> Result<(), crate::ImportError> {
         if !prep.file_edits.is_at_revision(self.file_edit_revision) {
-            return Err(Self::files_moved(self.file_edit_revision, write));
+            return Err(Self::files_moved(&self.content_hash, self.file_edit_revision));
         }
         if prep.metadata_revision != self.metadata_revision {
-            return Err(Self::metadata_moved(self.metadata_revision));
+            return Err(Self::metadata_moved(&self.content_hash, self.metadata_revision));
         }
         Ok(())
     }
 
-    /// The refusal for a candidate whose file decisions moved past `expected`.
-    pub(crate) fn files_moved(expected: u64, write: CandidateWrite) -> crate::ImportError {
-        crate::ImportError::Refused(match write {
-            CandidateWrite::Metadata => format!(
-                "candidate changed before its metadata was stored: its files moved past \
-                 revision {expected}"
-            ),
-            CandidateWrite::PaneEdit => format!(
-                "candidate changed before its edit was stored: its files moved past \
-                 revision {expected}"
-            ),
-            CandidateWrite::FileDecisions => {
-                format!("candidate file decisions changed at revision {expected}")
-            }
-        })
+    /// The refusal for a candidate whose file decisions moved past `revision`.
+    pub(crate) fn files_moved(content_hash: &str, revision: u64) -> crate::ImportError {
+        crate::tables::CandidateStateRefusal::FilesChanged {
+            content_hash: content_hash.to_string(),
+            revision,
+        }
+        .into()
     }
 
-    /// The refusal for a candidate whose metadata moved past `expected`.
-    pub(crate) fn metadata_moved(expected: u64) -> crate::ImportError {
-        crate::ImportError::Refused(format!("candidate metadata changed from revision {expected}"))
+    /// The refusal for a candidate whose metadata moved past `revision`.
+    pub(crate) fn metadata_moved(content_hash: &str, revision: u64) -> crate::ImportError {
+        crate::tables::CandidateStateRefusal::MetadataChanged {
+            content_hash: content_hash.to_string(),
+            revision,
+        }
+        .into()
     }
 }
 

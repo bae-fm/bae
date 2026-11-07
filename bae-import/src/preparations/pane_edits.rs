@@ -2,7 +2,8 @@
 //! Each loads the candidate, changes the one thing the control changed, and
 //! saves it whole under the next metadata revision.
 
-use crate::preparations::{CandidateAsRead, CandidatePreparation, CandidateWrite};
+use crate::preparations::{CandidateAsRead, CandidatePreparation};
+use crate::tables::CandidateStateRefusal;
 use crate::tables::{
     CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ImportTables,
     ScannedCandidateKey,
@@ -64,9 +65,7 @@ impl ImportTables {
         assignments: &[crate::Credited],
     ) -> Result<u64, crate::ImportError> {
         if assignments.is_empty() {
-            return Err(crate::ImportError::Refused(
-                "a candidate album artist override cannot be empty".into(),
-            ));
+            return Err(crate::EditValidationError::NoAlbumArtist.into());
         }
         let assignments = assignments.to_vec();
         self.edit_read_candidate(watched_folder_path, candidate_path, read, move |prep| {
@@ -99,9 +98,7 @@ impl ImportTables {
         assignments: &TrackArtistAssignments,
     ) -> Result<u64, crate::ImportError> {
         if track_ids.is_empty() {
-            return Err(crate::ImportError::Refused(
-                "a track artist fill must name at least one track".into(),
-            ));
+            return Err(TrackEditRefusal::NoTrackNamed.into());
         }
         self.edit_read_candidate(watched_folder_path, candidate_path, read, |prep| {
             fill_track_artists(&mut prep.metadata.draft, track_ids, assignments)
@@ -146,20 +143,16 @@ impl ImportTables {
         expected_metadata_revision: Option<u64>,
         change: impl FnOnce(&mut CandidatePreparation) -> Result<(), crate::ImportError>,
     ) -> Result<u64, crate::ImportError> {
-        let mut prep = self.load_stored(content_hash).await?.ok_or_else(|| {
-            crate::ImportError::Refused(format!(
-                "the metadata edit for {content_hash} has no candidate state row"
-            ))
-        })?;
+        let mut prep = self
+            .load_stored(content_hash)
+            .await?
+            .ok_or_else(|| CandidateStateRefusal::NoState(content_hash.to_string()))?;
         if !prep.file_edits.is_at_revision(expected_file_edit_revision) {
-            return Err(CandidateAsRead::files_moved(
-                expected_file_edit_revision,
-                CandidateWrite::PaneEdit,
-            ));
+            return Err(CandidateAsRead::files_moved(content_hash, expected_file_edit_revision));
         }
         if let Some(expected) = expected_metadata_revision {
             if prep.metadata_revision != expected {
-                return Err(CandidateAsRead::metadata_moved(expected));
+                return Err(CandidateAsRead::metadata_moved(content_hash, expected));
             }
         }
         let expected = CandidateSaveExpectation {
@@ -179,12 +172,28 @@ impl ImportTables {
             .await?
         {
             CandidateSaved::Landed(_) => Ok(revision),
-            CandidateSaved::Superseded => Err(crate::ImportError::Refused(format!(
-                "candidate {content_hash} changed while its edit was being stored"
-            ))),
+            CandidateSaved::Superseded => {
+                Err(CandidateStateRefusal::Superseded(content_hash.to_string()).into())
+            }
             CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
         }
     }
+}
+
+/// Why a pane's edit of a draft's tracks was refused. The pane edits the rows
+/// of the draft at the revision it read, and the revisions are checked first,
+/// so each of these is bae's own fault.
+#[derive(Debug, thiserror::Error)]
+pub enum TrackEditRefusal {
+    /// A fill of the tracks' artists named no track.
+    #[error("a track artist fill must name at least one track")]
+    NoTrackNamed,
+    /// The edit names no row of the draft.
+    #[error("{0} is not a row of this draft")]
+    NotARow(String),
+    /// The edit would change the audio under a row, which is the folder's.
+    #[error("the edit of row {0} changes its audio")]
+    AudioChanged(String),
 }
 
 fn scanned_key(
@@ -203,13 +212,13 @@ fn apply_track_edit(
     draft: &mut CandidateDraft,
     row: &crate::RawTrackEdit,
 ) -> Result<(), crate::ImportError> {
-    let track = draft.tracks.iter_mut().find(|track| track.edit.id == row.id).ok_or_else(|| {
-        crate::ImportError::Refused(format!("{} is not a row of this draft", row.id))
-    })?;
+    let track = draft
+        .tracks
+        .iter_mut()
+        .find(|track| track.edit.id == row.id)
+        .ok_or_else(|| TrackEditRefusal::NotARow(row.id.clone()))?;
     if row.file.as_ref() != Some(&track.edit.file) {
-        return Err(crate::ImportError::Refused(
-            "track metadata edits cannot change a track's audio".into(),
-        ));
+        return Err(TrackEditRefusal::AudioChanged(row.id.clone()).into());
     }
     track.edit.title.clone_from(&row.title);
     track.edit.artist_assignments.clone_from(&row.artist_assignments);
@@ -222,12 +231,11 @@ fn fill_track_artists(
     assignments: &TrackArtistAssignments,
 ) -> Result<(), crate::ImportError> {
     for track_id in track_ids {
-        let track =
-            draft.tracks.iter_mut().find(|track| &track.edit.id == track_id).ok_or_else(|| {
-                crate::ImportError::Refused(format!(
-                    "track artist fill names {track_id}, which is not a row of this draft"
-                ))
-            })?;
+        let track = draft
+            .tracks
+            .iter_mut()
+            .find(|track| &track.edit.id == track_id)
+            .ok_or_else(|| TrackEditRefusal::NotARow(track_id.clone()))?;
         track.edit.artist_assignments = assignments.clone();
     }
     Ok(())

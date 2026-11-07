@@ -374,7 +374,13 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
         )
         .await
         .expect_err("metadata prepared for the prior files is stale");
-    assert!(error.to_string().contains("candidate changed"), "{error}");
+    assert!(
+        matches!(
+            error,
+            ImportError::CandidateState(crate::tables::CandidateStateRefusal::FilesChanged { .. })
+        ),
+        "{error}"
+    );
 }
 
 #[tokio::test]

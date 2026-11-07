@@ -23,6 +23,7 @@ fn every_failure_class_reads_back_as_itself() {
         C::ReleaseChangedSinceOpened,
         C::ChangedMeanwhile,
         C::ConflictingSourceIds,
+        C::WatchedFolderOverlap,
         C::InvalidEdit(crate::EditValidationError::EmptyAlbumTitle),
         C::InvalidEdit(crate::EditValidationError::NoAlbumArtist),
         C::InvalidEdit(crate::EditValidationError::EmptyArtistName),

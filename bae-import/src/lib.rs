@@ -256,7 +256,7 @@ pub use grouping::GroupingBlock;
 pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
 #[cfg(desktop)]
 pub use handle::{
-    CandidateStanding, CoverTarget, GroupedSearchResults, ImportCandidateSnapshot,
+    CandidateStanding, CoverTarget, DocumentRefusal, GroupedSearchResults, ImportCandidateSnapshot,
     ImportServiceHandle, ImportStart, RemoteCoverGallery,
 };
 #[cfg(desktop)]

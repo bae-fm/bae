@@ -154,6 +154,9 @@ pub enum BridgeErrorCategory {
     InvalidEdit {
         reason: BridgeValidationReason,
     },
+    /// A folder to watch holds, or lies in, a watched folder; the detail
+    /// names both.
+    WatchedFolderOverlap,
     /// A queue reorder named an entry, or an entry to go before, that the
     /// queue no longer holds there, and moved nothing.
     QueueChanged,
@@ -375,6 +378,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::ChangedMeanwhile => "core.error.changed_meanwhile",
         BridgeErrorCategory::ConflictingSourceIds => "core.error.conflicting_source_ids",
         BridgeErrorCategory::InvalidEdit { reason } => reason.loc_key(),
+        BridgeErrorCategory::WatchedFolderOverlap => "core.error.watched_folder_overlap",
         BridgeErrorCategory::QueueChanged => "core.queue.error.changed",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
@@ -535,6 +539,7 @@ impl BridgeErrorCategory {
             Self::ChangedMeanwhile => K::ChangedMeanwhile,
             Self::ConflictingSourceIds => K::ConflictingSourceIds,
             Self::InvalidEdit { .. } => K::InvalidEdit,
+            Self::WatchedFolderOverlap => K::WatchedFolderOverlap,
             Self::GroupingBlocked { .. } => K::GroupingBlocked,
             Self::Export => K::Export,
             Self::Save => K::Save,
@@ -648,6 +653,7 @@ mirror_enum! {
         ChangedMeanwhile,
         ConflictingSourceIds,
         InvalidEdit(reason: (BridgeValidationReason)),
+        WatchedFolderOverlap,
         GroupingBlocked(reason: (BridgeGroupingBlock)),
         Export,
         Save,

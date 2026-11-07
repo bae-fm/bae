@@ -102,6 +102,38 @@ fn a_refused_credit_shows_its_own_line() {
     }
 }
 
+/// A request whose candidate or watched folders changed under it says so,
+/// a folder that overlaps a watched one says that, and a pane's edit of what
+/// its draft doesn't hold is bae's own fault: none of them is an import.
+#[test]
+fn a_refused_request_is_not_shown_as_an_import() {
+    use crate::tables::{CandidateStateRefusal, PreparationRefusal, WatchedFolderRefusal};
+    use bae_diagnostics::UiErrorCategory as C;
+    use std::path::PathBuf;
+    let cases: [(ImportError, C); 6] = [
+        (CandidateStateRefusal::Superseded("hash".into()).into(), C::ChangedMeanwhile),
+        (
+            CandidateStateRefusal::MetadataChanged { content_hash: "hash".into(), revision: 3 }
+                .into(),
+            C::ChangedMeanwhile,
+        ),
+        (PreparationRefusal::Imported("hash".into()).into(), C::ChangedMeanwhile),
+        (WatchedFolderRefusal::NotWatched(PathBuf::from("/music")).into(), C::ChangedMeanwhile),
+        (
+            WatchedFolderRefusal::Overlap {
+                folder: PathBuf::from("/music/a"),
+                watched: PathBuf::from("/music"),
+            }
+            .into(),
+            C::WatchedFolderOverlap,
+        ),
+        (crate::preparations::TrackEditRefusal::NoTrackNamed.into(), C::Internal),
+    ];
+    for (error, expected) in cases {
+        assert_eq!(error.category(), expected, "{error}");
+    }
+}
+
 /// A Wikidata request that never got an answer is a provider failure,
 /// as a MusicBrainz one is, not release data that could not be mapped.
 #[test]

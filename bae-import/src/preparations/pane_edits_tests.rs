@@ -49,7 +49,12 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
             .expect_err("a row with nothing picked"),
     ] {
         assert!(
-            error.to_string().contains("no candidate state row"),
+            matches!(
+                error,
+                crate::ImportError::CandidateState(crate::tables::CandidateStateRefusal::NoState(
+                    _
+                ))
+            ),
             "{error} should say what is missing"
         );
     }

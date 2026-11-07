@@ -15,6 +15,7 @@ mod commit;
 mod covers;
 mod discogs_key;
 mod documents;
+pub use documents::DocumentRefusal;
 mod draft_source;
 mod edits;
 mod events;

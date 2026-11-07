@@ -130,7 +130,9 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::ChangedMeanwhile
             | UiErrorCategory::ConflictingSourceIds
             | UiErrorCategory::GroupingBlocked(_) => Self::Import(detail),
-            UiErrorCategory::Config | UiErrorCategory::InvalidEdit(_) => Self::Validation(detail),
+            UiErrorCategory::Config
+            | UiErrorCategory::InvalidEdit(_)
+            | UiErrorCategory::WatchedFolderOverlap => Self::Validation(detail),
             UiErrorCategory::Internal => Self::Internal(detail),
             UiErrorCategory::DeviceResetRequired
             | UiErrorCategory::DeviceRemoved
