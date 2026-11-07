@@ -172,6 +172,33 @@ external_types = [
     "Write",
 ]
 
+# Values that name a capability or shared state in a field but own no
+# lifetime of it: a message sent to a thread or task, the parameters one
+# operation is started with, and an operation's result.
+non_owner_types = [
+    # Messages to the playback thread and the services' coordinators; they
+    # carry reply channels for the one request they hold.
+    "PlaybackCommand",
+    "PlaybackMessage",
+    "Wake",
+    "WatcherCommand",
+    "CoordinatorEvent",
+    "WorkerMessage",
+    "Command",
+    # What one scan pass or one folder reading is asked to do.
+    "RootPass",
+    "FolderReadingRequest",
+    # What one decode is started with.
+    "StreamDecodeParams",
+    "SegmentDecodeParams",
+    "DecoderSetup",
+    "DecodeFailureReport",
+    "PreparedAudioSegment",
+    "PlaybackPreparedTrack",
+    # What opening a library hands the app.
+    "BridgeBootstrapResult",
+]
+
 # Values an owner makes for its caller's one operation, view or read and
 # that are dropped when it ends, so an owner may return a new one. Those that
 # are capability types stay listed there too, so retained fields and getters
@@ -451,6 +478,21 @@ ImageHold = "RemoteImageHost"
 "bae-import/src/handle/identification.rs" = [
     "ImportServiceHandle::start_identification_queue",
 ]
+
+# An owner's constructor builds the owner, and the parts it holds that nothing
+# else shares.
+"bae-automation/src/automation.rs" = ["Automation::new"]
+"bae-people/src/membership.rs" = ["Membership::new"]
+"bae-people/src/people.rs" = ["People::new"]
+"bae-preferences/src/row.rs" = ["PreferencesRow::new"]
+"bae-sync-status/src/sync_status.rs" = ["SyncStatus::new"]
+"bae-views/src/lib.rs" = ["LibraryViews::new"]
+# A test's sync status, over its store.
+"bae-sync-status/src/test_fixtures.rs" = ["test_sync_status"]
+# Patterns compiled on first use and kept for the process: the process is
+# their scope.
+"bae-types/src/text_match/label.rs" = ["TAILS"]
+"bae-types/src/text_match/title.rs" = ["TRAILING_BRACKET"]
 
 # SQLite: the store and the crates whose domains keep tables in it. Only
 # these name a raw rusqlite handle.
