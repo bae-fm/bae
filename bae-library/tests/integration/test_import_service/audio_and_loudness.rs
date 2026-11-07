@@ -353,7 +353,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     // ── Peak clamp ──
     // The quiet track's gain is capped at 1/peak, well below the boost its
     // loudness alone asks for.
-    let unclamped = 10f64.powf((-18.0 - quiet_lufs) / 20.0) as f32;
+    let unclamped = bae_playback::loudness_gain_linear(quiet_lufs) as f32;
     let clamp = (1.0 / quiet_peak) as f32;
     assert!(
         unclamped > clamp + 0.5,

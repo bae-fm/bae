@@ -88,7 +88,7 @@ pub use progress::{
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
 pub use queue_values::{QueueAddition, QueueItem, ResolvedContext, ResolvedQueueSnapshot};
 pub use repeat_mode::RepeatMode;
-pub use replay_gain::replay_gain_linear;
+pub use replay_gain::{loudness_gain_linear, replay_gain_linear};
 pub use service::{
     LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseBoundary,
     PlaybackPauseReason, PlaybackService, PlaybackSideCountdown, PlaybackSidePausePrompt,
