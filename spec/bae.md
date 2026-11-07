@@ -2379,8 +2379,8 @@ history setting.
   in the same write. A circle already made for the
   person, by a profile write that failed after it, is used at once: asking
   writes the profile in one write.
-- **Settings shows a profile not written yet.** Under listening history, a
-  person with no profile gets their name field and **Create profile**. While
+- **Settings shows a profile not written yet.** In *You* on People and
+  devices, a person with no profile gets their name field and **Create profile**. While
   their circle is being made it says the profile is being made and appears
   once the library syncs, in place of the form, following `profile_request`
   and coven's outcome as one read. A circle that wasn't made shows why
@@ -2425,6 +2425,23 @@ editable by every member.
 | Remove a device | the person, for their own; an admin, for anyone's | nothing beyond coven |
 | Remove a person | an admin | their circle goes, with its rows |
 | Rename the library | an admin | every device shows the new name (§5.1) |
+| Rename yourself | the person | every device shows the new name on their profile (§5.4) |
+
+**People and devices.** Settings keeps the library's people on a page of their
+own, with two sections. *You* holds the person's name, with *Change…*, which
+renames their profile in a sheet that says everyone in the library sees the
+name and keeps the name as typed when the rename fails; their role, which
+only an admin changes, and from another person's page; their listening
+history, *Only me* or *Everyone in the library* (§5.3); and *Devices*, which
+opens *Your devices*: each of the person's devices, this one reading *This
+device* with no *Remove…* since a device leaves by removing the library from
+it, then *Add…* last. *People* has one row for each other person, with their
+role and how many devices they have, and the open invites below them. An
+admin's row opens that person's page: their role, with *Make admin* or *Make
+member*, *Remove from library…* in red, and their devices, each with
+*Remove…*. A member's person rows open nothing: a member has nothing to do
+there. A person with no profile yet creates one in *You* in place of the name
+(§5.4). Removing a person or a device still asks first.
 
 Removing a person or a device, changing a role, renaming the library and
 approving a request are admin changes. Each is one write on the device that asks: coven checks it
@@ -2587,7 +2604,7 @@ Removing a person deletes their circle and its rows: their private history and
 private playlists. Their household ratings, history and playlists stay,
 credited to them.
 
-On S3 each person's row in People shows the id of their access key. Removing
+On S3 each person's page in People and devices shows the id of their access key. Removing
 a person asks first; on S3 the question also says that bae will forget their
 key and that Ana deletes it in her provider's console. bae keeps no record or
 reminder of the key afterwards
@@ -2676,8 +2693,8 @@ The code to type holds no key, and asks for it separately.
 
 **Where the code shows.** The code is coven's *restore code*, which the apps and
 this spec name it.
-Carol adds a device from **Add device…** under her own row in People, shown
-only for a library with storage. Its sheet tells her to choose **Add
+Carol adds a device from **Add…** on Your devices, under People and devices,
+shown only for a library with storage. Its sheet tells her to choose **Add
 device** on the new device, then scan its QR code or type the code it shows;
 on S3 it says the QR code carries her key. While it shows the code it watches
 her devices, as People's list of them does: once a device of hers joins that

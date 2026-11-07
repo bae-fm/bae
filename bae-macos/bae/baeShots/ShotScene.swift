@@ -265,6 +265,7 @@ struct ShotScene {
         + settingsScenes
         + syncSetupScenes
         + folderPickerScenes
+        + peopleScenes
         + sheetFooterScenes
         + restoreCodeScenes
 }

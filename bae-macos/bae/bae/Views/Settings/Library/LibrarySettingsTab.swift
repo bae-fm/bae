@@ -97,7 +97,7 @@ struct LibrarySettingsTab: View {
                         onRemoveLibrary: onRemoveLibrary
                     )
                 case .people:
-                    PeopleSettingsPage()
+                    PeopleAndDevicesDestination()
                 case .restoreCode:
                     RestoreCodeSettingsPage(reveal: restoreCode)
                 }
@@ -238,17 +238,15 @@ private struct SyncSettingsPage: View {
     }
 }
 
-/// The People and devices page: the people, the changes this Mac asked of
-/// them, and sharing history, until the redesigned page replaces it.
-private struct PeopleSettingsPage: View {
+/// The People and devices page, which has its own header and back button
+/// for the pages inside it, so the stack's is hidden.
+private struct PeopleAndDevicesDestination: View {
+    @Environment(\.dismiss)
+    private var dismiss
+
     var body: some View {
-        Form {
-            MembersSection()
-            AdminChangesSection()
-            HistorySharingSection()
-        }
-        .formStyle(.grouped)
-        .navigationTitle("People and devices")
+        PeopleAndDevicesPage(onBack: { dismiss() })
+            .navigationBarBackButtonHidden(true)
     }
 }
 

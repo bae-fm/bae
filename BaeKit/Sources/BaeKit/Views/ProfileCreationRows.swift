@@ -1,15 +1,13 @@
 import SwiftUI
 import os.log
 
-private let logger = Logger.bae("HistorySharingSection")
+private let logger = Logger.bae("ProfileCreationRows")
 
-/// Who sees what this person plays: only them, or the household. A change
-/// applies to new plays; earlier plays keep the audience they were recorded
-/// in. A person without a profile yet — a join that couldn't ask for it —
-/// creates one here first; the section says while it is being made, and
-/// why it wasn't: the library refused it, or this device stopped syncing for
-/// good first.
-public struct HistorySharingSection: View {
+/// The rows of a person with no profile yet — a join that couldn't ask for
+/// it — who creates one here: they say while it is being made, and why it
+/// wasn't, when the library refused it or this device stopped syncing for good
+/// first. With a profile they show nothing.
+public struct ProfileCreationRows: View {
     @Environment(MembershipStore.self)
     private var store
     @Environment(Sync.self)
@@ -25,26 +23,9 @@ public struct HistorySharingSection: View {
     public init() {}
 
     public var body: some View {
-        Section("Listening history") {
-            if let profile = store.selfProfile {
-                Picker(
-                    "Share new plays with",
-                    selection: Binding(
-                        get: { profile.historySharing },
-                        set: { sharing in
-                            run { try await sync.setHistorySharing(sharing) }
-                        }
-                    )
-                ) {
-                    Text("Only me").tag(BridgeSharing.private)
-                    Text("Everyone in the library").tag(BridgeSharing.household)
-                }
-                .disabled(task != nil)
-                Text(
-                    "Applies to new plays. Earlier plays keep who could see them."
-                )
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
+        Group {
+            if store.selfProfile != nil {
+                EmptyView()
             }
             else if let requested = store.requestedProfile,
                 case .making = requested.state
