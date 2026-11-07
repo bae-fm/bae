@@ -216,23 +216,22 @@ impl UnstoredRow {
     /// registration is coven's own state broken, and the read fails naming
     /// the file.
     fn into_unstored_audio(self) -> Result<DbUnstoredAudio, DbError> {
-        let broken = |what: &str| {
-            DbError::Message(format!(
-                "coven lists release file {} on one device only, {what}",
-                self.file
-            ))
+        let broken = || {
+            DbError::unreadable(
+                format!(
+                    "coven's place of release file {}: its original here, its device this one",
+                    self.file
+                ),
+                (self.original_here, self.is_self),
+            )
         };
         // This device has no registration until the library connects to
         // storage, so its own file can be on a device `coven_devices` doesn't
         // list; another device's never is.
         match (self.original_here, self.is_self) {
-            (true, Some(false)) => Err(broken("on another device, with an original recorded here")),
+            (true, Some(false)) | (false, Some(true) | None) => Err(broken()),
             (true, None | Some(true)) => Ok(DbUnstoredAudio::Original),
             (false, Some(false)) => Ok(DbUnstoredAudio::Elsewhere(self.other_device()?)),
-            (false, Some(true)) => Err(broken("on this device, with no original recorded")),
-            (false, None) => Err(broken(
-                "on another device it has no registration of, or on this device with no original recorded",
-            )),
         }
     }
 
@@ -241,16 +240,16 @@ impl UnstoredRow {
         let (Some(name), Some(state), Some(member_removed)) =
             (self.name.clone(), self.state.as_deref(), self.member_removed)
         else {
-            return Err(DbError::Message(format!(
-                "coven_devices lists the device of release file {} as {:?}, {:?}, {:?}",
-                self.file, self.name, self.state, self.member_removed
-            )));
+            return Err(DbError::unreadable(
+                format!("coven_devices of the device release file {} is on", self.file),
+                (&self.name, &self.state, self.member_removed),
+            ));
         };
         other_device(name, state, member_removed).ok_or_else(|| {
-            DbError::Message(format!(
-                "coven_devices lists the device of release file {} as {state}",
-                self.file
-            ))
+            DbError::unreadable(
+                format!("coven_devices.state of the device release file {} is on", self.file),
+                state,
+            )
         })
     }
 }
