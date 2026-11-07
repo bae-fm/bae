@@ -4,8 +4,8 @@ use bae_util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use rusqlite::{params, OptionalExtension, Row};
 // coven owns production connections; row-mapping tests also use bare SQLite.
-use bae_store::DbError;
 use bae_store::Store;
+use bae_store::{DbError, WriteError};
 use coven::{CovenWrite, SqlReadContext};
 use std::collections::{HashMap, HashSet};
 
@@ -69,7 +69,7 @@ pub use release_detail::{
 };
 mod release_file;
 mod release_locality;
-pub use release_deletion::{Deleted, DeletionError, ReleaseDeletion};
+pub use release_deletion::{Deleted, DeletionError, DeletionRefusal, ReleaseDeletion};
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 mod seeded_albums;
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]

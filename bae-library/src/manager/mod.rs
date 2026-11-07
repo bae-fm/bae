@@ -425,7 +425,7 @@ impl LibraryError {
             LibraryError::AdminChangeDismiss(error) => admin_change_dismiss_category(error),
             LibraryError::PrimaryRelease(error) => primary_release_category(error),
             LibraryError::CreditName(error) => credit_name_category(error),
-            LibraryError::Deletion(error) => deletion_category(error),
+            LibraryError::Deletion(error) => write_error_category(error, deletion_refusal_category),
             LibraryError::ImageWrite(error) => image_write_category(error),
             LibraryError::Identity(bae_records::IdentityRefusal::ArtistGone(_)) => {
                 C::ChangedMeanwhile
@@ -486,17 +486,33 @@ impl From<bae_records::ImageWriteError> for LibraryError {
     }
 }
 
+/// The class a surface words a store write's failure in: the store's own by
+/// `database_category`, a refusal by `refusal`, and one with a failed rollback
+/// or byte removal kept beside it by what failed first.
+fn write_error_category<R>(
+    error: &bae_store::WriteError<R>,
+    refusal: impl Fn(&R) -> bae_diagnostics::UiErrorCategory + Copy,
+) -> bae_diagnostics::UiErrorCategory {
+    use bae_store::WriteError as E;
+    match error {
+        E::Refused(reason) => refusal(reason),
+        E::Database(error) => bae_diagnostics::database_category(error),
+        E::Rollback { operation: failed, .. } | E::FileCleanup { write: failed, .. } => {
+            write_error_category(failed, refusal)
+        }
+    }
+}
+
 /// The class a surface words a deletion's failure in: one refused because
 /// what it deletes changed meanwhile is the person's to ask for again, as an
 /// edit of a release that is gone is.
-fn deletion_category(error: &bae_records::DeletionError) -> bae_diagnostics::UiErrorCategory {
-    use bae_records::DeletionError as E;
-    match error {
-        E::Database(error) => bae_diagnostics::database_category(error),
-        E::Rollback { operation: failed, .. } | E::FileCleanup { write: failed, .. } => {
-            deletion_category(failed)
+fn deletion_refusal_category(
+    refusal: &bae_records::DeletionRefusal,
+) -> bae_diagnostics::UiErrorCategory {
+    match refusal {
+        bae_records::DeletionRefusal::PlanChanged(_) => {
+            bae_diagnostics::UiErrorCategory::ChangedMeanwhile
         }
-        E::PlanChanged(_) => bae_diagnostics::UiErrorCategory::ChangedMeanwhile,
     }
 }
 
@@ -504,7 +520,7 @@ fn deletion_category(error: &bae_records::DeletionError) -> bae_diagnostics::UiE
 impl From<bae_records::DeletionError> for LibraryError {
     fn from(error: bae_records::DeletionError) -> Self {
         match error {
-            bae_records::DeletionError::Database(error) => Self::Database(error),
+            bae_store::WriteError::Database(error) => Self::Database(error),
             error => Self::Deletion(error),
         }
     }

@@ -176,23 +176,48 @@ impl coven::WriteFailure for DbError {
 /// What a store write ended in: the domain's refusal, the store's failure, or
 /// either with a failed rollback or file cleanup kept beside it. A refusal
 /// carries no bug of its own.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum WriteError<R> {
-    #[error(transparent)]
     Refused(R),
-    #[error(transparent)]
     Database(DbError),
     /// The write was refused, and rolling it back failed too.
-    #[error("{operation}; rollback failed: {rollback}")]
     Rollback {
         operation: Box<WriteError<R>>,
-        #[source]
         rollback: rusqlite::Error,
     },
     /// The write was refused, and removing the bytes it staged or released
     /// failed too, each failure kept.
-    #[error("file cleanup failed: {failures:?}; write: {write}")]
-    FileCleanup { write: Box<WriteError<R>>, failures: Vec<coven::DbError> },
+    FileCleanup {
+        write: Box<WriteError<R>>,
+        failures: Vec<coven::DbError>,
+    },
+}
+
+// Written out: the derive's bound on the boxed `Self` overflows.
+impl<R: std::fmt::Display> std::fmt::Display for WriteError<R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Refused(refusal) => refusal.fmt(f),
+            Self::Database(error) => error.fmt(f),
+            Self::Rollback { operation, rollback } => {
+                write!(f, "{operation}; rollback failed: {rollback}")
+            }
+            Self::FileCleanup { write, failures } => {
+                write!(f, "file cleanup failed: {failures:?}; write: {write}")
+            }
+        }
+    }
+}
+
+impl<R: std::error::Error + 'static> std::error::Error for WriteError<R> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Refused(refusal) => refusal.source(),
+            Self::Database(error) => std::error::Error::source(error),
+            Self::Rollback { rollback, .. } => Some(rollback),
+            Self::FileCleanup { .. } => None,
+        }
+    }
 }
 
 impl<R> WriteError<R> {

@@ -128,7 +128,9 @@ impl Records {
                     .collect();
                 planned.sort();
                 if current != planned || planned.len() != releases.len() {
-                    return Err(DeletionError::PlanChanged(Deleted::Album(album_id)));
+                    return Err(WriteError::Refused(DeletionRefusal::PlanChanged(Deleted::Album(
+                        album_id,
+                    ))));
                 }
                 for release in &releases {
                     release.apply_on(&sql)?;

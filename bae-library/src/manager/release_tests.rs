@@ -244,7 +244,7 @@ async fn delete_release_refuses_a_plan_whose_cover_changed() {
         .expect_err("a stale delete plan is refused");
 
     assert!(
-        matches!(&error, bae_records::DeletionError::PlanChanged(bae_records::Deleted::Release(id)) if *id == release.id),
+        matches!(&error, bae_store::WriteError::Refused(bae_records::DeletionRefusal::PlanChanged(bae_records::Deleted::Release(id))) if *id == release.id),
         "{error:?}"
     );
     assert_eq!(
