@@ -145,25 +145,26 @@ pub(crate) fn read_cover(row: &Row<'_>) -> rusqlite::Result<Option<StoredCover>>
 
 impl StoredCover {
     pub(crate) fn selection(self) -> Result<CoverSelection, DbError> {
+        // A kind whose column is NULL: the table's CHECK keeps each kind's
+        // columns filled, so it is a row nothing here writes.
+        let absent = |column: &str| {
+            DbError::unreadable(
+                format!("import_candidate_cover.{column} of a {} cover", self.kind),
+                None::<String>,
+            )
+        };
         match self.kind.as_str() {
-            "local" => Ok(CoverSelection::Local(
-                self.file_id
-                    .ok_or_else(|| DbError::Message("a local cover names no file".into()))?,
-            )),
-            "embedded" => Ok(CoverSelection::Embedded(self.file_id.ok_or_else(|| {
-                DbError::Message("an embedded cover names no source file".into())
-            })?)),
+            "local" => Ok(CoverSelection::Local(self.file_id.ok_or_else(|| absent("file_id"))?)),
+            "embedded" => {
+                Ok(CoverSelection::Embedded(self.file_id.ok_or_else(|| absent("file_id"))?))
+            }
             "remote" => Ok(CoverSelection::Remote(
                 RemoteImageSet::with_copies(
-                    self.url.ok_or_else(|| {
-                        DbError::Message("a remote cover names no address".into())
-                    })?,
+                    self.url.ok_or_else(|| absent("url"))?,
                     copies_of(&self.copies)?,
                 ),
                 {
-                    let source = self
-                        .source
-                        .ok_or_else(|| DbError::Message("a remote cover names no source".into()))?;
+                    let source = self.source.ok_or_else(|| absent("source"))?;
                     Catalog::from_str(&source).map_err(|_unknown| {
                         DbError::unreadable("import_candidate_cover.source", &source)
                     })?

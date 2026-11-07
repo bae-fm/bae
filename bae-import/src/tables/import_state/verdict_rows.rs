@@ -391,9 +391,11 @@ pub(super) fn identification_of(
         (RunOutcome::Answered(verdict), kept_own_draft) => {
             Ok(DbCandidateIdentifyResult { verdict, kept_own_draft })
         }
-        (RunOutcome::Running { .. }, _) => {
-            Err(DbError::Message(format!("the verdict of {owner} is a run still running")))
-        }
+        // A run publishes only what it reached to the candidate it was of.
+        (RunOutcome::Running { .. }, _) => Err(DbError::unreadable(
+            format!("import_candidate_verdict.kind of candidate {owner}"),
+            "running",
+        )),
     }
 }
 
@@ -419,10 +421,13 @@ pub(super) fn outcome_of(
     if let Some(returned) =
         found.rows.iter().find(|row| matches!(row.listing, Listing::Returned { .. }))
     {
-        return Err(DbError::Message(format!(
-            "match {} of {content_hash} is a search's release",
-            returned.position
-        )));
+        return Err(DbError::unreadable(
+            format!(
+                "import_candidate_match.listing of match {} of {content_hash}",
+                returned.position
+            ),
+            "returned",
+        ));
     }
     let held: HashMap<i64, &MetadataResult> =
         found.rows.iter().map(|row| (row.position, &row.result)).collect();
@@ -432,15 +437,21 @@ pub(super) fn outcome_of(
         .iter()
         .find(|row| matches!(row.listing, Listing::Unlisted) && !linked.contains(&row.position))
     {
-        return Err(DbError::Message(format!(
-            "match {} of {content_hash} is unlisted, but no lookup of its ledger found it",
-            stray.position
-        )));
+        return Err(DbError::unreadable(
+            format!(
+                "the lookups of {content_hash}'s ledger that found unlisted match {}",
+                stray.position
+            ),
+            &linked,
+        ));
     }
     let count_of = || {
         track_count
             .ok_or_else(|| {
-                DbError::Message(format!("verdict {kind} for {content_hash} counts no tracks"))
+                DbError::unreadable(
+                    format!("import_candidate_verdict.track_count of {kind} {content_hash}"),
+                    None::<i64>,
+                )
             })
             .and_then(|count| {
                 to_u32(count, &format!("the tracks verdict {kind} for {content_hash} counts"))
@@ -474,12 +485,15 @@ pub(super) fn outcome_of(
         if found.rows.iter().all(|row| matches!(row.listing, Listing::Unlisted)) {
             return Ok(());
         }
-        Err(DbError::Message(format!("verdict {kind} for {content_hash} lists releases")))
+        Err(DbError::unreadable(
+            format!("the listed matches of verdict {kind} for {content_hash}"),
+            found.rows.iter().filter(|row| !matches!(row.listing, Listing::Unlisted)).count(),
+        ))
     };
     let verdict = match kind.as_str() {
         "running" => {
             let ledger = ledger.ok_or_else(|| {
-                DbError::Message(format!("the run {content_hash} lays out no ledger"))
+                DbError::unreadable(format!("the ledger of run {content_hash}"), None::<String>)
             })?;
             return Ok((
                 RunOutcome::Running {
@@ -505,7 +519,10 @@ pub(super) fn outcome_of(
         }
         "failed" => {
             let json = failures_json.ok_or_else(|| {
-                DbError::Message(format!("failed verdict for {content_hash} lists no failure"))
+                DbError::unreadable(
+                    format!("import_candidate_verdict.failures_json of failed {content_hash}"),
+                    None::<String>,
+                )
             })?;
             let failures: Vec<IdentifyFailure> = serde_json::from_str(&json).map_err(|error| {
                 DbError::unreadable_json(
@@ -515,9 +532,10 @@ pub(super) fn outcome_of(
                 )
             })?;
             if failures.is_empty() {
-                return Err(DbError::Message(format!(
-                    "identify failure for {content_hash} contains no failed lookup"
-                )));
+                return Err(DbError::unreadable(
+                    format!("import_candidate_verdict.failures_json of failed {content_hash}"),
+                    &json,
+                ));
             }
             TerminalVerdict::Failed {
                 failures,
@@ -529,7 +547,10 @@ pub(super) fn outcome_of(
         "error" => {
             no_findings(&found)?;
             let detail = error_detail.ok_or_else(|| {
-                DbError::Message(format!("error verdict for {content_hash} states no error"))
+                DbError::unreadable(
+                    format!("import_candidate_verdict.error_detail of error {content_hash}"),
+                    None::<String>,
+                )
             })?;
             TerminalVerdict::Error { failure: InternalFailure { detail } }
         }

@@ -145,9 +145,10 @@ impl StoredReleaseLink {
                         .collect::<Result<Vec<_>, DbError>>()?,
                 )
                 .ok_or_else(|| {
-                    DbError::Message(format!(
-                        "{content_hash} is linked to an album no catalog names"
-                    ))
+                    DbError::unreadable(
+                        format!("the linked albums of {content_hash}'s release link"),
+                        &albums,
+                    )
                 })?,
             )),
             (other, _, _) => Err(DbError::unreadable("import_candidate_release_link.kind", other)),

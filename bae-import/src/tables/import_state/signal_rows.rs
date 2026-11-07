@@ -323,9 +323,12 @@ impl StoredSignals {
             text_pool,
         } = self;
         let failure_of = |detail: Option<String>, what: &str| {
-            detail
-                .map(|detail| InternalFailure { detail })
-                .ok_or_else(|| DbError::Message(format!("a failed {what} states no error")))
+            detail.map(|detail| InternalFailure { detail }).ok_or_else(|| {
+                DbError::unreadable(
+                    format!("the error of a failed {what} in import_candidate_signals"),
+                    None::<String>,
+                )
+            })
         };
         let source = match (audio_source.as_deref(), cd_rip_proof, download_proof) {
             (None, None, None) => None,
@@ -343,7 +346,10 @@ impl StoredSignals {
                     DbError::unreadable("import_candidate_signals.download_proof", &proof)
                 })?;
                 let file = audio_source_file.ok_or_else(|| {
-                    DbError::Message("a stored store download names no file".into())
+                    DbError::unreadable(
+                        "import_candidate_signals.audio_source_file of a store download",
+                        None::<String>,
+                    )
                 })?;
                 Some(AudioSource::Download(DownloadProof::Store { marker, file }))
             }
@@ -360,10 +366,10 @@ impl StoredSignals {
             .map(|disc| ComputedDiscId { disc_id: disc.value, source_file: disc.origin_path })
             .collect();
         if (disc_id_state == "computed") == discs.is_empty() {
-            return Err(DbError::Message(format!(
-                "a {disc_id_state} Disc ID signal states {} Disc IDs",
-                discs.len()
-            )));
+            return Err(DbError::unreadable(
+                format!("the Disc IDs of a {disc_id_state} Disc ID signal"),
+                discs.len(),
+            ));
         }
         let disc_id = match disc_id_state.as_str() {
             "computed" => DiscIdSignal::Computed { discs },

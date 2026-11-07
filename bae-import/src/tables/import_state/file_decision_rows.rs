@@ -122,10 +122,10 @@ impl StoredFileEdits {
                 "ignored" => SheetDisc::Ignored,
                 "disc" => {
                     let number = stored.disc_number.ok_or_else(|| {
-                        DbError::Message(format!(
-                            "the disc stored for {} states no number",
-                            stored.sheet_id
-                        ))
+                        DbError::unreadable(
+                            format!("the disc number stored for sheet {}", stored.sheet_id),
+                            None::<i64>,
+                        )
                     })?;
                     SheetDisc::Disc {
                         number: to_u32(

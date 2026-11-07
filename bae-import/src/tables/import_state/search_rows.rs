@@ -63,8 +63,12 @@ fn query_columns(query: &SearchQuery) -> QueryColumns<'_> {
 fn query_of(row: &Row<'_>) -> Result<SearchQuery, DbError> {
     let mode: String = row.get("mode")?;
     let value = |column: &str| {
-        row.get::<_, Option<String>>(column)?
-            .ok_or_else(|| DbError::Message(format!("a {mode} search states no {column}")))
+        row.get::<_, Option<String>>(column)?.ok_or_else(|| {
+            DbError::unreadable(
+                format!("import_candidate_search.{column} of a {mode} search"),
+                None::<String>,
+            )
+        })
     };
     Ok(match mode.as_str() {
         "general" => SearchQuery::General { artist: value("artist")?, album: value("album")? },
@@ -122,10 +126,10 @@ impl StoredPart {
             if results.is_empty() {
                 Ok(part)
             } else {
-                Err(DbError::Message(format!(
-                    "a search's {} part is {} but holds releases",
-                    self.catalog, self.state
-                )))
+                Err(DbError::unreadable(
+                    format!("the releases of a search's {} part, {}", self.catalog, self.state),
+                    results.len(),
+                ))
             }
         };
         match self.state.as_str() {
@@ -140,11 +144,11 @@ impl StoredPart {
                 ) {
                     (Some(failure), None) => Failure::Lookup(failure),
                     (None, Some(detail)) => Failure::Internal(InternalFailure { detail }),
-                    _ => {
-                        return Err(DbError::Message(format!(
-                            "a search's failed {} part states no one failure",
-                            self.catalog
-                        )))
+                    (failure, detail) => {
+                        return Err(DbError::unreadable(
+                            format!("the failure of a search's failed {} part", self.catalog),
+                            (failure, detail),
+                        ))
                     }
                 };
                 holds_none(SourceSearch::Failed(failure))
@@ -204,10 +208,13 @@ fn load_on(
         let mut by_catalog: HashMap<LookupCatalog, Vec<MetadataResult>> = HashMap::new();
         for row in releases.remove(&run).unwrap_or_default() {
             let Listing::Returned { picked: was_picked } = row.listing else {
-                return Err(DbError::Message(format!(
-                    "{key}'s search holds release {} listed as no search lists one",
-                    row.position
-                )));
+                return Err(DbError::unreadable(
+                    format!(
+                        "import_candidate_match.listing of {key}'s search match {}",
+                        row.position
+                    ),
+                    &row.listing,
+                ));
             };
             if was_picked && !picked.iter().any(|read| read.release_id == row.result.release_id) {
                 picked.push(PickedResult {
@@ -230,11 +237,10 @@ fn load_on(
             })
             .collect::<Result<Vec<_>, DbError>>()?;
         if let Some(catalog) = by_catalog.keys().next() {
-            return Err(DbError::Message(format!(
-                "{key}'s search holds {} releases but has no {} part",
-                catalog.as_str(),
-                catalog.as_str()
-            )));
+            return Err(DbError::unreadable(
+                format!("the parts of {key}'s search, which holds {} releases", catalog.as_str()),
+                sources.iter().map(|(catalog, _)| catalog.as_str()).collect::<Vec<_>>(),
+            ));
         }
         loaded.insert(key, (SearchRun::of(run), CandidateSearch::of(query, sources, picked)));
     }

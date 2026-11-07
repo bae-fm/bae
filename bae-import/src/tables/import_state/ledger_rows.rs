@@ -468,9 +468,10 @@ impl StoredLedger {
         else {
             if !providers.is_empty() || !isrcs.is_empty() || !offered.is_empty() || !rows.is_empty()
             {
-                return Err(DbError::Message(format!(
-                    "the verdict for {content_hash} records no ledger but holds ledger rows"
-                )));
+                return Err(DbError::unreadable(
+                    format!("the ledger of {content_hash}, whose verdict records none"),
+                    (&providers, &isrcs, &offered, rows.len()),
+                ));
             }
             return Ok((None, HashSet::new()));
         };
@@ -489,9 +490,10 @@ impl StoredLedger {
             let mut cells = row.cells.into_iter();
             match (cells.next(), cells.next()) {
                 (Some(cell), None) => lookup(cell),
-                _ => Err(DbError::Message(format!(
-                    "a stored {what} row of {content_hash} holds other than one lookup"
-                ))),
+                (first, second) => Err(DbError::unreadable(
+                    format!("the lookups of a stored {what} row of {content_hash}"),
+                    (first.is_some(), second.is_some()),
+                )),
             }
         };
         let provider_cells = |row: Vec<StoredLookup>| {
@@ -501,9 +503,10 @@ impl StoredLedger {
                         .catalog
                         .as_deref()
                         .ok_or_else(|| {
-                            DbError::Message(format!(
-                                "a stored lookup of {content_hash} names no catalog"
-                            ))
+                            DbError::unreadable(
+                                format!("import_candidate_lookup.catalog of {content_hash}"),
+                                None::<String>,
+                            )
                         })
                         .and_then(|catalog| {
                             LookupCatalog::from_str(catalog).map_err(|_unknown| {
@@ -518,9 +521,10 @@ impl StoredLedger {
             rows.into_iter()
                 .map(|row| {
                     let value = row.value.ok_or_else(|| {
-                        DbError::Message(format!(
-                            "a stored ledger row of {content_hash} names no value"
-                        ))
+                        DbError::unreadable(
+                            format!("the value of a stored {} row of {content_hash}", row.step),
+                            None::<String>,
+                        )
                     })?;
                     Ok(SignalValueRow {
                         value,
@@ -534,9 +538,10 @@ impl StoredLedger {
             if rows.is_empty() {
                 return Ok(());
             }
-            Err(DbError::Message(format!(
-                "the ledger of {content_hash} holds {step} rows but its {step} step is {stood}"
-            )))
+            Err(DbError::unreadable(
+                format!("the {step} rows of {content_hash}, whose {step} step is {stood}"),
+                rows.len(),
+            ))
         };
 
         let disc_rows = take(STEP_DISC_ID);
@@ -546,9 +551,10 @@ impl StoredLedger {
                     .into_iter()
                     .map(|row| {
                         let disc_id = row.value.clone().ok_or_else(|| {
-                            DbError::Message(format!(
-                                "a stored disc ID row of {content_hash} names no disc ID"
-                            ))
+                            DbError::unreadable(
+                                format!("the Disc ID of a stored Disc ID row of {content_hash}"),
+                                None::<String>,
+                            )
                         })?;
                         Ok(DiscIdRow { disc_id, lookup: one_lookup(row, "disc ID")? })
                     })
@@ -596,9 +602,10 @@ impl StoredLedger {
             "none_found" => {
                 stray(&catalog_rows, STEP_CATALOG, "none_found")?;
                 if !offered.is_empty() {
-                    return Err(DbError::Message(format!(
-                        "the ledger of {content_hash} offers catalog numbers but found none"
-                    )));
+                    return Err(DbError::unreadable(
+                        format!("the catalog numbers offered by {content_hash}, which found none"),
+                        &offered,
+                    ));
                 }
                 CatalogStepView::NoneFound
             }
@@ -609,20 +616,23 @@ impl StoredLedger {
         let isrc_rows = take(STEP_ISRC);
         let isrc = match isrc.as_str() {
             "read" => {
+                let count = isrc_rows.len();
                 let mut rows = isrc_rows.into_iter();
                 let (Some(row), None) = (rows.next(), rows.next()) else {
-                    return Err(DbError::Message(format!(
-                        "the ledger of {content_hash} read ISRCs but holds other than one ISRC row"
-                    )));
+                    return Err(DbError::unreadable(
+                        format!("the ISRC rows of {content_hash}, which read ISRCs"),
+                        count,
+                    ));
                 };
                 IsrcStepView::Read { isrcs, lookup: one_lookup(row, "ISRC")? }
             }
             stood @ ("reading" | "absent") => {
                 stray(&isrc_rows, STEP_ISRC, stood)?;
                 if !isrcs.is_empty() {
-                    return Err(DbError::Message(format!(
-                        "the ledger of {content_hash} holds ISRCs but read none"
-                    )));
+                    return Err(DbError::unreadable(
+                        format!("the ISRCs of {content_hash}, whose ISRC step is {stood}"),
+                        &isrcs,
+                    ));
                 }
                 match stood {
                     "reading" => IsrcStepView::Reading,
@@ -634,11 +644,13 @@ impl StoredLedger {
         let search_rows = take(STEP_SEARCH);
         let search = match (search.as_str(), search_album, search_artist) {
             ("searched", Some(album), Some(artist)) => {
+                let count = search_rows.len();
                 let mut rows = search_rows.into_iter();
                 let (Some(row), None) = (rows.next(), rows.next()) else {
-                    return Err(DbError::Message(format!(
-                        "the ledger of {content_hash} searched but holds other than one search row"
-                    )));
+                    return Err(DbError::unreadable(
+                        format!("the search rows of {content_hash}, which searched"),
+                        count,
+                    ));
                 };
                 SearchStepView::Searched { album, artist, cells: provider_cells(row.cells)? }
             }
@@ -688,9 +700,10 @@ fn lookup_of(
 ) -> Result<LookupView, DbError> {
     let StoredLookup { catalog: _, answer, reason, failure, status, releases } = stored;
     if answer != "answered" && !releases.is_empty() {
-        return Err(DbError::Message(format!(
-            "a {answer} lookup of {content_hash} lists releases it found"
-        )));
+        return Err(DbError::unreadable(
+            format!("the releases a {answer} lookup of {content_hash} found"),
+            &releases,
+        ));
     }
     match answer.as_str() {
         "queued" => Ok(LookupView::Queued),
@@ -709,7 +722,10 @@ fn lookup_of(
         }),
         "failed" => Ok(LookupView::Failed {
             failure: failure_of(failure, status)?.ok_or_else(|| {
-                DbError::Message(format!("a failed lookup of {content_hash} states no failure"))
+                DbError::unreadable(
+                    format!("the failure of a failed lookup of {content_hash}"),
+                    None::<String>,
+                )
             })?,
         }),
         "answered" => {
@@ -717,9 +733,10 @@ fn lookup_of(
                 .into_iter()
                 .map(|position| {
                     matches.get(&position).map(|held| (*held).clone()).ok_or_else(|| {
-                        DbError::Message(format!(
-                            "a lookup of {content_hash} found match {position}, which is not stored"
-                        ))
+                        DbError::unreadable(
+                            format!("a match a lookup of {content_hash} found, which no match row holds"),
+                            position,
+                        )
                     })
                 })
                 .collect::<Result<Vec<_>, DbError>>()?;

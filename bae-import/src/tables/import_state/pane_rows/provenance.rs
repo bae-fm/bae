@@ -104,7 +104,10 @@ impl StoredProvenance {
             "file_tags" => Ok(MetadataProvenance::FileMetadata),
             "external_release" => {
                 let missing = |what: &str| {
-                    DbError::Message(format!("stored external metadata provenance names no {what}"))
+                    DbError::unreadable(
+                        format!("the {what} of a stored external release provenance"),
+                        None::<String>,
+                    )
                 };
                 Ok(MetadataProvenance::ExternalRelease {
                     record: lookup_reference(

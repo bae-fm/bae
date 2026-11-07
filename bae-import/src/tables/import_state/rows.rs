@@ -185,9 +185,10 @@ impl StoredCandidate {
             // without one has none.
             None if matches.rows.is_empty() => None,
             None => {
-                return Err(DbError::Message(format!(
-                    "candidate {content_hash} holds matches but no verdict"
-                )))
+                return Err(DbError::unreadable(
+                    format!("the matches of candidate {content_hash}, which holds no verdict"),
+                    matches.rows.len(),
+                ))
             }
         };
         Ok(DbImportCandidateState {

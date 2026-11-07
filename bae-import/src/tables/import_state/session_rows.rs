@@ -284,7 +284,9 @@ fn session_of(row: SessionRow) -> Result<CandidateSession, DbError> {
             error: UiError::Diagnostic { category: category_of(&category)?, detail },
         }),
         (None, None, None) => None,
-        _ => return Err(DbError::Message("a pane failure is stored in part".to_string())),
+        stored => {
+            return Err(DbError::unreadable("import_candidate_session's pane failure", stored))
+        }
     };
     Ok(CandidateSession {
         presentation: presentation_of(&presentation)?,

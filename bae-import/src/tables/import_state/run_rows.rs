@@ -61,8 +61,9 @@ fn load_runs_on(
     )?;
     let mut runs: HashMap<CandidateKey, BTreeMap<IdentifyRunId, PublishedRun>> = HashMap::new();
     for (key, run, verdict, signals) in rows {
-        let verdict = verdict?
-            .ok_or_else(|| DbError::Message(format!("{key}'s run {run} reads no verdict row")))?;
+        let verdict = verdict?.ok_or_else(|| {
+            DbError::unreadable(format!("the verdict row of {key}'s run {run}"), None::<String>)
+        })?;
         let (outcome, _) = outcome_of(verdict, matches.remove(&run).unwrap_or_default())?;
         let signals = signals.map(|stored| stored.signals()).transpose()?;
         let number = to_u64(run, &format!("{key}'s run number"))?;
@@ -71,7 +72,10 @@ fn load_runs_on(
             .insert(IdentifyRunId::of_number(number), PublishedRun { outcome, signals });
     }
     if let Some(run) = matches.keys().next() {
-        return Err(DbError::Message(format!("run {run} holds matches but no verdict row")));
+        return Err(DbError::unreadable(
+            format!("the matches of run {run}, which holds no verdict row"),
+            matches[run].rows.len(),
+        ));
     }
     Ok(runs)
 }

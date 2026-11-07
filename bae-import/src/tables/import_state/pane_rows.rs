@@ -535,7 +535,13 @@ struct StoredTrack {
 impl StoredTrack {
     fn track(self) -> Result<CandidateTrack, DbError> {
         let missing = |what: &str| {
-            DbError::Message(format!("the track stored for {} states no {what}", self.track_id))
+            DbError::unreadable(
+                format!(
+                    "the {what} of the track stored for {}, of a {} file",
+                    self.track_id, self.file_kind
+                ),
+                None::<String>,
+            )
         };
         let artist_assignments = match self.assignment_kind.as_str() {
             "album_artists" => TrackArtistAssignments::AlbumArtists,
@@ -670,10 +676,18 @@ impl StoredAssignment {
             "picked" => ArtistAssignment::Picked {
                 artist: ExistingArtist {
                     artist_id: self.artist_id.ok_or_else(|| {
-                        DbError::Message("a picked artist assignment names no artist".into())
+                        DbError::unreadable(
+                            "the artist_id of a picked artist assignment",
+                            None::<String>,
+                        )
                     })?,
+                    // The assignment goes with its artist, so the artist
+                    // it names is in the library.
                     name: self.name.ok_or_else(|| {
-                        DbError::Message("a picked artist assignment names a missing artist".into())
+                        DbError::unreadable(
+                            "the name of a picked assignment's artist",
+                            None::<String>,
+                        )
                     })?,
                     sort_name: self.sort_name,
                     musicbrainz_artist_id: self.musicbrainz_artist_id,
@@ -692,9 +706,12 @@ impl StoredAssignment {
             },
             "credit" => ArtistAssignment::Credit {
                 credit: ArtistCredit {
-                    name: self
-                        .name
-                        .ok_or_else(|| DbError::Message("an artist credit has no name".into()))?,
+                    name: self.name.ok_or_else(|| {
+                        DbError::unreadable(
+                            "the name of an artist credit assignment",
+                            None::<String>,
+                        )
+                    })?,
                     sort_name: self.sort_name,
                     musicbrainz_artist_id: self.musicbrainz_artist_id,
                     discogs_artist_id: self.discogs_artist_id,

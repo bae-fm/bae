@@ -448,6 +448,7 @@ pub(super) struct MatchEntries {
 
 /// Where a stored release is listed, with what an offered or narrowed-out
 /// one carries.
+#[derive(Debug)]
 pub(super) enum Listing {
     Offered(ListedMatch),
     NarrowedOut(ListedMatch),
@@ -463,6 +464,7 @@ pub(super) enum Listing {
 
 /// What a release a verdict lists carries beside the release: which pressing
 /// row of its list the run put it in.
+#[derive(Debug)]
 pub(super) struct ListedMatch {
     /// The row's number within this list, as the run numbered it. Rows are
     /// read, never re-formed: a list of a run's answers does not hold what
@@ -522,20 +524,21 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         named_note,
     } = columns;
     let MatchEntries { labels, barcodes, cover_copies, media, links, album_links } = entries;
-    let mismatch = |what: &str| {
-        DbError::Message(format!(
-            "match {position} of {content_hash} holds {media_kind} media but {what}"
-        ))
+    let mismatch = |what: &str, stored: &dyn std::fmt::Debug| {
+        DbError::unreadable(
+            format!("the {what} of match {position} of {content_hash}, of {media_kind} media"),
+            stored,
+        )
     };
     for stored in &media {
         if stored.kind != media_kind {
-            return Err(mismatch(&format!("a {} medium row", stored.kind)));
+            return Err(mismatch("kind of a medium row", &stored.kind));
         }
     }
     result.media = match media_kind.as_str() {
         MEDIA_UNDESCRIBED => {
             if !media.is_empty() {
-                return Err(mismatch("lists medium rows"));
+                return Err(mismatch("medium rows", &media.len()));
             }
             StatedMedia::Undescribed
         }
@@ -545,7 +548,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
                 .map(|stored| {
                     (stored.quantity == 1)
                         .then_some(stored.medium)
-                        .ok_or_else(|| mismatch("a medium row counts more than one"))
+                        .ok_or_else(|| mismatch("quantity of a medium row", &stored.quantity))
                 })
                 .collect::<Result<_, _>>()?,
         ),
@@ -572,10 +575,13 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
             album_links.into_iter().map(AlbumLinkRow::album).collect::<Result<_, DbError>>()?,
         ),
         ALBUM_LINKS_NOT_ASKED | ALBUM_LINKS_UNREAD if !album_links.is_empty() => {
-            return Err(DbError::Message(format!(
-                "match {position} of {content_hash} holds album link rows but its album links \
-                 are {album_links_kind}"
-            )))
+            return Err(DbError::unreadable(
+                format!(
+                    "the album link rows of match {position} of {content_hash}, whose album \
+                     links are {album_links_kind}"
+                ),
+                album_links.len(),
+            ))
         }
         ALBUM_LINKS_NOT_ASKED => AlbumLinks::NotAsked,
         ALBUM_LINKS_UNREAD => AlbumLinks::Unread,
@@ -583,9 +589,10 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
     };
     let listed = |pressing: Option<i64>| {
         let Some(pressing) = pressing else {
-            return Err(DbError::Message(format!(
-                "match {position} of {content_hash} is {listing} but names no pressing row"
-            )));
+            return Err(DbError::unreadable(
+                format!("the pressing row of match {position} of {content_hash}, {listing}"),
+                None::<i64>,
+            ));
         };
         let pressing = to_u32(
             pressing,
@@ -599,16 +606,20 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         LISTING_UNLISTED if pressing.is_none() && named_note.is_none() => Listing::Unlisted,
         LISTING_RETURNED if pressing.is_none() && named_note.is_none() => Listing::Returned {
             picked: picked.ok_or_else(|| {
-                DbError::Message(format!(
-                    "match {position} of {content_hash} is returned but says nothing of a pick"
-                ))
+                DbError::unreadable(
+                    format!("whether returned match {position} of {content_hash} was picked"),
+                    None::<bool>,
+                )
             })?,
         },
         LISTING_NARROWED_OUT | LISTING_UNLISTED | LISTING_RETURNED => {
-            return Err(DbError::Message(format!(
-                "match {position} of {content_hash} is {listing} but holds what only a listed \
-                 or offered release holds"
-            )))
+            return Err(DbError::unreadable(
+                format!(
+                    "the pressing row and named note of match {position} of {content_hash}, \
+                     {listing}"
+                ),
+                (pressing, &named_note),
+            ))
         }
         other => return Err(DbError::unreadable("import_candidate_match.listing", other)),
     };
@@ -637,7 +648,10 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
         Some("listed") => {
             let count: i64 =
                 row.get::<_, Option<i64>>("source_tracks_count")?.ok_or_else(|| {
-                    DbError::Message("a listed source tracklist states no count".to_string())
+                    DbError::unreadable(
+                        "import_candidate_match.source_tracks_count of a listed tracklist",
+                        None::<i64>,
+                    )
                 })?;
             Some(SourceTracks::Listed {
                 count: to_u32(count, "import_candidate_match.source_tracks_count")?,

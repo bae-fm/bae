@@ -68,7 +68,8 @@ impl StandingColumns {
     /// every column a stage needs, so one missing is a row the checks let
     /// through, which is refused here as broken.
     fn standing(self, key: &CandidateKey) -> Result<StoredStanding, DbError> {
-        let broken = |what: &str| DbError::Message(format!("the standing of {key} {what}"));
+        let broken =
+            |what: &str| DbError::unreadable(format!("import_candidate_standing of {key}"), what);
         let identification = match self.identification.as_deref() {
             None => None,
             Some(stage) => {
@@ -191,7 +192,8 @@ impl RuntimeFactColumns {
     /// What these columns say is running for `key`'s candidate.
     pub(crate) fn facts(&self, key: &CandidateKey) -> Result<TriageRuntimeFacts, DbError> {
         use crate::IdentificationStatus as S;
-        let broken = |what: &str| DbError::Message(format!("the standing of {key} {what}"));
+        let broken =
+            |what: &str| DbError::unreadable(format!("import_candidate_standing of {key}"), what);
         let error = || self.save_failure_error.clone().ok_or_else(|| broken("names no failure"));
         Ok(TriageRuntimeFacts {
             identification: match self.identification.as_deref() {
