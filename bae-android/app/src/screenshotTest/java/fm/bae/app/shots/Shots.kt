@@ -34,6 +34,7 @@ import fm.bae.app.ui.playback.MiniPlayerScene
 import fm.bae.app.ui.playback.PlayerSceneState
 import fm.bae.app.ui.settings.AppearanceSection
 import fm.bae.app.ui.settings.CastingPage
+import fm.bae.app.ui.settings.RestoreCodeScene
 import fm.bae.app.ui.settings.S3SetupFormScene
 import fm.bae.app.ui.settings.TransfersContent
 import fm.bae.app.ui.sync.SyncActivityList
@@ -228,6 +229,29 @@ private fun AppearanceScene(
 @Composable
 fun S3SetupRegionMismatch() {
     S3SetupFormScene()
+}
+
+@Preview(device = PHONE_SPEC)
+@Composable
+fun RestoreCodeMasked() {
+    RestoreCodeShot(shown = false)
+}
+
+@Preview(device = PHONE_SPEC)
+@Composable
+fun RestoreCodeShown() {
+    RestoreCodeShot(shown = true)
+}
+
+@Composable
+private fun RestoreCodeShot(shown: Boolean) {
+    BaeTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            CompositionLocalProvider(LocalBugReports provides BugReports()) {
+                RestoreCodeScene(shown)
+            }
+        }
+    }
 }
 
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)

@@ -295,7 +295,7 @@ private fun ColumnScope.SetupDone(
     Text(stringResource(R.string.storage_setup_done))
     QRCodeImage(
         text = restoreCode,
-        contentDescription = stringResource(R.string.recovery_code_title),
+        contentDescription = stringResource(R.string.restore_code_title),
     )
     SelectionContainer {
         Text(text = restoreCode, style = ThemeText.mono.style)

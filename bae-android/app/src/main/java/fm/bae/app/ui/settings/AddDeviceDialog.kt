@@ -169,7 +169,7 @@ private fun AddDeviceShareContent(share: BridgeRestoreCodeShare) {
     val copy = rememberCopyText()
     QRCodeImage(
         text = share.qrText,
-        contentDescription = stringResource(R.string.recovery_code_title),
+        contentDescription = stringResource(R.string.restore_code_title),
     )
     Spacer(modifier = Modifier.height(ThemeSpace.group))
     Text(

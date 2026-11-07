@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -34,19 +35,21 @@ class RecoveryCodeSectionTest {
     val compose = createComposeRule()
 
     @Test
-    fun theCodeStaysHiddenUntilAskedForAndHidesAgain() {
+    fun theCodeIsMadeWhenTheSectionOpensAndStaysMaskedUntilShown() {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RecoveryCodeSection(needsS3Key = false, generate = { CODE })
+                    RecoveryCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
                 }
             }
         }
         compose.onNodeWithText(CODE).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Restore code, partly hidden").assertIsDisplayed()
+        compose.onNodeWithText("Copy").assertIsDisplayed()
+        compose.onNodeWithText("Print").assertIsDisplayed()
 
         compose.onNodeWithText("Show code").performClick()
         compose.onNodeWithText(CODE).assertIsDisplayed()
-        compose.onNodeWithText("Copy").assertIsDisplayed()
 
         compose.onNodeWithText("Hide").performClick()
         compose.onNodeWithText(CODE).assertDoesNotExist()
@@ -54,11 +57,28 @@ class RecoveryCodeSectionTest {
     }
 
     @Test
+    fun theCaptionSaysWhereElseTheCodeIs() {
+        compose.setContent {
+            BaeTheme {
+                CompositionLocalProvider(LocalBugReports provides BugReports()) {
+                    RecoveryCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
+                }
+            }
+        }
+
+        compose
+            .onNodeWithText(
+                "Print this code or save it in a password manager. It gets you back into your library if you lose " +
+                    "all your devices. A phone you set up from this one gets it too.",
+            ).assertIsDisplayed()
+    }
+
+    @Test
     fun anS3LibraryAlsoNamesTheAccessKey() {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RecoveryCodeSection(needsS3Key = true, generate = { CODE })
+                    RecoveryCodeSection(needsS3Key = true, location = "S3", generate = { CODE })
                 }
             }
         }
@@ -71,7 +91,7 @@ class RecoveryCodeSectionTest {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RecoveryCodeSection(needsS3Key = false, generate = { CODE })
+                    RecoveryCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
                 }
             }
         }
@@ -80,19 +100,39 @@ class RecoveryCodeSectionTest {
     }
 
     @Test
-    fun aCodeGeneratedAfterHidingStaysHidden() =
+    fun aMaskedCodeKeepsItsFirstTwoGroups() {
+        assertEquals("CVR1 ABCD •••• •••• ••••", maskedRestoreCode("CVR1 ABCD EFGH IJKL MNOP"))
+        assertEquals("CVR1 ABCD", maskedRestoreCode("CVR1 ABCD"))
+    }
+
+    @Test
+    fun aCodeGeneratedAfterClosingStaysDropped() =
         runTest {
             val pending = CompletableDeferred<String>()
             val reveal = RecoveryCodeReveal(this, generate = { pending.await() }, errorDisplay = { null })
-            reveal.show()
+            reveal.open()
             advanceUntilIdle()
             assertEquals(RecoveryCodeState.Loading, reveal.state)
 
-            reveal.hide()
+            reveal.close()
             pending.complete(CODE)
             advanceUntilIdle()
 
-            assertEquals(RecoveryCodeState.Hidden, reveal.state)
+            assertEquals(RecoveryCodeState.Closed, reveal.state)
+        }
+
+    @Test
+    fun showRevealsTheHeldCodeAndHideMasksItAgain() =
+        runTest {
+            val reveal = RecoveryCodeReveal(this, generate = { CODE }, errorDisplay = { null })
+            reveal.open()
+            advanceUntilIdle()
+            assertEquals(RecoveryCodeState.Masked(CODE), reveal.state)
+
+            reveal.show()
+            assertEquals(RecoveryCodeState.Shown(CODE), reveal.state)
+            reveal.hide()
+            assertEquals(RecoveryCodeState.Masked(CODE), reveal.state)
         }
 
     @Test
@@ -103,17 +143,17 @@ class RecoveryCodeSectionTest {
             val reveal =
                 RecoveryCodeReveal(
                     this,
-                    generate = { if (calls++ == 0) first.await() else "CVR1-NEWER" },
+                    generate = { if (calls++ == 0) first.await() else "CVR1 NEWER" },
                     errorDisplay = { null },
                 )
-            reveal.show()
+            reveal.open()
             advanceUntilIdle()
 
-            reveal.show()
+            reveal.open()
             first.complete(CODE)
             advanceUntilIdle()
 
-            assertEquals(RecoveryCodeState.Shown("CVR1-NEWER"), reveal.state)
+            assertEquals(RecoveryCodeState.Masked("CVR1 NEWER"), reveal.state)
         }
 
     @Test
@@ -125,7 +165,7 @@ class RecoveryCodeSectionTest {
                     generate = { throw BridgeException.Diagnostic(BridgeErrorCategory.Config, "storage unreachable") },
                     errorDisplay = { DisplayError("Couldn’t reach your storage.", it.diagnosticDetail) },
                 )
-            reveal.show()
+            reveal.open()
             advanceUntilIdle()
 
             assertEquals(
@@ -135,14 +175,14 @@ class RecoveryCodeSectionTest {
         }
 
     @Test
-    fun aCancellationFromCoreLeavesTheCodeHidden() =
+    fun aCancellationFromCoreLeavesTheSectionClosed() =
         runTest {
             val reveal =
                 RecoveryCodeReveal(this, generate = { throw BridgeException.Cancelled() }, errorDisplay = { null })
-            reveal.show()
+            reveal.open()
             advanceUntilIdle()
 
-            assertEquals(RecoveryCodeState.Hidden, reveal.state)
+            assertEquals(RecoveryCodeState.Closed, reveal.state)
         }
 
     @Test
@@ -189,7 +229,7 @@ class RecoveryCodeSectionTest {
     }
 
     private companion object {
-        const val CODE = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+        const val CODE = "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567"
 
         /** The same restore code, longer for the S3 key it holds. */
         const val CODE_WITH_KEY = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOP"

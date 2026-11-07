@@ -57,7 +57,8 @@ fun QRCodeImage(
     )
 }
 
-private fun encodeQRCode(text: String): Bitmap? =
+/** [text] as a QR code bitmap at one pixel per module, or null when ZXing rejects it. */
+internal fun encodeQRCode(text: String): Bitmap? =
     try {
         val hints =
             mapOf(

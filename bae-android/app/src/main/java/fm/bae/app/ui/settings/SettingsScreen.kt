@@ -44,6 +44,7 @@ import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
@@ -165,6 +166,7 @@ private fun SettingsStoreSections(
     SectionDivider()
     RecoveryCodeSection(
         needsS3Key = home.location is BridgeStorageLocation.S3,
+        location = storageLocationLabel(home.location),
         generate = { session.appHandle.generateRestoreCode().code },
     )
 }

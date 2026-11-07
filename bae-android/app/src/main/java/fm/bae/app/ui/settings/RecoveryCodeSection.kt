@@ -9,8 +9,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,6 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
@@ -28,6 +30,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
@@ -40,13 +43,19 @@ import uniffi.bae_bridge.BridgeException
 
 private val logger = BaeLogger("bae.RecoveryCodeSection")
 
-/** Where the recovery code's reveal stands. */
+/** Where the restore code's reveal stands. */
 internal sealed interface RecoveryCodeState {
-    data object Hidden : RecoveryCodeState
+    /** The screen isn't open: no code is held. */
+    data object Closed : RecoveryCodeState
 
     data object Loading : RecoveryCodeState
 
-    /** The code exactly as coven formats it. */
+    /** The code in groups of four, held for Copy and Print and shown only as its first groups. */
+    data class Masked(
+        val code: String,
+    ) : RecoveryCodeState
+
+    /** The code in groups of four, as core formats it. */
     data class Shown(
         val code: String,
     ) : RecoveryCodeState
@@ -57,67 +66,84 @@ internal sealed interface RecoveryCodeState {
 }
 
 /**
- * The recovery code, hidden until the person asks for it, then generated and
- * shown until they hide it. Hiding cancels a generation still running, so a
- * late result never shows a code the person already put away.
+ * The restore code from the screen opening to its closing: made when the
+ * screen opens and held masked, so Copy and Print work at once; Show reveals
+ * it and Hide masks it again. Closing drops it and cancels a generation still
+ * running, so a late result never shows a code for a screen already closed.
  */
 internal class RecoveryCodeReveal(
     private val scope: CoroutineScope,
     private val generate: suspend () -> String,
     private val errorDisplay: (BridgeException) -> DisplayError?,
 ) {
-    var state by mutableStateOf<RecoveryCodeState>(RecoveryCodeState.Hidden)
+    var state by mutableStateOf<RecoveryCodeState>(RecoveryCodeState.Closed)
         private set
     private var generating: Job? = null
 
-    /** Generate the code and show it; a generation already running is replaced. */
-    fun show() {
+    /** Make the code and hold it masked; a generation already running is replaced. */
+    fun open() {
         generating?.cancel()
         state = RecoveryCodeState.Loading
         generating =
             scope.launch {
                 val next =
                     try {
-                        RecoveryCodeState.Shown(generate())
+                        RecoveryCodeState.Masked(generate())
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: BridgeException) {
-                        // A run this reveal replaced or hid owns no state any more, whatever core reported for it.
+                        // A run this reveal replaced or closed owns no state any more, whatever core reported for it.
                         ensureActive()
-                        logger.error("Failed to generate the recovery code", e)
-                        // A failure with nothing to show is a cancellation from core; the person can ask again.
-                        errorDisplay(e)?.let(RecoveryCodeState::Failed) ?: RecoveryCodeState.Hidden
+                        logger.error("Failed to generate the restore code", e)
+                        // A failure with nothing to show is a cancellation from core; the screen can open again.
+                        errorDisplay(e)?.let(RecoveryCodeState::Failed) ?: RecoveryCodeState.Closed
                     }
                 ensureActive()
                 state = next
             }
     }
 
+    fun show() {
+        (state as? RecoveryCodeState.Masked)?.let { state = RecoveryCodeState.Shown(it.code) }
+    }
+
     fun hide() {
+        (state as? RecoveryCodeState.Shown)?.let { state = RecoveryCodeState.Masked(it.code) }
+    }
+
+    fun close() {
         generating?.cancel()
         generating = null
-        state = RecoveryCodeState.Hidden
+        state = RecoveryCodeState.Closed
     }
 }
 
 /**
- * The person's recovery code, for when they lose every device. Adding a
+ * The person's restore code, for when they lose every device: made when the
+ * section opens and held masked, with Show and Hide, Copy and Print. Adding a
  * device while one is at hand goes through Add device in People instead. The
- * reveal lives as long as Settings does, so leaving Settings hides the code.
+ * code is dropped when the section leaves the screen, so leaving Settings
+ * hides it. [location] is where the library is stored, for the printed page.
  */
 @Composable
 internal fun RecoveryCodeSection(
     needsS3Key: Boolean,
+    location: String,
     generate: suspend () -> String,
 ) {
     val context = LocalContext.current
     val scope = rememberScreenScope()
     val reveal = remember { RecoveryCodeReveal(scope, generate) { context.displayError(it) } }
+    DisposableEffect(reveal) {
+        reveal.open()
+        onDispose { reveal.close() }
+    }
     RecoveryCodeSectionContent(
         needsS3Key = needsS3Key,
         state = reveal.state,
         onShow = reveal::show,
         onHide = reveal::hide,
+        onPrint = { code -> printRestoreCode(context, RestoreCodePage.of(context, code, location)) },
     )
 }
 
@@ -127,76 +153,143 @@ private fun RecoveryCodeSectionContent(
     state: RecoveryCodeState,
     onShow: () -> Unit,
     onHide: () -> Unit,
+    onPrint: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
     ) {
-        Eyebrow(text = stringResource(R.string.recovery_code_title))
-        Text(
-            text = stringResource(R.string.recovery_code_explanation),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (needsS3Key) {
-            Text(
-                text = stringResource(R.string.recovery_code_s3_key),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Eyebrow(text = stringResource(R.string.restore_code_title))
         when (state) {
-            RecoveryCodeState.Hidden -> {
-                ShowCodeButton(onShow)
+            RecoveryCodeState.Closed -> {
+                Unit
             }
 
             RecoveryCodeState.Loading -> {
-                WaitingIndicator(text = stringResource(R.string.recovery_code_making))
+                WaitingIndicator(text = stringResource(R.string.restore_code_making))
+            }
+
+            is RecoveryCodeState.Masked -> {
+                Caption(needsS3Key)
+                CodeBox(code = state.code, shown = false, onToggle = onShow, onPrint = onPrint)
             }
 
             is RecoveryCodeState.Shown -> {
-                ShownCode(code = state.code, onHide = onHide)
+                Caption(needsS3Key)
+                CodeBox(code = state.code, shown = true, onToggle = onHide, onPrint = onPrint)
             }
 
             is RecoveryCodeState.Failed -> {
                 ErrorDetailDisclosure(state.error)
-                ShowCodeButton(onShow)
             }
         }
     }
 }
 
 @Composable
-private fun ShowCodeButton(onShow: () -> Unit) {
-    OutlinedButton(onClick = onShow) {
-        Text(stringResource(R.string.recovery_code_show))
+private fun Caption(needsS3Key: Boolean) {
+    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+        Text(
+            text = stringResource(R.string.restore_code_explanation),
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (needsS3Key) {
+            Text(
+                text = stringResource(R.string.restore_code_s3_key),
+                style = ThemeText.body.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
+/** The code, masked or shown, with Show or Hide, Copy and Print under it. */
 @Composable
-private fun ShownCode(
+private fun CodeBox(
     code: String,
-    onHide: () -> Unit,
+    shown: Boolean,
+    onToggle: () -> Unit,
+    onPrint: (String) -> Unit,
 ) {
     val copy = rememberCopyText()
-    SelectionContainer {
-        Text(text = code, style = ThemeText.mono.style)
+    val hiddenLabel = stringResource(R.string.restore_code_partly_hidden)
+    RowCard {
+        if (shown) {
+            SelectionContainer {
+                Text(
+                    text = code,
+                    style = ThemeText.mono.style,
+                    modifier = Modifier.padding(ThemeSpace.edge),
+                )
+            }
+        } else {
+            Text(
+                text = maskedRestoreCode(code),
+                style = ThemeText.mono.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier =
+                    Modifier
+                        .padding(ThemeSpace.edge)
+                        .clearAndSetSemantics { contentDescription = hiddenLabel },
+            )
+        }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        TextButton(onClick = { copy(code) }) {
+        OutlinedButton(onClick = onToggle) {
+            Text(stringResource(if (shown) R.string.hide else R.string.restore_code_show))
+        }
+        OutlinedButton(onClick = { copy(code) }) {
             Text(stringResource(R.string.copy))
         }
-        TextButton(onClick = onHide) {
-            Text(stringResource(R.string.hide))
+        OutlinedButton(onClick = { onPrint(code) }) {
+            Text(stringResource(R.string.restore_code_print))
         }
     }
+}
+
+/**
+ * [grouped], a code in groups of four, with every group after the second as
+ * dots: the prefix and the first four characters stay, which tells one code
+ * from another without it being readable over a shoulder.
+ */
+internal fun maskedRestoreCode(grouped: String): String =
+    grouped
+        .split(' ')
+        .filter { it.isNotEmpty() }
+        .mapIndexed { index, group -> if (index < VISIBLE_GROUPS) group else MASK }
+        .joinToString(" ")
+
+private const val VISIBLE_GROUPS = 2
+private const val MASK = "••••"
+
+/** A restore code in groups of four, for the previews; never a library's. */
+private const val PREVIEW_CODE =
+    "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 ABCD EFGH IJKL MNOP QRST"
+
+/** The section on a Dropbox library with a fixture code, masked or shown, for the screenshot gallery. */
+@Composable
+internal fun RestoreCodeScene(shown: Boolean) {
+    RecoveryCodeSectionContent(
+        needsS3Key = false,
+        state = if (shown) RecoveryCodeState.Shown(PREVIEW_CODE) else RecoveryCodeState.Masked(PREVIEW_CODE),
+        onShow = {},
+        onHide = {},
+        onPrint = {},
+    )
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun RecoveryCodeSectionHiddenPreview() {
+private fun RecoveryCodeSectionMaskedPreview() {
     BaeTheme {
-        RecoveryCodeSectionContent(needsS3Key = true, state = RecoveryCodeState.Hidden, onShow = {}, onHide = {})
+        RecoveryCodeSectionContent(
+            needsS3Key = true,
+            state = RecoveryCodeState.Masked(PREVIEW_CODE),
+            onShow = {},
+            onHide = {},
+            onPrint = {},
+        )
     }
 }
 
@@ -204,7 +297,13 @@ private fun RecoveryCodeSectionHiddenPreview() {
 @Composable
 private fun RecoveryCodeSectionLoadingPreview() {
     BaeTheme {
-        RecoveryCodeSectionContent(needsS3Key = false, state = RecoveryCodeState.Loading, onShow = {}, onHide = {})
+        RecoveryCodeSectionContent(
+            needsS3Key = false,
+            state = RecoveryCodeState.Loading,
+            onShow = {},
+            onHide = {},
+            onPrint = {},
+        )
     }
 }
 
@@ -214,9 +313,10 @@ private fun RecoveryCodeSectionShownPreview() {
     BaeTheme {
         RecoveryCodeSectionContent(
             needsS3Key = true,
-            state = RecoveryCodeState.Shown("CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"),
+            state = RecoveryCodeState.Shown(PREVIEW_CODE),
             onShow = {},
             onHide = {},
+            onPrint = {},
         )
     }
 }
@@ -233,6 +333,7 @@ private fun RecoveryCodeSectionFailedPreview() {
                 ),
             onShow = {},
             onHide = {},
+            onPrint = {},
         )
     }
 }
