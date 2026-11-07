@@ -10,10 +10,33 @@
 use super::*;
 use crate::credits::{ArtistCreditName, CreditName};
 
+/// Why an artist's other printed name could not be added or renamed.
+#[derive(Debug, thiserror::Error)]
+pub enum CreditNameError {
+    /// The artist is not in the library: it was deleted, or merged into
+    /// another, after the person opened it. Nothing was written.
+    #[error("artist {0} is not in the library")]
+    ArtistMissing(String),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+/// A bug the store's write carried back, which the store reported as it
+/// returned; a refusal holds none.
+impl bae_util::task_failure::ReportedBug for CreditNameError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Database(error) => error.reported_bug(),
+            Self::ArtistMissing(_) => None,
+        }
+    }
+}
+
 /// The credit name a link to `artist_id` stores for `credit`: none where it
 /// folds to the artist's own name, else its key, the name added to the
 /// artist's `artist_credits` if it is new there. A name already there keeps
-/// its spelling.
+/// its spelling. Every link a write makes names an artist the write holds,
+/// so a missing one is a bug, which panics in the store's work.
 pub(super) fn settle_credit_name(
     conn: &CovenWrite<'_>,
     artist_id: &str,
@@ -23,7 +46,21 @@ pub(super) fn settle_credit_name(
     let Some(credit) = credit else {
         return Ok(None);
     };
-    if own_name_key_on(conn, artist_id)? == credit.key {
+    let own = own_name_key_on(conn, artist_id)?.unwrap_or_else(|| {
+        panic!("a link names artist {artist_id}, which the write does not hold")
+    });
+    settle_credit_name_beside(conn, artist_id, &own, credit, now)
+}
+
+/// [`settle_credit_name`] for an artist whose own name's key is `own`.
+fn settle_credit_name_beside(
+    conn: &CovenWrite<'_>,
+    artist_id: &str,
+    own: &str,
+    credit: &CreditName,
+    now: &str,
+) -> Result<Option<String>, DbError> {
+    if own == credit.key {
         return Ok(None);
     }
     conn.execute(
@@ -34,12 +71,14 @@ pub(super) fn settle_credit_name(
     Ok(Some(credit.key.clone()))
 }
 
-fn own_name_key_on(conn: &CovenWrite<'_>, artist_id: &str) -> Result<String, DbError> {
-    conn.query_row("SELECT name_key FROM artists WHERE id = ?", params![artist_id], |row| {
-        row.get(0)
-    })
-    .optional()?
-    .ok_or_else(|| DbError::Message(format!("artist {artist_id} is not in the library")))
+/// The key of `artist_id`'s own name; `None` when the library holds no such
+/// artist.
+fn own_name_key_on(conn: &CovenWrite<'_>, artist_id: &str) -> Result<Option<String>, DbError> {
+    Ok(conn
+        .query_row("SELECT name_key FROM artists WHERE id = ?", params![artist_id], |row| {
+            row.get(0)
+        })
+        .optional()?)
 }
 
 /// Point every link naming `artist_id`'s credit name `from` at `to` (`None`:
@@ -140,55 +179,72 @@ impl Records {
 
     /// Give `artist_id` the other printed name `name`. A name that folds to
     /// the artist's own, or to one it already goes by, adds nothing: the
-    /// artist already goes by it.
+    /// artist already goes by it. An artist the library no longer holds is
+    /// refused.
     pub async fn add_artist_credit_name(
         &self,
         artist_id: &str,
         name: &bae_store::EnteredName,
-    ) -> Result<(), DbError> {
-        let (artist_id, name) = (artist_id.to_string(), name.as_str().to_string());
+    ) -> Result<(), CreditNameError> {
+        let (artist, name) = (artist_id.to_string(), name.as_str().to_string());
         let now = self.store.now_utc().to_rfc3339();
-        self.store
+        let held = self
+            .store
             .call_sql(move |sql| {
-                settle_credit_name(&sql, &artist_id, Some(&CreditName::of(&name)), &now)?;
-                Ok(())
+                let Some(own) = own_name_key_on(&sql, &artist)? else {
+                    return Ok(false);
+                };
+                settle_credit_name_beside(&sql, &artist, &own, &CreditName::of(&name), &now)?;
+                Ok(true)
             })
-            .await
+            .await?;
+        match held {
+            true => Ok(()),
+            false => Err(CreditNameError::ArtistMissing(artist_id.to_string())),
+        }
     }
 
     /// Rename `artist_id`'s credit name `key` to `name`, in one write: its
     /// links follow it. A new spelling of the same folded name rewrites the
     /// name; a name another of the artist's names already is joins that one;
     /// the artist's own name leaves the links printing it, and the credit name
-    /// goes.
+    /// goes. An artist the library no longer holds is refused.
     pub async fn rename_artist_credit_name(
         &self,
         artist_id: &str,
         key: &str,
         name: &bae_store::EnteredName,
-    ) -> Result<(), DbError> {
-        let (artist_id, key, name) =
+    ) -> Result<(), CreditNameError> {
+        let (artist, key, name) =
             (artist_id.to_string(), key.to_string(), name.as_str().to_string());
         let now = self.store.now_utc().to_rfc3339();
-        self.store
+        let held = self
+            .store
             .call_sql(move |sql| {
+                let Some(own) = own_name_key_on(&sql, &artist)? else {
+                    return Ok(false);
+                };
                 let renamed = CreditName::of(&name);
                 if renamed.key == key {
                     sql.execute(
                         "UPDATE artist_credits SET name = ? WHERE artist_id = ? AND name_key = ?",
-                        params![renamed.name, artist_id, key],
+                        params![renamed.name, artist, key],
                     )?;
-                    return Ok(());
+                    return Ok(true);
                 }
-                let to = settle_credit_name(&sql, &artist_id, Some(&renamed), &now)?;
-                relink_credit_name(&sql, &artist_id, &key, to.as_deref())?;
+                let to = settle_credit_name_beside(&sql, &artist, &own, &renamed, &now)?;
+                relink_credit_name(&sql, &artist, &key, to.as_deref())?;
                 sql.execute(
                     "DELETE FROM artist_credits WHERE artist_id = ? AND name_key = ?",
-                    params![artist_id, key],
+                    params![artist, key],
                 )?;
-                Ok(())
+                Ok(true)
             })
-            .await
+            .await?;
+        match held {
+            true => Ok(()),
+            false => Err(CreditNameError::ArtistMissing(artist_id.to_string())),
+        }
     }
 
     /// Remove `artist_id`'s credit name `key`, in one write: its links print
@@ -211,3 +267,7 @@ impl Records {
             .await
     }
 }
+
+#[cfg(test)]
+#[path = "artist_credit_names_tests.rs"]
+mod tests;

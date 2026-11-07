@@ -345,8 +345,9 @@ prints the stored name it links, else the survivor's name. Credits with no
 catalog id match an artist by its own name or any of its other names (the one
 it matches is the name the credit prints). The artist page lists the names,
 and renames or removes each in one write with every credit linking it:
-renamed, they print the new name; removed, the artist's own. The artist field
-of an editor lists each found artist with its other names under it; picking
+renamed, they print the new name; removed, the artist's own. Adding or
+renaming a name of an artist deleted or merged away meanwhile is refused. The
+artist field of an editor lists each found artist with its other names under it; picking
 one prints the artist by that name. That search is live for as long as the
 field is open: one read, moved to each text typed and to the part of the list
 on screen, so an artist added, renamed or given another name meanwhile shows
@@ -4967,7 +4968,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device, after its warning (§6.4) |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library |
-| `Import`, `ImportData` | reads the detail: the source couldn't be read, or what the operation was prepared against changed before it was written (an import's candidate or the library's artists, a deleted release or album, a replaced cover or artist image, a release picked as its album's primary), and asking again works on what now stands |
+| `Import`, `ImportData` | reads the detail: the source couldn't be read, or what the operation was prepared against changed before it was written (an import's candidate or the library's artists, a deleted release or album, a replaced cover or artist image, a release picked as its album's primary, an artist given a printed name), and asking again works on what now stands |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |

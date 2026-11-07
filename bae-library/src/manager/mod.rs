@@ -197,6 +197,10 @@ pub enum LibraryError {
     /// not one of the album's, or the store failed.
     #[error(transparent)]
     PrimaryRelease(bae_records::PrimaryReleaseError),
+    /// Adding or renaming an artist's other printed name did not commit:
+    /// the artist is not in the library, or the store failed.
+    #[error(transparent)]
+    CreditName(bae_records::CreditNameError),
     /// Making a release local again failed; coven removed what the call
     /// made, so the release stays in the cloud.
     #[error("make release local: {0}")]
@@ -346,6 +350,7 @@ impl bae_util::task_failure::ReportedBug for LibraryError {
             LibraryError::SetupDismiss(error) => error.reported_bug(),
             LibraryError::AdminChangeDismiss(error) => error.reported_bug(),
             LibraryError::PrimaryRelease(error) => error.reported_bug(),
+            LibraryError::CreditName(error) => error.reported_bug(),
             LibraryError::Deletion(error) => error.reported_bug(),
             LibraryError::ImageWrite(error) => error.reported_bug(),
             LibraryError::Sync(error) | LibraryError::InviteJoining(error) => error.reported_bug(),
@@ -403,6 +408,7 @@ impl LibraryError {
             LibraryError::SetupDismiss(error) => setup_dismiss_category(error),
             LibraryError::AdminChangeDismiss(error) => admin_change_dismiss_category(error),
             LibraryError::PrimaryRelease(error) => primary_release_category(error),
+            LibraryError::CreditName(error) => credit_name_category(error),
             LibraryError::Deletion(error) => deletion_category(error),
             LibraryError::ImageWrite(error) => image_write_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
@@ -577,6 +583,28 @@ impl From<bae_records::PrimaryReleaseError> for LibraryError {
         match error {
             bae_records::PrimaryReleaseError::Database(error) => Self::Database(error),
             error => Self::PrimaryRelease(error),
+        }
+    }
+}
+
+/// The class a surface words a refused printed name in: an artist deleted
+/// or merged after the person opened it is theirs to find again as the
+/// library now holds it.
+fn credit_name_category(error: &bae_records::CreditNameError) -> bae_diagnostics::UiErrorCategory {
+    use bae_records::CreditNameError as E;
+    match error {
+        E::Database(error) => bae_diagnostics::database_category(error),
+        E::ArtistMissing(_) => bae_diagnostics::UiErrorCategory::Import,
+    }
+}
+
+/// A printed name's write that failed in the store is the library's store
+/// failure.
+impl From<bae_records::CreditNameError> for LibraryError {
+    fn from(error: bae_records::CreditNameError) -> Self {
+        match error {
+            bae_records::CreditNameError::Database(error) => Self::Database(error),
+            error => Self::CreditName(error),
         }
     }
 }
