@@ -3,13 +3,19 @@ package fm.bae.app.ui.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,16 +28,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.LifecycleStartEffect
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
+import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Eyebrow
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import uniffi.bae_bridge.BridgeBrowsingFor
+import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
-import uniffi.bae_bridge.BridgeConfig
 
 /** What flipping the casting toggle should do. */
 sealed interface CastToggleAction {
@@ -58,16 +68,18 @@ fun castToggleAction(
     }
 
 /**
- * The Casting settings section: one toggle for the whole feature, which core enforces, and, while casting
- * is on, what a track a device can't play directly is converted to.
+ * The Casting page: one toggle for the whole feature, which core enforces, and, while casting is on, the receivers
+ * bae finds and what a track a device can't play directly is converted to.
  */
 @Composable
-internal fun SettingsCastSection(
+internal fun CastingSettingsScreen(
     session: OpenLibrary,
-    config: BridgeConfig,
-    ioDispatcher: CoroutineDispatcher,
+    onBack: () -> Unit,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
+    val config by session.configStore.config.collectAsState()
     val status by session.castStore.status.collectAsState()
+    val devices by session.castStore.devices.collectAsState()
     var pendingDisconnect by remember { mutableStateOf<String?>(null) }
 
     fun setTranscodeFormat(format: BridgeCastTranscodeFormat) {
@@ -93,34 +105,89 @@ internal fun SettingsCastSection(
         )
     }
 
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-    ) {
-        Eyebrow(text = stringResource(R.string.settings_casting))
-        CastEnabledRow(
-            enabled = config.castEnabled,
-            castingDeviceName = castingDeviceName(status),
-            onApply = ::setEnabled,
-            onConfirmDisconnect = { pendingDisconnect = it },
-        )
-        Text(
-            text = stringResource(R.string.settings_casting_help),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (config.castEnabled) {
-            CastTranscodeFormatPicker(
-                selected = config.castTranscodeFormat,
-                onSelect = ::setTranscodeFormat,
-            )
-            Text(
-                text = stringResource(R.string.settings_cast_transcode_help),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+    if (config.castEnabled) {
+        // A page can sit open with the app in the background, where a browse would hold the multicast lock for nothing.
+        LifecycleStartEffect(session.cast) {
+            session.cast.startDiscovery(BridgeBrowsingFor.SETTINGS_PAGE)
+            onStopOrDispose { session.cast.stopDiscovery(BridgeBrowsingFor.SETTINGS_PAGE) }
         }
     }
+
+    CastingPage(
+        enabled = config.castEnabled,
+        devices = devices,
+        transcodeFormat = config.castTranscodeFormat,
+        onBack = onBack,
+        onEnabledChange = {
+            when (val action = castToggleAction(it, castingDeviceName(status))) {
+                is CastToggleAction.Apply -> setEnabled(action.enabled)
+                is CastToggleAction.ConfirmDisconnect -> pendingDisconnect = action.device
+            }
+        },
+        onTranscodeFormatChange = ::setTranscodeFormat,
+    )
+}
+
+/** What the Casting page shows; the config subscription moves the switch, so a refused flip leaves it in place. */
+@Composable
+internal fun CastingPage(
+    enabled: Boolean,
+    devices: List<BridgeCastDevice>,
+    transcodeFormat: BridgeCastTranscodeFormat,
+    onBack: () -> Unit,
+    onEnabledChange: (Boolean) -> Unit,
+    onTranscodeFormatChange: (BridgeCastTranscodeFormat) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        SettingsTopBar(title = stringResource(R.string.settings_casting), onBack = onBack)
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+            verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        ) {
+            CastingCard {
+                CastEnabledRow(enabled = enabled, onChange = onEnabledChange)
+            }
+            CastingCaption(stringResource(R.string.settings_casting_help))
+            if (enabled) {
+                Eyebrow(
+                    text = stringResource(R.string.settings_casting_receivers),
+                    modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+                )
+                CastReceivers(devices = devices)
+                CastingCaption(stringResource(R.string.settings_casting_receivers_help))
+                CastingCard {
+                    CastTranscodeFormatPicker(selected = transcodeFormat, onSelect = onTranscodeFormatChange)
+                }
+                CastingCaption(stringResource(R.string.settings_cast_transcode_help))
+            }
+        }
+    }
+}
+
+/** Rows grouped on the page's surface. */
+@Composable
+internal fun CastingCard(content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(ThemeRadius.card),
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
+            content = content,
+        )
+    }
+}
+
+/** What the card above it does, in line with the card's rows. */
+@Composable
+private fun CastingCaption(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.related),
+        style = ThemeText.detail.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 /** What a track a device can't play directly is converted to; core applies it per device flavor. */
@@ -162,28 +229,17 @@ private fun castTranscodeFormatLabel(format: BridgeCastTranscodeFormat): String 
         BridgeCastTranscodeFormat.WAV -> stringResource(R.string.settings_cast_transcode_wav)
     }
 
-/** The casting toggle; the config subscription moves the switch, so a refused flip leaves it in place. */
 @Composable
 private fun CastEnabledRow(
     enabled: Boolean,
-    castingDeviceName: String?,
-    onApply: (Boolean) -> Unit,
-    onConfirmDisconnect: (String) -> Unit,
+    onChange: (Boolean) -> Unit,
 ) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = stringResource(R.string.settings_enable_casting),
             modifier = Modifier.weight(1f),
         )
-        Switch(
-            checked = enabled,
-            onCheckedChange = {
-                when (val action = castToggleAction(it, castingDeviceName)) {
-                    is CastToggleAction.Apply -> onApply(action.enabled)
-                    is CastToggleAction.ConfirmDisconnect -> onConfirmDisconnect(action.device)
-                }
-            },
-        )
+        Switch(checked = enabled, onCheckedChange = onChange)
     }
 }
 

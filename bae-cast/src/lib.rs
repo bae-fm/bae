@@ -23,8 +23,9 @@ pub mod renderer;
 #[cfg(test)]
 mod test_support;
 
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use bae_app::AppServices;
 use bae_diagnostics::{lock_or_crash, Diagnostics, ReportedTask};
@@ -266,6 +267,15 @@ impl EphemeralServer {
     }
 }
 
+/// A place that lists the receivers bae finds, and so asks it to browse.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BrowsingFor {
+    /// The picker, while it is open.
+    Picker,
+    /// The Casting settings page, while it is open with casting on.
+    SettingsPage,
+}
+
 /// Owns everything casting needs: device discovery and the ephemeral server
 /// (lazily started on the first cast, stopped when casting ends). A background
 /// task follows the playback service's remote-output status to keep the server
@@ -285,10 +295,14 @@ pub struct CastController {
     /// them from the library's `cast_device` table, which the device list
     /// writer keeps.
     discovery: Mutex<RendererDiscovery>,
-    /// Whether the picker asked for browsing and has not stopped it since.
-    /// Set before the setting is read, and checked again under the discovery
-    /// lock, so a stop that comes while the read is out is never undone.
-    browsing_asked: AtomicBool,
+    /// The places open that list receivers. Named, not counted, so a second
+    /// start or stop from one place changes nothing. Changed before the
+    /// setting is read, and checked under the discovery lock, so a stop that
+    /// comes while the read is out is never undone.
+    browsing_asked: Mutex<HashSet<BrowsingFor>>,
+    /// Held across one decision on whether to browse, setting read included,
+    /// so the decision made last is made on the last change.
+    browsing_decision: tokio::sync::Mutex<()>,
     /// Whether browsing runs: asked for while casting was on, and neither
     /// stopped nor turned off since. Changed under the discovery lock; a
     /// renderer a host reports is taken only while it holds.
@@ -337,7 +351,8 @@ impl CastController {
             runtime: runtime.clone(),
             services,
             discovery: Mutex::new(discovery),
-            browsing_asked: AtomicBool::new(false),
+            browsing_asked: Mutex::new(HashSet::new()),
+            browsing_decision: tokio::sync::Mutex::new(()),
             browsing: AtomicBool::new(false),
             server: Arc::new(Mutex::new(None)),
             serving,
@@ -400,13 +415,11 @@ impl CastController {
         });
     }
 
-    /// Follow the library's `cast_enabled` setting: turning casting off stops
-    /// browsing and ends any session in flight, so the machinery is idle rather
-    /// than merely hidden; turning it on starts nothing by itself, since browsing
-    /// follows the picker. The first value is where the setting stood as the
-    /// controller started, when nothing browsed or cast; only a turn from on
-    /// to off after it is applied. A panic applying one change is reported,
-    /// and the next change is applied.
+    /// Follow the library's `cast_enabled` setting: each change decides
+    /// browsing again, and turning casting off also ends any session in flight,
+    /// so the machinery is idle rather than merely hidden. Turning it on browses
+    /// only for a place still open. A panic applying one change is reported, and
+    /// the next change is applied.
     fn spawn_setting_watcher(self: &Arc<Self>) {
         let setting = self.services.follow_preferences(|prefs| prefs.cast_enabled);
         let controller = self.clone();
@@ -417,14 +430,15 @@ impl CastController {
                     Ok(enabled) => {
                         let turned_off = was_enabled == Some(true) && !enabled;
                         was_enabled = Some(enabled);
-                        if turned_off {
-                            let applied = caught_sync("turn casting off", || {
-                                controller.stop_discovery();
+                        let applied = caught("apply the casting setting", async {
+                            controller.decide_browsing().await;
+                            if turned_off {
                                 controller.stop_casting();
-                            });
-                            if let Err(bug) = applied {
-                                controller.diagnostics.panicked(bug);
                             }
+                        })
+                        .await;
+                        if let Err(bug) = applied {
+                            controller.diagnostics.panicked(bug);
                         }
                         #[cfg(test)]
                         controller.setting_applied.send_replace(Some(enabled));
@@ -487,35 +501,61 @@ impl CastController {
         Ok(self.services.preferences().await.map_err(CastError::Setting)?.cast_enabled)
     }
 
-    /// Start browsing for devices (the picker opened). Idempotent, and a no-op
-    /// while casting is off — this is the gate that keeps the network quiet, not
-    /// the picker's visibility. The setting is read off the caller's thread;
-    /// browsing starts once it is, unless the picker closed meanwhile.
-    pub fn start_discovery(self: &Arc<Self>) {
-        self.browsing_asked.store(true, Ordering::Release);
+    /// The places open that list receivers.
+    fn browsing_asked(&self) -> MutexGuard<'_, HashSet<BrowsingFor>> {
+        lock_or_crash(&self.diagnostics, "the places asking to browse", &self.browsing_asked)
+    }
+
+    /// Browse exactly while a place asks and casting is on. The setting is the
+    /// gate that keeps the network quiet, not what a place shows, and every
+    /// change to either decides again. Decisions run one at a time, each on a
+    /// fresh read, so one read before a change can't land after the decision
+    /// that change made.
+    async fn decide_browsing(&self) {
+        let _turn = self.browsing_decision.lock().await;
+        let enabled = match self.enabled().await {
+            Ok(enabled) => enabled,
+            Err(error) => {
+                warn!("nothing browses: {error}");
+                false
+            }
+        };
+        self.with_discovery(|discovery| {
+            if enabled && !self.browsing_asked().is_empty() {
+                discovery.start(&self.diagnostics);
+                self.browsing.store(true, Ordering::Release);
+            } else {
+                self.stop_browsing(discovery);
+            }
+        });
+    }
+
+    /// End the browse, under the discovery lock.
+    fn stop_browsing(&self, discovery: &mut RendererDiscovery) {
+        self.browsing.store(false, Ordering::Release);
+        discovery.stop();
+    }
+
+    /// `asker` opened: browse for it. Idempotent, and a place that opens while
+    /// a browse runs joins it. The setting is read off the caller's thread;
+    /// browsing starts once it is, unless every place closed meanwhile.
+    pub fn start_discovery(self: &Arc<Self>, asker: BrowsingFor) {
+        self.browsing_asked().insert(asker);
         let controller = self.clone();
         self.runtime.spawn(async move {
-            match controller.enabled().await {
-                Ok(true) => controller.with_discovery(|discovery| {
-                    if controller.browsing_asked.load(Ordering::Acquire) {
-                        discovery.start(&controller.diagnostics);
-                        controller.browsing.store(true, Ordering::Release);
-                    }
-                }),
-                Ok(false) => debug!("cast discovery not started: casting is off"),
-                Err(error) => warn!("cast discovery not started: {error}"),
-            }
+            controller.decide_browsing().await;
             #[cfg(test)]
             controller.browsing_decided.send_modify(|decided| *decided += 1);
         });
     }
 
-    /// Stop browsing (the picker closed, or casting was turned off).
-    pub fn stop_discovery(&self) {
-        self.browsing_asked.store(false, Ordering::Release);
+    /// `asker` closed: the browse ends with the last place open.
+    pub fn stop_discovery(&self, asker: BrowsingFor) {
+        self.browsing_asked().remove(&asker);
         self.with_discovery(|discovery| {
-            self.browsing.store(false, Ordering::Release);
-            discovery.stop();
+            if self.browsing_asked().is_empty() {
+                self.stop_browsing(discovery);
+            }
         });
     }
 

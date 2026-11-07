@@ -136,8 +136,8 @@ impl ReportedDiscovery {
     }
 
     /// Begin browsing. Idempotent: a second call while already browsing is a
-    /// no-op. A fresh browse starts from nothing, so the picker never opens on
-    /// what a previous one found.
+    /// no-op. A fresh browse starts from nothing, so nothing opens on what a
+    /// previous one found.
     pub fn start(&mut self) {
         if self.reported.is_some() {
             return;
@@ -295,7 +295,7 @@ impl RendererDiscovery {
         }
     }
 
-    /// Begin browsing (the picker opened). Idempotent. bae's own readers
+    /// Begin browsing. Idempotent. bae's own readers
     /// report a panic through `diagnostics`.
     pub fn start(&mut self, diagnostics: &bae_diagnostics::Diagnostics) {
         match self {
@@ -308,7 +308,7 @@ impl RendererDiscovery {
         }
     }
 
-    /// Stop browsing (the picker closed). The last published list is kept, as it
+    /// Stop browsing. The last published list is kept, as it
     /// is on the builtin path.
     pub fn stop(&mut self) {
         match self {

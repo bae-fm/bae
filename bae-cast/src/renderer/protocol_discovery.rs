@@ -1,5 +1,5 @@
 //! The shape every protocol discovery shares: a published device list, and a
-//! browse of the network that is live only while the picker is open.
+//! browse of the network that is live only while something lists receivers.
 //!
 //! Cast, UPnP, and AirPlay differ entirely in what they hold while browsing —
 //! an mDNS daemon, an SSDP socket and stop flag, one reader thread or two — and

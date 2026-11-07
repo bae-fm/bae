@@ -18,6 +18,7 @@ import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
+import uniffi.bae_bridge.BridgeBrowsingFor
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerDetail
@@ -562,11 +563,11 @@ internal open class FakeAppHandle(
         unfaked("setCastTranscodeFormat")
     }
 
-    override fun startCastDiscovery() {
+    override fun startCastDiscovery(asker: BridgeBrowsingFor) {
         unfaked("startCastDiscovery")
     }
 
-    override fun stopCastDiscovery() {
+    override fun stopCastDiscovery(asker: BridgeBrowsingFor) {
         unfaked("stopCastDiscovery")
     }
 

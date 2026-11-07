@@ -13,7 +13,7 @@ import uniffi.bae_bridge.BridgeRemotePlayback
 /**
  * Cast state for the playback surfaces: where playback is going (this device,
  * a renderer, or back here after a renderer's link was lost), and what the
- * picker found while it was open. Both follow retained value subscriptions.
+ * last browse found. Both follow retained value subscriptions.
  */
 class CastStore {
     private val _status = MutableStateFlow<BridgeRemotePlayback>(BridgeRemotePlayback.Local)

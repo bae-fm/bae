@@ -3,6 +3,7 @@ package fm.bae.app.data
 import android.content.Context
 import android.net.wifi.WifiManager
 import uniffi.bae_bridge.AppHandleInterface
+import uniffi.bae_bridge.BridgeBrowsingFor
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 
 /**
@@ -23,28 +24,30 @@ class Cast(
             .createMulticastLock("bae-cast-discovery")
             .apply { setReferenceCounted(false) }
 
-    /**
-     * Whether the picker is open: discovery runs exactly while it is. A cast
-     * that ends while it is open shows in the picker; otherwise the person is
-     * told wherever they are.
-     */
-    var pickerOpen: Boolean = false
-        private set
+    /** The places open that list receivers: discovery runs exactly while one is. */
+    private var browsingFor: Set<BridgeBrowsingFor> = emptySet()
 
-    /** Begin browsing for devices (the picker opened). */
-    fun startDiscovery() {
-        pickerOpen = true
+    /**
+     * Whether the picker is open. A cast that ends while it is open shows in
+     * the picker; otherwise the person is told wherever they are.
+     */
+    val pickerOpen: Boolean
+        get() = BridgeBrowsingFor.PICKER in browsingFor
+
+    /** Begin browsing for devices for [asker], the place that opened. */
+    fun startDiscovery(asker: BridgeBrowsingFor) {
+        browsingFor = browsingFor + asker
         if (!multicastLock.isHeld) {
             multicastLock.acquire()
         }
-        appHandle.startCastDiscovery()
+        appHandle.startCastDiscovery(asker)
     }
 
-    /** Stop browsing for devices (the picker closed). */
-    fun stopDiscovery() {
-        pickerOpen = false
-        appHandle.stopCastDiscovery()
-        if (multicastLock.isHeld) {
+    /** [asker] closed: browsing, and the lock, end with the last place open. */
+    fun stopDiscovery(asker: BridgeBrowsingFor) {
+        browsingFor = browsingFor - asker
+        appHandle.stopCastDiscovery(asker)
+        if (browsingFor.isEmpty() && multicastLock.isHeld) {
             multicastLock.release()
         }
     }

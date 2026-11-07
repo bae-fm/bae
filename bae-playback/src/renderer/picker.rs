@@ -1,7 +1,7 @@
 //! The receivers the picker lists, as the library's device-local
 //! `cast_device` table holds them: what discovery last found, written by
-//! bae-cast in one write per change. Its table is `picker.sql`; the functions
-//! here read and write it.
+//! bae-cast in one write per change. The Casting settings page lists the same
+//! receivers. Its table is `picker.sql`; the functions here read and write it.
 
 /// The table's part of the library's schema.
 pub(crate) const SCHEMA: bae_store::SchemaPart =

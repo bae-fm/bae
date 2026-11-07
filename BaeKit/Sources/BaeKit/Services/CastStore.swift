@@ -5,7 +5,7 @@ import Observation
 /// a renderer, or back here after a renderer's link was lost) and the
 /// discovered device list. Retained playback values drive the status,
 /// including receiver-side ends; the cast-device value stream drives the device
-/// list while the picker is open.
+/// list while the picker or the Casting settings page is open.
 @MainActor
 @Observable
 public final class CastStore {

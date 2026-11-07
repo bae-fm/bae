@@ -231,6 +231,20 @@ mirror_struct! {
     fields: { id, name, kind: (BridgeRendererKind) },
 }
 
+/// A place that lists the receivers bae finds, and so asks it to browse.
+#[derive(Debug, Clone, Copy, uniffi::Enum)]
+pub enum BridgeBrowsingFor {
+    Picker,
+    SettingsPage,
+}
+
+mirror_enum! {
+    #[cfg(feature = "cast")]
+    BridgeBrowsingFor = bae_cast::BrowsingFor,
+    into_core: pub(crate) fn,
+    variants: { Picker, SettingsPage },
+}
+
 /// A service type a renderer advertises itself on, tagging which mapping a
 /// reported service goes through.
 #[derive(Debug, Clone, Copy, uniffi::Enum)]

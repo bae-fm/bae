@@ -2,8 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// The "Casting" settings tab: one toggle that core enforces, with a warning
-/// before turning it off would end a session, and, while casting is on, what
-/// a track a device can't play directly is converted to.
+/// before turning it off would end a session, and, while casting is on, the
+/// receivers bae finds and what a track a device can't play directly is
+/// converted to.
 struct CastingSettingsTab: View {
     @Environment(Cast.self)
     private var cast
@@ -30,6 +31,9 @@ struct CastingSettingsTab: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            if configStore.config.castEnabled {
+                CastReceiversSection(devices: castStore.devices)
+            }
             if CastTranscodeFormatPicker.isShown(for: configStore.config) {
                 Section {
                     CastTranscodeFormatPicker(
@@ -50,6 +54,10 @@ struct CastingSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        // The page asks for as long as it is open: core browses for it only
+        // while casting is on, and follows the setting from there.
+        .onAppear { cast.startDiscovery(.settingsPage) }
+        .onDisappear { cast.stopDiscovery(.settingsPage) }
         .alert(
             "Turn off casting?",
             isPresented: confirmingDisconnect,
@@ -96,6 +104,44 @@ struct CastingSettingsTab: View {
             catch {
                 uiStore.showError(error)
             }
+        }
+    }
+}
+
+/// The receivers bae has found, each with the kind it is, or a spinner until
+/// the first one answers. Browsing has no end while the page is open, so an
+/// empty list is still looking.
+private struct CastReceiversSection: View {
+    let devices: [BridgeCastDevice]
+
+    var body: some View {
+        Section {
+            if devices.isEmpty {
+                WaitingIndicator("Looking for receivers…")
+            }
+            else {
+                ForEach(devices, id: \.id) { device in
+                    LabeledContent(device.name) {
+                        Text(verbatim: kindName(device.kind))
+                    }
+                }
+            }
+        } header: {
+            Text("Receivers on your network")
+        } footer: {
+            Text("Receivers show up here while this page is open.")
+                .themeText(.detail)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// A kind by its product's name, the same in every language.
+    private func kindName(_ kind: BridgeRendererKind) -> String {
+        switch kind {
+        case .cast: "Chromecast"
+        case .airPlay: "AirPlay"
+        case .dlna: "UPnP"
         }
     }
 }

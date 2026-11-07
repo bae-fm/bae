@@ -38,6 +38,6 @@ struct HostingWindowControllerTests {
 
 /// Holds a window's controller while it is open, as the app delegate does.
 @MainActor
-private final class WindowOwner {
+final class WindowOwner {
     var controller: HostingWindowController?
 }

@@ -28,14 +28,14 @@ forward! {
 forward! {
     #[cfg(feature = "cast")]
     sync this => {
-        /// Start browsing for Cast devices (call when the device picker opens).
-        fn start_cast_discovery() {
-            this.cast.start_discovery();
+        /// Browse for receivers for `asker` (call when it opens).
+        fn start_cast_discovery(asker: crate::types::BridgeBrowsingFor) {
+            this.cast.start_discovery(asker.into_core());
         }
 
-        /// Stop browsing for Cast devices (call when the device picker closes).
-        fn stop_cast_discovery() {
-            this.cast.stop_discovery();
+        /// `asker` no longer needs receivers (call when it closes).
+        fn stop_cast_discovery(asker: crate::types::BridgeBrowsingFor) {
+            this.cast.stop_discovery(asker.into_core());
         }
 
         /// Take a renderer service the host's own browser resolved. Only hosts that

@@ -3614,13 +3614,23 @@ advertisement reads; the log names the setting and the text it carried.
 
 **Finding receivers.** Casting is off by default: it browses the local network
 and serves audio from this machine. While on, devices are searched for only
-while the picker is open. Desktops and Android browse the network themselves.
-The picker lists what discovery found from a device-local table, by name:
-one task merges every source's list and writes it whole, in one write per
-change, in the order the changes came. No discovery outlives the process
+while the picker or the Casting settings page is open, and on Android the page
+counts as open only while the app is on screen. The two share one search: the
+second to open joins it and keeps what it found, and it ends when the last of
+them closes or casting is turned off. Desktops and Android browse the network
+themselves.
+The picker and the page list what discovery found from a device-local table,
+by name: one task merges every source's list and writes it whole, in one write
+per change, in the order the changes came. No discovery outlives the process
 that ran it, so the table is emptied as the library opens. Once the person
 picks a receiver, the picker names it while bae connects, until the cast
 starts or fails.
+
+**The Casting page.** While casting is on, the page lists each receiver found,
+with its name and kind: Chromecast, AirPlay or UPnP. Until the first answers it
+shows a spinner and says it is looking; there is no end state, since the search
+runs for as long as the page is open. On Android, Settings opens Casting as a
+page of its own.
 
 A UPnP renderer is known by its UDN, so it stays the same entry when its
 address changes. One that states no UDN is left out of the picker, and the
@@ -3636,7 +3646,7 @@ UPnP renderer fetches from that panics ends the cast, and the next cast starts
 a new one. Connecting to a Chromecast that panics fails the cast as bae's own
 error, not as an unreachable device. An advertisement or search answer whose
 reading panics is left out of the picker, and browsing goes on; so does the
-watcher that stops casting when the setting is turned off. bae waits at most
+watcher that applies the setting as it changes. bae waits at most
 ten seconds on an AirPlay receiver's control connection — to connect, send a
 request, or hear back — so a receiver that stops answering without closing it
 can't hold up ending the session.
@@ -4870,7 +4880,8 @@ reset over this device's copy — starts at the defaults below; nothing carries
 the settings of a copy it replaces. Each setter writes the row in one write,
 and what a setting decides reads the row when it acts: playback as it loads a
 track or reaches a side's end, an import as it starts, an identification run
-as it starts and as it settles, casting as the picker opens or a cast starts,
+as it starts and as it settles, casting as the picker or its settings page
+opens, as the setting changes, or as a cast starts,
 the MCP and Subsonic servers as the row changes, and the store's transfer
 limits as the library opens and as either limit changes. The settings screens
 pull the row with the library's id and directory from a live query. The schema

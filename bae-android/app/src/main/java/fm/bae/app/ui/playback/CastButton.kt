@@ -53,6 +53,7 @@ import fm.bae.app.ui.components.color
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeBrowsingFor
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeRemoteDevice
@@ -73,10 +74,10 @@ fun CastButton(session: OpenLibrary) {
     var pickerOpen by remember { mutableStateOf(false) }
 
     if (pickerOpen) {
-        // Discovery runs only while the picker is open, and core clears the list as it starts.
+        // The picker asks for discovery while it is open, and a browse clears the list as it starts.
         DisposableEffect(Unit) {
-            session.cast.startDiscovery()
-            onDispose { session.cast.stopDiscovery() }
+            session.cast.startDiscovery(BridgeBrowsingFor.PICKER)
+            onDispose { session.cast.stopDiscovery(BridgeBrowsingFor.PICKER) }
         }
         CastPickerSheet(
             session = session,

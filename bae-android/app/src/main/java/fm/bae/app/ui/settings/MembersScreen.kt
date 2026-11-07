@@ -11,14 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,7 +32,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
@@ -224,7 +221,7 @@ fun MembersScreen(
     val dialogs = remember { MembersDialogs() }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        MembersTopBar(onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.members_title), onBack = onBack)
         model.error?.let { shown ->
             ErrorDetailDisclosure(
                 error = shown,
@@ -304,24 +301,6 @@ private class InviteCallbacks(
     val onOpen: (BridgeInvite) -> Unit,
     val onRefresh: () -> Unit,
 )
-
-@Composable
-private fun MembersTopBar(onBack: () -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-            }
-            Text(
-                text = stringResource(R.string.members_title),
-                style = ThemeText.title.style,
-            )
-        }
-    }
-}
 
 @Composable
 private fun MembersList(

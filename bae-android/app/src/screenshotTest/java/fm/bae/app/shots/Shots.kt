@@ -31,8 +31,12 @@ import fm.bae.app.ui.playback.FullPlayerScene
 import fm.bae.app.ui.playback.MiniPlayerScene
 import fm.bae.app.ui.playback.PlayerSceneState
 import fm.bae.app.ui.settings.AppearanceSection
+import fm.bae.app.ui.settings.CastingPage
 import fm.bae.app.ui.settings.S3SetupFormScene
 import fm.bae.app.ui.sync.SyncActivityList
+import uniffi.bae_bridge.BridgeCastDevice
+import uniffi.bae_bridge.BridgeCastTranscodeFormat
+import uniffi.bae_bridge.BridgeRendererKind
 
 // Screenshot scenes captured by scripts/shots/android.sh. Each function is one
 // scene: the plugin renders it to a PNG named after the function, and the script
@@ -43,7 +47,8 @@ import fm.bae.app.ui.sync.SyncActivityList
 //   Welcome ⇒ welcome, LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒
 //   library-grid-scrolled, LibraryGrouped ⇒ library-grouped, LibraryGroupedPinned ⇒
 //   library-grouped-pinned, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
-//   library-view-menu, AlbumDetail ⇒ album-detail.
+//   library-view-menu, AlbumDetail ⇒ album-detail, CastingSettingsFound ⇒
+//   settings-casting, CastingSettingsLooking ⇒ settings-casting-looking.
 
 private const val PHONE_SPEC = "spec:width=411dp,height=914dp,dpi=420"
 
@@ -239,6 +244,42 @@ fun SyncActivityNeedingAttention() {
 fun SyncUpdateRequired() {
     BaeTheme {
         ErrorBanner(error = DisplayError(LocalContext.current.coreString("core.error.sync_update_required")))
+    }
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun CastingSettingsFound() {
+    CastingSettingsScene(
+        devices =
+            listOf(
+                BridgeCastDevice(id = "cast-den", name = "Den receiver", kind = BridgeRendererKind.DLNA),
+                BridgeCastDevice(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY),
+                BridgeCastDevice(id = "cast-living-room", name = "Living Room", kind = BridgeRendererKind.CAST),
+            ),
+    )
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun CastingSettingsLooking() {
+    CastingSettingsScene(devices = emptyList())
+}
+
+/** The Casting page with casting on and [devices] found. */
+@Composable
+private fun CastingSettingsScene(devices: List<BridgeCastDevice>) {
+    BaeTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            CastingPage(
+                enabled = true,
+                devices = devices,
+                transcodeFormat = BridgeCastTranscodeFormat.MP3,
+                onBack = {},
+                onEnabledChange = {},
+                onTranscodeFormatChange = {},
+            )
+        }
     }
 }
 

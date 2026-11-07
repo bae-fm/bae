@@ -1,7 +1,7 @@
 //! SSDP discovery of UPnP MediaRenderers on the local network.
 //!
 //! `DlnaDiscovery` mirrors the Cast discovery's shape — a live device list in a
-//! `PublishedDevices`, browsing only while the picker is open. The mechanics
+//! `PublishedDevices`, browsing only while something lists receivers. The mechanics
 //! differ: instead of an mDNS daemon, a search thread sends SSDP `M-SEARCH`
 //! datagrams for `MediaRenderer:1`, then fetches and parses each responder's
 //! device-description XML to learn its friendly name and the AVTransport /

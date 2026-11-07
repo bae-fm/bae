@@ -1,5 +1,6 @@
 package fm.bae.app.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,14 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.LibraryListing
 import fm.bae.app.OpenLibrary
@@ -107,7 +105,7 @@ internal fun SettingsScreen(
 
     val self = model.self
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        SettingsTopBar(onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.settings), onBack = onBack)
         AppearanceSection()
         SectionDivider()
         SettingsLibrarySection(
@@ -134,7 +132,7 @@ internal fun SettingsScreen(
             requested = model.requestedProfile,
             onReloadSelf = { scope.launch { model.loadSelf() } },
         )
-        SettingsPlaybackSections(session = session, config = config, ioDispatcher = ioDispatcher)
+        SettingsPlaybackSections(session = session, config = config, ioDispatcher = ioDispatcher, onPush = onPush)
         // People, devices and the recovery code live in the library's store, which only a cloud home has.
         (model.cloudHome as? CloudHome.At)?.let { home ->
             SettingsStoreSections(session = session, home = home, adminChanges = model.adminChanges, onPush = onPush)
@@ -174,11 +172,24 @@ private fun SettingsPlaybackSections(
     session: OpenLibrary,
     config: BridgeConfig,
     ioDispatcher: CoroutineDispatcher,
+    onPush: (LibraryDestination) -> Unit,
 ) {
     SectionDivider()
     SettingsPlaybackSection(session = session, config = config, ioDispatcher = ioDispatcher)
     SectionDivider()
-    SettingsCastSection(session = session, config = config, ioDispatcher = ioDispatcher)
+    SettingsCastingRow(onOpen = { onPush(LibraryDestination.Casting) })
+}
+
+/** The row that opens the Casting page. */
+@Composable
+private fun SettingsCastingRow(onOpen: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(ThemeSpace.edge),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = stringResource(R.string.settings_casting), modifier = Modifier.weight(1f))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+    }
 }
 
 /**
@@ -251,24 +262,6 @@ private fun RemoveLibraryConfirmDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
-}
-
-@Composable
-private fun SettingsTopBar(onBack: () -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-            }
-            Text(
-                text = stringResource(R.string.settings),
-                style = ThemeText.title.style,
-            )
-        }
-    }
 }
 
 @Composable

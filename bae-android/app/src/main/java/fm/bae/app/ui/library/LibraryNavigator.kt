@@ -7,6 +7,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.albumdetail.AlbumDetailScreen
 import fm.bae.app.ui.downloads.DownloadsScreen
+import fm.bae.app.ui.settings.CastingSettingsScreen
 import fm.bae.app.ui.settings.MembersScreen
 import fm.bae.app.ui.settings.SettingsScreen
 import fm.bae.app.ui.settings.StorageSetupScreen
@@ -37,6 +38,8 @@ internal sealed interface LibraryDestination {
 
     /** Settings and the screens it opens. */
     sealed interface Setting : LibraryDestination
+
+    data object Casting : Setting
 
     data object Members : Setting
 
@@ -168,6 +171,10 @@ private fun SettingsDestinationScreen(
                 onBack = onBack,
                 onPush = onPush,
             )
+        }
+
+        LibraryDestination.Casting -> {
+            CastingSettingsScreen(session = session, onBack = onBack)
         }
 
         LibraryDestination.Members -> {

@@ -2,8 +2,8 @@
 //!
 //! `CastDiscovery` browses `_googlecast._tcp.local.` and keeps a live list of
 //! reachable devices in a `PublishedDevices`. Browsing is not always-on: the
-//! caller (the device-picker UI) starts it when the picker opens and stops it
-//! when it closes.
+//! cast controller starts it when a place that lists receivers opens and stops
+//! it when the last one closes.
 
 use std::collections::HashMap;
 use std::net::IpAddr;

@@ -17,13 +17,36 @@ fn browsing(controller: &CastController) -> bool {
     })
 }
 
-/// Ask `controller` to browse, and wait until the ask is decided: browsing
-/// starts once the setting is read.
+/// Ask `controller` to browse for the picker, and wait until the ask is
+/// decided: browsing starts once the setting is read.
 fn start_discovery(runtime: &tokio::runtime::Runtime, controller: &Arc<CastController>) {
+    start_discovery_for(runtime, controller, BrowsingFor::Picker);
+}
+
+/// Ask `controller` to browse for `asker`, and wait until the ask is decided.
+fn start_discovery_for(
+    runtime: &tokio::runtime::Runtime,
+    controller: &Arc<CastController>,
+    asker: BrowsingFor,
+) {
     let mut decided = controller.browsing_decided.subscribe();
     decided.mark_unchanged();
-    controller.start_discovery();
+    controller.start_discovery(asker);
     runtime.block_on(decided.changed()).expect("the controller is alive");
+}
+
+/// Write the casting setting, and wait until the controller has applied it.
+fn set_casting(
+    runtime: &tokio::runtime::Runtime,
+    controller: &CastController,
+    services: &AppServices,
+    enabled: bool,
+) {
+    let mut applied = controller.setting_applied.subscribe();
+    runtime.block_on(services.set_cast_enabled(enabled)).unwrap();
+    runtime
+        .block_on(applied.wait_for(|applied| *applied == Some(enabled)))
+        .expect("the setting watcher runs while the controller is alive");
 }
 
 /// A controller over a fresh library, on the runtime it returns, serving
@@ -96,7 +119,7 @@ fn discovery_and_casting_follow_the_cast_setting() {
         Err(CastError::DeviceNotFound)
     ));
 
-    controller.stop_discovery();
+    controller.stop_discovery(BrowsingFor::Picker);
 }
 
 /// The picker closing while the setting is still being read leaves nothing
@@ -108,8 +131,8 @@ fn a_stop_before_the_setting_is_read_wins() {
 
     let mut decided = controller.browsing_decided.subscribe();
     decided.mark_unchanged();
-    controller.start_discovery();
-    controller.stop_discovery();
+    controller.start_discovery(BrowsingFor::Picker);
+    controller.stop_discovery(BrowsingFor::Picker);
     runtime.block_on(decided.changed()).expect("the controller is alive");
     assert!(!browsing(&controller), "the picker closed: nothing browses");
 }
@@ -134,6 +157,61 @@ fn turning_casting_off_stops_browsing() {
         .block_on(applied.wait_for(|applied| *applied == Some(false)))
         .expect("the setting watcher runs while the controller is alive");
     assert!(!browsing(&controller), "casting turned off: the watcher stopped browsing");
+}
+
+/// The Casting settings page browses while it is open, the same as the
+/// picker, and either closing leaves the other's browse running: it ends with
+/// the last of them.
+#[test]
+fn browsing_runs_while_the_settings_page_or_the_picker_is_open() {
+    let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
+    set_casting(&runtime, &controller, &services, true);
+
+    start_discovery_for(&runtime, &controller, BrowsingFor::SettingsPage);
+    assert!(browsing(&controller), "the page is open: bae browses");
+
+    start_discovery_for(&runtime, &controller, BrowsingFor::Picker);
+    controller.stop_discovery(BrowsingFor::Picker);
+    assert!(browsing(&controller), "the picker closed, the page is still open");
+
+    start_discovery_for(&runtime, &controller, BrowsingFor::Picker);
+    controller.stop_discovery(BrowsingFor::SettingsPage);
+    assert!(browsing(&controller), "the page closed, the picker is still open");
+
+    controller.stop_discovery(BrowsingFor::Picker);
+    assert!(!browsing(&controller), "both closed: nothing browses");
+}
+
+/// A second place opening joins the browse running: it doesn't start a new
+/// one, so what the first has found stays listed.
+#[test]
+fn a_second_place_opening_keeps_what_the_browse_found() {
+    let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
+    set_casting(&runtime, &controller, &services, true);
+    start_discovery_for(&runtime, &controller, BrowsingFor::SettingsPage);
+    controller.renderer_found(reported_cast_service("Kitchen", "cast-1", 8009));
+
+    start_discovery_for(&runtime, &controller, BrowsingFor::Picker);
+
+    assert_eq!(controller.devices().len(), 1);
+}
+
+/// Casting turned off with the page still open stops the browse, and turning
+/// it back on browses again, whichever order the page and the setting answer
+/// in.
+#[test]
+fn casting_turned_off_and_on_follows_the_open_page() {
+    let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
+    set_casting(&runtime, &controller, &services, true);
+    start_discovery_for(&runtime, &controller, BrowsingFor::SettingsPage);
+
+    set_casting(&runtime, &controller, &services, false);
+    assert!(!browsing(&controller), "casting is off: nothing may browse");
+
+    set_casting(&runtime, &controller, &services, true);
+    assert!(browsing(&controller), "casting is on and the page is open");
+
+    controller.stop_discovery(BrowsingFor::SettingsPage);
 }
 
 /// The reported path: a host that browses for bae pushes what its browser

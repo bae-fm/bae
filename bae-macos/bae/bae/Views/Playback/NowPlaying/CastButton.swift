@@ -52,13 +52,18 @@ struct CastButton: View {
         // Discovery is not always-on: browse only while the picker is open.
         .onChange(of: showPicker) { _, isOpen in
             if isOpen {
-                cast.startDiscovery()
+                cast.startDiscovery(.picker)
             }
             else {
-                cast.stopDiscovery()
+                cast.stopDiscovery(.picker)
             }
         }
-        .onDisappear { castTask?.cancel() }
+        // The bar drops this control when casting turns off, taking an open
+        // picker with it and leaving `showPicker` as it was.
+        .onDisappear {
+            castTask?.cancel()
+            cast.stopDiscovery(.picker)
+        }
     }
 
     private func castTo(_ device: BridgeCastDevice) {

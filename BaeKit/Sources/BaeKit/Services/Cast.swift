@@ -2,13 +2,13 @@ import Foundation
 import Observation
 
 /// Cast transport for the playback surfaces: device discovery (run only while
-/// the picker is open) and switching playback to or from a device. Reads flow
-/// through the `CastStore`; this is the write side.
+/// the picker or the Casting settings page is open) and switching playback to
+/// or from a device. Reads flow through the `CastStore`; this is the write side.
 public final class Cast: Sendable, Observable {
-    /// Begin browsing for devices (the picker opened).
-    public let startDiscovery: @Sendable () -> Void
-    /// Stop browsing for devices (the picker closed).
-    public let stopDiscovery: @Sendable () -> Void
+    /// Browse for devices for `asker`, the place that opened.
+    public let startDiscovery: @Sendable (_ asker: BridgeBrowsingFor) -> Void
+    /// `asker` closed. Browsing ends with the last place open.
+    public let stopDiscovery: @Sendable (_ asker: BridgeBrowsingFor) -> Void
     /// Switch playback to the device with this id.
     public let castTo: @Sendable (_ deviceId: String) async throws -> Void
     /// Stop casting and return playback to local output.
@@ -23,8 +23,10 @@ public final class Cast: Sendable, Observable {
         @Sendable (_ format: BridgeCastTranscodeFormat) async throws -> Void
 
     public init(
-        startDiscovery: @escaping @Sendable () -> Void = {},
-        stopDiscovery: @escaping @Sendable () -> Void = {},
+        startDiscovery: @escaping @Sendable (BridgeBrowsingFor) -> Void = { _ in
+        },
+        stopDiscovery: @escaping @Sendable (BridgeBrowsingFor) -> Void = { _ in
+        },
         castTo: @escaping @Sendable (String) async throws -> Void = { _ in },
         stopCasting: @escaping @Sendable () -> Void = {},
         setEnabled: @escaping @Sendable (Bool) async throws -> Void = { _ in },
@@ -42,8 +44,8 @@ public final class Cast: Sendable, Observable {
 
     public convenience init(handle: any AppHandleProtocol) {
         self.init(
-            startDiscovery: { handle.startCastDiscovery() },
-            stopDiscovery: { handle.stopCastDiscovery() },
+            startDiscovery: { handle.startCastDiscovery(asker: $0) },
+            stopDiscovery: { handle.stopCastDiscovery(asker: $0) },
             castTo: { try await handle.castTo(deviceId: $0) },
             stopCasting: { handle.stopCasting() },
             setEnabled: { try await handle.setCastEnabled(enabled: $0) },
