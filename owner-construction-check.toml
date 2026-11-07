@@ -483,6 +483,9 @@ ImageHold = "RemoteImageHost"
 # Task starts are listed with them: each starts a service's long-lived work,
 # which the handle it returns stops.
 [composition_roots]
+# Starts the services that run while a library is open: its tables, views and
+# cast picker, playback, and on desktop the import service.
+"bae-app/src/assembly.rs" = ["start_library_services"]
 "bae-app/src/lib.rs" = [
     "bootstrap",
     "bootstrap_prepared",
@@ -490,6 +493,8 @@ ImageHold = "RemoteImageHost"
     "bootstrap_opening",
     "bootstrap_inner",
 ]
+# A test's library with the app's services started over it.
+"bae-app/src/test_services.rs" = ["runtime_with_services"]
 "bae-bridge/src/host.rs" = [
     "BridgeHost::open_prepared",
     "BridgeHost::create_library",
