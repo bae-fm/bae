@@ -19,10 +19,23 @@ pub enum PlaybackError {
     /// own audio path's doing, as the error says.
     #[error("the audio output didn't start: {0}")]
     AudioOutput(#[source] crate::AudioError),
+    /// A play could not be recorded in the listening history, as the error
+    /// says; a store failure recording it is `Database`.
+    #[error(transparent)]
+    PlayRecord(bae_people::history::PlayRecordError),
 }
 impl From<bae_store::DbError> for PlaybackError {
     fn from(error: bae_store::DbError) -> Self {
         Self::database(error)
+    }
+}
+
+impl From<bae_people::history::PlayRecordError> for PlaybackError {
+    fn from(error: bae_people::history::PlayRecordError) -> Self {
+        match error {
+            bae_people::history::PlayRecordError::Database(error) => Self::database(error),
+            error => Self::PlayRecord(error),
+        }
     }
 }
 

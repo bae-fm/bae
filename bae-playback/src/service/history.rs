@@ -111,7 +111,7 @@ impl PlaybackService {
                 true
             }
             Err(error) => {
-                self.listening_failed(error);
+                self.listening_failed(error.into());
                 false
             }
         }
@@ -246,7 +246,7 @@ impl PlaybackService {
         self.buffered_listening.retain(|buffered| buffered.tail.is_some());
         let succeeded = failures.is_empty();
         for error in failures {
-            self.listening_failed(error);
+            self.listening_failed(error.into());
         }
         succeeded
     }
@@ -313,11 +313,11 @@ impl PlaybackService {
         listening.meter = ListeningMeter::Remote { position, reported_at: now };
     }
 
-    fn listening_failed(&self, error: bae_store::DbError) {
+    fn listening_failed(&self, error: PlaybackError) {
         error!("could not record listening history: {error}");
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::PlaybackError { reason: PlaybackError::database(error).ui_reason() },
+            PlaybackProgress::PlaybackError { reason: error.ui_reason() },
         );
     }
 }
@@ -325,7 +325,7 @@ impl PlaybackService {
 async fn persist(
     people: &bae_people::People,
     listening: &mut Listening,
-) -> Result<(), bae_store::DbError> {
+) -> Result<(), bae_people::history::PlayRecordError> {
     if listening.play.qualifies()
         && listening.play.entry().played.as_millis() != listening.saved.as_millis()
     {

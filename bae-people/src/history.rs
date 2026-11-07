@@ -21,6 +21,17 @@ pub struct HistoryEntry {
     pub audience: HistoryAudience,
 }
 
+/// Why a play could not be recorded.
+#[derive(Debug, thiserror::Error)]
+pub enum PlayRecordError {
+    /// The play began as `0`, a person this device's membership no longer
+    /// is: its person changed during the play. Nothing was written.
+    #[error("the play began as {0:?}, whom this device no longer is")]
+    PersonChanged(coven::MemberId),
+    #[error(transparent)]
+    Database(#[from] bae_store::DbError),
+}
+
 /// A play in progress; a seek changes its position but never its identity.
 #[derive(Clone, Debug)]
 pub struct HistoryPlay {

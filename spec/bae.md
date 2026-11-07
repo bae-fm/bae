@@ -2281,7 +2281,9 @@ audience from the setting when it begins, and keeps it. Ben switches his history
 to household on Friday; what he played before Friday stays in his circle.
 Moving old plays would publish what he played in private, and switching back
 couldn't take from the household what its devices have already read. A new
-profile starts private.
+profile starts private. A play is recorded only as the person it began as:
+once this device is no longer that person, such as one removed from the
+library during the play, saving it is refused.
 
 **Plays before a profile.** A device can play before its person has a profile:
 Ana's new library has no cloud home yet, so she is no member and has no circle

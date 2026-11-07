@@ -1,5 +1,5 @@
 use super::*;
-use crate::history::{HistoryAudience, HistoryEntry, HistoryPlay};
+use crate::history::{HistoryAudience, HistoryEntry, HistoryPlay, PlayRecordError};
 use std::time::Duration;
 
 impl People {
@@ -33,7 +33,7 @@ impl People {
     }
 
     /// Upsert the same play as more audio is heard; unqualified skips write no row.
-    pub async fn record_play(&self, play: &HistoryPlay) -> Result<bool, DbError> {
+    pub async fn record_play(&self, play: &HistoryPlay) -> Result<bool, PlayRecordError> {
         if !play.qualifies() {
             return Ok(false);
         }
@@ -51,14 +51,12 @@ impl People {
                 }
             }
             HistoryAudience::Person { person, .. } if Some(person) != member => {
-                return Err(DbError::Message(
-                    "the listening person's membership changed during this play".into(),
-                ));
+                return Err(PlayRecordError::PersonChanged(person));
             }
             HistoryAudience::Person { .. } => {}
         }
         let played_ms = bae_store::query::to_i64(entry.played.as_millis(), "played_ms")?;
-        self.inner.store.call(move |sql| {
+        Ok(self.inner.store.call(move |sql| {
             match entry.audience {
                 HistoryAudience::DevicePrivate => {
                     sql.execute("INSERT INTO local_history (id, track_id, started_at, played_ms) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(id) DO UPDATE SET played_ms = MAX(local_history.played_ms, excluded.played_ms)", params![entry.id.to_string(), entry.track_id, entry.started_at.to_rfc3339(), played_ms])?;
@@ -69,7 +67,7 @@ impl People {
                 }
             }
             Ok(true)
-        }).await
+        }).await?)
     }
 
     /// Every play the library holds, newest first: what the tests of
@@ -102,3 +100,7 @@ pub(super) fn adopt_local_history(
     sql.execute("DELETE FROM local_history", [])?;
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "history_tests.rs"]
+mod tests;
