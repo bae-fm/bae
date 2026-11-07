@@ -27,19 +27,25 @@ pub struct S3ConfigData {
     pub profile: Option<coven::S3Profile>,
 }
 
+/// The S3 location these fields name: `endpoint` is parsed here, the one
+/// place a typed endpoint becomes a URL.
+pub fn s3_location(
+    bucket: String,
+    region: String,
+    endpoint: Option<String>,
+    profile: Option<coven::S3Profile>,
+) -> Result<coven::StorageConfig, url::ParseError> {
+    let endpoint = endpoint.map(|value| value.parse()).transpose()?;
+    Ok(coven::StorageConfig::S3 { bucket, region, endpoint, profile })
+}
+
 impl S3ConfigData {
     /// The coven location these settings name, and the key that reaches it.
     pub fn into_location(
         self,
     ) -> Result<(coven::StorageConfig, coven::S3Credentials), url::ParseError> {
-        let endpoint = self.endpoint.map(|value| value.parse()).transpose()?;
         Ok((
-            coven::StorageConfig::S3 {
-                bucket: self.bucket,
-                region: self.region,
-                endpoint,
-                profile: self.profile,
-            },
+            s3_location(self.bucket, self.region, self.endpoint, self.profile)?,
             coven::S3Credentials {
                 access_key_id: self.access_key,
                 secret_access_key: coven::SecretText::new(self.secret_key),

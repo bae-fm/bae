@@ -70,12 +70,13 @@ impl BridgeStorageLocation {
     #[cfg(any(test, feature = "oauth-providers"))]
     pub(crate) fn into_core(self) -> Result<coven::StorageConfig, BridgeError> {
         Ok(match self {
-            Self::S3 { bucket, region, endpoint, profile } => coven::StorageConfig::S3 {
+            Self::S3 { bucket, region, endpoint, profile } => bae_library::sync::s3_location(
                 bucket,
                 region,
-                endpoint: endpoint.map(|s| s.parse()).transpose().map_err(BridgeError::config)?,
-                profile: profile.map(BridgeS3Profile::into_core),
-            },
+                endpoint,
+                profile.map(BridgeS3Profile::into_core),
+            )
+            .map_err(BridgeError::config)?,
             // A location the app passes names a folder to set up or list. A
             // folder's label is coven's reading of it, never the app's input:
             // setup reads it itself, replacing any passed (coven §20.2).
