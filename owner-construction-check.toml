@@ -534,7 +534,11 @@ ImageHold = "RemoteImageHost"
     "bootstrap_inner",
 ]
 # A test's library with the app's services started over it.
-"bae-app/src/test_services.rs" = ["runtime_with_services"]
+"bae-app/src/test_services.rs" = [
+    "runtime_with_services",
+    # The same, over the runtime a #[tokio::test] already runs on.
+    "start_services_on",
+]
 # The platform hands its artwork analyzer in once at launch; the adapter is
 # built where it arrives.
 "bae-bridge/src/handle/desktop.rs" = ["AppHandle::register_artwork_analyzer"]
@@ -581,7 +585,7 @@ ImageHold = "RemoteImageHost"
     "BridgeBootstrapResult::joined",
     "BridgeBootstrapResult::failure",
 ]
-# x
+# A protocol's discovery starts not browsing and listing no device.
 "bae-cast/src/renderer/protocol_discovery.rs" = ["ProtocolDiscovery::new"]
 # A test's catalog fakes: the providers its library asks are built over
 # them, once per library the test opens.
@@ -590,18 +594,38 @@ ImageHold = "RemoteImageHost"
     "FakeCatalogs::offline",
     "FakeCatalogs::over",
 ]
+# A rate-limiter test's load: the tasks it starts are joined or aborted
+# before it returns.
+"bae-catalogs/src/rate_limiter/load_model.rs" = ["sustain"]
+# The one place a task that reports its panic starts, and the one for a
+# thread: each hands its handle to the caller, which aborts or joins it.
+"bae-diagnostics/src/background.rs" = [
+    "Diagnostics::spawn_reported",
+    "Diagnostics::spawn_thread_reported",
+]
 # A test's candidate runtime opens its own tables.
 "bae-import/src/candidate_runtime.rs" = ["CandidateRuntime::for_test"]
-# x
+# Scoped threads: the scope joins them before the function returns.
+"bae-import/src/folder_scanner/folder_times.rs" = ["read_each_at_once"]
+# Scoped threads: the scope joins them before the function returns.
+"bae-import/src/folder_scanner/scan/root.rs" = ["read_folders_at_once"]
+# The folder-state commit lock is built once with the import services; clones share it.
 "bae-import/src/folder_state_commit.rs" = ["FolderStateCommit::new"]
+# One candidate write, awaited before the call returns.
+"bae-import/src/handle/commit.rs" = ["ImportServiceHandle::committed"]
+# One read per watched folder, in a set the call drains before it returns.
+"bae-import/src/handle/watch.rs" = ["ImportServiceHandle::read_watched_folders"]
 # Starts the identification queue with the services it runs on; its handle
 # stops it.
 "bae-import/src/identification.rs" = ["start"]
-# x
+# The imports a person can cancel are tracked in one shared set, built with the import
+# services.
 "bae-import/src/import_cancel.rs" = ["ImportCancels::new"]
 # An owner's constructor builds the owner and the parts it holds that nothing
 # else shares.
 "bae-import/src/watching/folder_watcher.rs" = ["FolderWatcher::new"]
+# An example's runtime, run to the end of main.
+"bae-library/examples/restore_code.rs" = ["main"]
 # Opens the library manager over the store, building its transfer queues once.
 "bae-library/src/assembly.rs" = ["open_library_manager"]
 # The UI-test fixture seeds the library through the tables of the store it was
@@ -663,6 +687,8 @@ ImageHold = "RemoteImageHost"
     "SyncCycles::follow",
     "TwoStores::new",
     "run_two_store_test",
+    # A test's devices run on a thread the test joins.
+    "on_device_runtime",
 ]
 # One person's devices of a test library, syncing over shared memory storage:
 # it creates the first device and restores more from its code, and hands the
@@ -729,10 +755,19 @@ ImageHold = "RemoteImageHost"
     "setup_fresh_library",
     "imported_release_setup",
     "imported_release_setup_with",
+    # A test's import service over its library, on the test's runtime.
+    "TestLibrary::start_import",
+    # A runtime a test blocks on.
+    "multi_thread_runtime",
 ]
 # An owner's constructor builds the owner and the parts it holds that nothing
 # else shares.
 "bae-subsonic/src/controller.rs" = ["SubsonicServerController::new"]
+# A test's host that answers every request 404, ending with the test's
+# runtime.
+"bae-util/src/http.rs" = ["serve_not_found"]
+# A test awaits its blocking work, so a panic in it fails the test.
+"bae-util/src/test_blocking.rs" = ["on_blocking_pool"]
 # Starts a worker's thread: it opens the worker's channel and moves the
 # receiving end into the thread it starts, so the sender the worker keeps
 # is always the one paired with that thread. Its handle stops the thread.
@@ -815,7 +850,12 @@ ImageHold = "RemoteImageHost"
     "StreamWriter::new",
 ]
 "bae-bridge/src/oauth.rs" = ["NativeOAuthPresenter::new"]
-"bae-bridge/src/operation_runtime.rs" = ["OperationRuntime::new"]
+"bae-bridge/src/operation_runtime.rs" = [
+    "OperationRuntime::new",
+    # Every operation the bridge runs starts here: its caller awaits it and aborts it when
+    # dropped, or a persistent one runs on to its terminal state.
+    "spawn",
+]
 "bae-bridge/src/screens/setup.rs" = ["SetupStateWatch::new"]
 "bae-bridge/src/signals.rs" = ["ArtworkAnalyzerAdapter::new"]
 "bae-cast/src/airplay/ap2_session.rs" = ["Ap2Session::start"]
@@ -884,6 +924,9 @@ ImageHold = "RemoteImageHost"
 "bae-import/src/event_bus.rs" = [
     "EventDelivery::new",
     "ImportEventBus::new",
+    # A test's relay of the bus's events, which ends when the test drops its reader.
+    "ImportEventBus::import_progress_feed",
+    "ImportEventBus::scan_events",
 ]
 "bae-import/src/extraction/candidate_text.rs" = [
     "BRACKET_RE",
@@ -1005,7 +1048,11 @@ ImageHold = "RemoteImageHost"
 ]
 "bae-track-audio/src/data_source/local.rs" = ["LocalReader::new"]
 "bae-track-audio/src/storage_wait.rs" = ["StorageWaits::new"]
-"bae-track-audio/src/track_sources.rs" = ["SourceStream::start"]
+"bae-track-audio/src/track_sources.rs" = [
+    "SourceStream::start",
+    # The tracks' work runs in a set this function drains, and drops if it fails.
+    "run_tracks_over_sources",
+]
 "bae-transfers/src/queued_releases.rs" = [
     "QueuedReleases::clone",
     "QueuedReleases::new",
