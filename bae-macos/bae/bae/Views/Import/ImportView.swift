@@ -140,7 +140,7 @@ struct ImportView: View {
     /// would wrongly say no folder is watched.
     private func failedState(_ failure: DisplayError) -> some View {
         VStack(spacing: ThemeSpace.group) {
-            Image(systemName: "exclamationmark.triangle.fill")
+            Image(systemName: "exclamationmark.circle.fill")
                 .themeIcon(.hero)
                 .foregroundStyle(Theme.danger)
             Text("The import list couldn't be read")

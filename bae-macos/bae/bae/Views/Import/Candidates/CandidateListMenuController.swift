@@ -214,7 +214,7 @@ final class CandidateListMenuController: NSObject, NSMenuDelegate {
             item.toolTip = networkLine
         case .failed(let error):
             item.image = Self.symbol(
-                "exclamationmark.triangle.fill",
+                "exclamationmark.circle.fill",
                 color: NSColor(Theme.danger)
             )
             item.toolTip = [error, networkLine]

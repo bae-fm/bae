@@ -102,7 +102,7 @@ struct FindOnlineSearchResults: View {
     /// A source that did not answer, with why on hover and its Retry.
     private func failedLine(_ name: String, reason: String) -> some View {
         HStack(spacing: ThemeSpace.compact) {
-            Image(systemName: "exclamationmark.triangle")
+            Image(systemName: "exclamationmark.circle")
                 .foregroundStyle(Theme.warning)
             Text(name)
                 .foregroundStyle(.tertiary)

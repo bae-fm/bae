@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// What a chip or notice says about its subject, and the colour that says it.
-public enum StatusTone: Sendable {
+public enum StatusTone: Sendable, Equatable {
     case neutral
     case accent
     case info
@@ -33,10 +33,50 @@ public enum StatusTone: Sendable {
         switch self {
         case .info: "info.circle.fill"
         case .success: "checkmark.circle.fill"
-        case .warning: "exclamationmark.triangle.fill"
-        case .danger: "xmark.octagon.fill"
+        case .warning: "exclamationmark.circle.fill"
+        case .danger: "exclamationmark.circle.fill"
         case .neutral, .accent, .activity: nil
         }
+    }
+}
+
+/// A tone's glyph in the tone's colour; nothing for a tone with no glyph.
+/// Danger is its colour mixed 65% with secondary text: still red, calmer
+/// beside a warning's amber.
+public struct StatusGlyph: View {
+    private let tone: StatusTone
+    @Environment(\.self)
+    private var environment
+
+    public init(_ tone: StatusTone) {
+        self.tone = tone
+    }
+
+    public var body: some View {
+        if let symbol = tone.symbol {
+            Image(systemName: symbol)
+                .foregroundStyle(color)
+        }
+    }
+
+    private var color: Color {
+        guard tone == .danger else { return tone.color }
+        let danger = Theme.danger.resolve(in: environment)
+        let grey = Color.secondary.resolve(in: environment)
+        let share: Float = 0.65
+        return Color(
+            .sRGBLinear,
+            red: Double(
+                danger.linearRed * share + grey.linearRed * (1 - share)
+            ),
+            green: Double(
+                danger.linearGreen * share + grey.linearGreen * (1 - share)
+            ),
+            blue: Double(
+                danger.linearBlue * share + grey.linearBlue * (1 - share)
+            ),
+            opacity: Double(danger.opacity * share + grey.opacity * (1 - share))
+        )
     }
 }
 

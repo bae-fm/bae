@@ -11,7 +11,7 @@ struct FindOnlineFailureLines: View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             ForEach(failures, id: \.badgeLine) { failure in
                 HStack(alignment: .top, spacing: ThemeSpace.related) {
-                    Image(systemName: "exclamationmark.triangle.fill")
+                    Image(systemName: "exclamationmark.circle.fill")
                         .foregroundStyle(Theme.warning)
                     Text(failure.badgeLine)
                     Spacer(minLength: 0)

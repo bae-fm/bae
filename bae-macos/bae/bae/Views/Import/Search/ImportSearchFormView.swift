@@ -132,7 +132,7 @@ struct ImportSearchFormView: View {
             if let signalFailure {
                 Label(
                     signalFailure.detail,
-                    systemImage: "exclamationmark.triangle.fill"
+                    systemImage: "exclamationmark.circle.fill"
                 )
                 .themeText(.body)
                 .foregroundStyle(Theme.warning)

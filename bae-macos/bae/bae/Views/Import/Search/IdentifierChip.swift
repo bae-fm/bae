@@ -117,7 +117,7 @@ struct IdentifierDash: View {
 /// The mark a signal carries when reading its input failed.
 struct IdentifierWarning: View {
     var body: some View {
-        Image(systemName: "exclamationmark.triangle")
+        Image(systemName: "exclamationmark.circle")
             .themeIcon(.small)
             .foregroundStyle(Theme.warning)
     }

@@ -129,7 +129,7 @@ struct FindOnlineSectionGlyphView: View {
             case .empty:
                 StatusChip(verbatim: 0.formatted())
             case .failed:
-                Image(systemName: "exclamationmark.triangle")
+                Image(systemName: "exclamationmark.circle")
                     .themeIcon(.small)
                     .foregroundStyle(Theme.warning)
             case .nothing:

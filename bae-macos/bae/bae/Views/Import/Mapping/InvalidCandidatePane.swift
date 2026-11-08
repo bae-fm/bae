@@ -58,7 +58,7 @@ struct InvalidCandidatePane: View {
                     Text(invalid.reason.localizedText)
                         .themeText(.strong)
                 } icon: {
-                    Image(systemName: "exclamationmark.triangle.fill")
+                    Image(systemName: "exclamationmark.circle.fill")
                         .themeIcon(.small)
                 }
                 .foregroundStyle(Theme.warning)
