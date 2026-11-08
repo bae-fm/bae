@@ -18,7 +18,7 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidLibraryScreen" view="Albums"><div style="height:100%;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px"><div style="font:400 14px/20px var(--font-android);color:var(--danger)">Couldn’t read your library.</div><div style="display:flex;align-items:center;gap:4px"><span style="font:400 12px var(--font-mono);color:var(--text-secondary)">database disk image is malformed</span><x-import component-from-global-scope="Bae.AndroidIconButton" icon="copy" label="Copy"></x-import></div><x-import component-from-global-scope="Bae.AndroidButton" kind="text">Retry</x-import></div></x-import>
+<x-import component-from-global-scope="Bae.AndroidLibraryScreen" view="Albums"><x-import component-from-global-scope="Bae.AndroidLoadFailure" message="Couldn’t read your library" chain="database disk image is malformed"></x-import></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

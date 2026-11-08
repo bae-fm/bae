@@ -1,0 +1,13 @@
+<!-- @dsCard group="Android" height=700 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidLoadFailure</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
+<body class="bae-preview bae-preview-android" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Closed', h(B.AndroidLoadFailure, { message: 'Couldn’t read your library', chain: 'SqliteFailure(DatabaseCorrupt)\ndatabase disk image is malformed' })), W('Open', h(B.AndroidLoadFailure, { message: 'Couldn’t read your library', open: true, chain: 'SqliteFailure(DatabaseCorrupt)\ndatabase disk image is malformed' }))));
+</script>
+</body>
+</html>

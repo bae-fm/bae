@@ -16,7 +16,7 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.MacMainWindow"><div style="height:100%;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px"><div style="font:400 13px var(--font-sans);color:var(--danger)">Couldn’t read your library.</div><div style="font:400 12px var(--font-mono);color:var(--text-secondary)">database disk image is malformed</div><x-import component-from-global-scope="Bae.MacButton">Retry</x-import></div></x-import>
+<x-import component-from-global-scope="Bae.MacMainWindow"><x-import component-from-global-scope="Bae.MacLoadFailure" message="Couldn’t read your library" chain="database disk image is malformed"></x-import></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
 class Component extends DCLogic {

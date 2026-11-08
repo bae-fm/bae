@@ -45,6 +45,7 @@ The text styles are macOS points. iOS follows Dynamic Type, and the Android comp
   - **A sidebar heading** folds a group of destinations in a macOS sidebar, its chevron showing only under the pointer. It is navigation, not content. bae has no sectioned sidebar yet.
 - A disclosure's chevron on macOS points right closed and down open, wherever it sits: hanging in a notice's glyph column (`MacErrorDisclosure`) or leading inside its row (`MacDisclosure`).
 - An error in part of a screen is its box; a Retry that belongs to it is the box's action, at its right, level with the message.
+- A view that failed whole is drawn quietly with no box: the message, then “Show details” and Retry on one row under it, Retry last.
 
 ## Iconography
 

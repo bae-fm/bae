@@ -7,8 +7,19 @@
   function AndroidErrorBanner(props) {
     return h('div', { className: 'bae-a-errbanner' }, h(AndroidErrorDisclosure, { message: props.message, fault: props.fault, open: props.open, chain: props.chain, action: 'Retry' }));
   }
-  // BaeKit's LoadFailureView: a danger notice holding the disclosure, Retry at its right, centred in the view it replaces.
+  // BaeKit's LoadFailureView: a view that failed whole, drawn quietly with no box, centred in the view it replaces. The message in secondary text, then one row: "Show details" (`chain` gives it causes) and Retry. Open, the causes sit under the row in the inset panel with Copy at its corner.
   function MacLoadFailure(props) {
-    return h('div', { className: 'bae-m-loadfail' }, h('div', { className: 'bae-m-loadfail-box' }, h(Notice, { tone: 'danger', set: 'mac' },
-      h('div', { className: 'bae-m-loadfail-body' }, h(MacErrorDisclosure, { bare: true, message: props.message, fault: props.fault }), h(MacButton, null, 'Retry')))));
+    var panel = props.chain && props.open ? h('div', { className: 'bae-errdis-panel bae-loadfail-panel' }, h('div', { className: 'bae-errdis-chain' }, props.chain), h('span', { className: 'bae-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 }))) : null;
+    return h('div', { className: 'bae-m-loadfail' },
+      h('div', { className: 'bae-m-loadfail-msg' }, props.message),
+      h('div', { className: 'bae-m-loadfail-row' }, props.chain ? h('span', { className: 'bae-m-loadfail-link' }, props.open ? 'Hide details' : 'Show details') : null, h(MacButton, null, 'Retry')),
+      panel);
+  }
+  // Android's LoadFailureView, the same layout in Android's type: Retry is an outlined button.
+  function AndroidLoadFailure(props) {
+    var panel = props.chain && props.open ? h('div', { className: 'bae-errdis-panel bae-loadfail-panel' }, h('div', { className: 'bae-errdis-chain' }, props.chain), h('span', { className: 'bae-errdis-copy' }, h(AndroidIconButton, { icon: 'copy', label: 'Copy details' }))) : null;
+    return h('div', { className: 'bae-a-loadfail' },
+      h('div', { className: 'bae-a-loadfail-msg' }, props.message),
+      h('div', { className: 'bae-a-loadfail-row' }, props.chain ? h('span', { className: 'bae-a-loadfail-link' }, props.open ? 'Hide details' : 'Show details') : null, h(AndroidButton, { kind: 'outlined' }, 'Retry')),
+      panel);
   }
