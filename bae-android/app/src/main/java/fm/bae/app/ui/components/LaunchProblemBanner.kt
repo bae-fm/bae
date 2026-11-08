@@ -3,7 +3,6 @@ package fm.bae.app.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -31,7 +30,7 @@ fun LaunchProblemBanner(signInSettingsError: String?) {
             Text(text = context.coreString("ui.load_error.sign_in_settings.title"), style = ThemeText.heading.style)
             ErrorDetailDisclosure(
                 error = DisplayError(context.coreString("ui.load_error.sign_in_settings.advice"), detail),
-                lineColor = LocalContentColor.current,
+                bare = true,
             )
         }
     }

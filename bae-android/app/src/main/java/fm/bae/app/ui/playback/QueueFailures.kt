@@ -1,11 +1,8 @@
 package fm.bae.app.ui.playback
 
 import android.content.Context
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,6 +21,7 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeException
@@ -112,8 +110,9 @@ internal fun UpcomingFailure(session: OpenLibrary) {
     val upcoming = session.playback.upcoming
     val failure by upcoming.failure.collectAsState()
     val shown = failure?.let { LocalContext.current.displayError(it) } ?: return
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related)) {
-        ErrorDetailDisclosure(shown)
-        TextButton(onClick = upcoming::retry) { Text(stringResource(R.string.retry)) }
-    }
+    ErrorDetailDisclosure(
+        error = shown,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+        action = ErrorAction(stringResource(R.string.retry), onClick = upcoming::retry),
+    )
 }

@@ -199,7 +199,7 @@ internal fun RemovalIncompleteScreen(
             style = ThemeText.heading.style,
             textAlign = TextAlign.Center,
         )
-        error?.let { ErrorDetailDisclosure(error = it, lineColor = MaterialTheme.colorScheme.onSurfaceVariant) }
+        error?.let { ErrorDetailDisclosure(it) }
         PrimaryButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }

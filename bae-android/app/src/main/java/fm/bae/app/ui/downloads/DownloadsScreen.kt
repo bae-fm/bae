@@ -150,6 +150,7 @@ private fun DownloadsBody(
                             session.appHandle.cancelDownload(releaseId)
                         }
                     },
+                    onRetry = { session.messages.perform("retry downloads") { session.appHandle.retryDownloads() } },
                 )
             }
         }
@@ -212,6 +213,7 @@ private fun DownloadsList(
     downloads: DownloadStore,
     listState: LazyListState,
     onCancel: (String) -> Unit,
+    onRetry: () -> Unit,
 ) {
     val context = LocalContext.current
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
@@ -234,6 +236,7 @@ private fun DownloadsList(
                 op = op,
                 progress = downloads.latestProgress(op.releaseId),
                 onCancel = { onCancel(op.releaseId) },
+                onRetry = onRetry,
             )
             HorizontalDivider()
         }
@@ -260,6 +263,7 @@ private fun DownloadsListPreview() {
             downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-1"),
             listState = rememberLazyListState(),
             onCancel = {},
+            onRetry = {},
         )
     }
 }

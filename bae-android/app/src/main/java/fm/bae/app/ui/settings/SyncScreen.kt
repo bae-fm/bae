@@ -13,11 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,6 +44,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
@@ -345,22 +344,25 @@ private fun UndoneSetupNotice(session: OpenLibrary) {
     var dismissing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<DisplayError?>(null) }
     undone?.let { setup ->
-        ErrorDetailDisclosure(setup.error)
-        TextButton(
-            enabled = !dismissing,
-            onClick = {
-                dismissing = true
-                error = null
-                scope.launch {
-                    performBridgeAction(logger, "dismiss the undone storage setup", session.errors, { error = it }) {
-                        session.appHandle.dismissUndoneStorageSetup(setup.operation)
+        ErrorDetailDisclosure(
+            setup.error,
+            action =
+                ErrorAction(stringResource(R.string.dismiss), enabled = !dismissing) {
+                    dismissing = true
+                    error = null
+                    scope.launch {
+                        performBridgeAction(
+                            logger,
+                            "dismiss the undone storage setup",
+                            session.errors,
+                            { error = it },
+                        ) {
+                            session.appHandle.dismissUndoneStorageSetup(setup.operation)
+                        }
+                        dismissing = false
                     }
-                    dismissing = false
-                }
-            },
-        ) {
-            Text(stringResource(R.string.dismiss))
-        }
+                },
+        )
     }
     error?.let { ErrorDetailDisclosure(it) }
 }
@@ -509,7 +511,6 @@ private fun PendingRow(
                     context.coreString(record.reason.key),
                     record.reason.detail,
                 ),
-            lineColor = LocalContentColor.current,
         )
         record.reason.causes.forEach { cause ->
             Text(

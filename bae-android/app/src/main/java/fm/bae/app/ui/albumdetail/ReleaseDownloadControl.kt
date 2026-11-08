@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -37,8 +36,8 @@ import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorDetailDisclosure
-import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.downloads.ActiveDownloadProgress
 import fm.bae.app.ui.downloads.WaitingToDownloadText
@@ -232,12 +231,12 @@ private fun DownloadFailedControl(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    ErrorText(error)
-    Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        // Core has no per-item retry: retryDownloads re-queues every failed entry.
-        DownloadActionButton(stringResource(R.string.retry), Icons.Filled.Refresh, onRetry)
-        DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
-    }
+    // Core has no per-item retry: retryDownloads re-queues every failed entry.
+    ErrorDetailDisclosure(
+        DisplayError(error),
+        action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
+    )
+    DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
 }
 
 @Composable

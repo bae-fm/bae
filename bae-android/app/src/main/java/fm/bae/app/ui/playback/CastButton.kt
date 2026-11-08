@@ -49,7 +49,6 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.WaitingIndicator
-import fm.bae.app.ui.components.color
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -181,7 +180,7 @@ private fun PickerFailures(
     endedFailure?.let { failure ->
         ErrorDetailDisclosure(
             error = failure,
-            lineColor = StatusTone.WARNING.color,
+            tone = StatusTone.WARNING,
             modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         )
     }

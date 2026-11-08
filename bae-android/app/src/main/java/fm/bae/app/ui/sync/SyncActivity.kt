@@ -51,6 +51,7 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.StatusGlyph
 import fm.bae.app.ui.components.StatusTone
@@ -168,8 +169,10 @@ internal fun SyncActivityList(
                 item { SecondaryLine(context.coreString("core.activity.idle")) }
             }
         }
-        error?.let { shown -> item { ErrorDetailDisclosure(shown) } }
-        if (activity?.retryOffered == true) {
+        val retryNow = ErrorAction(context.coreString("core.activity.retry_now"), onClick = onRetryNow)
+        val retryOffered = activity?.retryOffered == true
+        error?.let { shown -> item { ErrorDetailDisclosure(shown, action = retryNow.takeIf { retryOffered }) } }
+        if (retryOffered && error == null) {
             item {
                 OutlinedButton(onClick = onRetryNow) {
                     Text(context.coreString("core.activity.retry_now"))
@@ -198,7 +201,7 @@ private fun LazyListScope.attentionSection(
                         context.coreString(record.reason.key),
                         record.reason.detail,
                     ),
-                lineColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                tone = StatusTone.WARNING,
             )
         }
     }
@@ -293,7 +296,7 @@ internal fun FailureDisclosure(
     failure: BridgeException,
 ) {
     val shown = context.displayError(failure) ?: return
-    ErrorDetailDisclosure(error = shown, lineColor = StatusTone.WARNING.color)
+    ErrorDetailDisclosure(error = shown, tone = StatusTone.WARNING)
 }
 
 @Composable

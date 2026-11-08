@@ -31,6 +31,7 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.StatusTone
@@ -124,8 +125,7 @@ internal fun ReadFailure(
     error: DisplayError,
     onRetry: () -> Unit,
 ) {
-    ErrorDetailDisclosure(error)
-    TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+    ErrorDetailDisclosure(error, action = ErrorAction(stringResource(R.string.retry), onClick = onRetry))
 }
 
 @Composable

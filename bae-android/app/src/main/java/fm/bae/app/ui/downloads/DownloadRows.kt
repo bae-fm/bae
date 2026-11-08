@@ -18,13 +18,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.formatFileSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.ErrorAction
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadState
@@ -36,6 +38,7 @@ internal fun DownloadQueueRow(
     op: BridgeDownloadOp,
     progress: LatestSource<BridgeDownloadTransferProgress>,
     onCancel: () -> Unit,
+    onRetry: () -> Unit,
 ) {
     val context = LocalContext.current
     Row(
@@ -60,7 +63,7 @@ internal fun DownloadQueueRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            DownloadRowState(op.state, progress)
+            DownloadRowState(op.state, progress, onRetry)
         }
         IconButton(onClick = onCancel) {
             Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel))
@@ -72,6 +75,7 @@ internal fun DownloadQueueRow(
 private fun DownloadRowState(
     state: BridgeDownloadState,
     progress: LatestSource<BridgeDownloadTransferProgress>,
+    onRetry: () -> Unit,
 ) {
     when (state) {
         BridgeDownloadState.Queued -> {
@@ -83,7 +87,10 @@ private fun DownloadRowState(
         }
 
         is BridgeDownloadState.Failed -> {
-            ErrorText(state.error)
+            ErrorDetailDisclosure(
+                DisplayError(state.error),
+                action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
+            )
         }
     }
 }

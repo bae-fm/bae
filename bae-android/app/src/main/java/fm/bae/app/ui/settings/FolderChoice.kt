@@ -36,6 +36,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.WaitingIndicator
@@ -93,9 +94,13 @@ internal fun FolderChoiceBody(
         FolderHeading(browser, shown, words)
     }
     browser.failure?.let { failure ->
-        failure.error?.let { ErrorDetailDisclosure(it) }
-        TextButton(onClick = { scope.launch { failure.retry() } }, enabled = !browser.busy) {
-            Text(stringResource(R.string.retry))
+        val retry =
+            ErrorAction(stringResource(R.string.retry), enabled = !browser.busy) { scope.launch { failure.retry() } }
+        val error = failure.error
+        if (error != null) {
+            ErrorDetailDisclosure(error, action = retry)
+        } else {
+            TextButton(onClick = retry.onClick, enabled = retry.enabled) { Text(retry.label) }
         }
     }
     FolderWorkLine(browser.work, words, setup, onCancel)
