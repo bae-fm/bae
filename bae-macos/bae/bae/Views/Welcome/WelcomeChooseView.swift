@@ -299,18 +299,16 @@ private struct WelcomeLoadErrorCallout: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: ThemeSpace.related) {
-            if let symbol = StatusTone.danger.symbol {
-                Image(systemName: symbol)
-                    .foregroundStyle(StatusTone.danger.color)
-            }
+            StatusGlyph(.danger)
+                .themeIcon(.medium)
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 title
                     .themeText(.heading)
-                ErrorDetailDisclosure(error: error, showIcon: false)
+                ErrorDetailDisclosure(error: error, bare: true)
                 if let guidance {
                     guidance
                         .themeText(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NoticeText.secondary)
                 }
             }
             Spacer(minLength: 0)
@@ -334,18 +332,20 @@ private struct RemovalErrorCallout: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: ThemeSpace.related) {
-            if let symbol = StatusTone.danger.symbol {
-                Image(systemName: symbol)
-                    .foregroundStyle(StatusTone.danger.color)
-            }
+            StatusGlyph(.danger)
+                .themeIcon(.medium)
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text("Couldn't remove the library")
                     .themeText(.heading)
-                ErrorDetailDisclosure(error: error, showIcon: false)
-                if removals.unfinished != nil {
-                    Button("Retry") { removals.retryUnfinished() }
-                        .disabled(removals.isRetrying)
-                }
+                ErrorDetailDisclosure(
+                    error: error,
+                    bare: true,
+                    action: removals.unfinished == nil
+                        ? nil
+                        : ErrorAction(isDisabled: removals.isRetrying) {
+                            removals.retryUnfinished()
+                        }
+                )
                 if let finishing = removals.finishing {
                     StepProgressLine(steps: finishing.steps) {
                         EmptyView()

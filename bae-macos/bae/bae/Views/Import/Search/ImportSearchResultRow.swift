@@ -117,23 +117,20 @@ struct ImportSearchResultRow: View {
         return nil
     }
 
+    @ViewBuilder
     private var failureLine: some View {
-        HStack(alignment: .top, spacing: ThemeSpace.related) {
-            ErrorDetailDisclosure(error: rowFailure?.error)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: ThemeSpace.related)
-            Button("Retry") { rowFailure?.retry() }
-                .buttonStyle(.borderless)
-                .disabled(!isPickable)
+        if let failure = rowFailure {
+            ErrorDetailDisclosure(
+                error: failure.error,
+                action: ErrorAction(
+                    isDisabled: !isPickable,
+                    perform: failure.retry
+                )
+            )
+            .themeText(.body)
+            .padding(.horizontal, Self.horizontalPadding)
+            .padding(.bottom, ThemeSpace.related)
         }
-        .themeText(.body)
-        .padding(.horizontal, Self.horizontalPadding)
-        .padding(.bottom, ThemeSpace.related)
-        .frame(height: rowFailure == nil ? 0 : nil, alignment: .top)
-        .clipped()
-        .opacity(rowFailure == nil ? 0 : 1)
-        .allowsHitTesting(rowFailure != nil)
-        .accessibilityHidden(rowFailure == nil)
     }
 
     private var rowBackground: some View {

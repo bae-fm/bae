@@ -112,9 +112,12 @@ struct UndoneSetupLine: View {
         if let undone = status.snapshot?.undoneSetup,
             let error = DisplayError(undone.error)
         {
-            ErrorDetailDisclosure(error: error)
-            Button("Dismiss") { dismiss(undone.operation) }
-                .disabled(dismissTask != nil)
+            ErrorDetailDisclosure(
+                error: error,
+                action: ErrorAction("Dismiss", isDisabled: dismissTask != nil) {
+                    dismiss(undone.operation)
+                }
+            )
         }
     }
 

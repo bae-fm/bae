@@ -51,17 +51,13 @@ private struct PendingRecordRow: View {
                     detail: record.reason.detail
                 ),
                 tone: .neutral,
-                showIcon: false
+                action: actionTitle.map {
+                    ErrorAction(verbatim: $0, isDisabled: task != nil) { run() }
+                }
             )
-            // Hidden rather than removed so every row keeps its height.
-            Button(actionTitle ?? "") { run() }
-                .disabled(actionTitle == nil || task != nil)
-                .opacity(actionTitle == nil ? 0 : 1)
-                .allowsHitTesting(actionTitle != nil)
-                .accessibilityHidden(actionTitle == nil)
-            ErrorDetailDisclosure(error: error)
-                .opacity(error == nil ? 0 : 1)
-                .accessibilityHidden(error == nil)
+            if let error {
+                ErrorDetailDisclosure(error: error)
+            }
         }
         .onDisappear { task?.cancel() }
     }

@@ -25,10 +25,18 @@
                 )
             }
             Section {
+                let retry =
+                    store.activity?.retryOffered == true
+                    ? ErrorAction(
+                        verbatim: localizedCoreString("core.activity.retry_now")
+                    ) {
+                        Task { await store.retryNow() }
+                    }
+                    : nil
                 if let error = store.error {
-                    ErrorDetailDisclosure(error: error)
+                    ErrorDetailDisclosure(error: error, action: retry)
                 }
-                if store.activity?.retryOffered == true {
+                else if store.activity?.retryOffered == true {
                     Button(localizedCoreString("core.activity.retry_now")) {
                         Task { await store.retryNow() }
                     }
@@ -44,8 +52,10 @@
         var body: some View {
             if activity.needsAttention {
                 Section(localizedCoreString("core.activity.attention")) {
-                    if let failure = activity.failure {
-                        ErrorDetailDisclosure(error: DisplayError(failure))
+                    if let failure = activity.failure,
+                        let displayed = DisplayError(failure)
+                    {
+                        ErrorDetailDisclosure(error: displayed)
                     }
                     PendingRecordsView(
                         records: activity.attention,

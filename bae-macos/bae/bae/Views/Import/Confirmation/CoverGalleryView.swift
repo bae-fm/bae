@@ -230,8 +230,10 @@ struct CoverGalleryView: View {
                 ErrorDetailDisclosure(error: error)
             }
             if let failure = remoteItems.failure {
-                ErrorDetailDisclosure(error: failure)
-                if let onRefresh { Button("Retry", action: onRefresh) }
+                ErrorDetailDisclosure(
+                    error: failure,
+                    action: onRefresh.map { ErrorAction(perform: $0) }
+                )
             }
         }
         .themeText(.body)

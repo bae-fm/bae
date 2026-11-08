@@ -136,8 +136,8 @@
                 tone: .warning
             )
             ErrorDetailDisclosure(
-                error: PreviewData.displayErrorSimple,
-                showIcon: false
+                error: PreviewData.displayErrorWithDetail,
+                action: ErrorAction {}
             )
         }
         .padding(ThemeSpace.section)

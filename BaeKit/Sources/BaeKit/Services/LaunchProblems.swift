@@ -41,13 +41,17 @@ private struct LaunchProblemNotice: View {
     let error: DisplayError
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-            Text(verbatim: localizedCoreString(title))
-                .themeText(.heading)
-            ErrorDetailDisclosure(error: error, showIcon: false)
-            Text(verbatim: localizedCoreString(advice))
-                .themeText(.body)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: ThemeSpace.related) {
+            StatusGlyph(.danger)
+                .themeIcon(.medium)
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                Text(verbatim: localizedCoreString(title))
+                    .themeText(.heading)
+                ErrorDetailDisclosure(error: error, bare: true)
+                Text(verbatim: localizedCoreString(advice))
+                    .themeText(.body)
+                    .foregroundStyle(NoticeText.secondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .notice(.danger)

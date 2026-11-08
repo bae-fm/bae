@@ -7,15 +7,21 @@ struct LoadErrorNotice: View {
     let loadError: LoadError
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-            Text(verbatim: loadError.step.title)
-                .themeText(.heading)
-            ErrorDetailDisclosure(error: loadError.error)
-            if let advice = loadError.step.advice {
-                Text(verbatim: advice)
-                    .themeText(.body)
-                    .foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: ThemeSpace.related) {
+            StatusGlyph(.danger)
+                .themeIcon(.medium)
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                Text(verbatim: loadError.step.title)
+                    .themeText(.heading)
+                ErrorDetailDisclosure(error: loadError.error, bare: true)
+                if let advice = loadError.step.advice {
+                    Text(verbatim: advice)
+                        .themeText(.body)
+                        .foregroundStyle(NoticeText.secondary)
+                }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .notice(.danger)
     }
 }

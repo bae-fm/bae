@@ -19,10 +19,9 @@ struct ImportConfirmationBanners: View {
         if let libStatus = libraryStatus {
             if libStatus.releaseInLibrary {
                 HStack(spacing: ThemeSpace.related) {
-                    glyph(.warning)
+                    StatusGlyph(.warning)
                     Text("This release is already in your library")
                         .themeText(.body)
-                        .foregroundStyle(StatusTone.warning.color)
                     Spacer()
                     viewInLibrary(libStatus.albums.filter(\.holdsRelease))
                 }
@@ -30,7 +29,7 @@ struct ImportConfirmationBanners: View {
             }
             else if libStatus.albumInLibrary {
                 HStack(spacing: ThemeSpace.related) {
-                    glyph(.info)
+                    StatusGlyph(.info)
                     Text(
                         "Another release of this album is in your library"
                     )
@@ -46,8 +45,6 @@ struct ImportConfirmationBanners: View {
 
         if let error {
             ErrorDetailDisclosure(error: DisplayError(line: error))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .notice(.danger)
         }
     }
 
@@ -72,14 +69,6 @@ struct ImportConfirmationBanners: View {
     }
 
     @ViewBuilder
-    private func glyph(_ tone: StatusTone) -> some View {
-        if let symbol = tone.symbol {
-            Image(systemName: symbol)
-                .foregroundStyle(tone.color)
-        }
-    }
-
-    @ViewBuilder
     private var importFailureBanner: some View {
         if let failure {
             if let displayed = DisplayError(failure) {
@@ -98,19 +87,14 @@ struct ImportConfirmationBanners: View {
             let displayed = DisplayError(bridgeError)
         {
             ErrorDetailDisclosure(error: displayed)
-                .notice(.danger)
         }
     }
 
     private func persistedFailure(_ error: DisplayError) -> some View {
-        HStack(spacing: ThemeSpace.related) {
-            ErrorDetailDisclosure(error: error)
-            Spacer()
-            Button("Retry") { onRetry() }
-                .controlSize(.small)
-                .disabled(!canEdit)
-        }
-        .notice(.danger)
+        ErrorDetailDisclosure(
+            error: error,
+            action: ErrorAction(isDisabled: !canEdit, perform: onRetry)
+        )
     }
 }
 
