@@ -31,12 +31,16 @@ type Standing = (ImportListId, u64, Vec<i64>);
 const LIST_SOURCES: &[&str] =
     &["import_list_placement", "local_release_origin", "release_storage", "scan_candidate"];
 
-/// Where a read found a list's rows: each window's first and last items in
-/// each part, and the headers of the groups its windows list.
+/// What a read found of a list: each window's first and last items in each
+/// part, the headers of the groups its windows list, and what its search
+/// counted. All of it holds while the list stands as it stood for that read:
+/// the counts read the placement, the folds and the filter, which `Standing`
+/// holds by their versions and the view's revision.
 #[derive(Debug, Clone, Default)]
 struct ListPlaces {
     items: Places,
     headers: HeaderPlaces,
+    search_counts: Option<summary::SearchCounts>,
 }
 
 /// One read of the list for `request`, each window read from an item beside
@@ -56,7 +60,8 @@ fn load_import_list_on(
     let mut known = places.under(&standing);
     let mut found = ListPlaces::default();
     let counts = summary::counts(sql)?;
-    let listed = summary::listed(sql, &list, &counts)?;
+    let listed = summary::listed(sql, &list, &counts, known.search_counts)?;
+    found.search_counts = listed.search_counts;
     let windows = request
         .windows
         .iter()

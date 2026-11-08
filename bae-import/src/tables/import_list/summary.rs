@@ -66,6 +66,16 @@ pub(super) struct Listed {
     pub(super) narrowed: Option<NarrowedCount>,
     /// What decides where its windows are read from.
     reads: Reads,
+    /// What its search counted, for a searching list.
+    pub(super) search_counts: Option<SearchCounts>,
+}
+
+/// What [`SEARCH_COUNTS`] counts for a searching list: how many releases its
+/// filters keep, and how many items it holds.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct SearchCounts {
+    kept: i64,
+    items: i64,
 }
 
 /// What a list's windows are read by, as its counts say.
@@ -133,11 +143,13 @@ pub(super) const SEARCH_COUNTS: &str = "WITH kept AS MATERIALIZED ( \
 /// How many items the list holds — its releases its filters keep outside the
 /// groups it folds shut, and the header of each group holding one — and how
 /// many releases its filters keep. Without a search these are the kept
-/// counts; a search counts the rows it finds.
+/// counts; a search counts the rows it finds, unless `known` holds what it
+/// counted while the list stood as it stands now.
 pub(super) fn listed(
     sql: &SqlReadContext<'_>,
     list: &ListRow,
     counts: &Counts,
+    known: Option<SearchCounts>,
 ) -> Result<Listed, DbError> {
     let narrowed = |shown: i64| -> Result<NarrowedCount, DbError> {
         Ok(NarrowedCount {
@@ -147,14 +159,17 @@ pub(super) fn listed(
     };
     let total = |count: i64| to_u64(count, "a list's item count");
     if list.filters_text {
-        let (kept, items) =
-            sql.query_row(SEARCH_COUNTS, named_params! { ":list": list.id.0 }, |row| {
-                Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
-            })?;
+        let found = match known {
+            Some(known) => known,
+            None => sql.query_row(SEARCH_COUNTS, named_params! { ":list": list.id.0 }, |row| {
+                Ok(SearchCounts { kept: row.get(0)?, items: row.get(1)? })
+            })?,
+        };
         return Ok(Listed {
-            total: total(items)?,
-            narrowed: Some(narrowed(kept)?),
+            total: total(found.items)?,
+            narrowed: Some(narrowed(found.kept)?),
             reads: Reads::Search,
+            search_counts: Some(found),
         });
     }
     let items = match list.keeps_all {
@@ -203,7 +218,7 @@ pub(super) fn listed(
         )?)?),
         false => None,
     };
-    Ok(Listed { total: total(items)?, narrowed, reads: Reads::Order })
+    Ok(Listed { total: total(items)?, narrowed, reads: Reads::Order, search_counts: None })
 }
 
 /// Where the candidate at `key` sits in `list` once revealed: `None` for a

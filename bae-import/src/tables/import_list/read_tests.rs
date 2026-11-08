@@ -419,6 +419,57 @@ async fn a_scrolled_filtered_import_list_holds_what_a_jump_reads() {
     }
 }
 
+/// A text-filtered import list's live query, which keeps what its search
+/// counted while the list stands as it stood, counts again when a scan adds
+/// matching folders, when its groups fold and when they open, as a read with
+/// nothing kept does.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
+    use crate::{ImportListOrder, ImportListRequest, ImportListView, PendingFilter};
+    let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    grow_grouped_import_list(&db, tmp.path(), 0, 100).await;
+    let list = tables
+        .open_import_list(ImportListView {
+            tab: crate::TriageTab::Pending,
+            filter_text: "Album 1".to_string(),
+            pending_filter: PendingFilter::All,
+            order: ImportListOrder::PathAscending,
+        })
+        .await
+        .unwrap();
+    let request = ImportListRequest {
+        list,
+        windows: LibraryPageWindows::from([LibraryPageWindow { offset: 0, limit: 10 }]),
+    };
+    let mut query = tables.subscribe_import_list(request.clone());
+    let counts =
+        async |read: crate::ImportListProjection| (read.total_count, read.summary.narrowed);
+    let before = counts(query.next().await.unwrap().result.unwrap()).await;
+    assert_eq!(before, counts(tables.load_import_list(request.clone()).await.unwrap()).await);
+    let mut follows = async |what: &str| {
+        let fresh = counts(tables.load_import_list(request.clone()).await.unwrap()).await;
+        tokio::time::timeout(HANG_GUARD, async {
+            loop {
+                let read = counts(query.next().await.unwrap().result.unwrap()).await;
+                if read == fresh {
+                    return read;
+                }
+            }
+        })
+        .await
+        .unwrap_or_else(|_| panic!("the live counts reach {fresh:?} after {what}"))
+    };
+    tables.set_import_list_groups_folded(list, true).await.unwrap();
+    let folded = follows("folding every group").await;
+    assert!(folded.0 < before.0, "folded groups hide their members: {folded:?} of {before:?}");
+    tables.set_import_list_groups_folded(list, false).await.unwrap();
+    assert_eq!(follows("opening every group").await, before);
+    grow_grouped_import_list(&db, tmp.path(), 100, 200).await;
+    let grown = follows("a scan adds matching folders").await;
+    assert!(grown.0 > before.0, "the scan's folders count: {grown:?} of {before:?}");
+}
+
 /// Scan `start..end` more folders into the import list, each its own album
 /// folder under one of 100 artist folders, in a watched folder of their own.
 pub(crate) async fn grow_import_list(

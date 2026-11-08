@@ -966,7 +966,10 @@ counts — are kept beside the placement as rows move, so reading them costs
 the same however long the queue is. Each tab's count is not part of the
 list's value: it moves with every commit of a scan, so it is a read of its
 own, sent on a stream keyed by tab, and the tab bar's labels read it each
-display frame. A search counts the rows its index finds:
+display frame. A search counts the rows its index finds, once for each state of the placement,
+folds and filter: a live list keeps those counts beside the places it found, under
+the versions of the tables it reads (§9.2), and counts again only when one has
+moved:
 each release's shown text is kept, case folded, in a trigram index beside its
 placement (Appendix A.7), so a search of three characters or more reads the
 rows holding it, and a shorter one reads every release's text from the
