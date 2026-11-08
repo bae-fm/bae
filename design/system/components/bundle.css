@@ -810,6 +810,7 @@
 .bae-m-errdis-more svg { width: 6px; height: 10px; }
 .bae-m-errdis-open { transform: rotate(90deg); }
 .bae-errdis-panel { position: relative; margin-top: 2px; padding: 8px 30px 8px 10px; border-radius: 8px; background: color-mix(in srgb, black 28%, transparent); }
+[data-theme="light"] .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
 .bae-errdis-chain { font: 400 11px/16px var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
 .bae-errdis-panel .bae-errdis-copy { position: absolute; top: 8px; right: 8px; }
 .bae-errdis-panel .bae-a-iconbtn { position: absolute; top: 0; right: 0; width: 40px; height: 40px; }
