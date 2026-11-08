@@ -1,11 +1,11 @@
-bae is a music library app for macOS, Android, iOS, Windows and Linux. Its screens are quiet: dark surfaces in a chosen tone, one accent color, native controls, short words.
+bae is a music library app for macOS, Android, iOS, Windows and Linux. Its screens are quiet: dark surfaces in a chosen tone, one accent color, native controls, few words.
 
 Everything here is drawn at each platform's regular size, the one the apps use by default. Other sizes, such as macOS's small and large controls, are variants to add later.
 
 ## Words
 
 - Sentence case everywhere on screen: "Set up sync", "Restore code".
-- Fewest words that say it. A note is one sentence; most controls need none.
+- Minimal words, phrases and sentences, and only to say what the UI itself can't. A note is one sentence; most controls need none.
 - A full sentence ends in a period: "Open Settings on your desktop to add this device." A label or fragment has none: "No shared folders yet".
 - Buttons are verbs: "Set up", "Cancel", "New folder…". An ellipsis on a button means it opens more before acting; on a waiting line it means work is under way: "Checking the folder “Music”…".
 - Placeholders never repeat the label and never end in an ellipsis. Example values are plain and generic: `my-bucket`, `https://s3.home.lan`.
