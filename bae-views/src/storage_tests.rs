@@ -134,7 +134,9 @@ async fn the_storage_sort_reads_a_window_from_an_index() {
                 "{filter:?} {direction:?}: {steps:?}"
             );
             assert!(
-                !steps.iter().any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
+                !crate::tests::picked_window(&steps)
+                    .iter()
+                    .any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
                 "{filter:?} {direction:?}: {steps:?}"
             );
         }

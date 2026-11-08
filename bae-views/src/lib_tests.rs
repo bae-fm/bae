@@ -160,6 +160,23 @@ pub(super) async fn assert_seeks_search(
     assert_seeks_search_sorting(db, what, order, key, statement, extra, usize::MAX).await
 }
 
+/// The steps of a plan that read the list's order, where the statement picks
+/// its window in an inner statement and reads the picked rows' columns
+/// outside it: those before the outer statement starts (`SCAN picked`, or the
+/// subquery it materializes first). The outer statement orders the picked
+/// rows alone, so its sorts, and those of the column subqueries, are not the
+/// list's. Every step of a statement that picks nothing.
+pub(super) fn picked_window(steps: &[String]) -> &[String] {
+    if !steps.iter().any(|step| step == "SCAN picked") {
+        return steps;
+    }
+    let outer = steps
+        .iter()
+        .position(|step| step == "SCAN picked" || step == "MATERIALIZE sending")
+        .expect("a plan scanning the picked rows has an outer statement");
+    &steps[..outer]
+}
+
 pub(super) async fn assert_seeks_search_sorting(
     db: &Store,
     what: &str,
@@ -172,21 +189,17 @@ pub(super) async fn assert_seeks_search_sorting(
     for seek in order.seeks_beside(&key) {
         let sorts_by_artist = sorted_within != usize::MAX;
         let sorts = seek.held_equal() >= sorted_within;
-        let mut steps = plan(db, statement(&seek), seek.clone(), extra.clone()).await;
-        // A statement that picks its window in an inner statement and reads the
-        // picked rows' columns outside it (`SCAN picked`) orders those rows
-        // again: that last sort holds the window's rows alone, and the inner
-        // statement's steps are held to the index as any statement's are.
-        if steps.iter().any(|step| step == "SCAN picked") {
-            assert_eq!(steps.pop().as_deref(), Some("USE TEMP B-TREE FOR ORDER BY"));
-        }
+        let steps = plan(db, statement(&seek), seek.clone(), extra.clone()).await;
+        let picking = picked_window(&steps);
         // The grid grouped by artist sorts each artist's albums as it reaches
         // the artist (`RIGHT PART`); nothing sorts the list whole.
         assert!(
             !steps.iter().any(|step| {
                 LIST_ALIASES.iter().any(|alias| {
                     step.starts_with(&format!("SCAN {alias} ")) || step == &format!("SCAN {alias}")
-                }) || (!sorts && step.contains("TEMP B-TREE FOR ORDER BY"))
+                })
+            }) && !picking.iter().any(|step| {
+                (!sorts && step.contains("TEMP B-TREE FOR ORDER BY"))
                     || (!sorts_by_artist && step.contains("TEMP B-TREE FOR LAST"))
             }),
             "{what} {seek:?}: {steps:?}"

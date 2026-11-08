@@ -338,72 +338,103 @@ pub(crate) enum StorageRows {
     Found,
 }
 
-/// One Storage Manager row per release `rows` reads that the filter keeps
-/// and `condition` passes: the release's half and its album's, the raw
-/// aggregates the resolver maps to `ReleaseSummary` / `AlbumSummary`, whether
-/// it is pinned, where it sorts by storage, when it was added, and `extra`
-/// columns.
-fn storage_row_select(
-    filter: StorageFilter,
-    rows: StorageRows,
-    extra: &str,
-    condition: &str,
-) -> String {
+/// The Storage Manager row's columns: the release's half and its album's,
+/// the raw aggregates the resolver maps to `ReleaseSummary` / `AlbumSummary`,
+/// whether it is pinned, where it sorts by storage, when it was added, and
+/// `extra` columns.
+fn storage_row_columns(extra: &str) -> String {
     let album_columns = album_summary_columns();
-    let filter = storage_filter(filter);
-    let (listing, searched) = match rows {
-        StorageRows::Listed => ("release_listing listing", "1".to_string()),
-        StorageRows::SearchedInOrder => {
-            ("release_listing listing", album_holds_sql("listing.album_id", ":search"))
-        }
-        StorageRows::Found => (FOUND_LISTING, album_matches_sql("listing.album_id", ":search")),
-    };
     format!(
-        "SELECT \
-            r.id AS release_id, \
-            r.album_id, \
-            {release_media} AS release_media, \
-            storage.stored AS remote, \
-            storage.file_count, \
-            storage.total_size, \
-            {RELEASE_STORAGE_PINNED} AS pinned, \
-            {RELEASE_STORAGE_KEEPING} AS keeping_here, \
-            listing.storage_order, \
-            listing.created_at AS date_added, \
-            {release_cover} AS release_cover_version, \
-            {RELEASE_UPLOAD_COLUMNS}, \
-            {download_entry}, \
-            {album_columns}{extra} \
-        FROM {listing} \
-        CROSS JOIN release_storage storage ON storage.release_id = listing.release_id \
-        JOIN releases r ON r.id = listing.release_id \
-        JOIN albums a ON a.id = listing.album_id \
-        LEFT JOIN ({RELEASES_SENDING}) sending ON sending.release_id = listing.release_id \
-        WHERE {filter} AND {searched} AND ({condition})",
+        "r.id AS release_id, \
+         r.album_id, \
+         {release_media} AS release_media, \
+         storage.stored AS remote, \
+         storage.file_count, \
+         storage.total_size, \
+         {RELEASE_STORAGE_PINNED} AS pinned, \
+         {RELEASE_STORAGE_KEEPING} AS keeping_here, \
+         listing.storage_order, \
+         listing.created_at AS date_added, \
+         {release_cover} AS release_cover_version, \
+         {RELEASE_UPLOAD_COLUMNS}, \
+         {download_entry}, \
+         {album_columns}{extra}",
         release_cover = cover_version_sql("r.id"),
         release_media = release_media_sql("r.id"),
         download_entry = download_entry_sql("r.id"),
     )
 }
 
+/// What a row's columns read besides `release_listing listing`, which each
+/// statement names itself.
+fn storage_row_joins() -> String {
+    format!(
+        "CROSS JOIN release_storage storage ON storage.release_id = listing.release_id \
+         JOIN releases r ON r.id = listing.release_id \
+         JOIN albums a ON a.id = listing.album_id \
+         LEFT JOIN ({RELEASES_SENDING}) sending ON sending.release_id = listing.release_id"
+    )
+}
+
+/// The `listing` a statement reads `rows` from, and the condition that keeps
+/// the releases the search finds.
+fn storage_listing(rows: StorageRows) -> (&'static str, String) {
+    match rows {
+        StorageRows::Listed => ("release_listing listing", "1".to_string()),
+        StorageRows::SearchedInOrder => {
+            ("release_listing listing", album_holds_sql("listing.album_id", ":search"))
+        }
+        StorageRows::Found => (FOUND_LISTING, album_matches_sql("listing.album_id", ":search")),
+    }
+}
+
+/// One Storage Manager row per release `rows` reads that the filter keeps
+/// and `condition` passes, with the columns [`storage_row_columns`] names.
+fn storage_row_select(
+    filter: StorageFilter,
+    rows: StorageRows,
+    extra: &str,
+    condition: &str,
+) -> String {
+    let (listing, searched) = storage_listing(rows);
+    format!(
+        "SELECT {columns} \
+        FROM {listing} {joins} \
+        WHERE {filter} AND {searched} AND ({condition})",
+        columns = storage_row_columns(extra),
+        joins = storage_row_joins(),
+        filter = storage_filter(filter),
+    )
+}
+
 /// The rows of the Storage Manager list under `filter` that `rows` reads and
 /// `seek` passes, in its order, each with its key in `order`, from `:offset`
 /// for at most `:limit` rows.
+///
+/// An inner statement picks the window's releases by id alone, so a release
+/// `:offset` skips costs its place in the order and nothing else; the outer
+/// statement reads the columns of just the picked releases, in the same
+/// order.
 pub(crate) fn storage_window_query(
     order: &ListOrder,
     filter: StorageFilter,
     rows: StorageRows,
     seek: &Seek,
 ) -> String {
+    let (listing, searched) = storage_listing(rows);
     format!(
-        "{} ORDER BY {} LIMIT :limit OFFSET :offset",
-        storage_row_select(
-            filter,
-            rows,
-            &format!(", {}", order.key_columns()),
-            &order.condition(seek)
-        ),
-        order.ordering(seek)
+        "SELECT {columns} \
+         FROM (SELECT listing.release_id AS picked_release_id FROM {listing} \
+               WHERE {filter} AND {searched} AND ({condition}) \
+               ORDER BY {ordering} LIMIT :limit OFFSET :offset) picked \
+         CROSS JOIN release_listing listing ON listing.release_id = picked.picked_release_id \
+         {joins} \
+         ORDER BY {ordering}",
+        columns = storage_row_columns(&format!(", {}", order.key_columns())),
+        joins = storage_row_joins(),
+        filter = storage_filter(filter),
+        condition = order.condition(seek),
+        ordering = order.ordering(seek),
     )
 }
 
@@ -488,9 +519,8 @@ pub(crate) fn storage_found_titles(albums: u64) -> u64 {
 
 /// What a row read from a search's matches costs against a row the order's
 /// index passes and tests: it is reached through the search tables and
-/// joined to its listing row, and all it shows is read before the sort picks
-/// the window's rows from the rest, about twenty-five times the few lookups
-/// testing its album's text.
+/// joined to its listing row, and the sort picks the window's rows from the
+/// rest, about twenty-five times the few lookups testing its album's text.
 const FOUND_ROW_COST: u128 = 25;
 
 /// A Storage Manager search as one read of the list runs it: the pattern its
