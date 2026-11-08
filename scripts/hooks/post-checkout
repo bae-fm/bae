@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # post-checkout: fires after `git checkout` and `git worktree add`.
 # On new-worktree creation, run per-worktree setup: build output links, the
-# CLAUDE.md symlink, the git merge drivers, shared FFmpeg, xcconfigs, Android
+# CLAUDE.md and .claude/rules symlinks, the git merge drivers, shared FFmpeg, xcconfigs, Android
 # local.properties and the macOS app's resolved SwiftPM versions. It builds nothing: a side worktree
 # builds host Rust only, and app builds stay warm in the app checkout and main
 # (projects/bae.md, "Worktrees and build output"). Skip on normal branch
@@ -31,6 +31,21 @@ cd "$worktree_root"
 # Project CLAUDE.md (gitignored). Convention: agent-instructions repo
 # at ~/dev/agent-instructions/projects/bae.md.
 ln -sf "$HOME/dev/agent-instructions/projects/bae.md" CLAUDE.md
+
+# Project rules (.claude/ is gitignored): Claude Code reads path-scoped rules
+# from .claude/rules/, and agent-instructions' install.sh links them only into
+# the main checkout. Link every rule here too, and drop links to rules since
+# removed from projects/bae-rules.
+rules_src="$HOME/dev/agent-instructions/projects/bae-rules"
+mkdir -p .claude/rules
+for link in .claude/rules/*.md; do
+    if [ -L "$link" ] && [ ! -e "$link" ]; then
+        case "$(readlink "$link")" in "$rules_src"/*) rm "$link" ;; esac
+    fi
+done
+for rule in "$rules_src"/*.md; do
+    ln -sf "$rule" ".claude/rules/$(basename "$rule")"
+done
 
 # Share the machine's prebuilt FFmpeg from the main checkout. bae-ffmpeg/ holds
 # the libs downloaded from the bae-ffmpeg fork's release -- dist/ (this host's
