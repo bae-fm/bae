@@ -1,6 +1,9 @@
 import SwiftUI
 
-/// The failure and a Retry button for a full view whose load failed.
+/// A view that failed whole, drawn quietly with no box and no glyph, centred
+/// in the view it replaces: the message in secondary text, then one row with
+/// Show details and Retry. Open, the causes sit under the row in an inset
+/// panel.
 public struct LoadFailureView: View {
     private let error: DisplayError
     private let onRetry: () -> Void
@@ -10,13 +13,43 @@ public struct LoadFailureView: View {
         self.onRetry = onRetry
     }
 
+    @State
+    private var detailExpanded = false
+
     public var body: some View {
-        VStack(spacing: ThemeSpace.group) {
-            ErrorDetailDisclosure(error: error)
-                .fixedSize(horizontal: false, vertical: true)
-            Button("Retry", action: onRetry)
+        VStack(spacing: ThemeSpace.related) {
+            Text(message)
+                .themeText(.heading)
+                .fontWeight(.regular)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            HStack(spacing: ThemeSpace.group + ThemeSpace.line) {
+                if error.detail != nil {
+                    Button(detailExpanded ? "Hide details" : "Show details") {
+                        detailExpanded.toggle()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.accent)
+                }
+                Button("Retry", action: onRetry)
+            }
+            if detailExpanded, let detail = error.detail,
+                let excerpt = error.detailExcerpt
+            {
+                ErrorCausesPanel(
+                    detail: detail,
+                    excerpt: excerpt,
+                    onTint: false
+                )
+                .frame(maxWidth: 340)
+            }
         }
         .padding(ThemeSpace.page)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// The line without its closing period.
+    private var message: String {
+        error.line.hasSuffix(".") ? String(error.line.dropLast()) : error.line
     }
 }

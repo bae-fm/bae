@@ -128,11 +128,15 @@ public struct ErrorDetailDisclosure: View {
 struct ErrorCausesPanel: View {
     let detail: String
     let excerpt: String
+    /// The panel sits on a notice's tint, where text is primary text made
+    /// see-through.
+    var onTint = true
+
     @Environment(\.colorScheme)
     private var colorScheme
 
     var body: some View {
-        let text = NoticeText.secondary
+        let text: Color = onTint ? NoticeText.secondary : Color.secondary
         Text(excerpt)
             .themeText(.mono)
             .foregroundStyle(text)

@@ -298,13 +298,11 @@ extension LightboxView {
     /// The failed-load state, with a retry.
     fileprivate var loadFailedView: some View {
         VStack(spacing: ThemeSpace.related) {
-            Image(systemName: "exclamationmark.triangle")
-                .themeIcon(.hero)
+            Text("Couldn’t load the image")
+                .themeText(.heading)
+                .fontWeight(.regular)
                 .foregroundStyle(Theme.onFillSecondary)
-            Text("Couldn't load image")
-                .themeText(.body)
-                .foregroundStyle(Theme.onFillSecondary)
-            Button("Try again") { attempt += 1 }
+            Button("Retry") { attempt += 1 }
         }
     }
 }
