@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,8 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
@@ -51,16 +52,40 @@ val StatusTone.fill: Color
     @Composable
     get() = color.copy(alpha = ThemeOpacity.tint)
 
-/** The glyph a notice in this tone leads with. */
+/** The glyph a notice in this tone leads with: a filled circle with its mark. */
 private val StatusTone.icon: ImageVector?
     get() =
         when (this) {
             StatusTone.INFO -> Icons.Filled.Info
             StatusTone.SUCCESS -> Icons.Filled.CheckCircle
-            StatusTone.WARNING -> Icons.Filled.Warning
+            StatusTone.WARNING -> Icons.Filled.Error
             StatusTone.DANGER -> Icons.Filled.Error
             StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
         }
+
+/** The glyph's colour: the tone's, except danger, mixed toward secondary text so it stays red but calmer. */
+private val StatusTone.glyphColor: Color
+    @Composable
+    get() =
+        if (this == StatusTone.DANGER) {
+            lerp(MaterialTheme.colorScheme.onSurfaceVariant, color, DANGER_GLYPH_SHARE)
+        } else {
+            color
+        }
+
+private const val DANGER_GLYPH_SHARE = 0.65f
+
+/** The tone's glyph in the tone's glyph colour; nothing for a tone without one. */
+@Composable
+fun StatusGlyph(
+    tone: StatusTone,
+    modifier: Modifier = Modifier,
+    size: Dp = ThemeIcon.medium,
+) {
+    tone.icon?.let { icon ->
+        Icon(icon, contentDescription = null, tint = tone.glyphColor, modifier = modifier.size(size))
+    }
+}
 
 /** A short label on a tinted fill: a status, a count, a tag or a role. */
 @Composable
@@ -97,9 +122,7 @@ fun Notice(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        tone.icon?.let { icon ->
-            Icon(icon, contentDescription = null, tint = tone.color, modifier = Modifier.size(ThemeIcon.medium))
-        }
+        StatusGlyph(tone)
         content()
     }
 }
