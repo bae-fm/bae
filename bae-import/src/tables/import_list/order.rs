@@ -16,6 +16,7 @@
 
 use super::*;
 use crate::{FolderReleaseDecisionKey, ImportListOrder, TriageTab};
+use bae_store::list_windows::OrderKey;
 use bae_store::LibraryPageWindow;
 use rusqlite::ToSql;
 
@@ -818,6 +819,90 @@ impl<'a> Items<'a> {
             }
         }
         Ok(None)
+    }
+
+    /// Where the list's first selected item sits: found among the selected
+    /// items alone, in the list's order, and placed by counting the items
+    /// before it through the seeks a window is read beside a row by. `None`
+    /// when no selected item is shown.
+    pub(super) fn position_of_first_selected(
+        &self,
+        sql: &impl coven::SqlRead,
+    ) -> Result<Option<u64>, DbError> {
+        let selected = self
+            .query(
+                sql,
+                "SELECT 1 FROM import_list_selection WHERE list_id = :list LIMIT 1",
+                &[],
+                |row| row.get::<_, i64>(0),
+            )?
+            .into_iter()
+            .next();
+        if selected.is_none() {
+            return Ok(None);
+        }
+        let mut before = 0;
+        for &part in self.parts() {
+            let order = self.part_order(part);
+            let PartSql { with, from, .. } = self.part(part);
+            let first = self
+                .query(
+                    sql,
+                    &format!(
+                        "{with} SELECT {keys} FROM {from} AND i.item <> 'group' \
+                         AND i.key IN (SELECT chosen.key FROM import_list_selection AS chosen \
+                                       WHERE chosen.list_id = :list) \
+                         ORDER BY {ordering} LIMIT 1",
+                        keys = order.key_columns(),
+                        ordering = order.clause(),
+                    ),
+                    &[],
+                    |row| order.key_of(row),
+                )?
+                .into_iter()
+                .next();
+            if let Some(key) = first {
+                return Ok(Some(before + self.count_before(sql, part, &order, &key)?));
+            }
+            if part != *self.parts().last().expect("a tab runs in a part") {
+                before += self.count(sql, part)?;
+            }
+        }
+        Ok(None)
+    }
+
+    /// How many of `part`'s items sit before the one at `key` in the part's
+    /// order, `order`: the sum of the rows each seek before it reads.
+    fn count_before(
+        &self,
+        sql: &impl coven::SqlRead,
+        part: Part,
+        order: &ListOrder,
+        key: &OrderKey,
+    ) -> Result<u64, DbError> {
+        let mut counted = 0;
+        for seek in order.seeks_before(key) {
+            let statement = match self.run_sources() {
+                Some(sources) => {
+                    format!("SELECT count(*) FROM ({})", run(self.order, sources, &seek))
+                }
+                None => {
+                    let PartSql { with, from, .. } = self.part(part);
+                    format!(
+                        "{with} SELECT count(*) FROM {from} AND {condition}",
+                        condition = order.condition(&seek)
+                    )
+                }
+            };
+            let count = seek.bound(0, 0, |bound| {
+                self.query(sql, &statement, bound, |row| row.get::<_, i64>(0))
+            })?;
+            counted += to_u64(
+                count.into_iter().next().expect("a count answers one row"),
+                "an import list position",
+            )?;
+        }
+        Ok(counted)
     }
 
     /// Where the release at `key` sits in the list; `None` when the list

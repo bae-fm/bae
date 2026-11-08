@@ -56,3 +56,52 @@ async fn a_view_opens_at_its_first_selected_row() {
         "a view showing no selected row opens at its top"
     );
 }
+
+/// The place a view opens at counts the groups' headers and members before
+/// the first selected row, whichever way the order runs, and a selection
+/// reaching the list's end opens there.
+#[tokio::test]
+async fn a_view_opens_at_a_selected_row_among_groups() {
+    let lib = Library::new().await;
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
+    lib.run(
+        lib.scan("A/One")
+            + lib.scan("A/Two")
+            + lib.scan("B/Three")
+            + lib.scan("Loose")
+            + lib.scan("Zed"),
+    )
+    .await;
+    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathDescending)).await;
+    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("Zed")] }).await;
+    tables
+        .set_import_list_view(list, ordered(TriageTab::Pending, ImportListOrder::PathAscending))
+        .await
+        .unwrap();
+    assert_eq!(
+        lib.read(list).await.summary.opened_at,
+        6,
+        "header A, A/One, A/Two, header B, B/Three, Loose, then Zed"
+    );
+    tables
+        .set_import_list_view(list, ordered(TriageTab::Pending, ImportListOrder::PathDescending))
+        .await
+        .unwrap();
+    assert_eq!(lib.read(list).await.summary.opened_at, 0, "Zed leads");
+    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("B/Three"), lib.key("A/Two")] })
+        .await;
+    tables
+        .set_import_list_view(list, ordered(TriageTab::Pending, ImportListOrder::PathAscending))
+        .await
+        .unwrap();
+    assert_eq!(lib.read(list).await.summary.opened_at, 2, "header A, A/One, then A/Two");
+    tables
+        .set_import_list_view(list, ordered(TriageTab::Pending, ImportListOrder::PathDescending))
+        .await
+        .unwrap();
+    assert_eq!(
+        lib.read(list).await.summary.opened_at,
+        3,
+        "Zed, Loose, then B/Three leads the group B, whose header follows it"
+    );
+}

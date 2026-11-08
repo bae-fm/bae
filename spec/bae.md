@@ -943,7 +943,11 @@ its view opened at: its first selected row as it sat when the view was set,
 or its top while no selected row is shown. The write that sets the view
 works that place out and keeps it on the list, so no read of the list looks
 for the selected row; selecting rows since moves no place, and the list
-otherwise keeps the person's place as rows come and go.
+otherwise keeps the person's place as rows come and go. The write finds the
+first selected row among the selected rows alone, and counts the rows before
+it by the same index seeks a window is read beside a row by, as a count over
+index ranges and not a numbering of each row, and a view with nothing selected
+opens at its top without reading its rows.
 
 Revealing a candidate — the first one still being identified, or one the
 person asks for — shows it on the tab its placement puts it on, with the

@@ -355,12 +355,19 @@ impl ListOrder {
             .join(", ")
     }
 
+    /// The seeks that together read every row before the row at `key`, each
+    /// an index seek: counting what they read counts those rows without
+    /// numbering the list from its start.
+    pub fn seeks_before(&self, key: &OrderKey) -> Vec<Seek> {
+        self.seeks(key, Side::Before)
+    }
+
     /// The seeks reading the rows after the row at `key`, then those reading
     /// the rows before it: what a test holds to the order's index.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn seeks_beside(&self, key: &OrderKey) -> Vec<Seek> {
         let mut seeks = self.seeks(key, Side::After);
-        seeks.extend(self.seeks(key, Side::Before));
+        seeks.extend(self.seeks_before(key));
         seeks
     }
 

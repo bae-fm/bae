@@ -22,20 +22,11 @@ fn view_moved(sql: &CovenWrite<'_>, list: ImportListId) -> Result<(), DbError> {
     Ok(())
 }
 
-/// Where the list's view opens: the position of its first selected row,
-/// reading the items before it, or its top with no selected row shown. The
-/// write found the list open.
+/// Where the list's view opens: the position of its first selected row, or
+/// its top with no selected row shown. The write found the list open.
 fn opened_at(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
     let row = list_row(sql, list)?.expect("the write found the list open");
-    Ok(row
-        .items(Shown::View)
-        .position_where(
-            sql,
-            "s.item <> 'group' AND EXISTS (SELECT 1 FROM import_list_selection AS chosen \
-                                           WHERE chosen.list_id = :list AND chosen.key = s.key)",
-            &[],
-        )?
-        .unwrap_or(0))
+    Ok(row.items(Shown::View).position_of_first_selected(sql)?.unwrap_or(0))
 }
 
 impl ImportTables {
