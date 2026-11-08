@@ -64,7 +64,9 @@ struct StorageTransferControls: View {
                         )
                     ),
                 onRetry: {
-                    run { try await downloads.retryDownloads() }
+                    run {
+                        try await downloads.retryDownload(operation.releaseId)
+                    }
                 },
                 onCancel: {
                     run {
