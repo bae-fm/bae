@@ -520,8 +520,13 @@ pub(crate) fn storage_found_titles(albums: u64) -> u64 {
 /// What a row read from a search's matches costs against a row the order's
 /// index passes and tests: it is reached through the search tables and
 /// joined to its listing row, and the sort picks the window's rows from the
-/// rest, about twenty-five times the few lookups testing its album's text.
-const FOUND_ROW_COST: u128 = 25;
+/// rest. Measured at 20,000 and 100,000 releases in the orders by title and
+/// by date added, with searches finding from 100 releases to every release,
+/// the two reads cost the same when the index passes about as many rows as
+/// the matches would read, once each match is read for every row passed
+/// (`end * kept == found * found`): with 1.5 times as many passed the
+/// matches took about half the time, and with half as many the index did.
+const FOUND_ROW_COST: u128 = 1;
 
 /// A Storage Manager search as one read of the list runs it: the pattern its
 /// text matches, how many releases the filter keeps, and how many of those
