@@ -77,9 +77,9 @@
 .bae-m-row-trail { display: flex; align-items: center; gap: var(--space-related); }
 .bae-m-row-chevron { flex: none; color: var(--text-secondary); }
 
-.bae-m-btn { height: var(--size-control); padding: 0 12px; border: 0; border-radius: 999px; font: 400 13px/var(--size-control) var(--font-sans); white-space: nowrap; cursor: pointer; }
-.bae-m-btn-small { height: 18px; padding: 0 var(--space-related); font-size: 11px; line-height: 18px; }
-.bae-m-btn-large { height: 28px; padding: 0 14px; line-height: 28px; }
+.bae-m-btn { height: var(--size-control); padding: 0 12px; border: 0; border-radius: 5px; font: 400 13px/var(--size-control) var(--font-sans); white-space: nowrap; cursor: pointer; }
+.bae-m-btn-small { height: 20px; padding: 0 var(--space-related); border-radius: 4px; font-size: 11px; line-height: 20px; }
+.bae-m-btn-large { height: 28px; padding: 0 14px; border-radius: 999px; line-height: 28px; }
 .bae-m-btn-secondary { background: var(--tile); color: var(--text-primary); }
 .bae-m-btn-primary { background: var(--accent-fill); color: var(--on-accent-fill); }
 .bae-m-btn-borderless { padding: 0 var(--space-inline); background: none; color: var(--text-primary); }
