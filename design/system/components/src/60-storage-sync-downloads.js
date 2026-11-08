@@ -20,8 +20,6 @@
     photo: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15 9h.01',
     globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
     sync: 'M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4',
-    octagon: 'M8 3h8l5 5v8l-5 5H8l-5-5V8zM12 8v5M12 16h.01',
-    warning: 'M12 3l10 18H2zM12 10v5M12 18h.01',
     moveToCloud: 'M12 4v12M7 11l5 5 5-5M5 20h14',
     makeLocal: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
     export: 'M12 15V3M7 8l5-5 5 5M5 12v8h14v-8',
@@ -105,7 +103,7 @@
         h('span', { className: 'bae-muted bae-m-dlrow-ago' }, props.ago || '2m ago'),
         h('span', { className: 'bae-muted', title: 'Cancel this download' }, h(Sym, { name: 'xcircle', size: 15 }))),
       h('div', { className: 'bae-m-dlrow-badge' },
-        h(StatusChip, { tone: 'danger' }, h(Sym, { name: 'octagon', size: 10 }), makeLocal ? 'Couldn’t make local' : 'Failed'),
+        h(StatusChip, { tone: 'danger' }, h(StatusGlyph, { tone: 'danger', set: 'mac', size: 11 }), makeLocal ? 'Couldn’t make local' : 'Failed'),
         h(MacButton, { size: 'small' }, 'Retry')));
   }
   // Under the list: how many releases, the total, then one rate and Pause per queue with work.
@@ -151,13 +149,15 @@
       h('div', { className: 'bae-m-filedet-grid' }, row('Folder', props.folder), row('Kind', props.kind), row('Format', props.format), row('Size', props.size)));
   }
   // BaeKit's ErrorDetailDisclosure: the message in its tone, the fault with Copy details, then Details.
+  // Drawn in a notice of its tone, the notice's glyph leading: the line, then Details, which opens on an inset panel of the causes, one a line (chain, ending in the fault), Copy details in its corner.
+  // bare drops the notice, for a disclosure inside a notice that already holds it.
   function MacErrorDisclosure(props) {
     var tone = props.tone || 'danger';
-    return h('div', { className: 'bae-m-errdis' },
-      h('div', { className: cx('bae-m-errdis-msg', 'bae-tone-' + tone) }, props.icon === false ? null : h(Sym, { name: tone === 'warning' ? 'warning' : 'octagon', size: 13 }), h('span', null, props.message)),
-      props.fault ? h('div', { className: 'bae-m-errdis-fault' }, h('span', { className: 'bae-mono bae-muted' }, props.fault), h('span', { className: 'bae-m-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 }))) : null,
-      props.fault ? h('div', { className: 'bae-m-errdis-more' }, h(Sym, { name: props.open ? 'down' : 'right', size: 9 }), 'Details') : null,
-      props.open && props.excerpt ? h('div', { className: 'bae-mono bae-muted', style: { whiteSpace: 'pre-wrap' } }, props.excerpt) : null);
+    var body = h('div', { className: 'bae-m-errdis' },
+      h('div', { className: cx('bae-m-errdis-msg', 'bae-tone-' + tone) }, h('span', null, props.message)),
+      props.fault ? h('div', { className: 'bae-m-errdis-more' }, h(Chevron, { className: props.open ? 'bae-m-errdis-open' : null }), 'Details') : null,
+      props.fault && props.open ? h('div', { className: 'bae-m-errdis-panel' }, h('div', { className: 'bae-m-errdis-chain' }, props.chain || props.fault), h('span', { className: 'bae-m-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 }))) : null);
+    return props.bare ? body : h(Notice, { tone: tone, set: 'mac' }, body);
   }
   // A popover hanging from a title-bar button, its arrow pointing up at it.
   function MacPopover(props) {
@@ -170,7 +170,7 @@
     var out = [];
     if (props.attention) out.push(h(React.Fragment, { key: 'a' }, sec('Needs Attention', [
       h('div', { key: 'f', className: 'bae-m-actpad' }, h(MacErrorDisclosure, { tone: 'warning', message: props.attention, fault: props.fault })),
-      props.record ? h('div', { key: 'r', className: 'bae-m-actpad' }, h('div', { className: 'bae-strong' }, props.record), h(MacErrorDisclosure, { tone: 'neutral', icon: false, message: props.reason })) : null,
+      props.record ? h('div', { key: 'r', className: 'bae-m-actpad' }, h('div', { className: 'bae-strong' }, props.record), h(MacErrorDisclosure, { tone: 'neutral', message: props.reason })) : null,
       h('div', { key: 'b', className: 'bae-m-actpad' }, h(MacButton, null, 'Open Sync Settings'))].filter(Boolean))));
     if (props.syncing || props.uploads || props.downloads) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
       props.syncing ? h('div', { key: 's', className: 'bae-m-actpad' }, label('sync', 'Syncing library changes…')) : null,

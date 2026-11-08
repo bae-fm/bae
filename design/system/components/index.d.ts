@@ -166,8 +166,13 @@ export interface AndroidScanCodeProps { instruction?: string; note?: string; siz
 export declare function AndroidScanCode(props: AndroidScanCodeProps): React.ReactElement;
 
 /** A message on its tone's tint. */
-export interface NoticeProps { tone?: StatusTone; children?: React.ReactNode }
+/** A tinted box in a tone, led by the tone's glyph unless `icon` is false; `set: 'mac'` draws macOS's glyph, top-aligned. */
+export interface NoticeProps { tone?: StatusTone; icon?: boolean; set?: 'mac'; children?: React.ReactNode }
 export declare function Notice(props: NoticeProps): React.ReactElement;
+/** A tone's glyph in the tone's colour, a filled circle with its mark; `set: 'mac'` draws the macOS stand-in. Neutral, accent and activity draw nothing. */
+/** Material's disclosure row: its own card, expand_more or expand_less at the end; the AndroidRows it shows join the card. */
+export declare function AndroidDisclosure(props: { label: string; summary?: string; open?: boolean; children?: React.ReactNode }): React.ReactElement;
+export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac'; size?: number; className?: string }): React.ReactElement | null;
 
 /** A cover or picture. Boards give each title its own stand-in colors; `missing` is a plain tile. */
 export interface ArtworkProps { title?: string; seed?: string; size?: number; radius?: number; round?: boolean; missing?: boolean; shadow?: 'tile' | 'bar'; label?: string; children?: React.ReactNode }
@@ -286,7 +291,7 @@ export declare function MacTransferSummary(props: { kind?: 'upload' | 'pin'; cou
 export declare function MacTransferReadout(props: { kind?: 'upload' | 'pin'; bytes?: string; rate?: string; progress?: number }): React.ReactElement;
 export declare function MacFileRow(props: { name: string; size?: string; state?: 'rest' | 'queued' | 'sending' | 'pinning'; progress?: number; selected?: boolean }): React.ReactElement;
 export declare function MacFileDetails(props: { name: string; folder?: string; kind?: string; format?: string; size?: string }): React.ReactElement;
-export declare function MacErrorDisclosure(props: { message: string; fault?: string; tone?: 'danger' | 'warning' | 'neutral'; icon?: boolean; open?: boolean; excerpt?: string }): React.ReactElement;
+export declare function MacErrorDisclosure(props: { message: string; fault?: string; tone?: 'danger' | 'warning' | 'neutral'; bare?: boolean; open?: boolean; chain?: string }): React.ReactElement;
 export declare function MacPopover(props: { width?: number; top?: number; right?: number; children?: React.ReactNode }): React.ReactElement;
 export declare function MacSyncActivity(props: { attention?: string; fault?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string; errorFault?: string; retry?: boolean }): React.ReactElement;
 export declare function AndroidErrorDisclosure(props: { message: string; fault?: string; tone?: 'danger' | 'warning' | 'neutral' }): React.ReactElement;
@@ -296,7 +301,6 @@ export declare function AndroidDownloadsBar(props: { failed?: boolean; paused?: 
 export declare function AndroidDownloadRow(props: { title?: string; detail?: string; state?: 'queued' | 'active' | 'failed'; progress?: number; bytes?: string; error?: string }): React.ReactElement;
 export declare function AndroidSnackbar(props: { message: string; action?: string; close?: boolean }): React.ReactElement;
 export declare function AndroidErrorBanner(props: { message: string; fault?: string }): React.ReactElement;
-export declare function MacWindowNotice(props: { title: string; message?: string; fault?: string; advice?: string; fill?: boolean }): React.ReactElement;
 export declare function MacLoadFailure(props: { message: string; fault?: string }): React.ReactElement;
 export declare function MacImportSidebar(props: { tab?: 'Found' | 'Imported' | 'Skipped'; found?: string; imported?: string; skipped?: string; filter?: string; narrowed?: string; identifying?: number; importing?: boolean; scanning?: boolean; filtered?: boolean; empty?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacImportGroupHeader(props: { name: string; closed?: boolean }): React.ReactElement;

@@ -17,6 +17,11 @@
     return h('div', { className: 'bae-a-card' }, divided(list));
   }
 
+  // Material's disclosure: a row in its own card, expand_more at its end when closed and expand_less when open; the rows it shows join the card on the same text edge.
+  function AndroidDisclosure(props) {
+    var head = h(AndroidRow, { key: 'h', title: props.label, subtitle: props.summary }, h('span', { className: 'bae-a-disclosure-mark' }, h(MSymbol, { name: props.open ? 'expand_less' : 'expand_more', size: 24, fill: 'currentColor' })));
+    return h(AndroidCard, null, [head].concat(props.open ? kids(props.children) : []));
+  }
   function AndroidRow(props) {
     var trail = kids(props.children);
     var lines = h('div', { className: 'bae-a-row-lines' },

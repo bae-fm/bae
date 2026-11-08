@@ -37,10 +37,19 @@ The text styles are macOS points. iOS follows Dynamic Type, and the Android comp
 - On macOS, settings are `MacSection` headings over `MacBox`es of `MacRow`s inside a `MacSettingsWindow`. A row that opens something ends in a chevron.
 - On Android, a screen is an `AndroidScreen` of `AndroidSection` labels over `AndroidCard`s of `AndroidRow`s; changing a value opens an `AndroidDialog`.
 - An empty list is one sentence in the box: "No shared folders yet". No glyph above it.
+- Text in a block shares one left edge. Markers (a status glyph, a disclosure chevron, a bullet) hang in the margin to its left and never push the text in; a disclosure's chevron hangs `space-hang`.
+- A marker hangs only into a margin its own block owns, such as a notice's glyph column. Where the text edge is a container's edge, there is no margin to hang into: the marker goes inside, and a disclosure becomes its own row with the chevron inside it.
+- Three ways to fold things away, each for its own job:
+  - **A disclosure row** folds part of one group: Advanced settings, a short list most people don't need. Every platform has one, in its own density. macOS: `MacDisclosure`, its own box, the chevron leading inside the row, pointing right and turning down when open, the rows it shows indented to the label. Android: `AndroidDisclosure`, a row in its own card, `expand_more` at the end when closed and `expand_less` when open, the rows it shows joining the card on the same edge.
+  - **A collapsible section** folds a whole section of a long screen: its heading opens and closes it. Android only, the section label with `expand_more` and `expand_less` at its end. macOS has no collapsible section for content; there it is a disclosure row. No screen needs one yet.
+  - **A sidebar heading** folds a group of destinations in a macOS sidebar, its chevron showing only under the pointer. It is navigation, not content. bae has no sectioned sidebar yet.
+- A disclosure's chevron on macOS points right closed and down open, wherever it sits: hanging in a notice's glyph column (`MacErrorDisclosure`) or leading inside its row (`MacDisclosure`).
 
 ## Iconography
 
 Icons appear only when they are the control (copy, a chevron, a disclosure mark) or carry meaning the words beside them don't (a status glyph). Android uses Material Symbols (Rounded, weight 400), loaded from Google Fonts. Apple platforms use SF Symbols; the boards draw stand-ins, since SF Symbols can't be loaded on a web page.
+
+A status glyph is a filled circle with its mark (`StatusGlyph`): info `i`, success a check, warning and danger `!`, told apart by color and by the words beside them. No octagons, no triangles: nothing that reads as a road sign.
 
 ## Logo
 

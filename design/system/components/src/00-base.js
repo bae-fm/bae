@@ -59,14 +59,14 @@
   // Android's icons are Material Symbols (Rounded, weight 400), drawn from Google's font as SVG text so a parent's `fill` colours them.
   var SYMBOL = { back: 'arrow_back', edit: 'edit', chevron: 'chevron_right', expand: 'expand_more', more: 'more_vert', search: 'search', add: 'add', refresh: 'refresh', copy: 'content_copy',
     play: 'play_arrow', pause: 'pause', previous: 'skip_previous', next: 'skip_next', cast: 'cast', queue: 'queue_music', repeat: 'repeat', nowplaying: 'volume_up', down: 'keyboard_arrow_down',
-    warning: 'warning', download: 'download', downloaded: 'download_done', close: 'close', retry: 'refresh', remove: 'delete', drag: 'drag_handle', shuffle: 'shuffle', check: 'check', speakerbox: 'speaker', tv: 'tv' };
-  var SYMBOL_FILLED = { play: 1, pause: 1, previous: 1, next: 1 };
+    warning: 'error', download: 'download', downloaded: 'download_done', close: 'close', retry: 'refresh', remove: 'delete', drag: 'drag_handle', shuffle: 'shuffle', check: 'check', speakerbox: 'speaker', tv: 'tv' };
+  var SYMBOL_FILLED = { play: 1, pause: 1, previous: 1, next: 1, warning: 1, error: 1, info: 1, check_circle: 1 };
   // SVG text alone doesn't make WebKit fetch a web font, so ask for the icon font once up front.
   if (typeof document !== 'undefined' && document.fonts && document.fonts.load) document.fonts.load("24px 'Material Symbols Rounded'", 'more_vert');
   function MSymbol(props) {
     var s = Number(props.size || 24);
     return h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true, className: props.className, fill: props.fill },
-      h('text', { x: 0, y: 12, dominantBaseline: 'central', className: 'bae-msym', style: SYMBOL_FILLED[props.name] ? { fontVariationSettings: "'FILL' 1" } : null }, SYMBOL[props.name] || props.name));
+      h('text', { x: 0, y: 12, dominantBaseline: 'central', className: 'bae-msym', style: props.filled || SYMBOL_FILLED[props.name] ? { fontVariationSettings: "'FILL' 1" } : null }, SYMBOL[props.name] || props.name));
   }
   function Material(props) {
     return h(MSymbol, { name: props.name, size: props.size || 24, className: props.className });

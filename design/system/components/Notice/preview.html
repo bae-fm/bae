@@ -1,4 +1,4 @@
-<!-- @dsCard group="Both platforms" height=170 -->
+<!-- @dsCard group="Both platforms" height=560 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>Notice</title></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Warning', h(B.Notice, { tone: 'warning' }, 'This Mac is offline. Changes sync when it reconnects.')), W('Danger', h(B.Notice, { tone: 'danger' }, 'This Mac is offline. Changes sync when it reconnects.'))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Info, macOS', h(B.Notice, { tone: 'info', set: 'mac' }, 'A newer version of this release is on Discogs.')), W('Success, macOS', h(B.Notice, { tone: 'success', set: 'mac' }, 'Storage connected.')), W('Warning, macOS', h(B.Notice, { tone: 'warning', set: 'mac' }, 'Unsent changes will be lost')), W('Danger, macOS', h(B.Notice, { tone: 'danger', set: 'mac' }, 'Couldn’t reach storage. Check your connection and try again.')), W('Neutral, macOS', h(B.Notice, { tone: 'neutral', set: 'mac' }, 'This library has no albums yet.')), W('Info, Android', h(B.Notice, { tone: 'info' }, 'A newer version of this release is on Discogs.')), W('Success, Android', h(B.Notice, { tone: 'success' }, 'Storage connected.')), W('Warning, Android', h(B.Notice, { tone: 'warning' }, 'Unsent changes will be lost')), W('Danger, Android', h(B.Notice, { tone: 'danger' }, 'Couldn’t reach storage. Check your connection and try again.')), W('Neutral, Android', h(B.Notice, { tone: 'neutral' }, 'This library has no albums yet.')), W('Warning, no icon', h(B.Notice, { tone: 'warning', icon: false }, 'Unsent changes will be lost'))));
 </script>
 </body>
 </html>

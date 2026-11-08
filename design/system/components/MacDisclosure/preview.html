@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Closed', h(B.MacDisclosure, { label: 'Advanced' })), W('Open', h(B.MacDisclosure, { label: 'Advanced', open: true }, slot()))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Closed', h(B.MacDisclosure, { label: 'Advanced' })), W('Open', h(B.MacDisclosure, { label: 'Advanced', open: true }, h(B.MacRow, { label: 'Bit depth' }, h('span', { className: 'bae-m-popupbutton' }, '16-bit')), h(B.MacRow, { label: 'Keep the pregap' }, h(B.MacSwitch, { on: false, label: 'Keep the pregap' }))))));
 </script>
 </body>
 </html>

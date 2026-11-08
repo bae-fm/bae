@@ -1,0 +1,15 @@
+<!-- @dsCard group="Android" height=360 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidDisclosure</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell bae-a-screen', style: { padding: '8px 0' } }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Closed', h(B.AndroidDisclosure, { label: 'Removed devices (2)' })),
+    W('Open', h(B.AndroidDisclosure, { label: 'Removed devices (2)', open: true }, h(B.AndroidRow, { title: 'Odile’s phone', subtitle: 'Removed' }), h(B.AndroidRow, { title: 'Kitchen tablet', subtitle: 'Replaced' })))));
+</script>
+</body>
+</html>

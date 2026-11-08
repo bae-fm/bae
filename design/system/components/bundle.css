@@ -20,7 +20,17 @@
 .bae-tone-danger { --bae-tone: var(--danger); --bae-tone-tint: var(--danger-tint); }
 .bae-tone-activity { --bae-tone: var(--activity); --bae-tone-tint: var(--activity-tint); }
 .bae-chip { display: inline-flex; align-items: center; gap: var(--space-inline); padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); font: 600 10.5px var(--font-sans); white-space: nowrap; color: var(--bae-tone); background: var(--bae-tone-tint); }
-.bae-notice { padding: var(--space-group); border-radius: var(--radius-control); font: 400 13px var(--font-sans); line-height: 17px; color: var(--text-primary); background: var(--bae-tone-tint); }
+.bae-notice { padding: var(--space-group); border-radius: var(--radius-control); color: var(--text-primary); background: var(--bae-tone-tint); }
+.bae-notice-with-icon { display: flex; align-items: center; gap: var(--space-related); }
+.bae-notice-mac { align-items: flex-start; }
+.bae-notice-mac .bae-notice-icon { margin-top: 1px; }
+.bae-notice-icon { flex: none; }
+.bae-status-glyph { color: var(--bae-tone); flex: none; }
+.bae-notice-body { flex: 1; min-width: 0; }
+/* On a tint, greys and grey fills are the primary text made see-through, so they take the tint's colour. */
+.bae-notice { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
+.bae-notice .bae-m-btn-secondary { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
+.bae-notice .bae-m-errdis-msg:not(.bae-tone-neutral) { color: var(--text-primary); }
 
 /* ---- macOS ---- */
 
@@ -113,10 +123,13 @@
 .bae-m-segment-on { background: var(--hover); box-shadow: inset 0 0 0 100px var(--hairline-strong); }
 .bae-m-popupbutton:disabled { opacity: var(--opacity-off); }
 
-.bae-m-disclosure { display: flex; flex-direction: column; gap: 10px; }
-.bae-m-disclosure-toggle { align-self: flex-start; height: var(--size-control); padding: 0; border: 0; background: none; color: var(--text-primary); font: 400 13px var(--font-sans); cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-compact); }
-.bae-m-disclosure-mark { color: var(--text-secondary); transition: transform 0.15s; }
+/* macOS's disclosure: its own box; the chevron leads inside the row and turns down when open; the rows it shows line up with the label. */
+.bae-m-disclosure-toggle { width: 100%; border: 0; background: none; text-align: left; gap: var(--space-compact); cursor: pointer; }
+.bae-m-disclosure-mark { width: 6px; height: 10px; flex: none; color: var(--text-secondary); transition: transform 0.15s; }
 .bae-m-disclosure-mark-open { transform: rotate(90deg); }
+.bae-m-disclosure > .bae-m-row:not(.bae-m-disclosure-toggle) { padding-left: calc(var(--space-group) + var(--space-hang)); }
+.bae-m-disclosure > .bae-divider:not(:nth-child(2)) { margin-left: calc(var(--space-group) + var(--space-hang)); }
+.bae-a-disclosure-mark { display: inline-flex; color: var(--text-secondary); }
 
 .bae-m-scrim { position: absolute; inset: 0; background: none; display: flex; justify-content: center; align-items: flex-start; z-index: 10; }
 .bae-m-sheet { margin-top: 36px; display: flex; flex-direction: column; background: var(--elevated); border-radius: 20px; box-shadow: 0 10px 30px var(--shadow); color: var(--text-primary); font: 400 13px var(--font-sans); }
@@ -605,7 +618,7 @@
 .bae-m-errdis-msg.bae-tone-neutral { color: var(--text-secondary); }
 .bae-m-errdis-fault { display: flex; align-items: flex-start; gap: 6px; }
 .bae-m-errdis-copy { color: var(--text-secondary); }
-.bae-m-errdis-more { display: inline-flex; align-items: center; gap: 4px; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
+.bae-m-errdis-more { margin-top: 4px; margin-left: calc(-1 * var(--space-hang)); display: inline-flex; align-items: center; gap: var(--space-compact); font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 
 /* Sync activity */
 .bae-m-popover { position: absolute; z-index: 9; background: var(--elevated); border-radius: 10px; box-shadow: 0 10px 30px var(--shadow), 0 0 0 1px var(--hairline); padding: 4px 14px 14px; max-height: 480px; overflow: hidden; }
@@ -651,10 +664,13 @@
 .bae-a-errbanner { display: flex; align-items: flex-start; gap: 8px; margin: 8px 16px; padding: 12px; border-radius: var(--radius-control); background: var(--danger-tint); }
 .bae-a-errbanner-icon { color: var(--danger); fill: currentColor; margin-top: 2px; }
 .bae-a-np-error { color: var(--danger); font: 400 14px/20px var(--font-android); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.bae-m-winnotice { display: flex; flex-direction: column; gap: 6px; padding: 12px; font: 400 13px var(--font-sans); max-width: 520px; }
-.bae-m-winnotice-fill { border-radius: 7px; background: var(--danger-tint); }
 .bae-m-winnotice-stack { position: absolute; left: 16px; bottom: 96px; z-index: 6; display: flex; flex-direction: column; gap: 8px; }
-.bae-m-loadfail { height: 100%; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 32px; }
+.bae-m-loadfail { height: 100%; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; }
+.bae-m-loadfail-box { width: 400px; max-width: 100%; }
+/* Retry in the top-right corner, level with the line; the open Details run the full width under it. */
+.bae-m-loadfail-body { position: relative; }
+.bae-m-loadfail-body .bae-m-errdis-msg { padding-right: 76px; }
+.bae-m-loadfail-body > .bae-m-btn { position: absolute; top: -4px; right: 0; }
 
 /* ==== part: import ==== */.bae-m-tertiary { color: var(--text-tertiary); }
 .bae-warning { color: var(--warning); }
@@ -778,3 +794,9 @@
 .bae-logo-pool { position: absolute; left: 50%; top: 90%; width: 125%; height: 34%; z-index: -1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(ellipse, rgba(247, 168, 196, 0.16), rgba(155, 108, 246, 0.06) 50%, transparent 72%); }
 .bae-word-lift { color: var(--sheep-cream); filter: drop-shadow(1px 1px 0 rgba(255, 255, 255, 0.35)); }
 @media (prefers-reduced-motion: reduce) { .bae-sheep-bob, .bae-word-bob { animation: none; } }
+
+.bae-m-errdis-more svg { width: 6px; height: 10px; }
+.bae-m-errdis-open { transform: rotate(90deg); }
+.bae-m-errdis-panel { position: relative; margin-top: 2px; padding: 8px 30px 8px 10px; border-radius: 8px; background: color-mix(in srgb, black 28%, transparent); }
+.bae-m-errdis-chain { font: 400 11px/16px var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bae-m-errdis-panel .bae-m-errdis-copy { position: absolute; top: 8px; right: 8px; }

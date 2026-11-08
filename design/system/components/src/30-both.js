@@ -42,6 +42,31 @@
     return h('span', { className: cx('bae-chip', 'bae-tone-' + (props.tone || 'neutral')) }, props.children);
   }
 
+  // The glyph each tone leads with, a filled circle with its mark: BaeKit's `StatusTone.symbol` (SF Symbols) on macOS, Status.kt's `StatusTone.icon` on Android.
+  // macOS draws stand-ins for info.circle.fill, checkmark.circle.fill and exclamationmark.circle.fill (warning and danger alike, told apart by colour).
+  var STATUS_CIRCLE = 'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z';
+  var STATUS_BANG = 'M10.9 6.5h2.2l-.3 8h-1.6zM12 15.8a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6z';
+  var STATUS_SF = {
+    info: STATUS_CIRCLE + 'M10.9 10h2.2v7.5h-2.2zM12 5.8a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6z',
+    success: STATUS_CIRCLE + 'M10.4 16.6 6.4 12.6l1.5-1.5 2.5 2.5 5.7-5.7 1.5 1.5z',
+    warning: STATUS_CIRCLE + STATUS_BANG,
+    danger: STATUS_CIRCLE + STATUS_BANG
+  };
+  var STATUS_MATERIAL = { info: 'info', success: 'check_circle', warning: 'error', danger: 'error' };
+  // A tone's glyph in the tone's colour; set="mac" for macOS. Neutral, accent and activity have none.
+  function StatusGlyph(props) {
+    var tone = props.tone, size = Number(props.size || 15);
+    if (!STATUS_MATERIAL[tone]) return null;
+    var cls = cx('bae-status-glyph', 'bae-tone-' + tone, props.className);
+    return props.set === 'mac'
+      ? h('svg', { className: cls, width: size, height: size, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'currentColor' }, h('path', { d: STATUS_SF[tone], fillRule: 'evenodd' }))
+      : h(MSymbol, { name: STATUS_MATERIAL[tone], size: size, filled: true, className: cls, fill: 'currentColor' });
+  }
+  // A tinted box in its tone. icon (on unless false) leads with the tone's glyph; neutral has none. set="mac" draws macOS's glyph, top-aligned as the Mac's HStacks do.
   function Notice(props) {
-    return h('div', { className: cx('bae-notice', 'bae-tone-' + (props.tone || 'neutral')) }, props.children);
+    var tone = props.tone || 'neutral';
+    var mac = props.set === 'mac';
+    var glyph = null;
+    if (props.icon !== false) glyph = h(StatusGlyph, { tone: tone, set: props.set, size: mac ? 15 : 20, className: 'bae-notice-icon' });
+    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, glyph && 'bae-notice-with-icon', mac && 'bae-notice-mac') }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, props.children) : props.children);
   }

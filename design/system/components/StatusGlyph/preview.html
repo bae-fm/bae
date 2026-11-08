@@ -1,0 +1,16 @@
+<!-- @dsCard group="Both platforms" height=140 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>StatusGlyph</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell', style: { display: 'flex', gap: 16, alignItems: 'center' } }, c)); }
+  var tones = ['info', 'success', 'warning', 'danger'];
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    N('macOS', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'mac', size: 20 }); })),
+    N('Android', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, size: 24 }); }))));
+</script>
+</body>
+</html>

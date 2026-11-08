@@ -1,5 +1,12 @@
 # MacErrorDisclosure
 
-BaeKit's error disclosure: the tone's glyph and the line, the fault in mono with Copy details, then Details (open shows the excerpt). `tone` neutral for a reason; `icon` false hides the glyph.
+BaeKit's error disclosure: the line, then Details, which opens on an inset panel of the causes, one a line and ending in the fault, with Copy details in its corner. It is drawn in a `Notice` of its tone, the notice's glyph leading, so an open Details stays inside the box. On the tint the line is primary text and the greys are primary text made see-through. Details starts in line with the message; its chevron hangs in the margin to the left, so the words share one edge.
 
-**In the code:** macOS: BaeKit's `ErrorDetailDisclosure` (`BaeKit/Sources/BaeKit/Views/ErrorDetailDisclosure.swift`).
+| Prop | |
+| --- | --- |
+| `tone` | `danger` (the default), `warning`, or `neutral` for a reason, which has no glyph. |
+| `fault` | The deepest cause; with it there is a Details. |
+| `open`, `chain` | Details open; `chain` is the causes, one a line, ending in the fault (without it, the fault alone). |
+| `bare` | No notice: for a disclosure inside a notice that already holds it, under a title (the launch problem, the welcome screen's failures). |
+
+**In the code:** macOS: BaeKit's `ErrorDetailDisclosure` (`BaeKit/Sources/BaeKit/Views/ErrorDetailDisclosure.swift`). The app draws it bare in most places and inside `.notice(_:)` in some; the canvas draws the notice everywhere.

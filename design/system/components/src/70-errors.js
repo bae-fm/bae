@@ -7,11 +7,8 @@
   function AndroidErrorBanner(props) {
     return h('div', { className: 'bae-a-errbanner' }, h(Glyph, { name: 'warning', size: 20, className: 'bae-a-errbanner-icon' }), h('div', { style: { flex: 1 } }, h(AndroidErrorDisclosure, { tone: 'neutral', message: props.message, fault: props.fault })), h(AndroidButton, { kind: 'text' }, 'Retry'));
   }
-  // macOS's notice at the bottom of the main window: the step's title, the disclosure, the advice. fill is the launch-problem one.
-  function MacWindowNotice(props) {
-    return h('div', { className: cx('bae-m-winnotice', props.fill && 'bae-m-winnotice-fill') }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h(MacErrorDisclosure, { message: props.message, fault: props.fault, icon: props.fill ? false : undefined }), props.advice ? h('div', { className: 'bae-muted' }, props.advice) : null);
-  }
-  // BaeKit's LoadFailureView: the disclosure and Retry, centred in the view it replaces.
+  // BaeKit's LoadFailureView: a danger notice holding the disclosure, Retry at its right, centred in the view it replaces.
   function MacLoadFailure(props) {
-    return h('div', { className: 'bae-m-loadfail' }, h(MacErrorDisclosure, { message: props.message, fault: props.fault }), h(MacButton, null, 'Retry'));
+    return h('div', { className: 'bae-m-loadfail' }, h('div', { className: 'bae-m-loadfail-box' }, h(Notice, { tone: 'danger', set: 'mac' },
+      h('div', { className: 'bae-m-loadfail-body' }, h(MacErrorDisclosure, { bare: true, message: props.message, fault: props.fault }), h(MacButton, null, 'Retry')))));
   }

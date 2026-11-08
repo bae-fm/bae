@@ -45,7 +45,7 @@
     var list = kids(props.children);
     var out = divided(list);
     if (props.empty && list.length === 0) out.push(h('div', { key: 'e', className: 'bae-m-box-empty' }, props.empty));
-    return h('div', { className: cx('bae-m-box', props.elevated && 'bae-m-box-elevated') }, out);
+    return h('div', { className: cx('bae-m-box', props.elevated && 'bae-m-box-elevated', props.className) }, out);
   }
 
   function MacRow(props) {
@@ -129,14 +129,14 @@
       }));
   }
 
+  // DisclosureGroup in a grouped form: its own box, the chevron leading inside the label row and turning down when open; the rows it shows are indented to the label.
   function MacDisclosure(props) {
     var s = React.useState(!!props.open);
     var open = s[0];
-    return h('div', { className: 'bae-m-disclosure' },
-      h('button', { type: 'button', className: 'bae-m-disclosure-toggle', 'aria-expanded': open, onClick: function () { s[1](!open); } },
-        h(Chevron, { className: cx('bae-m-disclosure-mark', open && 'bae-m-disclosure-mark-open') }),
-        props.label || 'Advanced'),
-      open ? props.children : null);
+    var toggle = h('button', { type: 'button', className: 'bae-m-row bae-m-disclosure-toggle', 'aria-expanded': open, onClick: function () { s[1](!open); } },
+      h(Chevron, { className: cx('bae-m-disclosure-mark', open && 'bae-m-disclosure-mark-open') }),
+      props.label || 'Advanced');
+    return h(MacBox, { className: 'bae-m-disclosure' }, toggle, open ? props.children : null);
   }
 
   function MacSheet(props) {
