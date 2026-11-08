@@ -3,6 +3,7 @@
 //! and a window read from the last read's rows only while none has moved.
 
 use super::*;
+use crate::selection::SelectionChange;
 use crate::tables::import_list::tests::*;
 use crate::tables::tests::*;
 use bae_records::test_fixtures::live_query::{live_db, RELEASE_ID};
@@ -377,6 +378,42 @@ pub(crate) async fn grow_import_list(
     start: u64,
     end: u64,
 ) -> Duration {
+    scan_folders(db, tmp, start, end, |i| {
+        format!("Artist {:03}/Album {:06}", (i * 7) % 100, (i * 16807) % 999_983)
+    })
+    .await
+}
+
+/// Scan `start..end` more folders as `Group {g:05}/Album {i}`, five albums to
+/// a group, so every five albums have a header, all of them open.
+async fn grow_grouped_import_list(
+    db: &Store,
+    tmp: &std::path::Path,
+    start: u64,
+    end: u64,
+) -> Duration {
+    scan_folders(db, tmp, start, end, |i| format!("Group {:05}/Album {i}", i / 5)).await
+}
+
+/// Scan `start..end` more folders as `Album {i}`, none below another folder,
+/// so the list holds no group.
+async fn grow_flat_import_list(
+    db: &Store,
+    tmp: &std::path::Path,
+    start: u64,
+    end: u64,
+) -> Duration {
+    scan_folders(db, tmp, start, end, |i| format!("Album {i}")).await
+}
+
+/// Scan the folders `name(start)..name(end)` into a watched folder of their own.
+async fn scan_folders(
+    db: &Store,
+    tmp: &std::path::Path,
+    start: u64,
+    end: u64,
+    name: impl Fn(u64) -> String,
+) -> Duration {
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = tmp.join(format!("watched-{start}"));
     std::fs::create_dir_all(&root).unwrap();
@@ -388,8 +425,7 @@ pub(crate) async fn grow_import_list(
         .await
         .unwrap();
     for i in start..end {
-        let name = format!("Artist {:03}/Album {:06}", (i * 7) % 100, (i * 16807) % 999_983);
-        let candidate = candidate(std::path::Path::new(&root), &name);
+        let candidate = candidate(std::path::Path::new(&root), &name(i));
         tables
             .save_folder_scan_item(
                 std::path::Path::new(&root),
@@ -414,14 +450,27 @@ pub(crate) async fn grow_import_list(
 /// and one far from it, so no read knows a row beside its window; a scroll
 /// moves it between the offset and the window after it.
 async fn measure_import_list(db: &Store, n: u64) {
+    measure_view(db, n, "import_list", "", String::new(), crate::PendingFilter::All).await;
+}
+
+/// The same reads of a list holding `n` rows under one view, reported under
+/// the list name `name`, its orders named with `variant` after them.
+async fn measure_view(
+    db: &Store,
+    n: u64,
+    name: &str,
+    variant: &str,
+    filter_text: String,
+    pending_filter: crate::PendingFilter,
+) {
     let tables = crate::tables::ImportTables::new(db.clone());
-    use crate::{ImportListOrder, ImportListRequest, ImportListView, PendingFilter};
+    use crate::{ImportListOrder, ImportListRequest, ImportListView};
     for order in [ImportListOrder::PathAscending, ImportListOrder::NewestFirst] {
         let list = tables
             .open_import_list(ImportListView {
                 tab: crate::TriageTab::Pending,
-                filter_text: String::new(),
-                pending_filter: PendingFilter::All,
+                filter_text: filter_text.clone(),
+                pending_filter,
                 order,
             })
             .await
@@ -454,8 +503,8 @@ async fn measure_import_list(db: &Store, n: u64) {
                 }
                 runs.sort();
                 report(
-                    "import_list",
-                    &format!("{order:?}"),
+                    name,
+                    &format!("{order:?}{variant}"),
                     reach,
                     at,
                     offset,
@@ -487,5 +536,168 @@ async fn import_list_window_cost() {
         eprintln!("WINDOW_COST scanned n={n} in {:.1} s", took.as_secs_f64());
         held = n;
         measure_import_list(&db, n).await;
+        measure_import_list_narrowed(&db).await;
+        measure_import_list_first_selected(&db).await;
+    }
+    measure_import_list_headers(tmp.path()).await;
+}
+
+/// How many rows a list holding `view` shows, headers included.
+async fn rows_shown(db: &Store, view: crate::ImportListView) -> u64 {
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let list = tables.open_import_list(view).await.unwrap();
+    let request = crate::ImportListRequest {
+        list,
+        windows: LibraryPageWindows::from([LibraryPageWindow { offset: 0, limit: 1 }]),
+    };
+    let total = tables.load_import_list(request).await.unwrap().total_count;
+    tables.close_import_list(list).await.unwrap();
+    total
+}
+
+fn found_view(
+    filter_text: &str,
+    pending_filter: crate::PendingFilter,
+    order: crate::ImportListOrder,
+) -> crate::ImportListView {
+    crate::ImportListView {
+        tab: crate::TriageTab::Pending,
+        filter_text: filter_text.to_string(),
+        pending_filter,
+        order,
+    }
+}
+
+/// [`measure_import_list`]'s reads with the list narrowed: by a filter text
+/// that matches the albums numbered 1xxxxx, about one in ten, and by the
+/// pending filter NotLookedUp. Each reports under `import_list_narrowed`,
+/// the narrowing named after the order, and `n` the rows it leaves.
+async fn measure_import_list_narrowed(db: &Store) {
+    use crate::{ImportListOrder::PathAscending, PendingFilter};
+    let text = "Album 1";
+    for (variant, filter_text, pending_filter) in
+        [("+text", text, PendingFilter::All), ("+NotLookedUp", "", PendingFilter::NotLookedUp)]
+    {
+        let left = rows_shown(db, found_view(filter_text, pending_filter, PathAscending)).await;
+        let all = rows_shown(db, found_view("", PendingFilter::All, PathAscending)).await;
+        eprintln!(
+            "WINDOW_COST narrowing variant={variant} filter_text={filter_text:?} left={left} of={all}"
+        );
+        measure_view(
+            db,
+            left,
+            "import_list_narrowed",
+            variant,
+            filter_text.to_string(),
+            pending_filter,
+        )
+        .await;
+    }
+}
+
+/// The write that opens a view at its first selected row, with one row
+/// selected at the middle of the list and one at its end: the median of
+/// [`RUNS`] writes to each of two orders, reported under
+/// `import_list_first_selected`. The middle row is the first selected in
+/// ascending order and the end row in descending order, so `at` names that
+/// row and `offset` the place the write opened the view at.
+async fn measure_import_list_first_selected(db: &Store) {
+    use crate::{ImportListOrder::PathAscending, ImportListOrder::PathDescending, PendingFilter};
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let list =
+        tables.open_import_list(found_view("", PendingFilter::All, PathAscending)).await.unwrap();
+    let total = rows_shown(db, found_view("", PendingFilter::All, PathAscending)).await;
+    let window = |offset, limit| crate::ImportListRequest {
+        list,
+        windows: LibraryPageWindows::from([LibraryPageWindow { offset, limit }]),
+    };
+    let candidates = async |offset: u64| -> Vec<crate::CandidateKey> {
+        import_items(db, window(offset, 10)).await[0]
+            .iter()
+            .filter_map(|item| match item {
+                crate::ImportListItem::Candidate { row, .. } => Some(row.candidate_key.clone()),
+                _ => None,
+            })
+            .collect()
+    };
+    let middle = candidates(total / 2).await.remove(0);
+    let end = candidates(total - 10).await.pop().unwrap();
+    tables
+        .change_import_list_selection(list, SelectionChange::Replace { keys: vec![middle, end] })
+        .await
+        .unwrap();
+    let mut runs = [Vec::with_capacity(RUNS), Vec::with_capacity(RUNS)];
+    let mut opened = [0, 0];
+    for run in 0..2 * RUNS + 2 {
+        let which = (run % 2 == 1) as usize;
+        let order = [PathDescending, PathAscending][which];
+        let started = Instant::now();
+        tables.set_import_list_view(list, found_view("", PendingFilter::All, order)).await.unwrap();
+        let took = started.elapsed();
+        if run >= 2 {
+            runs[which].push(took);
+        }
+        opened[which] = tables.load_import_list(window(0, 1)).await.unwrap().summary.opened_at;
+    }
+    for (which, order, at) in [(1, PathAscending, "middle"), (0, PathDescending, "end")] {
+        runs[which].sort();
+        report(
+            "import_list_first_selected",
+            &format!("{order:?}"),
+            "open",
+            at,
+            opened[which],
+            total,
+            (runs[which][RUNS / 2], 1),
+        );
+    }
+    tables.close_import_list(list).await.unwrap();
+}
+
+/// The window reads of a list of groups of five albums, every group open,
+/// at three header counts, reported under `import_list_headers`, and the
+/// same reads of lists with no group holding as many rows, named
+/// `+flat` after the order.
+async fn measure_import_list_headers(tmp: &std::path::Path) {
+    let mut held = 0;
+    let (grouped, _grouped_dir) = empty_db(crate::TEST_SCHEMA).await;
+    for headers in [100, 1_000, 5_000] {
+        let albums = headers * 5;
+        grow_grouped_import_list(&grouped, tmp, held, albums).await;
+        held = albums;
+        let rows = rows_shown(
+            &grouped,
+            found_view("", crate::PendingFilter::All, crate::ImportListOrder::PathAscending),
+        )
+        .await;
+        eprintln!("WINDOW_COST headers headers={headers} albums={albums} rows_shown={rows}");
+        measure_view(
+            &grouped,
+            rows,
+            "import_list_headers",
+            "",
+            String::new(),
+            crate::PendingFilter::All,
+        )
+        .await;
+        let (flat, flat_dir) = empty_db(crate::TEST_SCHEMA).await;
+        grow_flat_import_list(&flat, flat_dir.path(), 0, rows).await;
+        eprintln!(
+            "WINDOW_COST flat rows_shown={}",
+            rows_shown(
+                &flat,
+                found_view("", crate::PendingFilter::All, crate::ImportListOrder::PathAscending)
+            )
+            .await
+        );
+        measure_view(
+            &flat,
+            rows,
+            "import_list_headers",
+            "+flat",
+            String::new(),
+            crate::PendingFilter::All,
+        )
+        .await;
     }
 }
