@@ -473,9 +473,7 @@ extension PeopleAndDevicesPage {
             }
         }
         if !member.formerDevices.isEmpty {
-            Section {
-                FormerDevicesDisclosure(devices: member.formerDevices)
-            }
+            FormerDevicesDisclosure(devices: member.formerDevices)
         }
     }
 
@@ -762,8 +760,11 @@ private struct RenameProfileSheet: View {
 private struct FormerDevicesDisclosure: View {
     let devices: [BridgeFormerDevice]
 
+    @State
+    private var isExpanded = false
+
     var body: some View {
-        DisclosureGroup {
+        FormDisclosure(isExpanded: $isExpanded) {
             ForEach(devices, id: \.id) { device in
                 HStack(spacing: ThemeSpace.related) {
                     Image(systemName: "laptopcomputer.and.iphone")

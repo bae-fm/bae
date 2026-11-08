@@ -42,7 +42,7 @@ struct SavePresetEditor: View {
                     coverRow
                     scopeRow
                 }
-                DisclosureGroup(isExpanded: $advancedExpanded) {
+                FormDisclosure(isExpanded: $advancedExpanded) {
                     if let bitDepth = preset.codec.bitDepth {
                         PresetBitDepthRow(
                             preset: preset,
@@ -54,7 +54,6 @@ struct SavePresetEditor: View {
                 } label: {
                     Text("Advanced")
                 }
-                .presetEditorRowInsets()
             }
             .formStyle(.grouped)
             MacSheetFooter {
