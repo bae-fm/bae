@@ -489,6 +489,21 @@ pub(crate) fn retry_failed_releases_on<P: QueuedPayload>(
     )? > 0)
 }
 
+/// Queue `release_id`'s failed entry again, in its place; `true` when it
+/// had failed.
+pub(crate) fn retry_failed_release_on<P: QueuedPayload>(
+    sql: &CovenWrite<'_>,
+    release_id: &str,
+) -> Result<bool, DbError> {
+    Ok(sql.execute(
+        &format!(
+            "UPDATE {} SET state = 'queued', error = NULL WHERE release_id = ?1 AND state = 'failed'",
+            P::TABLE
+        ),
+        params![release_id],
+    )? > 0)
+}
+
 /// Pause or resume the queue, saying whether it was paused. Pausing puts the
 /// active entry back to queued, in its place, since its work is stopped with
 /// the pause: resuming starts it again.

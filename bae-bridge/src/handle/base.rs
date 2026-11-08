@@ -185,6 +185,12 @@ forward! { async this => {
         Ok(this.services.cancel_download(&release_id).await?)
     }
 
+    /// Retry one release's failed download now (flips it back to queued and
+    /// wakes the worker); other failed downloads stay failed.
+    fn retry_download(release_id: String) -> () {
+        Ok(this.services.retry_download(&release_id).await?)
+    }
+
     /// Retry every failed download now (flips them back to queued and wakes the
     /// worker).
     fn retry_downloads() -> () {

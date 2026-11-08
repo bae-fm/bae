@@ -56,6 +56,12 @@ impl LibraryManager {
         Ok(self.downloads.retry_failed().await?)
     }
 
+    /// Flip one release's failed download back to queued and wake the worker;
+    /// other failed downloads stay failed.
+    pub async fn retry_download(&self, release_id: &str) -> Result<(), LibraryError> {
+        Ok(self.downloads.retry_failed_release(release_id).await?)
+    }
+
     /// The serial download worker: drains the download queue one release at a
     /// time through [`QueuedReleases::run_serial`], which owns the queue protocol
     /// (the activate/cancel race, cancel-is-not-a-failure, remove vs

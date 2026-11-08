@@ -51,6 +51,14 @@ async fn retry_failed_releases<P: QueuedPayload>(db: &Store) -> Result<bool, DbE
     db.call(|sql| tables::retry_failed_releases_on::<P>(sql)).await
 }
 
+async fn retry_failed_release<P: QueuedPayload>(
+    db: &Store,
+    release_id: &str,
+) -> Result<bool, DbError> {
+    let release_id = release_id.to_string();
+    db.call(move |sql| tables::retry_failed_release_on::<P>(sql, &release_id)).await
+}
+
 async fn set_release_queue_paused<P: QueuedPayload>(
     db: &Store,
     paused: bool,
@@ -116,6 +124,32 @@ async fn a_queued_release_is_a_row_in_the_order_queued() {
     assert_eq!(
         next_queued_release::<DownloadRequest>(&db).await.unwrap(),
         Some(download(RELEASE_A))
+    );
+}
+
+/// Retrying one release queues only its failed entry; the other failed
+/// release stays failed, and a release with no failed entry changes nothing.
+#[tokio::test]
+async fn retrying_one_release_leaves_the_other_failed() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
+    for release in [RELEASE_A, RELEASE_B] {
+        assert!(fail_queued_release::<DownloadRequest>(&db, release, "refused".to_string())
+            .await
+            .unwrap());
+    }
+
+    assert!(retry_failed_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap());
+    assert!(
+        !retry_failed_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap(),
+        "a queued entry has not failed"
+    );
+    assert_eq!(
+        downloads(&db).await,
+        vec![
+            (RELEASE_A.to_string(), ReleaseQueueState::Queued),
+            (RELEASE_B.to_string(), ReleaseQueueState::Failed { error: "refused".to_string() }),
+        ]
     );
 }
 

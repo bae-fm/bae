@@ -242,6 +242,20 @@ where
         Ok(())
     }
 
+    /// Queue `release_id`'s failed entry again and wake the worker; any other
+    /// entry is left as it is.
+    pub async fn retry_failed_release(&self, release_id: &str) -> Result<(), DbError> {
+        let retried = release_id.to_string();
+        if self
+            .store
+            .call(move |sql| tables::retry_failed_release_on::<Extra>(sql, &retried))
+            .await?
+        {
+            self.shared.wake.notify_one();
+        }
+        Ok(())
+    }
+
     /// Abort the running task when `cancelled` names its release, whose entry
     /// the table no longer holds as active.
     fn stop(&self, cancelled: impl Fn(&str) -> bool) {

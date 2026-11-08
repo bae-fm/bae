@@ -2103,9 +2103,9 @@ cancel. The queue takes no entry while the device has no
 usable network, as coven's network watch says, and goes on when it returns; a
 platform that cannot tell holds nothing back. A pin that fails stays in the queue with its error,
 nothing of it pinned, and its row sorts first, reading Download failed; one that breaks on a bug fails the
-same way, reported as one, and the queue goes on to the next. Retrying
-queues every failed pin again, each in its place, so a release's own
-control retries them all, as the queue's does. coven's record of the failed
+same way, reported as one, and the queue goes on to the next. The queue's
+Retry queues every failed pin again, each in its place; a release's own Retry
+queues only that release's failed pin. coven's record of the failed
 download is listed among the pending records (§6.4), whose *Retry* queues the
 release's pin again; nothing retries it on its own. A read that fails, as a
 track plays, leaves no record: its failure goes to whatever read it. A release

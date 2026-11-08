@@ -499,6 +499,7 @@ impl AppServices {
     }
     delegate_async!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, cancel_download => cancel_download(release_id: &str) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(manager, retry_download => retry_download(release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, retry_downloads => retry_downloads() -> Result<(), bae_library::LibraryError>);
     delegate_view!(get_artist_count => get_artist_count() -> u64);
     delegate_view!(get_artist_page => get_artist_page(sort: &[bae_views::ArtistSortCriterion], offset: u64, limit: u64) -> Vec<bae_views::DbArtistSummary>);
