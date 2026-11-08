@@ -8,7 +8,7 @@
       props.children);
   }
 
-  // A macOS alert: centred title and message, its buttons stacked full width, the default one first.
+  // A macOS alert: centred title and message, then two buttons side by side with the default on the right (list it first); three or more stack.
   function MacAlert(props) {
     return h('div', { className: 'bae-m-scrim' },
       h('div', { role: 'alertdialog', 'aria-label': props.title, className: 'bae-m-alert' },
@@ -142,7 +142,6 @@
   function MacSheet(props) {
     var panel = h('div', { role: 'dialog', 'aria-label': props.title, className: 'bae-m-sheet', style: { width: Number(props.width || 460) } },
       props.title ? h('div', { className: 'bae-m-sheet-title' }, props.title) : null,
-      props.title ? h('div', { className: 'bae-divider', 'aria-hidden': true }) : null,
       h('div', { className: 'bae-m-sheet-body' }, props.children));
     if (!props.overlay) return panel;
     return h('div', { className: 'bae-m-scrim' }, panel);

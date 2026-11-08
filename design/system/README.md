@@ -40,7 +40,7 @@ The text styles are macOS points. iOS follows Dynamic Type, and the Android comp
 
 ## Iconography
 
-Icons appear only when they are the control (copy, a chevron, a disclosure mark) or carry meaning the words beside them don't (a status glyph). Apple platforms use SF Symbols and Android Material icons.
+Icons appear only when they are the control (copy, a chevron, a disclosure mark) or carry meaning the words beside them don't (a status glyph). Android uses Material Symbols (Rounded, weight 400), loaded from Google Fonts. Apple platforms use SF Symbols; the boards draw stand-ins, since SF Symbols can't be loaded on a web page.
 
 ## Logo
 

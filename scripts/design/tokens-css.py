@@ -49,8 +49,6 @@ def main() -> None:
                 decl.append(f"line-height: {style['lineHeight']}")
             if "letterSpacing" in style:
                 decl.append(f"letter-spacing: {style['letterSpacing']}")
-            if style["name"] == "eyebrow":
-                decl.append("text-transform: uppercase")
             out.append(f".{style['name']} {{ " + "; ".join(decl) + "; }")
     (SYSTEM / "tokens.css").write_text("\n".join(out) + "\n")
 

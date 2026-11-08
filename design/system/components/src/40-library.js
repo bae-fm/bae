@@ -52,7 +52,8 @@
     tv: 'M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z'
   };
   function Glyph(props) {
-    var set = props.set === 'mac' ? SF : MAT;
+    if (props.set !== 'mac') return h(MSymbol, { name: props.name, size: props.size, className: cx('bae-glyph', props.className), fill: 'currentColor' });
+    var set = SF;
     var s = Number(props.size || 24);
     return h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true, className: cx('bae-glyph', props.className), fill: 'currentColor' }, h('path', { d: set[props.name] || set.ellipsis || '', fillRule: 'evenodd' }));
   }
@@ -307,7 +308,7 @@
   function AndroidDetailScreen(props) {
     return h('div', { className: 'bae-a-screen bae-a-libscreen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
       h('header', { className: 'bae-a-detailbar' },
-        h('button', { type: 'button', className: 'bae-a-detail-back' }, h(Glyph, { name: 'back', size: 24 }), h('span', null, props.back || 'Library')),
+        h(AndroidIconButton, { icon: 'back', label: props.back ? 'Back to ' + props.back : 'Back to Library' }),
         h('span', { style: { flex: 1 } }),
         props.menu ? h(AndroidIcon, { icon: 'more', label: 'Album options' }) : null),
       h('main', { className: props.flush ? 'bae-a-libbody' : 'bae-a-libbody bae-a-detailbody' }, props.children),

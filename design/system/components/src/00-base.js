@@ -56,7 +56,18 @@
     refresh: 'M17.65 6.35A7.95 7.95 0 0012 4a8 8 0 108 8h-2a6 6 0 11-1.76-4.24L13 11h7V4l-2.35 2.35z',
     copy: 'M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z'
   };
+  // Android's icons are Material Symbols (Rounded, weight 400), drawn from Google's font as SVG text so a parent's `fill` colours them.
+  var SYMBOL = { back: 'arrow_back', edit: 'edit', chevron: 'chevron_right', expand: 'expand_more', more: 'more_vert', search: 'search', add: 'add', refresh: 'refresh', copy: 'content_copy',
+    play: 'play_arrow', pause: 'pause', previous: 'skip_previous', next: 'skip_next', cast: 'cast', queue: 'queue_music', repeat: 'repeat', nowplaying: 'volume_up', down: 'keyboard_arrow_down',
+    warning: 'warning', download: 'download', downloaded: 'download_done', close: 'close', retry: 'refresh', remove: 'delete', drag: 'drag_handle', shuffle: 'shuffle', check: 'check', speakerbox: 'speaker', tv: 'tv' };
+  var SYMBOL_FILLED = { play: 1, pause: 1, previous: 1, next: 1 };
+  // SVG text alone doesn't make WebKit fetch a web font, so ask for the icon font once up front.
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.load) document.fonts.load("24px 'Material Symbols Rounded'", 'more_vert');
+  function MSymbol(props) {
+    var s = Number(props.size || 24);
+    return h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true, className: props.className, fill: props.fill },
+      h('text', { x: 0, y: 12, dominantBaseline: 'central', className: 'bae-msym', style: SYMBOL_FILLED[props.name] ? { fontVariationSettings: "'FILL' 1" } : null }, SYMBOL[props.name] || props.name));
+  }
   function Material(props) {
-    return h('svg', { width: props.size || 24, height: props.size || 24, viewBox: '0 0 24 24', 'aria-hidden': true, className: props.className },
-      h('path', { d: MATERIAL[props.name] }));
+    return h(MSymbol, { name: props.name, size: props.size || 24, className: props.className });
   }
