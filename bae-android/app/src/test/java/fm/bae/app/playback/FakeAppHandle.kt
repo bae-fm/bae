@@ -407,6 +407,10 @@ internal open class FakeAppHandle(
 
     override suspend fun resolveToTrackIds(ids: List<String>): List<String> = unfaked("resolveToTrackIds")
 
+    override suspend fun retryDownload(releaseId: String) {
+        unfaked("retryDownload")
+    }
+
     override suspend fun retryDownloads() {
         unfaked("retryDownloads")
     }

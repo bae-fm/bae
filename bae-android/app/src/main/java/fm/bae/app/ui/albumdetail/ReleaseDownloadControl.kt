@@ -112,7 +112,7 @@ private fun PlayableReleaseDownloadControl(
             onCancel = {
                 session.messages.perform("cancel download") { session.appHandle.cancelDownload(release.id) }
             },
-            onRetry = { session.messages.perform("retry downloads") { session.appHandle.retryDownloads() } },
+            onRetry = { session.messages.perform("retry download") { session.appHandle.retryDownload(release.id) } },
             onRemove = {
                 unpinError = null
                 unpinning = true
@@ -231,7 +231,6 @@ private fun DownloadFailedControl(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    // Core has no per-item retry: retryDownloads re-queues every failed entry.
     ErrorDetailDisclosure(
         DisplayError(error),
         action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
