@@ -26,6 +26,7 @@ struct FieldChrome: ViewModifier {
         content
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
+            .frame(minHeight: style == .boxed ? ThemeSize.field : nil)
             // Round the fill, not a clip: a clip cuts the text off when AppKit
             // remounts the field with a too-short height.
             .background(fill, in: RoundedRectangle(cornerRadius: cornerRadius))
@@ -55,21 +56,21 @@ struct FieldChrome: ViewModifier {
 
     private var horizontalPadding: CGFloat {
         switch style {
-        case .boxed: ThemeSpace.related
+        case .boxed: ThemeSpace.fieldInset
         case .inline: Self.inlineHorizontalPadding
         }
     }
 
     private var verticalPadding: CGFloat {
         switch style {
-        case .boxed: ThemeSpace.compact
+        case .boxed: 0
         case .inline: Self.inlineVerticalPadding
         }
     }
 
     private var cornerRadius: CGFloat {
         switch style {
-        case .boxed: ThemeRadius.control
+        case .boxed: ThemeRadius.field
         case .inline: ThemeRadius.chip
         }
     }

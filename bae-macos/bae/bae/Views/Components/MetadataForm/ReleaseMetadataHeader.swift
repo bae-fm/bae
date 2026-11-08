@@ -685,7 +685,7 @@ private struct ArtistAssignmentsEditor: View {
             }
             HStack(spacing: ThemeSpace.related) {
                 TextField("Search", text: $query)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.boxed)
                     .onSubmit(addTypedArtist)
                 Button("Add", action: addTypedArtist)
                     .disabled(trimmedQuery.isEmpty)

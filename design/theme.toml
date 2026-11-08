@@ -246,11 +246,12 @@ tintStrong = 0.26
 
 # Corner radii, in points on Apple and dp on Android. `artwork` is cover art in
 # rows and lists, `cover` a release's cover shown large; `bar` rounds skeleton
-# and progress bars.
+# and progress bars; `field` rounds a text field.
 [radius]
 bar = 3
 chip = 5
 control = 7
+field = 8
 card = 10
 panel = 20
 artwork = 6
@@ -349,9 +350,9 @@ android = 32
 # Gaps and insets, the same on every platform (points on Apple, dp on
 # Android): `line` between the lines of one text block, `inline` between a
 # glyph and its text, `related` between related items, `group` between groups,
-# `hang` how far a disclosure's chevron hangs left of its label, `edge` from
-# a container's edge to its content, `section` between sections and `page`
-# around a page.
+# `hang` how far a disclosure's chevron hangs left of its label, `fieldInset`
+# from a text field's edge to its text, `edge` from a container's edge to its
+# content, `section` between sections and `page` around a page.
 [space]
 hairline = 1
 line = 2
@@ -360,6 +361,7 @@ compact = 6
 related = 8
 group = 12
 hang = 12
+fieldInset = 10
 edge = 16
 section = 24
 page = 32
@@ -398,7 +400,8 @@ ios = 56
 android = 56
 
 # Sizes that recur across screens: cover art in a list row and in the
-# now-playing bar, and the least an icon button takes to press.
+# now-playing bar, a text field's height, and the least an icon button takes to
+# press.
 [size.rowArtwork]
 macos = 44
 ios = 44
@@ -408,6 +411,11 @@ android = 48
 macos = 56
 ios = 44
 android = 48
+
+[size.field]
+macos = 32
+ios = 44
+android = 56
 
 [size.hitTarget]
 macos = 28

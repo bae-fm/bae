@@ -67,7 +67,7 @@ struct SubsonicSettingsContent: View {
                     HStack(spacing: ThemeSpace.related) {
                         TextField("Port", text: $portText)
                             .frame(width: 88)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.boxed)
                             .onSubmit(applyConfig)
                         Button("Save", action: applyConfig)
                             .disabled(isWorking)
@@ -77,7 +77,7 @@ struct SubsonicSettingsContent: View {
                     HStack(spacing: ThemeSpace.related) {
                         TextField("Username", text: $username)
                             .frame(width: Self.credentialFieldWidth)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.boxed)
                             .onSubmit(applyConfig)
                         Button("Save", action: applyConfig)
                             .disabled(isWorking)
@@ -107,7 +107,7 @@ struct SubsonicSettingsContent: View {
                     HStack(spacing: ThemeSpace.related) {
                         SecureField("Password", text: $password)
                             .frame(width: Self.credentialFieldWidth)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.boxed)
                             .onSubmit(savePassword)
                         Button("Save", action: savePassword)
                             .disabled(isWorking)
@@ -117,8 +117,7 @@ struct SubsonicSettingsContent: View {
                 Text(
                     "The password is stored in the keyring, not in the config file. Clients authenticate with the username and password."
                 )
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
+                .fieldNote()
             }
         }
         .formStyle(.grouped)

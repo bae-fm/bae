@@ -95,10 +95,11 @@ struct SavePresetEditor: View {
         LabeledContent("Name") {
             TextField("Name", text: $nameDraft)
                 .labelsHidden()
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
                 .multilineTextAlignment(.leading)
-                .frame(width: 200)
                 .focused($nameFocused)
+                .modifier(FieldChrome(focused: nameFocused, style: .boxed))
+                .frame(width: 200)
                 .onSubmit(commitName)
                 .onChange(of: nameFocused) { _, focused in
                     if !focused {
@@ -198,8 +199,7 @@ struct SavePresetEditor: View {
             Text(
                 "Preview: \(Text(previewFilename).monospaced())"
             )
-            .themeText(.detail)
-            .foregroundStyle(.secondary)
+            .fieldNote()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .presetEditorRowInsets()

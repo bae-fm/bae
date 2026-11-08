@@ -17,9 +17,10 @@ struct PresetBitrateRow: View {
         LabeledContent("Bitrate") {
             TextField("Bitrate", text: $bitrateDraft)
                 .labelsHidden()
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 96)
+                .textFieldStyle(.plain)
                 .focused($bitrateFocused)
+                .modifier(FieldChrome(focused: bitrateFocused, style: .boxed))
+                .frame(width: 96)
                 .onSubmit(commitBitrate)
                 .onChange(of: bitrateFocused) { _, focused in
                     if !focused {

@@ -72,7 +72,7 @@ struct AutomationSettingsContent: View {
                     HStack(spacing: ThemeSpace.related) {
                         TextField("Port", text: $portText)
                             .frame(width: 88)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.boxed)
                             .onSubmit(applyPort)
                         Button("Save", action: applyPort)
                             .disabled(isWorking)
