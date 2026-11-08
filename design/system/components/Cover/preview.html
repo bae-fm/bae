@@ -11,10 +11,13 @@
   .art { position: absolute; top: 0; left: 480px; width: 480px; height: 288px; overflow: hidden; }
   .art svg { display: block; width: 480px; height: 288px; }
   .accent { fill: var(--accent); }
-  .fill { fill: var(--accent-fill); }
+  .bar { fill: var(--surface); }
+  .tx { fill: var(--text-primary); opacity: .8; }
+  .tx2 { fill: var(--text-secondary); opacity: .6; }
+  .track { fill: var(--text-secondary); opacity: .3; }
+  .held { fill: var(--text-secondary); opacity: .55; }
   .ph { fill: var(--placeholder); }
   .ok { fill: var(--success); }
-  .card { rx: var(--radius-card); }
   .cov { rx: var(--radius-artwork); }
   .chip { rx: var(--radius-chip); }
   .words { position: absolute; left: 0; top: 0; bottom: 0; width: 480px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -26,28 +29,28 @@
 <div class="art" aria-hidden="true">
 <svg viewBox="0 0 480 288" width="480" height="288">
 <!--
-  blocks      accent 132×240 bled off the top (the color bae is known by) · accent-fill 132×136 · a grid of placeholder tiles · success 44×16 once (it only ever means Synced)
-  arrangement one tall accent slab, the fill block beside it, a library grid of covers to the right, bottoms on one line space-page above the edge
-  pattern     tiles, from "a music library": cover tiles at size-row-artwork, pitch size-row-artwork + space-related, one merged two-wide like an album shown large, one cut in accent
-  scales      gutters space-edge; tiles 44 at a 52 pitch; corners radius-card on blocks, radius-artwork on tiles, radius-chip on the chip
+  library     one row of four covers at 80, a 104 pitch, the second in accent: the album playing
+  bar         the now-playing bar floating under them on the surface: its cover, title and artist lines, the seek line (accent played, lighter downloaded, faint rest), the Synced chip
+  scales      gutters space-edge; corners radius-artwork on covers, radius-chip on the chip, 14 on the bar
 -->
-<rect class="accent card" x="16" y="-16" width="132" height="240" rx="10"/>
-<rect class="fill card" x="164" y="88" width="132" height="136" rx="10"/>
-<rect class="ok chip" x="164" y="64" width="44" height="16" rx="5"/>
-<rect class="ph cov" x="312" y="24" width="44" height="44" rx="6"/>
-<rect class="ph cov" x="364" y="24" width="96" height="96" rx="6"/>
-<rect class="ph cov" x="312" y="76" width="44" height="44" rx="6"/>
-<rect class="accent cov" x="312" y="128" width="44" height="44" rx="6"/>
-<rect class="ph cov" x="364" y="128" width="44" height="44" rx="6"/>
-<rect class="ph cov" x="416" y="128" width="44" height="44" rx="6"/>
-<rect class="ph cov" x="312" y="180" width="44" height="44" rx="6"/>
-<rect class="ph cov" x="364" y="180" width="44" height="44" rx="6"/>
-<rect class="ph cov" x="416" y="180" width="44" height="44" rx="6"/>
+<rect class="ph cov" x="40" y="64" width="80" height="80" rx="6"/>
+<rect class="accent cov" x="144" y="64" width="80" height="80" rx="6"/>
+<rect class="ph cov" x="248" y="64" width="80" height="80" rx="6"/>
+<rect class="ph cov" x="352" y="64" width="80" height="80" rx="6"/>
+<rect class="bar" x="24" y="184" width="432" height="56" rx="14"/>
+<rect class="accent cov" x="34" y="192" width="40" height="40" rx="6"/>
+<rect class="tx" x="86" y="200" width="88" height="8" rx="4"/>
+<rect class="tx2" x="86" y="216" width="56" height="8" rx="4"/>
+<rect class="track" x="194" y="210" width="192" height="4" rx="2"/>
+<rect class="held" x="194" y="210" width="144" height="4" rx="2"/>
+<rect class="accent" x="194" y="210" width="86" height="4" rx="2"/>
+<circle class="accent" cx="280" cy="212" r="6"/>
+<rect class="ok chip" x="398" y="204" width="44" height="16" rx="5"/>
 </svg>
 </div>
 <div class="words">
 <div id="logo"></div>
-<p class="tag">Your music everywhere</p>
+<p class="tag">Your music, everywhere</p>
 </div>
 </div>
 <script>
