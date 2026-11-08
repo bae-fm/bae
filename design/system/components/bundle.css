@@ -435,7 +435,6 @@
 .bae-a-btn-icon { display: inline-flex; align-items: center; gap: 8px; fill: currentColor; }
 .bae-a-fineline { font: 400 12px var(--font-android); color: var(--text-secondary); }
 .bae-a-fine { font: 400 11px var(--font-android); color: var(--text-secondary); }
-.bae-a-error { font: 400 14px/20px var(--font-android); color: var(--danger); }
 .bae-m-tertiary { color: var(--text-tertiary); }
 .bae-m-albumpanel { position: relative; display: flex; align-items: flex-start; gap: 32px; padding: 32px; border-radius: var(--radius-panel); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 18px 28px var(--shadow); }
 .bae-m-albumpanel-close { position: absolute; top: 16px; right: 16px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: var(--hover); color: var(--text-secondary); fill: currentColor; }
@@ -615,11 +614,19 @@
 .bae-m-filedet { margin-top: auto; background: var(--elevated); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--hairline); }
 .bae-m-filedet-head { display: flex; justify-content: space-between; gap: 8px; font: 600 15px var(--font-sans); }
 .bae-m-filedet-grid { display: grid; grid-template-columns: 84px 1fr; gap: 6px 12px; font: 400 11.5px var(--font-sans); }
-.bae-m-errdis { display: flex; flex-direction: column; gap: 4px; font: 400 13px var(--font-sans); }
+.bae-m-errdis { position: relative; display: flex; flex-direction: column; gap: 4px; font: 400 13px var(--font-sans); }
 .bae-m-errdis-msg { display: flex; align-items: flex-start; gap: 6px; color: var(--bae-tone); }
 .bae-m-errdis-msg.bae-tone-neutral { color: var(--text-secondary); }
 .bae-m-errdis-fault { display: flex; align-items: flex-start; gap: 6px; }
-.bae-m-errdis-copy { color: var(--text-secondary); }
+.bae-errdis-copy { color: var(--text-secondary); }
+/* An error's Retry: the box's top-right corner, level with the line; the open Details run the full width under it. */
+.bae-m-errdis-hasaction .bae-m-errdis-msg { padding-right: 92px; }
+.bae-m-errdis-action { position: absolute; top: -4px; right: 0; }
+.bae-a-errdis-top { display: flex; align-items: flex-start; gap: 8px; }
+.bae-a-errdis-top .bae-a-errdis-msg { flex: 1; min-width: 0; }
+.bae-a-errdis-action { flex: none; margin: -8px -12px -12px 0; }
+.bae-a-errdis-more { display: inline-flex; align-items: center; align-self: flex-start; gap: 2px; color: var(--text-secondary); }
+.bae-notice .bae-a-errdis-msg:not(.bae-tone-neutral) { color: var(--text-primary); }
 .bae-m-errdis-more { margin-top: 4px; margin-left: calc(-1 * var(--space-hang)); display: inline-flex; align-items: center; gap: var(--space-compact); font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 
 /* Sync activity */
@@ -663,16 +670,11 @@
 /* ==== part: errors ==== */.bae-a-snack { position: absolute; left: 12px; right: 12px; bottom: 140px; z-index: 12; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 16px; min-height: 48px; box-sizing: border-box; border-radius: 4px; background: var(--text-primary); color: var(--background); font: 400 14px/20px var(--font-android); box-shadow: 0 4px 12px var(--shadow); fill: currentColor; }
 .bae-a-snack-action { font: 500 14px var(--font-android); color: var(--accent-fill); padding: 0 8px; }
 .bae-a-snack-x { display: flex; padding: 6px; }
-.bae-a-errbanner { display: flex; align-items: flex-start; gap: 8px; margin: 8px 16px; padding: 12px; border-radius: var(--radius-control); background: var(--danger-tint); }
-.bae-a-errbanner-icon { color: var(--danger); fill: currentColor; margin-top: 2px; }
+.bae-a-errbanner { margin: 8px 16px; }
 .bae-a-np-error { color: var(--danger); font: 400 14px/20px var(--font-android); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .bae-m-winnotice-stack { position: absolute; left: 16px; bottom: 96px; z-index: 6; display: flex; flex-direction: column; gap: 8px; }
 .bae-m-loadfail { flex: 1; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; }
 .bae-m-loadfail-box { width: 400px; max-width: 100%; }
-/* Retry in the top-right corner, level with the line; the open Details run the full width under it. */
-.bae-m-loadfail-body { position: relative; }
-.bae-m-loadfail-body .bae-m-errdis-msg { padding-right: 76px; }
-.bae-m-loadfail-body > .bae-m-btn { position: absolute; top: -4px; right: 0; }
 
 /* ==== part: import ==== */.bae-m-tertiary { color: var(--text-tertiary); }
 .bae-warning { color: var(--warning); }
@@ -784,7 +786,7 @@
 .bae-m-dlrow-text { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
 .bae-m-dlrow-detail { font-size: 11px; white-space: nowrap; }
 .bae-m-dlrow-ago { font-size: 10.5px; white-space: nowrap; }
-.bae-m-dlrow-badge { display: flex; align-items: center; gap: 8px; padding-left: 26px; }
+.bae-m-dlrow-badge { padding-left: 26px; }
 
 /* Logo */
 @keyframes bae-sheep-rise { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4%; } }
@@ -799,6 +801,8 @@
 
 .bae-m-errdis-more svg { width: 6px; height: 10px; }
 .bae-m-errdis-open { transform: rotate(90deg); }
-.bae-m-errdis-panel { position: relative; margin-top: 2px; padding: 8px 30px 8px 10px; border-radius: 8px; background: color-mix(in srgb, black 28%, transparent); }
-.bae-m-errdis-chain { font: 400 11px/16px var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
-.bae-m-errdis-panel .bae-m-errdis-copy { position: absolute; top: 8px; right: 8px; }
+.bae-errdis-panel { position: relative; margin-top: 2px; padding: 8px 30px 8px 10px; border-radius: 8px; background: color-mix(in srgb, black 28%, transparent); }
+.bae-errdis-chain { font: 400 11px/16px var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bae-errdis-panel .bae-errdis-copy { position: absolute; top: 8px; right: 8px; }
+.bae-errdis-panel .bae-a-iconbtn { position: absolute; top: 0; right: 0; width: 40px; height: 40px; }
+.bae-errdis-panel:has(.bae-a-iconbtn) { min-height: 40px; box-sizing: border-box; padding-right: 44px; }

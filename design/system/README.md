@@ -44,6 +44,7 @@ The text styles are macOS points. iOS follows Dynamic Type, and the Android comp
   - **A collapsible section** folds a whole section of a long screen: its heading opens and closes it. Android only, the section label with `expand_more` and `expand_less` at its end. macOS has no collapsible section for content; there it is a disclosure row. No screen needs one yet.
   - **A sidebar heading** folds a group of destinations in a macOS sidebar, its chevron showing only under the pointer. It is navigation, not content. bae has no sectioned sidebar yet.
 - A disclosure's chevron on macOS points right closed and down open, wherever it sits: hanging in a notice's glyph column (`MacErrorDisclosure`) or leading inside its row (`MacDisclosure`).
+- An error in part of a screen is its box; a Retry that belongs to it is the box's action, at its right, level with the message.
 
 ## Iconography
 

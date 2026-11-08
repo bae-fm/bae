@@ -3,9 +3,9 @@
   function AndroidSnackbar(props) {
     return h('div', { className: 'bae-a-snack' }, h('span', { style: { flex: 1 } }, props.message), props.action ? h('span', { className: 'bae-a-snack-action' }, props.action) : null, props.close === false ? null : h('span', { className: 'bae-a-snack-x' }, h(Glyph, { name: 'close', size: 20 })));
   }
-  // The danger banner above the album grid when a later page failed.
+  // The error box above the album grid when a later page failed, Retry its action.
   function AndroidErrorBanner(props) {
-    return h('div', { className: 'bae-a-errbanner' }, h(Glyph, { name: 'warning', size: 20, className: 'bae-a-errbanner-icon' }), h('div', { style: { flex: 1 } }, h(AndroidErrorDisclosure, { tone: 'neutral', message: props.message, fault: props.fault })), h(AndroidButton, { kind: 'text' }, 'Retry'));
+    return h('div', { className: 'bae-a-errbanner' }, h(AndroidErrorDisclosure, { message: props.message, fault: props.fault, open: props.open, chain: props.chain, action: 'Retry' }));
   }
   // BaeKit's LoadFailureView: a danger notice holding the disclosure, Retry at its right, centred in the view it replaces.
   function MacLoadFailure(props) {

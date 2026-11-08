@@ -7,6 +7,7 @@ BaeKit's error disclosure: the line, then Details, which opens on an inset panel
 | `tone` | `danger` (the default), `warning`, or `neutral` for a reason, which has no glyph. |
 | `fault` | The deepest cause; with it there is a Details. |
 | `open`, `chain` | Details open; `chain` is the causes, one a line, ending in the fault (without it, the fault alone). |
+| `action` | The label of a button (Retry) drawn in the box, top-right, level with the message; an open Details panel runs the box's full width under it. |
 | `bare` | No notice: for a disclosure inside a notice that already holds it, under a title (the launch problem, the welcome screen's failures). |
 
 **In the code:** macOS: BaeKit's `ErrorDetailDisclosure` (`BaeKit/Sources/BaeKit/Views/ErrorDetailDisclosure.swift`). The app draws it bare in most places and inside `.notice(_:)` in some; the canvas draws the notice everywhere.
