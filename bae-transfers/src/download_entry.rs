@@ -66,7 +66,7 @@ pub fn download_entry_sql(release: &str) -> String {
         "(SELECT q.kind FROM download_queue q WHERE q.release_id = {release}) AS download_kind, \
          (SELECT q.state FROM download_queue q WHERE q.release_id = {release}) AS download_state, \
          (SELECT q.error FROM download_queue q WHERE q.release_id = {release}) AS download_error, \
-         (SELECT COUNT(*) FROM download_queue a \
+         (SELECT COUNT(*) FROM download_queue a INDEXED BY download_queue_ahead \
           JOIN download_queue q ON q.release_id = {release} \
           WHERE a.position < q.position AND a.state <> 'failed') AS download_ahead, \
          (SELECT paused FROM release_queues WHERE queue = 'download') AS downloads_paused, \
