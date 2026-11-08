@@ -89,7 +89,7 @@ install boto3`): it aborts every unfinished upload in the bucket and deletes
 every object in it, whatever wrote them, 1,000 keys per request, and prints
 how many of each went. Any failure there stops the script before the app
 launches. A versioned bucket keeps the deleted objects' earlier versions. It
-then launches the Debug app `builds test-app bae` copied out with
+then launches the Debug app `builds build-app bae mac` copied out with
 `--dev-reset <profile>`. Before any library opens, the app removes every library
 the way Remove Library does, deletes their saved restore codes, deletes
 `~/.bae`, then creates the profile's library and sets its Discogs token,

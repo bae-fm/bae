@@ -47,7 +47,7 @@ import tomllib
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT_PROFILE = pathlib.Path.home() / ".config" / "bae-dev" / "profile.toml"
-# The app `builds test-app bae` copies out, and its bundle id.
+# The app `builds build-app bae mac` copies out, and its bundle id.
 DEFAULT_APP = pathlib.Path.home() / "Applications" / "bae-test" / "bae.app"
 BUNDLE_ID = "fm.bae.desktop"
 
@@ -202,13 +202,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--app", type=pathlib.Path, default=DEFAULT_APP,
-        help="the Debug bae.app to launch (default: the one builds test-app copies out)",
+        help="the Debug bae.app to launch (default: the one builds build-app copies out)",
     )
     args = parser.parse_args()
 
     profile = read_profile(args.profile)
     if not args.app.is_dir():
-        fail(f"no app at {args.app}; build it with builds test-app bae --no-open")
+        fail(f"no app at {args.app}; build it with builds build-app bae mac")
     s3 = profile.get("s3", {})
     for field in S3_FIELDS:
         if not isinstance(s3.get(field), str) or not s3[field].strip():

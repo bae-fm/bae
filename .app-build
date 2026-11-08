@@ -1,6 +1,7 @@
-build ./bae-macos/run.sh --no-open
-app bae-macos/bae/.build/runApp/Build/Products/Debug/bae.app
-bundle fm.bae.desktop
+mac build ./bae-macos/run.sh --no-open
+mac app bae-macos/bae/.build/runApp/Build/Products/Debug/bae.app
+mac bundle fm.bae.desktop
+android build ./bae-android/run.sh
 step macos ./bae-macos/run.sh --no-open
 step macos-tests ./bae-macos/test.sh --build-only
 step android-bridge ./bae-bridge/build-android.sh --abi arm64-v8a
