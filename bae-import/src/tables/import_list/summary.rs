@@ -84,17 +84,26 @@ enum Reads {
 const FOUND_ROW_COST: u128 = 3;
 
 impl Listed {
-    /// The rows a window of the list is read from. A search's window is read
-    /// from the rows the search finds, sorted, when reading them costs less
-    /// than passing the rows the tab's order would pass to reach the window's
-    /// end: about the window's end times the tab's releases over the releases
-    /// the search keeps. Otherwise it is read from the tab's rows in order,
-    /// each tested.
-    pub(super) fn shown(&self, window: &bae_store::LibraryPageWindow) -> Shown<'static> {
+    /// The rows a window of the list is read from. A window read beside a row
+    /// the list already placed (`known`) is read from the tab's rows in
+    /// order, by the order's index seek, whatever the search finds. A search's
+    /// window read by its offset is read from the rows the search finds,
+    /// sorted, when reading them costs less than passing the rows the tab's
+    /// order would pass to reach the window's end: about the window's end times
+    /// the tab's releases over the releases the search keeps. Otherwise it is
+    /// read from the tab's rows in order, each tested.
+    pub(super) fn shown(
+        &self,
+        window: &bae_store::LibraryPageWindow,
+        known: &Places,
+    ) -> Shown<'static> {
         let narrowed = match (self.reads, self.narrowed) {
             (Reads::Search, Some(narrowed)) => narrowed,
             (Reads::Search, None) | (Reads::Order, _) => return Shown::View,
         };
+        if is_read_beside_known(window, known) {
+            return Shown::View;
+        }
         let kept = u128::from(narrowed.shown);
         let end = u128::from(window.offset.saturating_add(window.limit));
         match FOUND_ROW_COST * kept * kept < end * u128::from(narrowed.total) {

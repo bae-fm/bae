@@ -970,8 +970,10 @@ display frame. A search counts the rows its index finds:
 each release's shown text is kept, case folded, in a trigram index beside its
 placement (Appendix A.7), so a search of three characters or more reads the
 rows holding it, and a shorter one reads every release's text from the
-index. A search that finds few rows reads its windows from them, sorted;
-one that finds many reads its windows in the list's order, testing each row.
+index. A search that finds few rows reads a window it is asked for by its offset from
+them, sorted; one that finds many reads it in the list's order, testing each
+row. A window beside a row the list already placed, as scrolling asks for it,
+is read in the list's order by the same index seek, whatever the search finds.
 Found reads its windows past the members of the groups it folds shut, so
 with every group folded a window costs about the headers it shows; and whether
 a header offers to read its folder as one release is kept on the header as the

@@ -61,7 +61,7 @@ fn load_import_list_on(
         .windows
         .iter()
         .map(|window| {
-            let items = list.items(listed.shown(window));
+            let items = list.items(listed.shown(window, &known.items));
             let (keys, read) = items.window(sql, window, &known.items)?;
             known.items.extend(read.clone());
             found.items.extend(read);

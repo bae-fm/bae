@@ -370,6 +370,55 @@ async fn a_scrolled_import_list_holds_its_offsets_items_across_a_scan() {
     }
 }
 
+/// A text-filtered import list scrolled a window at a time to its end and
+/// back holds at each window what a read by that window's offset holds: a
+/// window beside a row the list placed is read in the list's order, and a
+/// jump reads the rows the search finds.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_scrolled_filtered_import_list_holds_what_a_jump_reads() {
+    use crate::{ImportListOrder, ImportListRequest, ImportListView, PendingFilter};
+    let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    grow_import_list(&db, tmp.path(), 0, 2_000).await;
+    let list = tables
+        .open_import_list(ImportListView {
+            tab: crate::TriageTab::Pending,
+            filter_text: "Album 1".to_string(),
+            pending_filter: PendingFilter::All,
+            order: ImportListOrder::PathAscending,
+        })
+        .await
+        .unwrap();
+    let request = |offset| ImportListRequest {
+        list,
+        windows: LibraryPageWindows::from([LibraryPageWindow { offset, limit: 10 }]),
+    };
+    let total = tables.load_import_list(request(0)).await.unwrap().total_count;
+    assert!(total > 100, "the filter keeps enough rows to scroll through, kept {total}");
+    let mut query = tables.subscribe_import_list(request(0));
+    query.next().await.unwrap().result.unwrap();
+    let requests = query.requests();
+    let mut scroll = async |offset: u64| {
+        requests.set(request(offset)).unwrap();
+        loop {
+            let event = query.next().await.unwrap();
+            if event.request == request(offset) {
+                return event.result.unwrap().windows.remove(0).rows;
+            }
+        }
+    };
+    let last = total - total % 10;
+    let down = (1..=last / 10).map(|window| window * 10);
+    let up = (0..last / 10).rev().map(|window| window * 10);
+    for offset in down.chain(up) {
+        assert_eq!(
+            scroll(offset).await,
+            import_items(&db, request(offset)).await.remove(0),
+            "at {offset}"
+        );
+    }
+}
+
 /// Scan `start..end` more folders into the import list, each its own album
 /// folder under one of 100 artist folders, in a watched folder of their own.
 pub(crate) async fn grow_import_list(

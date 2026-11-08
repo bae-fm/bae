@@ -475,6 +475,24 @@ pub struct WindowsRead<R> {
     pub found: Places,
 }
 
+/// The known rows beside `window`: the one just before it and the one just
+/// after it.
+fn known_beside<'k>(
+    window: &LibraryPageWindow,
+    known: &'k Places,
+) -> (Option<&'k OrderKey>, Option<&'k OrderKey>) {
+    (
+        window.offset.checked_sub(1).and_then(|before| known.get(&before)),
+        window.offset.checked_add(window.limit).and_then(|after| known.get(&after)),
+    )
+}
+
+/// Whether `window` is read from a known row beside it, and not by its
+/// offset: the way `read_windows` reads it.
+pub fn is_read_beside_known(window: &LibraryPageWindow, known: &Places) -> bool {
+    window.limit > 0 && matches!(known_beside(window, known), (Some(_), _) | (_, Some(_)))
+}
+
 /// Read each of `windows`, in offset order, from the known row beside it
 /// when there is one and by its offset otherwise. `read` runs the list's
 /// statement under a seek, for at most `limit` rows from `offset`, and gives
@@ -488,10 +506,7 @@ pub fn read_windows<R, E>(
     let mut found = Places::new();
     let mut read_windows = Vec::with_capacity(windows.len());
     for window in windows {
-        let start = match (
-            window.offset.checked_sub(1).and_then(|before| known.get(&before)),
-            window.offset.checked_add(window.limit).and_then(|after| known.get(&after)),
-        ) {
+        let start = match known_beside(window, &known) {
             _ if window.limit == 0 => {
                 read_windows.push((window.clone(), Vec::new()));
                 continue;
