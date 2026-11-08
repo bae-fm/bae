@@ -1,6 +1,5 @@
 package fm.bae.app.ui.library
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,7 +8,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshState
@@ -23,13 +21,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
-import fm.bae.app.R
 import fm.bae.app.data.WindowedBrowserPageStore
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.LoadFailure
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.settings.syncLineText
 import kotlinx.coroutines.launch
@@ -80,13 +76,7 @@ internal fun LibraryPageContent(
         when {
             pageError != null && page.rows.isEmpty() -> {
                 ListPlaceholder {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        ErrorDetailDisclosure(pageError.error)
-                        TextButton(onClick = pageError.onRetry) { Text(stringResource(R.string.retry)) }
-                    }
+                    LoadFailure(pageError.error, onRetry = pageError.onRetry)
                 }
             }
 

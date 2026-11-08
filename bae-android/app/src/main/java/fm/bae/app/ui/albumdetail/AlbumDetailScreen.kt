@@ -19,7 +19,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -63,6 +62,7 @@ import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.LoadFailure
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.library.LibraryDetailTopBar
 import fm.bae.app.ui.playback.NowPlayingBar
@@ -197,13 +197,7 @@ private fun BoxScope.AlbumDetailPlaceholderBox(
 ) {
     when (placeholder) {
         is AlbumDetailPlaceholder.Failed -> {
-            Column(
-                modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                ErrorDetailDisclosure(placeholder.error)
-                TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
-            }
+            LoadFailure(placeholder.error, onRetry = onRetry, modifier = Modifier.align(Alignment.Center))
         }
 
         AlbumDetailPlaceholder.NotInLibrary -> {

@@ -2,6 +2,7 @@ package fm.bae.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -31,6 +32,7 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.LoadFailure
 import fm.bae.app.ui.components.PersonNameField
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.ScreenFailureNotice
@@ -189,18 +191,8 @@ internal fun RemovalIncompleteScreen(
     onRetry: () -> Unit,
 ) {
     val context = LocalContext.current
-    Column(
-        modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group, Alignment.CenterVertically),
-    ) {
-        Text(
-            text = context.coreString("ui.load_error.removal.title"),
-            style = ThemeText.heading.style,
-            textAlign = TextAlign.Center,
-        )
-        error?.let { ErrorDetailDisclosure(it) }
-        PrimaryButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        LoadFailure(DisplayError(context.coreString("ui.load_error.removal.title"), error?.detail), onRetry = onRetry)
     }
 }
 

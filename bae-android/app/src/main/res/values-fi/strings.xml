@@ -240,6 +240,8 @@
     <string name="appearance_forest">Metsä</string>
     <string name="appearance_sand">Hiekka</string>
     <string name="details">Tiedot</string>
+    <string name="show_details">Näytä tiedot</string>
+    <string name="hide_details">Piilota tiedot</string>
     <string name="copy_details">Kopioi tiedot</string>
     <string name="reset_device">Nollaa tämä laite</string>
     <string name="reset_device_confirm_title">Nollataanko tämä laite?</string>

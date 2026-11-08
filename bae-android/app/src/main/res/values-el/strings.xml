@@ -240,6 +240,8 @@
     <string name="appearance_forest">Δάσος</string>
     <string name="appearance_sand">Άμμος</string>
     <string name="details">Λεπτομέρειες</string>
+    <string name="show_details">Εμφάνιση λεπτομερειών</string>
+    <string name="hide_details">Απόκρυψη λεπτομερειών</string>
     <string name="copy_details">Αντιγραφή λεπτομερειών</string>
     <string name="reset_device">Επαναφορά αυτής της συσκευής</string>
     <string name="reset_device_confirm_title">Επαναφορά αυτής της συσκευής;</string>

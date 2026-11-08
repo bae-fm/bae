@@ -253,6 +253,8 @@
     <string name="appearance_forest">Лісовий</string>
     <string name="appearance_sand">Пісочний</string>
     <string name="details">Подробиці</string>
+    <string name="show_details">Показати подробиці</string>
+    <string name="hide_details">Сховати подробиці</string>
     <string name="copy_details">Копіювати подробиці</string>
     <string name="reset_device">Скинути цей пристрій</string>
     <string name="reset_device_confirm_title">Скинути цей пристрій?</string>

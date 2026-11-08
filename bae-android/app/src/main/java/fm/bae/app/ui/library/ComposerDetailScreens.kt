@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -40,8 +39,8 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.LoadFailure
 import fm.bae.app.ui.playback.NowPlayingBar
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeComposerDetail
@@ -136,10 +135,7 @@ private fun ComposerDetailContent(
     }
     Column(modifier = Modifier.fillMaxSize()) {
         rows.error?.let { failure ->
-            Column(modifier = Modifier.padding(ThemeSpace.related)) {
-                ErrorDetailDisclosure(failure.error)
-                TextButton(onClick = failure.onRetry) { Text(stringResource(R.string.retry)) }
-            }
+            LoadFailure(failure.error, onRetry = failure.onRetry)
         }
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             item {
