@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: Welcome libraries</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--background)}
+.wl-add{width:22px;height:20px;border:0;background:none;color:var(--text-primary);display:flex;align-items:center;justify-content:center;padding:0}
+.wl-add svg{stroke:currentColor}
+</style>
+</helmet>
+<div style="font-family: var(--font-sans)"><x-import component-from-global-scope="Bae.MacSection" title="Your libraries">
+  <x-import component-from-global-scope="Bae.MacBox">
+    <sc-if value="{{resting}}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="Bae.MacRow" label="Home music" strong="{{yes}}"><x-import component-from-global-scope="Bae.MacIconButton" icon="ellipsis" size="15" label="More"></x-import></x-import></sc-if>
+    <sc-if value="{{removing}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacRow" label="Home music" strong="{{yes}}" note="Leaving the library…"><div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Bae.MacSpinner"></x-import></div></x-import></sc-if>
+    <x-import component-from-global-scope="Bae.MacRow" label="Odile’s records" strong="{{yes}}"><x-import component-from-global-scope="Bae.MacIconButton" icon="ellipsis" size="15" label="More"></x-import></x-import>
+    <div style="display: flex; padding: 6px 8px"><button class="wl-add" aria-label="Add library"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1.5v9M1.5 6h9" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+  </x-import>
+</x-import></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"state":{"editor":"enum","options":["","removing"],"default":""},"$preview":{"width":420,"height":170}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = (this.props || {}).state || '';
+    return { yes: true, resting: s === '', removing: s === 'removing' };
+  }
+}
+</script>
+</body>
+</html>

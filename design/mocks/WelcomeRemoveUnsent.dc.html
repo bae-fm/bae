@@ -28,16 +28,9 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen">
-  <div style="flex: 1; display: flex; flex-direction: column; padding: 40px 0 24px"><div style="display: flex; justify-content: center"><x-import component-from-global-scope="Bae.Logo" size="96" bob="{{yes}}" glow="{{yes}}"></x-import></div><div style="padding: 14px 32px 0; font-size: 16px; line-height: 24px; color: var(--text-secondary); text-align: center">Your music, everywhere</div><x-import component-from-global-scope="Bae.AndroidSection" title="Your libraries"></x-import><x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Library Name" subtitle="Dropbox · name@example.com">
-      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
-    </x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Other Library" subtitle="S3-compatible · my-bucket">
-      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
-    </x-import>
-  </x-import><div style="flex: 1"></div><div style="display: flex; flex-direction: column; gap: 10px; padding: 0 16px"><x-import component-from-global-scope="Bae.AndroidButton" large="{{yes}}">Scan code</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined" large="{{yes}}">Enter code</x-import></div></div>
-  <x-import component-from-global-scope="Bae.AndroidDialog" title="Remove library from this device?" width="340">
-    3 changes on this device haven't been sent yet and will be lost. The library will remain in storage and on your other devices.
+  <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 24px 0 48px"><div style="display: flex; justify-content: center"><x-import component-from-global-scope="Bae.Logo" size="96" bob="{{yes}}" glow="{{yes}}"></x-import></div><div style="padding: 14px 32px 16px; font-size: 16px; line-height: 24px; color: var(--text-secondary); text-align: center">Your music, everywhere</div><dc-import name="WelcomeLibraries" hint-size="100%,220px"></dc-import></div>
+  <x-import component-from-global-scope="Bae.AndroidDialog" title="Remove “Home music” from this device?" width="340">
+    <div style="display: flex; flex-direction: column; gap: 12px"><div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--warning-tint); color: var(--text-primary)"><svg width="20" height="20" viewBox="0 0 24 24" style="flex: none; fill: var(--warning)"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg><span>Unsent changes will be lost</span></div><div>The library will remain in storage and on your other devices.</div></div>
     <x-import component-from-global-scope="Bae.AndroidDialogActions">
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Cancel</x-import>
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>

@@ -25,19 +25,8 @@ body{margin:0}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.MacWindow">
-  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; padding: 28px 0 24px"><x-import component-from-global-scope="Bae.Logo" size="72" bob="{{yes}}" glow="{{yes}}"></x-import><div style="margin-top: 10px; font-size: 15px; color: var(--text-secondary)">Your music, everywhere</div><div style="width: 420px; margin-top: 28px; display: flex; flex-direction: column; gap: 8px"><x-import component-from-global-scope="Bae.MacSection" title="Your libraries">
-    <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Library Name" strong="{{yes}}" note="Dropbox · name@example.com">
-        <x-import component-from-global-scope="Bae.MacButton">Open</x-import>
-        <x-import component-from-global-scope="Bae.MacButton" kind="borderless" destructive="{{yes}}">Remove</x-import>
-      </x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Local Library" strong="{{yes}}" note="Not synced">
-        <x-import component-from-global-scope="Bae.MacButton">Open</x-import>
-        <x-import component-from-global-scope="Bae.MacButton" kind="borderless" destructive="{{yes}}">Remove</x-import>
-      </x-import>
-    </x-import>
-  </x-import></div><div style="flex: 1"></div><div style="display: flex; gap: 8px"><x-import component-from-global-scope="Bae.MacButton">Create new library</x-import><x-import component-from-global-scope="Bae.MacButton">Scan code</x-import><x-import component-from-global-scope="Bae.MacButton">Enter code</x-import></div></div>
-  <x-import component-from-global-scope="Bae.MacAlert" title="Delete library?" message="This library isn't synced, so it will be deleted for good. Your audio files stay in their folders.">
+  <div style="position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 0 48px"><x-import component-from-global-scope="Bae.Logo" size="72" bob="{{yes}}" glow="{{yes}}"></x-import><div style="margin-top: 10px; font-size: 15px; color: var(--text-secondary)">Your music, everywhere</div><div style="width: 420px; margin-top: 28px; display: flex; flex-direction: column; gap: 8px"><dc-import name="MacWelcomeLibraries" hint-size="100%,170px"></dc-import></div></div>
+  <x-import component-from-global-scope="Bae.MacAlert" title="Delete “Odile’s records”?" message="This library isn't synced, so it will be deleted for good. Your audio files stay in their folders.">
     <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Delete</x-import>
     <x-import component-from-global-scope="Bae.MacButton">Cancel</x-import>
   </x-import>

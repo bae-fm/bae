@@ -28,14 +28,14 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen">
-  <div style="flex: 1; display: flex; flex-direction: column; padding: 40px 0 24px"><div style="display: flex; justify-content: center"><x-import component-from-global-scope="Bae.Logo" size="96" bob="{{yes}}" glow="{{yes}}"></x-import></div><div style="padding: 14px 32px 0; font-size: 16px; line-height: 24px; color: var(--text-secondary); text-align: center">Your music, everywhere</div><x-import component-from-global-scope="Bae.AndroidSection" title="Your libraries"></x-import><x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Library Name" subtitle="Couldn’t remove the library: [why it failed]" tone="danger">
+  <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 24px 0 48px"><div style="display: flex; justify-content: center"><x-import component-from-global-scope="Bae.Logo" size="96" bob="{{yes}}" glow="{{yes}}"></x-import></div><div style="padding: 14px 32px 16px; font-size: 16px; line-height: 24px; color: var(--text-secondary); text-align: center">Your music, everywhere</div><dc-import name="WelcomeLibraries" hint-size="100%,220px"></dc-import></div>
+<x-import component-from-global-scope="Bae.AndroidDialog" title="Couldn’t remove “Home music”" width="340">
+    Couldn’t reach storage. Check your connection and try again.
+    <x-import component-from-global-scope="Bae.AndroidDialogActions">
+      <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Cancel</x-import>
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Retry</x-import>
     </x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Other Library" subtitle="S3-compatible · my-bucket">
-      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
-    </x-import>
-  </x-import><div style="flex: 1"></div><div style="display: flex; flex-direction: column; gap: 10px; padding: 0 16px"><x-import component-from-global-scope="Bae.AndroidButton" large="{{yes}}">Scan code</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined" large="{{yes}}">Enter code</x-import></div></div>
+  </x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>

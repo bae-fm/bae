@@ -28,7 +28,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen">
-  <div style="flex: 1; display: flex; flex-direction: column; padding: 0 0 24px"><div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px"><x-import component-from-global-scope="Bae.Logo" size="150" bob="{{yes}}" glow="{{yes}}"></x-import><div style="font-size: 16px; line-height: 24px; color: var(--text-secondary)">Your music, everywhere</div></div><div style="display: flex; flex-direction: column; gap: 10px; padding: 0 16px"><x-import component-from-global-scope="Bae.AndroidButton" large="{{yes}}">Scan code</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined" large="{{yes}}">Enter code</x-import></div><div style="padding: 20px 32px 0; font-size: 14px; line-height: 20px; color: var(--text-secondary); text-align: center">Open Settings on your desktop to add this device.</div></div>
+  <div style="flex: 1; display: flex; flex-direction: column; padding: 0 0 24px"><div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px"><x-import component-from-global-scope="Bae.Logo" size="150" bob="{{yes}}" glow="{{yes}}"></x-import><div style="font-size: 16px; line-height: 24px; color: var(--text-secondary)">Your music, everywhere</div></div><dc-import name="WelcomeActions" hint-size="100%,178px"></dc-import></div>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>

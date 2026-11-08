@@ -624,7 +624,7 @@
    "title": "Folder picker",
    "w": 460,
    "x": 0,
-   "y": 240
+   "y": 160
   },
   "HistoryChanged.dc.html": {
    "h": 916,
@@ -783,8 +783,8 @@
    "page": "shared",
    "title": "Invite fields",
    "w": 292,
-   "x": 0,
-   "y": 3000
+   "x": 1200,
+   "y": 700
   },
   "InviteFlow.dc.html": {
    "h": 630,
@@ -1359,8 +1359,8 @@
    "page": "shared",
    "title": "macOS: Invite fields",
    "w": 400,
-   "x": 372,
-   "y": 3000
+   "x": 1572,
+   "y": 700
   },
   "MacInviteForm.dc.html": {
    "h": 600,
@@ -2119,8 +2119,8 @@
    "page": "shared",
    "title": "macOS: Sync status",
    "w": 460,
-   "x": 492,
-   "y": 2270
+   "x": 1692,
+   "y": 160
   },
   "MacTransfers.dc.html": {
    "h": 600,
@@ -2143,7 +2143,7 @@
    "page": "welcome",
    "title": "macOS: Welcome: your libraries",
    "w": 690,
-   "x": 2620,
+   "x": 4588,
    "y": 1656
   },
   "MacWelcomeDelete.dc.html": {
@@ -2151,7 +2151,7 @@
    "page": "welcome",
    "title": "macOS: Delete: never synced",
    "w": 690,
-   "x": 4930,
+   "x": 9208,
    "y": 1656
   },
   "MacWelcomeRemove.dc.html": {
@@ -2159,7 +2159,7 @@
    "page": "welcome",
    "title": "macOS: Remove: confirm",
    "w": 690,
-   "x": 3390,
+   "x": 7668,
    "y": 1656
   },
   "MacWelcomeRemoveFailed.dc.html": {
@@ -2167,7 +2167,7 @@
    "page": "welcome",
    "title": "macOS: Remove: failed",
    "w": 690,
-   "x": 6470,
+   "x": 10748,
    "y": 1656
   },
   "MacWelcomeRemoveUnsent.dc.html": {
@@ -2175,7 +2175,7 @@
    "page": "welcome",
    "title": "macOS: Remove: confirm, unsent changes",
    "w": 690,
-   "x": 4160,
+   "x": 8438,
    "y": 1656
   },
   "MacWelcomeRemoving.dc.html": {
@@ -2183,7 +2183,7 @@
    "page": "welcome",
    "title": "macOS: Remove: removing",
    "w": 690,
-   "x": 5700,
+   "x": 9978,
    "y": 1656
   },
   "Main.dc.html": {
@@ -2593,7 +2593,7 @@
    "title": "Restore code",
    "w": 460,
    "x": 0,
-   "y": 1780
+   "y": 1520
   },
   "RestoreCodePrint.dc.html": {
    "h": 792,
@@ -2609,7 +2609,7 @@
    "title": "S3-compatible form",
    "w": 460,
    "x": 0,
-   "y": 900
+   "y": 780
   },
   "SearchAndroidFailed.dc.html": {
    "h": 916,
@@ -2976,8 +2976,8 @@
    "page": "shared",
    "title": "Sync status",
    "w": 412,
-   "x": 0,
-   "y": 2270
+   "x": 1200,
+   "y": 160
   },
   "Transfers.dc.html": {
    "h": 916,
@@ -3000,7 +3000,7 @@
    "page": "welcome",
    "title": "Remove: confirm",
    "w": 412,
-   "x": 492,
+   "x": 1968,
    "y": 1656
   },
   "WelcomeRemoveFailed.dc.html": {
@@ -3008,7 +3008,7 @@
    "page": "welcome",
    "title": "Remove: failed",
    "w": 412,
-   "x": 1968,
+   "x": 3444,
    "y": 1656
   },
   "WelcomeRemoveUnsent.dc.html": {
@@ -3016,7 +3016,7 @@
    "page": "welcome",
    "title": "Remove: confirm, unsent changes",
    "w": 412,
-   "x": 984,
+   "x": 2460,
    "y": 1656
   },
   "WelcomeRemoving.dc.html": {
@@ -3024,7 +3024,7 @@
    "page": "welcome",
    "title": "Remove: removing",
    "w": 412,
-   "x": 1476,
+   "x": 2952,
    "y": 1656
   },
   "storage/Main.dc.html": {
@@ -3330,6 +3330,102 @@
    "w": 1460,
    "x": 0,
    "y": 3840
+  },
+  "WelcomeActions.dc.html": {
+   "h": 180,
+   "page": "shared",
+   "title": "Welcome buttons",
+   "w": 412,
+   "x": 1200,
+   "y": 1250
+  },
+  "MacWelcomeActions.dc.html": {
+   "h": 70,
+   "page": "shared",
+   "title": "macOS: Welcome buttons",
+   "w": 460,
+   "x": 1692,
+   "y": 1250
+  },
+  "WelcomeLibraries.dc.html": {
+   "h": 290,
+   "page": "shared",
+   "title": "Welcome libraries",
+   "w": 412,
+   "x": 1200,
+   "y": 1750
+  },
+  "MacWelcomeLibraries.dc.html": {
+   "h": 170,
+   "page": "shared",
+   "title": "macOS: Welcome libraries",
+   "w": 420,
+   "x": 1692,
+   "y": 1750
+  },
+  "WelcomeMenu.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Welcome: a library’s menu",
+   "w": 412,
+   "x": 492,
+   "y": 1656
+  },
+  "WelcomeInfo.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Welcome: a library’s details",
+   "w": 412,
+   "x": 984,
+   "y": 1656
+  },
+  "WelcomeAdd.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Welcome: add library",
+   "w": 412,
+   "x": 3936,
+   "y": 1656
+  },
+  "WelcomeInfoUnsent.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Welcome: a library’s details, unsent changes",
+   "w": 412,
+   "x": 1476,
+   "y": 1656
+  },
+  "MacWelcomeMenu.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Welcome: a library’s menu",
+   "w": 690,
+   "x": 5358,
+   "y": 1656
+  },
+  "MacWelcomeInfo.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Welcome: a library’s details",
+   "w": 690,
+   "x": 6128,
+   "y": 1656
+  },
+  "MacWelcomeInfoUnsent.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Welcome: a library’s details, unsent changes",
+   "w": 690,
+   "x": 6898,
+   "y": 1656
+  },
+  "MacWelcomeAdd.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Welcome: add library",
+   "w": 690,
+   "x": 11518,
+   "y": 1656
   }
  },
  "createdOnFiles": {
@@ -3381,6 +3477,7 @@
   "sync-rules",
   "transfers-rules",
   "welcome-rules",
+  "welcome-removing-steps",
   "switch-rules",
   "storage-today",
   "storage-proposed",
@@ -3404,6 +3501,8 @@
   "row-shared-restorecode",
   "row-shared-syncstatus",
   "row-shared-invitefields",
+  "row-shared-welcomeactions",
+  "row-shared-welcomelibraries",
   "row-welcome-join",
   "row-library-invite-online",
   "row-library-invite-offline",
@@ -3650,9 +3749,9 @@
   "code-welcome": {
    "page": "welcome",
    "size": 24,
-   "text": "What the code needs for these boards:\n- Both: the welcome's buttons are Scan code and Enter code, and the code says what it is for (spec/bae.md §5.6 “A new phone's first screen”). macOS keeps Create new library beside them. Android has them today as Scan a code and Enter a code (strings.xml onboarding_scan_code, onboarding_enter_code), which drop the “a”, as the spec writes them; macOS shows Join library and Add device, which open the same scan-or-type screen (WelcomeChooseView.swift). bae change, the spec's macOS sentence in the same commit.\n- Android: the welcome screen has no library list (ui/onboarding). It gets one, with Remove. bae change.\n- macOS: “Remove library from this Mac?” / “The library will remain in storage and on your other devices.” Today “Remove this library from this Mac?” (LibrarySettingsTab.swift:133) and “This Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage. …” (LibraryRemovalConfirmation.swift:22). bae change.\n- Joining from an invite: after the code reads, the person types their name, then waits on the number. Today the name comes from the invite and the person types none; a name is asked only when joining failed to write the profile (profile_required_title, LibraryLifecycleScreens.kt:157). The waiting screen is built: the number, until when it waits, the next check and Check now (OnboardingScreen.kt:321, BootstrapCodeView.swift). coven change, then bae (the People note).\n- Invite ended: one screen, “This invite has ended. Ask the person who invited you for a new one.”, for a decline, a cancel, an expiry, or the inviting device gone. It shows when the waiting device finds the ended marker where its request was, or loses access to the storage: the decline takes the sharing back in the same pass, so access can go before the marker is read. Today a permission error reaches the app as it is (coven spec §13.2: “Provider permission errors reach the app, even when they come from access being taken back”), and the ended text lists every cause (strings.xml onboarding_invite_ended). coven change (a join whose storage access is gone ends as an ended invite does), then bae.\n- Queued: plans/invites.md; coven in todo.md §2 #214 (the name in the request) and #177 (a join whose access was revoked ends, the same as a marker), bae in #215.\n- Adding this device (a pairing code, scanned or typed on the welcome): “Check that your other device shows this number, then add this device there.”, the number, “Waiting for your other device.”, no Check now: it checks every 5 seconds while open. Declined, closed on the other device or lost access: “This code has ended. Open Add device on your other device for a new one.” Today Welcome's Add device takes a restore code. coven #227, bae #228.\n- Android’s new device: the sheep and “bae” centered in the space above the buttons, and “Open Settings on your desktop to add this device.” under the buttons. spec/bae.md §5.6 says no other words, so it changes with this.\n- Both: the sheep and the word bob separately on Welcome, with the glow behind the sheep, as the design system’s Logo section says, and stops with reduced motion.\n- Both: “Your music, everywhere” under the logo, in place of “Get started with your music library.”\n- macOS's new Mac: the logo and the buttons centered in the window, Create new library on top as the default button, then Scan code and Enter code side by side under it, the three 240 wide. Today the three stack, each 240 wide (firstRunActions, WelcomeChooseView.swift:220).",
+   "text": "What the code needs for these boards:\n- Both: the welcome's buttons are Scan code and Enter code, and the code says what it is for (spec/bae.md §5.6 “A new phone's first screen”). macOS keeps Create new library beside them. Android has them today as Scan a code and Enter a code (strings.xml onboarding_scan_code, onboarding_enter_code), which drop the “a”, as the spec writes them; macOS shows Join library and Add device, which open the same scan-or-type screen (WelcomeChooseView.swift). bae change, the spec's macOS sentence in the same commit.\n- Android: the welcome screen has no library list (ui/onboarding). With libraries on the device, it gets one: each library’s name, which opens it, and a ⋮ menu with Details… (a dialog with its last known sync status, colored as in Settings: Synced, or “Unsent changes” when this device holds some; when it last synced; and its provider, account and folder) and Remove…, whose confirm is “Remove “<name>” from this device?”. With unsent changes the confirm leads with an amber card, a warning sign and “Unsent changes will be lost”, then “The library will remain in storage and on your other devices.” It shows no counts: the catalog’s counted sentences (core.library.removal.unsent_writes and unsent_files) give way to the one line, and the spec’s “the confirmation counts it” changes with it. The list ends in an Add library row that opens a sheet with Scan code, Enter code and “Open Settings on your desktop to add this device.”, in place of the buttons on the screen. While a removal runs, the row shows its step with a spinner in place of the ⋮. One that fails shows an alert, “Couldn’t remove “<name>””, with the error’s line and Cancel and Retry, and the row goes back to its name; the spec’s “A removal that fails says why on the row, with Retry in place of Remove” changes with it. bae change.\n- macOS: the list shows each library’s name, which opens it on a click, and a ⋯ button with Details… (a sheet with its last known sync status, when it last synced, its provider, account and folder, and Done) and Remove…; right-clicking a row shows the same two. A + inside the list’s bottom edge opens Create new library…, Scan code… and Enter code…, in place of the buttons under the list. While a removal runs, the row shows its step with a spinner in place of the ⋯; one that fails shows an alert, “Couldn’t remove “<name>””, with the error’s line and Retry and Cancel. With unsent changes the confirm shows the amber “Unsent changes will be lost” card. Today the rows have Open and Remove buttons and a second line (LocalLibrariesSection.swift), and a failed removal shows a callout above the list (RemovalErrorCallout, WelcomeChooseView.swift). bae change.\n- macOS: “Remove “<name>” from this Mac?” / “The library will remain in storage and on your other devices.” Today “Remove this library from this Mac?” (LibrarySettingsTab.swift:133) and “This Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage. …” (LibraryRemovalConfirmation.swift:22). bae change.\n- Joining from an invite: after the code reads, the person types their name, then waits on the number. Today the name comes from the invite and the person types none; a name is asked only when joining failed to write the profile (profile_required_title, LibraryLifecycleScreens.kt:157). The waiting screen is built: the number, until when it waits, the next check and Check now (OnboardingScreen.kt:321, BootstrapCodeView.swift). coven change, then bae (the People note).\n- Invite ended: one screen, “This invite has ended. Ask the person who invited you for a new one.”, for a decline, a cancel, an expiry, or the inviting device gone. It shows when the waiting device finds the ended marker where its request was, or loses access to the storage: the decline takes the sharing back in the same pass, so access can go before the marker is read. Today a permission error reaches the app as it is (coven spec §13.2: “Provider permission errors reach the app, even when they come from access being taken back”), and the ended text lists every cause (strings.xml onboarding_invite_ended). coven change (a join whose storage access is gone ends as an ended invite does), then bae.\n- Queued: plans/invites.md; coven in todo.md §2 #214 (the name in the request) and #177 (a join whose access was revoked ends, the same as a marker), bae in #215.\n- Adding this device (a pairing code, scanned or typed on the welcome): “Check that your other device shows this number, then add this device there.”, the number, “Waiting for your other device.”, no Check now: it checks every 5 seconds while open. Declined, closed on the other device or lost access: “This code has ended. Open Add device on your other device for a new one.” Today Welcome's Add device takes a restore code. coven #227, bae #228.\n- Android’s new device: the sheep and “bae” centered in the space above the buttons, and “Open Settings on your desktop to add this device.” under the buttons. spec/bae.md §5.6 says no other words, so it changes with this.\n- Both: the sheep and the word bob separately on Welcome, with the glow behind the sheep, as the design system’s Logo section says, and stops with reduced motion.\n- Both: “Your music, everywhere” under the logo, in place of “Get started with your music library.”\n- macOS: one layout for the buttons, with or without libraries: Create new library on top as the default button, then Scan code and Enter code side by side under it, the three 240 wide. On a new Mac the logo and the buttons sit centered in the window. Today a new Mac stacks the three, each 240 wide (firstRunActions, WelcomeChooseView.swift:220), and with libraries they're a row of small buttons (populatedActions, :240).",
    "w": 420,
-   "x": 7700,
+   "x": 12748,
    "y": 1656
   },
   "composers-today": {
@@ -4399,8 +4498,8 @@
    "page": "shared",
    "text": "Invite fields",
    "w": 240,
-   "x": 0,
-   "y": 2760
+   "x": 1200,
+   "y": 540
   },
   "row-shared-restorecode": {
    "kind": "title1",
@@ -4409,7 +4508,7 @@
    "text": "Restore code",
    "w": 240,
    "x": 0,
-   "y": 1540
+   "y": 1360
   },
   "row-shared-s3form": {
    "kind": "title1",
@@ -4418,7 +4517,7 @@
    "text": "S3-compatible form",
    "w": 240,
    "x": 0,
-   "y": 660
+   "y": 620
   },
   "row-shared-syncstatus": {
    "kind": "title1",
@@ -4426,8 +4525,8 @@
    "page": "shared",
    "text": "Sync status",
    "w": 240,
-   "x": 0,
-   "y": 2030
+   "x": 1200,
+   "y": 0
   },
   "row-store-earlier": {
    "kind": "title1",
@@ -4476,7 +4575,7 @@
   },
   "row-welcome-0": {
    "kind": "title1",
-   "maxW": 7620,
+   "maxW": 12668,
    "page": "welcome",
    "text": "Your libraries and removing one",
    "w": 240,
@@ -4534,7 +4633,7 @@
    "text": "The new folder's name starts where the folder names above it start: the field's box sits 10px further left, so the text inside it lines up. Today the field and Create are an HStack in the Folders section (OAuthFolderSetup.swift:114-118). bae change.",
    "w": 380,
    "x": 520,
-   "y": 240
+   "y": 160
   },
   "storage-proposed": {
    "fill": "teal",
@@ -4594,7 +4693,7 @@
    "size": 24,
    "text": "Removing and deleting:\nneither asks for device authentication. A library that was never synced offers Delete instead of Remove, on Android and macOS.",
    "w": 380,
-   "x": 7240,
+   "x": 12288,
    "y": 1656
   },
   "work-folder-name": {
@@ -4686,6 +4785,32 @@
    "x": 0,
    "y": 1920,
    "text": "Accents"
+  },
+  "row-shared-welcomeactions": {
+   "kind": "title1",
+   "maxW": 952,
+   "page": "shared",
+   "text": "Welcome buttons",
+   "w": 240,
+   "x": 1200,
+   "y": 1090
+  },
+  "row-shared-welcomelibraries": {
+   "kind": "title1",
+   "maxW": 912,
+   "page": "shared",
+   "text": "Welcome libraries",
+   "w": 240,
+   "x": 1200,
+   "y": 1590
+  },
+  "welcome-removing-steps": {
+   "fill": "blue",
+   "page": "welcome",
+   "text": "The removing row’s second line is the step the removal is on, from core’s catalog (core.library.closing_step.*):\n- Stopping playback…\n- Stopping sync…\n- Finishing background work…\n- Closing the library…\n- Leaving the library…\n- Deleting this device’s files…\nA library that has to open first, to count what it hasn’t sent, can show (core.library.open_step.*):\n- Updating the library…\n- Rebuilding the library’s indexes…\nIf the removal fails, the alert’s text is the error’s own line from core (core.error.category.*), such as “Couldn’t reach storage. Check your connection and try again.”",
+   "w": 412,
+   "x": 2952,
+   "y": 2612
   }
  },
  "order": [
@@ -4843,6 +4968,10 @@
   "MacInviteFormS3.dc.html",
   "InviteFields.dc.html",
   "MacInviteFields.dc.html",
+  "WelcomeActions.dc.html",
+  "MacWelcomeActions.dc.html",
+  "WelcomeLibraries.dc.html",
+  "MacWelcomeLibraries.dc.html",
   "InviteRequest.dc.html",
   "MacInviteRequest.dc.html",
   "InviteOffline.dc.html",
@@ -5044,16 +5173,24 @@
   "ExpAndroidMultiSelect.dc.html",
   "ExpAndroidStorage.dc.html",
   "Welcome.dc.html",
+  "WelcomeMenu.dc.html",
+  "WelcomeInfo.dc.html",
+  "WelcomeInfoUnsent.dc.html",
   "WelcomeRemove.dc.html",
   "WelcomeRemoveUnsent.dc.html",
   "WelcomeRemoving.dc.html",
   "WelcomeRemoveFailed.dc.html",
+  "WelcomeAdd.dc.html",
   "MacWelcome.dc.html",
+  "MacWelcomeMenu.dc.html",
+  "MacWelcomeInfo.dc.html",
+  "MacWelcomeInfoUnsent.dc.html",
   "MacWelcomeRemove.dc.html",
   "MacWelcomeRemoveUnsent.dc.html",
   "MacWelcomeDelete.dc.html",
   "MacWelcomeRemoving.dc.html",
   "MacWelcomeRemoveFailed.dc.html",
+  "MacWelcomeAdd.dc.html",
   "JoinName.dc.html",
   "JoinWaiting.dc.html",
   "MacJoinName.dc.html",
