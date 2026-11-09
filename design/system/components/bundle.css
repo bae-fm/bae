@@ -820,3 +820,8 @@
 .bae-errdis-panel .bae-errdis-copy { position: absolute; top: 8px; right: 8px; }
 .bae-errdis-panel .bae-a-iconbtn { position: absolute; top: 0; right: 0; width: 40px; height: 40px; }
 .bae-errdis-panel:has(.bae-a-iconbtn) { min-height: 40px; box-sizing: border-box; padding-right: 44px; }
+.bae-errdis-panel .bae-a-iconbtn svg { width: 16px; height: 16px; }
+.bae-errdis-panel .bae-a-iconbtn { color: var(--text-secondary); }
+/* On a toned notice's solid dark fill, the panel is lighter than the fill, so its text stays readable. */
+.bae-notice:not(.bae-tone-neutral) .bae-errdis-panel { background: color-mix(in srgb, white 40%, transparent); }
+[data-theme="light"] .bae-notice:not(.bae-tone-neutral) .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
