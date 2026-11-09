@@ -239,7 +239,7 @@ internal fun OnboardingStartColumn(
             modifier = Modifier.size(120.dp),
         )
         Spacer(modifier = Modifier.height(ThemeSpace.related))
-        Text(text = "bae", style = ThemeText.wordmark.style)
+        Text(text = "bae", style = ThemeText.wordmark.style, color = BaeTheme.colors.logoWord)
         title?.let {
             Spacer(modifier = Modifier.height(ThemeSpace.group))
             Text(text = it, style = ThemeText.title.style, textAlign = TextAlign.Center)
