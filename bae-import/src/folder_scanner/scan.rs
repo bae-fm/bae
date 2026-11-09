@@ -137,10 +137,10 @@ pub(crate) struct ScanReadings<'a> {
     pub(crate) new_grouping_key: &'a (dyn Fn() -> CandidateKey + Sync),
 }
 
-/// A key for a grouping nobody has stored yet, for a pass with no store to
-/// give it one.
-pub fn fresh_grouping_key() -> CandidateKey {
-    CandidateKey::grouping(&uuid::Uuid::new_v4().to_string())
+/// A key for a grouping the store has not seen: the key the release it reads
+/// as is addressed by from here on.
+pub fn new_grouping_key(ids: &dyn coven::IdSource) -> CandidateKey {
+    CandidateKey::grouping(&ids.new_id().to_string())
 }
 
 /// One walk over a [`ScanRoot`]: how directories are read, the readings each
@@ -694,15 +694,17 @@ pub fn scan_for_candidates_with_decisions<F>(
     root: PathBuf,
     stored: &StoredCandidateEdits,
     decisions: &FolderReleaseDecisions,
+    ids: &dyn coven::IdSource,
     on_item: F,
 ) -> Result<(), FolderScanError>
 where
     F: FnMut(WalkItem),
 {
+    let new_key = || new_grouping_key(ids);
     scan_for_candidates_with_reader_cancellable_and_directories(
         &OsDirectoryReader,
         root,
-        &ScanReadings { stored, decisions, new_grouping_key: &fresh_grouping_key },
+        &ScanReadings { stored, decisions, new_grouping_key: &new_key },
         &FileReads::new(std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
         &ScanCancellation::new(),
         |_| {},

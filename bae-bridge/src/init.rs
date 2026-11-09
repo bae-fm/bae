@@ -131,7 +131,7 @@ pub fn configure_diagnostics(
     configure_logging();
     install_panic_logging();
     let clock = Arc::new(coven::SystemClock);
-    let ids = Arc::new(coven::UuidIds);
+    let ids = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
     let bugs: Arc<dyn bae_diagnostics::BugReporter> = Arc::new(PlatformBugReporter(bug_reporter));
     let inner = match Diagnostics::configure(config.into_core(), clock, ids, bugs.clone()) {
         Ok(diagnostics) => diagnostics,

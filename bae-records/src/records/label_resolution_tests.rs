@@ -193,7 +193,7 @@ fn a_catalog_id_two_devices_gave_two_labels_merges_them() {
 }
 
 async fn check_two_devices_give_one_label_id(devices: &bae_store::test_devices::TwoStores) {
-    let album = crate::DbAlbum::new_test("Album Title");
+    let album = crate::DbAlbum::new_test("Album Title", &coven::UuidIds);
     let release = crate::DbRelease::new_test(&album.id, RELEASE);
     crate::test_fixtures::test_records(devices.a())
         .insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])

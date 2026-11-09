@@ -238,6 +238,8 @@ pub(super) fn start_test_handle(
             services,
             runtime,
             bae_diagnostics::Diagnostics::noop(),
+            #[cfg(feature = "cast")]
+            Arc::new(coven::SequentialIds::new()),
             test_host(root.path()),
         )
         .expect("the bridge handle starts"),

@@ -30,7 +30,7 @@ async fn cover_db() -> (Store, tempfile::TempDir) {
         let album = bae_records::DbAlbum {
             id: album_id.to_string(),
             year: Some(2026),
-            ..bae_records::DbAlbum::new_test(title)
+            ..bae_records::DbAlbum::new_test(title, &coven::UuidIds)
         };
         records.insert_album(&album).await.unwrap();
         records

@@ -53,6 +53,7 @@ pub(super) async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions
         root.clone(),
         &StoredCandidateEdits::none(),
         &decisions,
+        &coven::SequentialIds::new(),
         |item| walked.push(item),
     )
     .unwrap();
@@ -158,11 +159,17 @@ pub(super) fn scan_for_candidates_with_decisions_collect(
     decisions: FolderReleaseDecisions,
 ) -> Vec<WalkItem> {
     let mut items = Vec::new();
-    scan_for_candidates_with_decisions(root, &StoredCandidateEdits::none(), &decisions, |item| {
-        if !matches!(item, WalkItem::Entry(FolderEntry::Release(ScanItem::Discovered(_)))) {
-            items.push(item);
-        }
-    })
+    scan_for_candidates_with_decisions(
+        root,
+        &StoredCandidateEdits::none(),
+        &decisions,
+        &coven::SequentialIds::new(),
+        |item| {
+            if !matches!(item, WalkItem::Entry(FolderEntry::Release(ScanItem::Discovered(_)))) {
+                items.push(item);
+            }
+        },
+    )
     .unwrap();
     items
 }
@@ -742,13 +749,15 @@ pub(super) fn scan_with_reader<R: DirectoryReader, F: FnMut(WalkItem)>(
     root: PathBuf,
     on_item: F,
 ) -> Result<(), FolderScanError> {
+    let ids = coven::SequentialIds::new();
+    let new_key = || new_grouping_key(&ids);
     scan_for_candidates_with_reader_cancellable_and_directories(
         reader,
         root,
         &ScanReadings {
             stored: &StoredCandidateEdits::none(),
             decisions: &FolderReleaseDecisions::default(),
-            new_grouping_key: &fresh_grouping_key,
+            new_grouping_key: &new_key,
         },
         &FileReads::new(Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
         &ScanCancellation::new(),

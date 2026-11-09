@@ -67,7 +67,7 @@ async fn credited_artist(device: &TestDevice, artist: DbArtist) -> String {
 async fn album_credited_to(device: &TestDevice, artist_id: &str, title: &str) -> (String, String) {
     // The album arrives with its release in one write, as an import writes
     // them.
-    let album = DbAlbum::new_test(title);
+    let album = DbAlbum::new_test(title, &coven::UuidIds);
     let credit = bae_records::DbAlbumArtist::new_test(&album.id, artist_id);
     let release = DbRelease { ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string()) };
     device
@@ -177,7 +177,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 .await
                 .unwrap()
                 .remove(0);
-            let album = DbAlbum::new_test("Album");
+            let album = DbAlbum::new_test("Album", &coven::UuidIds);
             let credit = bae_records::DbAlbumArtist::new_test(&album.id, &artist_id);
             let release =
                 DbRelease { ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string()) };

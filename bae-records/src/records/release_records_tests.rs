@@ -524,7 +524,7 @@ async fn fact_rows_take_their_ids_from_their_facts() {
     };
     records.insert_artist(&artist).await.unwrap();
 
-    let mut album = DbAlbum::new_test("Album");
+    let mut album = DbAlbum::new_test("Album", &coven::UuidIds);
     album.id = ALBUM_1.to_string();
     records.insert_album(&album).await.unwrap();
     records.insert_album_artist(&DbAlbumArtist::new(&album.id, &artist.id, 0, now)).await.unwrap();
@@ -542,7 +542,7 @@ async fn fact_rows_take_their_ids_from_their_facts() {
 
     // Moving the release to a fresh album copies its credits under the new
     // album's ids.
-    let target = DbAlbum::new_test("Target Album");
+    let target = DbAlbum::new_test("Target Album", &coven::UuidIds);
     records
         .set_records_atomic(crate::RecordsChange {
             release_id: release.id.clone(),

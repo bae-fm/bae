@@ -79,7 +79,7 @@ async fn the_survivor_takes_the_absorbed_artists_ids_and_its_credits_read_as_the
     let absorbed = artist("absorbed", None, Some("mb-1"));
     records.insert_artist(&survivor).await.unwrap();
     records.insert_artist(&absorbed).await.unwrap();
-    let album = DbAlbum::new_test("Album Title");
+    let album = DbAlbum::new_test("Album Title", &coven::UuidIds);
     records.insert_album(&album).await.unwrap();
     records
         .insert_album_artist(&DbAlbumArtist::new(&album.id, &survivor.id, 0, fixed_now()))

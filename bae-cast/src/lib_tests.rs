@@ -61,6 +61,7 @@ fn test_controller(
         runtime.handle().clone(),
         discovery,
         ServingNetwork::Loopback,
+        ids(),
         Diagnostics::noop(),
     );
     (runtime, controller, services, tmp)
@@ -310,6 +311,11 @@ fn ephemeral_server_start_does_not_reenter_the_owned_runtime() {
     );
 }
 
+/// The id source a sink builds its sessions' ids from.
+fn ids() -> coven::IdSourceRef {
+    Arc::new(coven::SequentialIds::new())
+}
+
 /// A receiver advertising a setting bae can't read is refused before any
 /// connection is attempted, with the setting named in the error.
 #[test]
@@ -317,6 +323,7 @@ fn an_unreadable_airplay_advertisement_is_refused() {
     let unreadable =
         UnreadableSetting { key: "features".to_string(), raw: Some("garbage".to_string()) };
     let Err(error) = build_airplay_sink(
+        &ids(),
         &Diagnostics::noop(),
         "10.0.0.7".parse().unwrap(),
         7000,
@@ -340,9 +347,13 @@ fn an_airplay2_receiver_without_transient_pairing_is_refused() {
         RendererServiceType::AirPlay,
         &std::collections::HashMap::from([("features".to_string(), "0x0,0x40".to_string())]),
     );
-    let Err(error) =
-        build_airplay_sink(&Diagnostics::noop(), "10.0.0.7".parse().unwrap(), 7000, &capabilities)
-    else {
+    let Err(error) = build_airplay_sink(
+        &ids(),
+        &Diagnostics::noop(),
+        "10.0.0.7".parse().unwrap(),
+        7000,
+        &capabilities,
+    ) else {
         panic!("a receiver without transient pairing builds no sink");
     };
     assert!(matches!(error, CastError::AirPlayPairingUnsupported), "{error:?}");

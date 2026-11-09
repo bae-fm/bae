@@ -249,7 +249,7 @@ impl TestLibrary {
                 album_dir.into(),
                 release_id_key,
                 "test",
-                uuid::Uuid::new_v4().to_string(),
+                coven::IdSource::new_id(&coven::UuidIds).to_string(),
             )
             .await
             .expect("the test import service accepts and completes the folder import");

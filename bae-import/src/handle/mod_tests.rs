@@ -82,7 +82,7 @@ pub(super) async fn insert_library_release(
     artist_id: &str,
     title: &str,
 ) -> (DbAlbum, DbRelease) {
-    let album = DbAlbum::new_test(title);
+    let album = DbAlbum::new_test(title, &coven::UuidIds);
     let release = DbRelease::new_test(&album.id, &Uuid::new_v4().to_string());
     bae_records::test_fixtures::test_records(db)
         .insert_album_with_release_and_tracks(

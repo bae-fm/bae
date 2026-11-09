@@ -94,13 +94,15 @@ impl crate::file_tag_reader::FileTagReader for PictureReader {
 /// The releases a scan of `root` through `reads` reads, as it last says them.
 fn scan_reading(root: &Path, reads: &FileReads) -> Vec<FolderCandidate> {
     let mut releases = BTreeMap::new();
+    let ids = coven::SequentialIds::new();
+    let new_key = || new_grouping_key(&ids);
     scan_for_candidates_with_reader_cancellable_and_directories(
         &OsDirectoryReader,
         root.to_path_buf(),
         &ScanReadings {
             stored: &StoredCandidateEdits::none(),
             decisions: &FolderReleaseDecisions::default(),
-            new_grouping_key: &fresh_grouping_key,
+            new_grouping_key: &new_key,
         },
         reads,
         &ScanCancellation::new(),

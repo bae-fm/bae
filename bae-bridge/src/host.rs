@@ -15,6 +15,9 @@ pub struct BridgeHost {
     app_dir: bae_app_dir::AppDir,
     /// This device's libraries as coven keeps them, under `app_dir`.
     coven: coven::Coven,
+    /// Where the ids of what this device's libraries make come from: each
+    /// library this host builds is built over it.
+    ids: coven::IdSourceRef,
     runtime: Option<tokio::runtime::Runtime>,
     /// Where the host's own calls run, on `runtime`.
     operations: crate::operation_runtime::OperationRuntime,
@@ -242,8 +245,11 @@ impl BridgeHost {
     }
 
     fn builder(&self) -> coven::CovenBuilder {
-        let builder =
-            self.coven.builder().oauth_clients(self.oauth_clients.lock().expect(HOST_LOCK).clone());
+        let builder = self
+            .coven
+            .builder()
+            .id_source(self.ids.clone())
+            .oauth_clients(self.oauth_clients.lock().expect(HOST_LOCK).clone());
         #[cfg(desktop)]
         {
             builder.oauth_presenter(Arc::new(coven::DesktopOAuthPresenter))
@@ -261,6 +267,7 @@ impl BridgeHost {
         diagnostics: Diagnostics,
         app_dir: Arc<BridgeAppDir>,
         coven: coven::Coven,
+        ids: coven::IdSourceRef,
         audio_focus: bae_playback::AudioFocus,
     ) -> Result<Arc<Self>, BridgeError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -278,6 +285,7 @@ impl BridgeHost {
             operations,
             app_dir: app_dir.core().clone(),
             coven,
+            ids,
             runtime: Some(runtime),
             oauth_clients: Mutex::new(coven::OAuthClients::new(None, None)),
             #[cfg(not(desktop))]
@@ -304,7 +312,7 @@ impl BridgeHost {
             app_dir.core().coven_app_dir(),
             diagnostics.bug_sink(),
         );
-        Self::start(diagnostics, app_dir, coven, bae_playback::AudioFocus::Unshared)
+        Self::start(diagnostics, app_dir, coven, system_ids(), bae_playback::AudioFocus::Unshared)
     }
 }
 
@@ -319,7 +327,7 @@ impl BridgeHost {
     ) -> Result<Arc<Self>, BridgeError> {
         let diagnostics = diagnostics.core().clone();
         let coven = installation(&diagnostics, app_dir.core())?;
-        Self::start(diagnostics, app_dir, coven, bae_playback::AudioFocus::Unshared)
+        Self::start(diagnostics, app_dir, coven, system_ids(), bae_playback::AudioFocus::Unshared)
     }
 }
 
@@ -341,6 +349,7 @@ impl BridgeHost {
             diagnostics,
             app_dir,
             coven,
+            system_ids(),
             bae_playback::AudioFocus::Shared(Arc::new(audio_focus)),
         )
     }
@@ -575,6 +584,11 @@ pub fn init_app_on_fixture(
     )
 }
 
+/// The ids this process's host makes: UUIDv7s timed by the system clock.
+fn system_ids() -> coven::IdSourceRef {
+    Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(Arc::new(coven::SystemClock)))
+}
+
 /// This device's libraries as coven keeps them under `app_dir`, their
 /// keys in the OS keychain, which building it opens. A keychain coven
 /// can't reach ships `keyring_init_failed` through this sink and fails
@@ -636,7 +650,16 @@ fn start_handle(
 ) -> Result<AppHandle, bae_app::BootstrapError>
        + Send
        + 'static {
-    move |services, runtime| AppHandle::start(services, runtime, diagnostics, host)
+    move |services, runtime| {
+        AppHandle::start(
+            services,
+            runtime,
+            diagnostics,
+            #[cfg(feature = "cast")]
+            host.ids.clone(),
+            host,
+        )
+    }
 }
 
 mod bootstrap;

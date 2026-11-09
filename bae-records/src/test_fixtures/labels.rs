@@ -11,7 +11,7 @@ pub const RELEASE: &str = "5d1c2c9e-4f0b-4a43-9a51-0e6c1d3b7a10";
 /// A database on `schema` holding one album and its release, `RELEASE`.
 pub async fn library(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
     let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
-    let album = DbAlbum::new_test("Album Title");
+    let album = DbAlbum::new_test("Album Title", &coven::UuidIds);
     let release = DbRelease::new_test(&album.id, RELEASE);
     super::test_records(&db)
         .insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])
@@ -40,8 +40,9 @@ pub async fn add_label(
     musicbrainz: Option<&str>,
     discogs: Option<&str>,
 ) -> String {
-    let album = DbAlbum::new_test("Album Title");
-    let mut release = DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
+    let album = DbAlbum::new_test("Album Title", &coven::UuidIds);
+    let mut release =
+        DbRelease::new_test(&album.id, &coven::IdSource::new_id(&coven::UuidIds).to_string());
     release.pressing.labels = vec![with_ids(label(Some(name), None), musicbrainz, discogs)];
     super::test_records(db)
         .insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])

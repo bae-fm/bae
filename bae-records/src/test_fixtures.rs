@@ -69,7 +69,10 @@ pub async fn album_with_releases(
     title: &str,
     releases: &[&str],
 ) {
-    let album = crate::DbAlbum { id: album_id.to_string(), ..crate::DbAlbum::new_test(title) };
+    let album = crate::DbAlbum {
+        id: album_id.to_string(),
+        ..crate::DbAlbum::new_test(title, &coven::UuidIds)
+    };
     records.insert_album(&album).await.unwrap();
     for release in releases {
         records.insert_release(&crate::DbRelease::new_test(album_id, release)).await.unwrap();
@@ -100,7 +103,7 @@ pub async fn album_with_tracks(
 /// resolve.
 pub fn credit(name: &str) -> crate::DbArtist {
     crate::DbArtist {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: name.to_string(),
         sort_name: None,
         discogs_artist_id: None,

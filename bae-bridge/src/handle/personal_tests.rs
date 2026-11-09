@@ -67,7 +67,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
                 .history_sharing,
             bae_people::people::Sharing::Household
         );
-        let album = bae_records::DbAlbum::new_test("Album");
+        let album = bae_records::DbAlbum::new_test("Album", &coven::UuidIds);
         records.insert_album(&album).await.unwrap();
         app.clone()
             .set_rating(BridgeRatingTarget::Album { id: album.id.clone() }, Some(BridgeStars::Four))

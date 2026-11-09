@@ -267,11 +267,13 @@ pub use editing_projection::{bridge_validation_reason_key, shape_release_edit};
 impl AppHandle {
     /// Start the handle over a library `host` opened. `diagnostics` is where
     /// a panic in the handle's operations, its deliveries to the host, and
-    /// casting's background work is reported.
+    /// casting's background work is reported; `ids` is where a cast
+    /// session's ids come from.
     pub(crate) fn start(
         services: AppServices,
         runtime: tokio::runtime::Runtime,
         diagnostics: bae_diagnostics::Diagnostics,
+        #[cfg(feature = "cast")] ids: coven::IdSourceRef,
         host: std::sync::Arc<crate::BridgeHost>,
     ) -> Result<Self, bae_app::BootstrapError> {
         #[cfg(desktop)]
@@ -308,6 +310,7 @@ impl AppHandle {
             services.clone(),
             runtime.handle().clone(),
             bae_cast::renderer::RendererDiscovery::for_host(),
+            ids,
             diagnostics.clone(),
         );
 

@@ -8,7 +8,7 @@ use chrono::Utc;
 
 /// An album with a fresh id, titled "Test Album".
 pub fn test_album() -> DbAlbum {
-    DbAlbum { year: Some(2024), ..DbAlbum::new_test("Test Album") }
+    DbAlbum { year: Some(2024), ..DbAlbum::new_test("Test Album", &coven::UuidIds) }
 }
 
 /// A release of `album_id` with a fresh id and nothing on it.
@@ -18,7 +18,7 @@ pub fn test_release(album_id: &str) -> DbRelease {
             year: Some(2024),
             ..bae_types::pressing::Pressing::blank()
         },
-        ..DbRelease::new_test(album_id, &uuid::Uuid::new_v4().to_string())
+        ..DbRelease::new_test(album_id, &coven::IdSource::new_id(&coven::UuidIds).to_string())
     }
 }
 

@@ -22,8 +22,15 @@ fn an_unfinished_removal_is_reported_and_finished_by_the_host() {
     });
     let host = crate::handle::tests::test_host(root.path());
     let app = Arc::new(
-        AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop(), host.clone())
-            .unwrap(),
+        AppHandle::start(
+            services,
+            runtime,
+            bae_diagnostics::Diagnostics::noop(),
+            #[cfg(feature = "cast")]
+            Arc::new(coven::SequentialIds::new()),
+            host.clone(),
+        )
+        .unwrap(),
     );
     let libraries = bae_app_dir::AppDir::under_home(root.path()).unwrap().libraries();
     std::fs::set_permissions(&libraries, std::fs::Permissions::from_mode(0o555)).unwrap();

@@ -515,6 +515,11 @@ key that spells the fact.
 | cover | the release |
 | artist image | the artist |
 
+Every other row gets a fresh id: a UUIDv7, whose first 48 bits are when it was
+made by the device's clock, so one write's new rows sit together in the
+store's indexes. Anyone who can read the row can read when it was made, as its
+`created_at` already says.
+
 coven merges two devices' rows that share a table and key, so two devices
 stating one fact write one row
 ([coven §9.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#92-keys-and-unique-values)).

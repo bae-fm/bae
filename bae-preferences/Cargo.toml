@@ -30,8 +30,6 @@ coven = { workspace = true }
 rusqlite = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
-# A new save preset's id.
-uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
 # Test databases with bae's schema.

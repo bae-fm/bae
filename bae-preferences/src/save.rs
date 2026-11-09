@@ -207,11 +207,11 @@ impl SavePreset {
     /// The preset a person adds to their list: FLAC at its starting codec,
     /// named for the format, the default filename pattern, pregaps appended
     /// to the track before except the hidden first-track audio, offered for
-    /// tracks and releases, embedding the cover, under a new id.
-    pub fn new_flac() -> Self {
+    /// tracks and releases, embedding the cover, under an id from `ids`.
+    pub fn new_flac(ids: &dyn coven::IdSource) -> Self {
         let format = SaveFormat::Flac;
         SavePreset {
-            id: uuid::Uuid::new_v4().simple().to_string(),
+            id: ids.new_id().simple().to_string(),
             name: format.name().to_string(),
             codec: format.default_codec(),
             filename_tokens: default_save_filename_tokens(),

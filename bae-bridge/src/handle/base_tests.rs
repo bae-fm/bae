@@ -117,6 +117,8 @@ fn setting_up_s3_storage_writes_its_steps() {
             services,
             runtime,
             bae_diagnostics::Diagnostics::noop(),
+            #[cfg(feature = "cast")]
+            Arc::new(coven::SequentialIds::new()),
             crate::handle::tests::test_host(root.path()),
         )
         .unwrap(),

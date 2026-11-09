@@ -204,7 +204,7 @@ impl RecordsFixture {
             work,
             position as i32,
             Catalog::MusicBrainz,
-            uuid::Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             self.at,
         ));
         self

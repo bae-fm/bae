@@ -315,13 +315,15 @@ fn cancellation_reaches_an_in_progress_directory_read() {
     let cancellation = ScanCancellation::new();
     let thread_cancellation = cancellation.clone();
     let scan = std::thread::spawn(move || {
+        let ids = coven::SequentialIds::new();
+        let new_key = || new_grouping_key(&ids);
         scan_for_candidates_with_reader_cancellable_and_directories(
             &CancellableReader { entered: entered_tx },
             PathBuf::from("/network"),
             &ScanReadings {
                 stored: &StoredCandidateEdits::none(),
                 decisions: &FolderReleaseDecisions::default(),
-                new_grouping_key: &fresh_grouping_key,
+                new_grouping_key: &new_key,
             },
             &FileReads::new(Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
             &thread_cancellation,
@@ -411,6 +413,7 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
             FolderReleaseDecision::KeepAsSeparateReleases,
             FolderReleaseDecisionAuthor::User,
         )]),
+        &coven::SequentialIds::new(),
         |item| {
             if !matches!(
                 item,
@@ -651,6 +654,7 @@ fn unreadable_child_directory_fails_scan() {
         root.to_path_buf(),
         &StoredCandidateEdits::none(),
         &FolderReleaseDecisions::default(),
+        &coven::SequentialIds::new(),
         |_| {},
     )
     .expect_err("unreadable directory should fail the scan");

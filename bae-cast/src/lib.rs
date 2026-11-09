@@ -59,6 +59,7 @@ use renderer::{
 /// encryption the sender can't provide. RAOP receivers pick unencrypted when
 /// offered, else RSA-AES.
 fn build_airplay_sink(
+    ids: &coven::IdSourceRef,
     diagnostics: &Diagnostics,
     addr: std::net::IpAddr,
     port: u16,
@@ -79,6 +80,7 @@ fn build_airplay_sink(
             port,
             // The receiver's features decide whether it requires PTP or accepts NTP.
             TimingProtocol::from_features(capabilities.features),
+            ids.clone(),
             diagnostics.clone(),
         ))),
         Dialect::Raop { encryption: offered } => {
@@ -315,6 +317,8 @@ pub struct CastController {
     server: Arc<Mutex<Option<EphemeralServer>>>,
     /// Where that server listens.
     serving: ServingNetwork,
+    /// Where an AirPlay session's ids come from.
+    ids: coven::IdSourceRef,
     /// Where casting's background work — the server, the watchers, the
     /// discovery readers and the AirPlay stream threads — reports a panic.
     diagnostics: Diagnostics,
@@ -337,9 +341,10 @@ impl CastController {
         services: AppServices,
         runtime: Handle,
         discovery: RendererDiscovery,
+        ids: coven::IdSourceRef,
         diagnostics: Diagnostics,
     ) -> Arc<Self> {
-        Self::start_serving_on(services, runtime, discovery, ServingNetwork::Lan, diagnostics)
+        Self::start_serving_on(services, runtime, discovery, ServingNetwork::Lan, ids, diagnostics)
     }
 
     /// [`Self::start`], with the ephemeral server on `serving`.
@@ -348,6 +353,7 @@ impl CastController {
         runtime: Handle,
         discovery: RendererDiscovery,
         serving: ServingNetwork,
+        ids: coven::IdSourceRef,
         diagnostics: Diagnostics,
     ) -> Arc<Self> {
         let receivers = discovery.subscribe();
@@ -361,6 +367,7 @@ impl CastController {
             browsing: AtomicBool::new(false),
             server: Arc::new(Mutex::new(None)),
             serving,
+            ids,
             diagnostics,
             #[cfg(test)]
             setting_applied: tokio::sync::watch::Sender::new(None),
@@ -638,7 +645,8 @@ impl CastController {
         // AirPlay is not a fetch-a-URL renderer: build the push-audio sink and hand
         // it to playback, which keeps decoding locally. No ephemeral server needed.
         if let RendererConnection::AirPlay { addr, port, capabilities } = &device.connection {
-            let sink = build_airplay_sink(&self.diagnostics, *addr, *port, capabilities)?;
+            let sink =
+                build_airplay_sink(&self.ids, &self.diagnostics, *addr, *port, capabilities)?;
             self.services
                 .playback_play_on_airplay(sink, RemoteDevice { id: device.id, name: device.name });
             return Ok(());

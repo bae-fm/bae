@@ -60,7 +60,9 @@ pub fn bridge_save_format_name(format: BridgeSaveFormat) -> String {
 /// embedded, under a new id.
 #[uniffi::export]
 pub fn bridge_new_save_preset() -> BridgeSavePreset {
-    BridgeSavePreset::from_core(&bae_preferences::SavePreset::new_flac())
+    let ids =
+        bae_util::time_ordered_ids::TimeOrderedIds::new(std::sync::Arc::new(coven::SystemClock));
+    BridgeSavePreset::from_core(&bae_preferences::SavePreset::new_flac(&ids))
 }
 
 /// The extension of the files `codec` writes, without its dot.

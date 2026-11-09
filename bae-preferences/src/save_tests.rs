@@ -96,8 +96,9 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
 /// for tracks and releases, with the cover, under an id of its own.
 #[test]
 fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
-    let preset = SavePreset::new_flac();
-    let other = SavePreset::new_flac();
+    let ids = coven::SequentialIds::new();
+    let preset = SavePreset::new_flac(&ids);
+    let other = SavePreset::new_flac(&ids);
 
     preset.validate().unwrap();
     assert_ne!(preset.id, other.id, "each new preset has an id of its own");

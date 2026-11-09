@@ -29,7 +29,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         created_at: chrono::Utc::now(),
     };
     records.insert_artist(&artist).await.unwrap();
-    let album = DbAlbum::new_test("Album Title");
+    let album = DbAlbum::new_test("Album Title", &coven::UuidIds);
     let release = DbRelease::new_test(&album.id, "c61a9e19-f3ba-4728-842c-c59dbc82e238");
     records.insert_album(&album).await.unwrap();
     records

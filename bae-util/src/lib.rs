@@ -38,5 +38,6 @@ pub mod test_ids;
 pub mod test_logs;
 #[cfg(desktop)]
 pub mod text_encoding;
+pub mod time_ordered_ids;
 pub mod worker_thread;
 pub mod xml;

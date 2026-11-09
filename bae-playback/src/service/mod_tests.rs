@@ -118,7 +118,7 @@ pub(super) async fn seed_test_releases(
     };
     records.insert_artist(&artist).await.unwrap();
     for (release_id, track_ids) in releases {
-        let album = DbAlbum::new_test("Album Title");
+        let album = DbAlbum::new_test("Album Title", &coven::UuidIds);
         let release = DbRelease::new_test(&album.id, release_id);
         records.insert_album(&album).await.unwrap();
         records

@@ -270,7 +270,7 @@ async fn walk_and_reconcile(
         let mut directory_mtimes: Option<Vec<(PathBuf, i64)>> = Some(Vec::new());
         let mut watch_available = true;
         let mut watch_failures = Vec::new();
-        let new_key = || super::folder_reading::new_grouping_key(ids.as_ref());
+        let new_key = || crate::folder_scanner::new_grouping_key(ids.as_ref());
         let result =
             crate::folder_scanner::scan_for_candidates_with_reader_cancellable_and_directories(
                 directories.as_ref(),

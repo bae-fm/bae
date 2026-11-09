@@ -33,6 +33,8 @@ tracing-log = { workspace = true }
 chrono = { workspace = true }
 # The jitter drawn into each retry wait (src/retry.rs).
 rand = { workspace = true }
+# The version-7 ids bae makes (src/time_ordered_ids.rs).
+uuid = { workspace = true, features = ["v7"] }
 lru = { workspace = true }
 # Natural, case-insensitive name order (src/natural_order.rs).
 natord = { workspace = true }

@@ -39,7 +39,7 @@ pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
     for (release_name, track_names) in releases {
         let release_id = uuid::Uuid::new_v4().to_string();
         ids.insert(release_name.to_string(), release_id.clone());
-        let album = DbAlbum::new_test("Album Title");
+        let album = DbAlbum::new_test("Album Title", &coven::UuidIds);
         records.insert_album(&album).await.unwrap();
         records.insert_album_artist(&DbAlbumArtist::new_test(&album.id, &artist.id)).await.unwrap();
         records.insert_release(&DbRelease::new_test(&album.id, &release_id)).await.unwrap();

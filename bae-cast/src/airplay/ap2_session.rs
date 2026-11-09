@@ -439,6 +439,7 @@ impl Ap2Session {
         failed: AirPlayFailed,
         timing: super::airplay2::TimingProtocol,
         clock: Arc<dyn MonotonicClock>,
+        ids: &dyn coven::IdSource,
     ) -> Result<Self, Ap2Error> {
         use super::airplay2::TimingProtocol;
 
@@ -454,8 +455,8 @@ impl Ap2Session {
         let local_control_port = sockets.control_port()?;
 
         let shk = audio_key(&shared);
-        let session_uuid = uuid::Uuid::new_v4().to_string();
-        let group_uuid = uuid::Uuid::new_v4().to_string();
+        let session_uuid = ids.new_id().to_string();
+        let group_uuid = ids.new_id().to_string();
         let uri = format!("rtsp://{local_ip}/{session_uuid}");
 
         // A receiver that requires PTP is told so, and its SETRATEANCHORTIME carries

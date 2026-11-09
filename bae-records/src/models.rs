@@ -788,10 +788,10 @@ impl DbTrackArtistRole {
 }
 impl DbAlbum {
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn new_test(title: &str) -> Self {
+    pub fn new_test(title: &str, ids: &dyn coven::IdSource) -> Self {
         let now = chrono::Utc::now();
         DbAlbum {
-            id: uuid::Uuid::new_v4().to_string(),
+            id: ids.new_id().to_string(),
             title: title.to_string(),
             year: None,
             is_compilation: false,

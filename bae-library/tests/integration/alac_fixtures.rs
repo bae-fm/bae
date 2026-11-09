@@ -180,6 +180,7 @@ fn scanner_recognizes_cue_alac_pair() {
         album_dir.clone(),
         &StoredCandidateEdits::none(),
         &FolderReleaseDecisions::default(),
+        &coven::SequentialIds::new(),
         |item| match item {
             WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(c))) => candidates.push(c),
             WalkItem::Entry(FolderEntry::Release(ScanItem::Invalid(c))) => {

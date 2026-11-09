@@ -103,6 +103,8 @@ pub(crate) struct Ap2Sink {
     airplay_port: u16,
     /// The clock the receiver requires, decided from its features — PTP or NTP.
     timing: TimingProtocol,
+    /// Where the session's ids come from.
+    ids: coven::IdSourceRef,
     /// Where the session's stream threads report a panic.
     diagnostics: Diagnostics,
 }
@@ -112,9 +114,10 @@ impl Ap2Sink {
         receiver: IpAddr,
         airplay_port: u16,
         timing: TimingProtocol,
+        ids: coven::IdSourceRef,
         diagnostics: Diagnostics,
     ) -> Self {
-        Self { receiver, airplay_port, timing, diagnostics }
+        Self { receiver, airplay_port, timing, ids, diagnostics }
     }
 }
 
@@ -133,6 +136,7 @@ impl AirPlaySink for Ap2Sink {
             failed,
             self.timing,
             Arc::new(SystemClock::new()),
+            self.ids.as_ref(),
         )
         .map_err(|e| AudioError::AirPlayRefused(e.to_string()))?;
 

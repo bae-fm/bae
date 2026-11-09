@@ -18,7 +18,7 @@
 
 use super::*;
 use crate::folder_scanner::{
-    FolderReleaseDecision, FolderReleaseDecisionAuthor, FolderReleaseDecisionKey,
+    new_grouping_key, FolderReleaseDecision, FolderReleaseDecisionAuthor, FolderReleaseDecisionKey,
 };
 use crate::CandidateKey;
 use bae_util::task_failure::TaskFailed;
@@ -449,12 +449,6 @@ fn read_top_level_folder(
         warn!("could not reconcile folder watches under {}: {error}", absolute.display());
     }
     Ok(TopLevelReading { items, directory_mtimes })
-}
-
-/// A key for a grouping the store has not seen: the key the release it reads
-/// as is addressed by from here on.
-pub(super) fn new_grouping_key(ids: &dyn coven::IdSource) -> CandidateKey {
-    CandidateKey::grouping(&ids.new_id().to_string())
 }
 
 #[cfg(test)]

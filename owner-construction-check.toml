@@ -1135,6 +1135,17 @@ homes = [
 kind = "SQLite library (rusqlite / libsqlite3-sys)"
 crates = ["rusqlite", "libsqlite3_sys"]
 
+# Only generation is gated: name-based ids (`Uuid::new_v5`), parsing and
+# validating an id are deterministic transformations any module may perform.
+# Everything else is handed an id source (`coven::IdSource`).
+[[capabilities]]
+name = "new ids"
+homes = ["bae-util/src/time_ordered_ids.rs"]
+
+[[capabilities.gates]]
+kind = "id generation (uuid)"
+paths = ["Uuid::new_v4", "Uuid::new_v7", "Uuid::now_v7"]
+
 # The library's tables by the domain that writes them. SQL anywhere may read
 # a table; only its domain's homes write it, in a statement or a trigger's
 # body, create it and its indexes, and hold the tests that write it. Each
