@@ -289,7 +289,7 @@ extension ShotScene {
 
     private static let welcomeLibraries = ShotScene(
         id: "welcome-libraries",
-        size: CGSize(width: 452, height: 330)
+        size: CGSize(width: 452, height: 362)
     ) {
         ShotStage(PreviewScenes.welcomeLibraries())
     }

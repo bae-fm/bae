@@ -40,7 +40,10 @@
                 onOpen: { _ in },
                 onFinish: { _, _ in },
                 onFinishRemoving: { _ in },
-                onRemove: { _ in }
+                onRemove: { _ in },
+                onCreate: {},
+                onScanCode: {},
+                onEnterCode: {}
             )
             .padding()
             .windowBackground()

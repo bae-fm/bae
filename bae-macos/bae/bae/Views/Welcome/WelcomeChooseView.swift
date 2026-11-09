@@ -5,8 +5,8 @@ import os.log
 private let logger = Logger.bae("WelcomeChooseView")
 
 /// The first screen: open a library on this device, restore one from a code
-/// saved in iCloud Keychain, create one, join someone's library with an
-/// invite, or add this Mac to one of the person's own libraries with its code.
+/// saved in iCloud Keychain, create one, or scan or enter a code that joins
+/// someone's library or adds this Mac to one of the person's own.
 struct WelcomeChooseView: View {
     /// A failed library open or dev reset, shown as a callout under the
     /// subtitle, titled by the step that failed.
@@ -52,11 +52,15 @@ struct WelcomeChooseView: View {
         listings.localLibraries.value ?? []
     }
 
-    /// Lead with "Create new library" only when both lookups finished and found
-    /// nothing; a loading or failed lookup doesn't mean there are no libraries.
-    private var isFirstRun: Bool {
-        listings.localLibraries.value?.isEmpty == true
-            && listings.savedCodes.list.value?.isEmpty == true
+    /// The buttons stand on their own when the listing read no libraries or
+    /// failed; once it lists some they are the items of the list's Add
+    /// library…, and nothing shows while it loads.
+    private var showsFirstRunActions: Bool {
+        switch listings.localLibraries {
+        case .loading: false
+        case .failed: true
+        case .loaded(let libraries): libraries.isEmpty
+        }
     }
 
     private var isBusy: Bool {
@@ -171,7 +175,10 @@ struct WelcomeChooseView: View {
                             )
                         }
                     },
-                    onRemove: { askToRemove($0) }
+                    onRemove: { askToRemove($0) },
+                    onCreate: doCreate,
+                    onScanCode: onScanCode,
+                    onEnterCode: onEnterCode
                 )
             }
             if let failure = listings.savedCodes.list.failure {
@@ -202,11 +209,8 @@ struct WelcomeChooseView: View {
                     onRestore: { onRestoreSaved($0.code) }
                 )
             }
-            if isFirstRun {
+            if showsFirstRunActions {
                 firstRunActions
-            }
-            else {
-                populatedActions
             }
             if let createSteps {
                 StepProgressLine(steps: createSteps.steps) { EmptyView() }
@@ -247,25 +251,6 @@ struct WelcomeChooseView: View {
             .disabled(isBusy)
         }
         .frame(width: Self.firstRunButtonWidth)
-    }
-
-    /// With a library or restore code present, the actions become a row of
-    /// smaller buttons under a divider.
-    private var populatedActions: some View {
-        VStack(spacing: ThemeSpace.group) {
-            Divider()
-                .frame(maxWidth: WelcomeLayout.columnWidth)
-            HStack(spacing: ThemeSpace.group) {
-                Button(action: doCreate) { createButtonLabel }
-                    .disabled(isBusy)
-                Button("Scan code", action: onScanCode)
-                    .disabled(isBusy)
-                Button("Enter code", action: onEnterCode)
-                    .disabled(isBusy)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-        }
     }
 }
 

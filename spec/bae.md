@@ -2579,7 +2579,8 @@ While a removal runs, its row shows the step with a spinner in place of the
 ⋯. A Mac's first screen
 offers the same two under **Create new library**, and its File menu offers
 them as **Scan Code…** and **Enter Code…**; they open one code screen, where
-the code decides the same way. A restore code's screens call that adding this
+the code decides the same way. Once it lists libraries, the three are the
+items of **Add library…** under the list. A restore code's screens call that adding this
 device: the button is **Add**, and the running restore says it is adding this
 device. A saved code, in iCloud Keychain or on an Android phone, and a restore
 over this device's copy (§6.4), say **Restore**. A scanned code starts at once, as an invite does, with

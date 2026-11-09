@@ -4,7 +4,8 @@ import SwiftUI
 /// Libraries on this device in a box of rows: a click opens one, and its ⋯
 /// menu, or a right click, holds what finishes the reset or restore of its
 /// copy or its removal that stopped partway, then Remove, or Delete for one
-/// that never synced.
+/// that never synced. Under the box, Add library… creates one, or opens the
+/// code screen to scan a code or enter one.
 struct LocalLibrariesSection: View {
     let libraries: [BridgeLibrary]
     let disabled: Bool
@@ -18,6 +19,9 @@ struct LocalLibrariesSection: View {
     let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
     let onFinishRemoving: (BridgeLibrary) -> Void
     let onRemove: (BridgeLibrary) -> Void
+    let onCreate: () -> Void
+    let onScanCode: () -> Void
+    let onEnterCode: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
@@ -51,6 +55,19 @@ struct LocalLibrariesSection: View {
                 }
             }
             .card()
+            MacSheetFooter {
+                Menu {
+                    Button("Create new library", action: onCreate)
+                    Button("Scan code…", action: onScanCode)
+                    Button("Enter code…", action: onEnterCode)
+                } label: {
+                    Text("Add library…")
+                }
+                .menuStyle(.button)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .disabled(disabled)
+            }
         }
         .frame(maxWidth: WelcomeLayout.columnWidth)
     }
@@ -192,6 +209,9 @@ private struct LibraryRow: View {
             onFinish: { _, _ in },
             onFinishRemoving: { _ in },
             onRemove: { _ in },
+            onCreate: {},
+            onScanCode: {},
+            onEnterCode: {}
         )
         .padding()
     }
