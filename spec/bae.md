@@ -4116,8 +4116,9 @@ never a bare spinner.
 
 A restore, a join and a device reset load the library from storage, and say
 where they stand state by state: a new installation's database opening, then
-connecting, waiting for approval, loading, registering this device, and
-finishing: keeping this device's keys and publishing the library, the last
+connecting, waiting for approval (a join's), loading, registering this device
+(a restore's and a reset's: the admin's approval registered a joining device),
+and finishing: keeping this device's keys and publishing the library, the last
 work before it opens
 ([coven E10](https://github.com/bae-fm/coven/blob/main/spec/api.md#e10-joining-and-restore)).
 The app pulls these states as it pulls every screen value, each time the
@@ -4134,7 +4135,7 @@ runs only when it has work. The apps show each step's name over its bar on
 the restore and join screens, and on the screen a reset loads on.
 Registering and finishing have no count, since how much the registration
 reads isn't known until it has read it: the apps name each as they name
-connecting, and a join in either can no longer be cancelled. Each state says
+connecting, and a join finishing can no longer be cancelled. Each state says
 whether the call can still be cancelled: a restore until it ends, a join while
 it opens or connects, a reset never; the apps show Cancel only while it says
 so.

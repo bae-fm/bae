@@ -53,7 +53,8 @@ pub enum BridgeBootstrapStatus {
     },
     /// Loading the library from storage.
     Loading,
-    /// Registering this device with the library once it is loaded. No count:
+    /// Registering this device with the library once it is loaded, in a
+    /// restore or a reset; a join's approval registered its device. No count:
     /// how much the registration reads isn't known until it has read it.
     Registering,
     /// Keeping this device's keys and publishing the library, the last work

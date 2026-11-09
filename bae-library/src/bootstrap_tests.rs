@@ -41,7 +41,6 @@ fn a_join_can_be_cancelled_until_its_request_may_have_been_sent() {
             next_check: coven::NextCheck::Checking,
         },
         coven::BootstrapStatus::Loading(load),
-        coven::BootstrapStatus::Registering,
         coven::BootstrapStatus::Committing,
         coven::BootstrapStatus::Pending(Vec::new()),
     ] {
