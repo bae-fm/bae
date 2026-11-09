@@ -36,7 +36,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.DisplayError
 import fm.bae.app.coreString
@@ -94,7 +93,7 @@ internal fun SyncActivityButton(
                 WaitingIndicator(size = ThemeIcon.small)
             }
             if (activity?.needsAttention == true || error != null) {
-                StatusGlyph(StatusTone.WARNING, size = 16.dp)
+                StatusGlyph(StatusTone.WARNING, size = ThemeIcon.large)
             }
         }
     }

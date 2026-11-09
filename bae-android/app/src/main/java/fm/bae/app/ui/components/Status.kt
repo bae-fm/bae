@@ -23,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -69,17 +68,17 @@ private val StatusTone.icon: ImageVector?
             StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
         }
 
-/** The glyph's colour: the tone's, except danger, mixed toward secondary text so it stays red but calmer. */
-private val StatusTone.glyphColor: Color
+/** The glyph's colour: the tone's status icon colour; the rest have no glyph and use [color]. */
+private val StatusTone.iconColor: Color
     @Composable
     get() =
-        if (this == StatusTone.DANGER) {
-            lerp(MaterialTheme.colorScheme.onSurfaceVariant, color, DANGER_GLYPH_SHARE)
-        } else {
-            color
+        when (this) {
+            StatusTone.INFO -> BaeTheme.colors.infoIcon
+            StatusTone.SUCCESS -> BaeTheme.colors.successIcon
+            StatusTone.WARNING -> BaeTheme.colors.warningIcon
+            StatusTone.DANGER -> BaeTheme.colors.dangerIcon
+            StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> color
         }
-
-private const val DANGER_GLYPH_SHARE = 0.65f
 
 /** The tone's glyph in the tone's glyph colour; nothing for a tone without one. */
 @Composable
@@ -89,7 +88,7 @@ fun StatusGlyph(
     size: Dp = ThemeIcon.medium,
 ) {
     tone.icon?.let { icon ->
-        Icon(icon, contentDescription = null, tint = tone.glyphColor, modifier = modifier.size(size))
+        Icon(icon, contentDescription = null, tint = tone.iconColor, modifier = modifier.size(size))
     }
 }
 
