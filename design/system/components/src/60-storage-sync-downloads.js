@@ -224,5 +224,5 @@
         s === 'queued' ? h('div', { className: 'bae-a-browse-count' }, 'Waiting to download') :
         s === 'active' ? h('div', null, h('div', { className: 'bae-a-dlbar-track' }, h('div', { style: { width: (Number(props.progress || 0.4) * 100) + '%' } })), h('div', { className: 'bae-a-fine bae-muted' }, props.bytes || '120 MB of 300 MB')) :
         h(AndroidErrorDisclosure, { message: props.error || 'Couldn’t reach your storage.', action: 'Retry' })),
-      h(AndroidIcon, { icon: 'close', label: 'Cancel', className: 'bae-a-icon-muted' }));
+      h(AndroidIconButton, { icon: 'close', label: 'Cancel', className: 'bae-a-icon-muted' }));
   }

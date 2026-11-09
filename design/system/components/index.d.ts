@@ -110,8 +110,8 @@ export declare function AndroidRow(props: AndroidRowProps): React.ReactElement;
 export interface AndroidButtonProps { kind?: 'filled' | 'outlined' | 'text'; label?: string; large?: boolean; alignTo?: 'text' | 'field'; destructive?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function AndroidButton(props: AndroidButtonProps): React.ReactElement;
 
-/** A 48 dp glyph button. label is its accessible name. */
-export interface AndroidIconButtonProps { icon: 'back' | 'edit' | 'chevron' | 'expand' | 'more' | 'search' | 'refresh'; label?: string }
+/** A 48 dp glyph button: a Material Symbol by name (back, close, more, search, …). label is its accessible name. */
+export interface AndroidIconButtonProps { icon: string; label?: string; size?: number }
 export declare function AndroidIconButton(props: AndroidIconButtonProps): React.ReactElement;
 
 /** An on/off switch; label is its accessible name. */

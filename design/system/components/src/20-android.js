@@ -43,8 +43,8 @@
   }
 
   function AndroidIconButton(props) {
-    return h('button', { type: 'button', className: 'bae-a-iconbtn', 'aria-label': props.label || props.icon },
-      h(Material, { name: props.icon || 'more' }));
+    return h('button', { type: 'button', className: cx('bae-a-iconbtn', props.className), 'aria-label': props.label || props.icon },
+      h(Glyph, { name: props.icon || 'more', size: props.size || 24 }));
   }
 
   function AndroidSwitch(props) {

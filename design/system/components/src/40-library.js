@@ -243,10 +243,6 @@
 
   // ---- Android library ----
 
-  function AndroidIcon(props) {
-    return h('button', { type: 'button', className: cx('bae-a-iconbtn', props.className), 'aria-label': props.label || props.icon }, h(Glyph, { name: props.icon, size: props.size || 24 }));
-  }
-
   function AndroidPlayPause(props) {
     var icon = Number(props.size || 24), box = icon + 16;
     return h('span', { className: 'bae-a-playpause', style: { width: box, height: box } },
@@ -260,26 +256,26 @@
       h('div', { className: 'bae-a-np-row' },
         props.error ? h('div', { className: 'bae-a-np-info bae-a-np-error' }, props.error) : h('div', { className: 'bae-a-np-info' }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }),
           h('div', { className: 'bae-a-np-text' }, h('div', { className: 'bae-a-np-title' }, props.title), h('div', { className: 'bae-a-np-sub' }, props.artist))),
-        h(AndroidIcon, { icon: 'previous', label: 'Previous' }),
+        h(AndroidIconButton, { icon: 'previous', label: 'Previous' }),
         h(AndroidPlayPause, { playing: props.playing, waiting: props.waiting }),
-        h(AndroidIcon, { icon: 'next', label: 'Next' }),
-        props.castOff ? null : h(AndroidIcon, { icon: 'cast', label: 'Cast', className: props.casting ? 'bae-a-icon-accent' : 'bae-a-icon-muted' }),
-        h(AndroidIcon, { icon: 'queue', label: 'Queue' }),
-        h(AndroidIcon, { icon: 'repeat', label: 'Repeat', className: props.repeat ? 'bae-a-icon-accent' : 'bae-a-icon-muted' })),
+        h(AndroidIconButton, { icon: 'next', label: 'Next' }),
+        props.castOff ? null : h(AndroidIconButton, { icon: 'cast', label: 'Cast', className: props.casting ? 'bae-a-icon-accent' : 'bae-a-icon-muted' }),
+        h(AndroidIconButton, { icon: 'queue', label: 'Queue' }),
+        h(AndroidIconButton, { icon: 'repeat', label: 'Repeat', className: props.repeat ? 'bae-a-icon-accent' : 'bae-a-icon-muted' })),
       h(AndroidSeekBar, { position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration }));
   }
 
   function AndroidLibraryScreen(props) {
     var collapsed = !!props.collapsed;
     return h('div', { className: 'bae-a-screen bae-a-libscreen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
-      props.searching ? h('header', { className: 'bae-a-searchbar' }, h(AndroidIcon, { icon: 'back', label: 'Back' }),
+      props.searching ? h('header', { className: 'bae-a-searchbar' }, h(AndroidIconButton, { icon: 'back', label: 'Back' }),
           h('div', { className: 'bae-a-searchfield' }, h('span', { className: props.search ? null : 'bae-a-search-prompt' }, props.search || 'Search albums, tracks, composers, and works'), props.search ? h(Glyph, { name: 'close', size: 20 }) : null))
         : h('header', { className: cx('bae-a-libheader', collapsed && 'bae-a-libheader-collapsed') },
           h('h1', { className: 'bae-a-libhead-title' }, h('span', null, props.view || 'Albums'), h(Glyph, { name: 'down', size: collapsed ? 16 : 20, className: 'bae-a-libhead-chevron' })),
-          h(AndroidIcon, { icon: 'search', label: 'Search' }),
+          h(AndroidIconButton, { icon: 'search', label: 'Search' }),
           props.sync === 'moving' ? h('span', { className: 'bae-a-iconbtn' }, h(AndroidSpinner, { size: 16 })) : null,
-          props.sync === 'attention' ? h(AndroidIcon, { icon: 'warning', label: 'Sync activity', className: 'bae-a-sync-warn' }) : null,
-          h(AndroidIcon, { icon: 'more', label: 'More options' })),
+          props.sync === 'attention' ? h(AndroidIconButton, { icon: 'warning', label: 'Sync activity', className: 'bae-a-sync-warn' }) : null,
+          h(AndroidIconButton, { icon: 'more', label: 'More options' })),
       h('main', { className: 'bae-a-libbody' }, props.children),
       h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat, error: props.barError }));
   }
@@ -289,7 +285,7 @@
       h('header', { className: 'bae-a-detailbar' },
         h(AndroidIconButton, { icon: 'back', label: props.back ? 'Back to ' + props.back : 'Back to Library' }),
         h('span', { style: { flex: 1 } }),
-        props.menu ? h(AndroidIcon, { icon: 'more', label: 'Album options' }) : null),
+        props.menu ? h(AndroidIconButton, { icon: 'more', label: 'Album options' }) : null),
       h('main', { className: props.flush ? 'bae-a-libbody' : 'bae-a-libbody bae-a-detailbody' }, props.children),
       h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat }));
   }
@@ -316,7 +312,7 @@
       h('span', { className: 'bae-a-track-lead' }, props.current ? h(Glyph, { name: props.playing ? 'nowplaying' : 'play', size: 24, className: 'bae-accent' }) : h('span', { className: 'bae-a-track-pos' }, props.position)),
       h('div', { className: 'bae-a-track-text' }, h('div', { className: cx('bae-a-track-title', props.current && 'bae-accent') }, props.title), props.artist ? h('div', { className: 'bae-a-track-artist' }, props.artist) : null),
       h('span', { className: 'bae-a-track-time' }, props.duration),
-      h('span', { className: 'bae-a-iconbtn bae-a-icon-muted', 'aria-label': 'Track options' }, h(Glyph, { name: 'more', size: 24 })));
+      h(AndroidIconButton, { icon: 'more', label: 'Track options', className: 'bae-a-icon-muted' }));
   }
 
   function AndroidEyebrow(props) { return h('div', { className: 'bae-a-eyebrow' }, props.children); }
