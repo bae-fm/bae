@@ -40,14 +40,14 @@
   function MacImportFolderLine(props) {
     return h('div', { className: 'bae-m-ifl' }, h(StatusChip, { tone: 'accent' }, props.tab || 'Found'), h(Sym, { name: 'right', size: 10, className: 'bae-m-tertiary' }), h(Sym, { name: 'folder', size: 15, className: 'bae-muted' }), h('span', { className: 'bae-ellipsis bae-strong', style: { fontSize: 15 } }, props.folder));
   }
-  // The draft card: Identify with Automatic, Search and ⋯; In cloud home/Pinned and Import; the folder's check in a warning notice; the cover well and identity; the Release grid; the linked records.
+  // The draft card: Identify with Automatic, Search and ⋯; In cloud/Pinned and Import; the folder's check in a warning notice; the cover well and identity; the Release grid; the linked records.
   function MacImportDraft(props) {
     var rows = list(props.fields || 'Year:1992,Media:CD,Label:Harbor Records — HR-1042,Country:—,Barcode:—,Status:Official,Packaging:—,Details:—').map(function (r) { var i = r.indexOf(':'); return [r.slice(0, i), r.slice(i + 1)]; });
     return h('div', { className: 'bae-m-card bae-m-idraft' },
       h('div', { className: 'bae-m-idraft-actions' },
         h('span', { className: 'bae-strong bae-muted' }, 'Identify'), h(MacButton, null, 'Automatic'), h(MacButton, null, 'Search'), props.editor ? null : h(MacButton, null, '⋯'),
         h('span', { style: { flex: 1 } }),
-        props.cloud ? h(MacCheckbox, { label: 'In cloud home', on: true }) : null, props.cloud ? h(MacCheckbox, { label: 'Pinned' }) : null,
+        props.cloud ? h(MacCheckbox, { label: 'In cloud', on: true }) : null, props.cloud ? h(MacCheckbox, { label: 'Pinned' }) : null,
         props.editor ? [props.changed ? h(MacButton, { key: 'c' }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary' }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary' }, props.retry ? 'Retry Import' : 'Import')),
       props.check ? h(MacNotice, { tone: 'warning', title: props.check }) : null,
       h('div', { className: 'bae-m-idraft-head' },
