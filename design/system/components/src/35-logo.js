@@ -33,6 +33,7 @@
     return h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.round(size * 0.06) } }, sheep, h('div', { className: cx(props.glow && 'bae-word-lift', props.bob && 'bae-word-bob') }, h(Word, { width: size * 0.52 })));
   }
   // An app icon as each platform shows it. macOS, iOS and Android put the sheep on the pale pink tile; Windows and Linux show the sheep with no tile. Android's `mask` is the launcher's shape: circle, squircle or rounded.
+  // On Android the sheep is 80% of the tile and 2% right of centre: its left earcup sticks out further than its right side, so centring its box looks off in a circle.
   function AppIcon(props) {
     var platform = props.platform || 'macos';
     var size = Number(props.size || 128);
@@ -40,5 +41,5 @@
     var android = platform === 'android';
     var mask = props.mask || 'circle';
     var radius = !android ? '22.5%' : mask === 'circle' ? '50%' : mask === 'squircle' ? '36%' : '18%';
-    return h('div', { style: { width: size, height: size, borderRadius: radius, background: ICON_TILE, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' } }, h(Sheep, { size: Math.round(size * (android ? 0.85 : 0.88)), alt: 'bae' }));
+    return h('div', { style: { width: size, height: size, borderRadius: radius, background: ICON_TILE, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' } }, android ? h('div', { style: { transform: 'translateX(' + (size * 0.02).toFixed(1) + 'px)' } }, h(Sheep, { size: Math.round(size * 0.8), alt: 'bae' })) : h(Sheep, { size: Math.round(size * 0.88), alt: 'bae' }));
   }
