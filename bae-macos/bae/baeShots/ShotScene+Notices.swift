@@ -26,6 +26,21 @@ extension ShotScene {
                 )
             )
         },
+        // A pin that failed, in the Storage Manager's inspector.
+        ShotScene(
+            id: "notice-download-failed",
+            size: CGSize(width: 1_040, height: 654)
+        ) {
+            .storageManager(
+                StorageManagerPreviewScene(
+                    selectedReleaseId: "rel-row-3",
+                    inspectorPresented: true,
+                    downloads: [PreviewData.downloadOps[2]],
+                    outputs: [],
+                    uploads: []
+                )
+            )
+        },
         ShotScene(
             id: "notice-looks",
             size: CGSize(width: 480, height: 330)
