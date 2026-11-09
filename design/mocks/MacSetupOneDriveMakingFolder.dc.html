@@ -50,8 +50,7 @@ body{margin:0}
     </x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacSheet" title="Set up sync: OneDrive" overlay="{{yes}}">
-    <div style="color: var(--text-primary); line-height: 17px">Making the folder “bae”…</div>
-    <div style="position: relative; height: 6px; border-radius: 3px; background: var(--background); overflow: hidden"><div style="position: absolute; left: 38%; width: 30%; height: 100%; border-radius: 3px; background: var(--accent)"></div></div>
+    <x-import component-from-global-scope="Bae.MacProgress" label="Making the folder “bae”…"></x-import>
     <x-import component-from-global-scope="Bae.MacSheetFooter">
       <x-import component-from-global-scope="Bae.MacButton">Cancel</x-import>
     </x-import>
