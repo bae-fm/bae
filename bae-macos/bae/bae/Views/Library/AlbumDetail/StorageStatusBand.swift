@@ -79,8 +79,8 @@ struct StorageStatusBand: View {
     /// the entries ahead of it and what holds the queue back; downloading,
     /// the transition's words over the bytes the release and the file being
     /// downloaded hold and a bar of the release's, read from how far its
-    /// files have downloaded into the person's folder each frame; or failed
-    /// with its error.
+    /// files have downloaded into the person's folder each frame; or failed,
+    /// a danger notice whose Details opens the error.
     @ViewBuilder
     private func makeLocalLine(_ status: BridgeMakeLocalStatus) -> some View {
         switch status {
@@ -114,17 +114,18 @@ struct StorageStatusBand: View {
                 )
             }
         case .failed(let error):
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                StatusChip("Couldn't make local", tone: .danger)
-                ErrorText(error)
-            }
+            ErrorNotice(
+                title: String(localized: "Couldn't make local"),
+                advice: nil,
+                error: DisplayError(line: error)
+            )
         }
     }
 
     /// Where the release stands in the download queue: waiting, with the
     /// entries ahead of it and what holds the queue back, held back while it
-    /// downloads, or failed with its error; or, with no entry, being copied
-    /// here by coven.
+    /// downloads, or failed, a danger notice whose Details opens the error;
+    /// or, with no entry, being copied here by coven.
     @ViewBuilder
     private func downloadLine(_ status: BridgeReleaseDownloadStatus)
         -> some View
@@ -144,10 +145,11 @@ struct StorageStatusBand: View {
                 }
             }
         case .failed(let error):
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                StatusChip("Download failed", tone: .danger)
-                ErrorText(error)
-            }
+            ErrorNotice(
+                title: String(localized: "Download failed"),
+                advice: nil,
+                error: DisplayError(line: error)
+            )
         case .copyingHere:
             StatusChip("Copying here", tone: .activity)
         case .downloaded, .available:

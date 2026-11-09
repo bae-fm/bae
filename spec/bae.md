@@ -2039,7 +2039,7 @@ shows a download its files have finished. The storage rows and the album and
 release detail read the entry in their own query.
 
 Each row's storage state is the place it sorts by, which core reads with the
-row: Download failed, with its error, or Move failed, naming the file whose
+row: Download failed, its error behind *Details* (§9.7), or Move failed, naming the file whose
 original changed since import, first; Uploading, its chip filled as far
 as its bytes have come while any file is being sent; Pinning, either queued,
 with the number of entries ahead of it that have not failed, or filled as far
@@ -2047,7 +2047,7 @@ as its download has come once it starts, and in either case Paused while the
 queue is paused or Waiting for network while the device has none (the network
 first, since it makes the pause moot); making local, either queued, with the entries ahead of it and what holds the
 queue back, as a pin is, or filled as far as its copies have downloaded
-(§4.4), or Couldn't make local with its error, in the first place with
+(§4.4), or Couldn't make local, its error behind *Details*, in the first place with
 Download failed; Copying here while coven downloads the copies a move to the
 cloud asked to keep here, in the place of Pinning, unless the download queue
 holds an entry for the release, which the row shows instead; Local, Pinned or
