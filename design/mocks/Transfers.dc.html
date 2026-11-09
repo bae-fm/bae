@@ -33,11 +33,11 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
       <x-import component-from-global-scope="Bae.AndroidSwitch" label="Download over Wi-Fi only"></x-import>
     </x-import>
   </x-import>
-  <div style="padding: 8px 32px 16px; font-size: 12px; line-height: 16px; color: var(--text-secondary)">Pinned releases wait for Wi-Fi. Playing a track that isn't pinned still uses mobile data.</div>
+  <x-import component-from-global-scope="Bae.AndroidNote">Pinned releases wait for Wi-Fi. Playing a track that isn't pinned still uses mobile data.</x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Simultaneous downloads" subtitle="3"></x-import>
   </x-import>
-  <div style="padding: 8px 32px 4px; font-size: 12px; line-height: 16px; color: var(--text-secondary)">How many files download at once when a release is pinned.</div>
+  <x-import component-from-global-scope="Bae.AndroidNote">How many files download at once when a release is pinned.</x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
