@@ -128,16 +128,18 @@
         }
     }
 
-    #Preview("Error Detail Disclosure") {
+    #Preview("Error Notice") {
         VStack(alignment: .leading, spacing: ThemeSpace.section) {
+            ErrorNotice(error: PreviewData.displayErrorSimple)
             ErrorNotice(error: PreviewData.displayErrorWithDetail)
-            ErrorNotice(
-                error: PreviewData.displayErrorSimple,
-                tone: .warning
-            )
             ErrorNotice(
                 error: PreviewData.displayErrorWithDetail,
                 action: ErrorAction {}
+            )
+            ErrorNotice(
+                title: "Couldn't open the library",
+                advice: "Check that its folder is still there, then try again.",
+                error: PreviewData.displayErrorWithDetail
             )
         }
         .padding(ThemeSpace.section)

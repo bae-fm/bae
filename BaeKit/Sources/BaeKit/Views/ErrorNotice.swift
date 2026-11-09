@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// A button that belongs to an error, such as Retry: it sits inside the
-/// error's box, at its right, level with the message.
+/// An error notice's primary button, such as Retry: on its own line under the
+/// words, in line with them; at the right beside Details when the notice has
+/// both.
 public struct ErrorAction {
     fileprivate let title: Text
     fileprivate let isDisabled: Bool
@@ -29,97 +30,116 @@ public struct ErrorAction {
     }
 }
 
-/// A user-facing error as its box: the tone's glyph, the localized line, an
-/// optional action at the right, and Details, which opens an inset panel of
-/// the causes with Copy details in its corner.
-///
-/// `bare` leaves out the box and its glyph, for an error already inside a
-/// notice that holds it. The line is primary text on the tint; secondary text
-/// is primary text made see-through.
+/// A user-facing error as a notice: the tone's glyph, then either the error's
+/// line or a title the caller words with what to do under it, and buttons. The
+/// notice never shows the error itself: when there is a detail, its Details
+/// button opens the causes in an alert, with Copy details. With Details and an
+/// action the two sit at the right, Details first; with one button it sits on
+/// its own line, in line with the words.
 public struct ErrorNotice: View {
+    private enum Heading {
+        case line
+        case titled(String, advice: String?)
+    }
+
     private let error: DisplayError
+    private let heading: Heading
     private let tone: StatusTone
-    private let bare: Bool
     private let action: ErrorAction?
 
+    /// A notice showing the error's line; its Details, when the error has a
+    /// detail, opens the line as the title over the causes.
     public init(
         error: DisplayError,
         tone: StatusTone = .danger,
-        bare: Bool = false,
         action: ErrorAction? = nil
     ) {
         self.error = error
+        self.heading = .line
         self.tone = tone
-        self.bare = bare
         self.action = action
     }
 
-    @State
-    private var detailExpanded = false
+    /// A notice titled in the caller's words, with `advice` under it. The
+    /// error's line isn't shown, so Details is always there and leads its
+    /// causes with the line.
+    public init(
+        title: String,
+        advice: String?,
+        error: DisplayError,
+        tone: StatusTone = .danger,
+        action: ErrorAction? = nil
+    ) {
+        self.error = error
+        self.heading = .titled(title, advice: advice)
+        self.tone = tone
+        self.action = action
+    }
 
     public var body: some View {
-        if bare {
-            content
-        }
-        else {
-            HStack(alignment: .top, spacing: ThemeSpace.related) {
-                if tone.symbol != nil {
-                    StatusGlyph(tone)
-                        .themeIcon(.medium)
-                }
-                content
+        HStack(alignment: .top, spacing: ThemeSpace.related) {
+            if tone.symbol != nil {
+                StatusGlyph(tone)
+                    .themeIcon(.medium)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .notice(tone)
-        }
-    }
-
-    private var content: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-            HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
-                Text(error.line)
-                    .themeText(.body)
-                    .foregroundStyle(
-                        tone == .neutral ? NoticeText.secondary : Color.primary
-                    )
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let action {
-                    Button(action: action.perform) { action.title }
-                        .disabled(action.isDisabled)
-                }
-            }
-
-            if error.detail != nil {
-                detailsToggle
-                if detailExpanded, let detail = error.detail,
-                    let excerpt = error.detailExcerpt
-                {
-                    ErrorCausesPanel(detail: detail, excerpt: excerpt)
-                }
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                words
+                buttons
+                    .padding(.top, ThemeSpace.inline)
             }
         }
-    }
-
-    /// Details starts in line with the message; its chevron hangs in the
-    /// margin to the left.
-    private var detailsToggle: some View {
-        Button {
-            detailExpanded.toggle()
-        } label: {
-            HStack(spacing: 0) {
-                Image(systemName: "chevron.right")
-                    .themeIcon(.small)
-                    .rotationEffect(.degrees(detailExpanded ? 90 : 0))
-                    .frame(width: ThemeSpace.hang, alignment: .leading)
-                Text("Details")
-                    .themeText(.detail)
-            }
-            .foregroundStyle(NoticeText.secondary)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .padding(.leading, -ThemeSpace.hang)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .notice(tone)
+    }
+
+    @ViewBuilder
+    private var words: some View {
+        switch heading {
+        case .line:
+            Text(error.line)
+                .themeText(.body)
+                .foregroundStyle(
+                    tone == .neutral ? NoticeText.secondary : Color.primary
+                )
+        case .titled(let title, let advice):
+            Text(verbatim: title)
+                .themeText(advice == nil ? .body : .strong)
+            if let advice {
+                Text(verbatim: advice)
+                    .themeText(.body)
+                    .foregroundStyle(NoticeText.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var buttons: some View {
+        if let details {
+            HStack {
+                Spacer(minLength: 0)
+                Button("Details") { ErrorDetailsAlert.show(details) }
+                    .buttonStyle(.borderless)
+                if let action {
+                    actionButton(action)
+                }
+            }
+        }
+        else if let action {
+            actionButton(action)
+        }
+    }
+
+    private func actionButton(_ action: ErrorAction) -> some View {
+        Button(action: action.perform) { action.title }
+            .disabled(action.isDisabled)
+    }
+
+    private var details: ErrorDetails? {
+        switch heading {
+        case .line: ErrorDetails(error: error)
+        case .titled(let title, let advice):
+            ErrorDetails(title: title, advice: advice, error: error)
+        }
     }
 }
 
@@ -128,15 +148,11 @@ public struct ErrorNotice: View {
 struct ErrorCausesPanel: View {
     let detail: String
     let excerpt: String
-    /// The panel sits on a notice's tint, where text is primary text made
-    /// see-through.
-    var onTint = true
-
     @Environment(\.colorScheme)
     private var colorScheme
 
     var body: some View {
-        let text: Color = onTint ? NoticeText.secondary : Color.secondary
+        let text = Color.secondary
         Text(excerpt)
             .themeText(.mono)
             .foregroundStyle(text)

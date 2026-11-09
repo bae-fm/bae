@@ -17,7 +17,7 @@ extension BridgeError: LocalizedFailure {}
 extension BridgePlaybackErrorReason: LocalizedFailure {}
 
 /// A user-facing error ready to render: a localized line plus, for diagnostics,
-/// the opaque Rust error chain to offer in a copyable disclosure (never
+/// the opaque Rust error chain a notice offers behind Details, to copy (never
 /// translated). UI-originated errors (a failed drop, a caught Swift error) are
 /// already localized prose and carry no detail; core errors crossing the bridge
 /// arrive as typed reasons and render their generic per-category line here.
@@ -28,7 +28,7 @@ public struct DisplayError: Equatable, Sendable {
     public let line: String
     public let detail: String?
 
-    /// The opening portion rendered inline. Copy actions continue to use
+    /// The opening portion the Details alert shows. Copy continues to use
     /// `detail`, which retains the complete diagnostic.
     public var detailExcerpt: String? {
         guard let detail else { return nil }
@@ -40,10 +40,10 @@ public struct DisplayError: Equatable, Sendable {
     ///
     /// `line` names a *category* — "Something went wrong." — so a surface
     /// showing only it tells the user nothing about what failed, and the fault
-    /// is reachable only by whoever thinks to open a disclosure or read the log.
+    /// is reachable only by whoever thinks to open Details or read the log.
     /// This is the first line of the diagnostic, bounded so it fits under a
     /// headline; `detailExcerpt` and `detail` still carry the rest for the
-    /// disclosure and the copy button.
+    /// Details alert and the copy button.
     ///
     /// `nil` when there is nothing to say: a keyed failure carries no
     /// diagnostic, a failure whose line core says names the whole fault
@@ -59,7 +59,7 @@ public struct DisplayError: Equatable, Sendable {
     }
 
     /// A UI-originated error: prose the UI already localized, with no opaque
-    /// detail to disclose.
+    /// detail to offer.
     public init(line: String) {
         self.line = line
         self.detail = nil
@@ -68,7 +68,7 @@ public struct DisplayError: Equatable, Sendable {
     /// A failure the UI writes the headline for but core wrote the fault text
     /// of: an event carrying an untranslated diagnostic beside the thing it
     /// happened to. The headline is localized at the call site; `detail` stays
-    /// verbatim for the disclosure and the copy button, like any other core
+    /// verbatim for Details and the copy button, like any other core
     /// diagnostic.
     public init(line: String, detail: String?) {
         self.line = line

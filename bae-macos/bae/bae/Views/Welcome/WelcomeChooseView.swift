@@ -133,20 +133,25 @@ struct WelcomeChooseView: View {
             LaunchProblemNotices(launchProblems)
                 .frame(maxWidth: WelcomeLayout.columnWidth)
             if let loadError {
-                WelcomeLoadErrorCallout(
-                    title: Text(verbatim: loadError.step.title),
-                    error: loadError.error,
-                    guidance: loadError.step.advice.map { Text(verbatim: $0) }
+                ErrorNotice(
+                    title: loadError.step.title,
+                    advice: loadError.step.advice,
+                    error: loadError.error
                 )
+                .frame(maxWidth: WelcomeLayout.columnWidth)
             }
             if let removalError = removals.error {
                 RemovalErrorCallout(error: removalError, removals: removals)
             }
             if let failure = listings.localLibraries.failure {
-                WelcomeLoadErrorCallout(
-                    title: Text("Couldn't list the libraries on this Mac"),
+                ErrorNotice(
+                    title: String(
+                        localized: "Couldn't list the libraries on this Mac"
+                    ),
+                    advice: nil,
                     error: failure
                 )
+                .frame(maxWidth: WelcomeLayout.columnWidth)
             }
             else if !discoveredLibraries.isEmpty {
                 LocalLibrariesSection(
@@ -170,19 +175,26 @@ struct WelcomeChooseView: View {
                 )
             }
             if let failure = listings.savedCodes.list.failure {
-                WelcomeLoadErrorCallout(
-                    title: Text(
-                        "Couldn't read restore codes from your keychain"
+                ErrorNotice(
+                    title: String(
+                        localized:
+                            "Couldn't read restore codes from your keychain"
                     ),
+                    advice: nil,
                     error: failure
                 )
+                .frame(maxWidth: WelcomeLayout.columnWidth)
             }
             else if listings.savedCodes.list.value?.isEmpty == false {
                 if let deleteError = listings.savedCodes.deleteError {
-                    WelcomeLoadErrorCallout(
-                        title: Text("Couldn't delete the restore code"),
+                    ErrorNotice(
+                        title: String(
+                            localized: "Couldn't delete the restore code"
+                        ),
+                        advice: nil,
                         error: deleteError
                     )
+                    .frame(maxWidth: WelcomeLayout.columnWidth)
                 }
                 KeychainRestoreSection(
                     codes: listings.savedCodes,
@@ -289,35 +301,6 @@ enum WelcomeLayout {
     static let columnWidth: CGFloat = 400
 }
 
-/// A danger notice for a failed open, lookup or delete: a title naming what
-/// failed, the error, and optional guidance.
-private struct WelcomeLoadErrorCallout: View {
-    let title: Text
-    let error: DisplayError
-    /// What the user can do next, if the screen has a suggestion.
-    var guidance: Text?
-
-    var body: some View {
-        HStack(alignment: .top, spacing: ThemeSpace.related) {
-            StatusGlyph(.danger)
-                .themeIcon(.medium)
-            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                title
-                    .themeText(.heading)
-                ErrorNotice(error: error, bare: true)
-                if let guidance {
-                    guidance
-                        .themeText(.body)
-                        .foregroundStyle(NoticeText.secondary)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .notice(.danger)
-        .frame(maxWidth: WelcomeLayout.columnWidth, alignment: .leading)
-    }
-}
-
 /// A library the person is asked to remove, with what removing it loses.
 private struct PendingRemoval {
     let library: BridgeLibrary
@@ -331,30 +314,23 @@ private struct RemovalErrorCallout: View {
     let removals: LibraryRemovals
 
     var body: some View {
-        HStack(alignment: .top, spacing: ThemeSpace.related) {
-            StatusGlyph(.danger)
-                .themeIcon(.medium)
-            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                Text("Couldn't remove the library")
-                    .themeText(.heading)
-                ErrorNotice(
-                    error: error,
-                    bare: true,
-                    action: removals.unfinished == nil
-                        ? nil
-                        : ErrorAction(isDisabled: removals.isRetrying) {
-                            removals.retryUnfinished()
-                        }
-                )
-                if let finishing = removals.finishing {
-                    StepProgressLine(steps: finishing.steps) {
-                        EmptyView()
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            ErrorNotice(
+                title: String(localized: "Couldn't remove the library"),
+                advice: nil,
+                error: error,
+                action: removals.unfinished == nil
+                    ? nil
+                    : ErrorAction(isDisabled: removals.isRetrying) {
+                        removals.retryUnfinished()
                     }
+            )
+            if let finishing = removals.finishing {
+                StepProgressLine(steps: finishing.steps) {
+                    EmptyView()
                 }
             }
-            Spacer(minLength: 0)
         }
-        .notice(.danger)
         .frame(maxWidth: WelcomeLayout.columnWidth, alignment: .leading)
     }
 }

@@ -4,9 +4,9 @@ import os.log
 private let logger = Logger.bae("PendingRecordsView")
 
 /// What coven is waiting on, one row per pending record: what it is about and
-/// the reason, in plain words, with its diagnostic behind a disclosure, and
-/// the record's action wherever the person can act. Without `perform` the list only informs, as
-/// while a library is still being restored.
+/// the reason, in plain words, with its diagnostic behind Details, and the
+/// record's action wherever the person can act. Without `perform` the list
+/// only informs, as while a library is still being restored.
 public struct PendingRecordsView: View {
     public let records: [BridgePendingRecord]
     public let perform: ((BridgePendingRecord) async throws -> Void)?

@@ -33,8 +33,12 @@ struct DeviceResetView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: WelcomeLayout.columnWidth)
             if let error {
-                LoadErrorNotice(loadError: error)
-                    .frame(maxWidth: WelcomeLayout.columnWidth)
+                ErrorNotice(
+                    title: error.step.title,
+                    advice: error.step.advice,
+                    error: error.error
+                )
+                .frame(maxWidth: WelcomeLayout.columnWidth)
             }
             HStack(spacing: ThemeSpace.group) {
                 Button("Cancel", action: onCancel)

@@ -38,8 +38,7 @@ public struct LoadFailureView: View {
             {
                 ErrorCausesPanel(
                     detail: detail,
-                    excerpt: excerpt,
-                    onTint: false
+                    excerpt: excerpt
                 )
                 .frame(maxWidth: 340)
             }
