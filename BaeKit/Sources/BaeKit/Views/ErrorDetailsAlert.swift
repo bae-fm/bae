@@ -28,4 +28,42 @@
             alert.runModal()
         }
     }
+
+    /// The inset panel of an error's causes, one a line and ending in the fault,
+    /// with Copy details in its corner.
+    private struct ErrorCausesPanel: View {
+        let detail: String
+        let excerpt: String
+        @Environment(\.colorScheme)
+        private var colorScheme
+
+        var body: some View {
+            let text = Color.secondary
+            Text(excerpt)
+                .themeText(.mono)
+                .foregroundStyle(text)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, ThemeSpace.related)
+                .padding(.leading, ThemeSpace.related + ThemeSpace.line)
+                .padding(.trailing, 30)
+                .background(
+                    Color.black.opacity(colorScheme == .dark ? 0.28 : 0.07),
+                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
+                )
+                .overlay(alignment: .topTrailing) {
+                    Button {
+                        Pasteboard.copy(detail)
+                    } label: {
+                        Label("Copy details", systemImage: "doc.on.doc")
+                            .labelStyle(.iconOnly)
+                            .themeIcon(.small)
+                            .foregroundStyle(text)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Copy details")
+                    .padding(ThemeSpace.related)
+                }
+        }
+    }
 #endif

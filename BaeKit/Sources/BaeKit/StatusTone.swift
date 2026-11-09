@@ -69,6 +69,13 @@ public enum NoticeLook: Sendable, Equatable {
     case filled
     /// No fill, in the screen's own text, with an outline glyph.
     case quiet
+    /// A view that failed whole: in the middle of the space it is given, a
+    /// grey outline glyph in front of a title in secondary text, the buttons
+    /// in a row under it. No fill.
+    case centered
+    /// The centred layout on the image viewer's dark stage, in the stage's own
+    /// text colours.
+    case centeredOnStage
 }
 
 /// A tone's glyph in the tone's icon colour, filled or as an outline; nothing
@@ -77,16 +84,24 @@ public enum NoticeLook: Sendable, Equatable {
 public struct StatusGlyph: View {
     private let tone: StatusTone
     private let outline: Bool
+    private let muted: Bool
 
-    public init(_ tone: StatusTone, outline: Bool = false) {
+    /// `muted` draws the glyph in tertiary text, grey, for a failure that
+    /// should not call attention to itself.
+    public init(
+        _ tone: StatusTone,
+        outline: Bool = false,
+        muted: Bool = false
+    ) {
         self.tone = tone
         self.outline = outline
+        self.muted = muted
     }
 
     public var body: some View {
         if let symbol = outline ? tone.outlineSymbol : tone.symbol {
             Image(systemName: symbol)
-                .foregroundStyle(tone.iconColor)
+                .foregroundStyle(muted ? Theme.textTertiary : tone.iconColor)
         }
     }
 }
@@ -94,6 +109,9 @@ public struct StatusGlyph: View {
 extension View {
     /// Pads the content as a notice in its tone, and in the filled look fills
     /// and rounds it; the quiet look has no fill and a little less padding.
+    /// The centred looks have no fill and fill the space they are given: the
+    /// view they replace, or 300 points where it has none, which no theme
+    /// size gives. On the stage they take that space as it is.
     @ViewBuilder
     public func notice(_ tone: StatusTone, look: NoticeLook = .filled)
         -> some View
@@ -108,6 +126,15 @@ extension View {
         case .quiet:
             padding(.horizontal, ThemeSpace.group)
                 .padding(.vertical, ThemeSpace.related + ThemeSpace.line)
+        case .centered:
+            padding(ThemeSpace.section)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: 300,
+                    maxHeight: .infinity
+                )
+        case .centeredOnStage:
+            frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

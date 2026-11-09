@@ -295,15 +295,16 @@ extension LightboxView {
 }
 
 extension LightboxView {
-    /// The failed-load state, with a retry.
+    /// The failed-load state, with a retry. The load keeps no error, so the
+    /// notice has no Details.
     fileprivate var loadFailedView: some View {
-        VStack(spacing: ThemeSpace.related) {
-            Text("Couldn’t load the image")
-                .themeText(.heading)
-                .fontWeight(.regular)
-                .foregroundStyle(Theme.onFillSecondary)
-            Button("Retry") { attempt += 1 }
-        }
+        ErrorNotice(
+            error: DisplayError(
+                line: String(localized: "Couldn’t load the image")
+            ),
+            look: .centeredOnStage,
+            action: ErrorAction { attempt += 1 }
+        )
     }
 }
 

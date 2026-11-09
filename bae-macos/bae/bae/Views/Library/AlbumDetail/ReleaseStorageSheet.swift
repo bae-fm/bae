@@ -128,10 +128,14 @@ struct ReleaseStorageSheet: View {
             .padding(.bottom, ThemeSpace.inline)
 
             if let error {
-                LoadFailureView(error: error) {
-                    self.error = nil
-                    reader?.retry()
-                }
+                ErrorNotice(
+                    error: error,
+                    look: .centered,
+                    action: ErrorAction {
+                        self.error = nil
+                        reader?.retry()
+                    }
+                )
             }
             else {
                 filesTable

@@ -139,25 +139,13 @@ struct ImportView: View {
     /// Shown when the list could not be read, instead of an empty state that
     /// would wrongly say no folder is watched.
     private func failedState(_ failure: DisplayError) -> some View {
-        VStack(spacing: ThemeSpace.group) {
-            Image(systemName: "exclamationmark.circle.fill")
-                .themeIcon(.hero)
-                .foregroundStyle(Theme.danger)
-            Text("The import list couldn't be read")
-                .themeText(.body)
-            if let detail = failure.detailSummary {
-                Text(detail)
-                    .themeText(.mono)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .textSelection(.enabled)
-            }
-            Button("Retry") {
-                listSlot.startLoad()
-            }
-        }
-        .padding(ThemeSpace.page)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ErrorNotice(
+            title: String(localized: "The import list couldn't be read"),
+            advice: nil,
+            error: failure,
+            look: .centered,
+            action: ErrorAction { listSlot.startLoad() }
+        )
     }
 
     /// Stop watching `path`. Its candidates leave the selection in the same

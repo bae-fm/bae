@@ -21,9 +21,13 @@ struct ComposerDetailPane: View {
                     BrowseDetailHeader(summary: composerDetail.composer)
                     if let rows {
                         if let error = rows.initialLoadError {
-                            LoadFailureView(error: error) {
-                                Task { await rows.loadInitial() }
-                            }
+                            ErrorNotice(
+                                error: error,
+                                look: .centered,
+                                action: ErrorAction {
+                                    Task { await rows.loadInitial() }
+                                }
+                            )
                         }
                         else {
                             pageRows(rows)

@@ -218,9 +218,13 @@ struct AlbumDetailView: View {
     @ViewBuilder
     private var detailPlaceholder: some View {
         if let error = albumRead.error {
-            LoadFailureView(error: error) {
-                detailReader?.retry()
-            }
+            ErrorNotice(
+                error: error,
+                look: .centered,
+                action: ErrorAction {
+                    detailReader?.retry()
+                }
+            )
         }
         else {
             Color.clear

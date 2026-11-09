@@ -82,6 +82,15 @@ public struct ErrorNotice: View {
     }
 
     public var body: some View {
+        switch look {
+        case .filled, .quiet:
+            row
+        case .centered, .centeredOnStage:
+            centered
+        }
+    }
+
+    private var row: some View {
         HStack(alignment: .top, spacing: ThemeSpace.related) {
             if tone.symbol != nil {
                 StatusGlyph(tone, outline: look == .quiet)
@@ -122,8 +131,7 @@ public struct ErrorNotice: View {
         if let details {
             HStack {
                 Spacer(minLength: 0)
-                Button("Details") { ErrorDetailsAlert.show(details) }
-                    .buttonStyle(.borderless)
+                detailsButton(details)
                 if let action {
                     actionButton(action)
                 }
@@ -132,6 +140,68 @@ public struct ErrorNotice: View {
         else if let action {
             actionButton(action)
         }
+    }
+
+    /// The centred layout: the glyph and the title in one row, with the
+    /// buttons in a row under it, Details first.
+    private var centered: some View {
+        let onStage = look == .centeredOnStage
+        let titleColor = onStage ? Theme.onFillSecondary : Color.secondary
+        return VStack(spacing: ThemeSpace.group) {
+            HStack(
+                alignment: .firstTextBaseline,
+                spacing: ThemeSpace.compact
+            ) {
+                if onStage, let symbol = tone.outlineSymbol {
+                    Image(systemName: symbol)
+                        .foregroundStyle(Theme.onFillSecondary)
+                }
+                else {
+                    StatusGlyph(tone, outline: true, muted: true)
+                }
+                Text(verbatim: centeredTitle)
+                    .themeText(.heading)
+                    .fontWeight(.regular)
+                    .foregroundStyle(titleColor)
+                    .multilineTextAlignment(.center)
+            }
+            if case .titled(_, let advice?) = heading {
+                Text(verbatim: advice)
+                    .themeText(.body)
+                    .foregroundStyle(titleColor)
+                    .multilineTextAlignment(.center)
+            }
+            HStack(spacing: ThemeSpace.group) {
+                if let details {
+                    detailsButton(details)
+                }
+                if let action {
+                    actionButton(action)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .notice(tone, look: look)
+    }
+
+    /// The title without a closing period.
+    private var centeredTitle: String {
+        let title =
+            switch heading {
+            case .line: error.line
+            case .titled(let title, _): title
+            }
+        return title.hasSuffix(".") ? String(title.dropLast()) : title
+    }
+
+    /// Details opens an alert, which only AppKit has; the iOS app has no
+    /// screens that show a notice.
+    @ViewBuilder
+    private func detailsButton(_ details: ErrorDetails) -> some View {
+        #if canImport(AppKit)
+            Button("Details") { ErrorDetailsAlert.show(details) }
+                .buttonStyle(.borderless)
+        #endif
     }
 
     private func actionButton(_ action: ErrorAction) -> some View {
@@ -145,44 +215,6 @@ public struct ErrorNotice: View {
         case .titled(let title, let advice):
             ErrorDetails(title: title, advice: advice, error: error)
         }
-    }
-}
-
-/// The inset panel of an error's causes, one a line and ending in the fault,
-/// with Copy details in its corner.
-struct ErrorCausesPanel: View {
-    let detail: String
-    let excerpt: String
-    @Environment(\.colorScheme)
-    private var colorScheme
-
-    var body: some View {
-        let text = Color.secondary
-        Text(excerpt)
-            .themeText(.mono)
-            .foregroundStyle(text)
-            .textSelection(.enabled)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, ThemeSpace.related)
-            .padding(.leading, ThemeSpace.related + ThemeSpace.line)
-            .padding(.trailing, 30)
-            .background(
-                Color.black.opacity(colorScheme == .dark ? 0.28 : 0.07),
-                in: RoundedRectangle(cornerRadius: ThemeRadius.control)
-            )
-            .overlay(alignment: .topTrailing) {
-                Button {
-                    Pasteboard.copy(detail)
-                } label: {
-                    Label("Copy details", systemImage: "doc.on.doc")
-                        .labelStyle(.iconOnly)
-                        .themeIcon(.small)
-                        .foregroundStyle(text)
-                }
-                .buttonStyle(.borderless)
-                .help("Copy details")
-                .padding(ThemeSpace.related)
-            }
     }
 }
 

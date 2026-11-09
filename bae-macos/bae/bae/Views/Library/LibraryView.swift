@@ -185,9 +185,13 @@ extension LibraryView {
         Group {
             if let albumList = session.albums.list {
                 if let error = albumList.initialLoadError {
-                    LoadFailureView(error: error) {
-                        Task { await albumList.loadInitial() }
-                    }
+                    ErrorNotice(
+                        error: error,
+                        look: .centered,
+                        action: ErrorAction {
+                            Task { await albumList.loadInitial() }
+                        }
+                    )
                 }
                 else if albumList.totalCount == 0 {
                     LibraryEmptyState(title: "No albums")
@@ -235,9 +239,13 @@ extension LibraryView {
         Group {
             if let composerList = session.composers.list {
                 if let error = composerList.initialLoadError {
-                    LoadFailureView(error: error) {
-                        Task { await composerList.loadInitial() }
-                    }
+                    ErrorNotice(
+                        error: error,
+                        look: .centered,
+                        action: ErrorAction {
+                            Task { await composerList.loadInitial() }
+                        }
+                    )
                 }
                 else if composerList.totalCount == 0 {
                     LibraryEmptyState(
@@ -282,9 +290,13 @@ extension LibraryView {
         Group {
             if let artistList = session.artists.list {
                 if let error = artistList.initialLoadError {
-                    LoadFailureView(error: error) {
-                        Task { await artistList.loadInitial() }
-                    }
+                    ErrorNotice(
+                        error: error,
+                        look: .centered,
+                        action: ErrorAction {
+                            Task { await artistList.loadInitial() }
+                        }
+                    )
                 }
                 else if artistList.totalCount == 0 {
                     LibraryEmptyState(

@@ -34,9 +34,13 @@ struct StorageContentsInspector: View {
     var body: some View {
         Group {
             if let error {
-                LoadFailureView(error: error) {
-                    reader?.retry()
-                }
+                ErrorNotice(
+                    error: error,
+                    look: .centered,
+                    action: ErrorAction {
+                        reader?.retry()
+                    }
+                )
             }
             else if let inspector {
                 VStack(spacing: 0) {

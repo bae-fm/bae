@@ -53,9 +53,13 @@ struct ImportedReleasePane: View {
                 }
             }
             else if let loadError {
-                LoadFailureView(error: loadError) {
-                    Task { await load() }
-                }
+                ErrorNotice(
+                    error: loadError,
+                    look: .centered,
+                    action: ErrorAction {
+                        Task { await load() }
+                    }
+                )
                 .frame(
                     maxWidth: .infinity,
                     minHeight: Self.placeholderHeight
