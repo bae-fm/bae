@@ -53,6 +53,24 @@ extension ShotScene {
                 )
             )
         },
+        // A view that failed whole, in the space a library's grid has.
+        ShotScene(
+            id: "notice-failed-view",
+            size: CGSize(width: 900, height: 520)
+        ) {
+            ShotStage(
+                ErrorNotice(
+                    error: DisplayError(
+                        line: "Couldn’t read your library.",
+                        detail:
+                            "SqliteFailure(DatabaseCorrupt)\ndatabase disk image is malformed"
+                    ),
+                    look: .centered,
+                    action: ErrorAction {}
+                )
+                .background(Theme.background)
+            )
+        },
         ShotScene(
             id: "notice-looks",
             size: CGSize(width: 480, height: 330)
