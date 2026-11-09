@@ -16,7 +16,7 @@
     W('Danger, with Details', h(N, { tone: 'danger', title: 'Couldn’t reach your storage.', details: 'request to storage failed\ndns error: failed to lookup address' })),
     W('With Retry, Details open', h(N, { tone: 'danger', title: 'Couldn’t reach your storage.', details: 'request to storage failed\ndns error: failed to lookup address', open: true, action: 'Retry' })),
     W('Title and subtitle', h(N, { tone: 'warning', title: 'Mara Quill’s phone is out of date', subtitle: 'Update bae on it to keep syncing.' })),
-    W('Quiet, with Details', h(N, { quiet: true, tone: 'danger', title: 'Couldn’t close the library', details: 'Couldn’t stop sync.\ntimed out after 30s' })),
+    W('Quiet, with Details and ×', h(N, { quiet: true, dismiss: true, tone: 'danger', title: 'Couldn’t close the library', details: 'Couldn’t stop sync.\ntimed out after 30s' })),
     W('Title, subtitle, Details open', h(N, { tone: 'danger', title: 'bae couldn’t open your library', subtitle: 'Check your connection, then quit and reopen bae.', details: chain, open: true }))));
 </script>
 </body>

@@ -11,6 +11,7 @@ Android's notice: a tinted box in its tone, the tone's glyph at the top left. It
 | `open` | Details open. |
 | `action` | The label of a text button (Retry) at the box's right, level with the title. |
 | `quiet` | Drawn as a row: no fill, the screen's text, the glyph in its tone. For a list of problems, such as the Activity panel's Needs Attention. |
+| `dismiss` | An × at the right, after any action: takes the notice away without fixing what it reports. For the Activity panel's problems, each of which still shows where it's fixed (such as Settings → Sync). |
 | `icon` | On unless `false`. |
 | children | Other content, in place of or after the title. |
 
