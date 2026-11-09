@@ -22,7 +22,8 @@
 .bae-chip { display: inline-flex; align-items: center; gap: var(--space-inline); padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); font: 600 10.5px var(--font-sans); white-space: nowrap; color: var(--bae-tone); background: var(--bae-tone-tint); }
 .bae-notice { padding: var(--space-group); border-radius: var(--radius-control); color: var(--text-primary); background: var(--bae-tone-tint); }
 .bae-notice-with-icon { display: flex; align-items: center; gap: var(--space-related); }
-.bae-notice-mac { align-items: flex-start; }
+.bae-notice-mac { align-items: flex-start; font: 400 13px/16px var(--font-sans); }
+.bae-notice:not(.bae-notice-mac) { font: 400 14px/20px var(--font-android); }
 .bae-notice-mac .bae-notice-icon { margin-top: 1px; }
 .bae-notice-icon { flex: none; }
 .bae-status-glyph { color: var(--bae-tone); flex: none; }
