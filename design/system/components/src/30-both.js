@@ -62,11 +62,9 @@
       ? h('svg', { className: cls, width: size, height: size, viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' }, h('path', { d: STATUS_SF[tone], fillRule: 'evenodd' }))
       : h(MSymbol, { name: STATUS_MATERIAL[tone], size: size, filled: true, className: cls, fill: 'currentColor' });
   }
-  // A tinted box in its tone. icon (on unless false) leads with the tone's glyph; neutral has none. set="mac" draws macOS's glyph, top-aligned as the Mac's HStacks do.
+  // A tinted box in its tone. Its text is the size of the screen it sits in (13 on a Mac, 14 on Android); icon (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. One drawing serves both apps: the SF Symbol and Material's filled circle look alike.
   function Notice(props) {
     var tone = props.tone || 'neutral';
-    var mac = props.set === 'mac';
-    var glyph = null;
-    if (props.icon !== false) glyph = h(StatusGlyph, { tone: tone, set: props.set, size: mac ? 15.5 : 20, className: 'bae-notice-icon' });
-    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, glyph && 'bae-notice-with-icon', mac && 'bae-notice-mac') }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, props.children) : props.children);
+    var glyph = props.icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac' })) : null;
+    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, glyph && 'bae-notice-with-icon') }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, props.children) : props.children);
   }

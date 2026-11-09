@@ -156,7 +156,7 @@
       props.action ? h('span', { className: 'bae-m-errdis-action' }, h(MacButton, null, props.action)) : null,
       props.fault ? h('div', { className: 'bae-m-errdis-more' }, h(Chevron, { className: props.open ? 'bae-m-errdis-open' : null }), 'Details') : null,
       props.fault && props.open ? h('div', { className: 'bae-errdis-panel' }, h('div', { className: 'bae-errdis-chain' }, props.chain || props.fault), h('span', { className: 'bae-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 }))) : null);
-    return props.bare ? body : h(Notice, { tone: tone, set: 'mac' }, body);
+    return props.bare ? body : h(Notice, { tone: tone }, body);
   }
   // A popover hanging from a title-bar button, its arrow pointing up at it.
   function MacPopover(props) {
