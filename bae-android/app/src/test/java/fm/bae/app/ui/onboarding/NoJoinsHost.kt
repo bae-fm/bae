@@ -12,6 +12,7 @@ import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeS3Credentials
+import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSavedRestoreCode
 import uniffi.bae_bridge.BridgeSavedRestoreEntry
 import uniffi.bae_bridge.BridgeUnfinishedJoin
@@ -78,6 +79,8 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         libraryId: String,
         deviceName: String,
     ): BridgeDeviceReset = unfaked("prepareDeviceReset")
+
+    override fun newSavePreset(): BridgeSavePreset = unfaked("newSavePreset")
 
     override suspend fun restoreFromCode(
         code: String,
