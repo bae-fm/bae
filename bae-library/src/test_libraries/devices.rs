@@ -164,14 +164,16 @@ impl DeviceLibrary {
     }
 
     /// Another of the person's devices, restored from `code`, a restore code
-    /// the first device showed, as the app restores one, and syncing.
+    /// the first device showed, as the app restores one: read back as a
+    /// person enters it, in its groups or not, and syncing.
     pub async fn restore(&self, code: &str, name: &str) -> TestDevice {
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
         let installation = coven::Coven::in_memory(app.coven_app_dir());
         let storage = Arc::new(self.storage.for_device());
+        let code = crate::sync::restore_code::entered(code);
         let handle =
-            stores::restore_store(crate::SCHEMA, &installation, storage.clone(), code, name).await;
+            stores::restore_store(crate::SCHEMA, &installation, storage.clone(), &code, name).await;
         let device = device(dir, app, handle, installation, storage).await;
         device.store().start_sync().await.unwrap();
         device
