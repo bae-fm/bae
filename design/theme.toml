@@ -227,6 +227,9 @@ dangerNotice = "#29E63C3C"
 onNotice = "#202124"
 activity = "#1F7274"
 pinning = "#4553B5"
+# The word under the sheep on Welcome: the outline's plum, which reads on the
+# light background (design/system/tokens.json `logo-word`).
+logoWord = "#40183D"
 hairline = "#1A000000"
 hairlineStrong = "#2E000000"
 hover = "#0F000000"
@@ -262,6 +265,8 @@ dangerNotice = "#FF9C9C"
 onNotice = "#1E1A10"
 activity = "#80CCCE"
 pinning = "#A9B8FF"
+# The word under the sheep on Welcome: the wool's cream.
+logoWord = "#FFFCF4"
 hairline = "#1AFFFFFF"
 hairlineStrong = "#2EFFFFFF"
 hover = "#0FFFFFFF"
