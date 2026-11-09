@@ -145,10 +145,8 @@ pub(super) async fn plan(
 pub(super) const LIST_ALIASES: &[&str] = &["listing", "artist", "link", "a", "r", "q"];
 
 /// Hold every seek beside the row at `key` of `order`'s rows to an index:
-/// `statement` builds the seek's statement. Only the grid grouped by artist
-/// sorts, and only one artist's albums at a time: each artist's as it
-/// reaches it (`LAST … TERMS`), or, holding the artist's sort key and id (the
-/// first `sorted_within` terms) equal, that artist's alone.
+/// `statement` builds the seek's statement. No seek scans a list's table or
+/// sorts the list's rows, wholly or in part.
 pub(super) async fn assert_seeks_search(
     db: &Store,
     what: &str,
@@ -157,7 +155,19 @@ pub(super) async fn assert_seeks_search(
     statement: impl Fn(&Seek) -> String,
     extra: Vec<(&'static str, rusqlite::types::Value)>,
 ) {
-    assert_seeks_search_sorting(db, what, order, key, statement, extra, usize::MAX).await
+    for seek in order.seeks_beside(&key) {
+        let steps = plan(db, statement(&seek), seek.clone(), extra.clone()).await;
+        assert!(
+            !steps.iter().any(|step| {
+                LIST_ALIASES.iter().any(|alias| {
+                    step.starts_with(&format!("SCAN {alias} ")) || step == &format!("SCAN {alias}")
+                })
+            }) && !picked_window(&steps)
+                .iter()
+                .any(|step| step.starts_with("USE TEMP B-TREE FOR") && step.ends_with("ORDER BY")),
+            "{what} {seek:?}: {steps:?}"
+        );
+    }
 }
 
 /// The steps of a plan that read the list's order, where the statement picks
@@ -175,36 +185,6 @@ pub(super) fn picked_window(steps: &[String]) -> &[String] {
         .position(|step| step == "SCAN picked" || step == "MATERIALIZE sending")
         .expect("a plan scanning the picked rows has an outer statement");
     &steps[..outer]
-}
-
-pub(super) async fn assert_seeks_search_sorting(
-    db: &Store,
-    what: &str,
-    order: &ListOrder,
-    key: OrderKey,
-    statement: impl Fn(&Seek) -> String,
-    extra: Vec<(&'static str, rusqlite::types::Value)>,
-    sorted_within: usize,
-) {
-    for seek in order.seeks_beside(&key) {
-        let sorts_by_artist = sorted_within != usize::MAX;
-        let sorts = seek.held_equal() >= sorted_within;
-        let steps = plan(db, statement(&seek), seek.clone(), extra.clone()).await;
-        let picking = picked_window(&steps);
-        // The grid grouped by artist sorts each artist's albums as it reaches
-        // the artist (`RIGHT PART`); nothing sorts the list whole.
-        assert!(
-            !steps.iter().any(|step| {
-                LIST_ALIASES.iter().any(|alias| {
-                    step.starts_with(&format!("SCAN {alias} ")) || step == &format!("SCAN {alias}")
-                })
-            }) && !picking.iter().any(|step| {
-                (!sorts && step.contains("TEMP B-TREE FOR ORDER BY"))
-                    || (!sorts_by_artist && step.contains("TEMP B-TREE FOR LAST"))
-            }),
-            "{what} {seek:?}: {steps:?}"
-        );
-    }
 }
 
 /// A library of 300 albums, each with an artist, a release, files and a
@@ -478,27 +458,11 @@ mod window_cost {
         for group_by_artist in [false, true] {
             let (list, rows): (&str, Rows<_>) = if group_by_artist {
                 ("albums_by_artist", |sql, order, seek, limit, offset| {
-                    crate::album::album_rows_on(
-                        sql,
-                        &crate::album::album_browse_order(&[], true).0,
-                        true,
-                        order,
-                        seek,
-                        limit,
-                        offset,
-                    )
+                    crate::album::album_rows_on(sql, true, order, seek, limit, offset)
                 })
             } else {
                 ("albums", |sql, order, seek, limit, offset| {
-                    crate::album::album_rows_on(
-                        sql,
-                        &crate::album::album_browse_order(&[], false).0,
-                        false,
-                        order,
-                        seek,
-                        limit,
-                        offset,
-                    )
+                    crate::album::album_rows_on(sql, false, order, seek, limit, offset)
                 })
             };
             for (name, sort) in &sorts {

@@ -21,8 +21,10 @@ CREATE INDEX IF NOT EXISTS idx_artist_listing_album_count ON artist_listing (alb
 CREATE INDEX IF NOT EXISTS idx_artist_listing_album_count_desc ON artist_listing (album_count DESC, name, artist_id);
 
 -- Both columns run one way, so the index serves the grid grouped by artist in
--- either direction.
-CREATE INDEX IF NOT EXISTS idx_artist_listing_sort_key ON artist_listing (sort_key COLLATE NOCASE DESC, artist_id DESC);
+-- either direction. It is unique, as the artist id makes it, so SQLite knows
+-- each of its entries is one artist and reads each artist's albums from
+-- `album_artist_link`'s index in the grid's sort instead of sorting them.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_artist_listing_sort_key ON artist_listing (sort_key COLLATE NOCASE DESC, artist_id DESC);
 
 -- Each link added to or removed from `album_artist_link` counts in or out of
 -- its artist's listing row. An artist whose own row has not arrived yet gets

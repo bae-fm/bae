@@ -227,12 +227,6 @@ impl Seek {
         run(&params)
     }
 
-    /// How many of the order's leading terms the seek holds equal.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn held_equal(&self) -> usize {
-        self.equal
-    }
-
     /// Whether the seek reads every row in the order's own run: the seek of
     /// a read by offset.
     #[cfg(test)]
@@ -293,19 +287,26 @@ impl ListOrder {
         Seek { equal: 0, past: None, from: 0, reversed: false, binds: Vec::new() }
     }
 
-    /// The condition `seek` holds this order's rows to.
+    /// The condition `seek` holds this order's rows to. A term held to its
+    /// row's value is compared with `=`, and with `IS` only when that value
+    /// is NULL, which `=` never matches. SQLite takes a column held with `IS`
+    /// to repeat, so a read whose order goes on from one table into another,
+    /// as the album grid grouped by artist goes from the artists into each
+    /// one's albums, would sort the second table's rows instead of reading
+    /// them in its index's order.
     pub fn condition(&self, seek: &Seek) -> String {
         let term = |at: usize| &self.terms[at].expression;
+        let held = |at: usize| match &seek.binds[at].1 {
+            Value::Null => format!("({}) IS {}", term(at), key_parameter(at)),
+            _ => format!("({}) = {}", term(at), key_parameter(at)),
+        };
         let past = seek.past.map(|past| match past {
             Past::Greater(at) => format!("({}) > {}", term(at), key_parameter(at)),
             Past::Less(at) => format!("({}) < {}", term(at), key_parameter(at)),
             Past::NotNull(at) => format!("({}) IS NOT NULL", term(at)),
             Past::Null(at) => format!("({}) IS NULL", term(at)),
         });
-        let conditions = (0..seek.equal)
-            .map(|at| format!("({}) IS {}", term(at), key_parameter(at)))
-            .chain(past)
-            .collect::<Vec<_>>();
+        let conditions = (0..seek.equal).map(held).chain(past).collect::<Vec<_>>();
         if conditions.is_empty() {
             "1".to_string()
         } else {

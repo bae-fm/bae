@@ -33,20 +33,40 @@ CREATE INDEX IF NOT EXISTS idx_album_listing_credits ON album_listing (credit_so
 CREATE INDEX IF NOT EXISTS idx_album_listing_credits_desc ON album_listing (credit_sort_names COLLATE NOCASE DESC, credit_artist_ids DESC, album_id);
 
 -- Each album the library shows and each artist one of its credits shows,
--- once however many credits name that artist.
+-- once however many credits name that artist, with the title, year and date
+-- added of the album's `album_listing` row: the grid grouped by artist reads
+-- each artist's albums in the grid's sort from an index here, after
+-- `artist_listing`'s index has put the artists in order, and sorts none.
 CREATE TABLE IF NOT EXISTS album_artist_link (
     artist_id TEXT NOT NULL,
-    album_id TEXT NOT NULL REFERENCES albums (id) ON DELETE CASCADE,
+    album_id TEXT NOT NULL REFERENCES album_listing (album_id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    year INTEGER,
+    created_at TEXT NOT NULL,
     PRIMARY KEY (artist_id, album_id)
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_album_artist_link_album ON album_artist_link (album_id);
 
+CREATE INDEX IF NOT EXISTS idx_album_artist_link_title ON album_artist_link (artist_id, title COLLATE NOCASE, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_artist_link_title_desc ON album_artist_link (artist_id, title COLLATE NOCASE DESC, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_artist_link_added ON album_artist_link (artist_id, created_at, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_artist_link_added_desc ON album_artist_link (artist_id, created_at DESC, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_artist_link_year ON album_artist_link (artist_id, year IS NULL, year, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_artist_link_year_desc ON album_artist_link (artist_id, year IS NULL DESC, year DESC, album_id);
+
 -- Inserting an album id into `album_listing_refresh` rewrites that album's
 -- row of `album_listing` and its links from the album, its releases and its
 -- credits, writing the row only where a value differs and adding and removing
 -- only the links that differ: a release added to an album of many changes
--- none of its other releases' listing rows.
+-- none of its other releases' listing rows. The links go with the listing
+-- row when the album's last release does, and a new link takes the row's
+-- values.
 CREATE VIEW IF NOT EXISTS album_listing_refresh AS SELECT NULL AS album_id WHERE 0;
 
 CREATE TRIGGER IF NOT EXISTS album_listing_refresh INSTEAD OF INSERT ON album_listing_refresh
@@ -82,13 +102,23 @@ BEGIN
         AND artist_id NOT IN (
             SELECT shown.shown_artist_id FROM album_artists credit
             JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
-            WHERE credit.album_id = NEW.album_id
-              AND EXISTS (SELECT 1 FROM releases WHERE album_id = NEW.album_id));
-    INSERT OR IGNORE INTO album_artist_link (artist_id, album_id)
-    SELECT DISTINCT shown.shown_artist_id, credit.album_id FROM album_artists credit
+            WHERE credit.album_id = NEW.album_id);
+    INSERT OR IGNORE INTO album_artist_link (artist_id, album_id, title, year, created_at)
+    SELECT DISTINCT shown.shown_artist_id, listing.album_id, listing.title, listing.year, listing.created_at
+    FROM album_listing listing
+    JOIN album_artists credit ON credit.album_id = listing.album_id
     JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
-    WHERE credit.album_id = NEW.album_id
-      AND EXISTS (SELECT 1 FROM releases WHERE album_id = NEW.album_id);
+    WHERE listing.album_id = NEW.album_id;
+END;
+
+-- A listing row's title, year or date added changing moves its links with it.
+CREATE TRIGGER IF NOT EXISTS album_listing_values_changed AFTER UPDATE OF title, year, created_at ON album_listing
+WHEN OLD.title IS NOT NEW.title
+  OR OLD.year IS NOT NEW.year
+  OR OLD.created_at IS NOT NEW.created_at
+BEGIN
+    UPDATE album_artist_link SET title = NEW.title, year = NEW.year, created_at = NEW.created_at
+    WHERE album_id = NEW.album_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS album_listing_added AFTER INSERT ON albums

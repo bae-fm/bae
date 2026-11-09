@@ -89,24 +89,41 @@ pub(super) fn album_appearance_count_on(sql: &SqlReadContext<'_>) -> Result<u64,
     .map_err(DbError::from)
 }
 
-/// The statement reading the album list's rows `seek` reads over
-/// `relation` (grouped by artist or not) in `order`, at most `:limit` from
-/// `:offset`, each with the artist whose group lists it and its key.
+/// The tables holding every term of the album list's order, flat or grouped
+/// by artist: the albums' listing rows, or the artists' with each one's links
+/// after it. CROSS JOIN keeps the artists in their index's order and each
+/// artist's albums after it in the link's index for the order's album sort,
+/// so nothing is sorted.
+fn album_order_tables(group_by_artist: bool) -> &'static str {
+    if group_by_artist {
+        "FROM artist_listing artist \
+         CROSS JOIN album_artist_link link ON link.artist_id = artist.artist_id"
+    } else {
+        "FROM album_listing listing"
+    }
+}
+
+/// The statement reading the album list's rows `seek` reads (grouped by
+/// artist or not) in `order`, at most `:limit` from `:offset`, each with the
+/// artist whose group lists it and its key.
 ///
 /// The window is picked by an inner statement that reads only the ids of its
-/// rows, so a row `:offset` skips costs its place in the order and nothing
-/// else; the outer statement reads the columns of just the picked rows, in
+/// rows from the tables holding the order's terms, so a row `:offset` skips
+/// costs its place in the order's indexes and nothing else: every link has
+/// its listing row and every listing row its album, as their foreign keys
+/// hold. The outer statement reads the columns of just the picked rows, in
 /// the same order.
 pub(crate) fn album_window_statement(
-    relation: &str,
     group_by_artist: bool,
     order: &ListOrder,
     seek: &Seek,
 ) -> String {
     let (picked, picked_ids) = if group_by_artist {
         (
-            "artist.artist_id AS picked_artist_id, listing.album_id AS picked_album_id",
+            "artist.artist_id AS picked_artist_id, link.album_id AS picked_album_id",
             "CROSS JOIN artist_listing artist ON artist.artist_id = picked.picked_artist_id \
+             CROSS JOIN album_artist_link link ON link.artist_id = picked.picked_artist_id \
+                 AND link.album_id = picked.picked_album_id \
              CROSS JOIN album_listing listing ON listing.album_id = picked.picked_album_id",
         )
     } else {
@@ -117,31 +134,31 @@ pub(crate) fn album_window_statement(
     };
     format!(
         "{select}, {group} AS group_artist_id, {keys} \
-         FROM (SELECT {picked} {relation} WHERE {condition} \
+         FROM (SELECT {picked} {tables} WHERE {condition} \
                ORDER BY {ordering} LIMIT :limit OFFSET :offset) picked \
          {picked_ids} \
          JOIN albums a ON a.id = picked.picked_album_id \
          ORDER BY {ordering}",
         select = album_summary_select(),
         group = album_group_artist_sql(group_by_artist),
+        tables = album_order_tables(group_by_artist),
         keys = order.key_columns(),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
     )
 }
 
-/// The album list's rows `seek` reads over `relation` (grouped by artist or
-/// not) in `order`, at most `limit` from `offset`, each with its key.
+/// The album list's rows `seek` reads (grouped by artist or not) in `order`,
+/// at most `limit` from `offset`, each with its key.
 pub(crate) fn album_rows_on(
     sql: &SqlReadContext<'_>,
-    relation: &str,
     group_by_artist: bool,
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
     offset: u64,
 ) -> Result<Vec<Keyed<AlbumAppearanceRow>>, DbError> {
-    let statement = album_window_statement(relation, group_by_artist, order, seek);
+    let statement = album_window_statement(group_by_artist, order, seek);
     Ok(seek.bound(limit, offset, |params| {
         sql.query(&statement, params, |row| {
             Ok((
@@ -178,27 +195,44 @@ impl AlbumAppearanceRow {
     }
 }
 
-/// What an album listing's Artist sort compares.
+/// Which rows an album listing's order reads.
 #[derive(Clone, Copy)]
-enum ArtistOrder {
-    /// The album's whole credit list (`album_listing`'s credit keys).
-    CreditList,
-    /// The one artist the row is listed under, `artist` (the browse grouped
-    /// by artist lists an album under each artist it credits).
-    GroupArtist,
+enum AlbumRows {
+    /// One row per album, `album_listing listing`: its Artist sort compares
+    /// the album's whole credit list (the listing's credit keys).
+    Flat,
+    /// One row per album under each artist its credits show (the browse
+    /// grouped by artist), `album_artist_link link` under `artist_listing
+    /// artist`: its Artist sort compares the artist the row is listed under,
+    /// and the album's other sorts compare the link's copies of the album's
+    /// values, which its indexes hold.
+    ByArtist,
 }
 
-/// The same relation and order serve paging, section ranges, and reveal.
-/// Grouped rows are album appearances; flat rows are distinct albums. Both
-/// read `album_listing listing` and the album as `a`.
+impl AlbumRows {
+    /// The alias of the table whose title, year, date added and album id the
+    /// order compares.
+    fn album_values(self) -> &'static str {
+        match self {
+            AlbumRows::Flat => "listing",
+            AlbumRows::ByArtist => "link",
+        }
+    }
+}
+
+/// The album list's relation and order, flat or grouped by artist: grouped
+/// rows are album appearances, flat rows distinct albums. The relation adds
+/// each row's `album_listing listing` and album `a` to the order's tables,
+/// for reveal and the selection's order; a window picks its rows from the
+/// order's tables alone (`album_window_statement`).
 pub(crate) fn album_browse_order(
     sort: &[AlbumSortCriterion],
     group_by_artist: bool,
 ) -> (String, ListOrder) {
     if !group_by_artist {
         return (
-            "FROM album_listing listing JOIN albums a ON a.id = listing.album_id".to_string(),
-            album_order(sort, ArtistOrder::CreditList),
+            format!("{} JOIN albums a ON a.id = listing.album_id", album_order_tables(false)),
+            album_order(sort, AlbumRows::Flat),
         );
     }
     let direction = grouped_artist_direction(sort);
@@ -210,16 +244,13 @@ pub(crate) fn album_browse_order(
             direction: SortDirection::Descending,
         });
     }
-    let order = album_order(&grouped_sort, ArtistOrder::GroupArtist);
-    // CROSS JOIN keeps this join order: the artists in their index's order,
-    // each artist's albums after it, so a window reads about its own rows.
     (
-        "FROM artist_listing artist \
-         CROSS JOIN album_artist_link link ON link.artist_id = artist.artist_id \
-         CROSS JOIN album_listing listing ON listing.album_id = link.album_id \
-         JOIN albums a ON a.id = listing.album_id"
-            .to_string(),
-        order,
+        format!(
+            "{} CROSS JOIN album_listing listing ON listing.album_id = link.album_id \
+             JOIN albums a ON a.id = listing.album_id",
+            album_order_tables(true)
+        ),
+        album_order(&grouped_sort, AlbumRows::ByArtist),
     )
 }
 
@@ -235,7 +266,7 @@ pub(super) fn grouped_artist_direction(sort: &[AlbumSortCriterion]) -> SortDirec
 /// artist, as `library_list_versions` names them.
 pub(super) fn album_browse_sources(group_by_artist: bool) -> &'static [&'static str] {
     if group_by_artist {
-        &["album_listing", "album_artist_link", "artist_listing"]
+        &["album_artist_link", "artist_listing"]
     } else {
         &["album_listing"]
     }
@@ -278,10 +309,13 @@ fn sort_direction_sql(direction: SortDirection) -> &'static str {
     }
 }
 
-/// The order of an album listing over `album_listing listing`; `artist`
-/// says what its Artist sort compares. With no criteria the newest albums
-/// come first. An index of `album_listing` serves each one-field sort.
-fn album_order(sort: &[AlbumSortCriterion], artist: ArtistOrder) -> ListOrder {
+/// The order of an album listing over `rows`. With no criteria the newest
+/// albums come first. An index of `album_listing` serves each one-field sort
+/// of the flat grid; grouped by artist, `artist_listing`'s index orders the
+/// artists and an index of `album_artist_link` each artist's albums in the
+/// field after Artist.
+fn album_order(sort: &[AlbumSortCriterion], rows: AlbumRows) -> ListOrder {
+    let values = rows.album_values();
     // Every order ends with the album id, a total order over albums. Without
     // it rows sharing a sort value order arbitrarily — and a window read by
     // its offset, one read from a row beside it and `get_album_index` (a
@@ -290,8 +324,8 @@ fn album_order(sort: &[AlbumSortCriterion], artist: ArtistOrder) -> ListOrder {
     // album.
     if sort.is_empty() {
         return ListOrder::new(vec![
-            SortTerm::descending("listing.created_at"),
-            SortTerm::ascending("listing.album_id"),
+            SortTerm::descending(format!("{values}.created_at")),
+            SortTerm::ascending(format!("{values}.album_id")),
         ]);
     }
     let mut terms = sort
@@ -300,15 +334,15 @@ fn album_order(sort: &[AlbumSortCriterion], artist: ArtistOrder) -> ListOrder {
             let dir = c.direction;
             match c.field {
                 AlbumSortField::Title => {
-                    vec![SortTerm::running("listing.title COLLATE NOCASE", dir)]
+                    vec![SortTerm::running(format!("{values}.title COLLATE NOCASE"), dir)]
                 }
-                AlbumSortField::Artist => match artist {
-                    ArtistOrder::CreditList => vec![
+                AlbumSortField::Artist => match rows {
+                    AlbumRows::Flat => vec![
                         SortTerm::running("listing.credit_sort_names COLLATE NOCASE", dir)
                             .nullable(),
                         SortTerm::running("listing.credit_artist_ids", dir).nullable(),
                     ],
-                    ArtistOrder::GroupArtist => vec![
+                    AlbumRows::ByArtist => vec![
                         SortTerm::running("artist.sort_key COLLATE NOCASE", dir),
                         SortTerm::running("artist.artist_id", dir),
                     ],
@@ -316,14 +350,16 @@ fn album_order(sort: &[AlbumSortCriterion], artist: ArtistOrder) -> ListOrder {
                 // An unknown year sorts as above every year: last ascending,
                 // first descending.
                 AlbumSortField::Year => vec![
-                    SortTerm::running("listing.year IS NULL", dir),
-                    SortTerm::running("listing.year", dir).nullable(),
+                    SortTerm::running(format!("{values}.year IS NULL"), dir),
+                    SortTerm::running(format!("{values}.year"), dir).nullable(),
                 ],
-                AlbumSortField::DateAdded => vec![SortTerm::running("listing.created_at", dir)],
+                AlbumSortField::DateAdded => {
+                    vec![SortTerm::running(format!("{values}.created_at"), dir)]
+                }
             }
         })
         .collect::<Vec<_>>();
-    terms.push(SortTerm::ascending("listing.album_id"));
+    terms.push(SortTerm::ascending(format!("{values}.album_id")));
     ListOrder::new(terms)
 }
 

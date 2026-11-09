@@ -93,22 +93,14 @@ impl LibraryViews {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<crate::album_detail::AlbumSummary>, DbError> {
-        let (relation, order) = album_browse_order(sort, false);
+        let (_, order) = album_browse_order(sort, false);
         let rows: Vec<DbAlbumSummary> = self
             .store
             .read(move |sql| {
-                Ok(album_rows_on(
-                    &sql,
-                    &relation,
-                    false,
-                    &order,
-                    &order.everything(),
-                    limit,
-                    offset,
-                )?
-                .into_iter()
-                .map(|(appearance, _)| appearance.row)
-                .collect::<Vec<_>>())
+                Ok(album_rows_on(&sql, false, &order, &order.everything(), limit, offset)?
+                    .into_iter()
+                    .map(|(appearance, _)| appearance.row)
+                    .collect::<Vec<_>>())
             })
             .process(|rows| rows.into_iter().map(AlbumSummaryRow::process).collect())
             .await?;
@@ -128,7 +120,7 @@ impl LibraryViews {
         AlbumBrowseProjection,
         bae_store::DbError,
     > {
-        let (relation, order) = album_browse_order(sort, group_by_artist);
+        let (_, order) = album_browse_order(sort, group_by_artist);
         let sources = album_browse_sources(group_by_artist);
         let places = KnownPlaces::new();
         let sections = std::sync::Arc::new(SectionsDelivery::new(
@@ -147,7 +139,7 @@ impl LibraryViews {
                     requested,
                     places.under(&versions),
                     |seek, limit, offset| {
-                        album_rows_on(&sql, &relation, group_by_artist, &order, seek, limit, offset)
+                        album_rows_on(&sql, group_by_artist, &order, seek, limit, offset)
                     },
                 )?;
                 places.keep(versions, found);

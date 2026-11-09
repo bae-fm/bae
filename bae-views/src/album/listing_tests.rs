@@ -3,7 +3,7 @@
 //! read from an index.
 
 use crate::album::album_browse_order;
-use crate::tests::{assert_seeks_search_sorting, both_ways, key_at, library};
+use crate::tests::{assert_seeks_search, both_ways, key_at, library};
 use crate::*;
 use bae_records::test_fixtures::album_listing::*;
 use bae_records::test_fixtures::artists_apart::{
@@ -230,6 +230,48 @@ async fn grouped_library() -> (Store, tempfile::TempDir) {
     let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
     write_grouped(&test_records(&db), ARTIST_C).await;
     (db, dir)
+}
+
+/// The grid grouped by artist and sorted by title: the albums' titles in
+/// order, and the version of the album-artist links the order reads.
+async fn grouped_by_title(db: &Store) -> (Vec<String>, Vec<i64>) {
+    let sort =
+        [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
+    let shown = LibraryViews::new(db.clone())
+        .subscribe_album_browse(&sort, true, [LibraryPageWindow { offset: 0, limit: 20 }].into())
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    let version = db
+        .read(|sql| {
+            Ok(bae_store::list_windows::list_versions_on(
+                &sql,
+                crate::versions::TABLE,
+                &["album_artist_link"],
+            )?)
+        })
+        .await
+        .unwrap();
+    (shown.windows[0].rows.iter().map(|row| row.album.title.clone()).collect(), version)
+}
+
+/// Renaming an album moves it among its artist's albums in the grid grouped
+/// by artist, and moves the version of the links that order reads, so no
+/// later read starts a window from where a row sat before the rename.
+#[tokio::test]
+async fn a_renamed_album_moves_among_its_artists_albums() {
+    let (db, _dir) = grouped_library().await;
+    let (titles, version) = grouped_by_title(&db).await;
+    // The third artist sorts first, then B and A, which share a sort name,
+    // by id.
+    assert_eq!(titles, ["Album E", "Album B", "Album D", "Album A", "Album C"]);
+
+    test_records(&db).rename_album_for_test(&grouped_album(0), "Album Z").await.unwrap();
+    let (renamed, renamed_version) = grouped_by_title(&db).await;
+    assert_eq!(renamed, ["Album E", "Album B", "Album D", "Album C", "Album Z"]);
+    assert_ne!(renamed_version, version);
 }
 
 #[tokio::test]
@@ -595,6 +637,9 @@ async fn an_artist_section_carries_the_artists_picture() {
     );
 }
 
+/// Every sort's windows, flat and grouped by artist, are read from indexes
+/// and sort nothing; grouped by artist, each way of the artists with each
+/// way of the albums under them.
 #[tokio::test]
 async fn every_album_sort_seeks_its_windows_through_an_index() {
     let (db, _tmp) = library().await;
@@ -609,38 +654,36 @@ async fn every_album_sort_seeks_its_windows_through_an_index() {
             sorts.push(vec![AlbumSortCriterion { field, direction }]);
         }
     }
-    for group_by_artist in [false, true] {
-        for sort in &sorts {
-            let (relation, order) = album_browse_order(sort, group_by_artist);
-            let read = relation.clone();
+    let mut grouped_sorts = sorts.clone();
+    for (artist, artists) in both_ways(AlbumSortField::Artist) {
+        for field in [AlbumSortField::Title, AlbumSortField::Year, AlbumSortField::DateAdded] {
+            for (field, direction) in both_ways(field) {
+                grouped_sorts.push(vec![
+                    AlbumSortCriterion { field: artist, direction: artists },
+                    AlbumSortCriterion { field, direction },
+                ]);
+            }
+        }
+    }
+    for (group_by_artist, sorts) in [(false, &sorts), (true, &grouped_sorts)] {
+        for sort in sorts {
+            let (_, order) = album_browse_order(sort, group_by_artist);
             let key = key_at(
                 &db,
                 &order,
                 move |sql, order, seek, limit, offset| {
-                    crate::album::album_rows_on(
-                        sql,
-                        &read,
-                        group_by_artist,
-                        order,
-                        seek,
-                        limit,
-                        offset,
-                    )
+                    crate::album::album_rows_on(sql, group_by_artist, order, seek, limit, offset)
                 },
                 150,
             )
             .await;
-            // Grouped by artist, a seek holding the artist's sort key and id
-            // reads that artist's albums alone.
-            let sorted_within = if group_by_artist { 2 } else { usize::MAX };
-            assert_seeks_search_sorting(
+            assert_seeks_search(
                 &db,
                 &format!("albums {sort:?} grouped {group_by_artist}"),
                 &order,
                 key,
-                |seek| super::album_window_statement(&relation, group_by_artist, &order, seek),
+                |seek| super::album_window_statement(group_by_artist, &order, seek),
                 Vec::new(),
-                sorted_within,
             )
             .await;
         }

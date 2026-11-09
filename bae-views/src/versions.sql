@@ -83,6 +83,14 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'album_artist_link';
 END;
 
+CREATE TRIGGER IF NOT EXISTS album_artist_link_order_moved AFTER UPDATE OF title, year, created_at ON album_artist_link
+WHEN OLD.title IS NOT NEW.title
+  OR OLD.year IS NOT NEW.year
+  OR OLD.created_at IS NOT NEW.created_at
+BEGIN
+    UPDATE library_list_versions SET version = version + 1 WHERE source = 'album_artist_link';
+END;
+
 CREATE TRIGGER IF NOT EXISTS artist_listing_order_added AFTER INSERT ON artist_listing
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'artist_listing';
