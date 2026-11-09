@@ -39,9 +39,6 @@
     private struct ErrorCausesPanel: View {
         let detail: String
         let excerpt: String
-        @Environment(\.colorScheme)
-        private var colorScheme
-
         var body: some View {
             let text = Color.secondary
             Text(excerpt)
@@ -53,7 +50,7 @@
                 .padding(.leading, ThemeSpace.related + ThemeSpace.line)
                 .padding(.trailing, 30)
                 .background(
-                    Color.black.opacity(colorScheme == .dark ? 0.28 : 0.07),
+                    Theme.insetPanel,
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
                 .overlay(alignment: .topTrailing) {

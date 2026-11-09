@@ -198,7 +198,8 @@ fill = "#277A7C"
 # Colors that mean the same in every tone. `activity` marks work in progress,
 # such as a transfer, an upload among them; `pinning` marks files downloading
 # to stay on this device; `onFill` and `onFillSecondary` sit on accent and
-# status fills, on artwork and on the image viewer's `backdrop`.
+# status fills, on artwork and on the image viewer's `backdrop`; `insetPanel`
+# shades the panel inset in a dialog, such as an error's causes.
 [semantics.light]
 textPrimary = "#202124"
 textSecondary = "#62656C"
@@ -220,6 +221,7 @@ pinning = "#4553B5"
 hairline = "#1A000000"
 hairlineStrong = "#2E000000"
 hover = "#0F000000"
+insetPanel = "#12000000"
 pressed = "#17000000"
 scrim = "#59000000"
 shadow = "#33000000"
@@ -248,6 +250,7 @@ pinning = "#A9B8FF"
 hairline = "#1AFFFFFF"
 hairlineStrong = "#2EFFFFFF"
 hover = "#0FFFFFFF"
+insetPanel = "#47000000"
 pressed = "#17FFFFFF"
 scrim = "#73000000"
 shadow = "#80000000"

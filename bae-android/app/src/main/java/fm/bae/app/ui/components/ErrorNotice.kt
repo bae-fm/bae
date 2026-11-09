@@ -256,7 +256,7 @@ fun CausesPanel(
         modifier =
             modifier
                 .fillMaxWidth()
-                .background(Color.Black.copy(alpha = CAUSES_PANEL_SHADE), RoundedCornerShape(ThemeRadius.control)),
+                .background(BaeTheme.colors.insetPanel, RoundedCornerShape(ThemeRadius.control)),
     ) {
         SelectionContainer(
             modifier =
@@ -282,8 +282,6 @@ fun CausesPanel(
 
 /** Room at the panel's right for the copy button. */
 private val CAUSES_COPY_INSET = ThemeSpace.page + ThemeSpace.group
-
-private const val CAUSES_PANEL_SHADE = 0.28f
 
 @Preview(showBackground = true)
 @Composable
