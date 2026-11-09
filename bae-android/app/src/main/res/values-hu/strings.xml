@@ -398,6 +398,7 @@
     <string name="operation_rejection_keys_already_used">Ezek a kulcsok már használatban vannak.</string>
     <string name="operation_rejection_member_keys_changed">Ennek a személynek a kulcsait időközben lecserélték.</string>
     <string name="operation_rejection_not_allowed">Ez az eszköz nem végezheti el ezt a módosítást.</string>
+    <string name="operation_rejection_admission_too_large">A könyvtár túl sokszor cserélte le a kulcsait ahhoz, hogy mindet el lehessen küldeni egy új eszközre.</string>
     <string name="device_stop_removed">Ezt az eszközt eltávolították a könyvtárból.</string>
     <string name="device_stop_replaced">Egy visszaállítás lecserélte a könyvtár ezen az eszközön lévő példányát.</string>
     <string name="device_stop_copied">Az eszköz könyvtárának egy másik példánya ezként az eszközként szinkronizál.</string>

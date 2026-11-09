@@ -393,6 +393,7 @@
     <string name="operation_rejection_keys_already_used">這些金鑰已在使用中。</string>
     <string name="operation_rejection_member_keys_changed">在此期間，此人的金鑰已被替換。</string>
     <string name="operation_rejection_not_allowed">此裝置無權進行該變更。</string>
+    <string name="operation_rejection_admission_too_large">資料庫更換金鑰的次數太多，無法全部傳送到新裝置。</string>
     <string name="device_stop_removed">此裝置已從資料庫中移除。</string>
     <string name="device_stop_replaced">一次還原取代了此裝置上的資料庫副本。</string>
     <string name="device_stop_copied">此裝置資料庫的另一個副本正以此裝置的身分同步。</string>

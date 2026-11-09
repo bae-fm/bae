@@ -393,6 +393,7 @@
     <string name="operation_rejection_keys_already_used">这些密钥已在使用中。</string>
     <string name="operation_rejection_member_keys_changed">在此期间，此人的密钥已被替换。</string>
     <string name="operation_rejection_not_allowed">此设备无权进行该更改。</string>
+    <string name="operation_rejection_admission_too_large">资料库更换密钥的次数太多，无法全部发送到新设备。</string>
     <string name="device_stop_removed">此设备已从资料库中移除。</string>
     <string name="device_stop_replaced">一次恢复替换了此设备上的资料库副本。</string>
     <string name="device_stop_copied">此设备资料库的另一个副本正以此设备的身份同步。</string>

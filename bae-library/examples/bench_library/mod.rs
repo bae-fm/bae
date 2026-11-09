@@ -17,7 +17,7 @@
 //! bucket must be empty when a run starts, and the run empties it again when
 //! it ends. Runs on one bucket go one at a time.
 
-use std::panic::AssertUnwindSafe;
+use std::{panic::AssertUnwindSafe, sync::Arc};
 
 /// Where a run's library lives on storage, and the key that reaches it.
 struct BenchStorage {
@@ -71,6 +71,13 @@ fn optional_variable(name: &str) -> Result<Option<String>, String> {
     }
 }
 
+/// The clock and id source the run's library and its storage tools share,
+/// made once as an app's composition makes them.
+struct BenchComposition {
+    clock: coven::ClockRef,
+    ids: coven::IdSourceRef,
+}
+
 /// A library created for the run, open, with sync running.
 struct BenchLibrary {
     handle: coven::CovenHandle,
@@ -97,12 +104,21 @@ impl BenchLibrary {
     /// Create a library named `name` holding a release of `tracks` tracks,
     /// set its storage up on `storage` and start its sync. A failure after
     /// the store exists closes it before returning.
-    async fn create(storage: &BenchStorage, name: &str, tracks: usize) -> Result<Self, String> {
+    async fn create(
+        composition: &BenchComposition,
+        storage: &BenchStorage,
+        name: &str,
+        tracks: usize,
+    ) -> Result<Self, String> {
         let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
         let app_dir =
             bae_app_dir::AppDir::under_home(directory.path()).map_err(|error| error.to_string())?;
         let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-        let handle = bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
+        let builder = installation
+            .builder()
+            .clock(composition.clock.clone())
+            .id_source(composition.ids.clone());
+        let handle = bae_store::configure_store(builder, bae_library::SCHEMA)
             .create_store(name)
             .await
             .map_err(|error| format!("creating the library failed: {error}"))?;
@@ -154,11 +170,13 @@ pub(crate) fn run(
     body: impl AsyncFnOnce(&coven::CovenHandle) -> Result<(), String>,
 ) -> Result<(), String> {
     let storage = BenchStorage::from_environment()?;
+    let composition =
+        BenchComposition { clock: Arc::new(coven::SystemClock), ids: Arc::new(coven::UuidIds) };
     eprintln!("bench library in bucket {}", storage.bucket);
     let runtime = tokio::runtime::Runtime::new().map_err(|error| error.to_string())?;
     let ran = std::panic::catch_unwind(AssertUnwindSafe(|| {
         runtime.block_on(async {
-            let library = BenchLibrary::create(&storage, name, tracks).await?;
+            let library = BenchLibrary::create(&composition, &storage, name, tracks).await?;
             let ran = body(&library.handle).await;
             match (ran, library.close().await) {
                 (Ok(()), closed) => closed,
@@ -169,9 +187,12 @@ pub(crate) fn run(
             }
         })
     }));
-    let emptied = match runtime
-        .block_on(coven::empty_s3_bucket(storage.location.clone(), storage.credentials.clone()))
-    {
+    let emptied = match runtime.block_on(coven::empty_s3_bucket(
+        storage.location.clone(),
+        storage.credentials.clone(),
+        composition.clock.clone(),
+        composition.ids.clone(),
+    )) {
         Ok(emptied) => {
             eprintln!(
                 "emptied {}: {} objects deleted, {} unfinished uploads aborted",

@@ -398,6 +398,7 @@
     <string name="operation_rejection_keys_already_used">Nämä avaimet ovat jo käytössä.</string>
     <string name="operation_rejection_member_keys_changed">Tämän henkilön avaimet vaihdettiin sillä välin.</string>
     <string name="operation_rejection_not_allowed">Tällä laitteella ei ole lupaa tehdä tätä muutosta.</string>
+    <string name="operation_rejection_admission_too_large">Kirjasto on vaihtanut avaimiaan liian monta kertaa, jotta ne kaikki voisi lähettää uudelle laitteelle.</string>
     <string name="device_stop_removed">Tämä laite poistettiin kirjastosta.</string>
     <string name="device_stop_replaced">Palautus korvasi tämän laitteen kopion kirjastosta.</string>
     <string name="device_stop_copied">Toinen kopio tämän laitteen kirjastosta synkronoi tämän laitteen nimissä.</string>

@@ -393,6 +393,7 @@
     <string name="operation_rejection_keys_already_used">それらのキーはすでに使用されています。</string>
     <string name="operation_rejection_member_keys_changed">その間に、その人のキーが置き換えられました。</string>
     <string name="operation_rejection_not_allowed">このデバイスにはその変更を行う権限がありません。</string>
+    <string name="operation_rejection_admission_too_large">ライブラリのキーが変更された回数が多すぎるため、すべてを新しいデバイスに送れません。</string>
     <string name="device_stop_removed">このデバイスはライブラリから削除されました。</string>
     <string name="device_stop_replaced">復元により、このデバイス上のライブラリのコピーが置き換えられました。</string>
     <string name="device_stop_copied">このデバイスのライブラリの別のコピーが、このデバイスとして同期しています。</string>

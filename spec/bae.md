@@ -2526,8 +2526,10 @@ device** in People and devices on Android, as what it asks ("Remove Ben",
 device's name as they stand ("Remove a device" for one this device hasn't
 read yet): waiting to sync, then done, refused or
 stopped. Refused says why the library refused it (Ben is no longer in the
-library, it would leave the library without an admin, or this device isn't
-allowed to make it, such as an approval after another admin demoted Ana).
+library, it would leave the library without an admin, this device isn't
+allowed to make it, such as an approval after another admin demoted Ana, or,
+for an approval, the library has changed its keys too many times to send them
+all to a new device at once).
 Stopped says why this device stopped syncing for good before the change was
 made: another device removed it, a restore replaced its copy of the library,
 another copy of its library syncs as this device, or another of the person's

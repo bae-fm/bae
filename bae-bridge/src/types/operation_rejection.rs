@@ -16,6 +16,9 @@ pub enum BridgeOperationRejection {
     MemberKeysChanged,
     /// This device, or its person's role, doesn't allow the change.
     NotAllowed,
+    /// An approval would send the joining device a copy of every key the
+    /// library has had, more than one admission holds.
+    AdmissionTooLarge,
 }
 impl BridgeOperationRejection {
     pub(crate) fn from_core(value: coven::OperationRejection) -> Self {
@@ -34,6 +37,7 @@ impl BridgeOperationRejection {
             coven::OperationRejection::KeysAlreadyUsed => Self::KeysAlreadyUsed,
             coven::OperationRejection::MemberKeysChanged(_) => Self::MemberKeysChanged,
             coven::OperationRejection::NotAllowed => Self::NotAllowed,
+            coven::OperationRejection::AdmissionTooLarge => Self::AdmissionTooLarge,
         }
     }
 }

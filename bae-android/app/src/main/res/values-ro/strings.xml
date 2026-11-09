@@ -405,6 +405,7 @@
     <string name="operation_rejection_keys_already_used">Aceste chei sunt deja folosite.</string>
     <string name="operation_rejection_member_keys_changed">Între timp, cheile acestei persoane au fost înlocuite.</string>
     <string name="operation_rejection_not_allowed">Acest dispozitiv nu are permisiunea să facă această modificare.</string>
+    <string name="operation_rejection_admission_too_large">Biblioteca și-a schimbat cheile de prea multe ori pentru a le trimite pe toate unui dispozitiv nou.</string>
     <string name="device_stop_removed">Acest dispozitiv a fost eliminat din bibliotecă.</string>
     <string name="device_stop_replaced">O restaurare a înlocuit copia bibliotecii de pe acest dispozitiv.</string>
     <string name="device_stop_copied">O altă copie a bibliotecii acestui dispozitiv se sincronizează ca acest dispozitiv.</string>

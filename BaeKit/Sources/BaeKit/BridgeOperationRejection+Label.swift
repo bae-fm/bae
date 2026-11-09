@@ -25,6 +25,11 @@ extension BridgeOperationRejection {
             )
         case .notAllowed:
             String(localized: "This device isn't allowed to make that change.")
+        case .admissionTooLarge:
+            String(
+                localized:
+                    "The library has changed its keys too many times to send them all to a new device."
+            )
         }
     }
 }

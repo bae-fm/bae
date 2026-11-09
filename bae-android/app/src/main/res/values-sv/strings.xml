@@ -398,6 +398,7 @@
     <string name="operation_rejection_keys_already_used">De nycklarna används redan.</string>
     <string name="operation_rejection_member_keys_changed">Den personens nycklar byttes ut under tiden.</string>
     <string name="operation_rejection_not_allowed">Den här enheten får inte göra den ändringen.</string>
+    <string name="operation_rejection_admission_too_large">Biblioteket har bytt sina nycklar för många gånger för att alla ska kunna skickas till en ny enhet.</string>
     <string name="device_stop_removed">Den här enheten har tagits bort från biblioteket.</string>
     <string name="device_stop_replaced">En återställning ersatte den här enhetens kopia av biblioteket.</string>
     <string name="device_stop_copied">En annan kopia av den här enhetens bibliotek synkroniserar som den här enheten.</string>

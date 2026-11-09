@@ -393,6 +393,7 @@
     <string name="operation_rejection_keys_already_used">그 키는 이미 사용 중입니다.</string>
     <string name="operation_rejection_member_keys_changed">그사이에 그 사람의 키가 교체되었습니다.</string>
     <string name="operation_rejection_not_allowed">이 기기는 그 변경을 할 수 없습니다.</string>
+    <string name="operation_rejection_admission_too_large">라이브러리의 키가 너무 많이 바뀌어서 새 기기에 모두 보낼 수 없습니다.</string>
     <string name="device_stop_removed">이 기기가 라이브러리에서 제거되었습니다.</string>
     <string name="device_stop_replaced">복원으로 이 기기의 라이브러리 사본이 교체되었습니다.</string>
     <string name="device_stop_copied">이 기기 라이브러리의 다른 사본이 이 기기로 동기화되고 있습니다.</string>

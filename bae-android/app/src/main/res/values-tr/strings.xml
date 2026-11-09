@@ -400,6 +400,7 @@
     <string name="operation_rejection_keys_already_used">Bu anahtarlar zaten kullanılıyor.</string>
     <string name="operation_rejection_member_keys_changed">Bu kişinin anahtarları bu arada değiştirildi.</string>
     <string name="operation_rejection_not_allowed">Bu cihazın bu değişikliği yapmasına izin verilmiyor.</string>
+    <string name="operation_rejection_admission_too_large">Kitaplık anahtarlarını çok fazla kez değiştirdi; hepsi yeni bir cihaza gönderilemiyor.</string>
     <string name="device_stop_removed">Bu cihaz kitaplıktan kaldırıldı.</string>
     <string name="device_stop_replaced">Bir geri yükleme, bu cihazdaki kitaplık kopyasını değiştirdi.</string>
     <string name="device_stop_copied">Bu cihazın kitaplığının başka bir kopyası bu cihaz olarak eşitleniyor.</string>

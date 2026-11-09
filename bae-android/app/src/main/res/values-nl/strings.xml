@@ -400,6 +400,7 @@
     <string name="operation_rejection_keys_already_used">Die sleutels zijn al in gebruik.</string>
     <string name="operation_rejection_member_keys_changed">De sleutels van die persoon zijn intussen vervangen.</string>
     <string name="operation_rejection_not_allowed">Dit apparaat mag die wijziging niet aanbrengen.</string>
+    <string name="operation_rejection_admission_too_large">De bibliotheek heeft haar sleutels te vaak gewijzigd om ze allemaal naar een nieuw apparaat te sturen.</string>
     <string name="device_stop_removed">Dit apparaat is uit de bibliotheek verwijderd.</string>
     <string name="device_stop_replaced">Een herstel heeft de kopie van de bibliotheek op dit apparaat vervangen.</string>
     <string name="device_stop_copied">Een andere kopie van de bibliotheek van dit apparaat synchroniseert als dit apparaat.</string>

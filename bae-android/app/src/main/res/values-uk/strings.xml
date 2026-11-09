@@ -414,6 +414,7 @@
     <string name="operation_rejection_keys_already_used">Ці ключі вже використовуються.</string>
     <string name="operation_rejection_member_keys_changed">Тим часом ключі цієї людини було замінено.</string>
     <string name="operation_rejection_not_allowed">Цьому пристрою не дозволено вносити цю зміну.</string>
+    <string name="operation_rejection_admission_too_large">Бібліотека змінювала свої ключі забагато разів, щоб надіслати їх усі на новий пристрій.</string>
     <string name="device_stop_removed">Цей пристрій видалено з бібліотеки.</string>
     <string name="device_stop_replaced">Відновлення замінило копію бібліотеки на цьому пристрої.</string>
     <string name="device_stop_copied">Інша копія бібліотеки цього пристрою синхронізується як цей пристрій.</string>

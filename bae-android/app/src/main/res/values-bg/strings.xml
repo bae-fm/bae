@@ -400,6 +400,7 @@
     <string name="operation_rejection_keys_already_used">Тези ключове вече се използват.</string>
     <string name="operation_rejection_member_keys_changed">Междувременно ключовете на този човек бяха заменени.</string>
     <string name="operation_rejection_not_allowed">Това устройство няма право да направи тази промяна.</string>
+    <string name="operation_rejection_admission_too_large">Библиотеката е сменяла ключовете си твърде много пъти, за да бъдат изпратени всички на ново устройство.</string>
     <string name="device_stop_removed">Това устройство е премахнато от библиотеката.</string>
     <string name="device_stop_replaced">Възстановяване замени копието на библиотеката на това устройство.</string>
     <string name="device_stop_copied">Друго копие на библиотеката на това устройство се синхронизира като това устройство.</string>

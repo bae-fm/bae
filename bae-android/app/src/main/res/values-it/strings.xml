@@ -405,6 +405,7 @@
     <string name="operation_rejection_keys_already_used">Quelle chiavi sono già in uso.</string>
     <string name="operation_rejection_member_keys_changed">Nel frattempo le chiavi di quella persona sono state sostituite.</string>
     <string name="operation_rejection_not_allowed">Questo dispositivo non è autorizzato a fare quella modifica.</string>
+    <string name="operation_rejection_admission_too_large">La libreria ha cambiato le sue chiavi troppe volte per inviarle tutte a un nuovo dispositivo.</string>
     <string name="device_stop_removed">Questo dispositivo è stato rimosso dalla libreria.</string>
     <string name="device_stop_replaced">Un ripristino ha sostituito la copia della libreria su questo dispositivo.</string>
     <string name="device_stop_copied">Un’altra copia della libreria di questo dispositivo si sincronizza come questo dispositivo.</string>

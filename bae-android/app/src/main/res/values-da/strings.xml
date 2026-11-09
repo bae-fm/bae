@@ -398,6 +398,7 @@
     <string name="operation_rejection_keys_already_used">De nøgler er allerede i brug.</string>
     <string name="operation_rejection_member_keys_changed">Den persons nøgler blev udskiftet i mellemtiden.</string>
     <string name="operation_rejection_not_allowed">Denne enhed har ikke tilladelse til at foretage den ændring.</string>
+    <string name="operation_rejection_admission_too_large">Biblioteket har skiftet sine nøgler for mange gange til, at de alle kan sendes til en ny enhed.</string>
     <string name="device_stop_removed">Denne enhed blev fjernet fra biblioteket.</string>
     <string name="device_stop_replaced">En gendannelse erstattede denne enheds kopi af biblioteket.</string>
     <string name="device_stop_copied">En anden kopi af denne enheds bibliotek synkroniserer som denne enhed.</string>

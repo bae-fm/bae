@@ -400,6 +400,7 @@
     <string name="operation_rejection_keys_already_used">Diese Schlüssel werden bereits verwendet.</string>
     <string name="operation_rejection_member_keys_changed">Die Schlüssel dieser Person wurden inzwischen ersetzt.</string>
     <string name="operation_rejection_not_allowed">Dieses Gerät darf diese Änderung nicht vornehmen.</string>
+    <string name="operation_rejection_admission_too_large">Die Bibliothek hat ihre Schlüssel zu oft gewechselt, um sie alle an ein neues Gerät zu senden.</string>
     <string name="device_stop_removed">Dieses Gerät wurde aus der Bibliothek entfernt.</string>
     <string name="device_stop_replaced">Eine Wiederherstellung hat die Kopie der Bibliothek auf diesem Gerät ersetzt.</string>
     <string name="device_stop_copied">Eine andere Kopie der Bibliothek dieses Geräts synchronisiert als dieses Gerät.</string>

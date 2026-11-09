@@ -407,6 +407,7 @@
     <string name="operation_rejection_keys_already_used">Ti se ključevi već koriste.</string>
     <string name="operation_rejection_member_keys_changed">Ključevi te osobe u međuvremenu su zamijenjeni.</string>
     <string name="operation_rejection_not_allowed">Ovaj uređaj nema dopuštenje za tu promjenu.</string>
+    <string name="operation_rejection_admission_too_large">Fonoteka je promijenila svoje ključeve previše puta da bi se svi poslali na novi uređaj.</string>
     <string name="device_stop_removed">Ovaj je uređaj uklonjen iz fonoteke.</string>
     <string name="device_stop_replaced">Vraćanje je zamijenilo kopiju fonoteke na ovom uređaju.</string>
     <string name="device_stop_copied">Druga kopija fonoteke ovog uređaja sinkronizira se kao ovaj uređaj.</string>

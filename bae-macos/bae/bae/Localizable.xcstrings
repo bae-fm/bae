@@ -134101,6 +134101,172 @@
         }
       }
     },
+    "The library has changed its keys too many times to send them all to a new device." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "غيّرت المكتبة مفاتيحها مرات كثيرة جدًا بحيث لا يمكن إرسالها كلها إلى جهاز جديد."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Библиотеката е сменяла ключовете си твърде много пъти, за да бъдат изпратени всички на ново устройство."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Knihovna změnila své klíče příliš mnohokrát, než aby se daly všechny poslat do nového zařízení."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biblioteket har skiftet sine nøgler for mange gange til, at de alle kan sendes til en ny enhed."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Bibliothek hat ihre Schlüssel zu oft gewechselt, um sie alle an ein neues Gerät zu senden."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Η βιβλιοθήκη έχει αλλάξει τα κλειδιά της πάρα πολλές φορές για να σταλούν όλα σε νέα συσκευή."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La biblioteca ha cambiado sus claves demasiadas veces para enviarlas todas a un dispositivo nuevo."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kirjasto on vaihtanut avaimiaan liian monta kertaa, jotta ne kaikki voisi lähettää uudelle laitteelle."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La bibliothèque a changé ses clés trop de fois pour toutes les envoyer à un nouvel appareil."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הספרייה החליפה את המפתחות שלה יותר מדי פעמים כדי לשלוח את כולם למכשיר חדש."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fonoteka je promijenila svoje ključeve previše puta da bi se svi poslali na novi uređaj."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A könyvtár túl sokszor cserélte le a kulcsait ahhoz, hogy mindet el lehessen küldeni egy új eszközre."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La libreria ha cambiato le sue chiavi troppe volte per inviarle tutte a un nuovo dispositivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ライブラリのキーが変更された回数が多すぎるため、すべてを新しいデバイスに送れません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "라이브러리의 키가 너무 많이 바뀌어서 새 기기에 모두 보낼 수 없습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biblioteket har byttet nøklene sine for mange ganger til at alle kan sendes til en ny enhet."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De bibliotheek heeft haar sleutels te vaak gewijzigd om ze allemaal naar een nieuw apparaat te sturen."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biblioteka zmieniała swoje klucze zbyt wiele razy, by wysłać je wszystkie na nowe urządzenie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A biblioteca trocou as chaves vezes demais para enviar todas a um dispositivo novo."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A biblioteca mudou as chaves demasiadas vezes para as enviar todas para um dispositivo novo."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biblioteca și-a schimbat cheile de prea multe ori pentru a le trimite pe toate unui dispozitiv nou."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Knižnica zmenila svoje kľúče príliš veľakrát na to, aby sa dali všetky poslať do nového zariadenia."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biblioteket har bytt sina nycklar för många gånger för att alla ska kunna skickas till en ny enhet."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kitaplık anahtarlarını çok fazla kez değiştirdi; hepsi yeni bir cihaza gönderilemiyor."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бібліотека змінювала свої ключі забагато разів, щоб надіслати їх усі на новий пристрій."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "资料库更换密钥的次数太多，无法全部发送到新设备。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "資料庫更換金鑰的次數太多，無法全部傳送到新裝置。"
+          }
+        }
+      }
+    },
     "Changes from this Mac" : {
       "localizations" : {
         "ar" : {

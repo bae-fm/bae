@@ -414,6 +414,7 @@
     <string name="operation_rejection_keys_already_used">Te klucze są już używane.</string>
     <string name="operation_rejection_member_keys_changed">Klucze tej osoby zostały w międzyczasie zastąpione.</string>
     <string name="operation_rejection_not_allowed">To urządzenie nie może wprowadzić tej zmiany.</string>
+    <string name="operation_rejection_admission_too_large">Biblioteka zmieniała swoje klucze zbyt wiele razy, by wysłać je wszystkie na nowe urządzenie.</string>
     <string name="device_stop_removed">To urządzenie zostało usunięte z biblioteki.</string>
     <string name="device_stop_replaced">Przywracanie zastąpiło kopię biblioteki na tym urządzeniu.</string>
     <string name="device_stop_copied">Inna kopia biblioteki tego urządzenia synchronizuje się jako to urządzenie.</string>

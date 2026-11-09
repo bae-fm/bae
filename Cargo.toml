@@ -64,7 +64,7 @@ map_err_ignore = "deny"
 # most, the features it needs and whether it is optional.
 
 # Every consumer, including tests, uses coven's application facade.
-coven = { git = "https://github.com/bae-fm/coven", rev = "e224fb9a4336de5eb23dfde5bc6585cbd9d32e00" }
+coven = { git = "https://github.com/bae-fm/coven", rev = "a22ee94e8772bf10d6c2cdd9d84e53aca963e138" }
 # OptionalExtension, dynamic parameters and SQLite callback errors are not
 # re-exported by coven. This is the version coven's SQL contexts use.
 rusqlite = { version = "0.41.1", features = ["functions", "fallible_uint"] }

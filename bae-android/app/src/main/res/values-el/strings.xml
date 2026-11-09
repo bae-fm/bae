@@ -398,6 +398,7 @@
     <string name="operation_rejection_keys_already_used">Αυτά τα κλειδιά χρησιμοποιούνται ήδη.</string>
     <string name="operation_rejection_member_keys_changed">Τα κλειδιά αυτού του ατόμου αντικαταστάθηκαν στο μεταξύ.</string>
     <string name="operation_rejection_not_allowed">Αυτή η συσκευή δεν επιτρέπεται να κάνει αυτή την αλλαγή.</string>
+    <string name="operation_rejection_admission_too_large">Η βιβλιοθήκη έχει αλλάξει τα κλειδιά της πάρα πολλές φορές για να σταλούν όλα σε νέα συσκευή.</string>
     <string name="device_stop_removed">Αυτή η συσκευή αφαιρέθηκε από τη βιβλιοθήκη.</string>
     <string name="device_stop_replaced">Μια επαναφορά αντικατέστησε το αντίγραφο της βιβλιοθήκης σε αυτή τη συσκευή.</string>
     <string name="device_stop_copied">Ένα άλλο αντίγραφο της βιβλιοθήκης αυτής της συσκευής συγχρονίζεται ως αυτή η συσκευή.</string>

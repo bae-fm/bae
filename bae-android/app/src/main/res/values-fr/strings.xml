@@ -405,6 +405,7 @@
     <string name="operation_rejection_keys_already_used">Ces clés sont déjà utilisées.</string>
     <string name="operation_rejection_member_keys_changed">Les clés de cette personne ont été remplacées entre-temps.</string>
     <string name="operation_rejection_not_allowed">Cet appareil n’est pas autorisé à effectuer cette modification.</string>
+    <string name="operation_rejection_admission_too_large">La bibliothèque a changé ses clés trop de fois pour toutes les envoyer à un nouvel appareil.</string>
     <string name="device_stop_removed">Cet appareil a été retiré de la bibliothèque.</string>
     <string name="device_stop_replaced">Une restauration a remplacé la copie de la bibliothèque sur cet appareil.</string>
     <string name="device_stop_copied">Une autre copie de la bibliothèque de cet appareil se synchronise en tant que cet appareil.</string>

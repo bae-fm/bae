@@ -458,6 +458,7 @@
     <string name="operation_rejection_keys_already_used">Those keys are already in use.</string>
     <string name="operation_rejection_member_keys_changed">That person’s keys were replaced in the meantime.</string>
     <string name="operation_rejection_not_allowed">This device isn’t allowed to make that change.</string>
+    <string name="operation_rejection_admission_too_large">The library has changed its keys too many times to send them all to a new device.</string>
     <string name="device_stop_removed">This device was removed from the library.</string>
     <string name="device_stop_replaced">A restore replaced this device’s copy of the library.</string>
     <string name="device_stop_copied">Another copy of this device’s library is syncing as this device.</string>

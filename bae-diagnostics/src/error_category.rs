@@ -198,7 +198,7 @@ pub fn sync_category(error: &coven::SyncError) -> C {
         | E::ReloadPending(_)
         | E::SnapshotPending(_)
         | E::Key(_)
-        | E::KeyUnavailable(_) => C::Membership,
+        | E::KeyUnavailable { .. } => C::Membership,
         E::Cleanup { operation, .. } => sync_category(operation),
         // Broken invariants and damaged local data: nothing the person can
         // change but report.

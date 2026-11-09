@@ -428,6 +428,7 @@
     <string name="operation_rejection_keys_already_used">هذه المفاتيح مستخدمة بالفعل.</string>
     <string name="operation_rejection_member_keys_changed">استُبدلت مفاتيح هذا الشخص في هذه الأثناء.</string>
     <string name="operation_rejection_not_allowed">لا يُسمح لهذا الجهاز بإجراء هذا التغيير.</string>
+    <string name="operation_rejection_admission_too_large">غيّرت المكتبة مفاتيحها مرات كثيرة جدًا بحيث لا يمكن إرسالها كلها إلى جهاز جديد.</string>
     <string name="device_stop_removed">تمت إزالة هذا الجهاز من المكتبة.</string>
     <string name="device_stop_replaced">استبدلت عملية استعادة نسخة المكتبة على هذا الجهاز.</string>
     <string name="device_stop_copied">نسخة أخرى من مكتبة هذا الجهاز تتزامن باسم هذا الجهاز.</string>

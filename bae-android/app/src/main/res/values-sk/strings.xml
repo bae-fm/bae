@@ -412,6 +412,7 @@
     <string name="operation_rejection_keys_already_used">Tieto kľúče sa už používajú.</string>
     <string name="operation_rejection_member_keys_changed">Kľúče tejto osoby boli medzitým nahradené.</string>
     <string name="operation_rejection_not_allowed">Toto zariadenie nemá povolenie vykonať túto zmenu.</string>
+    <string name="operation_rejection_admission_too_large">Knižnica zmenila svoje kľúče príliš veľakrát na to, aby sa dali všetky poslať do nového zariadenia.</string>
     <string name="device_stop_removed">Toto zariadenie bolo odstránené z knižnice.</string>
     <string name="device_stop_replaced">Obnovenie nahradilo kópiu knižnice v tomto zariadení.</string>
     <string name="device_stop_copied">Iná kópia knižnice tohto zariadenia sa synchronizuje ako toto zariadenie.</string>

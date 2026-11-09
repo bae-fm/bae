@@ -407,6 +407,7 @@
     <string name="operation_rejection_keys_already_used">המפתחות האלה כבר בשימוש.</string>
     <string name="operation_rejection_member_keys_changed">המפתחות של האדם הזה הוחלפו בינתיים.</string>
     <string name="operation_rejection_not_allowed">למכשיר הזה אין הרשאה לבצע את השינוי הזה.</string>
+    <string name="operation_rejection_admission_too_large">הספרייה החליפה את המפתחות שלה יותר מדי פעמים כדי לשלוח את כולם למכשיר חדש.</string>
     <string name="device_stop_removed">המכשיר הזה הוסר מהספרייה.</string>
     <string name="device_stop_replaced">שחזור החליף את עותק הספרייה במכשיר הזה.</string>
     <string name="device_stop_copied">עותק אחר של הספרייה של המכשיר הזה מסתנכרן בתור המכשיר הזה.</string>
