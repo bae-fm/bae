@@ -4,8 +4,9 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The welcome's list of this Mac's libraries, and its first screen on a
-    /// Mac that holds no library and no saved restore code.
+    /// The welcome's list of this Mac's libraries, its first screen on a Mac
+    /// that holds no library and no saved restore code, and a library's
+    /// details.
     static let welcomeScenes: [ShotScene] = [
         ShotScene(
             id: "welcome-libraries",
@@ -14,7 +15,7 @@ extension ShotScene {
             ShotStage(PreviewScenes.welcomeLibraries())
         },
         ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
-            let reads = EmptyReads()
+            let reads = CountedReads()
             return ShotStage(
                 PreviewScenes.welcome(
                     initialMode: .choose,
@@ -22,16 +23,37 @@ extension ShotScene {
                 )
             ) { reads.answered == 2 }
         },
+        detailsScene("welcome-library-details", PreviewData.standingSynced),
+        detailsScene(
+            "welcome-library-details-unsent",
+            PreviewData.standingUnsent
+        ),
     ]
+
+    /// The details popover's content for a Dropbox library, once its status
+    /// is in.
+    private static func detailsScene(
+        _ id: String,
+        _ status: BridgeLibraryStanding
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 432, height: 380)) {
+            let reads = CountedReads()
+            return ShotStage(
+                PreviewScenes.welcomeLibraryDetails(
+                    readStanding: reads.readStanding(status)
+                )
+            ) { reads.answered == 1 }
+        }
+    }
 }
 
-private struct EmptyReadsError: Error {}
+private struct UnservedReadError: Error {}
 
-/// A `LibrarySetup` whose two lists read empty, counting the lookups it has
-/// answered: the first screen shows its buttons only once both are in.
+/// Lookups a scene's view makes on appear, counted as they are answered: the
+/// view is ready once they are in.
 @MainActor
 @Observable
-private final class EmptyReads {
+private final class CountedReads {
     private(set) var answered = 0
 
     var setup: LibrarySetup {
@@ -41,12 +63,13 @@ private final class EmptyReads {
                 await answer()
                 return []
             },
-            createLibrary: { _ in throw EmptyReadsError() },
+            libraryStanding: { _ in throw UnservedReadError() },
+            createLibrary: { _ in throw UnservedReadError() },
             savedRestoreCodes: { [self] in
                 await answer()
                 return []
             },
-            forgetSavedRestoreCode: { _ in throw EmptyReadsError() },
+            forgetSavedRestoreCode: { _ in throw UnservedReadError() },
             unfinishedJoins: { [] },
             unfinishedRestores: { [] },
             makeBootstrap: {
@@ -57,6 +80,16 @@ private final class EmptyReads {
             },
             makeSetupSteps: { base.setupSteps() }
         )
+    }
+
+    /// A read of a closed library's status that answers `status`.
+    func readStanding(_ status: BridgeLibraryStanding)
+        -> @Sendable (String) async -> BridgeLibraryStanding
+    {
+        { [self] _ in
+            await answer()
+            return status
+        }
     }
 
     private func answer() {

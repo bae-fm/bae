@@ -38,6 +38,7 @@ struct WelcomeListingsTests {
         let bridge = bridge
         return LibrarySetup(
             listLibraries: { await bridge.listLibraries() },
+            libraryStanding: { _ in throw WelcomeTestError.notUsed },
             createLibrary: { _ in throw WelcomeTestError.notUsed },
             savedRestoreCodes: { await bridge.savedRestoreCodes() },
             forgetSavedRestoreCode: { _ in throw WelcomeTestError.notUsed },

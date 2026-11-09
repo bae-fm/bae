@@ -3,8 +3,8 @@ import SwiftUI
 
 /// Libraries on this device in a box of rows: a click opens one, and its ⋯
 /// menu, or a right click, holds what finishes the reset or restore of its
-/// copy or its removal that stopped partway, then Remove, or Delete for one
-/// that never synced. Under the box, Add library… creates one, or opens the
+/// copy or its removal that stopped partway, then Details for one that opens,
+/// then Remove, or Delete for one that never synced. Under the box, Add library… creates one, or opens the
 /// code screen to scan a code or enter one.
 struct LocalLibrariesSection: View {
     let libraries: [BridgeLibrary]
@@ -19,6 +19,10 @@ struct LocalLibrariesSection: View {
     let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
     let onFinishRemoving: (BridgeLibrary) -> Void
     let onRemove: (BridgeLibrary) -> Void
+    /// Reads how a library stands with its storage, for its details.
+    let readStanding:
+        @Sendable (_ libraryId: String) async throws ->
+            BridgeLibraryStanding
     let onCreate: () -> Void
     let onScanCode: () -> Void
     let onEnterCode: () -> Void
@@ -51,6 +55,7 @@ struct LocalLibrariesSection: View {
                         onFinish: onFinish,
                         onFinishRemoving: onFinishRemoving,
                         onRemove: onRemove,
+                        readStanding: readStanding,
                     )
                 }
             }
@@ -76,7 +81,8 @@ struct LocalLibrariesSection: View {
 /// One library row: its name, and under it why the library doesn't open as
 /// it is, when it doesn't: its settings can't be read, a reset or restore of
 /// its copy stopped partway, or its removal did. A click opens a library
-/// that opens. The ⋯ menu offers to finish what stopped, then Remove, or
+/// that opens. The ⋯ menu offers to finish what stopped, then Details for a
+/// library that opens, which shows in a popover off the ⋯, then Remove, or
 /// Delete for a library that doesn't sync. While counting or removing opens
 /// the library, a step the open runs shows under the name, and then a step
 /// the removal runs, with a spinner in place of the ⋯; a library that can't
@@ -91,6 +97,12 @@ private struct LibraryRow: View {
     let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
     let onFinishRemoving: (BridgeLibrary) -> Void
     let onRemove: (BridgeLibrary) -> Void
+    let readStanding:
+        @Sendable (_ libraryId: String) async throws ->
+            BridgeLibraryStanding
+    /// Whether the details popover shows, hung off the ⋯ button.
+    @State
+    private var showsDetails = false
 
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
@@ -171,6 +183,12 @@ private struct LibraryRow: View {
         .tint(.secondary)
         .fixedSize()
         .accessibilityLabel(Text("More"))
+        .popover(isPresented: $showsDetails, arrowEdge: .bottom) {
+            WelcomeLibraryDetails(
+                library: library,
+                readStanding: readStanding
+            )
+        }
     }
 
     @ViewBuilder
@@ -180,7 +198,9 @@ private struct LibraryRow: View {
             Button(finishTitle(by)) { onFinish(library, by) }
         case .deletionUnfinished:
             Button("Finish removing") { onFinishRemoving(library) }
-        case .openable, .unreadable:
+        case .openable:
+            Button("Details…") { showsDetails = true }
+        case .unreadable:
             EmptyView()
         }
         Button(LibraryRemovalConfirmation.Ending(of: library).menuItem) {
@@ -209,6 +229,7 @@ private struct LibraryRow: View {
             onFinish: { _, _ in },
             onFinishRemoving: { _ in },
             onRemove: { _ in },
+            readStanding: { _ in PreviewData.standingSynced },
             onCreate: {},
             onScanCode: {},
             onEnterCode: {}

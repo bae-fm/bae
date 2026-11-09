@@ -24,11 +24,16 @@ extension BridgeSyncShown {
     /// When sync last finished, as "2 hours ago", while the state is a
     /// problem.
     public var lastSyncedLine: String? {
-        lastSynced.map { moment in
-            let formatter = RelativeDateTimeFormatter()
-            formatter.unitsStyle = .full
-            return formatter.localizedString(for: moment, relativeTo: Date())
-        }
+        lastSynced.map(\.agoLine)
+    }
+}
+
+extension Date {
+    /// How long ago this moment was, as "2 hours ago".
+    public var agoLine: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: self, relativeTo: Date())
     }
 }
 

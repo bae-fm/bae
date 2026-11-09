@@ -59,6 +59,7 @@ struct SavedRestoreCodesTests {
         let keychain = keychain
         return LibrarySetup(
             listLibraries: { throw SavedCodesTestError.notUsed },
+            libraryStanding: { _ in throw SavedCodesTestError.notUsed },
             createLibrary: { _ in throw SavedCodesTestError.notUsed },
             savedRestoreCodes: { await keychain.list() },
             forgetSavedRestoreCode: { try await keychain.forget($0) },

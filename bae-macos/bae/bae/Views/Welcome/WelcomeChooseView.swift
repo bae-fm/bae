@@ -176,6 +176,7 @@ struct WelcomeChooseView: View {
                         }
                     },
                     onRemove: { askToRemove($0) },
+                    readStanding: setup.libraryStanding,
                     onCreate: doCreate,
                     onScanCode: onScanCode,
                     onEnterCode: onEnterCode

@@ -29,6 +29,20 @@
             .environment(PreviewData.welcomeRemovals())
         }
 
+        /// What the details popover of a Dropbox library holds, its status
+        /// read through `readStanding`.
+        static func welcomeLibraryDetails(
+            readStanding:
+                @escaping @Sendable (String) async throws
+                -> BridgeLibraryStanding
+        ) -> some View {
+            WelcomeLibraryDetails(
+                library: PreviewData.welcomeDropboxLibrary,
+                readStanding: readStanding
+            )
+            .windowBackground()
+        }
+
         /// The first screen's list of this Mac's libraries, one row for each
         /// state a library is in: one with a cloud home, one with none, which
         /// offers Delete in place of Remove, one that can't be read, and one
@@ -44,6 +58,7 @@
                 onFinish: { _, _ in },
                 onFinishRemoving: { _ in },
                 onRemove: { _ in },
+                readStanding: { _ in PreviewData.standingSynced },
                 onCreate: {},
                 onScanCode: {},
                 onEnterCode: {}

@@ -71,3 +71,26 @@ async fn a_library_without_storage_reports_nothing_unsent() {
     let work = manager.unsent_before_removal().await.unwrap();
     assert!(work.is_empty(), "{work:?}");
 }
+
+/// An open library stands by its live sync status: it reports unsent changes
+/// once it commits a release whose files it hasn't uploaded, with when it last
+/// synced.
+#[tokio::test]
+async fn an_open_library_stands_by_its_live_sync_status() {
+    let (test, _temp) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    let files = TempDir::new().unwrap();
+    insert_release_with_queued_uploads(
+        manager,
+        files.path(),
+        "Album Title",
+        &[("01.flac", b"audio")],
+    )
+    .await;
+
+    let standing = manager.standing().await.unwrap();
+
+    assert_eq!(standing.state, crate::StandingState::UnsentChanges);
+    assert!(standing.last_synced.is_some(), "{standing:?}");
+}

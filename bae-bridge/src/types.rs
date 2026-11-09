@@ -10,6 +10,7 @@ mod events_and_transfers;
 #[cfg(desktop)]
 mod import;
 mod library_playback;
+mod library_standing;
 mod live_results;
 mod message;
 mod operation_rejection;
@@ -34,6 +35,7 @@ pub use events_and_transfers::*;
 #[cfg(desktop)]
 pub use import::*;
 pub use library_playback::*;
+pub use library_standing::*;
 pub use live_results::*;
 pub use message::*;
 pub use operation_rejection::*;

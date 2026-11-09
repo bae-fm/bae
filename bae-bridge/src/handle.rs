@@ -346,6 +346,11 @@ impl AppHandle {
             .map(crate::types::BridgeStorageSetup::from_core)?)
     }
 
+    /// The store of the open library.
+    pub(crate) fn store_id(&self) -> coven::StoreId {
+        self.services.store_id()
+    }
+
     async fn run_exported<T, Build, Fut>(
         self: std::sync::Arc<Self>,
         operation: &'static str,
@@ -447,3 +452,32 @@ mod removal;
 pub use removal::*;
 
 mod admin;
+
+/// What answers for an open library's standing with its storage, from its live
+/// sync status. The host keeps these by store, so a call that names a store
+/// reaches the library when it is open.
+pub(crate) trait OpenStanding: Send + Sync {
+    fn standing(
+        self: std::sync::Arc<Self>,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<crate::BridgeLibraryStanding, BridgeError>>
+                + Send,
+        >,
+    >;
+}
+
+impl OpenStanding for AppHandle {
+    fn standing(
+        self: std::sync::Arc<Self>,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<crate::BridgeLibraryStanding, BridgeError>>
+                + Send,
+        >,
+    > {
+        Box::pin(self.run_exported("AppHandle.standing", |this| async move {
+            Ok(crate::BridgeLibraryStanding::from_core(this.services.standing().await?))
+        }))
+    }
+}

@@ -191,6 +191,21 @@ fn recorded_provider_on(
 }
 
 impl SyncStatusSnapshot {
+    /// The status of a library that isn't open, from coven's read of its
+    /// closed store: sync doesn't run, and what an open library reads from
+    /// its tables, the pending records, a failed start and a storage setup,
+    /// is not read.
+    pub fn closed(coven: coven::SyncStatus, provider: Option<coven::CloudProvider>) -> Self {
+        Self {
+            coven,
+            pending: Vec::new(),
+            error: None,
+            retry_effect: coven::RetryEffect::NotSyncing,
+            storage_setup: None,
+            provider,
+        }
+    }
+
     /// The sync status from coven's sync state and the library's rows
     /// beside it: the pending records each named by its row, why the last
     /// attempt to start sync failed, while that stands, what a retry would

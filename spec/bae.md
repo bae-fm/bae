@@ -2578,7 +2578,11 @@ right click, holds **Remove…**, or **Delete…** for one never synced. A
 library that can't be read, or whose reset, restore or removal stopped
 partway, says so under its name, and its menu offers to finish it first.
 While a removal runs, its row shows the step with a spinner in place of the
-⋯. A Mac's first screen
+⋯. **Details…** hangs a popover off the ⋯ with the library's sync status as
+this Mac last knew it (**Synced**, or **Unsent changes** while it holds some it
+never uploaded), when it last synced, and its provider, account and folder. A
+library that is open shows its live sync status; any other is read as it last
+stood, without opening it. A Mac's first screen
 offers the same two under **Create new library**, and its File menu offers
 them as **Scan Code…** and **Enter Code…**; they open one code screen, where
 the code decides the same way. Once it lists libraries, the three are the

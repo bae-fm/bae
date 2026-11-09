@@ -6,6 +6,13 @@ import Foundation
 /// never read or write real application data.
 public final class LibrarySetup: Sendable, Observable {
     public let listLibraries: @Sendable () async throws -> [BridgeLibrary]
+    /// How a library stands with its storage: its sync state, when it last
+    /// synced and whether it holds unsent changes. An open library answers
+    /// from its live sync status; any other is read as it last stood, without
+    /// opening it.
+    public let libraryStanding:
+        @Sendable (_ libraryId: String) async throws ->
+            BridgeLibraryStanding
     /// Create a library named by core's default generator, returning its open
     /// store, its step written into the setup's stream.
     public let createLibrary:
@@ -35,6 +42,9 @@ public final class LibrarySetup: Sendable, Observable {
 
     public init(
         listLibraries: @escaping @Sendable () async throws -> [BridgeLibrary],
+        libraryStanding:
+            @escaping @Sendable (_ libraryId: String) async throws ->
+            BridgeLibraryStanding,
         createLibrary:
             @escaping @Sendable (BridgeLibrarySetup) async throws ->
             OpenedLibrary,
@@ -50,6 +60,7 @@ public final class LibrarySetup: Sendable, Observable {
         makeSetupSteps: @escaping @Sendable () -> LibrarySetupSteps
     ) {
         self.listLibraries = listLibraries
+        self.libraryStanding = libraryStanding
         self.createLibrary = createLibrary
         self.savedRestoreCodes = savedRestoreCodes
         self.forgetSavedRestoreCode = forgetSavedRestoreCode
@@ -68,6 +79,9 @@ public final class LibrarySetup: Sendable, Observable {
     {
         LibrarySetup(
             listLibraries: { try await host.listLibraries() },
+            libraryStanding: {
+                try await host.libraryStanding(libraryId: $0)
+            },
             createLibrary: {
                 try await host.createLibrary(name: nil, setup: $0)
             },
@@ -102,8 +116,7 @@ public final class LibrarySetup: Sendable, Observable {
     }
 
     #if DEBUG && os(macOS)
-        /// Serves `libraries` and `savedCodes`; every other operation
-        /// throws. A restore, join or delete started from a preview fails at
+        /// Serves `libraries` and `savedCodes`; every other operation throws. A restore, join or delete started from a preview fails at
         /// once.
         public static func stub(
             libraries: [BridgeLibrary] = [],
@@ -111,6 +124,7 @@ public final class LibrarySetup: Sendable, Observable {
         ) -> LibrarySetup {
             LibrarySetup(
                 listLibraries: { libraries },
+                libraryStanding: { _ in throw StubError.notImplemented },
                 createLibrary: { _ in throw StubError.notImplemented },
                 savedRestoreCodes: { savedCodes },
                 forgetSavedRestoreCode: { _ in

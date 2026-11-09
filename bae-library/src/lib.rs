@@ -10,6 +10,7 @@ mod file_transfers;
 pub mod followed;
 pub mod keys;
 pub mod library_name;
+mod library_standing;
 mod library_status;
 mod local_lifecycle;
 pub mod manager;
@@ -36,6 +37,7 @@ pub use bootstrap::{
     JoinControl, JoinedLibrary, RestoreFromCodeError,
 };
 pub use closing_step::ClosingStep;
+pub use library_standing::{closed_library_standing, LibraryStanding, StandingState};
 pub use track_decode::TrackDecode;
 
 pub use bae_store::StorageSetupSteps;
