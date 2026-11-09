@@ -110,7 +110,7 @@
 .bae-m-input::placeholder { color: var(--text-tertiary); }
 .bae-m-input:focus, .bae-m-input-focused { background: var(--field-hover); box-shadow: inset 0 0 0 1px var(--hairline), 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .bae-m-input-error, .bae-m-input-error:focus { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
-.bae-m-field-note { font: 400 11.5px/15px var(--font-sans); color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-tertiary)); }
+.bae-m-field-note { padding-left: 10px; font: 400 11.5px/15px var(--font-sans); color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-tertiary)); }
 .bae-m-field-note-error { color: var(--danger); }
 
 .bae-m-radio { align-items: flex-start; gap: 10px; padding-top: 10px; padding-bottom: 10px; cursor: pointer; }

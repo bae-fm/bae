@@ -104,7 +104,7 @@
         bare ? null : h('span', { className: 'bae-m-field-label', style: { width: lw } }, props.label),
         input,
         props.children),
-      line ? h('div', { className: cx('bae-m-field-note', isError && 'bae-m-field-note-error'), style: { paddingLeft: bare ? 0 : lw + 12 } }, line) : null);
+      line ? h('div', { className: cx('bae-m-field-note', isError && 'bae-m-field-note-error'), style: { marginLeft: bare ? 0 : lw + 12 } }, line) : null);
   }
 
   function MacRadio(props) {
