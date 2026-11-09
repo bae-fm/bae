@@ -50,20 +50,41 @@ public enum StatusTone: Sendable, Equatable {
         case .neutral, .accent, .activity: nil
         }
     }
+
+    /// The outline form of the glyph, for a quiet notice.
+    public var outlineSymbol: String? {
+        switch self {
+        case .info: "info.circle"
+        case .success: "checkmark.circle"
+        case .warning: "exclamationmark.circle"
+        case .danger: "exclamationmark.circle"
+        case .neutral, .accent, .activity: nil
+        }
+    }
 }
 
-/// A tone's glyph in the tone's icon colour; nothing for a tone with no glyph.
-/// The token carries the calmer danger: still red, quieter beside a warning's
-/// amber.
+/// How a notice sits in its place.
+public enum NoticeLook: Sendable, Equatable {
+    /// Padded and filled with the tone's tint.
+    case filled
+    /// No fill, in the screen's own text, with an outline glyph.
+    case quiet
+}
+
+/// A tone's glyph in the tone's icon colour, filled or as an outline; nothing
+/// for a tone with no glyph. The token carries the calmer danger: still red,
+/// quieter beside a warning's amber.
 public struct StatusGlyph: View {
     private let tone: StatusTone
+    private let outline: Bool
 
-    public init(_ tone: StatusTone) {
+    public init(_ tone: StatusTone, outline: Bool = false) {
         self.tone = tone
+        self.outline = outline
     }
 
     public var body: some View {
-        if let symbol = tone.symbol {
+        if let symbol = outline ? tone.outlineSymbol : tone.symbol {
             Image(systemName: symbol)
                 .foregroundStyle(tone.iconColor)
         }
@@ -71,13 +92,23 @@ public struct StatusGlyph: View {
 }
 
 extension View {
-    /// Pads, fills and rounds the content as a notice in its tone.
-    public func notice(_ tone: StatusTone) -> some View {
-        padding(ThemeSpace.group)
-            .background(
-                tone.fill,
-                in: RoundedRectangle(cornerRadius: ThemeRadius.control)
-            )
+    /// Pads the content as a notice in its tone, and in the filled look fills
+    /// and rounds it; the quiet look has no fill and a little less padding.
+    @ViewBuilder
+    public func notice(_ tone: StatusTone, look: NoticeLook = .filled)
+        -> some View
+    {
+        switch look {
+        case .filled:
+            padding(ThemeSpace.group)
+                .background(
+                    tone.fill,
+                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
+                )
+        case .quiet:
+            padding(.horizontal, ThemeSpace.group)
+                .padding(.vertical, ThemeSpace.related + ThemeSpace.line)
+        }
     }
 
     /// Sets the content on a card: the surface, rounded, with a hairline edge;

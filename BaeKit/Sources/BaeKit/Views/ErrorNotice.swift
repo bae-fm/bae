@@ -45,6 +45,7 @@ public struct ErrorNotice: View {
     private let error: DisplayError
     private let heading: Heading
     private let tone: StatusTone
+    private let look: NoticeLook
     private let action: ErrorAction?
 
     /// A notice showing the error's line; its Details, when the error has a
@@ -52,11 +53,13 @@ public struct ErrorNotice: View {
     public init(
         error: DisplayError,
         tone: StatusTone = .danger,
+        look: NoticeLook = .filled,
         action: ErrorAction? = nil
     ) {
         self.error = error
         self.heading = .line
         self.tone = tone
+        self.look = look
         self.action = action
     }
 
@@ -68,18 +71,20 @@ public struct ErrorNotice: View {
         advice: String?,
         error: DisplayError,
         tone: StatusTone = .danger,
+        look: NoticeLook = .filled,
         action: ErrorAction? = nil
     ) {
         self.error = error
         self.heading = .titled(title, advice: advice)
         self.tone = tone
+        self.look = look
         self.action = action
     }
 
     public var body: some View {
         HStack(alignment: .top, spacing: ThemeSpace.related) {
             if tone.symbol != nil {
-                StatusGlyph(tone)
+                StatusGlyph(tone, outline: look == .quiet)
                     .themeIcon(.medium)
             }
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
@@ -89,7 +94,7 @@ public struct ErrorNotice: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .notice(tone)
+        .notice(tone, look: look)
     }
 
     @ViewBuilder

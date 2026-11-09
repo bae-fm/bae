@@ -4218,8 +4218,9 @@ Reads come two ways:
   how fast it goes; a file downloading shows a ring filling as it comes, and
   one waiting its turn a dashed circle. Coven's fetch
   shows the same counts and marks, with no control and no bytes: no queue
-  entry of bae's holds it. A failed pin shows its error instead, with a
-  control that retries it (§4.3) and one that cancels it. Selecting a file shows its details under the list,
+  entry of bae's holds it. A failed pin says it
+  failed instead, its error behind *Details* (§9.7), with a control that
+  retries it (§4.3) and one that cancels it. Selecting a file shows its details under the list,
   closed by a button or by selecting nothing: its name and the folder it
   sits in within the release's folder, what kind of file it is, its audio
   format, and its size. Core reads a file's kind from its content type, and

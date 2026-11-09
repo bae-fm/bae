@@ -59,29 +59,14 @@ struct DownloadRow: View {
                 symbol: "arrow.down.circle.fill"
             )
         case (let kind, .failed(let error)):
-            HStack(spacing: ThemeSpace.related) {
-                failedChip(kind)
-                    .help(error)
-                Button("Retry", action: onRetry)
-                    .controlSize(.small)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func failedChip(_ kind: BridgeDownloadKind) -> some View {
-        switch kind {
-        case .pin:
-            StatusChip(
-                "Failed",
-                tone: .danger,
-                symbol: StatusTone.danger.symbol
-            )
-        case .makeLocal:
-            StatusChip(
-                "Couldn't make local",
-                tone: .danger,
-                symbol: StatusTone.danger.symbol
+            ErrorNotice(
+                title: kind == .pin
+                    ? String(localized: "Download failed")
+                    : String(localized: "Couldn't make local"),
+                advice: nil,
+                error: DisplayError(line: error),
+                look: .quiet,
+                action: ErrorAction(perform: onRetry)
             )
         }
     }
