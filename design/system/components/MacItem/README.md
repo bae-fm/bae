@@ -4,4 +4,4 @@ The row piece every macOS row with a leading icon is built from: `lead` (an icon
 
 `MacFileRow`, `MacDownloadRow`, the Activity panel's rows and `MacNotice`'s glyph are all built on it, so wherever they sit together, their words share one edge.
 
-**In the code:** macOS: none yet. SwiftUI's `Label` in a `List` aligns titles the same way; the app's rows need one view that takes the leading column from `ThemeSize.lead`.
+**In the code:** macOS: `RowItem` (BaeKit `Views/RowItem.swift`).

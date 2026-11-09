@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// An error notice's primary button, such as Retry: on its own line under the
-/// words, in line with them; at the right beside Details when the notice has
-/// both.
+/// An error notice's primary button, such as Retry: at the right of the
+/// title's line, Details first when the notice has both.
 public struct ErrorAction {
     fileprivate let title: Text
     fileprivate let isDisabled: Bool
@@ -33,9 +32,8 @@ public struct ErrorAction {
 /// A user-facing error as a notice: the tone's glyph, then either the error's
 /// line or a title the caller words with what to do under it, and buttons. The
 /// notice never shows the error itself: when there is a detail, its Details
-/// button opens the causes in an alert, with Copy details. With Details and an
-/// action the two sit at the right, Details first; with one button it sits on
-/// its own line, in line with the words.
+/// button opens the causes in an alert, with Copy details. The buttons sit at
+/// the right of the title's line, Details first.
 public struct ErrorNotice: View {
     private enum Heading {
         case line
@@ -91,19 +89,32 @@ public struct ErrorNotice: View {
     }
 
     private var row: some View {
-        HStack(alignment: .top, spacing: ThemeSpace.related) {
+        Group {
             if tone.symbol != nil {
-                StatusGlyph(tone, outline: look == .quiet)
-                    .themeIcon(.medium)
+                RowItem {
+                    StatusGlyph(tone, outline: look == .quiet)
+                        .themeIcon(.medium)
+                } content: {
+                    titleLine
+                }
             }
-            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                words
-                buttons
-                    .padding(.top, ThemeSpace.inline)
+            else {
+                titleLine
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .notice(tone, look: look)
+    }
+
+    /// The words, wrapping, with the buttons at the right on the title's line.
+    private var titleLine: some View {
+        HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.group) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                words
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            buttons
+        }
     }
 
     @ViewBuilder
@@ -128,20 +139,16 @@ public struct ErrorNotice: View {
         }
     }
 
-    @ViewBuilder
     private var buttons: some View {
-        if let details {
-            HStack {
-                Spacer(minLength: 0)
+        HStack(spacing: ThemeSpace.related) {
+            if let details {
                 detailsButton(details)
-                if let action {
-                    actionButton(action)
-                }
+            }
+            if let action {
+                actionButton(action)
             }
         }
-        else if let action {
-            actionButton(action)
-        }
+        .fixedSize()
     }
 
     /// The centred layout: the glyph and the title in one row, with the
