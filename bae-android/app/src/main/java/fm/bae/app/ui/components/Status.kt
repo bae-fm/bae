@@ -3,6 +3,7 @@ package fm.bae.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -218,12 +219,21 @@ fun Notice(
     }
 }
 
-/** The tone's glyph in a box one body line tall, so it centres on that line; it may overhang the box. */
+/** The tone's glyph in a [FirstLineBox], so it centres on the first line. */
 @Composable
 private fun FirstLineGlyph(
     tone: StatusTone,
     outline: Boolean,
 ) {
+    FirstLineBox { StatusGlyph(tone, outline = outline) }
+}
+
+/**
+ * A box one body line tall, its [content] centred in it; the content may overhang the box. A
+ * notice's glyph and buttons sit in one, on the title's line.
+ */
+@Composable
+internal fun FirstLineBox(content: @Composable BoxScope.() -> Unit) {
     val measurer = rememberTextMeasurer()
     val style = ThemeText.body.style
     val lineHeight =
@@ -231,7 +241,7 @@ private fun FirstLineGlyph(
             remember(measurer, style) { measurer.measure("A", style).size.height }.toDp()
         }
     Box(Modifier.height(lineHeight), contentAlignment = Alignment.Center) {
-        StatusGlyph(tone, Modifier.wrapContentHeight(unbounded = true), outline = outline)
+        Box(Modifier.wrapContentHeight(unbounded = true), content = content)
     }
 }
 

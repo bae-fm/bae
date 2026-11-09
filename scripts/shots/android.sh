@@ -85,6 +85,7 @@ LibraryViewMenu:library-view-menu
 MiniPlayerAllHere:mini-player-all-here
 MiniPlayerPlayingWithAGap:mini-player-playing-with-a-gap
 MiniPlayerWaitingOnStorage:mini-player-waiting-on-storage
+NoticeLooks:notice-looks
 PeopleAndDevices:people-and-devices
 PeopleAndDevicesMember:people-and-devices-member
 PeopleAndDevicesPerson:people-and-devices-person

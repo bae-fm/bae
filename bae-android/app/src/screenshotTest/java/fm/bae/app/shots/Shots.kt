@@ -1,7 +1,10 @@
 package fm.bae.app.shots
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -23,7 +26,12 @@ import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
+import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.ErrorAction
+import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.library.ErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.library.LibraryHeaderMenu
@@ -560,4 +568,34 @@ fun PeopleAndDevicesPerson() {
 @Composable
 fun PeopleAndDevicesYours() {
     PeopleScene(PeoplePage.Devices)
+}
+
+/** An error notice's looks: filled with Details and Retry, titled with advice, quiet, and quiet with the ×. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun NoticeLooks() {
+    val error = DisplayError("Couldn’t reach your storage.", "dns error: failed to lookup address information")
+    BaeTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(
+                modifier = Modifier.padding(ThemeSpace.edge),
+                verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
+            ) {
+                ErrorNotice(error, action = ErrorAction("Retry") {})
+                TitledErrorNotice(
+                    title = "bae couldn’t open your library",
+                    advice = "Check your connection, then quit and reopen bae.",
+                    error = error,
+                )
+                TitledErrorNotice(
+                    title = "Download failed",
+                    advice = null,
+                    error = error,
+                    action = ErrorAction("Retry") {},
+                    look = NoticeLook.QUIET,
+                )
+                ErrorNotice(error, action = ErrorAction("Retry") {}, look = NoticeLook.QUIET, onDismiss = {})
+            }
+        }
+    }
 }

@@ -47,9 +47,8 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
 /**
- * A notice's primary button: what to do about the failure. On its own line
- * under the words, in line with them; at the right beside Details when the
- * notice has both.
+ * A notice's primary button: what to do about the failure. At the right of the
+ * title's line, Details first when the notice has both.
  */
 class ErrorAction(
     val label: String,
@@ -61,8 +60,8 @@ class ErrorAction(
  * A failure as Android's error notice draws it: a [tone] notice (danger unless
  * told otherwise) with the tone's glyph and the localized line. A notice never
  * shows the error itself: for a failure core reported, a Details button opens
- * the causes in a dialog. [action] sits beside Details at the right, or alone
- * on its own line. Mirrors the Apple apps' `ErrorNotice`.
+ * the causes in a dialog. Details and [action] sit at the right of the title's
+ * line, Details first. Mirrors the Apple apps' `ErrorNotice`.
  */
 @Composable
 fun ErrorNotice(
@@ -190,34 +189,40 @@ private fun FramedNotice(
     onDismiss: (() -> Unit)?,
 ) {
     Notice(tone = tone, modifier = modifier, look = look) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
-            Row(verticalAlignment = Alignment.Top) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
                 Text(
                     text = title,
                     style = (if (advice != null) ThemeText.strong else ThemeText.body).style,
                     color = LocalContentColor.current,
-                    modifier = Modifier.weight(1f),
                 )
-                onDismiss?.let { DismissButton(it) }
+                advice?.let { Text(text = it, style = ThemeText.body.style, color = onNoticeSecondary) }
             }
-            advice?.let { Text(text = it, style = ThemeText.body.style, color = onNoticeSecondary) }
-            if (hasDetails) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.related),
-                    horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related, Alignment.End),
-                ) {
-                    TextButton(
-                        onClick = onDetails,
-                        colors = ButtonDefaults.textButtonColors(contentColor = noticeButtonColor),
-                        contentPadding = ACTION_PADDING,
+            if (hasDetails || action != null) {
+                // The buttons' own padding overhangs: a label's right edge is the notice's.
+                FirstLineBox {
+                    Row(
+                        modifier = Modifier.offset(x = ThemeSpace.related),
+                        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
                     ) {
-                        Text(stringResource(R.string.details))
+                        if (hasDetails) {
+                            TextButton(
+                                onClick = onDetails,
+                                colors = ButtonDefaults.textButtonColors(contentColor = noticeButtonColor),
+                                contentPadding = ACTION_PADDING,
+                            ) {
+                                Text(stringResource(R.string.details))
+                            }
+                        }
+                        action?.let { ErrorActionButton(it) }
                     }
-                    action?.let { ErrorActionButton(it) }
                 }
-            } else {
-                action?.let { ErrorActionButton(it, Modifier.offset(x = -ThemeSpace.related)) }
             }
+            onDismiss?.let { DismissButton(it) }
         }
     }
 }
@@ -238,16 +243,12 @@ private fun DismissButton(onDismiss: () -> Unit) {
 private val ACTION_PADDING = PaddingValues(horizontal = ThemeSpace.related)
 
 @Composable
-private fun ErrorActionButton(
-    action: ErrorAction,
-    modifier: Modifier = Modifier,
-) {
+private fun ErrorActionButton(action: ErrorAction) {
     TextButton(
         onClick = action.onClick,
         enabled = action.enabled,
         colors = ButtonDefaults.textButtonColors(contentColor = noticeButtonColor),
         contentPadding = ACTION_PADDING,
-        modifier = modifier,
     ) { Text(action.label) }
 }
 
