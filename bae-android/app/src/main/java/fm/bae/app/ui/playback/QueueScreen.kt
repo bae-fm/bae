@@ -121,8 +121,8 @@ internal fun rememberReorderableQueue(
     val scope = rememberCoroutineScope()
     val reorderState =
         rememberReorderableLazyListState(listState) { from, to ->
-            // Each move is held over its lane until core's read shows it; one core refused or that
-            // failed shows its error and the lane's read at once.
+            // Each move is held over its lane until core's read shows it; one that moved nothing, or
+            // that failed (and shows its error), shows the lane's read at once.
             val drop = order.drop(from.key as? String ?: "", to.key as? String ?: "")
             if (drop == null) {
                 logger.debug("reorder: nothing moved (from=${from.key}, to=${to.key})")

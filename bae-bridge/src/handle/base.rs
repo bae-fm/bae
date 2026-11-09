@@ -337,8 +337,9 @@ impl AppHandle {
     /// Move the entry `entry_id` to sit immediately before `before_entry_id`,
     /// or to the end of its lane without one, and answer the lane's version
     /// the move made: a screen holding the moved row shows the lane's read
-    /// again once that read reaches it. A refused move fails with
-    /// `QueueChanged`, and the screen shows the lane's read at once.
+    /// again once that read reaches it. `None` when the entry, or the one it
+    /// goes before, is no longer queued there: nothing moved, and the screen
+    /// shows the lane's read at once.
     ///
     /// The move is sent before the call first waits, so moves sent one after
     /// another, as a drag sends its steps, reach the queue in that order.
@@ -346,7 +347,7 @@ impl AppHandle {
         self: std::sync::Arc<Self>,
         entry_id: String,
         before_entry_id: Option<String>,
-    ) -> Result<u64, BridgeError> {
+    ) -> Result<Option<u64>, BridgeError> {
         let entry_id = parsed_queue_entry_id(&entry_id)?;
         let before = before_entry_id.as_deref().map(parsed_queue_entry_id).transpose()?;
         let answer = self.services.playback_reorder_entry(entry_id, before);
@@ -354,8 +355,8 @@ impl AppHandle {
             .await
     }
 
-    /// Remove the queue entry `entry_id`. An entry no longer queued fails with
-    /// `QueueChanged`, and the screen shows the queue as it now is.
+    /// Remove the queue entry `entry_id`. An entry no longer queued is already
+    /// gone, and the screen shows the queue as it now is.
     ///
     /// The command is sent before the call first waits, so commands sent one
     /// after another reach the queue in that order.
@@ -369,7 +370,8 @@ impl AppHandle {
     }
 
     /// Skip to the queue entry `entry_id`, answering once its track is
-    /// loading. An entry no longer queued fails with `QueueChanged`.
+    /// loading. An entry no longer queued is not skipped to, and the screen
+    /// shows the queue as it now is.
     pub async fn skip_to_entry(
         self: std::sync::Arc<Self>,
         entry_id: String,

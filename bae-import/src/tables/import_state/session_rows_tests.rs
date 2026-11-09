@@ -61,7 +61,6 @@ fn every_failure_class_reads_back_as_itself() {
         C::InviteJoining,
         C::StoreOwnerAccount,
         C::Renderer,
-        C::QueueChanged,
         C::AirPlayUnsupported,
         C::AirPlayUnreadableSettings,
         C::ReplacementUnfinished(coven::ReplacedBy::Reset),

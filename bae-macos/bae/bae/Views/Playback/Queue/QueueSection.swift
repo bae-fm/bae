@@ -61,11 +61,12 @@ struct QueueSection: View {
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
     /// Move `entryId` before `beforeEntryId`, or to the lane's end, answering
-    /// the lane's version the move made.
+    /// the lane's version the move made, or `nil` when the queue changed first
+    /// and nothing moved.
     let onReorder:
         @MainActor (_ entryId: String, _ beforeEntryId: String?) async throws
-            -> UInt64
-    /// Shows why a reorder moved nothing.
+            -> UInt64?
+    /// Shows why a reorder failed.
     let onReorderFailed: @MainActor (any Error) -> Void
     let onInsertTracks: ([String], Int) -> Void
     /// Sets this lane's shuffle; `nil` on the manual lane, which has none.
@@ -292,8 +293,8 @@ extension QueueSection {
     }
 
     /// Hold `move` on screen and ask core for it: the hold ends once the
-    /// lane's read shows the version core answers with, or at once, with the
-    /// failure shown, when core moved nothing.
+    /// lane's read shows the version core answers with, or at once when core
+    /// moved nothing, with the failure shown when it failed.
     private func commitReorder(
         _ entryId: String,
         before beforeEntryId: String?,
@@ -306,12 +307,16 @@ extension QueueSection {
         let onReorderFailed = onReorderFailed
         Task { @MainActor in
             do {
-                let version = try await onReorder(entryId, beforeEntryId)
-                coordinator.reorderAnswered(
-                    lane,
-                    commit: commit,
-                    version: version
-                )
+                if let version = try await onReorder(entryId, beforeEntryId) {
+                    coordinator.reorderAnswered(
+                        lane,
+                        commit: commit,
+                        version: version
+                    )
+                }
+                else {
+                    coordinator.reorderFailed(lane, commit: commit)
+                }
             }
             catch {
                 coordinator.reorderFailed(lane, commit: commit)

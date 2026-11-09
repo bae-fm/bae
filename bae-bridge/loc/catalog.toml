@@ -5499,40 +5499,6 @@ fi = "Tämä julkaisu muuttui editorin avaamisen jälkeen. Peru nähdäksesi sen
 
 
 
-[messages."core.queue.error.changed"]
-comment = "Why a queue command did nothing: a skip, remove, clear or drag whose row, or the one it was dropped before, left the queue or moved to its other part before the command reached it. The queue shows itself as it now is."
-value = "The queue changed before this reached it, so nothing changed."
-
-[messages."core.queue.error.changed".translations]
-es = "La cola cambió antes de que esto la alcanzara, así que no cambió nada."
-fr = "La file a changé avant que cela ne l’atteigne, donc rien n’a changé."
-de = "Die Warteschlange hat sich geändert, bevor dies sie erreichte, daher wurde nichts geändert."
-pt-BR = "A fila mudou antes de isso chegar a ela, então nada foi alterado."
-ja = "これが届く前にキューが変わったため、何も変更されませんでした。"
-ko = "이 작업이 적용되기 전에 대기열이 바뀌어서 아무것도 변경되지 않았습니다."
-zh-Hans = "此操作生效之前队列已更改，因此没有任何更改。"
-ar = "تغيّرت قائمة الانتظار قبل أن يصلها هذا، لذا لم يتغيّر شيء."
-he = "התור השתנה לפני שזה הגיע אליו, ולכן שום דבר לא השתנה."
-uk = "Черга змінилася, перш ніж це її досягло, тому нічого не змінилося."
-bg = "Опашката се промени, преди това да я достигне, затова нищо не се промени."
-pl = "Kolejka zmieniła się, zanim to do niej dotarło, więc nic się nie zmieniło."
-cs = "Fronta se změnila dřív, než se jí to dotklo, takže se nic nezměnilo."
-hr = "Red se promijenio prije nego što je ovo stiglo do njega, pa ništa nije promijenjeno."
-zh-Hant = "此操作生效之前佇列已變更，因此沒有任何變更。"
-it = "La coda è cambiata prima che questo la raggiungesse, quindi non è cambiato nulla."
-tr = "Bu işlem kuyruğa ulaşmadan önce kuyruk değişti, bu yüzden hiçbir şey değişmedi."
-nl = "De wachtrij veranderde voordat dit haar bereikte, dus er is niets veranderd."
-sk = "Poradie sa zmenilo skôr, než sa to k nemu dostalo, takže sa nič nezmenilo."
-hu = "A sor megváltozott, mielőtt ez elérte volna, ezért semmi sem változott."
-ro = "Coada s-a schimbat înainte ca aceasta să o ajungă, așa că nu s-a schimbat nimic."
-el = "Η ουρά άλλαξε πριν φτάσει σε αυτήν αυτή η ενέργεια, οπότε δεν άλλαξε τίποτα."
-pt-PT = "A fila mudou antes de isto chegar a ela, por isso nada foi alterado."
-sv = "Kön ändrades innan detta nådde den, så ingenting ändrades."
-da = "Køen ændrede sig, før dette nåede den, så intet blev ændret."
-nb = "Køen endret seg før dette nådde den, så ingenting ble endret."
-fi = "Jono muuttui ennen kuin tämä ehti siihen, joten mitään ei muutettu."
-
-
 [messages."core.pressing.discogs.advance"]
 comment = "A Discogs format description of a record pressing, shown in its detail line beside others, e.g. \"Promo · Reissue · Stereo\"."
 value = "Advance"

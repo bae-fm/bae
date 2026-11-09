@@ -247,7 +247,6 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::ConflictingSourceIds,
         BridgeErrorCategory::InvalidEdit { reason: BridgeValidationReason::EmptyArtistName },
         BridgeErrorCategory::WatchedFolderOverlap,
-        BridgeErrorCategory::QueueChanged,
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateBeingIdentified,
         BridgeErrorCategory::FilesAlreadyImported,

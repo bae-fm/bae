@@ -48,11 +48,11 @@ internal class QueueFailures(
 
     /**
      * Run a queue command that answers, as [run] does, and hand back its answer; null when it failed,
-     * which is shown.
+     * which is shown, or when the command answered that it moved nothing.
      */
     suspend fun <T : Any> answer(
         operation: String,
-        action: suspend () -> T,
+        action: suspend () -> T?,
     ): T? =
         try {
             action().also { command = null }

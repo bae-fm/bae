@@ -157,9 +157,6 @@ pub enum BridgeErrorCategory {
     /// A folder to watch holds, or lies in, a watched folder; the detail
     /// names both.
     WatchedFolderOverlap,
-    /// A queue reorder named an entry, or an entry to go before, that the
-    /// queue no longer holds there, and moved nothing.
-    QueueChanged,
     Export,
     Save,
     /// Storage failed — in setup, in sync, reading a file — with coven's
@@ -379,7 +376,6 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::ConflictingSourceIds => "core.error.conflicting_source_ids",
         BridgeErrorCategory::InvalidEdit { reason } => reason.loc_key(),
         BridgeErrorCategory::WatchedFolderOverlap => "core.error.watched_folder_overlap",
-        BridgeErrorCategory::QueueChanged => "core.queue.error.changed",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
         BridgeErrorCategory::Storage { failure } => {
@@ -485,9 +481,7 @@ impl DatabaseFault for bae_library::LibraryError {
 /// no line to show.
 ///
 /// A cancellation is the user's own doing and says nothing back to them, so it
-/// has no line. Neither does a queue gesture the queue outran: the screen
-/// already shows the queue as it is, so there is nothing to tell. `None` is how
-/// that is said. Left to each app, "no line"
+/// has no line — and `None` is how that is said. Left to each app, "no line"
 /// became `""` on Swift and Kotlin (which then opened a blank error alert,
 /// because nothing filters an empty string) and "an internal error occurred" on
 /// Windows, which is neither internal nor an error. Whether an error is worth
@@ -496,7 +490,6 @@ impl DatabaseFault for bae_library::LibraryError {
 pub fn bridge_error_line_key(error: &BridgeError) -> Option<String> {
     match error {
         BridgeError::Cancelled => None,
-        BridgeError::Diagnostic { category: BridgeErrorCategory::QueueChanged, .. } => None,
         BridgeError::NotFound { entity, .. } => Some(bridge_entity_not_found_key(*entity)),
         BridgeError::Diagnostic { category, .. } => {
             Some(bridge_error_category_key(category.clone()))
@@ -562,7 +555,6 @@ impl BridgeErrorCategory {
             Self::InviteJoining => K::InviteJoining,
             Self::StoreOwnerAccount => K::StoreOwnerAccount,
             Self::Renderer => K::Renderer,
-            Self::QueueChanged => K::QueueChanged,
             Self::AirPlayUnsupported => K::AirPlayUnsupported,
             Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
             Self::ReplacementUnfinished { .. } => K::ReplacementUnfinished,
@@ -676,7 +668,6 @@ mirror_enum! {
         InviteJoining,
         StoreOwnerAccount,
         Renderer,
-        QueueChanged,
         AirPlayUnsupported,
         AirPlayUnreadableSettings,
         ReplacementUnfinished(by: (BridgeReplacedBy)),

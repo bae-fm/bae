@@ -160,7 +160,6 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::InviteJoining
             | UiErrorCategory::StoreOwnerAccount
             | UiErrorCategory::Renderer
-            | UiErrorCategory::QueueChanged
             | UiErrorCategory::AirPlayUnsupported
             | UiErrorCategory::AirPlayUnreadableSettings
             | UiErrorCategory::ReplacementUnfinished(_)

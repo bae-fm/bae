@@ -26,21 +26,21 @@ public final class Queue: Sendable, Observable {
     public let addNext: @Sendable (_ trackIds: [String]) -> Void
     public let insertInQueue:
         @Sendable (_ trackIds: [String], _ index: UInt32) -> Void
-    /// Remove the row `entryId`. Throws when the queue changed first and the
-    /// row is no longer queued.
+    /// Remove the row `entryId`. A row the queue no longer holds is already
+    /// gone, and this answers as if it had removed it.
     public let removeEntry: @Sendable (_ entryId: String) async throws -> Void
     /// Empty the manual lane, leaving the context lane playing.
     public let clearUpNext: @Sendable () async throws -> Void
     /// Drop the context lane. The playing track keeps playing.
     public let clearPlayingFrom: @Sendable () async throws -> Void
     /// Move `entryId` to sit before `beforeEntryId`; `nil` moves it to the end
-    /// of its lane. Answers the lane's version the move made, or throws when
-    /// core moved nothing.
+    /// of its lane. Answers the lane's version the move made, or `nil` when the
+    /// queue changed first and core moved nothing.
     public let reorderEntry:
         @Sendable (_ entryId: String, _ beforeEntryId: String?) async throws
-            -> UInt64
-    /// Skip to the row `entryId`. Throws when the queue changed first and the
-    /// row is no longer queued.
+            -> UInt64?
+    /// Skip to the row `entryId`. A row the queue no longer holds is not
+    /// skipped to, and this answers as if it had been.
     public let skipToEntry: @Sendable (_ entryId: String) async throws -> Void
     /// Flip the playing context between sequential and shuffled order.
     public let setShuffle: @Sendable (_ on: Bool) -> Void
@@ -60,7 +60,7 @@ public final class Queue: Sendable, Observable {
         clearUpNext: @escaping @Sendable () async throws -> Void = {},
         clearPlayingFrom: @escaping @Sendable () async throws -> Void = {},
         reorderEntry:
-            @escaping @Sendable (String, String?) async throws -> UInt64 = {
+            @escaping @Sendable (String, String?) async throws -> UInt64? = {
                 _,
                 _ in 0
             },

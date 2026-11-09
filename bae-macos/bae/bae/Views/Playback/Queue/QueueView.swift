@@ -25,11 +25,12 @@ struct QueueView: View {
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
     /// Move the entry `entryId` to sit before `beforeEntryId`; `nil` moves it
-    /// to the end of its lane. Answers the lane's version the move made.
+    /// to the end of its lane. Answers the lane's version the move made, or
+    /// `nil` when the queue changed first and nothing moved.
     let onReorder:
         @MainActor (_ entryId: String, _ beforeEntryId: String?) async throws
-            -> UInt64
-    /// Shows why a reorder moved nothing.
+            -> UInt64?
+    /// Shows why a reorder failed.
     let onReorderFailed: @MainActor (any Error) -> Void
     let onInsertTracks: ([String], Int) -> Void
     /// Sets the playing context's shuffle, from the context section's header.

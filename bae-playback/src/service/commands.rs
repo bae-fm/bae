@@ -161,10 +161,10 @@ impl PlaybackService {
                         Ok(())
                     }
                     // The id named no queued entry — a stale UI action against a
-                    // queue that already moved on.
+                    // queue that already moved on, which has nothing left to remove.
                     Ok(None) => {
                         self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
-                        Err(super::api::QueueEditError::QueueChanged)
+                        Ok(())
                     }
                     Err(e) => {
                         self.queue_failed("remove a queue entry", &e);
@@ -179,11 +179,11 @@ impl PlaybackService {
                 let moved = match self.playback_queue.reorder(entry_id, before).await {
                     Ok(Some(version)) => {
                         self.on_queue_mutated().await;
-                        Ok(version)
+                        Ok(Some(version))
                     }
                     Ok(None) => {
                         self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
-                        Err(super::api::QueueEditError::QueueChanged)
+                        Ok(None)
                     }
                     Err(e) => {
                         self.queue_failed("reorder the queue", &e);
@@ -257,7 +257,7 @@ impl PlaybackService {
                     // The id named no queued entry — a stale UI action.
                     Ok(None) => {
                         self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
-                        Err(super::api::QueueEditError::QueueChanged)
+                        Ok(())
                     }
                     Err(e) => {
                         self.queue_failed("skip to a queue entry", &e);

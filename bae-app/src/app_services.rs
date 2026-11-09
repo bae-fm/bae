@@ -664,8 +664,8 @@ impl AppServices {
     delegate_sync!(playback, playback_insert_in_queue => insert_in_queue(track_ids: Vec<String>, index: usize) -> ());
 
     /// Remove a queue entry, sent at this call, in order with the playback
-    /// commands sent before and after it; the future answers that the queue
-    /// changed when the entry is no longer queued.
+    /// commands sent before and after it; an entry no longer queued is
+    /// already gone, and the future answers `Ok`.
     pub fn playback_remove_entry(
         &self,
         entry_id: bae_playback::QueueEntryId,
@@ -685,13 +685,15 @@ impl AppServices {
 
     /// Move a queue entry, sent at this call, in order with the playback
     /// commands sent before and after it; the future answers the lane's
-    /// version the move made, or why nothing moved.
+    /// version the move made, `None` when the entry or the one it goes before
+    /// is no longer queued there, or why the move failed.
     pub fn playback_reorder_entry(
         &self,
         entry_id: bae_playback::QueueEntryId,
         before: Option<bae_playback::QueueEntryId>,
-    ) -> impl std::future::Future<Output = Result<u64, bae_playback::QueueEditError>> + Send + 'static
-    {
+    ) -> impl std::future::Future<Output = Result<Option<u64>, bae_playback::QueueEditError>>
+           + Send
+           + 'static {
         self.inner.playback.reorder_entry(entry_id, before)
     }
 
@@ -705,8 +707,8 @@ impl AppServices {
     }
 
     /// Skip to a queue entry, sent at this call; the future answers once its
-    /// track is loading, or that the queue changed when the entry is no longer
-    /// queued.
+    /// track is loading; an entry no longer queued is skipped to by no one, and
+    /// the future answers `Ok`.
     pub fn playback_skip_to_entry(
         &self,
         entry_id: bae_playback::QueueEntryId,

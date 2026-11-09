@@ -115,9 +115,6 @@ pub enum UiErrorCategory {
     /// The device playback was sent to (Cast, DLNA) refused a command — a load,
     /// a play, a seek — while the link to it stayed up.
     Renderer,
-    /// A queue command named an entry, or an entry to go before, that the
-    /// queue no longer holds there, and changed nothing.
-    QueueChanged,
     /// An AirPlay receiver can't be driven: it demands a PIN, a pairing the
     /// sender doesn't do, or audio encryption the sender doesn't implement.
     AirPlayUnsupported,

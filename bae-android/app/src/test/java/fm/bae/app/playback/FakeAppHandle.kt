@@ -403,7 +403,7 @@ internal open class FakeAppHandle(
     override suspend fun reorderEntry(
         entryId: String,
         beforeEntryId: String?,
-    ): ULong = unfaked("reorderEntry")
+    ): ULong? = unfaked("reorderEntry")
 
     override suspend fun resolveToTrackIds(ids: List<String>): List<String> = unfaked("resolveToTrackIds")
 

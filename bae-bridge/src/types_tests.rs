@@ -765,12 +765,7 @@ fn an_error_shows_its_detail_only_when_it_adds_to_the_line() {
     let caused = BridgeError::diagnostic(BridgeErrorCategory::Network, "dns error: no such host");
     assert_eq!(bridge_error_shown_detail(&caused).as_deref(), Some("dns error: no such host"));
 
-    // The queue's and AirPlay's categories follow core's rule too.
-    let queue = BridgeError::diagnostic(
-        BridgeErrorCategory::QueueChanged,
-        "the queue changed before the command, so nothing changed",
-    );
-    assert_eq!(bridge_error_shown_detail(&queue), None);
+    // AirPlay's categories follow core's rule too.
     let receiver = BridgeError::diagnostic(
         BridgeErrorCategory::AirPlayUnreadableSettings,
         "features value `0xZZ` is not hex",

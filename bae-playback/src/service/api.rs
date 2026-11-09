@@ -54,13 +54,11 @@ pub enum PlayError {
 pub(crate) type PlayReply = oneshot::Sender<Result<PlayOutcome, PlayError>>;
 
 /// Why a queue command that names an entry, or empties a part of the queue,
-/// changed nothing.
+/// failed. A command naming an entry the queue no longer holds is not a
+/// failure: the queue changed under the screen that asked, which shows the
+/// queue as it now is.
 #[derive(Debug, thiserror::Error)]
 pub enum QueueEditError {
-    /// The entry, or the one it goes before, is no longer queued, or the two
-    /// are in different lanes: the queue changed under the screen that asked.
-    #[error("the queue changed before the command, so nothing changed")]
-    QueueChanged,
     #[error("couldn't change the queue: {0}")]
     Queue(#[source] bae_store::DbError),
     /// The service that held the command ended, or the fresh one the command
@@ -75,14 +73,12 @@ pub enum QueueEditError {
 }
 
 impl QueueEditError {
-    /// The class a surface words this failure in: the queue changed under
-    /// the screen that asked, a database failure, or a service that had
-    /// stopped or ended, which is a bug: of whoever still sent it the
-    /// command, or the one its thread ended on.
+    /// The class a surface words this failure in: a database failure, or a
+    /// service that had stopped or ended, which is a bug: of whoever still
+    /// sent it the command, or the one its thread ended on.
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         use bae_diagnostics::UiErrorCategory as C;
         match self {
-            Self::QueueChanged => C::QueueChanged,
             Self::Queue(error) => bae_diagnostics::database_category(error),
             Self::Stopped(_) | Self::Ended(_) => C::Internal,
         }
@@ -90,7 +86,8 @@ impl QueueEditError {
 }
 
 /// Where a queue command's answer goes: what the command gives back (a
-/// reorder, the lane's version the move made).
+/// reorder, the lane's version the move made, or nothing when it moved
+/// nothing).
 pub(crate) type QueueEditReply<T> = oneshot::Sender<Result<T, QueueEditError>>;
 
 #[derive(Debug)]
@@ -181,7 +178,7 @@ pub(crate) enum PlaybackCommand {
     ReorderQueue {
         entry_id: QueueEntryId,
         before: Option<QueueEntryId>,
-        reply: QueueEditReply<u64>,
+        reply: QueueEditReply<Option<u64>>,
     },
     /// Empty the manual lane, leaving the context lane playing.
     ClearUpNext(QueueEditReply<()>),
@@ -584,7 +581,7 @@ impl PlaybackHandle {
     }
     /// Remove the queue row with this id. The command is sent at the call, in
     /// order with the commands sent before and after it; the answer is the
-    /// future's: that the queue changed when the row is no longer queued.
+    /// future's. A row no longer queued is already gone: the answer is `Ok`.
     pub fn remove_entry(
         &self,
         entry_id: QueueEntryId,
@@ -595,7 +592,9 @@ impl PlaybackHandle {
     /// Move `entry_id` to just before `before`, or to the end of its lane
     /// when it's `None`, and answer the lane's version the move made: a
     /// screen holding the moved row shows the tables' order again once the
-    /// lane's read reaches it.
+    /// lane's read reaches it. Answers `None` when the entry, or the one it
+    /// goes before, is no longer queued there, or the two are in different
+    /// lanes: nothing moved.
     ///
     /// The command is sent at the call, in order with the commands sent
     /// before and after it; the answer is the future's.
@@ -603,7 +602,8 @@ impl PlaybackHandle {
         &self,
         entry_id: QueueEntryId,
         before: Option<QueueEntryId>,
-    ) -> impl std::future::Future<Output = Result<u64, QueueEditError>> + Send + 'static {
+    ) -> impl std::future::Future<Output = Result<Option<u64>, QueueEditError>> + Send + 'static
+    {
         let (reply, answer) = oneshot::channel();
         self.edit_queue(PlaybackCommand::ReorderQueue { entry_id, before, reply }, answer)
     }

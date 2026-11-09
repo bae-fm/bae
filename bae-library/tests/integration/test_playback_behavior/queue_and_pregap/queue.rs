@@ -502,11 +502,11 @@ async fn play_tracks_tells_its_caller_which_tracks_it_left_out() {
 }
 
 /// A reorder answers the version of Up Next its move made, which the queue's
-/// read then carries, and one naming an entry the queue no longer holds is
-/// told the queue changed, so the screen that held the move shows the
+/// read then carries, and one naming an entry the queue no longer holds
+/// answers that it moved nothing, so the screen that held the move shows the
 /// tables' order.
 #[tokio::test]
-async fn a_reorder_answers_its_lanes_version_or_that_the_queue_changed() {
+async fn a_reorder_answers_its_lanes_version_or_that_it_moved_nothing() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
         let handle = &fixture.playback_handle;
         handle.add_to_queue(fixture.track_ids[..3].to_vec());
@@ -514,7 +514,11 @@ async fn a_reorder_answers_its_lanes_version_or_that_the_queue_changed() {
         assert_eq!(entries.len(), 3);
         let id = |i: usize| entries[i].entry_id.parse::<bae_playback::QueueEntryId>().unwrap();
 
-        let version = handle.reorder_entry(id(2), Some(id(0))).await.expect("the entry moves");
+        let version = handle
+            .reorder_entry(id(2), Some(id(0)))
+            .await
+            .expect("the reorder is answered")
+            .expect("the entry moves");
         let value = handle.queue_value().await.expect("queue value");
         assert_eq!(value.manual_version, version, "the read carries the move's version");
         assert_eq!(value.manual[0].entry_id, entries[2].entry_id);
@@ -522,8 +526,8 @@ async fn a_reorder_answers_its_lanes_version_or_that_the_queue_changed() {
         let refused = handle
             .reorder_entry(bae_playback::QueueEntryId::Manual(i64::MAX), Some(id(0)))
             .await
-            .expect_err("no such entry is queued");
-        assert!(matches!(refused, bae_playback::QueueEditError::QueueChanged), "{refused:?}");
+            .expect("the reorder is answered");
+        assert_eq!(refused, None, "no such entry is queued");
         assert_eq!(
             handle.queue_value().await.expect("queue value").manual_version,
             version,
@@ -533,10 +537,10 @@ async fn a_reorder_answers_its_lanes_version_or_that_the_queue_changed() {
     .await;
 }
 
-/// A remove or a skip naming an entry the queue no longer holds is told the
-/// queue changed, and writes nothing.
+/// A remove or a skip naming an entry the queue no longer holds is answered
+/// and writes nothing.
 #[tokio::test]
-async fn skipping_to_or_removing_an_entry_no_longer_queued_answers_that_the_queue_changed() {
+async fn skipping_to_or_removing_an_entry_no_longer_queued_changes_nothing() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
         let handle = &fixture.playback_handle;
         handle.add_to_queue(fixture.track_ids[..3].to_vec());
@@ -547,13 +551,8 @@ async fn skipping_to_or_removing_an_entry_no_longer_queued_answers_that_the_queu
         handle.remove_entry(id(0)).await.expect("the queued entry is removed");
         let version = handle.queue_value().await.expect("queue value").manual_version;
 
-        let removed_again = handle.remove_entry(id(0)).await.expect_err("it is no longer queued");
-        assert!(
-            matches!(removed_again, bae_playback::QueueEditError::QueueChanged),
-            "{removed_again:?}"
-        );
-        let skipped = handle.skip_to_entry(id(0)).await.expect_err("it is no longer queued");
-        assert!(matches!(skipped, bae_playback::QueueEditError::QueueChanged), "{skipped:?}");
+        handle.remove_entry(id(0)).await.expect("a removed entry is already gone");
+        handle.skip_to_entry(id(0)).await.expect("an entry no longer queued is not skipped to");
         assert_eq!(
             handle.queue_value().await.expect("queue value").manual_version,
             version,

@@ -44,7 +44,6 @@ pub enum UiErrorClass {
     InviteJoining,
     StoreOwnerAccount,
     Renderer,
-    QueueChanged,
     AirPlayUnsupported,
     AirPlayUnreadableSettings,
     ReplacementUnfinished,
@@ -58,7 +57,7 @@ pub enum UiErrorClass {
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 47] = [
+    const ALL: [Self; 46] = [
         Self::Database,
         Self::Config,
         Self::Internal,
@@ -96,7 +95,6 @@ impl UiErrorClass {
         Self::InviteJoining,
         Self::StoreOwnerAccount,
         Self::Renderer,
-        Self::QueueChanged,
         Self::AirPlayUnsupported,
         Self::AirPlayUnreadableSettings,
         Self::ReplacementUnfinished,
@@ -148,7 +146,6 @@ impl UiErrorClass {
             Self::InviteJoining => "invite_joining",
             Self::StoreOwnerAccount => "store_owner_account",
             Self::Renderer => "renderer",
-            Self::QueueChanged => "queue_changed",
             Self::AirPlayUnsupported => "airplay_unsupported",
             Self::AirPlayUnreadableSettings => "airplay_unreadable_settings",
             Self::ReplacementUnfinished => "replacement_unfinished",
@@ -234,7 +231,6 @@ impl UiErrorClass {
             | Self::SavedRestoreCodesFull
             | Self::SavedRestoreCodeTooLarge
             | Self::StoreOwnerAccount
-            | Self::QueueChanged
             | Self::ReplacementUnfinished
             | Self::RestoreRegistered
             | Self::MemberKeysReplaced
@@ -287,7 +283,6 @@ impl UiErrorCategory {
             Self::InviteJoining => K::InviteJoining,
             Self::StoreOwnerAccount => K::StoreOwnerAccount,
             Self::Renderer => K::Renderer,
-            Self::QueueChanged => K::QueueChanged,
             Self::AirPlayUnsupported => K::AirPlayUnsupported,
             Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
             Self::ReplacementUnfinished(_) => K::ReplacementUnfinished,
@@ -334,7 +329,6 @@ impl UiErrorCategory {
             K::InviteJoining => Self::InviteJoining,
             K::StoreOwnerAccount => Self::StoreOwnerAccount,
             K::Renderer => Self::Renderer,
-            K::QueueChanged => Self::QueueChanged,
             K::AirPlayUnsupported => Self::AirPlayUnsupported,
             K::AirPlayUnreadableSettings => Self::AirPlayUnreadableSettings,
             K::RestoreRegistered => Self::RestoreRegistered,

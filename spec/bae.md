@@ -3608,13 +3608,13 @@ writes that change it: Up next's for every entry put in, taken out or moved;
 what's playing from's for every change to its tracks after the current one,
 or to which one is current. A reorder that moved its entry answers with its
 part's version after the move; one whose entry, or the entry it goes before,
-is no longer in that part moves nothing and answers that the queue changed.
+is no longer in that part moves nothing and answers that it moved nothing.
 A remove, a skip to an entry and either clear answer too: a remove or skip
-whose entry is no longer in its part changes nothing and answers that the
-queue changed, and a failed write answers its error. The app shows a failed
-write's error. It shows nothing for a command that changed nothing because
-the queue changed: that is rare, and the screen already shows the queue as it
-now is, so the gesture just ends.
+whose entry is no longer in its part changes nothing and answers that it is
+done, and a failed write answers its error. The app shows a failed write's
+error. It shows nothing for a command that changed nothing because the queue
+changed: that is rare, and the screen already shows the queue as it now is,
+so the gesture just ends.
 
 When the read of what's playing from's tracks fails, the rows it hasn't read
 stay placeholders, and under them the queue says it couldn't read the rest,
@@ -5313,7 +5313,6 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge` | on Android, learns the library's restore code couldn't be saved on the phone: Block Store already keeps as many entries as Android gives an app, or the code doesn't fit in one ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)) |
 | `Membership` | retries the membership step, with the advice it carries |
 | `InviteJoining` | leaves the invite: cancelling it came after the inviting device began letting its person in, or after the invite ended (§5.6) |
-| `QueueChanged` | sees the queue as it now is: an entry the command named left the queue first (§7.1) |
 | `AirPlayUnsupported`, `AirPlayUnreadableSettings` | uses another receiver |
 | `Renderer` | reads what the device playback was sent to said when it refused a command |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
@@ -5330,9 +5329,8 @@ These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 `ReleaseChangedSinceOpened`, `ChangedMeanwhile`, `InvalidEdit`,
 `StorageLocationChangeUnsupported`, `KeychainEntitlementMissing`,
 `SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge`, `StoreOwnerAccount`,
-`QueueChanged`, `ReplacementUnfinished`, `RestoreRegistered`,
-`MemberKeysReplaced`, `StorageSetupFinishing`, `DeletionUnfinished` and
-`DeletionSignInRequired`.
+`ReplacementUnfinished`, `RestoreRegistered`, `MemberKeysReplaced`,
+`StorageSetupFinishing`, `DeletionUnfinished` and `DeletionSignInRequired`.
 Every other category shows its detail under its line.
 
 ### G.2 Why a found release isn't picked

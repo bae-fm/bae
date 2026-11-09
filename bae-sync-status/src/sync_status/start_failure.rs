@@ -97,7 +97,6 @@ impl FailureColumns {
             | K::InviteJoining
             | K::StoreOwnerAccount
             | K::Renderer
-            | K::QueueChanged
             | K::AirPlayUnsupported
             | K::AirPlayUnreadableSettings
             | K::ReplacementUnfinished
