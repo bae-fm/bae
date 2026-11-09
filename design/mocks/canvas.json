@@ -2886,7 +2886,7 @@
   "SyncAndroidFailed.dc.html": {
    "h": 916,
    "page": "storage",
-   "title": "Sync failed, Retry Now",
+   "title": "Android: bae couldn’t read sync’s status",
    "w": 412,
    "x": 984,
    "y": 3760
@@ -2918,7 +2918,7 @@
   "SyncMacFailed.dc.html": {
    "h": 760,
    "page": "storage",
-   "title": "macOS: sync failed, Retry Now",
+   "title": "macOS: bae couldn’t read sync’s status",
    "w": 1200,
    "x": 2560,
    "y": 2520
