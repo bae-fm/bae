@@ -65,6 +65,7 @@ AppearanceLightNeutral:appearance-light-neutral
 AppearanceLightPlum:appearance-light-plum
 AppearanceLightSand:appearance-light-sand
 AppearanceLightSlate:appearance-light-slate
+CastPicker:cast-picker
 CastingSettingsFound:settings-casting
 CastingSettingsLooking:settings-casting-looking
 DownloadEntries:download-entries

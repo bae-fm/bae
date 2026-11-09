@@ -1,14 +1,9 @@
 package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -17,14 +12,11 @@ import androidx.compose.material.icons.filled.CastConnected
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -48,6 +40,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.TitledSheet
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.Job
@@ -105,7 +98,6 @@ fun CastButton(session: OpenLibrary) {
  * device stopped when its link was lost, then the discovered devices as they
  * answer, or a searching line while none have.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CastPickerSheet(
     session: OpenLibrary,
@@ -121,53 +113,39 @@ private fun CastPickerSheet(
     // A failed cast shows here: a snackbar would sit behind the open sheet.
     var castFailure by remember { mutableStateOf<DisplayError?>(null) }
     val devices by session.castStore.devices.collectAsState()
-    val sheetState = rememberModalBottomSheetState()
-    val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     DisposableEffect(Unit) {
         onDispose { castJob?.cancel() }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(PaddingValues(bottom = bottomInset + ThemeSpace.edge)),
-        ) {
-            Text(
-                text = stringResource(R.string.cast),
-                style = ThemeText.heading.style,
-                modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
-            )
-            PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
-            CastDeviceRows(
-                devices = devices,
-                castingTo = castingTo,
-                connectingName = connecting?.name,
-                onDisconnect = {
-                    session.cast.stopCasting()
-                    onDismiss()
-                },
-                onCast = { device ->
-                    castJob?.cancel()
-                    castFailure = null
-                    connecting = device
-                    castJob =
-                        scope.launch {
-                            try {
-                                session.cast.castTo(device.id)
-                                connecting = null
-                                onDismiss()
-                            } catch (e: BridgeException) {
-                                logger.error("Failed to cast to ${device.id}", e)
-                                connecting = null
-                                castFailure = context.displayError(e)
-                            }
+    TitledSheet(title = stringResource(R.string.cast), onDismiss = onDismiss) {
+        PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
+        CastDeviceRows(
+            devices = devices,
+            castingTo = castingTo,
+            connectingName = connecting?.name,
+            onDisconnect = {
+                session.cast.stopCasting()
+                onDismiss()
+            },
+            onCast = { device ->
+                castJob?.cancel()
+                castFailure = null
+                connecting = device
+                castJob =
+                    scope.launch {
+                        try {
+                            session.cast.castTo(device.id)
+                            connecting = null
+                            onDismiss()
+                        } catch (e: BridgeException) {
+                            logger.error("Failed to cast to ${device.id}", e)
+                            connecting = null
+                            castFailure = context.displayError(e)
                         }
-                },
-            )
-        }
+                    }
+            },
+        )
     }
 }
 

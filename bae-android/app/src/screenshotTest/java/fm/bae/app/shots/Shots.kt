@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -13,10 +15,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.LocalBugReports
+import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.LiveValue
 import fm.bae.app.ui.BaeTheme
@@ -33,6 +37,7 @@ import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
+import fm.bae.app.ui.components.TitledSheetContent
 import fm.bae.app.ui.downloads.DownloadQueueRow
 import fm.bae.app.ui.library.ErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
@@ -40,6 +45,7 @@ import fm.bae.app.ui.library.LibraryHeaderMenu
 import fm.bae.app.ui.library.SceneGrid
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeScene
+import fm.bae.app.ui.playback.CastDeviceRows
 import fm.bae.app.ui.playback.FullPlayerScene
 import fm.bae.app.ui.playback.MiniPlayerScene
 import fm.bae.app.ui.playback.PlayerSceneState
@@ -61,6 +67,7 @@ import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeMessage
+import uniffi.bae_bridge.BridgeRemoteDevice
 import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncFix
@@ -78,7 +85,7 @@ import java.time.Instant
 //   Welcome ⇒ welcome, WelcomeLibraries ⇒ welcome-libraries, LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒
 //   library-grid-scrolled, LibraryGrouped ⇒ library-grouped, LibraryGroupedPinned ⇒
 //   library-grouped-pinned, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
-//   library-view-menu, AlbumDetail ⇒ album-detail, CastingSettingsFound ⇒
+//   library-view-menu, AlbumDetail ⇒ album-detail, CastPicker ⇒ cast-picker, CastingSettingsFound ⇒
 //   settings-casting, CastingSettingsLooking ⇒ settings-casting-looking, LibrarySettings ⇒ settings-library,
 //   LibrarySettingsProblem ⇒ settings-library-problem, LibrarySettingsNotSynced ⇒ settings-library-not-synced,
 //   PeopleAndDevices ⇒ people-and-devices, PeopleAndDevicesMember ⇒ people-and-devices-member,
@@ -456,6 +463,31 @@ fun CastingSettingsFound() {
                 BridgeCastDevice(id = "cast-living-room", name = "Living Room", kind = BridgeRendererKind.CAST),
             ),
     )
+}
+
+/** The cast picker's sheet body over the devices found, casting to one of them. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun CastPicker() {
+    BaeTheme {
+        Surface(color = BottomSheetDefaults.ContainerColor) {
+            TitledSheetContent(stringResource(R.string.cast)) {
+                CastDeviceRows(
+                    devices =
+                        listOf(
+                            BridgeCastDevice(id = "cast-den", name = "Den receiver", kind = BridgeRendererKind.DLNA),
+                            BridgeCastDevice(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY),
+                            BridgeCastDevice(id = "cast-living-room", name = "Living Room", kind = BridgeRendererKind.CAST),
+                        ),
+                    castingTo = BridgeRemoteDevice(id = "cast-living-room", name = "Living Room"),
+                    connectingName = null,
+                    onDisconnect = {},
+                    onCast = {},
+                )
+            }
+        }
+    }
 }
 
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
