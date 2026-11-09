@@ -71,6 +71,13 @@ extension ShotScene {
                 .background(Theme.background)
             )
         },
+        // A release's storage band, its pin failed and its make-local failed.
+        ShotScene(
+            id: "notice-storage-band-failed",
+            size: CGSize(width: 560, height: 260)
+        ) {
+            ShotStage(StorageBandFailureShot())
+        },
         ShotScene(
             id: "notice-looks",
             size: CGSize(width: 480, height: 330)
@@ -154,5 +161,30 @@ extension ShotStage {
                 .environment(images),
             images: images
         ) { fixture.store.upcomingFailure != nil }
+    }
+}
+
+/// The storage band of a release whose download failed.
+private struct StorageBandFailureShot: View {
+    var body: some View {
+        var release = PreviewData.storageRelease(
+            storageState: .onOneDevice,
+            storageActions: [.upload],
+            playability: .playable
+        )
+        release.downloadStatus = .failed(
+            error: "The network connection was lost."
+        )
+        release.makeLocal = .failed(error: "The disk is full.")
+        return StorageStatusBand(
+            release: release,
+            onAction: { _ in },
+            onExport: {},
+            onSaveAs: {}
+        )
+        .frame(width: 560)
+        .background(Theme.background)
+        .environment(OutboxStore(uploadsPaused: false))
+        .environment(PreviewData.downloadStore())
     }
 }
