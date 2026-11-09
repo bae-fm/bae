@@ -23,6 +23,18 @@ public enum StatusTone: Sendable, Equatable {
         }
     }
 
+    /// The glyph's colour: a tone with a glyph has its own icon token, since
+    /// a filled shape wants a different weight than text.
+    public var iconColor: Color {
+        switch self {
+        case .info: Theme.infoIcon
+        case .success: Theme.successIcon
+        case .warning: Theme.warningIcon
+        case .danger: Theme.dangerIcon
+        case .neutral, .accent, .activity: color
+        }
+    }
+
     /// The fill behind the tone's own text.
     public var fill: Color {
         color.opacity(ThemeOpacity.tint)
@@ -40,13 +52,11 @@ public enum StatusTone: Sendable, Equatable {
     }
 }
 
-/// A tone's glyph in the tone's colour; nothing for a tone with no glyph.
-/// Danger is its colour mixed 65% with secondary text: still red, calmer
-/// beside a warning's amber.
+/// A tone's glyph in the tone's icon colour; nothing for a tone with no glyph.
+/// The token carries the calmer danger: still red, quieter beside a warning's
+/// amber.
 public struct StatusGlyph: View {
     private let tone: StatusTone
-    @Environment(\.self)
-    private var environment
 
     public init(_ tone: StatusTone) {
         self.tone = tone
@@ -55,28 +65,8 @@ public struct StatusGlyph: View {
     public var body: some View {
         if let symbol = tone.symbol {
             Image(systemName: symbol)
-                .foregroundStyle(color)
+                .foregroundStyle(tone.iconColor)
         }
-    }
-
-    private var color: Color {
-        guard tone == .danger else { return tone.color }
-        let danger = Theme.danger.resolve(in: environment)
-        let grey = Color.secondary.resolve(in: environment)
-        let share: Float = 0.65
-        return Color(
-            .sRGBLinear,
-            red: Double(
-                danger.linearRed * share + grey.linearRed * (1 - share)
-            ),
-            green: Double(
-                danger.linearGreen * share + grey.linearGreen * (1 - share)
-            ),
-            blue: Double(
-                danger.linearBlue * share + grey.linearBlue * (1 - share)
-            ),
-            opacity: Double(danger.opacity * share + grey.opacity * (1 - share))
-        )
     }
 }
 

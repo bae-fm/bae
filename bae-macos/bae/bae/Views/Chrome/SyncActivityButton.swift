@@ -59,9 +59,8 @@ private struct SyncActivityGlyph: View {
                 WaitingIndicator()
             }
             if needsAttention {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .themeIcon(.small)
-                    .foregroundStyle(StatusTone.warning.color)
+                StatusGlyph(.warning)
+                    .themeIcon(.large)
             }
         }
     }

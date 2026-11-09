@@ -206,6 +206,14 @@ danger = "#B63B3B"
 success = "#2D7447"
 warning = "#8C5D14"
 info = "#2463C7"
+# A status icon in each tone: in light mode lighter and more saturated than the
+# tone, since a filled shape needs less darkness than text; in dark mode the
+# tone, danger mixed toward secondary text (design/system/tokens.json
+# `danger-icon` and the rest).
+dangerIcon = "#DB383D"
+warningIcon = "#C17900"
+infoIcon = "#1380FF"
+successIcon = "#269F5A"
 activity = "#1F7274"
 pinning = "#4553B5"
 hairline = "#1A000000"
@@ -225,6 +233,14 @@ danger = "#FF7B7B"
 success = "#8BCBA4"
 warning = "#E6BE77"
 info = "#87B5FF"
+# A status icon in each tone: in light mode lighter and more saturated than the
+# tone, since a filled shape needs less darkness than text; in dark mode the
+# tone, danger mixed toward secondary text (design/system/tokens.json
+# `danger-icon` and the rest).
+dangerIcon = "#E48E91"
+warningIcon = "#E6BE77"
+infoIcon = "#87B5FF"
+successIcon = "#8BCBA4"
 activity = "#80CCCE"
 pinning = "#A9B8FF"
 hairline = "#1AFFFFFF"
