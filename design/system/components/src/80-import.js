@@ -27,8 +27,8 @@
       : props.state === 'identifying' ? h(MacSpinner, { size: 12 }) : null;
     var line1 = props.folder ? h('div', { className: 'bae-m-irow-folder' }, h(Sym, { name: 'folder', size: 13, className: 'bae-muted' }), h('span', { className: 'bae-mono bae-ellipsis', style: { fontSize: 12 } }, props.folder))
       : h('div', { className: 'bae-m-irow-t' }, h('span', { className: cx('bae-ellipsis', !props.title && 'bae-muted') }, props.title || 'Album title'), h('span', { style: { opacity: props.record ? 1 : 0 } }, h(Sym, { name: 'makeLocal', size: 10, className: 'bae-muted' })));
-    var line2 = props.state === 'importing' ? h('div', { className: 'bae-m-irow-step' }, h('span', null, props.step || 'Reading files...'), h('div', { className: 'bae-m-track', style: { height: 3 } }, h('div', { className: 'bae-accent-bg', style: { width: (Number(props.progress || 0.4) * 100) + '%' } })))
-      : props.state === 'uploading' ? h('div', { className: 'bae-m-irow-step' }, h('span', null, 'Uploading'), h('div', { className: 'bae-m-track', style: { height: 3 } }, h('div', { className: 'bae-activity-bg', style: { width: (Number(props.progress || 0.4) * 100) + '%' } })))
+    var line2 = props.state === 'importing' ? h('div', { className: 'bae-m-irow-step' }, h('span', null, props.step || 'Reading files...'), h('div', { className: 'bae-m-bar', style: { height: 3 } }, h('div', { className: 'bae-accent-bg', style: { width: (Number(props.progress || 0.4) * 100) + '%' } })))
+      : props.state === 'uploading' ? h('div', { className: 'bae-m-irow-step' }, h('span', null, 'Uploading'), h('div', { className: 'bae-m-bar', style: { height: 3 } }, h('div', { className: 'bae-activity-bg', style: { width: (Number(props.progress || 0.4) * 100) + '%' } })))
       : props.error ? h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.error)
       : props.folder ? null : h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.artist);
     return h('div', { className: cx('bae-m-irow', props.grouped && 'bae-m-irow-grouped', props.selected && 'bae-m-irow-selected') },

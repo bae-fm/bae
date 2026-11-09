@@ -106,7 +106,7 @@
       h('span', null, props.releases || '8 releases', props.total ? ' · Total: ' + props.total : ''),
       h('span', { style: { flex: 1 } }),
       props.uploads ? q('uploads', props.uploads, 'Pause uploads') : null,
-      props.pins ? q('pins', props.pins, 'Pause pinning') : null,
+      props.pins ? q('pins', props.pins, 'Pause downloads') : null,
       props.exports ? q('exports', props.exports, 'Pause exports') : null);
   }
   // A release's upload or pin in the inspector: the counts line with Cancel, then bytes, rate and a bar.
@@ -122,7 +122,7 @@
   function MacTransferReadout(props) {
     return h('div', { className: 'bae-m-readout' },
       h('div', { className: 'bae-m-readout-line bae-num' }, h('span', null, props.bytes), h('span', null, props.rate)),
-      h('div', { className: 'bae-m-track' }, h('div', { className: props.kind === 'pin' ? 'bae-pinning-bg' : 'bae-activity-bg', style: { width: (Number(props.progress || 0.3) * 100) + '%' } })));
+      h('div', { className: 'bae-m-bar' }, h('div', { className: props.kind === 'pin' ? 'bae-pinning-bg' : 'bae-activity-bg', style: { width: (Number(props.progress || 0.3) * 100) + '%' } })));
   }
   // One file in the inspector: a mark for queued (dashed), sending or pinning (a ring filling), its name and size.
   function MacFileRow(props) {
@@ -170,28 +170,37 @@
 
   // A popover hanging from a title-bar button, its arrow pointing up at it.
   function MacPopover(props) {
-    return h('div', { className: 'bae-m-popover', style: { width: Number(props.width || 360), top: props.top != null ? Number(props.top) : null, right: props.right != null ? Number(props.right) : null } }, h('span', { className: 'bae-m-popover-arrow' }), props.children);
+    return h('div', { className: 'bae-m-popover', style: { width: Number(props.width || 360), top: props.top != null ? Number(props.top) : null, right: props.right != null ? Number(props.right) : null } }, h('span', { className: 'bae-m-popover-arrow' }), h('div', { className: 'bae-m-popover-body' }, props.children));
   }
-  // The toolbar's Activity panel (BaeKit's SyncActivityList, grown to hold every problem): Needs Attention lists what bae needs the person for, as notices, each with an × that dismisses it from the panel (the problem stays where it's fixed): the caller's own (children, such as a sign-in settings file that's missing or a library that wouldn't close), bae couldn't read sync's status (`error`, its causes behind Details, no button), and sync's own (signed out, a record it can't send) with Open Sync Settings, which closes the panel and opens sync settings. Nothing in the panel retries in place. Then Transfers, or up to date.
+  // The toolbar's Activity panel (BaeKit's SyncActivityList, grown to hold every problem): Needs Attention lists what bae needs the person for, as notices, each with an × that dismisses it from the panel (the problem stays where it's fixed): the caller's own (children), bae couldn't read sync's status (`error`), and sync's own (signed out, a record it can't send) with Open Sync Settings. Nothing in the panel retries in place. Then Transfers, each a line of words, how far it has got and a bar: Syncing changes (no count, its bar moves), Uploading (`uploads`), Pinning (`pins`), Making local (`makingLocal`), each counted in releases done of the batch ("1 of 3 releases"), its bar filled by the bytes done; what holds the uploads or the download queue (`uploadsWait`, `downloadsWait`: Paused, Waiting for network) stands in place of the count. Or up to date.
   function MacActivity(props) {
     var sec = function (title, body) { return h(MacSection, { title: title }, h(MacBox, null, body)); };
-    // Every row of the panel's boxes has the same inset; a row that isn't a notice takes a quiet notice's height.
+    // Every row of the panel's boxes has the same inset; a row in the problems' box without a glyph starts on the problems' text edge (MacItem's empty leading column). Transfers is its own box, so its lines start at the box's inset.
+    var problemsListed = !!(kids(props.children).length || props.error || props.attention);
+    var edge = function (body) { return problemsListed ? h(MacItem, null, body) : body; };
     var row = function (key, body) { return h('div', { key: key, className: 'bae-m-actrow' }, body); };
-    var line = function (key, lead, text, sub) { return row(key, h('div', { className: 'bae-m-actline' }, h(MacItem, { lead: lead }, h('div', null, text), sub ? h('div', { className: 'bae-m-actrow-sub bae-num' }, sub) : null))); };
-    var icon = function (name) { return h(Sym, { name: name, size: 15, className: 'bae-accent' }); };
+    var line = function (key, text, sub) { return row(key, h('div', { className: 'bae-m-actline' }, edge(h('div', null, h('div', null, text), sub ? h('div', { className: 'bae-m-actrow-sub' }, sub) : null)))); };
+    // A transfer: what it does, then how far (done of total, or what holds the queue), then a bar; syncing has no count, so its bar moves.
+    var xfer = function (key, label, count, progress) {
+      return row(key, h('div', { className: 'bae-m-actline' },
+        h('div', { className: 'bae-m-actxfer' }, h('span', null, label), count ? h('span', { className: 'bae-muted bae-num' }, count) : null),
+        h('div', { className: 'bae-progress-track bae-m-actxfer-bar' }, h('div', { className: cx('bae-progress-fill', progress == null && 'bae-progress-moving'), style: progress == null ? null : { width: (Number(progress) * 100) + '%' } }))));
+    };
     var out = [];
     var problems = kids(props.children).map(function (p, i) { return row('c' + i, p); }).concat([
       props.error ? row('e', h(MacNotice, { quiet: true, dismiss: true, tone: 'danger', title: props.error })) : null,
       props.attention ? row('f', h(MacNotice, { quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open Sync Settings', buttons: 'below' })) : null,
-      props.attention && props.record ? line('r', null, h('span', { className: 'bae-strong' }, props.record), props.reason) : null].filter(Boolean));
+      props.attention && props.record ? line('r', h('span', { className: 'bae-strong' }, props.record), props.reason) : null].filter(Boolean));
     if (problems.length) out.push(h(React.Fragment, { key: 'a' }, sec('Needs Attention', problems)));
-    if (props.syncing || props.uploads || props.downloads) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
-      props.syncing ? line('s', icon('sync'), 'Syncing library changes…') : null,
-      props.uploads ? line('u', icon('up'), props.uploads, props.uploadBytes) : null,
-      props.downloads ? line('d', icon('down'), props.downloads) : null].filter(Boolean))));
+    if (props.syncing || props.uploads || props.pins || props.makingLocal) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
+      props.syncing ? xfer('s', 'Syncing changes', null, null) : null,
+      props.uploads ? xfer('u', 'Uploading', props.uploadsWait || props.uploads, props.uploadProgress != null ? props.uploadProgress : 0.4) : null,
+      props.pins ? xfer('p', 'Pinning', props.downloadsWait || props.pins, props.pinProgress != null ? props.pinProgress : 0.3) : null,
+      props.makingLocal ? xfer('m', 'Making local', props.downloadsWait || props.makingLocal, props.makeLocalProgress != null ? props.makeLocalProgress : 0.2) : null].filter(Boolean))));
     if (!out.length) out.push(h(React.Fragment, { key: 'i' }, sec(null, row('i', h('div', { className: 'bae-m-actline bae-muted' }, 'Everything is up to date.')))));
     return h('div', { className: 'bae-m-actlist' }, out);
   }
+
 
 
   // ---- Android: sync activity and Downloads ----
@@ -222,11 +231,17 @@
 
   // The Activity sheet (SyncActivity.kt's, grown to hold every problem): the title, Needs Attention with the caller's notices (children), bae couldn't read sync's status (no button), and sync's own with Open Sync Settings; nothing retries in place; then the transfers (the downloads line opens Downloads), or up to date.
   function AndroidActivity(props) {
-    var t = function (s, c) { return h('div', { className: cx(c || 'bae-a-act-line', 'bae-a-act-text') }, s); };
     var problems = props.children || props.error || props.attention;
+    // Only the Needs Attention group starts on its text edge, past the glyphs; the title and the transfers are their own groups, at the sheet's edge.
+    var t = function (s, c) { return h('div', { className: c || 'bae-a-act-line' }, s); };
+    var xfer = function (key, label, count, progress, tap) {
+      return h('div', { key: key, className: cx('bae-a-actxfer', tap && 'bae-a-act-tap') },
+        h('div', { className: 'bae-a-actxfer-line' }, h('span', null, label), count ? h('span', { className: 'bae-muted' }, count) : null),
+        h('div', { className: 'bae-progress-track' }, h('div', { className: cx('bae-progress-fill', progress == null && 'bae-progress-moving'), style: progress == null ? null : { width: (Number(progress) * 100) + '%' } })));
+    };
     return h('div', { className: 'bae-a-act' },
-      // Every line but the notices starts where the notices' text does, so their icons stand in a column of their own.
-      h('div', { className: 'bae-a-act-title bae-a-act-text' }, 'Activity'),
+      // While problems are listed, every line but the notices starts where the notices' text does, so their icons stand in a column of their own.
+      h('div', { className: 'bae-a-act-title' }, 'Activity'),
       // Each problem is a quiet notice, a line between rows.
       problems ? h('div', { className: 'bae-a-act-block' }, h('div', { className: 'bae-a-act-text' }, h(AndroidEyebrow, null, 'Needs Attention')),
         h('div', { className: 'bae-a-actproblems' }, divided(kids(props.children).concat([
@@ -234,10 +249,11 @@
           props.attention ? h(AndroidNotice, { key: 'f', quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open Sync Settings', buttons: 'below' }) : null,
           props.attention && props.record ? h('div', { key: 'r' }, h('div', { className: 'bae-strong' }, props.record), h(AndroidNotice, { quiet: true, tone: 'neutral', title: props.reason })) : null].filter(Boolean)))),
         h('div', { className: 'bae-divider bae-a-act-text-rule' })) : null,
-      props.syncing ? t('Syncing library changes…') : null,
-      props.uploads ? h('div', null, t(props.uploads), props.uploadBytes ? t(props.uploadBytes, 'bae-a-act-sub') : null) : null,
-      props.downloads ? h('div', { className: 'bae-a-act-tap' }, t(props.downloads)) : null,
-      !(problems || props.syncing || props.uploads || props.downloads) ? t('Everything is up to date.', 'bae-a-act-sub') : null);
+      // As on Mac: each transfer is its words, how far it has got, and a bar; the pinning line opens the Pinning screen.
+      props.syncing ? xfer('s', 'Syncing changes', null, null) : null,
+      props.uploads ? xfer('u', 'Uploading', props.uploadsWait || props.uploads, props.uploadProgress != null ? props.uploadProgress : 0.4) : null,
+      props.pins ? xfer('p', 'Pinning', props.downloadsWait || props.pins, props.pinProgress != null ? props.pinProgress : 0.3, true) : null,
+      !(problems || props.syncing || props.uploads || props.pins) ? t('Everything is up to date.', 'bae-a-act-sub') : null);
   }
   function AndroidSegmentedButtons(props) {
     var o = list(props.options);

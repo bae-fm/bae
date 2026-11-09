@@ -293,9 +293,9 @@ export declare function MacErrorDetails(props: { details: string }): React.React
 /** MacErrorDetails on Android: a copy icon button at the corner; in an AndroidDialog. */
 export declare function AndroidErrorDetails(props: { details: string }): React.ReactElement;
 export declare function MacPopover(props: { width?: number; top?: number; right?: number; children?: React.ReactNode }): React.ReactElement;
-export declare function MacActivity(props: { children?: React.ReactNode; attention?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string }): React.ReactElement;
+export declare function MacActivity(props: { children?: React.ReactNode; attention?: string; record?: string; reason?: string; error?: string; syncing?: boolean; uploads?: string; uploadProgress?: number; uploadsWait?: string; pins?: string; pinProgress?: number; makingLocal?: string; makeLocalProgress?: number; downloadsWait?: string }): React.ReactElement;
 export declare function AndroidNotice(props: NoticeProps): React.ReactElement;
-export declare function AndroidActivity(props: { children?: React.ReactNode; attention?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string }): React.ReactElement;
+export declare function AndroidActivity(props: { children?: React.ReactNode; attention?: string; record?: string; reason?: string; error?: string; syncing?: boolean; uploads?: string; uploadProgress?: number; uploadsWait?: string; pins?: string; pinProgress?: number; downloadsWait?: string }): React.ReactElement;
 export declare function AndroidSegmentedButtons(props: { options: string; selected?: string }): React.ReactElement;
 export declare function AndroidDownloadsBar(props: { failed?: boolean; paused?: boolean; idle?: boolean }): React.ReactElement;
 export declare function AndroidDownloadRow(props: { title?: string; detail?: string; state?: 'queued' | 'active' | 'failed'; progress?: number; bytes?: string }): React.ReactElement;

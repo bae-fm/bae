@@ -1958,10 +1958,12 @@ Other devices go on showing the release without playing it.
   streams.
 - **Transfers on the Mac.** Settings lists Transfers after Playback in its
   sidebar, and its pane holds Pause uploads and
-  Pause pinning, then Uploads at once and Pins at once, how many files each
-  moves at a time. Either
+  Pause downloads, then Uploads at once and Downloads at once, how many files
+  each moves at a time. Downloads are pins and make-locals, which share one
+  queue so they contend for the same downloads; the pause and the limit cover
+  both, and nothing else counts or names one as the other. Either
   pause lasts across restarts, and while either holds, the sidebar says Paused
-  beside Transfers with ↑ for uploads, ↓ for pinning or ⇅ for both. A paused
+  beside Transfers with ↑ for uploads, ↓ for downloads or ⇅ for both. A paused
   file keeps its place; changes to the library still sync. Neither limits
   speed.
 - **Transfers on Android.** Settings lists Appearance, Library, Playback,
@@ -3083,10 +3085,19 @@ send it nothing. What needs the person comes first, under
 storage refused or couldn't reach leaves the connection's record, a blocked
 slot and a failed operation of coven's own have theirs, and the failure again
 beside its record would read as a second problem. Then one row per
-thing moving: syncing, while coven's sync state says so (a pass moving, or a
-file being sent or downloaded), the uploads ("2
-uploading · 10 queued to upload", with the bytes their providers confirmed), and
-pinning ("1 pinning · 2 queued to pin"), which on the phones opens the Pinning screen. With nothing
+thing moving, each its words, how far it has got and a bar, with no icon:
+Syncing changes, while coven's sync state says so (a pass moving, or a file
+being sent or downloaded), with no count, so its bar moves; Uploading
+("1 of 2 releases"); Pinning ("1 of 3 releases"), which on the phones opens
+the Pinning screen; and on the desktop Making local on a line of its own ("0 of
+1 release"): a make-local changes where files live for every device, while a
+pin only keeps a copy on this one. Every count is in releases, a release done
+once all its files are, and every bar is filled by the bytes of the batch done
+(for uploads, the bytes the providers confirmed), so a bar moves while a
+release's files transfer and its count waits. A batch is everything the
+queue has held since it was last empty, so a count only grows, and it starts
+over once the queue empties. A queue's hold (Paused, Waiting for network)
+stands in place of its count. With nothing
 to show it says everything is up to date. *Retry now* shows only while pressing
 it would run a pass and a failure that pass can clear holds work back. coven
 publishes what a retry made now would do, decided as it answers the retry

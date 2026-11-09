@@ -3404,7 +3404,7 @@
    "y": 1656
   },
   "MacWelcomeInfo.dc.html": {
-   "h": 600,
+   "h": 680,
    "page": "welcome",
    "title": "macOS: Welcome: a library’s details",
    "w": 690,
@@ -3412,7 +3412,7 @@
    "y": 1656
   },
   "MacWelcomeInfoUnsent.dc.html": {
-   "h": 600,
+   "h": 680,
    "page": "welcome",
    "title": "macOS: Welcome: a library’s details, unsent changes",
    "w": 690,
@@ -3599,7 +3599,8 @@
   "row-logo-forms",
   "row-logo-icons",
   "row-logo-accents",
-  "code-logo"
+  "code-logo",
+  "activity-progress"
  ],
  "notes": {
   "canvas-key-library": {
@@ -3864,7 +3865,7 @@
    "fill": "blue",
    "page": "welcome",
    "size": 24,
-   "text": "What looks unintended:\n- A half-typed code shows “Something went wrong with your settings.” while you type.\n- File ▸ Restore from Code… opens a screen titled Add device.\n- After a menu-opened Join or Restore, Back and a failed open land on that screen with the failure hidden.",
+   "text": "What looks unintended:\n- A half-typed code shows “Something went wrong with your settings.” while you type.\n- After a menu-opened Join or Restore, Back and a failed open land on that screen with the failure hidden.",
    "w": 460,
    "x": 5880,
    "y": 9716
@@ -4827,6 +4828,15 @@
    "w": 412,
    "x": 2952,
    "y": 2612
+  },
+  "activity-progress": {
+   "fill": "blue",
+   "page": "storage",
+   "size": 24,
+   "w": 520,
+   "x": 5120,
+   "y": 2520,
+   "text": "How a transfer line counts (macOS and Android):\n- The count is releases done of the batch: “1 of 3 releases”. A release counts as done once all its files are.\n- The bar is bytes, not releases: the bytes done of the whole batch’s bytes. It moves while a release’s files transfer, even while the count stays put.\n- Uploads count the bytes the provider confirmed (coven’s upload progress); pins and make-locals count the bytes downloaded and verified.\n- A batch is everything the queue has held since it was last empty, so both the count’s total and the bar’s total only grow, and start over once the queue empties.\n- Syncing changes has no count, so its bar moves."
   }
  },
  "order": [
