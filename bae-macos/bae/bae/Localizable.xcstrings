@@ -24235,7 +24235,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Access key"
+            "value" : "Chiave di accesso"
           }
         },
         "ja" : {
@@ -48156,7 +48156,7 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Export…"
+            "value" : "Exportovat…"
           }
         },
         "da" : {
@@ -63019,7 +63019,7 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OK"
+            "value" : "موافق"
           }
         },
         "bg" : {
@@ -63061,7 +63061,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OK"
+            "value" : "Aceptar"
           }
         },
         "fi" : {
@@ -63079,13 +63079,13 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OK"
+            "value" : "אישור"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OK"
+            "value" : "U redu"
           }
         },
         "hu" : {
@@ -63109,7 +63109,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OK"
+            "value" : "확인"
           }
         },
         "nb" : {
@@ -63163,7 +63163,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OK"
+            "value" : "Tamam"
           }
         },
         "uk" : {
@@ -63175,13 +63175,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OK"
+            "value" : "好"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OK"
+            "value" : "好"
           }
         }
       }
@@ -78028,7 +78028,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Secret key"
+            "value" : "Chiave segreta"
           }
         },
         "ja" : {
