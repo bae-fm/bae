@@ -63,9 +63,10 @@
       : h(MSymbol, { name: STATUS_MATERIAL[tone], size: size, filled: true, className: cls, fill: 'currentColor' });
   }
   // The tinted box MacNotice and AndroidNotice draw in: its text the size of the screen it sits in (13 on a Mac, 14 on Android); `icon` (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. One glyph drawing serves both apps: the SF Symbol and Material's filled circle look alike.
-  function NoticeBox(tone, icon, body) {
+  // `quiet` (with the platform's class, such as bae-m-notice-quiet) draws it as a row: no fill, the screen's text, the glyph in its tone.
+  function NoticeBox(tone, icon, body, quiet) {
     var glyph = icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac' })) : null;
-    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, glyph && 'bae-notice-with-icon') }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, body) : body);
+    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, glyph && 'bae-notice-with-icon', quiet && 'bae-notice-quiet', quiet) }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, body) : body);
   }
   // The notice's words: a title (bold only under a subtitle), the subtitle saying what to do, or the caller's own children.
   function noticeWords(props) {

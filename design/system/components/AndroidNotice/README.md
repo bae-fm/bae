@@ -10,6 +10,7 @@ Android's notice: a tinted box in its tone, the tone's glyph at the top left. It
 | `details` | The error and its causes, one a line; with it there is a Details. |
 | `open` | Details open. |
 | `action` | The label of a text button (Retry) at the box's right, level with the title. |
+| `quiet` | Drawn as a row: no fill, the screen's text, the glyph in its tone. For a list of problems, such as the Activity panel's Needs Attention. |
 | `icon` | On unless `false`. |
 | children | Other content, in place of or after the title. |
 
