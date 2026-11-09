@@ -9,7 +9,8 @@ Android's notice: a tinted box in its tone, the tone's glyph at the top left. It
 | `subtitle` | What to do about it. |
 | `action` | The label of a text button (Retry) on its own line at the end, its label in line with the text. |
 | `quiet` | Drawn as a row: no fill, the screen's text, the glyph in its tone in its outline form. For a list of problems, such as the Activity panel's Needs Attention. |
-| `dismiss` | An × at the right, level with the title: takes the notice away without fixing what it reports. For the Activity panel's problems, each of which still shows where it's fixed (such as Settings → Sync). |
+| `dismiss` | An × at the right, level with the title: takes the notice away without fixing what it reports. For the Activity panel's problems, each of which still shows where it's fixed (such as Settings → Sync). `'button'` makes it a Dismiss text button left of the action instead, for a notice whose action is the other choice (the queue's Retry). |
+| `outlined` | Quiet, in a hairline frame, so it stands apart from the rows around it (the queue's tail). |
 | `icon` | On unless `false`. |
 | children | Other content, in place of or after the title. |
 

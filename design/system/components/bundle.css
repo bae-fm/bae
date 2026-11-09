@@ -32,6 +32,10 @@
 .bae-notice.bae-notice-quiet { background: none; border-radius: 0; }
 .bae-m-notice-quiet { padding: 10px 12px; }
 .bae-a-notice-quiet { padding: 10px 0; }
+/* outlined: quiet, in a hairline frame, so it stands apart from the rows around it. */
+.bae-notice.bae-notice-outlined { border-radius: var(--radius-card); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
+.bae-m-notice-quiet.bae-notice-outlined { padding: 12px; }
+.bae-a-notice-quiet.bae-notice-outlined { padding: 10px 16px; }
 /* On a tint, greys and grey fills are the primary text made see-through, so they take the tint's colour. */
 .bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
 .bae-notice:not(.bae-notice-quiet) .bae-m-btn-secondary { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
@@ -40,12 +44,14 @@
 .bae-m-notice { position: relative; display: flex; flex-direction: column; gap: 4px; }
 .bae-m-notice-top { display: flex; align-items: flex-start; gap: 12px; }
 .bae-m-notice-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.bae-m-notice-action { align-self: flex-start; margin-top: 4px; }
+.bae-m-notice-action { align-self: flex-start; margin-top: 4px; display: flex; gap: var(--space-compact); }
+/* A borderless Dismiss leading the row: its words start in line with the text. */
+.bae-m-notice-action > .bae-m-btn-borderless:first-child { margin-left: calc(-1 * var(--space-inline)); }
 .bae-m-notice-dismiss { flex: none; margin: -6px -8px -6px -8px; }
 .bae-a-notice { display: flex; flex-direction: column; gap: 2px; line-height: 20px; }
 .bae-a-notice-top { display: flex; align-items: flex-start; gap: 8px; }
 .bae-a-notice-words { flex: 1; min-width: 0; }
-.bae-a-notice-action { align-self: flex-start; margin: 0 0 -8px -12px; }
+.bae-a-notice-action { align-self: flex-start; margin: 0 0 -8px -12px; display: flex; }
 .bae-a-notice-dismiss { flex: none; margin: -14px -14px -14px -8px; }
 /* A toned notice has its own fill (solid in dark, where a see-through tint reads grey or brown); its text, accent and, in dark, its glyph are on-notice. */
 .bae-notice.bae-tone-info:not(.bae-notice-quiet), .bae-notice.bae-tone-success:not(.bae-notice-quiet), .bae-notice.bae-tone-warning:not(.bae-notice-quiet), .bae-notice.bae-tone-danger:not(.bae-notice-quiet) { color: var(--on-notice); --text-primary: var(--on-notice); --accent: var(--notice-accent); }
