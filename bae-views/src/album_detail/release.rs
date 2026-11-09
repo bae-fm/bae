@@ -102,8 +102,9 @@ pub struct ReleaseUpload {
     /// How many of the release's files are uploading, queued and stored,
     /// each left out at zero.
     pub summary: Vec<bae_transfers::TransferCount>,
-    /// Why its waiting files are not moving, while none is being sent.
-    pub wait: Option<bae_records::UploadWait>,
+    /// The name of the file whose missing original its move waits for,
+    /// while none of its files is being sent.
+    pub missing: Option<String>,
 }
 
 impl ReleaseUpload {
@@ -113,11 +114,11 @@ impl ReleaseUpload {
         Self {
             summary: bae_transfers::transfer_summary([
                 ("core.queue.uploading", progress.uploading, TransferStage::Moving),
-                ("core.queue.queued", progress.queued, TransferStage::Waiting),
+                ("core.queue.queued_to_upload", progress.queued, TransferStage::Waiting),
                 ("core.queue.stored", raw.stored, TransferStage::Done),
             ]),
             progress,
-            wait: raw.wait,
+            missing: raw.missing,
         }
     }
 }

@@ -32,7 +32,7 @@ struct ReleaseStorageSheetTests {
                 activity: .uploading
             ),
             summary: [],
-            wait: nil
+            missing: nil
         )
         let (reads, deliver) = AsyncStream.makeStream(of: BridgeRelease.self)
         let delivered = Delivered(reads)

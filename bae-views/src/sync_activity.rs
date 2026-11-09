@@ -3,6 +3,7 @@
 
 use super::*;
 use bae_diagnostics::UiError;
+use bae_records::records::queued_uploads::{upload_queue_wait_in_row, UPLOAD_QUEUE_WAIT_COLUMNS};
 use bae_sync_status::{PendingItem, SyncStatusRows, SyncStatusSnapshot};
 use bae_transfers::ReleaseQueueCounts;
 use bae_transfers::ReleaseQueueProgress;
@@ -22,55 +23,60 @@ pub struct SyncActivity {
     /// coven's sync state is syncing: a pass is moving, or a file is being
     /// sent or downloaded.
     pub syncing: bool,
-    /// The files this device is sending now, if any.
-    pub uploads: Option<UploadsInFlight>,
-    /// The releases this device is downloading to keep offline, while any is.
-    pub downloads: Option<DownloadsInFlight>,
+    /// The files in this device's upload queue, while any waits or is sent.
+    pub uploads: Option<UploadQueueActivity>,
+    /// The releases in this device's download queue, while any waits or is
+    /// downloading.
+    pub downloads: Option<DownloadQueueActivity>,
     /// Retry now is offered: a retry would run a pass, and a failure that
     /// pass can clear holds work back (`SyncStatusSnapshot::retry_offered`).
     pub retry_offered: bool,
 }
 
-/// The uploads this device is sending, out of its whole queue.
+/// The files in this device's upload queue.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UploadsInFlight {
+pub struct UploadQueueActivity {
     /// Files being sent now.
     pub sending: u32,
     /// Files queued behind them.
     pub waiting: u32,
+    /// What holds the queue back.
+    pub wait: Option<bae_records::UploadQueueWait>,
 }
 
 /// How many files wait in this device's upload queue, how many of them this
-/// process is sending now, and whether the person paused uploads, read from
-/// coven's queue in one query.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// process is sending now, and what holds the queue back, read from coven's
+/// queue in one query.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UploadQueueCounts {
     pub queued: u32,
     pub sending: u32,
-    pub paused: bool,
+    pub wait: Option<bae_records::UploadQueueWait>,
 }
 
-/// The releases being downloaded to keep offline.
+/// The releases in this device's download queue.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DownloadsInFlight {
+pub struct DownloadQueueActivity {
     /// Releases downloading now.
     pub active: u32,
     /// Releases queued behind them.
     pub queued: u32,
+    /// What holds the queue back.
+    pub wait: Option<bae_transfers::QueueWait>,
 }
 
-impl UploadsInFlight {
+impl UploadQueueActivity {
     /// The list's line: how many files are being sent, then how many wait
     /// behind them, a zero dropped.
     pub fn summary_parts(&self) -> Vec<CountLabel> {
         ReleaseQueueProgress { queued: self.waiting, active: self.sending, failed: 0 }
-            .summary_parts("core.queue.uploading")
+            .summary_parts("core.queue.uploading", "core.queue.queued_to_upload")
     }
 }
 
-impl DownloadsInFlight {
-    /// The list's line: how many releases are downloading, then how many
-    /// wait behind them, a zero dropped.
+impl DownloadQueueActivity {
+    /// The list's line: how many releases are pinning, then how many wait
+    /// behind them, a zero dropped.
     pub fn summary_parts(&self) -> Vec<CountLabel> {
         ReleaseQueueProgress { queued: self.queued, active: self.active, failed: 0 }
             .download_summary_parts()
@@ -85,15 +91,18 @@ impl SyncActivity {
         uploads: &UploadQueueCounts,
         downloads: &ReleaseQueueCounts,
     ) -> Self {
-        let uploads = (uploads.sending > 0).then_some(UploadsInFlight {
+        let uploads = (uploads.queued > 0).then(|| UploadQueueActivity {
             sending: uploads.sending,
-            waiting: if uploads.paused { 0 } else { uploads.queued - uploads.sending },
+            waiting: uploads.queued - uploads.sending,
+            wait: uploads.wait.clone(),
         });
         let download_total = &downloads.total;
-        let downloads = (download_total.active > 0).then_some(DownloadsInFlight {
-            active: download_total.active,
-            queued: if downloads.paused { 0 } else { download_total.queued },
-        });
+        let downloads =
+            (download_total.active + download_total.queued > 0).then(|| DownloadQueueActivity {
+                active: download_total.active,
+                queued: download_total.queued,
+                wait: downloads.wait,
+            });
         Self {
             failure: status.shown_failure(),
             attention: status.pending.clone(),
@@ -105,10 +114,12 @@ impl SyncActivity {
     }
 
     /// Bytes are moving: something uploads or downloads. The indicator
-    /// spins while they do. A pass alone doesn't count: one runs every half
-    /// minute while idle, and would blink the indicator for nothing.
+    /// spins while they do, not while a queue only holds work. A pass alone
+    /// doesn't count: one runs every half minute while idle, and would blink
+    /// the indicator for nothing.
     pub fn moving(&self) -> bool {
-        self.uploads.is_some() || self.downloads.is_some()
+        self.uploads.as_ref().is_some_and(|uploads| uploads.sending > 0)
+            || self.downloads.as_ref().is_some_and(|downloads| downloads.active > 0)
     }
 
     /// Something needs the person: sync failed, or a pending record waits
@@ -153,23 +164,26 @@ fn sync_activity(state: coven::SyncStatus, rows: SyncActivityRows) -> SyncActivi
 /// The SQL creating the count of queued files and the triggers that keep it.
 pub(super) const SQL: &str = include_str!("sync_activity.sql");
 
-/// The upload queue's counts: every queued file, as `upload_queue_count`
-/// keeps it, those being sent, and whether uploads are paused, each read in
-/// one row.
-const UPLOAD_QUEUE_COUNTS: &str = "SELECT \
-     (SELECT queued FROM upload_queue_count), \
-     (SELECT COUNT(*) FROM coven_sending), \
-     (SELECT paused FROM coven_upload_pause)";
-
 /// How many files wait in this device's upload queue, how many of them this
-/// process is sending now, and whether uploads are paused. The bytes the
+/// process is sending now, and what holds the queue back. The bytes the
 /// files move are not read, so a confirmed part reruns nothing.
 fn upload_queue_counts_on(
     sql: &coven::SqlReadContext<'_>,
 ) -> Result<UploadQueueCounts, bae_store::DbError> {
-    Ok(sql.query_row(UPLOAD_QUEUE_COUNTS, [], |row| {
-        Ok(UploadQueueCounts { queued: row.get(0)?, sending: row.get(1)?, paused: row.get(2)? })
-    })?)
+    Ok(sql.query_row(
+        &format!(
+            "SELECT (SELECT queued FROM upload_queue_count) AS uploads_queued, \
+                 {UPLOAD_QUEUE_WAIT_COLUMNS}"
+        ),
+        [],
+        |row| {
+            Ok(UploadQueueCounts {
+                queued: row.get("uploads_queued")?,
+                sending: bae_store::read::count_column(row, "uploads_sending")?,
+                wait: upload_queue_wait_in_row(row)?,
+            })
+        },
+    )?)
 }
 
 impl LibraryViews {

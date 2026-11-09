@@ -1,5 +1,6 @@
 package fm.bae.app.ui.downloads
 
+import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,7 @@ import fm.bae.app.countLabelsText
 import fm.bae.app.data.DownloadPageStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LiveValue
+import fm.bae.app.queueWaitText
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -44,10 +46,10 @@ import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import kotlinx.coroutines.flow.distinctUntilChanged
-import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadState
+import uniffi.bae_bridge.BridgeQueueWait
 
 /** The download queue: each pin's progress, pause and retry for the queue, and cancel per item. */
 @Composable
@@ -59,6 +61,8 @@ internal fun DownloadsScreen(
     val config by session.configStore.config.collectAsState()
     // A failed read leaves no queue known to be current, so nothing acts on one.
     val counts = (state as? LiveValue.Current)?.value
+    val context = LocalContext.current
+    val paused = counts?.wait == BridgeQueueWait.PAUSED
     val page = session.browserPages.downloads
     DisposableEffect(page) {
         page.activate(Unit)
@@ -66,14 +70,14 @@ internal fun DownloadsScreen(
     }
     Column(modifier = Modifier.fillMaxSize()) {
         DownloadsTopBar(
-            paused = counts?.paused == true,
+            paused = paused,
             hasDownloads = counts != null && counts.total.queued + counts.total.active + counts.total.failed > 0u,
             hasFailures = counts != null && counts.total.failed > 0u,
             onBack = onBack,
             onPauseToggle = {
-                counts?.let {
+                if (counts != null) {
                     session.messages.perform("pause or resume downloads") {
-                        session.appHandle.setDownloadsPaused(!it.paused)
+                        session.appHandle.setDownloadsPaused(!paused)
                     }
                 }
             },
@@ -88,7 +92,7 @@ internal fun DownloadsScreen(
         DownloadsBody(
             session = session,
             state = state,
-            summaryParts = counts?.summaryParts.orEmpty(),
+            summary = counts?.let { queueSummaryText(context, it) }.orEmpty(),
             page = page,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
@@ -103,7 +107,7 @@ internal fun DownloadsScreen(
 private fun DownloadsBody(
     session: OpenLibrary,
     state: LiveValue<BridgeDownloadCounts>,
-    summaryParts: List<BridgeCountLabel>,
+    summary: String,
     page: DownloadPageStore,
     modifier: Modifier,
 ) {
@@ -140,7 +144,7 @@ private fun DownloadsBody(
                 val listState = rememberLazyListState()
                 ReportVisibleDownloads(page, listState)
                 DownloadsList(
-                    summaryParts = summaryParts,
+                    summary = summary,
                     count = page.totalCount,
                     row = { index -> page.rows[index] },
                     downloads = session.downloadStore,
@@ -206,10 +210,20 @@ private fun DownloadsTopBar(
     }
 }
 
+/** The queue's counts, then what holds it back, joined with " · ". */
+private fun queueSummaryText(
+    context: Context,
+    counts: BridgeDownloadCounts,
+): String =
+    listOfNotNull(
+        context.countLabelsText(counts.summaryParts).ifEmpty { null },
+        counts.wait?.let(context::queueWaitText),
+    ).joinToString(" · ")
+
 /** The queue's summary, then its [count] entries in the order queued, each drawn once [row] has read it. */
 @Composable
 private fun DownloadsList(
-    summaryParts: List<BridgeCountLabel>,
+    summary: String,
     count: Int,
     row: (Int) -> BridgeDownloadOp?,
     downloads: DownloadStore,
@@ -217,10 +231,8 @@ private fun DownloadsList(
     onCancel: (String) -> Unit,
     onRetry: (String) -> Unit,
 ) {
-    val context = LocalContext.current
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         item(key = "summary") {
-            val summary = context.countLabelsText(summaryParts)
             if (summary.isNotEmpty()) {
                 Text(
                     text = summary,
@@ -259,7 +271,7 @@ private fun DownloadsListPreview() {
                 ),
             )
         DownloadsList(
-            summaryParts = emptyList(),
+            summary = "",
             count = rows.size,
             row = rows::getOrNull,
             downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-1"),

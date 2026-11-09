@@ -43,13 +43,6 @@ CREATE TABLE IF NOT EXISTS download_queue (
 CREATE UNIQUE INDEX IF NOT EXISTS download_queue_active
     ON download_queue (state) WHERE state = 'active';
 
--- The entries a queued one waits behind, counted by position: a release's
--- download step says how many entries ahead of it have not failed
--- (`download_entry_sql`), and the count walks these positions alone instead
--- of reading every row ahead of it whole.
-CREATE INDEX IF NOT EXISTS download_queue_ahead
-    ON download_queue (position) WHERE state <> 'failed';
-
 CREATE TRIGGER IF NOT EXISTS download_queue_order_added AFTER INSERT ON download_queue
 BEGIN
     UPDATE release_queue_versions SET version = version + 1 WHERE source = 'download_queue';

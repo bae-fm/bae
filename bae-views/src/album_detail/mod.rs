@@ -166,15 +166,10 @@ pub fn available_storage_actions(
 pub enum ReleaseDownloadStatus {
     /// Kept offline, and no download in flight.
     Downloaded,
-    /// Waiting, with `ahead` entries before it that have not failed.
-    Queued {
-        ahead: u32,
-        wait: Option<bae_transfers::QueueWait>,
-    },
+    /// Waiting its turn.
+    Queued,
     /// Bytes are arriving; how many is the release's download transfer.
-    Downloading {
-        wait: Option<bae_transfers::QueueWait>,
-    },
+    Downloading,
     Failed {
         error: String,
     },
@@ -190,11 +185,11 @@ pub enum ReleaseDownloadStatus {
 /// queue, when it is a make-local.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MakeLocalStatus {
-    /// Waiting, with `ahead` entries before it that have not failed.
-    Queued { ahead: u32, wait: Option<bae_transfers::QueueWait> },
+    /// Waiting its turn.
+    Queued,
     /// Downloading its files into the person's folder. How many bytes is the
     /// release's download transfer.
-    Making { wait: Option<bae_transfers::QueueWait> },
+    Making,
     /// Stopped by its error, until retried.
     Failed { error: String },
 }
@@ -210,10 +205,8 @@ pub fn release_make_local_status(
         return None;
     };
     Some(match step {
-        DownloadStep::Queued { ahead, wait } => {
-            MakeLocalStatus::Queued { ahead: *ahead, wait: *wait }
-        }
-        DownloadStep::Running { wait } => MakeLocalStatus::Making { wait: *wait },
+        DownloadStep::Queued => MakeLocalStatus::Queued,
+        DownloadStep::Running => MakeLocalStatus::Making,
         DownloadStep::Failed { error } => MakeLocalStatus::Failed { error: error.clone() },
     })
 }
@@ -237,10 +230,8 @@ pub fn release_download_status(
 
     match download {
         Some(DownloadEntry { kind: DownloadKind::Pin, step }) => Some(match step {
-            DownloadStep::Queued { ahead, wait } => {
-                ReleaseDownloadStatus::Queued { ahead: *ahead, wait: *wait }
-            }
-            DownloadStep::Running { wait } => ReleaseDownloadStatus::Downloading { wait: *wait },
+            DownloadStep::Queued => ReleaseDownloadStatus::Queued,
+            DownloadStep::Running => ReleaseDownloadStatus::Downloading,
             DownloadStep::Failed { error } => {
                 ReleaseDownloadStatus::Failed { error: error.clone() }
             }

@@ -59,11 +59,43 @@ pub struct ReleaseQueueProgress {
     pub failed: u32,
 }
 
-/// How many entries a queue holds in each phase, and whether it is paused.
+/// What keeps a queue from taking its next entry. A pause comes before the
+/// network: a paused queue reads Paused whatever the network does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QueueWait {
+    /// The person paused the queue.
+    Paused,
+    /// The device has no usable network, as coven says.
+    Offline,
+}
+
+impl QueueWait {
+    /// What holds a queue that is `paused` (or not) when coven says the
+    /// network is `network_usable` (`None` when it cannot tell, which holds
+    /// nothing back).
+    pub fn of(paused: bool, network_usable: Option<bool>) -> Option<Self> {
+        if paused {
+            Some(Self::Paused)
+        } else if network_usable == Some(false) {
+            Some(Self::Offline)
+        } else {
+            None
+        }
+    }
+}
+
+/// How many entries a queue holds in each phase, and what holds it back.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ReleaseQueueCounts {
     pub total: ReleaseQueueProgress,
-    pub paused: bool,
+    pub wait: Option<QueueWait>,
+}
+
+impl ReleaseQueueCounts {
+    /// Whether the person paused the queue.
+    pub fn paused(&self) -> bool {
+        self.wait == Some(QueueWait::Paused)
+    }
 }
 
 /// One count of a release transfer's summary line, and where the files it
@@ -98,24 +130,27 @@ pub fn transfer_summary<const N: usize>(
 
 impl ReleaseQueueProgress {
     /// The summary parts for a release queue: its active verb (`active_key`,
-    /// e.g. downloading vs uploading), then failed, then queued — each part
-    /// dropped when its count is zero. The order and the drop rule are the
-    /// decision; only the active verb differs by queue, so the caller names it.
-    pub fn summary_parts(&self, active_key: &str) -> Vec<CountLabel> {
-        [
-            (active_key, self.active),
-            ("core.queue.failed", self.failed),
-            ("core.queue.queued", self.queued),
-        ]
-        .into_iter()
-        .filter_map(|(key, count)| CountLabel::nonzero(key, count))
-        .collect()
+    /// e.g. pinning vs uploading), then failed, then queued (`queued_key`) —
+    /// each part dropped when its count is zero. The order and the drop rule
+    /// are the decision; only the two verbs differ by queue, so the caller
+    /// names them.
+    pub fn summary_parts(&self, active_key: &str, queued_key: &str) -> Vec<CountLabel> {
+        [(active_key, self.active), ("core.queue.failed", self.failed), (queued_key, self.queued)]
+            .into_iter()
+            .filter_map(|(key, count)| CountLabel::nonzero(key, count))
+            .collect()
     }
 
     /// The summary parts of the download queue: `summary_parts` with the
-    /// downloading verb, which the downloads line and the bridge both show.
+    /// downloading verbs on a desktop, where the queue holds pins and
+    /// make-locals together, and the pinning verbs on a phone, which only
+    /// pins. The Activity panel's line and the Pinning screen both show them.
     pub fn download_summary_parts(&self) -> Vec<CountLabel> {
-        self.summary_parts("core.queue.downloading")
+        #[cfg(desktop)]
+        let (active, queued) = ("core.queue.downloading", "core.queue.queued_to_download");
+        #[cfg(not(desktop))]
+        let (active, queued) = ("core.queue.pinning", "core.queue.queued_to_pin");
+        self.summary_parts(active, queued)
     }
 }
 

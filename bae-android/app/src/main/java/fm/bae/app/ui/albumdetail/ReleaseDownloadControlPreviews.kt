@@ -6,7 +6,6 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
-import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 
 @Composable
@@ -35,23 +34,15 @@ private fun DownloadControlAvailablePreview() {
 @Composable
 private fun DownloadControlDownloadingPreview() {
     BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloading(wait = null))
+        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloading)
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun DownloadControlQueuedPausedPreview() {
+private fun DownloadControlQueuedPreview() {
     BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Queued(ahead = 2u, wait = BridgeQueueWait.PAUSED))
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DownloadControlQueuedOfflinePreview() {
-    BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Queued(ahead = 0u, wait = BridgeQueueWait.OFFLINE))
+        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Queued)
     }
 }
 

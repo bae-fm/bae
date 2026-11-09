@@ -70,17 +70,11 @@ fn a_release_kept_here_offers_unpin_and_reads_copying_here() {
 /// pin state reads.
 #[test]
 fn a_pin_entry_decides_the_control() {
-    use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep, QueueWait};
+    use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep};
     let pin = |step| DownloadEntry { kind: DownloadKind::Pin, step };
     let cases = [
-        (
-            pin(DownloadStep::Queued { ahead: 2, wait: Some(QueueWait::Paused) }),
-            ReleaseDownloadStatus::Queued { ahead: 2, wait: Some(QueueWait::Paused) },
-        ),
-        (
-            pin(DownloadStep::Running { wait: Some(QueueWait::Offline) }),
-            ReleaseDownloadStatus::Downloading { wait: Some(QueueWait::Offline) },
-        ),
+        (pin(DownloadStep::Queued), ReleaseDownloadStatus::Queued),
+        (pin(DownloadStep::Running), ReleaseDownloadStatus::Downloading),
         (
             pin(DownloadStep::Failed { error: "read failed".to_string() }),
             ReleaseDownloadStatus::Failed { error: "read failed".to_string() },
@@ -101,10 +95,10 @@ fn a_pin_entry_decides_the_control() {
 /// status says where the release stands in being made local.
 #[test]
 fn a_make_local_entry_is_its_own_status() {
-    use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep, QueueWait};
+    use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep};
     let make_local = |step| DownloadEntry { kind: DownloadKind::MakeLocal, step };
-    let waiting = make_local(DownloadStep::Queued { ahead: 1, wait: Some(QueueWait::Offline) });
-    let running = make_local(DownloadStep::Running { wait: None });
+    let waiting = make_local(DownloadStep::Queued);
+    let running = make_local(DownloadStep::Running);
     let failed = make_local(DownloadStep::Failed { error: "disk full".to_string() });
     for entry in [&waiting, &running, &failed] {
         assert_eq!(
@@ -112,19 +106,13 @@ fn a_make_local_entry_is_its_own_status() {
             None
         );
     }
-    assert_eq!(
-        release_make_local_status(Some(&waiting)),
-        Some(MakeLocalStatus::Queued { ahead: 1, wait: Some(QueueWait::Offline) })
-    );
-    assert_eq!(
-        release_make_local_status(Some(&running)),
-        Some(MakeLocalStatus::Making { wait: None })
-    );
+    assert_eq!(release_make_local_status(Some(&waiting)), Some(MakeLocalStatus::Queued));
+    assert_eq!(release_make_local_status(Some(&running)), Some(MakeLocalStatus::Making));
     assert_eq!(
         release_make_local_status(Some(&failed)),
         Some(MakeLocalStatus::Failed { error: "disk full".to_string() })
     );
-    let pin = DownloadEntry { kind: DownloadKind::Pin, step: DownloadStep::Running { wait: None } };
+    let pin = DownloadEntry { kind: DownloadKind::Pin, step: DownloadStep::Running };
     assert_eq!(release_make_local_status(Some(&pin)), None);
     assert_eq!(release_make_local_status(None), None);
 }

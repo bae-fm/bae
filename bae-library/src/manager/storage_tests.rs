@@ -797,10 +797,7 @@ async fn storage_page_sort_by_storage_state() {
             .collect::<Vec<_>>(),
         vec![
             StorageRowStatus::Uploading,
-            StorageRowStatus::Pinning(bae_views::album_detail::DownloadEntryStep::Queued {
-                ahead: 0,
-                wait: Some(bae_transfers::QueueWait::Paused),
-            }),
+            StorageRowStatus::Pinning(bae_views::album_detail::DownloadEntryStep::Queued),
             StorageRowStatus::OnOneDevice,
             StorageRowStatus::Pinned,
             StorageRowStatus::InStorage,

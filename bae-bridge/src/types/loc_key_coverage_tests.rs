@@ -15,9 +15,11 @@ const DIRECT_KEYS: &[&str] = &[
     "core.import.metadata.file_metadata",
     // Storage queue summary (UI composes counts).
     "core.queue.uploading",
-    "core.queue.downloading",
     "core.queue.failed",
-    "core.queue.queued",
+    "core.queue.queued_to_upload",
+    "core.queue.queued_to_pin",
+    "core.queue.downloading",
+    "core.queue.queued_to_download",
     "core.queue.stored",
     "core.queue.pinning",
     "core.queue.waiting",
@@ -101,6 +103,20 @@ fn produced_keys() -> Vec<String> {
         BridgeReleaseStorageAction::DetachAudio,
     ] {
         keys.push(bridge_transfer_action_key(a));
+    }
+
+    // bridge_queue_wait_key and bridge_upload_queue_wait_key — every variant
+    // carries a key.
+    for wait in [BridgeQueueWait::Paused, BridgeQueueWait::Offline] {
+        keys.push(bridge_queue_wait_key(wait));
+    }
+    for wait in [
+        BridgeUploadQueueWait::Paused,
+        BridgeUploadQueueWait::Offline,
+        BridgeUploadQueueWait::Metered,
+        BridgeUploadQueueWait::Retrying { at_ms: 0 },
+    ] {
+        keys.push(bridge_upload_queue_wait_key(wait));
     }
 
     // bridge_sheet_refused_codec_key — one key, no variants to walk.

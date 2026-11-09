@@ -244,9 +244,9 @@
                 ),
                 summary: [
                     transferCount("core.queue.uploading", 1, .moving),
-                    transferCount("core.queue.queued", 1, .waiting),
+                    transferCount("core.queue.queued_to_upload", 1, .waiting),
                 ],
-                wait: nil
+                missing: nil
             ),
             files: [
                 "rel-row-1-audio": BridgeFileUpload(
@@ -271,8 +271,10 @@
                     uploading: 0,
                     activity: .queued
                 ),
-                summary: [transferCount("core.queue.queued", 1, .waiting)],
-                wait: .paused
+                summary: [
+                    transferCount("core.queue.queued_to_upload", 1, .waiting)
+                ],
+                missing: nil
             ),
             files: [
                 "rel-row-2-audio": BridgeFileUpload(
@@ -292,8 +294,10 @@
                     uploading: 0,
                     activity: .queued
                 ),
-                summary: [transferCount("core.queue.queued", 1, .waiting)],
-                wait: nil
+                summary: [
+                    transferCount("core.queue.queued_to_upload", 1, .waiting)
+                ],
+                missing: nil
             ),
             files: [
                 "rel-row-3-audio": BridgeFileUpload(
@@ -454,11 +458,9 @@
                             ? .inStorage(pinned: pinned) : .onOneDevice,
                         transitioning: pinning,
                         status: pinning
-                            ? .pinning(step: .running(wait: nil))
+                            ? .pinning(step: .running)
                             : queued
-                                ? .pinning(
-                                    step: .queued(ahead: 1, wait: .paused)
-                                )
+                                ? .pinning(step: .queued)
                                 : failed
                                     ? .downloadFailed(
                                         error: "The network connection was lost"
@@ -604,11 +606,11 @@
         ) -> BridgeStorageQueues {
             BridgeStorageQueues(
                 uploads: uploads.isEmpty
-                    ? nil : BridgeUploadQueueRun(paused: false),
+                    ? nil : BridgeUploadQueueRun(wait: nil),
                 pins: downloads.isEmpty
                     ? nil
                     : BridgeReleaseQueueRun(
-                        paused: false,
+                        wait: nil,
                         active: downloads.first {
                             if case .active = $0.state {
                                 true
@@ -622,7 +624,7 @@
                 outputs: outputs.isEmpty
                     ? nil
                     : BridgeReleaseQueueRun(
-                        paused: false,
+                        wait: nil,
                         active: outputs.first {
                             if case .active = $0.state {
                                 true

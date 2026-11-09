@@ -80,11 +80,11 @@ impl crate::types::BridgeDownloadCounts {
             .into_iter()
             .map(crate::types::BridgeCountLabel::from_core)
             .collect();
-        let bae_transfers::ReleaseQueueCounts { total, paused } = counts;
+        let bae_transfers::ReleaseQueueCounts { total, wait } = counts;
         crate::types::BridgeDownloadCounts {
             total: crate::types::BridgeDownloadProgress::from_core(total),
             summary_parts,
-            paused,
+            wait: wait.map(crate::types::BridgeQueueWait::from_core),
         }
     }
 }

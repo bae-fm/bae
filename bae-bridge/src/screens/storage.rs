@@ -42,27 +42,31 @@ pub struct BridgeStorageQueues {
 }
 
 /// The upload queue while it holds files. Mirrors `UploadQueueRun`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadQueueRun {
-    pub paused: bool,
+    /// What holds the queue back.
+    pub wait: Option<crate::types::BridgeUploadQueueWait>,
 }
 
 /// A one-release-at-a-time queue while it holds work. Mirrors
 /// `ReleaseQueueRun`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeReleaseQueueRun {
-    pub paused: bool,
+    /// What holds the queue back.
+    pub wait: Option<crate::types::BridgeQueueWait>,
     pub active: Option<String>,
 }
 
 impl BridgeStorageQueues {
     fn from_core(queues: bae_views::StorageQueues) -> Self {
         let release = |run: bae_views::ReleaseQueueRun| BridgeReleaseQueueRun {
-            paused: run.paused,
+            wait: run.wait.map(crate::types::BridgeQueueWait::from_core),
             active: run.active,
         };
         Self {
-            uploads: queues.uploads.map(|run| BridgeUploadQueueRun { paused: run.paused }),
+            uploads: queues.uploads.map(|run| BridgeUploadQueueRun {
+                wait: run.wait.map(crate::types::BridgeUploadQueueWait::from_core),
+            }),
             pins: queues.pins.map(release),
             outputs: queues.outputs.map(release),
         }

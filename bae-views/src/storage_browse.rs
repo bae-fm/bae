@@ -27,10 +27,10 @@ pub struct StorageBrowseSnapshot {
     pub queues: StorageQueues,
 }
 
-/// The transfer queues holding files waiting or on the move, each with
-/// whether the person paused it: this device's uploads, its pins (downloads
-/// to keep releases here), and its exports and saves. A queue holding no
-/// work, or only failed entries, is absent.
+/// The transfer queues holding files waiting or on the move, each with what
+/// holds it back: this device's uploads, its pins (downloads to keep releases
+/// here), and its exports and saves. A queue holding no work, or only failed
+/// entries, is absent.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageQueues {
     pub uploads: Option<UploadQueueRun>,
@@ -38,17 +38,17 @@ pub struct StorageQueues {
     pub outputs: Option<ReleaseQueueRun>,
 }
 
-/// The upload queue while it holds files: whether it is paused.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The upload queue while it holds files, and what holds it back.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UploadQueueRun {
-    pub paused: bool,
+    pub wait: Option<bae_records::UploadQueueWait>,
 }
 
 /// A queue that works through one release at a time, while it holds work:
-/// whether it is paused, and the release it runs, if any; how fast that goes,
+/// what holds it back, and the release it runs, if any; how fast that goes,
 /// or how far, arrives apart, keyed by the release.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseQueueRun {
-    pub paused: bool,
+    pub wait: Option<bae_transfers::QueueWait>,
     pub active: Option<String>,
 }

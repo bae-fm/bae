@@ -54,7 +54,7 @@ pub use search::{
 };
 pub use storage_browse::{ReleaseQueueRun, StorageBrowseSnapshot, StorageQueues, UploadQueueRun};
 pub use sync_activity::{
-    DownloadsInFlight, SyncActivity, SyncActivityRows, UploadQueueCounts, UploadsInFlight,
+    DownloadQueueActivity, SyncActivity, SyncActivityRows, UploadQueueActivity, UploadQueueCounts,
 };
 
 pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};

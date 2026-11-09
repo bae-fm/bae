@@ -174,10 +174,11 @@ struct SyncActivitySubscriptionTests {
             attention: [],
             syncing: false,
             uploads: sending.map {
-                BridgeUploadsInFlight(
+                BridgeUploadQueueActivity(
                     summaryParts: [
                         BridgeCountLabel(key: "core.queue.uploading", count: $0)
-                    ]
+                    ],
+                    wait: nil
                 )
             },
             downloads: nil,

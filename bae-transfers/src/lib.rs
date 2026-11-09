@@ -13,7 +13,7 @@ mod release_transfers;
 pub mod storage_moves;
 
 pub use download_entry::{
-    download_entry_column, download_entry_sql, DownloadEntry, DownloadKind, DownloadStep, QueueWait,
+    download_entry_column, download_entry_sql, DownloadEntry, DownloadKind, DownloadStep,
 };
 pub use download_snapshot::{
     DownloadPhase, DownloadProgress, DownloadProgressError, DownloadRate, DownloadRequest,
@@ -29,8 +29,8 @@ pub use queued_releases::{ActiveEntry, Finished, QueuedPayload, QueuedReleases, 
 #[cfg(desktop)]
 pub use release_queue::ReleaseQueueEntries;
 pub use release_queue::{
-    transfer_summary, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp,
-    ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState,
+    transfer_summary, QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry,
+    ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState,
     ReleaseQueueWindows, TransferCount, TransferStage,
 };
 pub use release_state::release_download_entry_on;

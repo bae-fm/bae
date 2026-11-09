@@ -21,39 +21,21 @@ struct StorageStateLabel: View {
         case .uploading:
             HStack(spacing: ThemeSpace.inline) {
                 StorageUploadingChip(releaseId: release.id)
-                if let wait = release.upload?.wait {
-                    UploadWaitChip(wait: wait)
+                if let missing = release.upload?.missing {
+                    StatusChip("Waiting for \(missing)", tone: .warning)
                 }
             }
-        case .pinning(.queued(let ahead, let wait)):
-            QueuedPinChips(ahead: ahead, wait: wait)
-        case .pinning(.running(let wait)):
-            HStack(spacing: ThemeSpace.inline) {
-                StoragePinningChip(releaseId: release.id)
-                if let wait {
-                    QueueWaitChip(wait: wait)
-                }
-            }
+        case .pinning(.queued):
+            StatusChip("Queued", tone: .activity)
+        case .pinning(.running):
+            StoragePinningChip(releaseId: release.id)
         case .makeLocalFailed(let error):
             StatusChip("Couldn't make local", tone: .danger)
                 .help(error)
-        case .makingLocal(.queued(let ahead, let wait)):
-            HStack(spacing: ThemeSpace.inline) {
-                StatusChip("Queued to make local", tone: .activity)
-                if ahead > 0 {
-                    StatusChip("\(Int(ahead)) ahead")
-                }
-                if let wait {
-                    QueueWaitChip(wait: wait)
-                }
-            }
-        case .makingLocal(.running(let wait)):
-            HStack(spacing: ThemeSpace.inline) {
-                StorageMakingLocalChip(releaseId: release.id)
-                if let wait {
-                    QueueWaitChip(wait: wait)
-                }
-            }
+        case .makingLocal(.queued):
+            StatusChip("Queued to make local", tone: .activity)
+        case .makingLocal(.running):
+            StorageMakingLocalChip(releaseId: release.id)
         case .copyingHere:
             StatusChip("Copying here", tone: .activity)
         case .onOneDevice:
@@ -155,15 +137,15 @@ private struct StorageMakingLocalChip: View {
                     storageState: .inStorage(pinned: false),
                     transitioning: true
                 ),
-                status: .pinning(step: .running(wait: nil))
+                status: .pinning(step: .running)
             )
-            // A pin waiting its turn in a paused queue.
+            // A pin waiting its turn.
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-queued",
                     storageState: .inStorage(pinned: false)
                 ),
-                status: .pinning(step: .queued(ahead: 2, wait: .paused))
+                status: .pinning(step: .queued)
             )
             // A download that failed.
             StorageStateLabel(
@@ -190,16 +172,16 @@ private struct StorageMakingLocalChip: View {
                     storageState: .inStorage(pinned: false),
                     transitioning: true
                 ),
-                status: .makingLocal(step: .running(wait: nil))
+                status: .makingLocal(step: .running)
             )
-            // A make-local waiting its turn in a paused queue.
+            // A make-local waiting its turn.
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-make-local-queued",
                     storageState: .inStorage(pinned: false),
                     transitioning: true
                 ),
-                status: .makingLocal(step: .queued(ahead: 1, wait: .paused))
+                status: .makingLocal(step: .queued)
             )
             // A release moved to the cloud to be kept here, whose copies
             // coven is still downloading.

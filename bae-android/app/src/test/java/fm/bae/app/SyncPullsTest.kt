@@ -22,7 +22,7 @@ import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
-import uniffi.bae_bridge.BridgeUploadsInFlight
+import uniffi.bae_bridge.BridgeUploadQueueActivity
 
 /** An open library pulls its sync status and activity into the stores its screens read, each value as it comes. */
 @RunWith(BaeRobolectricTestRunner::class)
@@ -68,7 +68,7 @@ class SyncPullsTest {
         session.wireUp(scope)
         assertEquals(null, store.activity.value)
 
-        val uploading = activity(BridgeUploadsInFlight(listOf(BridgeCountLabel("core.queue.uploading", 2u))))
+        val uploading = activity(BridgeUploadQueueActivity(listOf(BridgeCountLabel("core.queue.uploading", 2u)), wait = null))
         handle.syncActivity.deliver(uploading)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(uploading, store.activity.value)
@@ -82,7 +82,7 @@ class SyncPullsTest {
         scope.cancel()
     }
 
-    private fun activity(uploads: BridgeUploadsInFlight?) =
+    private fun activity(uploads: BridgeUploadQueueActivity?) =
         BridgeSyncActivity(
             moving = uploads != null,
             needsAttention = false,

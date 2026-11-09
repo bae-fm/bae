@@ -25,19 +25,31 @@ struct StorageFooter: View {
             }
             Spacer()
             if let uploads = queues?.uploads {
-                StorageQueueControl(queue: .uploads, paused: uploads.paused) {
+                StorageQueueControl(
+                    queue: .uploads,
+                    paused: uploads.wait == .paused,
+                    hold: uploads.wait?.text
+                ) {
                     StorageUploadRate()
                 }
             }
             if let pins = queues?.pins {
-                StorageQueueControl(queue: .pins, paused: pins.paused) {
+                StorageQueueControl(
+                    queue: .pins,
+                    paused: pins.wait == .paused,
+                    hold: pins.wait?.text
+                ) {
                     if let active = pins.active {
                         StoragePinRate(releaseId: active)
                     }
                 }
             }
             if let outputs = queues?.outputs {
-                StorageQueueControl(queue: .outputs, paused: outputs.paused) {
+                StorageQueueControl(
+                    queue: .outputs,
+                    paused: outputs.wait == .paused,
+                    hold: outputs.wait?.text
+                ) {
                     if let active = outputs.active {
                         StorageOutputPercent(releaseId: active)
                     }
@@ -60,11 +72,14 @@ private enum StorageQueueKind {
 }
 
 /// One running queue in the footer: its glyph, how fast it goes, or how far
-/// for exports, which count percent rather than bytes, and the button that
-/// pauses it, or resumes it while paused.
+/// for exports, which count percent rather than bytes, or in the rate's place
+/// what holds the queue back, and the button that pauses it, or resumes it
+/// while paused.
 private struct StorageQueueControl<Progress: View>: View {
     let queue: StorageQueueKind
     let paused: Bool
+    /// What holds the queue back, in words.
+    let hold: String?
     @ViewBuilder
     let progress: () -> Progress
     @Environment(Sync.self)
@@ -81,8 +96,13 @@ private struct StorageQueueControl<Progress: View>: View {
             HStack(spacing: ThemeSpace.inline) {
                 glyph
                     .themeIcon(.badge)
-                progress()
-                    .monospacedDigit()
+                if let hold {
+                    Text(hold)
+                }
+                else {
+                    progress()
+                        .monospacedDigit()
+                }
             }
             Button(action: setPaused) {
                 Image(systemName: paused ? "play.fill" : "pause.fill")
@@ -195,9 +215,9 @@ private struct StorageOutputPercent: View {
             list: PreviewData.storageList(),
             totalSize: 857_000_000,
             queues: BridgeStorageQueues(
-                uploads: BridgeUploadQueueRun(paused: false),
-                pins: BridgeReleaseQueueRun(paused: false, active: "rel-row-5"),
-                outputs: BridgeReleaseQueueRun(paused: true, active: nil)
+                uploads: BridgeUploadQueueRun(wait: nil),
+                pins: BridgeReleaseQueueRun(wait: nil, active: "rel-row-5"),
+                outputs: BridgeReleaseQueueRun(wait: .paused, active: nil)
             )
         )
         .frame(width: previewWidth)

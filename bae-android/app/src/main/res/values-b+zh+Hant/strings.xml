@@ -174,11 +174,7 @@
     <string name="download_copying_here">正在複製到此處</string>
     <string name="download_stop_keeping_here">不再保留在此處</string>
     <string name="download_waiting">等待下載</string>
-    <string name="download_ahead">前面還有 %1$d 項</string>
-    <string name="download_waiting_for_network">等待網路</string>
     <string name="download_failed">下載失敗</string>
-    <string name="upload_waiting_for_wifi">等待 Wi-Fi</string>
-    <string name="upload_retrying_at">將於 %1$s 重試</string>
     <string name="upload_waiting_for_file">等待 %1$s</string>
     <string name="resume">繼續</string>
     <string name="downloads_empty">沒有下載</string>

@@ -2074,7 +2074,7 @@ place what holds the whole queue back (Paused, Waiting for network, Waiting for
 Wi-Fi, Retrying at the earliest retry's time, the first that holds), an export
 with how far its release has been written, and a control that pauses or
 resumes the whole queue. A queue holding only failed entries shows nothing.
-The list's own query reads which queues hold work, whether each is paused,
+The list's own query reads which queues hold work, what holds each back,
 and the release a pin or export queue runs, from their tables beside the
 rows; how fast and how far arrive apart, keyed by that release.
 
@@ -2117,7 +2117,10 @@ starts it again from the beginning, since a stopped download does not yet
 continue from the bytes it fetched, and nothing of it was pinned, as with a
 cancel. The queue takes no entry while the device has no
 usable network, as coven's network watch says, and goes on when it returns; a
-platform that cannot tell holds nothing back. A pin that fails stays in the queue with its error,
+platform that cannot tell holds nothing back. What holds the queue back,
+Paused or Waiting for network, shows once where the queue shows: in place of
+its rate under the Storage manager's list, on the Activity panel's line for
+the queue and on the phones' Pinning screen, never on a release. A pin that fails stays in the queue with its error,
 nothing of it pinned, and its row sorts first, reading Couldn't pin; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry

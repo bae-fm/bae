@@ -79,8 +79,9 @@
         }
     }
 
-    /// A pass running, the files being sent and the offline copies downloading:
-    /// one row each while it moves.
+    /// A pass running, the upload queue and the download queue: one row each
+    /// while the queue holds work, with what holds the queue back in the place
+    /// of the bytes.
     private struct TransferRows: View {
         let activity: BridgeSyncActivity
 
@@ -93,25 +94,37 @@
             }
             if let uploads = activity.uploads {
                 Label {
-                    UploadsLine(title: QueueSummary.line(uploads.summaryParts))
+                    UploadsLine(
+                        title: QueueSummary.line(uploads.summaryParts),
+                        hold: uploads.wait?.text
+                    )
                 } icon: {
                     Image(systemName: "arrow.up.circle")
                 }
             }
             if let downloads = activity.downloads {
-                Label(
-                    QueueSummary.line(downloads.summaryParts),
-                    systemImage: "arrow.down.circle"
-                )
+                Label {
+                    VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                        Text(QueueSummary.line(downloads.summaryParts))
+                        if let hold = downloads.wait?.text {
+                            Text(hold)
+                                .themeText(.detail)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "arrow.down.circle")
+                }
             }
         }
     }
 
-    /// The uploads' line, and the bytes the files being sent have moved
-    /// together, which a native label reads from the latest total each frame
-    /// while files are being sent.
+    /// The uploads' line, and under it what holds the queue back, or the
+    /// bytes the files being sent have moved together, which a native label
+    /// reads from the latest total each frame while files are being sent.
     private struct UploadsLine: View {
         let title: String
+        let hold: String?
 
         @Environment(OutboxStore.self)
         private var outboxStore
@@ -119,7 +132,14 @@
         var body: some View {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(title)
-                UploadTotalBytesText(total: outboxStore.totalProgress)
+                if let hold {
+                    Text(hold)
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                }
+                else {
+                    UploadTotalBytesText(total: outboxStore.totalProgress)
+                }
             }
         }
     }

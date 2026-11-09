@@ -98,7 +98,7 @@ final class CommonSubscriptions {
         downloadCounts = ScreenSubscription(
             appHandle.subscribeDownloadCounts(),
             onValue: { [downloadStore] counts in
-                downloadStore.applyDownloadsPaused(counts.paused)
+                downloadStore.applyDownloadsPaused(counts.wait == .paused)
             },
             onError: onError
         )

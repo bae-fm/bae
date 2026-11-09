@@ -182,11 +182,7 @@
     <string name="download_copying_here">Copia qui</string>
     <string name="download_stop_keeping_here">Smetti di conservare qui</string>
     <string name="download_waiting">In attesa di download</string>
-    <string name="download_ahead">%1$d prima</string>
-    <string name="download_waiting_for_network">In attesa della rete</string>
     <string name="download_failed">Download non riuscito</string>
-    <string name="upload_waiting_for_wifi">In attesa del Wi-Fi</string>
-    <string name="upload_retrying_at">Nuovo tentativo alle %1$s</string>
     <string name="upload_waiting_for_file">In attesa di %1$s</string>
     <string name="resume">Riprendi</string>
     <string name="downloads_empty">Nessun download</string>

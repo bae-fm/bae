@@ -44,6 +44,7 @@ import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.syncActivityVisible
 import fm.bae.app.displayError
 import fm.bae.app.formatFileSize
+import fm.bae.app.queueWaitText
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -56,6 +57,7 @@ import fm.bae.app.ui.components.StatusGlyph
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.color
+import fm.bae.app.uploadQueueWaitText
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeException
@@ -222,20 +224,30 @@ private fun LazyListScope.transferRows(
         item { Text(context.coreString("core.activity.syncing")) }
     }
     activity.uploads?.let { uploads ->
-        item { TransferLine(context.countLabelsText(uploads.summaryParts), uploadTransfer) }
+        item {
+            TransferLine(
+                title = context.countLabelsText(uploads.summaryParts),
+                transfer = uploadTransfer,
+                hold = uploads.wait?.let(context::uploadQueueWaitText),
+            )
+        }
     }
     activity.downloads?.let { downloads ->
         item {
-            Text(
-                text = context.countLabelsText(downloads.summaryParts),
+            Column(
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenDownloads),
-            )
+                verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
+            ) {
+                Text(context.countLabelsText(downloads.summaryParts))
+                downloads.wait?.let { SecondaryLine(context.queueWaitText(it)) }
+            }
         }
     }
 }
 
 /**
- * A transfer's line, and the bytes the files being sent have moved together,
+ * A transfer's line, and under it what holds the queue back ([hold]) or, with
+ * nothing holding it, the bytes the files being sent have moved together,
  * which a View reads from [transfer]'s latest value each display frame while
  * files are being sent: moving bytes recompose nothing.
  */
@@ -243,20 +255,25 @@ private fun LazyListScope.transferRows(
 private fun TransferLine(
     title: String,
     transfer: LatestSource<BridgeUploadTransfer>,
+    hold: String?,
 ) {
     val color = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
     val size = ThemeText.detail.style.fontSize.value
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
         Text(title)
-        AndroidView(
-            factory = { context -> TransferBytesView(context) },
-            update = { view ->
-                view.setTextColor(color)
-                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, size)
-                view.follow(transfer)
-            },
-            onRelease = { view -> view.stopFollowing() },
-        )
+        if (hold != null) {
+            SecondaryLine(hold)
+        } else {
+            AndroidView(
+                factory = { context -> TransferBytesView(context) },
+                update = { view ->
+                    view.setTextColor(color)
+                    view.setTextSize(TypedValue.COMPLEX_UNIT_SP, size)
+                    view.follow(transfer)
+                },
+                onRelease = { view -> view.stopFollowing() },
+            )
+        }
     }
 }
 

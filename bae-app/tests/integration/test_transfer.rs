@@ -280,13 +280,7 @@ async fn a_release_detail_says_where_its_download_stands() {
 
     mgr.manager().set_downloads_paused(true).await.unwrap();
     mgr.manager().enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    assert_eq!(
-        status(db.clone(), release_id.clone()).await,
-        Some(ReleaseDownloadStatus::Queued {
-            ahead: 0,
-            wait: Some(bae_transfers::QueueWait::Paused)
-        })
-    );
+    assert_eq!(status(db.clone(), release_id.clone()).await, Some(ReleaseDownloadStatus::Queued));
 }
 
 /// Pin a Remote cloud-only release: coven fetches its files from the cloud into

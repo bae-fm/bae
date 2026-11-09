@@ -178,11 +178,7 @@
     <string name="download_copying_here">Buraya kopyalanıyor</string>
     <string name="download_stop_keeping_here">Burada tutmayı bırak</string>
     <string name="download_waiting">İndirme bekleniyor</string>
-    <string name="download_ahead">Önünde %1$d var</string>
-    <string name="download_waiting_for_network">Ağ bekleniyor</string>
     <string name="download_failed">İndirme başarısız</string>
-    <string name="upload_waiting_for_wifi">Wi-Fi bekleniyor</string>
-    <string name="upload_retrying_at">%1$s saatinde yeniden denenecek</string>
     <string name="upload_waiting_for_file">%1$s bekleniyor</string>
     <string name="resume">Sürdür</string>
     <string name="downloads_empty">İndirme yok</string>

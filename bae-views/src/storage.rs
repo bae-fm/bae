@@ -5,7 +5,9 @@
 
 use super::*;
 use crate::album_detail::{StoragePage, StorageRow};
-use bae_records::records::queued_uploads::{RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS};
+use bae_records::records::queued_uploads::{
+    upload_queue_wait_in_row, RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS, UPLOAD_QUEUE_WAIT_COLUMNS,
+};
 
 /// The SQL creating this part's tables and triggers.
 pub(super) const SQL: &str = include_str!("storage.sql");
@@ -195,27 +197,40 @@ pub fn resolve_storage_browse(projection: StorageBrowseProjection) -> crate::Sto
     }
 }
 
-/// The transfer queues holding files waiting or on the move, each with
-/// whether it is paused, and for the pin and output queues the release
-/// running. A queue holding only failed entries holds no work.
+/// The transfer queues holding files waiting or on the move, each with what
+/// holds it back, and for the pin and output queues the release running. A
+/// queue holding only failed entries holds no work.
 fn storage_queues_on(sql: &SqlReadContext<'_>) -> Result<crate::StorageQueues, DbError> {
     let uploads = sql.query_row(
-        "SELECT EXISTS (SELECT 1 FROM coven_upload_queue), \
-             (SELECT paused FROM coven_upload_pause)",
+        &format!("SELECT EXISTS (SELECT 1 FROM coven_upload_queue), {UPLOAD_QUEUE_WAIT_COLUMNS}"),
         [],
-        |row| Ok(row.get::<_, bool>(0)?.then_some(crate::UploadQueueRun { paused: row.get(1)? })),
+        |row| {
+            Ok(if row.get::<_, bool>(0)? {
+                Some(crate::UploadQueueRun { wait: upload_queue_wait_in_row(row)? })
+            } else {
+                None
+            })
+        },
     )?;
-    let release_queue = |table: &str, queue: &str| {
+    let release_queue = |table: &str, queue: &str, watches_network: bool| {
         sql.query_row(
             &format!(
                 "SELECT EXISTS (SELECT 1 FROM {table} WHERE state IN ('queued', 'active')), \
                      (SELECT paused FROM release_queues WHERE queue = ?1), \
-                     (SELECT release_id FROM {table} WHERE state = 'active')"
+                     (SELECT release_id FROM {table} WHERE state = 'active'), \
+                     (SELECT usable FROM coven_network)"
             ),
             [queue],
             |row| {
                 Ok(if row.get::<_, bool>(0)? {
-                    Some(crate::ReleaseQueueRun { paused: row.get(1)?, active: row.get(2)? })
+                    let network_usable: Option<bool> = row.get(3)?;
+                    Some(crate::ReleaseQueueRun {
+                        wait: bae_transfers::QueueWait::of(
+                            row.get(1)?,
+                            network_usable.filter(|_| watches_network),
+                        ),
+                        active: row.get(2)?,
+                    })
                 } else {
                     None
                 })
@@ -224,8 +239,8 @@ fn storage_queues_on(sql: &SqlReadContext<'_>) -> Result<crate::StorageQueues, D
     };
     Ok(crate::StorageQueues {
         uploads,
-        pins: release_queue("download_queue", "download")?,
-        outputs: release_queue("output_queue", "output")?,
+        pins: release_queue("download_queue", "download", true)?,
+        outputs: release_queue("output_queue", "output", false)?,
     })
 }
 

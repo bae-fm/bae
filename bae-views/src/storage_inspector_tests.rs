@@ -28,7 +28,7 @@ fn waiting() -> ReleaseUpload {
     ReleaseUpload {
         progress: UploadProgress { queued: 1, uploading: 0 },
         summary: Vec::new(),
-        wait: None,
+        missing: None,
     }
 }
 

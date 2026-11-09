@@ -234,8 +234,8 @@ mirror_enum! {
     crate::types::BridgeDownloadEntryStep = bae_views::album_detail::DownloadEntryStep,
     from_core: fn,
     variants: {
-        Queued { ahead, wait: (opt crate::types::BridgeQueueWait) },
-        Running { wait: (opt crate::types::BridgeQueueWait) },
+        Queued,
+        Running,
     },
 }
 
@@ -657,18 +657,17 @@ impl crate::types::BridgeReleaseUpload {
                 .into_iter()
                 .map(crate::types::BridgeTransferCount::from_core)
                 .collect(),
-            wait: upload.wait.map(crate::types::BridgeUploadWait::from_core),
+            missing: upload.missing,
         }
     }
 }
 
 mirror_enum! {
-    crate::types::BridgeUploadWait = bae_records::UploadWait,
-    from_core: fn,
+    crate::types::BridgeUploadQueueWait = bae_records::UploadQueueWait,
+    from_core: pub(crate) fn,
     variants: {
-        Original { file_name },
-        Offline,
         Paused,
+        Offline,
         Metered,
         Retrying { at_ms },
     },

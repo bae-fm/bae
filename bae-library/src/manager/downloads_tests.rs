@@ -193,7 +193,7 @@ async fn a_pin_waits_while_the_network_is_down() {
 /// have not failed, and that the queue is paused; a failed entry is not
 /// ahead of anything.
 #[tokio::test]
-async fn a_queued_pin_counts_the_entries_ahead_of_it() {
+async fn a_queued_pin_shows_queued_and_a_failed_one_its_error() {
     use bae_views::album_detail::{DownloadEntryStep, StorageRowStatus};
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
@@ -219,13 +219,8 @@ async fn a_queued_pin_counts_the_entries_ahead_of_it() {
             .map(|row| row.status)
             .collect::<Vec<_>>()
     };
-    let waiting = |ahead| {
-        StorageRowStatus::Pinning(DownloadEntryStep::Queued {
-            ahead,
-            wait: Some(bae_transfers::QueueWait::Paused),
-        })
-    };
-    assert_eq!(statuses().await, vec![waiting(0), waiting(1), waiting(2)]);
+    let waiting = || StorageRowStatus::Pinning(DownloadEntryStep::Queued);
+    assert_eq!(statuses().await, vec![waiting(), waiting(), waiting()]);
 
     assert!(activate_download(manager, &first).await.unwrap());
     assert!(fail_download(manager, &first, "the network connection was lost".into())
@@ -238,21 +233,20 @@ async fn a_queued_pin_counts_the_entries_ahead_of_it() {
             StorageRowStatus::DownloadFailed {
                 error: "the network connection was lost".to_string()
             },
-            waiting(0),
-            waiting(1),
+            waiting(),
+            waiting(),
         ],
-        "a failed entry is neither ahead of the rest nor waiting"
+        "a failed entry shows its error, and the rest wait"
     );
 
-    // Without a network the wait is the network: it makes the pause moot.
+    // The queue's hold is the queue's, and shows on no release; the pause
+    // reads before the network.
     test.installation.lose_network();
-    assert_eq!(
-        statuses().await[1],
-        StorageRowStatus::Pinning(DownloadEntryStep::Queued {
-            ahead: 0,
-            wait: Some(bae_transfers::QueueWait::Offline)
-        })
-    );
+    let pins_wait = || async { listed_queues(manager).await.pins.unwrap().wait };
+    assert_eq!(pins_wait().await, Some(bae_transfers::QueueWait::Paused));
+    manager.set_downloads_paused(false).await.unwrap();
+    assert_eq!(pins_wait().await, Some(bae_transfers::QueueWait::Offline));
+    assert_eq!(statuses().await[1], waiting());
 }
 
 /// Pinning a release whose download failed queues that entry again, in its
@@ -411,8 +405,13 @@ async fn download_bytes_send_no_new_sync_activity() {
         .await
         .unwrap());
     assert_eq!(
-        crate::followed::value_matching(&mut activity, |_| true).await.downloads,
-        Some(bae_views::DownloadsInFlight { active: 1, queued: 0 })
+        crate::followed::value_matching(&mut activity, |next| next
+            .downloads
+            .as_ref()
+            .is_some_and(|downloads| downloads.active == 1))
+        .await
+        .downloads,
+        Some(bae_views::DownloadQueueActivity { active: 1, queued: 0, wait: None })
     );
 
     let next = activity.next();
@@ -649,24 +648,6 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     assert_eq!(ascending().await, second_pinning, "kept as the library opens");
 }
 
-/// The queues the Storage Manager's list value carries, as one read of it
-/// finds them.
-async fn listed_queues(manager: &LibraryManager) -> bae_views::StorageQueues {
-    let mut browse = bae_views::LibraryViews::new(manager.store.clone()).subscribe_storage_browse(
-        bae_views::StorageBrowseRequest {
-            sort: bae_views::StorageSortCriterion {
-                field: bae_views::StorageSortField::Storage,
-                direction: bae_store::SortDirection::Ascending,
-            },
-            filter: bae_views::StorageFilter::All,
-            search: String::new(),
-            windows: Default::default(),
-            selected: Default::default(),
-        },
-    );
-    browse.next().await.expect("the browse query answers").result.unwrap().queues
-}
-
 /// The list's value carries each transfer queue while it holds work waiting
 /// or under way, with whether it is paused and the release a serial queue
 /// runs; a queue holding only a failed entry holds none.
@@ -691,12 +672,15 @@ async fn the_storage_list_carries_the_queues_holding_work() {
     .await;
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![pinning.clone()]).await.unwrap();
-    let uploads = Some(UploadQueueRun { paused: true });
+    let uploads = Some(UploadQueueRun { wait: Some(bae_records::UploadQueueWait::Paused) });
     assert_eq!(
         listed_queues(manager).await,
         StorageQueues {
-            uploads,
-            pins: Some(ReleaseQueueRun { paused: true, active: None }),
+            uploads: uploads.clone(),
+            pins: Some(ReleaseQueueRun {
+                wait: Some(bae_transfers::QueueWait::Paused),
+                active: None
+            }),
             outputs: None,
         }
     );
@@ -705,12 +689,13 @@ async fn the_storage_list_carries_the_queues_holding_work() {
     // Paused, the export stays queued: running, the worker would take it.
     manager.set_outputs_paused(true).await.unwrap();
     manager.enqueue_export(&uploading.id, std::path::PathBuf::from("/exports")).await.unwrap();
-    let outputs = Some(ReleaseQueueRun { paused: true, active: None });
+    let outputs =
+        Some(ReleaseQueueRun { wait: Some(bae_transfers::QueueWait::Paused), active: None });
     assert_eq!(
         listed_queues(manager).await,
         StorageQueues {
-            uploads,
-            pins: Some(ReleaseQueueRun { paused: false, active: Some(pinning.clone()) }),
+            uploads: uploads.clone(),
+            pins: Some(ReleaseQueueRun { wait: None, active: Some(pinning.clone()) }),
             outputs: outputs.clone(),
         }
     );

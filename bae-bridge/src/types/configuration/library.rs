@@ -275,10 +275,10 @@ pub enum BridgeStorageRowStatus {
 /// this device or into a folder. Mirrors `DownloadEntryStep`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDownloadEntryStep {
-    /// Waiting, with `ahead` entries before it that have not failed.
-    Queued { ahead: u32, wait: Option<crate::types::BridgeQueueWait> },
+    /// Waiting its turn.
+    Queued,
     /// Downloading.
-    Running { wait: Option<crate::types::BridgeQueueWait> },
+    Running,
 }
 
 /// Column the Storage Manager can sort by. Mirrors `StorageSortField`.

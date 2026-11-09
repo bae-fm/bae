@@ -15,8 +15,8 @@ use crate::output_snapshot::{OutputKind, OutputRequest};
 #[cfg(any(desktop, test, feature = "test-utils"))]
 use crate::release_queue::ReleaseQueueSnapshot;
 use crate::release_queue::{
-    QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp, ReleaseQueueProgress,
-    ReleaseQueueRow, ReleaseQueueState, ReleaseQueueWindows,
+    QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp,
+    ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueState, ReleaseQueueWindows,
 };
 use bae_store::list_windows::{
     list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm, WindowsRead,
@@ -281,11 +281,9 @@ pub(crate) fn release_queue_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<ReleaseQueueSnapshot<P, ()>, DbError> {
     let rows = queue_rows_on::<P>(sql, "ORDER BY q.position", [])?;
-    Ok(ReleaseQueueSnapshot {
-        rows,
-        total: release_queue_counts_on::<P>(sql)?.total,
-        paused: paused_on(sql, P::QUEUE)?,
-    })
+    let counts = release_queue_counts_on::<P>(sql)?;
+    let paused = counts.paused();
+    Ok(ReleaseQueueSnapshot { rows, total: counts.total, paused })
 }
 
 pub fn release_queue_counts_on<P: QueuedPayload>(
@@ -301,9 +299,14 @@ pub fn release_queue_counts_on<P: QueuedPayload>(
         [],
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     )?;
+    let network_usable: Option<bool> = if P::NEEDS_NETWORK {
+        sql.query_row("SELECT (SELECT usable FROM coven_network)", [], |row| row.get(0))?
+    } else {
+        None
+    };
     Ok(ReleaseQueueCounts {
         total: ReleaseQueueProgress { queued, active, failed },
-        paused: paused_on(sql, P::QUEUE)?,
+        wait: QueueWait::of(paused_on(sql, P::QUEUE)?, network_usable),
     })
 }
 

@@ -45,6 +45,7 @@ import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgePressingFacts
+import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeQueuedRelease
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseArea
@@ -61,8 +62,8 @@ import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeTrackSide
 import uniffi.bae_bridge.BridgeUploadBar
+import uniffi.bae_bridge.BridgeUploadQueueActivity
 import uniffi.bae_bridge.BridgeUploadTransfer
-import uniffi.bae_bridge.BridgeUploadsInFlight
 import uniffi.bae_bridge.BridgeWorkSummary
 
 /** A member's signing and sealing public keys are each 32 bytes. */
@@ -304,12 +305,13 @@ object PreviewData {
                 },
             syncing = true,
             uploads =
-                BridgeUploadsInFlight(
+                BridgeUploadQueueActivity(
                     summaryParts =
                         listOf(
                             BridgeCountLabel(key = "core.queue.uploading", count = 2u),
-                            BridgeCountLabel(key = "core.queue.queued", count = 10u),
+                            BridgeCountLabel(key = "core.queue.queued_to_upload", count = 10u),
                         ),
+                    wait = null,
                 ),
             downloads = null,
             retryOffered = false,
@@ -329,12 +331,12 @@ object PreviewData {
         queued: UInt = 1u,
         active: UInt = 1u,
         failed: UInt = 0u,
-        paused: Boolean = false,
+        wait: BridgeQueueWait? = null,
     ): BridgeDownloadCounts =
         BridgeDownloadCounts(
             total = BridgeDownloadProgress(queued = queued, active = active, failed = failed),
             summaryParts = emptyList(),
-            paused = paused,
+            wait = wait,
         )
 
     fun library(

@@ -17,8 +17,8 @@ pub struct BridgeSyncActivity {
     /// coven's sync state is syncing: a pass is moving, or a file is being
     /// sent or downloaded.
     pub syncing: bool,
-    pub uploads: Option<BridgeUploadsInFlight>,
-    pub downloads: Option<BridgeDownloadsInFlight>,
+    pub uploads: Option<BridgeUploadQueueActivity>,
+    pub downloads: Option<BridgeDownloadQueueActivity>,
     /// The list offers Retry now: a retry would run a pass, and a failure
     /// that pass can clear holds work back.
     pub retry_offered: bool,
@@ -42,48 +42,54 @@ impl BridgeSyncActivity {
             failure: failure.map(super::BridgeError::from_core),
             attention: attention.into_iter().map(super::BridgePendingRecord::from_core).collect(),
             syncing,
-            uploads: uploads.map(BridgeUploadsInFlight::from_core),
-            downloads: downloads.map(BridgeDownloadsInFlight::from_core),
+            uploads: uploads.map(BridgeUploadQueueActivity::from_core),
+            downloads: downloads.map(BridgeDownloadQueueActivity::from_core),
             retry_offered,
         }
     }
 }
 
-/// The files this device is sending now, out of its whole upload queue. The
-/// bytes they have moved are the upload total's `KeyedValueStream`.
+/// The files in this device's upload queue. The bytes the ones being sent
+/// have moved are the upload total's `KeyedValueStream`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeUploadsInFlight {
+pub struct BridgeUploadQueueActivity {
     /// The list's line: the counts sending and waiting, a zero dropped.
     pub summary_parts: Vec<super::BridgeCountLabel>,
+    /// What holds the queue back.
+    pub wait: Option<super::BridgeUploadQueueWait>,
 }
 
-impl BridgeUploadsInFlight {
-    fn from_core(uploads: bae_views::UploadsInFlight) -> Self {
+impl BridgeUploadQueueActivity {
+    fn from_core(uploads: bae_views::UploadQueueActivity) -> Self {
         Self {
             summary_parts: uploads
                 .summary_parts()
                 .into_iter()
                 .map(super::BridgeCountLabel::from_core)
                 .collect(),
+            wait: uploads.wait.map(super::BridgeUploadQueueWait::from_core),
         }
     }
 }
 
-/// The releases downloading to keep offline.
+/// The releases in the download queue, pinned or made local.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeDownloadsInFlight {
-    /// The list's line: the counts downloading and waiting, a zero dropped.
+pub struct BridgeDownloadQueueActivity {
+    /// The list's line: the counts pinning and waiting, a zero dropped.
     pub summary_parts: Vec<super::BridgeCountLabel>,
+    /// What holds the queue back.
+    pub wait: Option<super::BridgeQueueWait>,
 }
 
-impl BridgeDownloadsInFlight {
-    fn from_core(downloads: bae_views::DownloadsInFlight) -> Self {
+impl BridgeDownloadQueueActivity {
+    fn from_core(downloads: bae_views::DownloadQueueActivity) -> Self {
         Self {
             summary_parts: downloads
                 .summary_parts()
                 .into_iter()
                 .map(super::BridgeCountLabel::from_core)
                 .collect(),
+            wait: downloads.wait.map(super::BridgeQueueWait::from_core),
         }
     }
 }

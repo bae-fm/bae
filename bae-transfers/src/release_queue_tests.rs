@@ -10,7 +10,7 @@ use super::*;
 fn a_transfer_summary_leaves_out_zero_counts() {
     let summary = transfer_summary([
         ("core.queue.uploading", 0, TransferStage::Moving),
-        ("core.queue.queued", 4, TransferStage::Waiting),
+        ("core.queue.queued_to_upload", 4, TransferStage::Waiting),
         ("core.queue.stored", 105, TransferStage::Done),
     ]);
     assert_eq!(
@@ -19,7 +19,7 @@ fn a_transfer_summary_leaves_out_zero_counts() {
             .map(|count| (count.label.key.as_str(), count.label.count, count.stage))
             .collect::<Vec<_>>(),
         vec![
-            ("core.queue.queued", 4, TransferStage::Waiting),
+            ("core.queue.queued_to_upload", 4, TransferStage::Waiting),
             ("core.queue.stored", 105, TransferStage::Done),
         ]
     );
@@ -28,18 +28,32 @@ fn a_transfer_summary_leaves_out_zero_counts() {
 #[test]
 fn summary_parts_order_drop_and_active_verb() {
     let progress = ReleaseQueueProgress { queued: 3, active: 2, failed: 0 };
+    #[cfg(desktop)]
+    let (active, queued) = ("core.queue.downloading", "core.queue.queued_to_download");
+    #[cfg(not(desktop))]
+    let (active, queued) = ("core.queue.pinning", "core.queue.queued_to_pin");
     assert_eq!(
         progress.download_summary_parts(),
         vec![
-            CountLabel { key: "core.queue.downloading".to_string(), count: 2 },
-            CountLabel { key: "core.queue.queued".to_string(), count: 3 },
+            CountLabel { key: active.to_string(), count: 2 },
+            CountLabel { key: queued.to_string(), count: 3 },
         ],
         "failed is zero and drops; the active verb is the caller's"
     );
     assert!(
-        ReleaseQueueProgress::default().summary_parts("core.queue.uploading").is_empty(),
+        ReleaseQueueProgress::default()
+            .summary_parts("core.queue.uploading", "core.queue.queued_to_upload")
+            .is_empty(),
         "an idle queue has no parts"
     );
+}
+
+#[test]
+fn a_pause_comes_before_the_network() {
+    assert_eq!(QueueWait::of(true, Some(false)), Some(QueueWait::Paused));
+    assert_eq!(QueueWait::of(false, Some(false)), Some(QueueWait::Offline));
+    assert_eq!(QueueWait::of(false, Some(true)), None);
+    assert_eq!(QueueWait::of(false, None), None, "a platform that cannot tell holds nothing back");
 }
 
 fn row(release_id: &str, state: ReleaseQueueState<()>) -> ReleaseQueueRow<(), ()> {

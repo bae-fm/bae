@@ -7,7 +7,7 @@ use bae_types::count_label::CountLabel;
 
 /// An empty, running upload queue.
 fn idle_uploads() -> UploadQueueCounts {
-    UploadQueueCounts { queued: 0, sending: 0, paused: false }
+    UploadQueueCounts { queued: 0, sending: 0, wait: None }
 }
 
 fn status() -> SyncStatusSnapshot {
@@ -40,17 +40,54 @@ fn a_pass_alone_is_not_movement() {
     assert!(!activity.moving());
 }
 
-/// Files being sent move; a paused queue's waiting files don't move.
+/// Files being sent move; a queue that only holds work shows its line and
+/// the hold, and does not spin the indicator.
 #[test]
 fn transfers_are_movement() {
-    let mut uploads = UploadQueueCounts { queued: 6, sending: 2, paused: false };
+    let mut uploads = UploadQueueCounts { queued: 6, sending: 2, wait: None };
     let uploading = SyncActivity::new(&status(), &uploads, &ReleaseQueueCounts::default());
     assert!(uploading.moving());
-    assert_eq!(uploading.uploads, Some(UploadsInFlight { sending: 2, waiting: 4 }));
-    uploads.paused = true;
+    assert_eq!(uploading.uploads, Some(UploadQueueActivity { sending: 2, waiting: 4, wait: None }));
     uploads.sending = 0;
+    uploads.wait = Some(bae_records::UploadQueueWait::Paused);
     let paused = SyncActivity::new(&status(), &uploads, &ReleaseQueueCounts::default());
-    assert_eq!(paused.uploads, None);
+    assert!(!paused.moving());
+    assert_eq!(
+        paused.uploads,
+        Some(UploadQueueActivity {
+            sending: 0,
+            waiting: 6,
+            wait: Some(bae_records::UploadQueueWait::Paused)
+        }),
+        "a paused queue keeps its line, counts and hold"
+    );
+}
+
+/// A pin queue shows while it holds work, with what holds it; only an active
+/// entry moves bytes.
+#[test]
+fn a_pin_queue_shows_while_it_holds_work() {
+    use bae_transfers::{QueueWait, ReleaseQueueProgress};
+    let held = ReleaseQueueCounts {
+        total: ReleaseQueueProgress { queued: 2, active: 0, failed: 0 },
+        wait: Some(QueueWait::Offline),
+    };
+    let activity = SyncActivity::new(&status(), &idle_uploads(), &held);
+    assert!(!activity.moving());
+    assert_eq!(
+        activity.downloads,
+        Some(DownloadQueueActivity { active: 0, queued: 2, wait: Some(QueueWait::Offline) })
+    );
+    let running = ReleaseQueueCounts {
+        total: ReleaseQueueProgress { queued: 0, active: 1, failed: 0 },
+        wait: None,
+    };
+    assert!(SyncActivity::new(&status(), &idle_uploads(), &running).moving());
+    let failed_only = ReleaseQueueCounts {
+        total: ReleaseQueueProgress { queued: 0, active: 0, failed: 1 },
+        wait: None,
+    };
+    assert_eq!(SyncActivity::new(&status(), &idle_uploads(), &failed_only).downloads, None);
 }
 
 /// A sync failure or a pending record that needs the person marks the
@@ -83,12 +120,16 @@ fn failures_and_pending_records_need_attention() {
 fn transfer_lines_name_the_moving_count_first() {
     let label = |key: &str, count| CountLabel { key: key.into(), count };
     assert_eq!(
-        UploadsInFlight { sending: 2, waiting: 4 }.summary_parts(),
-        vec![label("core.queue.uploading", 2), label("core.queue.queued", 4)]
+        UploadQueueActivity { sending: 2, waiting: 4, wait: None }.summary_parts(),
+        vec![label("core.queue.uploading", 2), label("core.queue.queued_to_upload", 4)]
     );
     assert_eq!(
-        DownloadsInFlight { active: 1, queued: 0 }.summary_parts(),
-        vec![label("core.queue.downloading", 1)]
+        DownloadQueueActivity { active: 1, queued: 2, wait: None }.summary_parts(),
+        if cfg!(desktop) {
+            vec![label("core.queue.downloading", 1), label("core.queue.queued_to_download", 2)]
+        } else {
+            vec![label("core.queue.pinning", 1), label("core.queue.queued_to_pin", 2)]
+        }
     );
 }
 

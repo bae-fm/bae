@@ -29,8 +29,8 @@ struct StorageStatusBand: View {
                     HStack(spacing: ThemeSpace.related) {
                         UploadActivityLabel(phaseOf: upload.progress)
                             .themeText(.body)
-                        if let wait = upload.wait {
-                            UploadWaitChip(wait: wait)
+                        if let missing = upload.missing {
+                            StatusChip("Waiting for \(missing)", tone: .warning)
                         }
                     }
                 }
@@ -75,8 +75,8 @@ struct StorageStatusBand: View {
         }
     }
 
-    /// Where the release stands in being made local: waiting its turn, with
-    /// the entries ahead of it and what holds the queue back; downloading,
+    /// Where the release stands in being made local: waiting its turn;
+    /// downloading,
     /// the transition's words over the bytes the release and the file being
     /// downloaded hold and a bar of the release's, read from how far its
     /// files have downloaded into the person's folder each frame; or failed,
@@ -84,26 +84,13 @@ struct StorageStatusBand: View {
     @ViewBuilder
     private func makeLocalLine(_ status: BridgeMakeLocalStatus) -> some View {
         switch status {
-        case .queued(let ahead, let wait):
-            HStack(spacing: ThemeSpace.inline) {
-                StatusChip("Queued to make local", tone: .activity)
-                if ahead > 0 {
-                    StatusChip("\(Int(ahead)) ahead")
-                }
-                if let wait {
-                    QueueWaitChip(wait: wait)
-                }
-            }
-        case .making(let wait):
+        case .queued:
+            StatusChip("Queued to make local", tone: .activity)
+        case .making:
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                HStack(spacing: ThemeSpace.inline) {
-                    Text(BridgeReleaseStorageAction.detachAudio.transferLabel)
-                        .themeText(.body)
-                        .foregroundStyle(.secondary)
-                    if let wait {
-                        QueueWaitChip(wait: wait)
-                    }
-                }
+                Text(BridgeReleaseStorageAction.detachAudio.transferLabel)
+                    .themeText(.body)
+                    .foregroundStyle(.secondary)
                 TransferReadout(
                     stream: .makeLocal(
                         downloadStore.makeLocalProgress(
@@ -122,28 +109,22 @@ struct StorageStatusBand: View {
         }
     }
 
-    /// Where the release stands in the download queue: waiting, with the
-    /// entries ahead of it and what holds the queue back, held back while it
-    /// downloads, or failed, a danger notice whose Details opens the error;
-    /// or, with no entry, being copied here by coven.
+    /// Where the release stands in the download queue: waiting, downloading,
+    /// or failed, a danger notice whose Details opens the error; or, with no
+    /// entry, being copied here by coven.
     @ViewBuilder
     private func downloadLine(_ status: BridgeReleaseDownloadStatus)
         -> some View
     {
         switch status {
-        case .queued(let ahead, let wait):
-            QueuedPinChips(ahead: ahead, wait: wait)
-        case .downloading(let wait):
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                ProgressLine(
-                    BridgeReleaseStorageAction.pin.transferLabel,
-                    progress: nil
-                )
-                .themeText(.body)
-                if let wait {
-                    QueueWaitChip(wait: wait)
-                }
-            }
+        case .queued:
+            StatusChip("Queued", tone: .activity)
+        case .downloading:
+            ProgressLine(
+                BridgeReleaseStorageAction.pin.transferLabel,
+                progress: nil
+            )
+            .themeText(.body)
         case .failed(let error):
             ErrorNotice(
                 title: String(localized: "Download failed"),

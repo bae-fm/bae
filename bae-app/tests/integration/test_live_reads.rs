@@ -415,10 +415,7 @@ async fn a_make_local_entry_reaches_the_reads() {
             selected: Default::default(),
         },
     );
-    let waiting = Some(bae_views::album_detail::MakeLocalStatus::Queued {
-        ahead: 0,
-        wait: Some(bae_transfers::QueueWait::Paused),
-    });
+    let waiting = Some(bae_views::album_detail::MakeLocalStatus::Queued);
     let album_shows = |status: Option<bae_views::album_detail::MakeLocalStatus>| {
         move |snapshot: &bae_library::DetailSnapshot<bae_views::album_detail::AlbumDetail>| {
             snapshot.value.as_ref().is_some_and(|detail| {
@@ -462,10 +459,7 @@ async fn a_make_local_entry_reaches_the_reads() {
         "the row shows the make-local",
         || storage_browse.next(),
         row_shows(StorageRowStatus::MakingLocal(
-            bae_views::album_detail::DownloadEntryStep::Queued {
-                ahead: 0,
-                wait: Some(bae_transfers::QueueWait::Paused),
-            },
+            bae_views::album_detail::DownloadEntryStep::Queued,
         )),
     )
     .await;

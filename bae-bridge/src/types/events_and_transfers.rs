@@ -241,16 +241,11 @@ mirror_enum! {
 /// Where a release stands in being made local. Mirrors `MakeLocalStatus`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMakeLocalStatus {
-    /// Waiting, with `ahead` entries before it that have not failed.
-    Queued {
-        ahead: u32,
-        wait: Option<BridgeQueueWait>,
-    },
+    /// Waiting its turn.
+    Queued,
     /// Downloading its files into the person's folder; how many bytes is the
     /// release's value in the download `KeyedValueStream`.
-    Making {
-        wait: Option<BridgeQueueWait>,
-    },
+    Making,
     Failed {
         error: String,
     },
@@ -260,8 +255,8 @@ mirror_enum! {
     BridgeMakeLocalStatus = bae_views::album_detail::MakeLocalStatus,
     from_core: pub(crate) fn,
     variants: {
-        Queued { ahead, wait: (opt BridgeQueueWait) },
-        Making { wait: (opt BridgeQueueWait) },
+        Queued,
+        Making,
         Failed { error },
     },
 }
@@ -285,16 +280,11 @@ pub struct BridgeDownloadOp {
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeReleaseDownloadStatus {
     Downloaded,
-    /// Waiting, with `ahead` entries before it that have not failed.
-    Queued {
-        ahead: u32,
-        wait: Option<BridgeQueueWait>,
-    },
+    /// Waiting its turn.
+    Queued,
     /// Bytes are arriving; how many is the release's value in the download
     /// `KeyedValueStream`.
-    Downloading {
-        wait: Option<BridgeQueueWait>,
-    },
+    Downloading,
     Failed {
         error: String,
     },
@@ -309,31 +299,70 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Downloaded,
-        Queued { ahead, wait: (opt BridgeQueueWait) },
-        Downloading { wait: (opt BridgeQueueWait) },
+        Queued,
+        Downloading,
         Failed { error },
         CopyingHere,
         Available,
     },
 }
 
-/// What keeps the download queue from taking its next entry. Mirrors
-/// `QueueWait`.
+/// What holds a queue back. Mirrors `QueueWait`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeQueueWait {
-    /// The device has no usable network.
-    Offline,
     /// The person paused the queue.
     Paused,
+    /// The device has no usable network.
+    Offline,
 }
 
 mirror_enum! {
     BridgeQueueWait = bae_transfers::QueueWait,
     from_core: pub(crate) fn,
     variants: {
-        Offline,
         Paused,
+        Offline,
     },
+}
+
+/// Localization key for what holds a queue back ("Paused", "Waiting for
+/// network"). The UI resolves it against the `Core` table.
+#[uniffi::export]
+pub fn bridge_queue_wait_key(wait: BridgeQueueWait) -> String {
+    match wait {
+        BridgeQueueWait::Paused => "core.queue.wait.paused",
+        BridgeQueueWait::Offline => "core.queue.wait.offline",
+    }
+    .to_string()
+}
+
+/// What keeps the upload queue from sending its waiting files. Mirrors
+/// `UploadQueueWait`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeUploadQueueWait {
+    /// The person paused uploads.
+    Paused,
+    /// The device has no usable network.
+    Offline,
+    /// Files move only on unmetered networks, and this one is metered.
+    Metered,
+    /// A failed attempt is held until `at_ms`, in milliseconds since the
+    /// epoch; the surface words the time.
+    Retrying { at_ms: i64 },
+}
+
+/// Localization key for what holds the upload queue back ("Paused", "Retrying
+/// at {time}"). The UI resolves it against the `Core` table; `Retrying`
+/// takes the clock time as its `time` argument.
+#[uniffi::export]
+pub fn bridge_upload_queue_wait_key(wait: BridgeUploadQueueWait) -> String {
+    match wait {
+        BridgeUploadQueueWait::Paused => "core.queue.wait.paused",
+        BridgeUploadQueueWait::Offline => "core.queue.wait.offline",
+        BridgeUploadQueueWait::Metered => "core.queue.wait.metered",
+        BridgeUploadQueueWait::Retrying { .. } => "core.queue.wait.retrying",
+    }
+    .to_string()
 }
 
 /// Per-state counts for the download queue, per release or overall.
@@ -344,16 +373,16 @@ pub struct BridgeDownloadProgress {
     pub failed: u32,
 }
 
-/// How many downloads are in each phase, and whether the queue is paused:
-/// what the Downloads pane's summary and controls show. Its rows are the
+/// How many downloads are in each phase, and what holds the queue back: what
+/// the Pinning pane's summary and controls show. Its rows are the
 /// pane's windows (`DownloadBrowseSubscription`).
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDownloadCounts {
     pub total: BridgeDownloadProgress,
     /// The summary line's parts, in core's order; the UI resolves and joins them.
     pub summary_parts: Vec<BridgeCountLabel>,
-    /// Whether the person paused the queue.
-    pub paused: bool,
+    /// What holds the queue back.
+    pub wait: Option<BridgeQueueWait>,
 }
 
 /// A catalog key whose message takes `count`, and the count: a part of a

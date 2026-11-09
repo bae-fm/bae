@@ -248,6 +248,24 @@ impl ReleaseRef {
     }
 }
 
+/// The queues the Storage Manager's list value carries, as one read of it
+/// finds them.
+pub(super) async fn listed_queues(manager: &LibraryManager) -> bae_views::StorageQueues {
+    let mut browse = bae_views::LibraryViews::new(manager.store.clone()).subscribe_storage_browse(
+        bae_views::StorageBrowseRequest {
+            sort: bae_views::StorageSortCriterion {
+                field: bae_views::StorageSortField::Storage,
+                direction: bae_store::SortDirection::Ascending,
+            },
+            filter: bae_views::StorageFilter::All,
+            search: String::new(),
+            windows: Default::default(),
+            selected: Default::default(),
+        },
+    );
+    browse.next().await.expect("the browse query answers").result.unwrap().queues
+}
+
 /// Wait for the current file's upload to leave coven's durable queue.
 pub(super) async fn wait_for_published_file(manager: &LibraryManager, table: &str, row_id: &str) {
     let mut queued = manager.records.subscribe_row_file_queued_for_test(table, row_id);

@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::DbStorageRow;
-use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep, QueueWait};
+use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep};
 
 /// Where a release's files are, as the Storage Manager sorts its rows by
 /// storage, in that order: its listing works it out from the upload queue,
@@ -29,13 +29,13 @@ pub enum StoragePlace {
 }
 
 /// Where a release stands in the download queue while its files are coming to
-/// this device or into a folder, and what holds the queue back.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// this device or into a folder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DownloadEntryStep {
-    /// Waiting, with `ahead` entries before it that have not failed.
-    Queued { ahead: u32, wait: Option<QueueWait> },
+    /// Waiting its turn.
+    Queued,
     /// Downloading.
-    Running { wait: Option<QueueWait> },
+    Running,
 }
 
 /// What a Storage Manager row's storage state shows: where its files are,
@@ -97,10 +97,8 @@ impl StorageRowStatus {
             (StoragePlace::Uploading, ..) => Self::Uploading,
             (StoragePlace::Pinning, Some(DownloadEntry { kind, step }), _) => {
                 let step = match step {
-                    DownloadStep::Queued { ahead, wait } => {
-                        DownloadEntryStep::Queued { ahead, wait }
-                    }
-                    DownloadStep::Running { wait } => DownloadEntryStep::Running { wait },
+                    DownloadStep::Queued => DownloadEntryStep::Queued,
+                    DownloadStep::Running => DownloadEntryStep::Running,
                     DownloadStep::Failed { .. } => {
                         return Err(
                             "the listing says a download waits but the queue holds a failure"

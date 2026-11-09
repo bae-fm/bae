@@ -24,6 +24,7 @@ import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeLookupCatalogSetting
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgePressingFacts
+import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeQueuedRelease
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseName
@@ -219,7 +220,7 @@ object BridgeFixtures {
         queued: UInt = 0u,
         active: UInt = 0u,
         failed: UInt = 0u,
-        paused: Boolean = false,
+        wait: BridgeQueueWait? = null,
     ): BridgeDownloadCounts =
         BridgeDownloadCounts(
             total =
@@ -229,7 +230,7 @@ object BridgeFixtures {
                     failed = failed,
                 ),
             summaryParts = emptyList(),
-            paused = paused,
+            wait = wait,
         )
 
     fun castDevice(

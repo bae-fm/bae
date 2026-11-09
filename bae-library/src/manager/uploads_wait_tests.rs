@@ -1,13 +1,13 @@
-//! Why a release's waiting uploads are not moving, as its Storage Manager row
-//! says it.
+//! What holds the upload queue back, as the Storage Manager's list says it
+//! once, and what a release's row says of a missing original.
 
 use super::*;
 use crate::manager::tests::*;
-use bae_records::UploadWait;
+use bae_records::UploadQueueWait;
 
-/// Why the files of `release_id` that wait in the upload queue are not
-/// moving, as the release's Storage Manager row says.
-async fn row_wait(manager: &LibraryManager, release_id: &str) -> Option<UploadWait> {
+/// The name of the file whose missing original the move of `release_id`
+/// waits for, as the release's Storage Manager row says.
+async fn row_missing(manager: &LibraryManager, release_id: &str) -> Option<String> {
     views(manager)
         .get_storage_page(
             &bae_views::StorageSortCriterion {
@@ -25,13 +25,13 @@ async fn row_wait(manager: &LibraryManager, release_id: &str) -> Option<UploadWa
         .find(|row| row.release.id == release_id)
         .and_then(|row| row.release.upload)
         .expect("the release has files waiting")
-        .wait
+        .missing
 }
 
-/// A release with files waiting to upload says why they do not move: the
-/// network when there is none, else the pause; and nothing once uploads run.
+/// The upload queue says what holds it back, once for the queue and on no
+/// release: the pause before the network.
 #[tokio::test]
-async fn an_uploads_row_says_it_waits_while_uploads_are_paused() {
+async fn the_upload_queue_says_it_is_paused() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
@@ -43,37 +43,42 @@ async fn an_uploads_row_says_it_waits_while_uploads_are_paused() {
         &[("a.flac", b"bytes-a")],
     )
     .await;
-    assert_eq!(row_wait(manager, &release.id).await, Some(UploadWait::Paused));
+    let upload_wait =
+        || async { listed_queues(manager).await.uploads.expect("a file is queued").wait };
+    assert_eq!(upload_wait().await, Some(UploadQueueWait::Paused));
+    assert_eq!(row_missing(manager, &release.id).await, None);
 
     test.installation.lose_network();
     assert_eq!(
-        row_wait(manager, &release.id).await,
-        Some(UploadWait::Offline),
-        "the network outranks the pause"
+        upload_wait().await,
+        Some(UploadQueueWait::Paused),
+        "the pause outranks the network"
     );
-
-    test.installation.join_network(false);
-    manager.store.set_uploads_paused(false).await.unwrap();
-    assert_eq!(row_wait(manager, &release.id).await, None);
 }
 
 /// A release whose original went missing says which file its move waits
-/// for, over the network and the pause: nothing but restoring the file lets
-/// the move go on.
+/// for, whatever the network and the pause do: nothing but restoring the
+/// file lets the move go on.
 #[tokio::test]
-async fn an_uploads_row_names_the_original_it_waits_for() {
+async fn an_uploads_row_names_only_a_missing_original() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("named").await;
     std::fs::remove_file(temp.path().join("named/a.flac")).unwrap();
     assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     manager.library.manager().start().unwrap();
     let mut values = manager.library.manager().subscribe_sync_status();
     pending_list_until(&mut values, |items| !items.is_empty()).await;
-    let named = Some(UploadWait::Original { file_name: "a.flac".to_string() });
-    assert_eq!(row_wait(manager.library.manager(), &release.id).await, named);
+    let named = Some("a.flac".to_string());
+    assert_eq!(row_missing(manager.library.manager(), &release.id).await, named);
     manager.installation.lose_network();
     assert_eq!(
-        row_wait(manager.library.manager(), &release.id).await,
+        row_missing(manager.library.manager(), &release.id).await,
         named,
         "the network does not hide it"
+    );
+    manager.library.manager().store.set_uploads_paused(true).await.unwrap();
+    assert_eq!(
+        row_missing(manager.library.manager(), &release.id).await,
+        named,
+        "the pause does not hide it"
     );
 }

@@ -129,22 +129,20 @@ pub struct DbReleaseUpload {
     pub sending: u32,
     /// How many of the release's files are stored: those not queued.
     pub stored: u32,
-    /// Why its waiting files are not moving; `None` while one is being sent,
-    /// or when nothing holds them back.
-    pub wait: Option<UploadWait>,
+    /// The name of the release file whose original is missing, while none
+    /// of its files is being sent: the move waits for the person to restore
+    /// it, and nothing else lets it go on.
+    pub missing: Option<String>,
 }
 
-/// What keeps a release's waiting files from being sent, as coven says it
-/// of their uploads and the network.
+/// What keeps the upload queue from sending its waiting files, as coven says
+/// it of the uploads and the network.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum UploadWait {
-    /// An original the upload reads is missing: the move waits for the
-    /// person to restore the file named. Nothing else lets it go on.
-    Original { file_name: String },
-    /// The device has no usable network.
-    Offline,
+pub enum UploadQueueWait {
     /// The person paused uploads.
     Paused,
+    /// The device has no usable network.
+    Offline,
     /// Files move only on unmetered networks, and this one is metered.
     Metered,
     /// A failed attempt is held until `at_ms`, in milliseconds since the
@@ -152,24 +150,24 @@ pub enum UploadWait {
     Retrying { at_ms: i64 },
 }
 
-impl UploadWait {
-    /// The reason that holds the files, when several do: a missing original
-    /// first, since it stops its file whatever the network does and only the
-    /// person can end it, then the network, which makes the rest moot, then
-    /// the pause, the metered network and last the retry time.
+impl UploadQueueWait {
+    /// What holds the queue, when several things do: the pause first, then
+    /// the network, which makes the rest moot, then the metered network and
+    /// last the retry time. Nothing holds a queue that is sending a file
+    /// (`sending > 0`), except the pause.
     pub fn pick(
-        original: Option<String>,
-        network_usable: Option<bool>,
         paused: bool,
+        sending: u32,
+        network_usable: Option<bool>,
         metered: bool,
         retry_at_ms: Option<i64>,
     ) -> Option<Self> {
-        if let Some(file_name) = original {
-            Some(Self::Original { file_name })
+        if paused {
+            Some(Self::Paused)
+        } else if sending > 0 {
+            None
         } else if network_usable == Some(false) {
             Some(Self::Offline)
-        } else if paused {
-            Some(Self::Paused)
         } else if metered {
             Some(Self::Metered)
         } else {

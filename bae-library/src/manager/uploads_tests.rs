@@ -181,13 +181,12 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
             progress: bae_records::UploadProgress { queued: 2, uploading: 0 },
             summary: vec![bae_transfers::TransferCount {
                 label: bae_types::count_label::CountLabel {
-                    key: "core.queue.queued".into(),
+                    key: "core.queue.queued_to_upload".into(),
                     count: 2
                 },
                 stage: bae_transfers::TransferStage::Waiting,
             }],
-            // The helper queues them with uploads paused, to hold them in the queue.
-            wait: Some(bae_records::UploadWait::Paused),
+            missing: None,
         })
     );
     assert!(queued.transitioning);
@@ -270,7 +269,15 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     )
     .await;
     let mut activity = views(test.library.manager()).subscribe_sync_activity();
-    assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.uploads, None);
+    assert_eq!(
+        crate::followed::value_matching(&mut activity, |_| true).await.uploads,
+        Some(bae_views::UploadQueueActivity {
+            sending: 0,
+            waiting: 1,
+            wait: Some(bae_records::UploadQueueWait::Paused),
+        }),
+        "the helper queues the file with uploads paused"
+    );
     // Held in flight until its start is read.
     let (started, created) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
@@ -286,11 +293,11 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     });
     let sending = loop {
         let next = crate::followed::value_matching(&mut activity, |_| true).await;
-        if let Some(uploads) = next.uploads {
+        if let Some(uploads) = next.uploads.filter(|uploads| uploads.sending > 0) {
             break uploads;
         }
     };
-    assert_eq!(sending, bae_views::UploadsInFlight { sending: 1, waiting: 0 });
+    assert_eq!(sending, bae_views::UploadQueueActivity { sending: 1, waiting: 0, wait: None });
     created.await.unwrap();
     resume.send(()).unwrap();
     while crate::followed::value_matching(&mut activity, |_| true).await.uploads.is_some() {}

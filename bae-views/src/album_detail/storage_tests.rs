@@ -1,12 +1,12 @@
 use super::*;
-use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep, QueueWait};
+use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep};
 
 fn entry(kind: DownloadKind, step: DownloadStep) -> Option<DownloadEntry> {
     Some(DownloadEntry { kind, step })
 }
 
-fn queued(kind: DownloadKind, ahead: u32) -> Option<DownloadEntry> {
-    entry(kind, DownloadStep::Queued { ahead, wait: Some(QueueWait::Paused) })
+fn queued(kind: DownloadKind) -> Option<DownloadEntry> {
+    entry(kind, DownloadStep::Queued)
 }
 
 fn failed(kind: DownloadKind, error: &str) -> Option<DownloadEntry> {
@@ -20,20 +20,20 @@ fn a_running_entry_shows_by_what_it_does() {
     assert_eq!(
         StorageRowStatus::of(
             StoragePlace::Pinning,
-            entry(DownloadKind::Pin, DownloadStep::Running { wait: None }),
+            entry(DownloadKind::Pin, DownloadStep::Running),
             None,
             false
         ),
-        Ok(StorageRowStatus::Pinning(DownloadEntryStep::Running { wait: None }))
+        Ok(StorageRowStatus::Pinning(DownloadEntryStep::Running))
     );
     assert_eq!(
         StorageRowStatus::of(
             StoragePlace::Pinning,
-            entry(DownloadKind::MakeLocal, DownloadStep::Running { wait: None }),
+            entry(DownloadKind::MakeLocal, DownloadStep::Running),
             None,
             false
         ),
-        Ok(StorageRowStatus::MakingLocal(DownloadEntryStep::Running { wait: None }))
+        Ok(StorageRowStatus::MakingLocal(DownloadEntryStep::Running))
     );
     assert_eq!(
         StorageRowStatus::of(StoragePlace::Uploading, None, None, false),
@@ -45,22 +45,17 @@ fn a_running_entry_shows_by_what_it_does() {
     );
 }
 
-/// An entry waiting in the queue shows how many entries are ahead of it and
-/// what holds the queue back; a failed one shows its error, by what it does.
+/// An entry waiting in the queue shows by what it does; a failed one shows
+/// its error, by what it does.
 #[test]
-fn a_download_shows_its_place_in_the_queue_and_its_failure() {
-    let waiting = DownloadEntryStep::Queued { ahead: 2, wait: Some(QueueWait::Paused) };
+fn a_waiting_download_shows_by_what_it_does_and_a_failed_one_its_error() {
+    let waiting = DownloadEntryStep::Queued;
     assert_eq!(
-        StorageRowStatus::of(StoragePlace::Pinning, queued(DownloadKind::Pin, 2), None, false),
-        Ok(StorageRowStatus::Pinning(waiting.clone()))
+        StorageRowStatus::of(StoragePlace::Pinning, queued(DownloadKind::Pin), None, false),
+        Ok(StorageRowStatus::Pinning(waiting))
     );
     assert_eq!(
-        StorageRowStatus::of(
-            StoragePlace::Pinning,
-            queued(DownloadKind::MakeLocal, 2),
-            None,
-            false
-        ),
+        StorageRowStatus::of(StoragePlace::Pinning, queued(DownloadKind::MakeLocal), None, false),
         Ok(StorageRowStatus::MakingLocal(waiting))
     );
     assert_eq!(
@@ -88,8 +83,9 @@ fn a_download_shows_its_place_in_the_queue_and_its_failure() {
 #[test]
 fn a_download_place_without_its_entry_is_refused() {
     assert!(StorageRowStatus::of(StoragePlace::Pinning, None, None, false).is_err());
-    assert!(StorageRowStatus::of(StoragePlace::Failed, queued(DownloadKind::Pin, 0), None, false)
-        .is_err());
+    assert!(
+        StorageRowStatus::of(StoragePlace::Failed, queued(DownloadKind::Pin), None, false).is_err()
+    );
     assert!(StorageRowStatus::of(
         StoragePlace::Pinning,
         failed(DownloadKind::Pin, "x"),
@@ -131,11 +127,11 @@ fn copies_coven_keeps_read_as_copying_here() {
     assert_eq!(
         StorageRowStatus::of(
             StoragePlace::Pinning,
-            entry(DownloadKind::Pin, DownloadStep::Running { wait: None }),
+            entry(DownloadKind::Pin, DownloadStep::Running),
             None,
             true
         ),
-        Ok(StorageRowStatus::Pinning(DownloadEntryStep::Running { wait: None }))
+        Ok(StorageRowStatus::Pinning(DownloadEntryStep::Running))
     );
     assert!(StorageRowStatus::of(StoragePlace::Pinning, None, None, false).is_err());
 }

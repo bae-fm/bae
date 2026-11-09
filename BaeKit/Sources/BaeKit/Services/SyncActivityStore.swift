@@ -75,11 +75,15 @@ public final class SyncActivityStore {
                 failure: nil,
                 attention: needsAttention ? [previewSignIn] : [],
                 syncing: true,
-                uploads: BridgeUploadsInFlight(
+                uploads: BridgeUploadQueueActivity(
                     summaryParts: [
                         BridgeCountLabel(key: "core.queue.uploading", count: 2),
-                        BridgeCountLabel(key: "core.queue.queued", count: 10),
-                    ]
+                        BridgeCountLabel(
+                            key: "core.queue.queued_to_upload",
+                            count: 10
+                        ),
+                    ],
+                    wait: nil
                 ),
                 downloads: nil,
                 retryOffered: false
