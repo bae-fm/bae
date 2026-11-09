@@ -5,7 +5,7 @@
   }
   // The error box above the album grid when a later page failed, Retry its action.
   function AndroidErrorBanner(props) {
-    return h('div', { className: 'bae-a-errbanner' }, h(AndroidNotice, { tone: 'danger', title: props.message, details: props.chain || props.fault, open: props.open, action: 'Retry' }));
+    return h('div', { className: 'bae-a-errbanner' }, h(AndroidNotice, { quiet: true, tone: 'danger', title: props.message, action: 'Retry' }));
   }
   // BaeKit's LoadFailureView: a view that failed whole, drawn quietly with no box, centred in the view it replaces. The message in secondary text, then one row: "Show details" (`chain` gives it causes) and Retry. Open, the causes sit under the row in the inset panel with Copy at its corner.
   function MacLoadFailure(props) {

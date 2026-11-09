@@ -3426,6 +3426,22 @@
    "w": 690,
    "x": 11518,
    "y": 1656
+  },
+  "ErrMacProblemOpen.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: a problem in the Activity panel, opened",
+   "w": 1200,
+   "x": 7680,
+   "y": 18688
+  },
+  "ErrAndroidProblemOpen.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Android: a problem in the Activity sheet, opened",
+   "w": 412,
+   "x": 3444,
+   "y": 17292
   }
  },
  "createdOnFiles": {
@@ -5128,10 +5144,12 @@
   "ErrAndroidBar.dc.html",
   "ErrAndroidQueue.dc.html",
   "ErrAndroidLaunch.dc.html",
+  "ErrAndroidProblemOpen.dc.html",
   "ErrMacAlert.dc.html",
   "ErrMacAlertNotError.dc.html",
   "ErrMacAlertTitled.dc.html",
   "ErrMacNotices.dc.html",
+  "ErrMacProblemOpen.dc.html",
   "ErrMacLoadFailure.dc.html",
   "ErrMacQueueTail.dc.html",
   "ImpMacEmpty.dc.html",

@@ -43,7 +43,8 @@ The text styles are macOS points. iOS follows Dynamic Type, and the Android comp
   - **A disclosure row** folds part of one group: Advanced settings, a short list most people don't need. Every platform has one, in its own density. macOS: `MacDisclosure`, its own box, the chevron leading inside the row, pointing right and turning down when open, the rows it shows indented to the label. Android: `AndroidDisclosure`, a row in its own card, `expand_more` at the end when closed and `expand_less` when open, the rows it shows joining the card on the same edge.
   - **A collapsible section** folds a whole section of a long screen: its heading opens and closes it. Android only, the section label with `expand_more` and `expand_less` at its end. macOS has no collapsible section for content; there it is a disclosure row. No screen needs one yet.
   - **A sidebar heading** folds a group of destinations in a macOS sidebar, its chevron showing only under the pointer. It is navigation, not content. bae has no sectioned sidebar yet.
-- A disclosure's chevron on macOS points right closed and down open, wherever it sits: hanging in a notice's glyph column (`MacNotice`) or leading inside its row (`MacDisclosure`).
+- A disclosure's chevron on macOS points right closed and down open, leading inside its row (`MacDisclosure`).
+- A notice never shows the error itself: no Details in a notice, ever. When there is an error behind a notice, clicking it (tapping on Android) opens an alert (`MacAlert` with `details`) or dialog (`AndroidDialog` holding `AndroidErrorDetails`) with the explanation and the causes, one a line, with Copy.
 - An error in part of a screen is its box; a Retry that belongs to it is the box's action, at its right, level with the message.
 - A view that failed whole is drawn quietly with no box: the message, then “Show details” and Retry on one row under it, Retry last.
 

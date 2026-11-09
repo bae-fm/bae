@@ -11,7 +11,7 @@ export interface MacWindowProps { width?: number; height?: number; children?: Re
 export declare function MacWindow(props: MacWindowProps): React.ReactElement;
 
 /** A macOS alert: title, message, and its buttons stacked full width as children. */
-export interface MacAlertProps { title: string; message?: string; children?: React.ReactNode }
+export interface MacAlertProps { title: string; message?: string; details?: string; children?: React.ReactNode }
 export declare function MacAlert(props: MacAlertProps): React.ReactElement;
 
 /** A segmented control; options is comma-separated, selected names the chosen one. */
@@ -163,11 +163,11 @@ export declare function AndroidScanCode(props: AndroidScanCodeProps): React.Reac
 
 /** A message on its tone's tint. */
 /** A tinted box in a tone, led by the tone's glyph unless `icon` is false; `set: 'mac'` draws macOS's glyph, top-aligned. */
-export interface NoticeProps { tone?: StatusTone; title?: string; subtitle?: string; details?: string; open?: boolean; action?: string; dismiss?: boolean; quiet?: boolean; icon?: boolean; children?: React.ReactNode }
+export interface NoticeProps { tone?: StatusTone; title?: string; subtitle?: string; action?: string; dismiss?: boolean; quiet?: boolean; icon?: boolean; children?: React.ReactNode }
 /** A tone's glyph in the tone's colour, a filled circle with its mark; `set: 'mac'` draws the macOS stand-in. Neutral, accent and activity draw nothing. */
 /** Material's disclosure row: its own card, expand_more or expand_less at the end; the AndroidRows it shows join the card. */
 export declare function AndroidDisclosure(props: { label: string; summary?: string; open?: boolean; children?: React.ReactNode }): React.ReactElement;
-export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac'; size?: number; className?: string }): React.ReactElement | null;
+export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac'; outline?: boolean; size?: number; className?: string }): React.ReactElement | null;
 
 /** A cover or picture. Boards give each title its own stand-in colors; `missing` is a plain tile. */
 export interface ArtworkProps { title?: string; seed?: string; size?: number; radius?: number; round?: boolean; missing?: boolean; shadow?: 'tile' | 'bar'; label?: string; children?: React.ReactNode }
@@ -182,7 +182,7 @@ export declare function MacSeekBar(props: SeekBarProps): React.ReactElement;
 export declare function AndroidSeekBar(props: SeekBarProps): React.ReactElement;
 export interface MacPlayPauseProps { playing?: boolean; waiting?: boolean }
 export declare function MacPlayPause(props: MacPlayPauseProps): React.ReactElement;
-export interface MacIconButtonProps { icon: string; label?: string; active?: boolean; size?: number }
+export interface MacIconButtonProps { icon: string; label?: string; active?: boolean; faint?: boolean; size?: number }
 export declare function MacIconButton(props: MacIconButtonProps): React.ReactElement;
 export interface MacLibraryHeadingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; children?: React.ReactNode }
 export declare function MacLibraryHeading(props: MacLibraryHeadingProps): React.ReactElement;
@@ -287,15 +287,19 @@ export declare function MacTransferReadout(props: { kind?: 'upload' | 'pin'; byt
 export declare function MacFileRow(props: { name: string; size?: string; state?: 'rest' | 'queued' | 'sending' | 'pinning'; progress?: number; selected?: boolean }): React.ReactElement;
 export declare function MacFileDetails(props: { name: string; folder?: string; kind?: string; format?: string; size?: string }): React.ReactElement;
 export declare function MacNotice(props: NoticeProps): React.ReactElement;
+/** An error's causes, one a line, in an inset panel with Copy in its corner (an alert's `details`). */
+export declare function MacErrorDetails(props: { details: string }): React.ReactElement;
+/** MacErrorDetails on Android: a copy icon button at the corner; in an AndroidDialog. */
+export declare function AndroidErrorDetails(props: { details: string }): React.ReactElement;
 export declare function MacPopover(props: { width?: number; top?: number; right?: number; children?: React.ReactNode }): React.ReactElement;
-export declare function MacActivity(props: { children?: React.ReactNode; attention?: string; fault?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string; errorFault?: string }): React.ReactElement;
+export declare function MacActivity(props: { children?: React.ReactNode; attention?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string }): React.ReactElement;
 export declare function AndroidNotice(props: NoticeProps): React.ReactElement;
-export declare function AndroidActivity(props: { children?: React.ReactNode; attention?: string; fault?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string; errorFault?: string }): React.ReactElement;
+export declare function AndroidActivity(props: { children?: React.ReactNode; attention?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string }): React.ReactElement;
 export declare function AndroidSegmentedButtons(props: { options: string; selected?: string }): React.ReactElement;
 export declare function AndroidDownloadsBar(props: { failed?: boolean; paused?: boolean; idle?: boolean }): React.ReactElement;
 export declare function AndroidDownloadRow(props: { title?: string; detail?: string; state?: 'queued' | 'active' | 'failed'; progress?: number; bytes?: string; error?: string }): React.ReactElement;
 export declare function AndroidSnackbar(props: { message: string; action?: string; close?: boolean }): React.ReactElement;
-export declare function AndroidErrorBanner(props: { message: string; fault?: string; open?: boolean; chain?: string }): React.ReactElement;
+export declare function AndroidErrorBanner(props: { message: string }): React.ReactElement;
 export declare function MacLoadFailure(props: { message: string; chain?: string; open?: boolean }): React.ReactElement;
 export declare function AndroidLoadFailure(props: { message: string; chain?: string; open?: boolean }): React.ReactElement;
 export declare function MacImportSidebar(props: { tab?: 'Found' | 'Imported' | 'Skipped'; found?: string; imported?: string; skipped?: string; filter?: string; narrowed?: string; identifying?: number; importing?: boolean; scanning?: boolean; filtered?: boolean; empty?: string; children?: React.ReactNode }): React.ReactElement;

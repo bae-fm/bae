@@ -61,7 +61,7 @@
   // ---- macOS library ----
 
   function MacIconButton(props) {
-    return h('button', { type: 'button', className: cx('bae-m-iconbtn', props.active && 'bae-m-iconbtn-on'), 'aria-label': props.label || props.icon, title: props.label },
+    return h('button', { type: 'button', className: cx('bae-m-iconbtn', props.active && 'bae-m-iconbtn-on', props.faint && 'bae-m-iconbtn-faint'), 'aria-label': props.label || props.icon, title: props.label },
       h(Glyph, { set: 'mac', name: props.icon, size: props.size || 17 }));
   }
 
@@ -103,7 +103,7 @@
         h('div', { className: 'bae-m-titlebar-trail' },
           h('div', { className: cx('bae-m-search', props.searchFocused && 'bae-m-search-focused') }, h(Glyph, { set: 'mac', name: 'search', size: 14 }), h('span', { className: props.search ? null : 'bae-m-search-prompt' }, props.search || 'Search')),
           props.sync === 'moving' ? h('span', { className: 'bae-m-iconbtn', title: 'Activity' }, h(MacSpinner, { size: 14 })) : null,
-          props.sync === 'attention' ? h('span', { className: 'bae-m-iconbtn bae-m-sync-warn', title: 'Activity' }, h(Glyph, { set: 'mac', name: 'warning', size: 13 })) : null,
+          props.sync === 'attention' ? h('span', { className: 'bae-m-iconbtn bae-m-sync-warn', title: 'Activity' }, h(Glyph, { set: 'mac', name: 'warning', size: 17 })) : null,
           h(MacIconButton, { icon: 'gear', label: 'Settings' }))),
       h('div', { className: 'bae-m-main-body' }, h('div', { className: 'bae-m-main-content' }, kids(props.children).filter(function (c) { return !(c && c.type === MacQueuePanel); })), kids(props.children).filter(function (c) { return c && c.type === MacQueuePanel; })),
       h(MacNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, shuffle: props.shuffle, repeat: props.repeat, casting: props.casting, queueOpen: props.queueOpen }));
@@ -338,7 +338,7 @@
       s === 'elsewhere' ? line(props.where || 'On Ana’s Mac') :
       s === 'queued' ? [h('div', { key: 'r', className: 'bae-a-dlrow' }, line('Waiting to download'), btn('close', 'Cancel')), standing('s')] :
       s === 'downloading' ? [h(AndroidProgress, { key: 'p', value: Number(props.progress || 0.4) }), h('span', { key: 'b', className: 'bae-a-fine' }, props.bytes || '120 MB of 300 MB'), standing('s'), h('div', { key: 'c' }, btn('close', 'Cancel'))] :
-      s === 'failed' ? [h(AndroidNotice, { key: 'e', tone: 'danger', title: props.error || 'Couldn’t reach your storage.', action: 'Retry' }), h('div', { key: 'r' }, btn('close', 'Cancel'))] :
+      s === 'failed' ? [h(AndroidNotice, { key: 'e', quiet: true, tone: 'danger', title: props.error || 'Couldn’t reach your storage.', action: 'Retry' }), h('div', { key: 'r' }, btn('close', 'Cancel'))] :
       s === 'downloaded' ? h('div', { className: 'bae-a-dlrow' }, h(Glyph, { name: 'downloaded', size: 16, className: 'bae-muted' }), line('Downloaded'), btn('remove', 'Remove download')) :
       s === 'copying' ? h('div', { className: 'bae-a-dlrow' }, h(AndroidSpinner, { size: 20 }), line('Copying here'), btn('close', 'Stop keeping here')) :
       btn('download', 'Download');

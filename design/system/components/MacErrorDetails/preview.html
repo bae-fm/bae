@@ -1,0 +1,14 @@
+<!-- @dsCard group="macOS" height=200 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacErrorDetails</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell', style: { maxWidth: 320 } }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Causes', h(B.MacErrorDetails, { details: 'The sign-in settings file is missing.\nOAuthConfig: missing client id' }))));
+</script>
+</body>
+</html>

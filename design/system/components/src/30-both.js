@@ -42,30 +42,33 @@
     return h('span', { className: cx('bae-chip', 'bae-tone-' + (props.tone || 'neutral')) }, props.children);
   }
 
-  // The glyph each tone leads with, a filled circle with its mark: BaeKit's `StatusTone.symbol` (SF Symbols) on macOS, Status.kt's `StatusTone.icon` on Android.
+  // The glyph each tone leads with, a filled circle with its mark (or, `outline`, a ring with the mark inside): BaeKit's `StatusTone.symbol` (SF Symbols) on macOS, Status.kt's `StatusTone.icon` on Android.
   // macOS draws stand-ins for info.circle.fill, checkmark.circle.fill and exclamationmark.circle.fill (warning and danger alike, told apart by colour).
   var STATUS_CIRCLE = 'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z';
   var STATUS_BANG = 'M10.9 6.5h2.2l-.3 8h-1.6zM12 15.8a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6z';
-  var STATUS_SF = {
-    info: STATUS_CIRCLE + 'M10.9 10h2.2v7.5h-2.2zM12 5.8a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6z',
-    success: STATUS_CIRCLE + 'M10.4 16.6 6.4 12.6l1.5-1.5 2.5 2.5 5.7-5.7 1.5 1.5z',
-    warning: STATUS_CIRCLE + STATUS_BANG,
-    danger: STATUS_CIRCLE + STATUS_BANG
+  var STATUS_MARK = {
+    info: 'M10.9 10h2.2v7.5h-2.2zM12 5.8a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6z',
+    success: 'M10.4 16.6 6.4 12.6l1.5-1.5 2.5 2.5 5.7-5.7 1.5 1.5z',
+    warning: STATUS_BANG,
+    danger: STATUS_BANG
   };
+  // The outline form (info.circle, checkmark.circle, exclamationmark.circle): a ring, the mark solid inside it.
+  var STATUS_RING = STATUS_CIRCLE + 'M12 3.6a8.4 8.4 0 1 1 0 16.8 8.4 8.4 0 1 1 0-16.8z';
   var STATUS_MATERIAL = { info: 'info', success: 'check_circle', warning: 'error', danger: 'error' };
-  // A tone's glyph in the tone's colour; set="mac" for macOS. Neutral, accent and activity have none.
+  // A tone's glyph in the tone's colour; set="mac" for macOS. `outline` draws the outline form, for a quiet notice. Neutral, accent and activity have none.
   function StatusGlyph(props) {
     var tone = props.tone, size = Number(props.size || 15);
     if (!STATUS_MATERIAL[tone]) return null;
     var cls = cx('bae-status-glyph', 'bae-tone-' + tone, props.className);
     return props.set === 'mac'
-      ? h('svg', { className: cls, width: size, height: size, viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' }, h('path', { d: STATUS_SF[tone], fillRule: 'evenodd' }))
-      : h(MSymbol, { name: STATUS_MATERIAL[tone], size: size, filled: true, className: cls, fill: 'currentColor' });
+      ? h('svg', { className: cls, width: size, height: size, viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' },
+          props.outline ? [h('path', { key: 'r', d: STATUS_RING, fillRule: 'evenodd' }), h('path', { key: 'm', d: STATUS_MARK[tone] })] : h('path', { d: STATUS_CIRCLE + STATUS_MARK[tone], fillRule: 'evenodd' }))
+      : h(MSymbol, { name: STATUS_MATERIAL[tone], size: size, filled: !props.outline, className: cls, fill: 'currentColor' });
   }
   // The tinted box MacNotice and AndroidNotice draw in: its text the size of the screen it sits in (13 on a Mac, 14 on Android); `icon` (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. One glyph drawing serves both apps: the SF Symbol and Material's filled circle look alike.
   // `quiet` (with the platform's class, such as bae-m-notice-quiet) draws it as a row: no fill, the screen's text, the glyph in its tone.
   function NoticeBox(tone, icon, body, quiet) {
-    var glyph = icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac' })) : null;
+    var glyph = icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac', outline: !!quiet })) : null;
     return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, glyph && 'bae-notice-with-icon', quiet && 'bae-notice-quiet', quiet) }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, body) : body);
   }
   // The notice's words: a title (bold only under a subtitle), the subtitle saying what to do, or the caller's own children.

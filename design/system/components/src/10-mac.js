@@ -8,12 +8,13 @@
       props.children);
   }
 
-  // A macOS alert: centred title and message, then two buttons side by side with the default on the right (list it first); three or more stack.
+  // A macOS alert: centred title and message, then two buttons side by side with the default on the right (list it first); three or more stack. `details` (an error's causes, one a line) adds the inset panel with Copy under the message, and the alert reads left-aligned, as a report.
   function MacAlert(props) {
     return h('div', { className: 'bae-m-scrim' },
-      h('div', { role: 'alertdialog', 'aria-label': props.title, className: 'bae-m-alert' },
+      h('div', { role: 'alertdialog', 'aria-label': props.title, className: cx('bae-m-alert', props.details && 'bae-m-alert-details') },
         h('div', { className: 'bae-m-alert-title' }, props.title),
         props.message ? h('div', { className: 'bae-m-alert-message' }, props.message) : null,
+        props.details ? h(MacErrorDetails, { details: props.details }) : null,
         h('div', { className: 'bae-m-alert-buttons' }, props.children)));
   }
 

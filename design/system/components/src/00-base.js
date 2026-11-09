@@ -66,7 +66,7 @@
   function MSymbol(props) {
     var s = Number(props.size || 24);
     return h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true, className: props.className, fill: props.fill },
-      h('text', { x: 0, y: 12, dominantBaseline: 'central', className: 'bae-msym', style: props.filled || SYMBOL_FILLED[props.name] ? { fontVariationSettings: "'FILL' 1" } : null }, SYMBOL[props.name] || props.name));
+      h('text', { x: 0, y: 12, dominantBaseline: 'central', className: 'bae-msym', style: (props.filled != null ? props.filled : SYMBOL_FILLED[props.name]) ? { fontVariationSettings: "'FILL' 1" } : null }, SYMBOL[props.name] || props.name));
   }
   function Material(props) {
     return h(MSymbol, { name: props.name, size: props.size || 24, className: props.className });
