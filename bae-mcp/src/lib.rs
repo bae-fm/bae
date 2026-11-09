@@ -11,8 +11,8 @@ use bae_diagnostics::Diagnostics;
 use bae_util::server::{ServerController, ServerError, ServerStatus};
 use bae_util::task_failure::caught;
 use rmcp::model::{
-    CallToolRequestParams, CallToolResult, ListToolsResult, PaginatedRequestParams,
-    ServerCapabilities, ServerInfo, Tool,
+    CallToolRequestParams, CallToolResponse, CallToolResult, ListToolsResult,
+    PaginatedRequestParams, ServerCapabilities, ServerConfig, Tool,
 };
 use rmcp::service::{RequestContext, RoleServer};
 use rmcp::transport::streamable_http_server::{
@@ -188,7 +188,7 @@ impl BaeMcpServer {
 }
 
 impl ServerHandler for BaeMcpServer {
-    fn get_info(&self) -> ServerInfo {
+    fn get_info(&self) -> ServerConfig {
         mcp_server_info()
     }
 
@@ -196,7 +196,7 @@ impl ServerHandler for BaeMcpServer {
         &self,
         request: CallToolRequestParams,
         _: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, ErrorData> {
+    ) -> Result<CallToolResponse, ErrorData> {
         let Some(tool) = AutomationTool::from_name(&request.name) else {
             return Err(ErrorData::invalid_params("tool not found", None));
         };
@@ -209,13 +209,15 @@ impl ServerHandler for BaeMcpServer {
                         "tool '{}' requires arguments",
                         tool.name()
                     )),
-                )?));
+                )?)
+                .into());
             }
         };
-        match self.automation.call_tool(tool, args).await {
-            Ok(value) => Ok(CallToolResult::structured(value)),
-            Err(error) => Ok(CallToolResult::structured_error(automation_error_value(error)?)),
-        }
+        let result = match self.automation.call_tool(tool, args).await {
+            Ok(value) => CallToolResult::structured(value),
+            Err(error) => CallToolResult::structured_error(automation_error_value(error)?),
+        };
+        Ok(result.into())
     }
 
     async fn list_tools(
@@ -223,11 +225,7 @@ impl ServerHandler for BaeMcpServer {
         _: Option<PaginatedRequestParams>,
         _: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, ErrorData> {
-        Ok(ListToolsResult {
-            tools: AutomationTool::all().map(mcp_tool).collect(),
-            meta: None,
-            next_cursor: None,
-        })
+        Ok(ListToolsResult::with_all_items(AutomationTool::all().map(mcp_tool).collect()))
     }
 
     fn get_tool(&self, name: &str) -> Option<Tool> {
@@ -239,8 +237,8 @@ fn mcp_tool(tool: AutomationTool) -> Tool {
     Tool::new(tool.name(), tool.description(), tool.input_schema())
 }
 
-fn mcp_server_info() -> ServerInfo {
-    ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+fn mcp_server_info() -> ServerConfig {
+    ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
 }
 
 fn automation_error_value(error: AutomationError) -> Result<Value, ErrorData> {

@@ -142,7 +142,7 @@ objc2-core-audio-types = { version = "0.3", default-features = false }
 rand = "0.9"
 rand_core = "0.6"
 regex = "1.11"
-rmcp = "1.8.0"
+rmcp = "3.9.0"
 roxmltree = "0.20"
 rsa = "0.9"
 rtrb = "0.3.2"
