@@ -405,7 +405,8 @@
         static func echoingQueue(
             manualCount: Int,
             context: Bool = true,
-            shuffled: Bool = false
+            shuffled: Bool = false,
+            upcomingRequestFails: Bool = false
         ) -> QueuePreviewFixture {
             let store = PlaybackStore(trackPositions: queuePositions())
             let model = PreviewQueueModel(
@@ -446,7 +447,15 @@
                     },
                     subscribeUpcoming: { [feed = model.upcomingFeed] in
                         QueueUpcomingQuery(
-                            setWindows: { feed.setWindows($0) },
+                            setWindows: {
+                                if upcomingRequestFails {
+                                    throw BridgeError.Diagnostic(
+                                        category: .database,
+                                        detail: "database is locked"
+                                    )
+                                }
+                                feed.setWindows($0)
+                            },
                             values: PulledValues(read: { await feed.take() })
                         )
                     }

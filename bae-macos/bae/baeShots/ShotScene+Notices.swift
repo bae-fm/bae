@@ -41,6 +41,18 @@ extension ShotScene {
                 )
             )
         },
+        // The queue's read of what's playing from failed past its first rows.
+        ShotScene(
+            id: "notice-queue-tail",
+            size: CGSize(width: 420, height: 900)
+        ) {
+            .queueTail(
+                QueueViewPreviewScene.fixture(
+                    for: .populated,
+                    upcomingRequestFails: true
+                )
+            )
+        },
         ShotScene(
             id: "notice-looks",
             size: CGSize(width: 480, height: 330)
@@ -107,5 +119,22 @@ private struct ErrorDetailsAlertShot: View {
         image.addRepresentation(rep)
         return Image(nsImage: image)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+extension ShotStage {
+    /// The queue pane over `fixture`, ready once its read of the tail has
+    /// failed and the pane has the failure to show.
+    fileprivate static func queueTail(_ fixture: QueuePreviewFixture)
+        -> ShotStage
+    {
+        let images = ImageStore.stub()
+        return ShotStage(
+            QueueViewPreviewScene(width: 420, height: 900)
+                .environment(fixture.store)
+                .environment(fixture.queue)
+                .environment(images),
+            images: images
+        ) { fixture.store.upcomingFailure != nil }
     }
 }

@@ -295,17 +295,20 @@ struct QueueView: View {
         }
 
         let width: CGFloat
+        var height: CGFloat = 720
         @Environment(PlaybackStore.self)
         private var store
 
         static func fixture(
-            for presentation: Presentation
+            for presentation: Presentation,
+            upcomingRequestFails: Bool = false
         ) -> QueuePreviewFixture {
             switch presentation {
             case .populated:
                 let fixture = PreviewData.echoingQueue(
                     manualCount: 2,
-                    shuffled: true
+                    shuffled: true,
+                    upcomingRequestFails: upcomingRequestFails
                 )
                 fixture.store.play(
                     track: BridgeNowPlayingTrack(
@@ -349,7 +352,7 @@ struct QueueView: View {
                 onInsertTracks: { _, _ in },
                 onSetShuffle: { _ in }
             )
-            .frame(width: width, height: 720)
+            .frame(width: width, height: height)
             .background(Theme.surface)
         }
     }
