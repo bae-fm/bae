@@ -5,28 +5,24 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class DisplayErrorTest {
-    /** The summary is the diagnostic's first line; the excerpt and the copy keep the rest. */
+    /** The excerpt keeps the whole diagnostic when it is short. */
     @Test
-    fun theSummaryIsTheFirstLineOfTheDiagnostic() {
+    fun aShortDiagnosticIsTheExcerptWhole() {
         val shown = DisplayError("Couldn't reach the network.", "  dns error: no such host  \nat the second line")
 
-        assertEquals("dns error: no such host", shown.detailSummary)
         assertEquals("  dns error: no such host  \nat the second line", shown.detailExcerpt)
     }
 
     @Test
-    fun aLongDiagnosticIsCutInTheSummaryAndTheExcerpt() {
+    fun aLongDiagnosticIsCutInTheExcerpt() {
         val shown = DisplayError("Something went wrong.", "x".repeat(500))
 
-        assertEquals("x".repeat(180) + "…", shown.detailSummary)
         assertEquals("x".repeat(400) + "…", shown.detailExcerpt)
     }
 
-    /** An error this app words itself, or a blank diagnostic, has no fault to name. */
+    /** An error this app words itself has no diagnostic to open. */
     @Test
     fun noDiagnosticNamesNoFault() {
-        assertNull(DisplayError("Couldn't open the library.").detailSummary)
         assertNull(DisplayError("Couldn't open the library.").detailExcerpt)
-        assertNull(DisplayError("Something went wrong.", "   \nsecond").detailSummary)
     }
 }

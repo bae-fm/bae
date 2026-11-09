@@ -1,21 +1,19 @@
 package fm.bae.app.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +37,11 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
-/** A text button at the right of an error box, level with its message: what to do about the failure. */
+/**
+ * A notice's primary button: what to do about the failure. On its own line
+ * under the words, in line with them; at the right beside Details when the
+ * notice has both.
+ */
 class ErrorAction(
     val label: String,
     val enabled: Boolean = true,
@@ -47,14 +49,11 @@ class ErrorAction(
 )
 
 /**
- * A failure as Android's error box draws it: a [tone] notice (danger unless
- * told otherwise) with the tone's glyph, the localized line in primary text,
- * then, for a failure core reported, a "Details" line with a chevron after the
- * word. Open, the causes show in an inset panel with a copy button at its
- * corner that copies the whole diagnostic. [action] sits at the box's right,
- * level with the line. [bare] draws the content without the box, for a
- * disclosure already inside a notice. Mirrors the Apple apps'
- * `ErrorNotice`.
+ * A failure as Android's error notice draws it: a [tone] notice (danger unless
+ * told otherwise) with the tone's glyph and the localized line. A notice never
+ * shows the error itself: for a failure core reported, a Details button opens
+ * the causes in a dialog. [action] sits beside Details at the right, or alone
+ * on its own line. Mirrors the Apple apps' `ErrorNotice`.
  */
 @Composable
 fun ErrorNotice(
@@ -62,15 +61,25 @@ fun ErrorNotice(
     modifier: Modifier = Modifier,
     action: ErrorAction? = null,
     tone: StatusTone = StatusTone.DANGER,
-    bare: Boolean = false,
 ) {
-    if (bare) {
-        ErrorNoticeContent(error, action, modifier)
-    } else {
-        Notice(tone = tone, modifier = modifier) {
-            ErrorNoticeContent(error, action, Modifier.weight(1f))
-        }
-    }
+    ErrorNoticeContent(error.line, null, ErrorDetails.of(error), modifier, action, tone)
+}
+
+/**
+ * A failure under a title the app words for what failed, with [advice], what
+ * to do about it. [error] is null when core says the failure has nothing to
+ * show; with one, Details opens its causes led by the category's line.
+ */
+@Composable
+fun TitledErrorNotice(
+    title: String,
+    advice: String?,
+    error: DisplayError?,
+    modifier: Modifier = Modifier,
+    action: ErrorAction? = null,
+    tone: StatusTone = StatusTone.DANGER,
+) {
+    ErrorNoticeContent(title, advice, error?.let { ErrorDetails.titled(title, advice, it) }, modifier, action, tone)
 }
 
 /** On a tint, secondary text is primary text made see-through. */
@@ -82,47 +91,54 @@ private const val ON_TINT_SECONDARY_ALPHA = 0.72f
 
 @Composable
 private fun ErrorNoticeContent(
-    error: DisplayError,
-    action: ErrorAction?,
+    title: String,
+    advice: String?,
+    details: ErrorDetails?,
     modifier: Modifier,
+    action: ErrorAction?,
+    tone: StatusTone,
 ) {
-    var expanded by rememberSaveable(error) { mutableStateOf(false) }
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
-        Row(verticalAlignment = Alignment.Top) {
+    var detailsShown by rememberSaveable(details) { mutableStateOf(false) }
+    Notice(tone = tone, modifier = modifier) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
             Text(
-                text = error.line,
-                style = ThemeText.body.style,
+                text = title,
+                style = (if (advice != null) ThemeText.strong else ThemeText.body).style,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
             )
-            action?.let { ErrorActionButton(it) }
+            advice?.let { Text(text = it, style = ThemeText.body.style, color = onTintSecondary) }
+            if (details != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.related),
+                    horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related, Alignment.End),
+                ) {
+                    TextButton(onClick = { detailsShown = true }, contentPadding = ACTION_PADDING) {
+                        Text(stringResource(R.string.details))
+                    }
+                    action?.let { ErrorActionButton(it) }
+                }
+            } else {
+                action?.let { ErrorActionButton(it, Modifier.offset(x = -ThemeSpace.related)) }
+            }
         }
-        val detail = error.detail ?: return@Column
-        Row(
-            modifier = Modifier.clickable { expanded = !expanded },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.line),
-        ) {
-            Text(text = stringResource(R.string.details), style = ThemeText.detail.style, color = onTintSecondary)
-            Icon(
-                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = null,
-                tint = onTintSecondary,
-                modifier = Modifier.size(ThemeIcon.small),
-            )
-        }
-        if (expanded) {
-            CausesPanel(text = error.detailExcerpt.orEmpty(), copyText = detail)
-        }
+    }
+    if (detailsShown && details != null) {
+        ErrorDetailsDialog(details, onDismiss = { detailsShown = false })
     }
 }
 
+private val ACTION_PADDING = PaddingValues(horizontal = ThemeSpace.related)
+
 @Composable
-private fun ErrorActionButton(action: ErrorAction) {
+private fun ErrorActionButton(
+    action: ErrorAction,
+    modifier: Modifier = Modifier,
+) {
     TextButton(
         onClick = action.onClick,
         enabled = action.enabled,
-        contentPadding = PaddingValues(horizontal = ThemeSpace.related),
+        contentPadding = ACTION_PADDING,
+        modifier = modifier,
     ) { Text(action.label) }
 }
 
@@ -149,13 +165,13 @@ fun CausesPanel(
                     end = CAUSES_COPY_INSET,
                 ),
         ) {
-            Text(text = text, style = ThemeText.mono.style, color = onTintSecondary)
+            Text(text = text, style = ThemeText.mono.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IconButton(onClick = { copy(copyText) }, modifier = Modifier.align(Alignment.TopEnd)) {
             Icon(
                 imageVector = Icons.Filled.ContentCopy,
                 contentDescription = stringResource(R.string.copy_details),
-                tint = onTintSecondary,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(ThemeIcon.medium),
             )
         }
@@ -178,6 +194,18 @@ private fun ErrorNoticePreview() {
                     "client error (Connect): dns error: failed to lookup address information",
             ),
             action = ErrorAction("Retry") {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun TitledErrorNoticePreview() {
+    BaeTheme {
+        TitledErrorNotice(
+            title = "Couldn't read the sign-in settings",
+            advice = "Dropbox and OneDrive sign-in are unavailable until this build is reinstalled.",
+            error = DisplayError("OAuthConfig: missing client id"),
         )
     }
 }

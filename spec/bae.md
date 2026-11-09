@@ -4386,8 +4386,8 @@ path, an underlying cause, the provider's or the network's own message. Only
 then does an app offer the detail, and a notice never shows it: a notice shows the
 category's line, or a title the app words for what failed with what to do under
 it, and its *Details* opens the causes one a line, led by the category's line
-when the notice didn't show it, with a button that copies them whole: on macOS
-in an alert. On Android the detail shows under the line behind *Details*. A
+when the notice didn't show it, with a button that copies them whole: in an
+alert on macOS and a dialog on Android. A
 category whose line names the whole fault, with the counts, discs or folder it
 carries, shows the line alone, since its detail is the same sentence again in
 English.
@@ -4397,8 +4397,7 @@ starting, opening secure storage, reading sign-in settings, listing this
 device's libraries, or opening, resetting, closing or removing one. Each app
 titles the failure by its step and says what to do next for that step, so a
 keychain that won't open never reads as a library that failed to open; the
-category's line and the detail are what its *Details* opens (on Android, under
-the title). A listing fails as a configuration to fix
+category's line and the detail are what its *Details* opens. A listing fails as a configuration to fix
 when a folder or a file under it can't be read, as deleting fails when it
 finishes a library's recorded deletion, and as a bug, "Something went wrong",
 when coven's work for it panicked.
