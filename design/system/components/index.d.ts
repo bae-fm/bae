@@ -306,7 +306,6 @@ export declare function MacImportFolderLine(props: { tab?: string; folder: strin
 export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; cover?: string; fields?: string; records?: string; check?: string; cloud?: boolean; retry?: boolean; blank?: boolean; editor?: boolean; changed?: boolean }): React.ReactElement;
 export declare function MacImportTable(props: { children?: React.ReactNode }): React.ReactElement;
 export declare function MacImportTrackRow(props: { file: string; entry?: boolean; evidence?: string; position?: string; title?: string; artist?: string; inherited?: boolean; length?: string; mismatch?: boolean; playing?: boolean }): React.ReactElement;
-export declare function MacImportSideHeader(props: { title: string }): React.ReactElement;
 export declare function MacImportSheetCaption(props: { disc?: string; sheet: string; bound?: string; unbound?: boolean }): React.ReactElement;
 export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; discogsBar?: boolean; autoStatus?: 'working' | 'failed'; dimmed?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacIdentifierBand(props: { chips: string }): React.ReactElement;

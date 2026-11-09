@@ -73,7 +73,6 @@
       h('span', { className: cx('bae-ellipsis', props.inherited && 'bae-m-tertiary') }, props.artist || 'Album artist'),
       h('span', { className: cx('bae-num', props.mismatch && 'bae-warning'), style: { textAlign: 'right' }, title: props.mismatch ? 'Lengths differ' : null }, props.length));
   }
-  function MacImportSideHeader(props) { return h('div', { className: 'bae-m-eyebrowtxt', style: { padding: '12px 0 4px' } }, props.title); }
   function MacImportSheetCaption(props) {
     return h('div', { className: 'bae-m-icue' }, h('span', { className: 'bae-m-icue-disc' }, h('span', { className: 'bae-strong' }, props.disc || 'Disc 1'), h(Glyph, { set: 'mac', name: 'down', size: 8 })), h(StatusChip, { tone: 'accent' }, 'CUE'), h('span', { className: 'bae-mono' }, props.sheet), h('span', { className: 'bae-m-tertiary' }, '→'), h('span', { className: cx('bae-mono', props.unbound ? 'bae-warning' : 'bae-muted') }, props.bound || 'Choose audio…'));
   }

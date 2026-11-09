@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacImportTable, null, h(B.MacImportSideHeader, { title: 'Disc 1' }), h(B.MacImportTrackRow, { file: '01 Harbor Lights.flac', position: '1', title: 'Harbor Lights', inherited: true, length: '4:32' }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacImportTable, null, h(B.MacEyebrow, null, 'Disc 1'), h(B.MacImportTrackRow, { file: '01 Harbor Lights.flac', position: '1', title: 'Harbor Lights', inherited: true, length: '4:32' }))));
 </script>
 </body>
 </html>
