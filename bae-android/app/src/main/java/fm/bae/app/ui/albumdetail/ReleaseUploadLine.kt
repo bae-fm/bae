@@ -2,7 +2,6 @@ package fm.bae.app.ui.albumdetail
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,8 +14,10 @@ import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.TitledErrorNotice
 import uniffi.bae_bridge.BridgeRelease
-import uniffi.bae_bridge.BridgeUploadActivity
 import uniffi.bae_bridge.BridgeUploadProgress
 import uniffi.bae_bridge.bridgeUploadActivityKey
 
@@ -34,9 +35,9 @@ internal fun ReleaseTransferLines(
 
 /**
  * What of the release waits in this device's upload queue: the phase core
- * words ("Queued to upload"), and, while none of its files is being sent, the
- * file whose missing original its move waits for. Nothing when no file of it
- * is queued.
+ * words ("Queued to upload") and, while none of its files is being sent, a
+ * quiet warning naming the file whose missing original its move waits for.
+ * Nothing when no file of it is queued.
  */
 @Composable
 internal fun ReleaseUploadLine(
@@ -44,36 +45,41 @@ internal fun ReleaseUploadLine(
     missing: String?,
 ) {
     if (progress == null) return
-    UploadLineBody(progress.activity, missing)
+    UploadLineBody(LocalContext.current.coreString(bridgeUploadActivityKey(progress.activity)), missing)
 }
 
+/** The upload line from its [phase] words, so a preview draws it without a call into the bridge. */
 @Composable
-private fun UploadLineBody(
-    activity: BridgeUploadActivity,
+internal fun UploadLineBody(
+    phase: String,
     missing: String?,
 ) {
-    val words =
-        buildList {
-            add(LocalContext.current.coreString(bridgeUploadActivityKey(activity)))
-            missing?.let { add(stringResource(R.string.upload_waiting_for_file, it)) }
-        }
-    Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
         Text(
-            text = words.joinToString(" · "),
+            text = phase,
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (missing != null) {
+            TitledErrorNotice(
+                title = stringResource(R.string.upload_missing_title, missing),
+                advice = stringResource(R.string.upload_missing_advice),
+                error = null,
+                tone = StatusTone.WARNING,
+                look = NoticeLook.QUIET,
+            )
+        }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun UploadLineQueuedPreview() {
-    BaeTheme { UploadLineBody(BridgeUploadActivity.QUEUED, null) }
+    BaeTheme { UploadLineBody(LocalContext.current.coreString("core.outbox.phase.queued"), null) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun UploadLineMissingPreview() {
-    BaeTheme { UploadLineBody(BridgeUploadActivity.QUEUED, "01 Track.flac") }
+    BaeTheme { UploadLineBody(LocalContext.current.coreString("core.outbox.phase.queued"), "01 Track.flac") }
 }

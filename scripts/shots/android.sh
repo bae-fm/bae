@@ -53,6 +53,7 @@ echo "android shots: rendering scenes (updateFullDebugScreenshotTest)..."
 SCENES=$(cat <<'EOF'
 AlbumDetail:album-detail
 AlbumDetailLight:album-detail-light
+AlbumPinStates:album-pin-states
 AppearanceDarkForest:appearance-dark-forest
 AppearanceDarkMidnight:appearance-dark-midnight
 AppearanceDarkNeutral:appearance-dark-neutral

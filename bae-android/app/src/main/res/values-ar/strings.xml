@@ -188,14 +188,15 @@
     <string name="qr_scanner_instructions">امسح رمز استرداد معروضًا في bae على أحد أجهزتك، أو دعوة.</string>
     <!-- Downloads -->
     <string name="downloads">التنزيلات</string>
-    <string name="download">تنزيل</string>
-    <string name="download_remove">إزالة التنزيل</string>
-    <string name="download_downloaded">تم التنزيل</string>
-    <string name="download_copying_here">جارٍ النسخ إلى هنا</string>
-    <string name="download_stop_keeping_here">إيقاف الاحتفاظ هنا</string>
-    <string name="download_waiting">في انتظار التنزيل</string>
-    <string name="download_failed">فشل التنزيل</string>
-    <string name="upload_waiting_for_file">في انتظار %1$s</string>
+    <string name="pin">تثبيت</string>
+    <string name="unpin">إلغاء التثبيت</string>
+    <string name="pinned">مثبّت</string>
+    <string name="pinning">جارٍ التثبيت</string>
+    <string name="pin_cancel">إلغاء عملية التثبيت</string>
+    <string name="pin_queued">في انتظار التثبيت</string>
+    <string name="pin_failed">تعذر التثبيت</string>
+    <string name="upload_missing_title">%1$s مفقود</string>
+    <string name="upload_missing_advice">استعِده لإكمال الرفع.</string>
     <string name="resume">استئناف</string>
     <string name="downloads_empty">لا توجد تنزيلات</string>
     <string name="downloads_load_failed">تعذّر تحميل تنزيلاتك.</string>

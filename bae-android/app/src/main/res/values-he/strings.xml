@@ -176,14 +176,15 @@
     <string name="qr_scanner_instructions">סרוק קוד שחזור שמוצג ב-bae באחד המכשירים שלך, או הזמנה.</string>
     <!-- Downloads -->
     <string name="downloads">הורדות</string>
-    <string name="download">הורדה</string>
-    <string name="download_remove">הסר הורדה</string>
-    <string name="download_downloaded">הורד</string>
-    <string name="download_copying_here">מועתק לכאן</string>
-    <string name="download_stop_keeping_here">הפסק לשמור כאן</string>
-    <string name="download_waiting">ממתין להורדה</string>
-    <string name="download_failed">ההורדה נכשלה</string>
-    <string name="upload_waiting_for_file">ממתין ל-%1$s</string>
+    <string name="pin">הצמד</string>
+    <string name="unpin">בטל הצמדה</string>
+    <string name="pinned">מוצמד</string>
+    <string name="pinning">מצמיד</string>
+    <string name="pin_cancel">ביטול תהליך ההצמדה</string>
+    <string name="pin_queued">בתור להצמדה</string>
+    <string name="pin_failed">לא ניתן להצמיד</string>
+    <string name="upload_missing_title">%1$s חסר</string>
+    <string name="upload_missing_advice">שחזר אותו כדי לסיים את ההעלאה.</string>
     <string name="resume">המשך</string>
     <string name="downloads_empty">אין הורדות</string>
     <string name="downloads_load_failed">לא ניתן לטעון את ההורדות שלך.</string>

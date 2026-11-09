@@ -89,16 +89,16 @@ private fun DownloadRowState(
 ) {
     when (state) {
         BridgeDownloadState.Queued -> {
-            WaitingToDownloadText()
+            PinQueuedText()
         }
 
         BridgeDownloadState.Active -> {
-            DownloadProgress(progress)
+            DownloadProgress(progress, label = null)
         }
 
         is BridgeDownloadState.Failed -> {
             TitledErrorNotice(
-                title = stringResource(R.string.download_failed),
+                title = stringResource(R.string.pin_failed),
                 advice = null,
                 error = DisplayError(state.error),
                 action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
@@ -108,11 +108,11 @@ private fun DownloadRowState(
     }
 }
 
-/** "Waiting to download" — shown on a queued row and the album-detail control. */
+/** "Queued to pin", shown on a queued row and the album-detail control. */
 @Composable
-internal fun WaitingToDownloadText() {
+internal fun PinQueuedText() {
     Text(
-        text = stringResource(R.string.download_waiting),
+        text = stringResource(R.string.pin_queued),
         style = ThemeText.detail.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -123,8 +123,9 @@ internal fun WaitingToDownloadText() {
 internal fun ActiveDownloadProgress(
     releaseId: String,
     downloads: DownloadStore,
+    label: String?,
 ) {
-    DownloadProgress(downloads.latestProgress(releaseId), Modifier.fillMaxWidth())
+    DownloadProgress(downloads.latestProgress(releaseId), label, Modifier.fillMaxWidth())
 }
 
 private fun BridgeQueuedRelease.detailText(context: Context): String {

@@ -168,14 +168,15 @@
     <string name="qr_scanner_instructions">お使いのデバイスの bae に表示された復元コード、または招待をスキャンしてください。</string>
     <!-- Downloads -->
     <string name="downloads">ダウンロード</string>
-    <string name="download">ダウンロード</string>
-    <string name="download_remove">ダウンロードを削除</string>
-    <string name="download_downloaded">ダウンロード済み</string>
-    <string name="download_copying_here">ここにコピー中</string>
-    <string name="download_stop_keeping_here">ここに保持するのをやめる</string>
-    <string name="download_waiting">ダウンロード待ち</string>
-    <string name="download_failed">ダウンロード失敗</string>
-    <string name="upload_waiting_for_file">%1$s を待機中</string>
+    <string name="pin">ピン留め</string>
+    <string name="unpin">ピン留めを解除</string>
+    <string name="pinned">ピン留め済み</string>
+    <string name="pinning">ピン留め中</string>
+    <string name="pin_cancel">ピン留めをキャンセル</string>
+    <string name="pin_queued">ピン留めの待機中</string>
+    <string name="pin_failed">ピン留めできませんでした</string>
+    <string name="upload_missing_title">%1$s が見つかりません</string>
+    <string name="upload_missing_advice">アップロードを完了するには、ファイルを元に戻してください。</string>
     <string name="resume">再開</string>
     <string name="downloads_empty">ダウンロードはありません</string>
     <string name="downloads_load_failed">ダウンロードを読み込めませんでした。</string>

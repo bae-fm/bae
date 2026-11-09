@@ -176,14 +176,15 @@
     <string name="qr_scanner_instructions">Leia um código de restauração exibido no bae em um dos seus dispositivos ou um convite.</string>
     <!-- Downloads -->
     <string name="downloads">Downloads</string>
-    <string name="download">Baixar</string>
-    <string name="download_remove">Remover download</string>
-    <string name="download_downloaded">Baixado</string>
-    <string name="download_copying_here">Copiando para cá</string>
-    <string name="download_stop_keeping_here">Parar de manter aqui</string>
-    <string name="download_waiting">Aguardando download</string>
-    <string name="download_failed">Falha no download</string>
-    <string name="upload_waiting_for_file">Aguardando %1$s</string>
+    <string name="pin">Fixar</string>
+    <string name="unpin">Desafixar</string>
+    <string name="pinned">Fixado</string>
+    <string name="pinning">Fixando</string>
+    <string name="pin_cancel">Cancelar fixação</string>
+    <string name="pin_queued">Na fila para fixar</string>
+    <string name="pin_failed">Não foi possível fixar</string>
+    <string name="upload_missing_title">%1$s está faltando</string>
+    <string name="upload_missing_advice">Restaure-o para concluir o envio.</string>
     <string name="resume">Retomar</string>
     <string name="downloads_empty">Nenhum download</string>
     <string name="downloads_load_failed">Não foi possível carregar seus downloads.</string>

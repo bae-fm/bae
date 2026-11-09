@@ -180,14 +180,15 @@
     <string name="qr_scanner_instructions">Naskenujte kód pro obnovení zobrazený v bae na některém z vašich zařízení, nebo pozvánku.</string>
     <!-- Downloads -->
     <string name="downloads">Stahování</string>
-    <string name="download">Stáhnout</string>
-    <string name="download_remove">Odebrat stažené</string>
-    <string name="download_downloaded">Staženo</string>
-    <string name="download_copying_here">Kopíruje se sem</string>
-    <string name="download_stop_keeping_here">Přestat uchovávat zde</string>
-    <string name="download_waiting">Čeká na stažení</string>
-    <string name="download_failed">Stažení se nezdařilo</string>
-    <string name="upload_waiting_for_file">Čeká na %1$s</string>
+    <string name="pin">Připnout</string>
+    <string name="unpin">Odepnout</string>
+    <string name="pinned">Připnuto</string>
+    <string name="pinning">Připíná se</string>
+    <string name="pin_cancel">Zrušit připínání</string>
+    <string name="pin_queued">Ve frontě k připnutí</string>
+    <string name="pin_failed">Nepodařilo se připnout</string>
+    <string name="upload_missing_title">%1$s chybí</string>
+    <string name="upload_missing_advice">Obnovte jej, aby se nahrávání dokončilo.</string>
     <string name="resume">Pokračovat</string>
     <string name="downloads_empty">Žádná stahování</string>
     <string name="downloads_load_failed">Nelze načíst vaše stahování.</string>

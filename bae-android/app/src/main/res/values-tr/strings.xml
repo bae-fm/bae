@@ -172,14 +172,15 @@
     <string name="qr_scanner_instructions">Cihazlarınızdan birinde bae’nin gösterdiği bir geri yükleme kodunu ya da bir daveti tarayın.</string>
     <!-- Downloads -->
     <string name="downloads">İndirilenler</string>
-    <string name="download">İndir</string>
-    <string name="download_remove">İndirmeyi kaldır</string>
-    <string name="download_downloaded">İndirildi</string>
-    <string name="download_copying_here">Buraya kopyalanıyor</string>
-    <string name="download_stop_keeping_here">Burada tutmayı bırak</string>
-    <string name="download_waiting">İndirme bekleniyor</string>
-    <string name="download_failed">İndirme başarısız</string>
-    <string name="upload_waiting_for_file">%1$s bekleniyor</string>
+    <string name="pin">Sabitle</string>
+    <string name="unpin">Sabitlemeyi kaldır</string>
+    <string name="pinned">Sabitlendi</string>
+    <string name="pinning">Sabitleniyor</string>
+    <string name="pin_cancel">Sabitlemeyi iptal et</string>
+    <string name="pin_queued">Sabitlemek için sırada</string>
+    <string name="pin_failed">Sabitlenemedi</string>
+    <string name="upload_missing_title">%1$s eksik</string>
+    <string name="upload_missing_advice">Yüklemeyi bitirmek için dosyayı geri yükleyin.</string>
     <string name="resume">Sürdür</string>
     <string name="downloads_empty">İndirme yok</string>
     <string name="downloads_load_failed">İndirmeleriniz yüklenemedi.</string>

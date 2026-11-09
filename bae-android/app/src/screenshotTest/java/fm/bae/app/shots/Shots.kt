@@ -26,6 +26,8 @@ import fm.bae.app.data.LiveValue
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumDetailScene
+import fm.bae.app.ui.albumdetail.DownloadControlBody
+import fm.bae.app.ui.albumdetail.UploadLineBody
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
@@ -67,6 +69,7 @@ import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeMessage
+import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 import uniffi.bae_bridge.BridgeRemoteDevice
 import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSyncCause
@@ -623,13 +626,50 @@ fun NoticeLooks() {
                     error = error,
                 )
                 TitledErrorNotice(
-                    title = "Download failed",
+                    title = "Couldn't pin",
                     advice = null,
                     error = error,
                     action = ErrorAction("Retry") {},
                     look = NoticeLook.QUIET,
                 )
                 ErrorNotice(error, action = ErrorAction("Retry") {}, look = NoticeLook.QUIET, onDismiss = {})
+            }
+        }
+    }
+}
+
+/** An album page's pin control in each state, then its upload line queued and with a file's original missing. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun AlbumPinStates() {
+    val downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-1")
+    BaeTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(
+                modifier = Modifier.padding(ThemeSpace.edge),
+                verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
+            ) {
+                listOf(
+                    BridgeReleaseDownloadStatus.Available,
+                    BridgeReleaseDownloadStatus.Queued,
+                    BridgeReleaseDownloadStatus.Downloading,
+                    BridgeReleaseDownloadStatus.Failed("Network unreachable"),
+                    BridgeReleaseDownloadStatus.Downloaded,
+                ).forEach { status ->
+                    DownloadControlBody(
+                        status = status,
+                        releaseId = "rel-1",
+                        downloads = downloads,
+                        unpinning = false,
+                        onDownload = {},
+                        onCancel = {},
+                        onRetry = {},
+                        onRemove = {},
+                    )
+                }
+                val queued = LocalContext.current.coreString("core.outbox.phase.queued")
+                UploadLineBody(queued, null)
+                UploadLineBody(queued, "01 Track Title.flac")
             }
         }
     }

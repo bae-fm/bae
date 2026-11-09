@@ -180,14 +180,15 @@
     <string name="qr_scanner_instructions">Відскануйте код відновлення, який bae показує на одному з ваших пристроїв, або запрошення.</string>
     <!-- Downloads -->
     <string name="downloads">Завантаження</string>
-    <string name="download">Завантажити</string>
-    <string name="download_remove">Видалити завантаження</string>
-    <string name="download_downloaded">Завантажено</string>
-    <string name="download_copying_here">Копіювання сюди</string>
-    <string name="download_stop_keeping_here">Припинити зберігати тут</string>
-    <string name="download_waiting">Очікує завантаження</string>
-    <string name="download_failed">Не вдалося завантажити</string>
-    <string name="upload_waiting_for_file">Очікує %1$s</string>
+    <string name="pin">Закріпити</string>
+    <string name="unpin">Відкріпити</string>
+    <string name="pinned">Закріплено</string>
+    <string name="pinning">Закріплення</string>
+    <string name="pin_cancel">Скасувати закріплення</string>
+    <string name="pin_queued">У черзі на закріплення</string>
+    <string name="pin_failed">Не вдалося закріпити</string>
+    <string name="upload_missing_title">%1$s відсутній</string>
+    <string name="upload_missing_advice">Відновіть його, щоб завершити вивантаження.</string>
     <string name="resume">Відновити</string>
     <string name="downloads_empty">Немає завантажень</string>
     <string name="downloads_load_failed">Не вдалося завантажити список завантажень.</string>

@@ -9,9 +9,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -42,7 +41,7 @@ import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.downloads.ActiveDownloadProgress
-import fm.bae.app.ui.downloads.WaitingToDownloadText
+import fm.bae.app.ui.downloads.PinQueuedText
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -161,7 +160,7 @@ internal fun DownloadControlBody(
 ) {
     when (status) {
         BridgeReleaseDownloadStatus.Available -> {
-            DownloadActionButton(stringResource(R.string.download), Icons.Filled.Download, onDownload)
+            DownloadActionButton(stringResource(R.string.pin), Icons.Filled.PushPin, onDownload)
         }
 
         BridgeReleaseDownloadStatus.Queued -> {
@@ -169,14 +168,14 @@ internal fun DownloadControlBody(
                 horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                WaitingToDownloadText()
+                PinQueuedText()
                 DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
             }
         }
 
         BridgeReleaseDownloadStatus.Downloading -> {
-            ActiveDownloadProgress(releaseId, downloads)
-            DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
+            ActiveDownloadProgress(releaseId, downloads, label = stringResource(R.string.pinning))
+            DownloadActionButton(stringResource(R.string.pin_cancel), Icons.Filled.Close, onCancel)
         }
 
         is BridgeReleaseDownloadStatus.Failed -> {
@@ -200,7 +199,7 @@ private fun DownloadFailedControl(
     onCancel: () -> Unit,
 ) {
     TitledErrorNotice(
-        title = stringResource(R.string.download_failed),
+        title = stringResource(R.string.pin_failed),
         advice = null,
         error = DisplayError(error),
         action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
@@ -219,13 +218,13 @@ private fun DownloadedControl(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = Icons.Filled.DownloadDone,
+            imageVector = Icons.Filled.PushPin,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(ThemeIcon.small),
         )
         Text(
-            text = stringResource(R.string.download_downloaded),
+            text = stringResource(R.string.pinned),
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -237,7 +236,7 @@ private fun DownloadedControl(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            DownloadActionButton(stringResource(R.string.download_remove), Icons.Filled.Delete, onRemove)
+            DownloadActionButton(stringResource(R.string.unpin), Icons.Outlined.PushPin, onRemove)
         }
     }
 }
@@ -245,7 +244,7 @@ private fun DownloadedControl(
 /**
  * A release moved to the cloud to be kept here, whose copies coven is still
  * downloading: the download queue holds no entry for it, so it has no progress
- * to show. Stopping unpins it, which ends coven's request.
+ * to show. Cancelling unpins it, which ends coven's request.
  */
 @Composable
 private fun CopyingHereControl(
@@ -258,12 +257,12 @@ private fun CopyingHereControl(
     ) {
         WaitingIndicator(size = ThemeIcon.medium)
         Text(
-            text = stringResource(R.string.download_copying_here),
+            text = stringResource(R.string.pinning),
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (!unpinning) {
-            DownloadActionButton(stringResource(R.string.download_stop_keeping_here), Icons.Filled.Close, onStop)
+            DownloadActionButton(stringResource(R.string.pin_cancel), Icons.Filled.Close, onStop)
         }
     }
 }

@@ -218,14 +218,15 @@
 
     <!-- Downloads -->
     <string name="downloads">Downloads</string>
-    <string name="download">Download</string>
-    <string name="download_remove">Remove download</string>
-    <string name="download_downloaded">Downloaded</string>
-    <string name="download_copying_here">Copying here</string>
-    <string name="download_stop_keeping_here">Stop keeping here</string>
-    <string name="download_waiting">Waiting to download</string>
-    <string name="download_failed">Download failed</string>
-    <string name="upload_waiting_for_file">Waiting for %1$s</string>
+    <string name="pin">Pin</string>
+    <string name="unpin">Unpin</string>
+    <string name="pinned">Pinned</string>
+    <string name="pinning">Pinning</string>
+    <string name="pin_cancel">Cancel pinning</string>
+    <string name="pin_queued">Queued to pin</string>
+    <string name="pin_failed">Couldn\'t pin</string>
+    <string name="upload_missing_title">%1$s is missing</string>
+    <string name="upload_missing_advice">Restore it to finish uploading.</string>
     <string name="resume">Resume</string>
     <string name="downloads_empty">No downloads</string>
     <string name="downloads_load_failed">Couldn\'t load your downloads.</string>

@@ -176,14 +176,15 @@
     <string name="qr_scanner_instructions">Scannez un code de restauration affiché dans bae sur l’un de vos appareils, ou une invitation.</string>
     <!-- Downloads -->
     <string name="downloads">Téléchargements</string>
-    <string name="download">Télécharger</string>
-    <string name="download_remove">Supprimer le téléchargement</string>
-    <string name="download_downloaded">Téléchargé</string>
-    <string name="download_copying_here">Copie ici</string>
-    <string name="download_stop_keeping_here">Ne plus conserver ici</string>
-    <string name="download_waiting">En attente de téléchargement</string>
-    <string name="download_failed">Échec du téléchargement</string>
-    <string name="upload_waiting_for_file">En attente de %1$s</string>
+    <string name="pin">Épingler</string>
+    <string name="unpin">Désépingler</string>
+    <string name="pinned">Épinglé</string>
+    <string name="pinning">Épinglage</string>
+    <string name="pin_cancel">Annuler l’épinglage</string>
+    <string name="pin_queued">En file pour épinglage</string>
+    <string name="pin_failed">Impossible d’épingler</string>
+    <string name="upload_missing_title">%1$s est introuvable</string>
+    <string name="upload_missing_advice">Restaurez-le pour terminer l’envoi.</string>
     <string name="resume">Reprendre</string>
     <string name="downloads_empty">Aucun téléchargement</string>
     <string name="downloads_load_failed">Impossible de charger vos téléchargements.</string>

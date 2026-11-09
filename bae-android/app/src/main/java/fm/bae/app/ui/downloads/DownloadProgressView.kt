@@ -24,13 +24,15 @@ import uniffi.bae_bridge.BridgeDownloadTransferProgress
 private const val BAR_MAX = 10_000
 
 /**
- * A download's progress bar over its "{done} of {total}" byte line, which a
- * View reads from [progress]'s latest value each display frame while the
- * release downloads: arriving bytes recompose nothing.
+ * A download's progress bar over its "{done} of {total}" byte line, led by
+ * [label] ("Pinning · 120 MB of 300 MB") when there is one, which a View reads
+ * from [progress]'s latest value each display frame while the release
+ * downloads: arriving bytes recompose nothing.
  */
 @Composable
 internal fun DownloadProgress(
     progress: LatestSource<BridgeDownloadTransferProgress>,
+    label: String?,
     modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary.toArgb()
@@ -42,6 +44,7 @@ internal fun DownloadProgress(
         factory = { context -> DownloadProgressView(context) },
         update = { view ->
             view.applyStyle(accent = accent, track = track, text = text, textSizeSp = size)
+            view.label = label
             view.follow(progress)
         },
         onRelease = { view -> view.stopFollowing() },
@@ -58,6 +61,9 @@ internal class DownloadProgressView(
         }
     private val bytes = TextView(context)
     private val following = FrameFollowing<BridgeDownloadTransferProgress>(this, ::show)
+
+    /** The words that lead the byte line, or null for the bytes alone. */
+    var label: String? = null
 
     init {
         orientation = VERTICAL
@@ -95,6 +101,7 @@ internal class DownloadProgressView(
                         ),
                     )
                 }.orEmpty()
+                .let { counts -> label?.let { led -> if (counts.isEmpty()) led else "$led · $counts" } ?: counts }
         if (bytes.text.toString() != text) bytes.text = text
     }
 }

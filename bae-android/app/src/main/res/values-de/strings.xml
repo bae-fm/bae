@@ -172,14 +172,15 @@
     <string name="qr_scanner_instructions">Scanne einen Wiederherstellungscode, den bae auf einem deiner Geräte zeigt, oder eine Einladung.</string>
     <!-- Downloads -->
     <string name="downloads">Downloads</string>
-    <string name="download">Herunterladen</string>
-    <string name="download_remove">Download entfernen</string>
-    <string name="download_downloaded">Heruntergeladen</string>
-    <string name="download_copying_here">Wird hierher kopiert</string>
-    <string name="download_stop_keeping_here">Hier nicht mehr behalten</string>
-    <string name="download_waiting">Wartet auf Download</string>
-    <string name="download_failed">Download fehlgeschlagen</string>
-    <string name="upload_waiting_for_file">Wartet auf %1$s</string>
+    <string name="pin">Anheften</string>
+    <string name="unpin">Loslösen</string>
+    <string name="pinned">Angeheftet</string>
+    <string name="pinning">Wird angeheftet</string>
+    <string name="pin_cancel">Anheften abbrechen</string>
+    <string name="pin_queued">In Warteschlange zum Anheften</string>
+    <string name="pin_failed">Konnte nicht angeheftet werden</string>
+    <string name="upload_missing_title">%1$s fehlt</string>
+    <string name="upload_missing_advice">Stelle sie wieder her, damit das Hochladen abgeschlossen wird.</string>
     <string name="resume">Fortsetzen</string>
     <string name="downloads_empty">Keine Downloads</string>
     <string name="downloads_load_failed">Deine Downloads konnten nicht geladen werden.</string>

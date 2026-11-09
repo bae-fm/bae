@@ -176,14 +176,15 @@
     <string name="qr_scanner_instructions">Scansiona un codice di ripristino mostrato da bae su uno dei tuoi dispositivi, oppure un invito.</string>
     <!-- Downloads -->
     <string name="downloads">Download</string>
-    <string name="download">Scarica</string>
-    <string name="download_remove">Rimuovi download</string>
-    <string name="download_downloaded">Scaricato</string>
-    <string name="download_copying_here">Copia qui</string>
-    <string name="download_stop_keeping_here">Smetti di conservare qui</string>
-    <string name="download_waiting">In attesa di download</string>
-    <string name="download_failed">Download non riuscito</string>
-    <string name="upload_waiting_for_file">In attesa di %1$s</string>
+    <string name="pin">Fissa</string>
+    <string name="unpin">Rimuovi fissaggio</string>
+    <string name="pinned">Fissato</string>
+    <string name="pinning">Fissaggio</string>
+    <string name="pin_cancel">Annulla fissaggio</string>
+    <string name="pin_queued">In coda per il fissaggio</string>
+    <string name="pin_failed">Impossibile fissare</string>
+    <string name="upload_missing_title">%1$s manca</string>
+    <string name="upload_missing_advice">Ripristinalo per completare il caricamento.</string>
     <string name="resume">Riprendi</string>
     <string name="downloads_empty">Nessun download</string>
     <string name="downloads_load_failed">Impossibile caricare i tuoi download.</string>

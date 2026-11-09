@@ -168,14 +168,15 @@
     <string name="qr_scanner_instructions">掃描你其他裝置上 bae 顯示的還原碼，或一個邀請。</string>
     <!-- Downloads -->
     <string name="downloads">下載</string>
-    <string name="download">下載</string>
-    <string name="download_remove">移除下載</string>
-    <string name="download_downloaded">已下載</string>
-    <string name="download_copying_here">正在複製到此處</string>
-    <string name="download_stop_keeping_here">不再保留在此處</string>
-    <string name="download_waiting">等待下載</string>
-    <string name="download_failed">下載失敗</string>
-    <string name="upload_waiting_for_file">等待 %1$s</string>
+    <string name="pin">釘選</string>
+    <string name="unpin">取消釘選</string>
+    <string name="pinned">已釘選</string>
+    <string name="pinning">正在釘選</string>
+    <string name="pin_cancel">停止釘選</string>
+    <string name="pin_queued">已加入佇列，等待釘選</string>
+    <string name="pin_failed">無法釘選</string>
+    <string name="upload_missing_title">缺少 %1$s</string>
+    <string name="upload_missing_advice">還原該檔案以完成上傳。</string>
     <string name="resume">繼續</string>
     <string name="downloads_empty">沒有下載</string>
     <string name="downloads_load_failed">無法載入你的下載。</string>

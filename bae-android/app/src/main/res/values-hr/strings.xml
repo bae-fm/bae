@@ -176,14 +176,15 @@
     <string name="qr_scanner_instructions">Skenirajte kod za vraćanje koji bae prikazuje na jednom od vaših uređaja ili pozivnicu.</string>
     <!-- Downloads -->
     <string name="downloads">Preuzimanja</string>
-    <string name="download">Preuzmi</string>
-    <string name="download_remove">Ukloni preuzeto</string>
-    <string name="download_downloaded">Preuzeto</string>
-    <string name="download_copying_here">Kopiranje ovamo</string>
-    <string name="download_stop_keeping_here">Prestani čuvati ovdje</string>
-    <string name="download_waiting">Čeka na preuzimanje</string>
-    <string name="download_failed">Preuzimanje nije uspjelo</string>
-    <string name="upload_waiting_for_file">Čeka %1$s</string>
+    <string name="pin">Prikvači</string>
+    <string name="unpin">Otkvači</string>
+    <string name="pinned">Prikvačeno</string>
+    <string name="pinning">Prikvačivanje</string>
+    <string name="pin_cancel">Otkaži prikvačivanje</string>
+    <string name="pin_queued">Na čekanju za prikvačivanje</string>
+    <string name="pin_failed">Prikvačivanje nije uspjelo</string>
+    <string name="upload_missing_title">%1$s nedostaje</string>
+    <string name="upload_missing_advice">Vratite je da se prijenos dovrši.</string>
     <string name="resume">Nastavi</string>
     <string name="downloads_empty">Nema preuzimanja</string>
     <string name="downloads_load_failed">Nije moguće učitati vaša preuzimanja.</string>
