@@ -276,7 +276,7 @@ export declare function MacWorkDetail(props: { title: string; children?: React.R
 export declare function MacHairline(props: {}): React.ReactElement;
 export declare function MacContentUnavailable(props: { title: string; description?: string }): React.ReactElement;
 export declare function Sym(props: { name: string; size?: number; weight?: number }): React.ReactElement;
-export declare function MacStorageWindow(props: { filter?: 'All' | 'Local' | 'In storage'; search?: string; inspector?: boolean; width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
+export declare function MacStorageWindow(props: { filter?: 'All' | 'Local' | 'In cloud home'; search?: string; inspector?: boolean; width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
 export declare function MacTable(props: { columns: string; empty?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacTableRow(props: { selected?: boolean; placeholder?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacReleaseCell(props: { title: string }): React.ReactElement;

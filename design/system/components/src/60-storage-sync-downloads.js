@@ -40,7 +40,7 @@
   function list(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
 
   // ---- Storage Manager (macOS) ----
-  // The window: title, Filter field, All / Local / In storage, the Inspector toggle, then the release list and the inspector.
+  // The window: title, Filter field, All / Local / In cloud home, the Inspector toggle, then the release list and the inspector.
   function MacStorageWindow(props) {
     var k = kids(props.children);
     return h('div', { className: 'bae-m-window bae-m-storewin', style: { width: Number(props.width || 1100), height: Number(props.height || 660) } },
@@ -48,7 +48,7 @@
       h('header', { className: 'bae-m-storewin-bar' },
         h('span', { className: 'bae-m-storewin-title' }, 'Storage Manager'),
         h('span', { style: { flex: 1 } }),
-        h(MacSegmentedControl, { options: 'All, Local, In storage', selected: props.filter || 'All' }),
+        h(MacSegmentedControl, { options: 'All, Local, In cloud home', selected: props.filter || 'All' }),
         h('span', { style: { flex: 1 } }),
         h('span', { className: 'bae-m-storewin-filter' }, h(Glyph, { set: 'mac', name: 'search', size: 12 }), h('span', { className: props.search ? null : 'bae-m-search-prompt' }, props.search || 'Filter')),
         h('span', { className: cx('bae-m-iconbtn', props.inspector && 'bae-m-iconbtn-on'), title: 'Inspector' }, h(Sym, { name: 'sidebar', size: 15 }))),
@@ -71,7 +71,7 @@
     return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
   }
   function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
-  // The Storage column, as StorageStateLabel draws it: one chip. At rest: Local, Pinned, In storage. Moving: Uploading, Pinning and Making local… fill with `progress`. Waiting: Queued to pin, Queued to upload, Queued to make local; an upload held by a missing original, Waiting for that `file`, in warning (`uploadBlocked`). Failed, in danger: Couldn't pin, Move failed (`file`), Couldn't make local. Nothing says how many wait ahead or what holds the queue back.
+  // The Storage column, as StorageStateLabel draws it: one chip. At rest: Local, Pinned, In cloud home. Moving: Uploading, Pinning and Making local… fill with `progress`. Waiting: Queued to pin, Queued to upload, Queued to make local; an upload held by a missing original, Waiting for that `file`, in warning (`uploadBlocked`). Failed, in danger: Couldn't pin, Move failed (`file`), Couldn't make local. Nothing says how many wait ahead or what holds the queue back.
   function MacStorageChip(props) {
     var s = props.state || 'cloud';
     var chip = function (tone, label) { return h(StatusChip, { tone: tone }, label); };
@@ -87,7 +87,7 @@
     if (s === 'uploadBlocked') return chip('warning', 'Waiting for ' + (props.file || '01 Harbor Lights.flac'));
     if (s === 'makeLocalQueued') return chip('activity', 'Queued to make local');
     var icon = { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s];
-    return h(StatusChip, { tone: 'neutral' }, h(Sym, { name: icon, size: 10 }), { local: 'Local', pinned: 'Pinned', cloud: 'In storage' }[s]);
+    return h(StatusChip, { tone: 'neutral' }, h(Sym, { name: icon, size: 10 }), { local: 'Local', pinned: 'Pinned', cloud: 'In cloud home' }[s]);
   }
 
   // DownloadRow's failed row in the inspector: the kind's icon, title and detail, the cancel mark; under them the failure (Couldn't pin, or Couldn't make local) with Details and Retry.

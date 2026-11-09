@@ -1870,6 +1870,11 @@ missing or changed, moving the release to storage fails as it reads the
 file (one already moving waits or fails as below), and an export fails.
 
 A release is *uploaded* once every one of its files is in storage.
+The apps call the library's place in storage, the folder or bucket on the
+household's provider that coven's store lives in, the person's *cloud home*:
+a release there reads In cloud home, the move is Move to cloud home, and no
+screen says "storage" alone for it. The Storage manager and a release's Storage
+sheet keep the word, since they cover the files on this device too.
 Until then it is local, on every device. The rows sync anyway, so every
 device knows what the household owns, and a rating or playlist entry pointing
 at a local release's track points at a row every device can read
@@ -1911,7 +1916,7 @@ coven pins it itself and downloads its copy from storage, never reading the
 original for the cache, and retries a failed download by itself. Until each
 file is pinned, coven lists a request to keep it in `coven_pin_requests`,
 which the release's storage row counts, so the release reads Pinning
-beside In storage while the download queue holds nothing of it; its
+beside In cloud home while the download queue holds nothing of it; its
 action is Cancel pinning, the release's unpin, which ends coven's
 requests in its own write so coven does not pin the files when their copies
 can be fetched.
@@ -1975,7 +1980,7 @@ text narrows it to none. It sorts by album title (ignoring ASCII
 case), artist (§2.3), media (a release stating none last), file count, size,
 storage — a failed download first, then uploading, then pinning: files
 coming to this device, waiting or downloading in the download queue (§4.3),
-then local, pinned, and in storage only — or when the release was added, either way, ties going by album
+then local, pinned, and in cloud home only — or when the release was added, either way, ties going by album
 title, then when the release was added, then id. On macOS the list is a table
 with a column for each of these; a column can be dragged wider or narrower or
 to another place, sized to its header and the rows in view by double-clicking
@@ -2049,7 +2054,7 @@ as its download has come once it starts, or Queued to pin before; making local, 
 Couldn't pin; Pinning too while coven downloads the copies a move to the
 cloud asked to keep here, unless the download queue
 holds an entry for the release, which the row shows instead; Local, Pinned or
-In storage at rest. No rate shows beside it, nor how many entries wait ahead
+In cloud home at rest. No rate shows beside it, nor how many entries wait ahead
 of it or what holds the queue back: a row's storage is its state and at most
 the one change on its way, every waiting state naming what it waits to do.
 A move fails when a file's original changed before its upload
@@ -2897,7 +2902,7 @@ setup call reports in (§9.1), and writes into it the steps coven reports
 checking the location holds nothing but this library on S3, Dropbox and
 OneDrive, detecting the settings on S3, preparing iCloud, reading the account
 on Dropbox and OneDrive, connecting and checking the provider,
-creating the library in storage, or loading with loading's own steps, and
+creating the library in the cloud home, or loading with loading's own steps, and
 recording changed access. The apps show the step's name over a bar in place of
 a spinner, counted for loading's steps. Signing in to Dropbox or OneDrive in
 the browser, listing the provider's folders, and making a new folder (which
@@ -3099,7 +3104,7 @@ coven gives the state
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
 and when several hold the first of these shows: Not synced, Removed from the
 library, Device needs reset, Update needed, Signed out, No access, Folder
-missing, Clock is wrong, Storage full, Offline · unsent changes, Offline, Sync
+missing, Clock is wrong, Cloud home full, Offline · unsent changes, Offline, Sync
 failed, Syncing…, Waiting to sync, Synced. core picks the words, the color and
 the fix; the apps draw what core sends and add nothing of their own but the
 words of a button, which are each platform's.
@@ -3124,11 +3129,11 @@ words of a button, which are each platform's.
   signs in from System Settings; an S3 library has no sign-in, so it reads
   *Access key not accepted* and asks for a new key for the same bucket. A
   sign-in that expired reads the same as none saved.
-- **Red.** Device needs reset, with the reset. No access to storage, Storage
+- **Red.** Device needs reset, with the reset. No access to your cloud home, Cloud home
   folder missing and Clock is wrong, each with its cause. Removed from the
   library, with *An admin removed this device. What's here is an old copy.*
-  and the list of libraries on this device, where it is removed. Storage full, with *Free up space in this
-  storage.* and, for Dropbox and OneDrive, *Open in browser*. Sync failed: any
+  and the list of libraries on this device, where it is removed. Cloud home full, with *Free up space in this
+  cloud home.* and, for Dropbox and OneDrive, *Open in browser*. Sync failed: any
   failure with no state of its own, its cause in plain words, always with
   *Retry now*, which it also does by itself. A file that can't be uploaded,
   missing or changed since import, is named until it is back as it was, and
@@ -3441,7 +3446,7 @@ removal goes on to delete bae's files for it. Only if that discard fails too doe
 fail, saying the laptop left the library and its files are still on it.
 
 - **The confirmation.** Remove asks "Remove library from this Mac?" ("this
-  device" on Android) and says "The library will remain in storage and on your
+  device" on Android) and says "The library will remain in your cloud home and on your
   other devices." Delete asks "Delete library?" and says the library isn't
   synced, so it will be deleted for good, and that the audio files stay in their
   folders. The first screens on a Mac and on Android ask this way,

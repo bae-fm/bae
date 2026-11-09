@@ -29,14 +29,14 @@ body{margin:0;background:var(--elevated)}
 <sc-if value="{{lastSynced}}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="Bae.MacRow" label="Last synced" value="{{lastSynced}}"></x-import></sc-if>
 </x-import>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"status":{"editor":"text","default":"Storage full"},"tone":{"editor":"enum","options":["","success","warning","danger"],"default":"danger"},"cause":{"editor":"text","default":"Free up space in this storage."},"fix":{"editor":"text","default":"Open in browser"},"lastSynced":{"editor":"text","default":"2 hours ago"},"$preview":{"width":460,"height":150}}'>
+<script type="text/x-dc" data-dc-script data-props='{"status":{"editor":"text","default":"Cloud home full"},"tone":{"editor":"enum","options":["","success","warning","danger"],"default":"danger"},"cause":{"editor":"text","default":"Free up space in this cloud home."},"fix":{"editor":"text","default":"Open in browser"},"lastSynced":{"editor":"text","default":"2 hours ago"},"$preview":{"width":460,"height":150}}'>
 class Component extends DCLogic {
   renderVals() {
     const p = this.props;
-    const cause = p.cause ?? 'Free up space in this storage.';
+    const cause = p.cause ?? 'Free up space in this cloud home.';
     const fix = p.fix ?? 'Open in browser';
     return {
-      status: p.status ?? 'Storage full',
+      status: p.status ?? 'Cloud home full',
       tone: p.tone ?? 'danger',
       cause,
       fix,

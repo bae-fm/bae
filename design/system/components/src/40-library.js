@@ -328,7 +328,7 @@
         props.pressing ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-gap' }, props.pressing) : null, props.labels ? h('div', { className: 'bae-a-albumhead-fact' }, props.labels) : null));
   }
 
-  // The album page's pin control for one release, as ReleaseDownloadControl draws it: Pin; Queued to pin, with Cancel; Pinning with its bar and bytes and Cancel pinning; Couldn't pin with Details and Retry, and Cancel; Pinned with Unpin. A release moved to storage to be kept here reads Pinning too. On a release this phone can't play, one line saying where it is. Nothing says how many wait ahead or what holds the queue back.
+  // The album page's pin control for one release, as ReleaseDownloadControl draws it: Pin; Queued to pin, with Cancel; Pinning with its bar and bytes and Cancel pinning; Couldn't pin with Details and Retry, and Cancel; Pinned with Unpin. A release moved to the cloud home to be kept here reads Pinning too. On a release this phone can't play, one line saying where it is. Nothing says how many wait ahead or what holds the queue back.
   function AndroidDownloadControl(props) {
     var s = props.state || 'available';
     function btn(icon, text) { return h('button', { type: 'button', className: 'bae-a-btn bae-a-btn-outlined bae-a-btn-icon' }, h(Glyph, { name: icon, size: 20 }), text); }

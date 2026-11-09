@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h('div', { style: { position: 'relative', height: 300 } }, h(B.AndroidDialog, { title: 'Remove library from this device?', width: 340 }, 'The library will remain in storage and on your other devices.', h(B.AndroidDialogActions, null, h(B.AndroidButton, { kind: 'text' }, 'Cancel'), h(B.AndroidButton, { kind: 'text', destructive: true }, 'Remove'))))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h('div', { style: { position: 'relative', height: 300 } }, h(B.AndroidDialog, { title: 'Remove library from this device?', width: 340 }, 'The library will remain in your cloud home and on your other devices.', h(B.AndroidDialogActions, null, h(B.AndroidButton, { kind: 'text' }, 'Cancel'), h(B.AndroidButton, { kind: 'text', destructive: true }, 'Remove'))))));
 </script>
 </body>
 </html>
