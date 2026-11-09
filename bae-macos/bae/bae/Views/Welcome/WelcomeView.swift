@@ -29,10 +29,11 @@ struct WelcomeView: View {
 
     enum Mode {
         case choose
-        /// Restore by a typed or scanned code, or from a code coven saved in
-        /// iCloud Keychain.
-        case restore(BridgeSavedRestoreCode?)
-        case join
+        /// Restore from a code coven saved in iCloud Keychain.
+        case restoreSaved(BridgeSavedRestoreCode)
+        /// The code screen for a code the person types, pastes or scans, the
+        /// scanner open as it appears when `scanning`.
+        case code(scanning: Bool)
         /// A join this device had under way when bae stopped, continued on
         /// its waiting screen.
         case resume(BridgeUnfinishedJoin)
@@ -90,30 +91,34 @@ struct WelcomeView: View {
                     onLibraryReady: onLibraryReady,
                     onOpenLibrary: onOpenLibrary,
                     onFinishReplacement: onFinishReplacement,
-                    onRestoreSaved: { mode = .restore($0) },
-                    onJoin: { mode = .join },
-                    onAddDevice: { mode = .restore(nil) }
+                    onRestoreSaved: { mode = .restoreSaved($0) },
+                    onScanCode: { mode = .code(scanning: true) },
+                    onEnterCode: { mode = .code(scanning: false) }
                 )
             }
             .task { await resumeUnfinished() }
-        case .restore(let saved):
+        case .restoreSaved(let saved):
             BootstrapCodeView(
-                form: codeForm(.restore(saved)),
+                form: codeForm(.restoreSaved(saved)),
+                scanning: false,
                 onBack: { mode = .choose }
             )
-        case .join:
+        case .code(let scanning):
             BootstrapCodeView(
-                form: codeForm(.join),
+                form: codeForm(.code),
+                scanning: scanning,
                 onBack: { mode = .choose }
             )
         case .resume(let join):
             BootstrapCodeView(
                 form: codeForm(.resume(join)),
+                scanning: false,
                 onBack: { mode = .choose }
             )
         case .resumeRestore(let restore):
             BootstrapCodeView(
                 form: codeForm(.resumeRestore(restore)),
+                scanning: false,
                 onBack: { mode = .choose }
             )
         }
@@ -161,11 +166,7 @@ struct WelcomeView: View {
         PreviewScenes.welcome(initialMode: .choose)
     }
 
-    #Preview("Restore") {
-        PreviewScenes.welcome(initialMode: .restore(nil))
-    }
-
-    #Preview("Join") {
-        PreviewScenes.welcome(initialMode: .join)
+    #Preview("Enter code") {
+        PreviewScenes.welcome(initialMode: .code(scanning: false))
     }
 #endif

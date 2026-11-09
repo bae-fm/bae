@@ -21,8 +21,8 @@ struct WelcomeChooseView: View {
     /// stopped partway, with the one call that finishes it.
     let onFinishReplacement: (String, BridgeReplacedBy) -> Void
     let onRestoreSaved: (BridgeSavedRestoreCode) -> Void
-    let onJoin: () -> Void
-    let onAddDevice: () -> Void
+    let onScanCode: () -> Void
+    let onEnterCode: () -> Void
 
     @Environment(LibrarySetup.self)
     private var setup
@@ -228,23 +228,25 @@ struct WelcomeChooseView: View {
     /// The width the first-run buttons share.
     private static let firstRunButtonWidth: CGFloat = 240
 
-    /// First run: three stacked buttons with Create as the default action.
+    /// First run: Create as the default action, then Scan code and Enter
+    /// code side by side.
     private var firstRunActions: some View {
-        VStack(spacing: ThemeSpace.group) {
+        VStack(spacing: ThemeSpace.related + ThemeSpace.line) {
             Button(action: doCreate) { createButtonLabel }
                 .buttonStyle(PrimaryButtonStyle())
-                .frame(width: Self.firstRunButtonWidth)
                 .disabled(isBusy)
                 .keyboardShortcut(.defaultAction)
-            Button("Join library", action: onJoin)
-                .buttonStyle(.bordered)
-                .frame(width: Self.firstRunButtonWidth)
-                .disabled(isBusy)
-            Button("Add device", action: onAddDevice)
-                .buttonStyle(.bordered)
-                .frame(width: Self.firstRunButtonWidth)
-                .disabled(isBusy)
+            HStack(spacing: ThemeSpace.related) {
+                Button("Scan code", action: onScanCode)
+                    .frame(maxWidth: .infinity)
+                Button("Enter code", action: onEnterCode)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .disabled(isBusy)
         }
+        .frame(width: Self.firstRunButtonWidth)
     }
 
     /// With a library or restore code present, the actions become a row of
@@ -256,9 +258,9 @@ struct WelcomeChooseView: View {
             HStack(spacing: ThemeSpace.group) {
                 Button(action: doCreate) { createButtonLabel }
                     .disabled(isBusy)
-                Button("Join library", action: onJoin)
+                Button("Scan code", action: onScanCode)
                     .disabled(isBusy)
-                Button("Add device", action: onAddDevice)
+                Button("Enter code", action: onEnterCode)
                     .disabled(isBusy)
             }
             .buttonStyle(.bordered)
@@ -345,8 +347,8 @@ private struct RemovalErrorCallout: View {
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
                 onRestoreSaved: { _ in },
-                onJoin: {},
-                onAddDevice: {}
+                onScanCode: {},
+                onEnterCode: {}
             )
         }
         .environment(LibrarySetup.stub())
@@ -362,8 +364,8 @@ private struct RemovalErrorCallout: View {
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
                 onRestoreSaved: { _ in },
-                onJoin: {},
-                onAddDevice: {}
+                onScanCode: {},
+                onEnterCode: {}
             )
         }
         .environment(PreviewData.welcomeSetup())
@@ -382,8 +384,8 @@ private struct RemovalErrorCallout: View {
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
                 onRestoreSaved: { _ in },
-                onJoin: {},
-                onAddDevice: {}
+                onScanCode: {},
+                onEnterCode: {}
             )
         }
         .environment(PreviewData.welcomeSetup())
@@ -407,8 +409,8 @@ private struct RemovalErrorCallout: View {
                     onOpenLibrary: { _ in },
                     onFinishReplacement: { _, _ in },
                     onRestoreSaved: { _ in },
-                    onJoin: {},
-                    onAddDevice: {}
+                    onScanCode: {},
+                    onEnterCode: {}
                 )
             }
             .environment(PreviewData.welcomeSetup())

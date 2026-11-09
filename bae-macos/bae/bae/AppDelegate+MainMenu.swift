@@ -31,13 +31,13 @@ extension AppDelegate: NSMenuItemValidation {
     }
 
     @objc
-    func joinLibrary(_: Any?) {
-        presentWelcome(mode: .join)
+    func scanCode(_: Any?) {
+        presentWelcome(mode: .code(scanning: true))
     }
 
     @objc
-    func restoreFromCode(_: Any?) {
-        presentWelcome(mode: .restore(nil))
+    func enterCode(_: Any?) {
+        presentWelcome(mode: .code(scanning: false))
     }
 
     @objc

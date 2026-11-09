@@ -138,6 +138,7 @@ struct MainWindowRoot: View {
                 entry: .restoreOver(libraryId: libraryId),
                 onLibraryReady: appDelegate.openOpenedLibrary
             ),
+            scanning: false,
             onBack: { appDelegate.openLocalLibrary(id: libraryId) }
         )
         .id(libraryId)
@@ -153,6 +154,7 @@ struct MainWindowRoot: View {
                 entry: .finishRestore(libraryId: libraryId),
                 onLibraryReady: appDelegate.openOpenedLibrary
             ),
+            scanning: false,
             onBack: appDelegate.leaveRecovery
         )
         .id(libraryId)

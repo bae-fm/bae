@@ -52,9 +52,11 @@ public enum BootstrapAttempt {
 @Observable
 public final class BootstrapCodeForm {
     public enum Entry {
-        /// A restore, from a saved code or one the person enters.
-        case restore(BridgeSavedRestoreCode?)
-        case join
+        /// A restore from a code saved in iCloud Keychain.
+        case restoreSaved(BridgeSavedRestoreCode)
+        /// A code the person types, pastes or scans: an invite joins, and a
+        /// restore code adds this device.
+        case code
         /// A join this device has under way when bae starts, continued at
         /// once.
         case resume(BridgeUnfinishedJoin)
@@ -121,7 +123,7 @@ public final class BootstrapCodeForm {
         self.unfinishedJoins = unfinishedJoins
         self.unfinishedRestores = unfinishedRestores
         self.onLibraryReady = onLibraryReady
-        if case .restore(let code?) = entry {
+        if case .restoreSaved(let code) = entry {
             saved = SavedRestoreCode(code: code)
         }
         else {
@@ -219,7 +221,7 @@ public final class BootstrapCodeForm {
             launch { bootstrap in
                 try await bootstrap.resumeRestore(restore)
             }
-        case .restore, .join, .restoreOver:
+        case .restoreSaved, .code, .restoreOver:
             break
         }
     }

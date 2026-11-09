@@ -14,13 +14,16 @@ struct BootstrapCodeView: View {
     @State
     private var form: BootstrapCodeForm
     @State
-    private var showScanner = false
+    private var showScanner: Bool
 
+    /// `scanning` opens the scanner as the screen appears.
     init(
         form: BootstrapCodeForm,
+        scanning: Bool,
         onBack: @escaping () -> Void
     ) {
         _form = State(initialValue: form)
+        _showScanner = State(initialValue: scanning)
         self.onBack = onBack
     }
 
@@ -110,9 +113,10 @@ struct BootstrapCodeView: View {
 
     private var title: LocalizedStringKey {
         switch form.entry {
-        case .restore(.some): "Restore from iCloud Keychain"
-        case .restore(nil), .resumeRestore: "Add device"
-        case .join, .resume: "Join library"
+        case .restoreSaved: "Restore from iCloud Keychain"
+        case .code: "Enter code"
+        case .resumeRestore: "Add device"
+        case .resume: "Join library"
         case .restoreOver: "Restore this library"
         case .finishRestore: "Finish restoring this library"
         }
@@ -120,13 +124,15 @@ struct BootstrapCodeView: View {
 
     private var subtitle: Text {
         switch form.entry {
-        case .restore(.some):
+        case .restoreSaved:
             Text("Restore with the code saved in iCloud Keychain.")
-        case .restore(nil), .resumeRestore:
+        case .code:
+            Text("Enter your restore code, or an invite to a library.")
+        case .resumeRestore:
             Text(
                 "Scan or paste the code shown by Add device… on one of your devices. If you've lost every device, use your restore code."
             )
-        case .join, .resume:
+        case .resume:
             Text(
                 "Scan or paste the invitation an admin of the library sent you."
             )
@@ -146,8 +152,8 @@ struct BootstrapCodeView: View {
     private var primaryTitle: LocalizedStringKey {
         switch (form.attempt, form.entry) {
         case (.some(.join), _), (.some(.resume), _), (_, .resume): "Join"
-        case (_, .restore(nil)), (_, .join), (_, .resumeRestore): "Add"
-        case (_, .restore(.some)), (_, .restoreOver): "Restore"
+        case (_, .code), (_, .resumeRestore): "Add"
+        case (_, .restoreSaved), (_, .restoreOver): "Restore"
         case (_, .finishRestore): "Finish restoring"
         }
     }
@@ -285,27 +291,15 @@ extension BridgeNextCheck {
 }
 
 #if DEBUG
-    #Preview("Restore") {
+    #Preview("Enter code") {
         WelcomeWindowChrome {
             BootstrapCodeView(
                 form: LibrarySetup.stub()
                     .bootstrapForm(
-                        entry: .restore(nil),
+                        entry: .code,
                         onLibraryReady: { _, _ in }
                     ),
-                onBack: {}
-            )
-        }
-    }
-
-    #Preview("Join") {
-        WelcomeWindowChrome {
-            BootstrapCodeView(
-                form: LibrarySetup.stub()
-                    .bootstrapForm(
-                        entry: .join,
-                        onLibraryReady: { _, _ in }
-                    ),
+                scanning: false,
                 onBack: {}
             )
         }

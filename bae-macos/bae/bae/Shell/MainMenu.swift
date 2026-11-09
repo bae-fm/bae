@@ -106,12 +106,12 @@ enum MainMenu {
                     [.command, .option]
                 ),
                 item(
-                    "Join Library…",
-                    #selector(AppDelegate.joinLibrary(_:))
+                    "Scan Code…",
+                    #selector(AppDelegate.scanCode(_:))
                 ),
                 item(
-                    "Restore from Code…",
-                    #selector(AppDelegate.restoreFromCode(_:))
+                    "Enter Code…",
+                    #selector(AppDelegate.enterCode(_:))
                 ),
                 openLibrary,
                 .separator(),

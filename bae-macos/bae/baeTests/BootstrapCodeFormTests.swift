@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 import Testing
 
 /// A host whose restore from a code reports the code it was given, whose
@@ -15,6 +16,8 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
 
     let restoredCodes: AsyncStream<String>
     private let record: AsyncStream<String>.Continuation
+    let joinedCodes: AsyncStream<String>
+    private let recordJoin: AsyncStream<String>.Continuation
     let finished: AsyncStream<FinishedReplacement>
     private let recordFinish: AsyncStream<FinishedReplacement>.Continuation
     let resumedRestores: AsyncStream<ObjectIdentifier>
@@ -24,6 +27,7 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
 
     init() {
         (restoredCodes, record) = AsyncStream.makeStream(of: String.self)
+        (joinedCodes, recordJoin) = AsyncStream.makeStream(of: String.self)
         (finished, recordFinish) = AsyncStream.makeStream(
             of: FinishedReplacement.self
         )
@@ -46,6 +50,16 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
     ) async throws -> BridgeBootstrapResult {
         record.yield(code)
         if let restoreAnswer { return restoreAnswer }
+        throw CancellationError()
+    }
+
+    override func joinWithInvite(
+        code: String,
+        deviceName _: String,
+        setup _: BridgeLibrarySetup,
+        control _: BridgeJoinControl
+    ) async throws -> BridgeBootstrapResult {
+        recordJoin.yield(code)
         throw CancellationError()
     }
 
@@ -85,26 +99,38 @@ struct BootstrapCodeFormTests {
     /// A restore code for an S3 library, holding the S3 key as the QR code
     /// the person's own device shows does, or not, as the code to type.
     private static func restoreCode(carriesS3Key: Bool) -> BridgeCodeInfo {
-        .restore(
-            metadata: BridgeCodeMetadata(
-                libraryId: "library-1",
-                memberId: "member-1",
-                provider: .s3,
-                location: .s3(
-                    bucket: "music-library",
-                    region: "us-east-1",
-                    endpoint: nil,
-                    profile: nil
-                ),
-                oauthAccess: nil,
-                carriesS3Key: carriesS3Key
-            )
+        .restore(metadata: metadata(carriesS3Key: carriesS3Key))
+    }
+
+    private static func metadata(carriesS3Key: Bool) -> BridgeCodeMetadata {
+        BridgeCodeMetadata(
+            libraryId: "library-1",
+            memberId: "member-1",
+            provider: .s3,
+            location: .s3(
+                bucket: "music-library",
+                region: "us-east-1",
+                endpoint: nil,
+                profile: nil
+            ),
+            oauthAccess: nil,
+            carriesS3Key: carriesS3Key
         )
     }
 
+    /// An invite from Mara Quill to her library Low Tide Hours.
+    private static let invite: BridgeCodeInfo = .invite(
+        invite: BridgeInviteInfo(
+            metadata: metadata(carriesS3Key: false),
+            libraryName: "Low Tide Hours",
+            invitee: "Odile Fen",
+            expiresAt: Date(timeIntervalSince1970: 4_000_000_000)
+        )
+    )
+
     private func form(
         reading info: BridgeCodeInfo,
-        entry: BootstrapCodeForm.Entry = .restore(nil),
+        entry: BootstrapCodeForm.Entry = .code,
         unfinishedRestores: [BridgeUnfinishedRestore] = []
     ) -> BootstrapCodeForm {
         let host = host
@@ -142,6 +168,23 @@ struct BootstrapCodeFormTests {
         #expect(!form.isRunning)
         #expect(form.attempt?.needsS3Key == true)
         #expect(!form.ready)
+    }
+
+    @Test("the code entry joins an invite")
+    func codeEntryJoinsAnInvite() async {
+        let form = form(reading: Self.invite)
+
+        form.codeInput = Self.code
+        form.decodeCode()
+
+        guard case .join(let code, let invite) = form.attempt else {
+            Issue.record("an invite decodes to a join")
+            return
+        }
+        #expect(code == Self.code)
+        #expect(invite.libraryName == "Low Tide Hours")
+        var joined = host.joinedCodes.makeAsyncIterator()
+        #expect(await joined.next() == Self.code)
     }
 
     @Test("a typed restore code waits for Add")

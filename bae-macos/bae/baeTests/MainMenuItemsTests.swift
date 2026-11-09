@@ -39,7 +39,7 @@ struct MainMenuItemsTests {
             (
                 1,
                 [
-                    "newLibrary:", "joinLibrary:", "restoreFromCode:",
+                    "newLibrary:", "scanCode:", "enterCode:",
                     "previousLibrary:", "nextLibrary:", "importFolder:",
                     "renameLibrary:", "syncNow:", "revealLibraryInFinder:",
                     "copyLibraryId:", "closeLibrary:", "performClose:",

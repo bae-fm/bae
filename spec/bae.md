@@ -2576,9 +2576,10 @@ right click, holds **Remove…**, or **Delete…** for one never synced. A
 library that can't be read, or whose reset, restore or removal stopped
 partway, says so under its name, and its menu offers to finish it first.
 While a removal runs, its row shows the step with a spinner in place of the
-⋯. A Mac's first screen offers **Join library** and **Add device**, which
-both lead to the same scan-or-type screen where the code decides the same way,
-and **Create new library**. A restore code's screens call that adding this
+⋯. A Mac's first screen
+offers the same two under **Create new library**, and its File menu offers
+them as **Scan Code…** and **Enter Code…**; they open one code screen, where
+the code decides the same way. A restore code's screens call that adding this
 device: the button is **Add**, and the running restore says it is adding this
 device. A saved code, in iCloud Keychain or on an Android phone, and a restore
 over this device's copy (§6.4), say **Restore**. A scanned code starts at once, as an invite does, with
