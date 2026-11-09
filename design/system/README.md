@@ -38,15 +38,16 @@ The text styles are macOS points. iOS follows Dynamic Type, and the Android comp
 - On Android, a screen is an `AndroidScreen` of `AndroidSection` labels over `AndroidCard`s of `AndroidRow`s; changing a value opens an `AndroidDialog`.
 - An empty list is one sentence in the box: "No shared folders yet". No glyph above it.
 - Text in a block shares one left edge. Markers (a status glyph, a disclosure chevron, a bullet) hang in the margin to its left and never push the text in; a disclosure's chevron hangs `space-hang`.
+- A row with a leading icon keeps it in the leading column, `size-lead` wide, centred, the text starting `space-related` after it on macOS (`space-edge` on Android, as Material's list items). On macOS every such row is built from `MacItem`, and so is `MacNotice`'s glyph, so wherever a notice sits among rows, their words share one edge: the Storage Manager's inspector, the Activity panel. An empty leading column stays, so a row without an icon keeps the edge too.
 - A marker hangs only into a margin its own block owns, such as a notice's glyph column. Where the text edge is a container's edge, there is no margin to hang into: the marker goes inside, and a disclosure becomes its own row with the chevron inside it.
 - Three ways to fold things away, each for its own job:
   - **A disclosure row** folds part of one group: Advanced settings, a short list most people don't need. Every platform has one, in its own density. macOS: `MacDisclosure`, its own box, the chevron leading inside the row, pointing right and turning down when open, the rows it shows indented to the label. Android: `AndroidDisclosure`, a row in its own card, `expand_more` at the end when closed and `expand_less` when open, the rows it shows joining the card on the same edge.
   - **A collapsible section** folds a whole section of a long screen: its heading opens and closes it. Android only, the section label with `expand_more` and `expand_less` at its end. macOS has no collapsible section for content; there it is a disclosure row. No screen needs one yet.
   - **A sidebar heading** folds a group of destinations in a macOS sidebar, its chevron showing only under the pointer. It is navigation, not content. bae has no sectioned sidebar yet.
 - A disclosure's chevron on macOS points right closed and down open, leading inside its row (`MacDisclosure`).
-- A notice never shows the error itself: no Details in a notice, ever. When there is an error behind a notice, clicking it (tapping on Android) opens an alert (`MacAlert` with `details`) or dialog (`AndroidDialog` holding `AndroidErrorDetails`) with the explanation and the causes, one a line, with Copy.
+- A notice never shows the error itself. When there is an error behind it, its Details button opens an alert (`MacAlert` with `details`) or dialog (`AndroidDialog` holding `AndroidErrorDetails`) with the explanation and the causes, one a line, with Copy. In the Activity panel, clicking (tapping) the problem opens it instead.
 - An error in part of a screen is its box; a Retry that belongs to it is the box's action, at its right, level with the message.
-- A view that failed whole is a notice in the centred layout, quiet with no glyph: the message, then Details and Retry on one row under it, Retry last. Details opens the causes in a popup, as every notice's does.
+- A view that failed whole is a notice in the centred layout, quiet, a small grey outline glyph before the message, then Details and Retry on one row under it, Retry last. Details opens the causes in a popup, as every notice's does.
 
 ## Iconography
 

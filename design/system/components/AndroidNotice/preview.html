@@ -8,17 +8,19 @@
   var B = window.Bae, h = React.createElement, N = B.AndroidNotice;
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Neutral', h(N, { title: 'This library has no albums yet.' })),
     W('Info', h(N, { tone: 'info', title: 'A newer version of this release is on Discogs.' })),
     W('Success', h(N, { tone: 'success', title: 'Storage connected.' })),
     W('Warning', h(N, { tone: 'warning', title: 'Unsent changes will be lost' })),
-    W('Neutral', h(N, { title: 'This library has no albums yet.' })),
+    W('Warning, title and subtitle', h(N, { tone: 'warning', title: 'Mara Quill’s phone is out of date', subtitle: 'Update bae on it to keep syncing.' })),
     W('Danger', h(N, { tone: 'danger', title: 'Couldn’t reach your storage.' })),
-    W('With Retry', h(N, { tone: 'danger', title: 'Couldn’t reach your storage.', action: 'Retry' })),
-    W('Title and subtitle', h(N, { tone: 'warning', title: 'Mara Quill’s phone is out of date', subtitle: 'Update bae on it to keep syncing.' })),
-    W('Quiet, with ×', h(N, { quiet: true, dismiss: true, tone: 'danger', title: 'Couldn’t close the library' })),
-    W('Details and Retry', h(N, { tone: 'danger', title: 'Couldn’t reach your storage.', secondary: 'Details', action: 'Retry' })),
-    W('Centred, a failed view', h(N, { layout: 'centered', quiet: true, tone: 'danger', title: 'Couldn’t read your library', secondary: 'Details', action: 'Retry' })),
-    W('Title and subtitle, danger', h(N, { tone: 'danger', title: 'bae couldn’t open your library', subtitle: 'Check your connection, then quit and reopen bae.' }))));
+    W('Danger, Retry', h(N, { tone: 'danger', title: 'Couldn’t reach your storage.', action: 'Retry' })),
+    W('Danger, Details and Retry', h(N, { tone: 'danger', title: 'Couldn’t reach your storage.', secondary: 'Details', action: 'Retry' })),
+    W('Danger, actions below, long text', h(N, { tone: 'danger', title: 'Couldn’t reach your storage. Your changes stay on this device and go up once it’s back; nothing is lost in the meantime.', secondary: 'Details', action: 'Retry', buttons: 'below' })),
+    W('Danger, title and subtitle', h(N, { tone: 'danger', title: 'bae couldn’t open your library', subtitle: 'Check your connection, then quit and reopen bae.' })),
+    W('Warning, quiet, actions below, ×', h(N, { quiet: true, dismiss: true, tone: 'warning', title: 'Dropbox signed this device out.', action: 'Open Sync Settings', buttons: 'below' })),
+    W('Danger, quiet, with ×', h(N, { quiet: true, dismiss: true, tone: 'danger', title: 'Couldn’t close the library' })),
+    W('Danger, centred (a failed view)', h(N, { layout: 'centered', quiet: true, tone: 'danger', title: 'Couldn’t read your library', secondary: 'Details', action: 'Retry' }))));
 </script>
 </body>
 </html>

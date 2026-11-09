@@ -61,6 +61,11 @@
       props.chevron ? h(Chevron, { className: 'bae-m-row-chevron' }) : null);
   }
 
+  // The row piece every Mac row with a leading icon is built from: `lead` in the leading column (size-lead wide, centred on the first line, kept even when empty so the text edge holds), the content, then `trail`. It has no inset of its own: the row it sits in places it.
+  function MacItem(props) {
+    var trail = kids(props.trail);
+    return h('div', { className: 'bae-m-item' }, h('span', { className: 'bae-m-item-lead' }, props.lead), h('div', { className: 'bae-m-item-body' }, props.children), trail.length ? h('span', { className: 'bae-m-item-trail' }, trail) : null);
+  }
   // A row of a MacBox whose label takes a column labelWidth wide and whose field fills the rest.
   function MacFieldRow(props) {
     return h('div', { className: cx('bae-m-row', 'bae-m-fieldrow', props.alignText && 'bae-m-fieldrow-aligned') },

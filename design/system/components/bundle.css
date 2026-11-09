@@ -30,7 +30,7 @@
 .bae-notice-body { flex: 1; min-width: 0; }
 /* quiet: a notice drawn as a row, as in the Activity panel: no fill, the screen's text, the glyph in its tone. */
 .bae-notice.bae-notice-quiet { background: none; border-radius: 0; }
-.bae-m-notice-box.bae-notice-quiet { padding: 10px 12px; }
+.bae-m-notice-box.bae-notice-quiet { padding: 10px 0; }
 .bae-a-notice-box.bae-notice-quiet { padding: 10px 0; }
 /* On a tint, greys and grey fills are the primary text made see-through, so they take the tint's colour. */
 .bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
@@ -38,14 +38,16 @@
 .bae-notice-title-strong { font-weight: 600; }
 .bae-notice-subtitle { color: var(--text-secondary); }
 .bae-m-notice { position: relative; display: flex; flex-direction: column; gap: 4px; }
-.bae-m-notice-top { display: flex; align-items: flex-start; gap: 12px; }
+.bae-m-notice-top { display: flex; align-items: flex-start; gap: var(--space-group); }
 .bae-m-notice-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.bae-m-notice-action { align-self: flex-start; margin-top: 4px; }
+.bae-m-notice-below { align-self: flex-start; display: flex; align-items: center; gap: var(--space-related); margin-top: 4px; }
+.bae-m-notice-buttons { flex: none; display: flex; align-items: center; gap: var(--space-related); margin: calc((1lh - var(--size-control)) / 2) 0; }
 .bae-m-notice-dismiss { flex: none; margin: -6px -8px -6px -8px; }
 .bae-a-notice { display: flex; flex-direction: column; gap: 2px; line-height: 20px; }
-.bae-a-notice-top { display: flex; align-items: flex-start; gap: 8px; }
+.bae-a-notice-top { display: flex; align-items: flex-start; gap: var(--space-related); }
 .bae-a-notice-words { flex: 1; min-width: 0; }
-.bae-a-notice-action { align-self: flex-start; margin: 0 0 -8px -12px; }
+.bae-a-notice-below { align-self: flex-start; display: flex; align-items: center; margin: 0 0 -8px -12px; }
+.bae-a-notice-buttons { flex: none; display: flex; align-items: center; margin: -10px -12px -10px 0; }
 .bae-a-notice-dismiss { flex: none; margin: -14px -14px -14px -8px; }
 /* A toned notice has its own fill (solid in dark, where a see-through tint reads grey or brown); its text, accent and, in dark, its glyph are on-notice. */
 .bae-notice.bae-tone-info:not(.bae-notice-quiet), .bae-notice.bae-tone-success:not(.bae-notice-quiet), .bae-notice.bae-tone-warning:not(.bae-notice-quiet), .bae-notice.bae-tone-danger:not(.bae-notice-quiet) { color: var(--on-notice); --text-primary: var(--on-notice); --accent: var(--notice-accent); }
@@ -83,6 +85,11 @@
 .bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: 12px; overflow: hidden; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-box-elevated { background: var(--elevated); box-shadow: 0 var(--space-compact) var(--space-group) var(--shadow); }
 .bae-m-box > .bae-divider { margin: 0 var(--space-group); opacity: 0.6; }
+/* MacItem: the row piece. The leading column is size-lead wide and as tall as the first line, so its icon centres on that line. */
+.bae-m-item { display: flex; align-items: flex-start; gap: var(--space-related); }
+.bae-m-item-lead { flex: none; width: var(--size-lead); height: 1lh; display: flex; align-items: center; justify-content: center; }
+.bae-m-item-body { flex: 1; min-width: 0; }
+.bae-m-item-trail { flex: none; display: flex; align-items: center; gap: var(--space-related); }
 .bae-m-box-empty { min-height: 108px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
 
 .bae-m-row { display: flex; align-items: center; gap: var(--space-group); min-height: var(--size-row); padding: 10px var(--space-group); box-sizing: border-box; color: var(--text-primary); font: 400 13px var(--font-sans); }
@@ -626,7 +633,7 @@
 .bae-m-readout { display: flex; flex-direction: column; gap: 10px; }
 .bae-m-readout-line { display: flex; justify-content: space-between; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-track { height: 4px; border-radius: 2px; background: var(--hairline); overflow: hidden; }
-.bae-m-filerow { display: flex; align-items: center; gap: 10px; padding: 8px 16px; font: 400 13px var(--font-sans); }
+.bae-m-filerow { padding: 8px 16px; font: 400 13px var(--font-sans); }
 .bae-m-filerow-selected { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-filerow-selected .bae-muted { color: var(--on-fill-secondary); }
 .bae-m-filedet { margin-top: auto; background: var(--elevated); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--hairline); }
@@ -639,9 +646,9 @@
 .bae-m-popover { position: absolute; z-index: 9; background: var(--elevated); border-radius: 10px; box-shadow: 0 10px 30px var(--shadow), 0 0 0 1px var(--hairline); padding: 4px 14px 14px; max-height: 480px; overflow: hidden; }
 .bae-m-popover-arrow { position: absolute; top: -7px; right: 40px; width: 14px; height: 14px; background: var(--elevated); transform: rotate(45deg); }
 .bae-m-actlist { display: flex; flex-direction: column; }
-.bae-m-actrow { display: flex; align-items: flex-start; gap: 8px; font: 400 13px var(--font-sans); }
+.bae-m-actrow { padding: 0 var(--space-group); font: 400 13px var(--font-sans); }
+.bae-m-actline { padding: 10px 0; }
 .bae-m-actrow-sub { font: 400 11.5px var(--font-sans); color: var(--text-secondary); margin-top: 2px; }
-.bae-m-actpad { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; font: 400 13px var(--font-sans); }
 .bae-a-act { --bae-a-act-gutter: calc(14px * 1.19 + var(--space-related)); display: flex; flex-direction: column; gap: 8px; padding: 0 16px 16px; font: 400 14px/20px var(--font-android); }
 .bae-a-act-text { padding-left: var(--bae-a-act-gutter); }
 .bae-a-act-text-rule, .bae-a-actproblems > .bae-divider { margin-left: var(--bae-a-act-gutter); }
@@ -658,8 +665,11 @@
 .bae-a-seg-btn { flex: 1; height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px; font: 500 14px var(--font-android); border-left: 1px solid var(--hairline-strong); fill: currentColor; }
 .bae-a-seg-btn:first-child { border-left: 0; }
 .bae-a-seg-on { background: var(--accent-tint); }
-.bae-a-dlrow2 { display: flex; align-items: center; padding: 8px 0 8px 16px; border-bottom: 1px solid var(--hairline); }
-.bae-a-dlrow2-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.bae-a-dlrow2 { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border-bottom: 1px solid var(--hairline); }
+.bae-a-dlrow2-head { display: flex; align-items: center; gap: var(--space-related); }
+.bae-a-dlrow2-head > .bae-a-browse-name { flex: 1; min-width: 0; }
+.bae-a-dlrow2-cancel { flex: none; margin: -12px -12px -12px 0; }
+.bae-a-dlrow2-gone { font-weight: 400; color: var(--text-secondary); }
 .bae-a-dlbar-track { height: 4px; border-radius: 2px; background: var(--accent-tint-strong); overflow: hidden; margin: 4px 0 2px; }
 .bae-a-dlbar-track > div { height: 100%; border-radius: 2px; background: var(--accent); box-shadow: 4px 0 0 var(--surface); }
 .bae-a-fine { font: 400 11px var(--font-android); }
@@ -798,11 +808,9 @@
 .bae-a-lrow-selected { background: var(--accent-tint); }
 .bae-m-chips { display: inline-flex; align-items: center; gap: var(--space-inline); }
 .bae-m-dlrow { display: flex; flex-direction: column; gap: 6px; padding: 8px 16px; font: 400 13px var(--font-sans); border-bottom: 1px solid var(--hairline); }
-.bae-m-dlrow-top { display: flex; align-items: flex-start; gap: 10px; }
 .bae-m-dlrow-text { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
 .bae-m-dlrow-detail { font-size: 11px; white-space: nowrap; }
 .bae-m-dlrow-ago { font-size: 10.5px; white-space: nowrap; }
-.bae-m-dlrow-badge { padding-left: 26px; }
 
 /* Logo */
 @keyframes bae-sheep-rise { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4%; } }

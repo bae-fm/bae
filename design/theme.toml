@@ -458,6 +458,14 @@ macos = 32
 ios = 44
 android = 56
 
+[size.lead]
+# The leading column of a list row: the icon or status glyph before its text.
+# On macOS a notice's glyph column is as wide, so titles, a notice's words and
+# file names share one edge; Android's is Material's list-item icon.
+macos = 16
+ios = 24
+android = 24
+
 [size.hitTarget]
 macos = 28
 ios = 44

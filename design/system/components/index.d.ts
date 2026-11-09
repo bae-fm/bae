@@ -29,6 +29,7 @@ export declare function MacBox(props: MacBoxProps): React.ReactElement;
 /** One line of a MacBox: label on the left, then value (grey, or in tone with a dot), controls passed as children, and a chevron when it opens something. action draws the label as an accent action ("Invite…"); destructive colors it danger, for an action that removes something. */
 export interface MacRowProps { label?: string; destructive?: boolean; strong?: boolean; tag?: string; note?: string; noteTone?: 'danger' | 'warning' | 'success'; waiting?: boolean; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; nested?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function MacRow(props: MacRowProps): React.ReactElement;
+export declare function MacItem(props: { lead?: React.ReactNode; trail?: React.ReactNode; children?: React.ReactNode }): React.ReactElement;
 
 /** A MacBox row holding a field: the label in a column labelWidth px wide (90), the field filling the rest, then any controls. Leave out label for a field with its label inside. alignText moves the field left by its inner padding so its text lines up with the rows around it. */
 export interface MacFieldRowProps { label?: string; labelWidth?: number; alignText?: boolean; children?: React.ReactNode }
@@ -163,7 +164,7 @@ export declare function AndroidScanCode(props: AndroidScanCodeProps): React.Reac
 
 /** A message on its tone's tint. */
 /** A tinted box in a tone, led by the tone's glyph unless `icon` is false; `set: 'mac'` draws macOS's glyph, top-aligned. */
-export interface NoticeProps { tone?: StatusTone; title?: string; subtitle?: string; action?: string; secondary?: string; layout?: 'paragraph' | 'centered'; dismiss?: boolean; quiet?: boolean; stage?: boolean; icon?: boolean; children?: React.ReactNode }
+export interface NoticeProps { tone?: StatusTone; title?: string; subtitle?: string; action?: string; secondary?: string; layout?: 'paragraph' | 'centered'; buttons?: 'inline' | 'below'; dismiss?: boolean; quiet?: boolean; stage?: boolean; icon?: boolean; children?: React.ReactNode }
 /** A tone's glyph in the tone's colour, a filled circle with its mark; `set: 'mac'` draws the macOS stand-in. Neutral, accent and activity draw nothing. */
 /** Material's disclosure row: its own card, expand_more or expand_less at the end; the AndroidRows it shows join the card. */
 export declare function AndroidDisclosure(props: { label: string; summary?: string; open?: boolean; children?: React.ReactNode }): React.ReactElement;
