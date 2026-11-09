@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Write design/system/assets/Logos/bae-icon-sheep.svg from bae-sheep.svg.
 
-The app icon's sheep: the sheep's own outlines (body, ears, face, hands) 1.45
+The app icon's sheep: the sheep's own outlines (body, ears, face, hands) 1.6
 times as thick and the head's 1.3 times, all a touch lighter, so the drawing
 holds up at small sizes; the headphones and the player keep their lines. The
 view box grows so the thicker outline isn't cut off.
@@ -12,11 +12,11 @@ import pathlib
 import re
 
 LOGOS = pathlib.Path(__file__).resolve().parents[2] / "design/system/assets/Logos"
-THICKER = 1.45
+THICKER = 1.6
 LINE = "#40183d"
 LIGHTER_LINE = "#4C1F47"
 KEEP = {"headband", "left-earcup", "right-earcup", "player"}
-# The wool on the head sits under the headband; the full factor there crowds it.
+# The wool on the head sits under the headband; a full 1.6 there crowds it.
 HEAD = "head"
 HEAD_THICKER = 1.3
 
