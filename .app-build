@@ -9,3 +9,4 @@ step android ./bae-android/compile-all.sh
 step notice-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene notice- --tone midnight
 step storage-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene storage-manager --tone midnight
 step android-shots ./scripts/shots/android.sh /Volumes/Builds/bae/shots/android
+step welcome-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene welcome- --scene story-1 --tone midnight

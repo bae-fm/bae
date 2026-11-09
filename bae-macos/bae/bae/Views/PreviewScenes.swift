@@ -26,12 +26,13 @@
             .environment(PreviewData.welcomeRemovals())
         }
 
-        /// The first screen's list of this Mac's libraries, one with a cloud
-        /// home and one with none, which offers Delete in place of Remove and
-        /// says it isn't synced.
+        /// The first screen's list of this Mac's libraries, one row for each
+        /// state a library is in: one with a cloud home, one with none, which
+        /// offers Delete in place of Remove, one that can't be read, and one
+        /// whose restore, and one whose removal, stopped partway.
         static func welcomeLibraries() -> some View {
             LocalLibrariesSection(
-                libraries: Array(PreviewData.welcomeLibraries.prefix(2)),
+                libraries: PreviewData.welcomeLibraries,
                 disabled: false,
                 canDeleteActiveLibrary: true,
                 removing: nil,

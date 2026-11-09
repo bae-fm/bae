@@ -298,7 +298,7 @@ extension WelcomeChooseView {
 
 /// The choose screen's shared column width.
 enum WelcomeLayout {
-    static let columnWidth: CGFloat = 400
+    static let columnWidth: CGFloat = 420
 }
 
 /// A library the person is asked to remove, with what removing it loses.

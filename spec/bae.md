@@ -2570,7 +2570,13 @@ joins someone's library, and the person's own restore code adds this device to
 theirs. An Android phone that holds libraries lists them above the two buttons
 under **Your libraries**, each opening on a tap and ending in **Remove**, or in
 **Delete** for one that was never synced (§6.4), and one that has restore codes
-saved on it lists them below those (below). A Mac's first screen offers **Join library** and **Add device**, which
+saved on it lists them below those (below). A Mac lists its libraries the same
+way under **Your libraries**: a click on one opens it, and its ⋯ button, or a
+right click, holds **Remove…**, or **Delete…** for one never synced. A
+library that can't be read, or whose reset, restore or removal stopped
+partway, says so under its name, and its menu offers to finish it first.
+While a removal runs, its row shows the step with a spinner in place of the
+⋯. A Mac's first screen offers **Join library** and **Add device**, which
 both lead to the same scan-or-type screen where the code decides the same way,
 and **Create new library**. A restore code's screens call that adding this
 device: the button is **Add**, and the running restore says it is adding this

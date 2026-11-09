@@ -7,14 +7,12 @@ extension BridgeLibrary {
         return false
     }
 
-    /// The line under the library's name: its provider and account when it
-    /// has storage, nothing when it doesn't, why its settings can't be
-    /// read, which reset or restore of this device's copy didn't finish, or
-    /// that removing it from this device didn't finish.
-    public var detailLine: String {
+    /// What keeps the library from opening as it is, for the line under its
+    /// name; nil for one that opens.
+    public var stateLine: String? {
         switch state {
-        case .openable(let storage):
-            return storage?.accountLine ?? ""
+        case .openable:
+            return nil
         case .unreadable(let error):
             guard let line = error.localizedLine else {
                 preconditionFailure(

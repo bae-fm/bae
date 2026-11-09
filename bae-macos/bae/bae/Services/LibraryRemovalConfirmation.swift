@@ -39,6 +39,14 @@ enum LibraryRemovalConfirmation {
             case .delete: String(localized: "Delete")
             }
         }
+
+        /// The menu item that asks to end the library.
+        var menuItem: String {
+            switch self {
+            case .remove: String(localized: "Remove…")
+            case .delete: String(localized: "Delete…")
+            }
+        }
     }
 
     /// What follows the counts of changes this Mac hasn't sent.
