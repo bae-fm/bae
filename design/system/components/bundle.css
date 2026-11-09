@@ -14,13 +14,13 @@
 
 .bae-tone-neutral { --bae-tone: var(--text-secondary); --bae-tone-tint: var(--neutral-tint); }
 .bae-tone-accent { --bae-tone: var(--accent); --bae-tone-tint: var(--accent-tint); }
-.bae-tone-info { --bae-tone: var(--info); --bae-tone-tint: var(--info-tint); }
-.bae-tone-success { --bae-tone: var(--success); --bae-tone-tint: var(--success-tint); }
-.bae-tone-warning { --bae-tone: var(--warning); --bae-tone-tint: var(--warning-tint); }
-.bae-tone-danger { --bae-tone: var(--danger); --bae-tone-tint: var(--danger-tint); }
+.bae-tone-info { --bae-tone: var(--info); --bae-tone-tint: var(--info-tint); --bae-tone-notice: var(--info-notice); }
+.bae-tone-success { --bae-tone: var(--success); --bae-tone-tint: var(--success-tint); --bae-tone-notice: var(--success-notice); }
+.bae-tone-warning { --bae-tone: var(--warning); --bae-tone-tint: var(--warning-tint); --bae-tone-notice: var(--warning-notice); }
+.bae-tone-danger { --bae-tone: var(--danger); --bae-tone-tint: var(--danger-tint); --bae-tone-notice: var(--danger-notice); }
 .bae-tone-activity { --bae-tone: var(--activity); --bae-tone-tint: var(--activity-tint); }
 .bae-chip { display: inline-flex; align-items: center; gap: var(--space-inline); padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); font: 600 10.5px var(--font-sans); white-space: nowrap; color: var(--bae-tone); background: var(--bae-tone-tint); }
-.bae-notice { padding: var(--space-group); border-radius: var(--radius-control); color: var(--text-primary); background: var(--bae-tone-tint); }
+.bae-notice { padding: var(--space-group); border-radius: var(--radius-control); color: var(--text-primary); background: var(--bae-tone-notice, var(--bae-tone-tint)); }
 .bae-notice-with-icon { display: flex; align-items: flex-start; gap: var(--space-related); }
 /* The icon is 1.19 times the text, centred on the first line. */
 .bae-notice-icon { flex: none; display: flex; align-items: center; height: 1lh; }
@@ -33,6 +33,11 @@
 .bae-notice { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
 .bae-notice .bae-m-btn-secondary { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
 .bae-notice .bae-m-errdis-msg:not(.bae-tone-neutral) { color: var(--text-primary); }
+/* A toned notice has its own fill (solid in dark, where a see-through tint reads grey or brown); its text, accent and, in dark, its glyph are on-notice. */
+.bae-notice.bae-tone-info, .bae-notice.bae-tone-success, .bae-notice.bae-tone-warning, .bae-notice.bae-tone-danger { color: var(--on-notice); --text-primary: var(--on-notice); --accent: var(--notice-accent); }
+.bae-notice:not(.bae-tone-neutral) .bae-notice-icon .bae-status-glyph { color: var(--on-notice); }
+[data-theme="light"] .bae-notice .bae-notice-icon .bae-status-glyph { color: var(--bae-tone); }
+[data-theme="light"] .bae-notice .bae-notice-icon .bae-status-glyph.bae-tone-danger { color: color-mix(in srgb, var(--danger) 65%, var(--text-secondary)); }
 
 /* ---- macOS ---- */
 
