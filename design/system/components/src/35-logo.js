@@ -4,6 +4,8 @@
   var SHEEP_URI = 'data:image/svg+xml;base64,@@bae-sheep.svg@@';
   var SMALL_URI = { 16: 'data:image/svg+xml;base64,@@bae-favicon-16.svg@@', 32: 'data:image/svg+xml;base64,@@bae-favicon-32.svg@@' };
   var WORD_URI = 'data:image/svg+xml;base64,@@bae-word.svg@@';
+  // The app icon's sheep: its own outlines thicker and a touch lighter (scripts/design/icon-sheep.py).
+  var ICON_SHEEP_URI = 'data:image/svg+xml;base64,@@bae-icon-sheep.svg@@';
   var WORD_ASPECT = 1556 / 736;
   var ICON_TILE = '#FFD6E7';
   function Sheep(props) {
@@ -40,5 +42,5 @@
     var android = platform === 'android';
     var mask = props.mask || 'circle';
     var radius = !android ? '22.5%' : mask === 'circle' ? '50%' : mask === 'squircle' ? '36%' : '18%';
-    return h('div', { style: { width: size, height: size, borderRadius: radius, background: ICON_TILE, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' } }, h(Sheep, { size: Math.round(size * (android ? 0.85 : 0.88)), alt: 'bae' }));
+    return h('div', { style: { width: size, height: size, borderRadius: radius, background: ICON_TILE, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' } }, android ? h(Sheep, { size: Math.round(size * 0.85), alt: 'bae' }) : h('img', { src: ICON_SHEEP_URI, alt: 'bae', width: Math.round(size * 0.88), style: { display: 'block', height: 'auto' } }));
   }
