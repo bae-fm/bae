@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -227,17 +226,10 @@ private fun FramedNotice(
     }
 }
 
-/** The × at a notice's right: a 20dp glyph whose touch area overhangs the notice's padding. */
+/** The × at a notice's right. */
 @Composable
 private fun DismissButton(onDismiss: () -> Unit) {
-    IconButton(onClick = onDismiss, modifier = Modifier.size(ThemeIcon.medium).wrapContentSize(unbounded = true)) {
-        Icon(
-            imageVector = Icons.Filled.Close,
-            contentDescription = stringResource(R.string.dismiss),
-            tint = onNoticeSecondary,
-            modifier = Modifier.size(ThemeIcon.medium),
-        )
-    }
+    InlineIconButton(Icons.Filled.Close, stringResource(R.string.dismiss), onDismiss, tint = onNoticeSecondary)
 }
 
 private val ACTION_PADDING = PaddingValues(horizontal = ThemeSpace.related)

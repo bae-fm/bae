@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +24,7 @@ import fm.bae.app.formatFileSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorAction
+import fm.bae.app.ui.components.InlineIconButton
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.fastvalues.LatestSource
@@ -42,33 +41,43 @@ internal fun DownloadQueueRow(
     onRetry: () -> Unit,
 ) {
     val context = LocalContext.current
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(start = ThemeSpace.edge, top = ThemeSpace.related, bottom = ThemeSpace.related),
-        verticalAlignment = Alignment.CenterVertically,
+    val release = op.release
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-            val release = op.release
-            Text(
-                text = release?.title ?: context.coreString("core.queue.release_missing"),
-                style = ThemeText.rowTitle.style,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        ) {
             if (release != null) {
                 Text(
-                    text = release.detailText(context),
-                    style = ThemeText.detail.style,
+                    text = release.title,
+                    style = ThemeText.rowTitle.style,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Text(
+                    text = context.coreString("core.queue.release_missing"),
+                    style = ThemeText.body.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
             }
-            DownloadRowState(op.state, progress, onRetry)
+            InlineIconButton(Icons.Filled.Close, stringResource(R.string.cancel), onCancel)
         }
-        IconButton(onClick = onCancel) {
-            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel))
+        if (release != null) {
+            Text(
+                text = release.detailText(context),
+                style = ThemeText.detail.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
+        DownloadRowState(op.state, progress, onRetry)
     }
 }
 

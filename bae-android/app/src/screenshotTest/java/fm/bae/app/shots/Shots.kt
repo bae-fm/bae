@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -32,6 +33,7 @@ import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
+import fm.bae.app.ui.downloads.DownloadQueueRow
 import fm.bae.app.ui.library.ErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.library.LibraryHeaderMenu
@@ -57,6 +59,7 @@ import fm.bae.app.ui.sync.SyncActivityList
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCloudProvider
+import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSyncCause
@@ -595,6 +598,35 @@ fun NoticeLooks() {
                     look = NoticeLook.QUIET,
                 )
                 ErrorNotice(error, action = ErrorAction("Retry") {}, look = NoticeLook.QUIET, onDismiss = {})
+            }
+        }
+    }
+}
+
+/** The downloads list's entries: queued, running, failed, and one whose release is no longer in the library. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun DownloadEntries() {
+    val downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-2")
+    val ops =
+        listOf(
+            PreviewData.downloadOp(releaseId = "rel-1", state = BridgeDownloadState.Queued),
+            PreviewData.downloadOp(releaseId = "rel-2", state = BridgeDownloadState.Active),
+            PreviewData.downloadOp(releaseId = "rel-3", state = BridgeDownloadState.Failed("Network unreachable")),
+            PreviewData.downloadOp(releaseId = "rel-4", state = BridgeDownloadState.Queued).copy(release = null),
+        )
+    BaeTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column {
+                ops.forEach { op ->
+                    DownloadQueueRow(
+                        op = op,
+                        progress = downloads.latestProgress(op.releaseId),
+                        onCancel = {},
+                        onRetry = {},
+                    )
+                    HorizontalDivider()
+                }
             }
         }
     }

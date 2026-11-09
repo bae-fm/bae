@@ -67,6 +67,7 @@ AppearanceLightSand:appearance-light-sand
 AppearanceLightSlate:appearance-light-slate
 CastingSettingsFound:settings-casting
 CastingSettingsLooking:settings-casting-looking
+DownloadEntries:download-entries
 FolderChoiceDropbox:folder-choice-dropbox
 FolderChoiceOneDrive:folder-choice-onedrive
 FullPlayerAllHere:full-player-all-here
