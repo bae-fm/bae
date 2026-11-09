@@ -12,6 +12,11 @@
         private static let panelWidth: CGFloat = 228
 
         public static func show(_ details: ErrorDetails) {
+            makeAlert(details).runModal()
+        }
+
+        /// The alert as `show` runs it, before it runs.
+        public static func makeAlert(_ details: ErrorDetails) -> NSAlert {
             let alert = NSAlert()
             alert.messageText = details.title
             alert.informativeText = details.message ?? ""
@@ -25,7 +30,7 @@
             let height = panel.fittingSize.height
             panel.frame = NSRect(x: 0, y: 0, width: panelWidth, height: height)
             alert.accessoryView = panel
-            alert.runModal()
+            return alert
         }
     }
 
