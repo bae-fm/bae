@@ -10,9 +10,12 @@
     @MainActor
     enum PreviewScenes {
         /// The welcome window entered at `initialMode`, in its fixed 900x600
-        /// chrome, over the populated `LibrarySetup` and `LibraryRemovals`
-        /// fixtures. Every flow can go back to the chooser, which reads both.
-        static func welcome(initialMode: WelcomeView.Mode) -> some View {
+        /// chrome, over `setup` and the `LibraryRemovals` fixtures. Every flow
+        /// can go back to the chooser, which reads both lists from `setup`.
+        static func welcome(
+            initialMode: WelcomeView.Mode,
+            setup: LibrarySetup
+        ) -> some View {
             WelcomeWindowChrome {
                 WelcomeView(
                     onLibraryReady: { _, _ in },
@@ -22,7 +25,7 @@
                     canDeleteActiveLibrary: true
                 )
             }
-            .environment(PreviewData.welcomeSetup())
+            .environment(setup)
             .environment(PreviewData.welcomeRemovals())
         }
 

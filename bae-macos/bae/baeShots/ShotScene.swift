@@ -25,48 +25,8 @@ struct ShotScene {
         [
             importMetadataDraft,
             importSearchResults,
-            welcomeLibraries,
             ShotScene(id: "appearance", size: CGSize(width: 650, height: 400)) {
                 ShotStage(AppearanceSettingsTab())
-            },
-            ShotScene(
-                id: "artwork-lightbox",
-                size: CGSize(width: 1_148, height: 868)
-            ) {
-                let load = LightboxImageLoad()
-                let images = PreviewData.artImageStore()
-                return ShotStage(
-                    CoverPickerPreviewScene.lightbox(
-                        load: load,
-                        images: images
-                    ),
-                    images: images
-                ) { load.ended() }
-            },
-            ShotScene(
-                id: "cover-picker-wide",
-                size: CGSize(width: 1_148, height: 868)
-            ) {
-                coverPicker()
-            },
-            ShotScene(
-                id: "cover-picker-short",
-                size: CGSize(width: 800, height: 520)
-            ) {
-                coverPicker()
-            },
-            ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
-                ShotStage(PreviewScenes.welcome(initialMode: .choose))
-            },
-            ShotScene(
-                id: "cover-picker-unlinked",
-                size: CGSize(width: 1_148, height: 868)
-            ) {
-                let images = PreviewData.artImageStore()
-                return ShotStage(
-                    CoverPickerPreviewScene.unlinked(images: images),
-                    images: images
-                )
             },
             ShotScene(
                 id: "album-detail",
@@ -267,7 +227,7 @@ struct ShotScene {
         + folderPickerScenes
         + peopleScenes
         + sheetFooterScenes
-        + restoreCodeScenes + noticeScenes
+        + restoreCodeScenes + noticeScenes + welcomeScenes
 }
 
 extension ShotScene {
@@ -285,13 +245,6 @@ extension ShotScene {
             .importPreviewEnvironment(images: images),
             images: images
         )
-    }
-
-    private static let welcomeLibraries = ShotScene(
-        id: "welcome-libraries",
-        size: CGSize(width: 452, height: 362)
-    ) {
-        ShotStage(PreviewScenes.welcomeLibraries())
     }
 
     private static let importSearchResults = ShotScene(
@@ -339,15 +292,6 @@ extension ShotScene {
                 images: images
             )
         }
-    }
-
-    /// The cover picker over decoded fixture artwork.
-    fileprivate static func coverPicker() -> ShotStage {
-        let images = PreviewData.artImageStore()
-        return ShotStage(
-            CoverPickerPreviewScene(images: images),
-            images: images
-        )
     }
 
     /// Settings' Import pane, with a stored Discogs key or none.

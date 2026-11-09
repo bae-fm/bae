@@ -227,6 +227,7 @@ struct WelcomeChooseView: View {
     /// The Create button's label.
     private var createButtonLabel: some View {
         Text("Create new library")
+            .frame(maxWidth: .infinity)
     }
 
     /// The width the first-run buttons share.
@@ -241,15 +242,17 @@ struct WelcomeChooseView: View {
                 .disabled(isBusy)
                 .keyboardShortcut(.defaultAction)
             HStack(spacing: ThemeSpace.related) {
-                Button("Scan code", action: onScanCode)
-                    .frame(maxWidth: .infinity)
-                Button("Enter code", action: onEnterCode)
-                    .frame(maxWidth: .infinity)
+                Button(action: onScanCode) {
+                    Text("Scan code").frame(maxWidth: .infinity)
+                }
+                Button(action: onEnterCode) {
+                    Text("Enter code").frame(maxWidth: .infinity)
+                }
             }
             .buttonStyle(.bordered)
-            .controlSize(.large)
             .disabled(isBusy)
         }
+        .controlSize(.large)
         .frame(width: Self.firstRunButtonWidth)
     }
 }

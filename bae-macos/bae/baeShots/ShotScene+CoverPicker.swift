@@ -6,8 +6,45 @@ import SwiftUI
 extension ShotScene {
     /// The cover picker's remote lookup in each state that says something of
     /// itself, in its grid and in a lightbox with no image, and the picker
-    /// saving a cover.
+    /// saving a cover, with the picker at two sizes, the lightbox over an
+    /// image and the picker with no release linked.
     static let coverPickerScenes: [ShotScene] = [
+        ShotScene(
+            id: "artwork-lightbox",
+            size: CGSize(width: 1_148, height: 868)
+        ) {
+            let load = LightboxImageLoad()
+            let images = PreviewData.artImageStore()
+            return ShotStage(
+                CoverPickerPreviewScene.lightbox(
+                    load: load,
+                    images: images
+                ),
+                images: images
+            ) { load.ended() }
+        },
+        ShotScene(
+            id: "cover-picker-wide",
+            size: CGSize(width: 1_148, height: 868)
+        ) {
+            coverPicker()
+        },
+        ShotScene(
+            id: "cover-picker-short",
+            size: CGSize(width: 800, height: 520)
+        ) {
+            coverPicker()
+        },
+        ShotScene(
+            id: "cover-picker-unlinked",
+            size: CGSize(width: 1_148, height: 868)
+        ) {
+            let images = PreviewData.artImageStore()
+            return ShotStage(
+                CoverPickerPreviewScene.unlinked(images: images),
+                images: images
+            )
+        },
         scene("cover-picker-fetching", .loading([])),
         scene("cover-picker-none-found", .linked([])),
         scene(
@@ -23,6 +60,15 @@ extension ShotScene {
             .failed([], failure: DisplayError(line: "Artwork lookup failed"))
         ),
     ]
+
+    /// The cover picker over decoded fixture artwork.
+    private static func coverPicker() -> ShotStage {
+        let images = PreviewData.artImageStore()
+        return ShotStage(
+            CoverPickerPreviewScene(images: images),
+            images: images
+        )
+    }
 
     /// A lightbox with no image to show, its lookup in `remote`.
     private static func lightbox(_ id: String, _ remote: RemoteCoverItems)

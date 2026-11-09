@@ -163,10 +163,16 @@ struct WelcomeView: View {
     /// with the populated `LibrarySetup` and `LibraryRemovals` so no flow
     /// touches the real library directory or keychain.
     #Preview("Choose") {
-        PreviewScenes.welcome(initialMode: .choose)
+        PreviewScenes.welcome(
+            initialMode: .choose,
+            setup: PreviewData.welcomeSetup()
+        )
     }
 
     #Preview("Enter code") {
-        PreviewScenes.welcome(initialMode: .code(scanning: false))
+        PreviewScenes.welcome(
+            initialMode: .code(scanning: false),
+            setup: PreviewData.welcomeSetup()
+        )
     }
 #endif
