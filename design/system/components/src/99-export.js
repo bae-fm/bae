@@ -4,7 +4,7 @@
     AndroidLibraryScreen: AndroidLibraryScreen, AndroidDetailScreen: AndroidDetailScreen, AndroidNowPlayingBar: AndroidNowPlayingBar, AndroidSeekBar: AndroidSeekBar, AndroidPlayPause: AndroidPlayPause, AndroidAlbumGrid: AndroidAlbumGrid, AndroidAlbumTile: AndroidAlbumTile, AndroidArtistHeading: AndroidArtistHeading, AndroidTrackRow: AndroidTrackRow, AndroidEyebrow: AndroidEyebrow, AndroidBrowseRow: AndroidBrowseRow, AndroidAlbumHeader: AndroidAlbumHeader, AndroidDownloadControl: AndroidDownloadControl, AndroidUploadLine: AndroidUploadLine,
     MacWindow: MacWindow, MacAlert: MacAlert, MacSettingsWindow: MacSettingsWindow, MacSection: MacSection, MacBox: MacBox, MacRow: MacRow, MacFieldRow: MacFieldRow, MacButton: MacButton,
     MacTextField: MacTextField, MacRadio: MacRadio, MacPopUpButton: MacPopUpButton, MacSegmentedControl: MacSegmentedControl, MacDisclosure: MacDisclosure, MacSheet: MacSheet,
-    MacSheetFooter: MacSheetFooter, MacProgress: MacProgress, MacSpinner: MacSpinner, MacErrorText: MacErrorText, MacNote: MacNote,
+    MacSheetFooter: MacSheetFooter, MacProgress: MacProgress, MacSpinner: MacSpinner, MacNote: MacNote,
     MacSwitch: MacSwitch, MacAccentPicker: MacAccentPicker, MacMenu: MacMenu, MacMenuItem: MacMenuItem, AndroidAccentPicker: AndroidAccentPicker,
     AndroidScreen: AndroidScreen, AndroidSection: AndroidSection, AndroidCard: AndroidCard,
     AndroidRow: AndroidRow, AndroidButton: AndroidButton, AndroidIconButton: AndroidIconButton, AndroidSwitch: AndroidSwitch,

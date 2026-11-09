@@ -198,7 +198,7 @@
     return h('div', { className: 'bae-a-act' },
       h('div', { className: 'bae-a-act-title' }, 'Sync Activity'),
       props.attention ? h('div', { className: 'bae-a-act-block' }, h('div', { className: 'bae-strong', style: { paddingTop: 4 } }, 'Needs Attention'), h(AndroidErrorDisclosure, { tone: 'warning', message: props.attention, fault: props.fault }),
-        props.record ? h('div', null, h('div', { className: 'bae-strong' }, props.record), h('div', { className: 'bae-muted' }, props.reason)) : null,
+        props.record ? h('div', null, h('div', { className: 'bae-strong' }, props.record), h(AndroidErrorDisclosure, { tone: 'neutral', message: props.reason })) : null,
         h(AndroidButton, { kind: 'text', alignTo: 'text' }, 'Open Sync Settings'), h('div', { className: 'bae-divider' })) : null,
       props.syncing ? t('Syncing library changes…') : null,
       props.uploads ? h('div', null, t(props.uploads), props.uploadBytes ? t(props.uploadBytes, 'bae-a-act-sub') : null) : null,

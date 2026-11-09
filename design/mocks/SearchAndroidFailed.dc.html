@@ -18,7 +18,7 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidLibraryScreen" searching="{{yes}}" search="low tide" track-title="Low Tide Hours" track-artist="Mara Quill" track-album="Low Tide Hours" playing="{{yes}}" position="0.35" held="0.6" elapsed="1:42" duration="5:03"><div style="height:100%;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px"><div style="font:400 14px var(--font-android);color:var(--danger)">Search failed</div></div></x-import>
+<x-import component-from-global-scope="Bae.AndroidLibraryScreen" searching="{{yes}}" search="low tide" track-title="Low Tide Hours" track-artist="Mara Quill" track-album="Low Tide Hours" playing="{{yes}}" position="0.35" held="0.6" elapsed="1:42" duration="5:03"><x-import component-from-global-scope="Bae.AndroidLoadFailure" message="Search failed" chain="database is locked"></x-import></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

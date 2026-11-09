@@ -28,7 +28,7 @@ body{margin:0}
   <x-import component-from-global-scope="Bae.MacSection" title="Changes from this Mac">
     <x-import component-from-global-scope="Bae.MacBox">
       <x-import component-from-global-scope="Bae.MacRow" label="Make Person Name an admin">
-        <span style="font-size: 11px; line-height: 16px; padding: 0 6px; border-radius: 4px; background: #24402F; color: var(--success)">Done</span>
+        <x-import component-from-global-scope="Bae.StatusChip" tone="success">Done</x-import>
         <x-import component-from-global-scope="Bae.MacButton">Dismiss</x-import>
       </x-import>
     </x-import>

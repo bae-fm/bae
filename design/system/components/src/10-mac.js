@@ -178,10 +178,6 @@
   var MacProgress = Progress('bae-m');
   var AndroidProgress = Progress('bae-a');
 
-  function MacErrorText(props) {
-    return h('div', { className: 'bae-m-error' }, props.children);
-  }
-
   function MacNote(props) {
     return h('div', { className: 'bae-m-note' }, props.children);
   }

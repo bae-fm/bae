@@ -18,7 +18,7 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidDetailScreen" flush="{{yes}}" track-title="Low Tide Hours" track-artist="Mara Quill" track-album="Low Tide Hours" playing="{{yes}}" position="0.35" held="0.6" elapsed="1:42" duration="5:03"><div style="padding:32px;font:400 14px/20px var(--font-android);color:var(--danger)">Couldn’t load this composer.</div></x-import>
+<x-import component-from-global-scope="Bae.AndroidDetailScreen" flush="{{yes}}" track-title="Low Tide Hours" track-artist="Mara Quill" track-album="Low Tide Hours" playing="{{yes}}" position="0.35" held="0.6" elapsed="1:42" duration="5:03"><x-import component-from-global-scope="Bae.AndroidLoadFailure" message="Couldn’t load this composer" chain="database is locked"></x-import></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

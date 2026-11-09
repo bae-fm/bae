@@ -84,10 +84,6 @@ export declare function MacProgress(props: MacProgressProps): React.ReactElement
 export interface MacSpinnerProps { label?: string; size?: number }
 export declare function MacSpinner(props: MacSpinnerProps): React.ReactElement;
 
-/** A line saying what failed and what to do. */
-export interface MacErrorTextProps { children?: React.ReactNode }
-export declare function MacErrorText(props: MacErrorTextProps): React.ReactElement;
-
 /** A grey line under a box or control. */
 export interface MacNoteProps { children?: React.ReactNode }
 export declare function MacNote(props: MacNoteProps): React.ReactElement;
@@ -167,7 +163,7 @@ export declare function AndroidScanCode(props: AndroidScanCodeProps): React.Reac
 
 /** A message on its tone's tint. */
 /** A tinted box in a tone, led by the tone's glyph unless `icon` is false; `set: 'mac'` draws macOS's glyph, top-aligned. */
-export interface NoticeProps { tone?: StatusTone; icon?: boolean; set?: 'mac'; children?: React.ReactNode }
+export interface NoticeProps { tone?: StatusTone; icon?: boolean; children?: React.ReactNode }
 export declare function Notice(props: NoticeProps): React.ReactElement;
 /** A tone's glyph in the tone's colour, a filled circle with its mark; `set: 'mac'` draws the macOS stand-in. Neutral, accent and activity draw nothing. */
 /** Material's disclosure row: its own card, expand_more or expand_less at the end; the AndroidRows it shows join the card. */
