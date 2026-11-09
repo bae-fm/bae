@@ -46,7 +46,7 @@ The text styles are macOS points. iOS follows Dynamic Type, and the Android comp
 - A disclosure's chevron on macOS points right closed and down open, leading inside its row (`MacDisclosure`).
 - A notice never shows the error itself: no Details in a notice, ever. When there is an error behind a notice, clicking it (tapping on Android) opens an alert (`MacAlert` with `details`) or dialog (`AndroidDialog` holding `AndroidErrorDetails`) with the explanation and the causes, one a line, with Copy.
 - An error in part of a screen is its box; a Retry that belongs to it is the box's action, at its right, level with the message.
-- A view that failed whole is drawn quietly with no box: the message, then “Show details” and Retry on one row under it, Retry last.
+- A view that failed whole is a notice in the centred layout, quiet with no glyph: the message, then Details and Retry on one row under it, Retry last. Details opens the causes in a popup, as every notice's does.
 
 ## Iconography
 

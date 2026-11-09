@@ -30,12 +30,8 @@
 .bae-notice-body { flex: 1; min-width: 0; }
 /* quiet: a notice drawn as a row, as in the Activity panel: no fill, the screen's text, the glyph in its tone. */
 .bae-notice.bae-notice-quiet { background: none; border-radius: 0; }
-.bae-m-notice-quiet { padding: 10px 12px; }
-.bae-a-notice-quiet { padding: 10px 0; }
-/* outlined: quiet, in a hairline frame, so it stands apart from the rows around it. */
-.bae-notice.bae-notice-outlined { border-radius: var(--radius-card); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
-.bae-m-notice-quiet.bae-notice-outlined { padding: 12px; }
-.bae-a-notice-quiet.bae-notice-outlined { padding: 10px 16px; }
+.bae-m-notice-box.bae-notice-quiet { padding: 10px 12px; }
+.bae-a-notice-box.bae-notice-quiet { padding: 10px 0; }
 /* On a tint, greys and grey fills are the primary text made see-through, so they take the tint's colour. */
 .bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
 .bae-notice:not(.bae-notice-quiet) .bae-m-btn-secondary { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
@@ -54,7 +50,7 @@
 /* A toned notice has its own fill (solid in dark, where a see-through tint reads grey or brown); its text, accent and, in dark, its glyph are on-notice. */
 .bae-notice.bae-tone-info:not(.bae-notice-quiet), .bae-notice.bae-tone-success:not(.bae-notice-quiet), .bae-notice.bae-tone-warning:not(.bae-notice-quiet), .bae-notice.bae-tone-danger:not(.bae-notice-quiet) { color: var(--on-notice); --text-primary: var(--on-notice); --accent: var(--notice-accent); }
 .bae-notice:not(.bae-tone-neutral):not(.bae-notice-quiet) .bae-notice-icon .bae-status-glyph { color: var(--on-notice); }
-[data-theme="light"] .bae-notice .bae-notice-icon .bae-status-glyph { color: var(--bae-tone-icon); }
+[data-theme="light"] .bae-notice .bae-notice-icon .bae-status-glyph:not(.bae-status-glyph-muted) { color: var(--bae-tone-icon); }
 
 /* ---- macOS ---- */
 
@@ -410,7 +406,7 @@
 .bae-a-searchfield { flex: 1; min-width: 0; height: 56px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-radius: 28px; background: var(--elevated); font-size: 16px; fill: var(--text-secondary); }
 .bae-a-searchfield > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-a-search-prompt { color: var(--text-secondary); }
-.bae-a-libbody { flex: 1; min-height: 0; overflow: hidden; }
+.bae-a-libbody { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .bae-a-detailbar { flex: none; display: flex; align-items: center; height: 64px; box-sizing: border-box; padding: 0 4px; background: var(--background); }
 .bae-a-detail-back { display: inline-flex; align-items: center; gap: 4px; height: 40px; padding: 0 12px; border: 0; border-radius: 20px; background: none; color: var(--accent); fill: currentColor; font: 500 14px var(--font-android); }
 .bae-a-detailbody { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
@@ -683,16 +679,20 @@
 .bae-a-snack-x { display: flex; padding: 6px; }
 .bae-a-errbanner { margin: 8px 16px; }
 .bae-a-np-error { color: var(--danger); font: 400 14px/20px var(--font-android); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.bae-m-loadfail { flex: 1; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; font: 400 13px var(--font-sans); }
-.bae-m-loadfail-msg { font: 400 15px var(--font-sans); color: var(--text-secondary); }
-.bae-m-loadfail-row, .bae-a-loadfail-row { display: flex; align-items: center; gap: 14px; }
-.bae-m-loadfail-link { font-size: 13px; color: var(--accent); }
-.bae-m-loadfail .bae-m-btn { background: color-mix(in srgb, var(--text-primary) 10%, transparent); color: var(--text-primary); }
-.bae-a-loadfail { flex: 1; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; font-family: var(--font-android); }
-.bae-a-loadfail-msg { font: 400 16px/24px var(--font-android); color: var(--text-secondary); }
-.bae-a-loadfail-link { font: 500 14px var(--font-android); color: var(--accent); }
-.bae-loadfail-panel { width: 340px; max-width: 100%; margin-top: 4px; text-align: left; box-sizing: border-box; }
-.bae-m-lb-stage .bae-m-loadfail { --text-primary: var(--on-fill); --text-secondary: var(--on-fill-secondary); min-height: 0; padding: 0; }
+/* centered: a view that failed whole: the glyph over the words, everything centred in the space it's given, the title in secondary text, the buttons in one row under it. */
+.bae-notice.bae-notice-centered { flex: 1; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-related); padding: var(--space-section); text-align: center; }
+.bae-notice-centered .bae-notice-body { flex: none; }
+.bae-notice-centered .bae-m-notice, .bae-notice-centered .bae-a-notice { align-items: center; gap: var(--space-group); }
+/* The centred title line carries the title's type, so the glyph in front of it scales with it (1.19 times, centred on the line). */
+.bae-m-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 15px/20px var(--font-sans); color: var(--text-secondary); }
+.bae-a-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 16px/24px var(--font-android); color: var(--text-secondary); }
+.bae-notice-centered-row { display: flex; align-items: center; gap: var(--space-group); }
+.bae-notice-centered-title { display: flex; align-items: flex-start; gap: var(--space-compact); }
+/* muted: a status glyph in grey, saying only that something went wrong (a failed view's centred notice). */
+.bae-status-glyph.bae-status-glyph-muted { color: var(--text-tertiary); }
+/* stage: on the lightbox's dark stage, in the stage's text colours, sized to its words. */
+.bae-notice-stage { --text-primary: var(--on-fill); --text-secondary: var(--on-fill-secondary); --text-tertiary: var(--on-fill-secondary); }
+.bae-notice.bae-notice-centered.bae-notice-stage { min-height: 0; padding: 0; }
 
 /* ==== part: import ==== */.bae-m-tertiary { color: var(--text-tertiary); }
 .bae-warning { color: var(--warning); }

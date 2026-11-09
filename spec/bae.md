@@ -3611,8 +3611,10 @@ part's version after the move; one whose entry, or the entry it goes before,
 is no longer in that part moves nothing and answers that the queue changed.
 A remove, a skip to an entry and either clear answer too: a remove or skip
 whose entry is no longer in its part changes nothing and answers that the
-queue changed, a failed write answers its error, and the app shows either
-("The queue changed before this reached it, so nothing changed.").
+queue changed, and a failed write answers its error. The app shows a failed
+write's error. It shows nothing for a command that changed nothing because
+the queue changed: that is rare, and the screen already shows the queue as it
+now is, so the gesture just ends.
 The queue screens read each part with its version: a row dragged to a new
 place stays there until the part's read reaches the version the move
 answered, so it never jumps back while the move is on its way, and a move

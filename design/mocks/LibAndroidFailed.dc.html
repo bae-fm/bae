@@ -18,7 +18,7 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidLibraryScreen" view="Albums"><x-import component-from-global-scope="Bae.AndroidLoadFailure" message="Couldn’t read your library" chain="database disk image is malformed"></x-import></x-import>
+<x-import component-from-global-scope="Bae.AndroidLibraryScreen" view="Albums"><x-import component-from-global-scope="Bae.AndroidNotice" layout="centered" quiet="{{yes}}" tone="danger" title="Couldn’t read your library" secondary="Details" action="Retry"></x-import></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

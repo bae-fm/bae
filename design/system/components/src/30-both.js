@@ -59,17 +59,22 @@
   function StatusGlyph(props) {
     var tone = props.tone, size = Number(props.size || 15);
     if (!STATUS_MATERIAL[tone]) return null;
-    var cls = cx('bae-status-glyph', 'bae-tone-' + tone, props.className);
+    var cls = cx('bae-status-glyph', 'bae-tone-' + tone, props.muted && 'bae-status-glyph-muted', props.className);
     return props.set === 'mac'
       ? h('svg', { className: cls, width: size, height: size, viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' },
           props.outline ? [h('path', { key: 'r', d: STATUS_RING, fillRule: 'evenodd' }), h('path', { key: 'm', d: STATUS_MARK[tone] })] : h('path', { d: STATUS_CIRCLE + STATUS_MARK[tone], fillRule: 'evenodd' }))
       : h(MSymbol, { name: STATUS_MATERIAL[tone], size: size, filled: !props.outline, className: cls, fill: 'currentColor' });
   }
   // The tinted box MacNotice and AndroidNotice draw in: its text the size of the screen it sits in (13 on a Mac, 14 on Android); `icon` (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. One glyph drawing serves both apps: the SF Symbol and Material's filled circle look alike.
-  // `quiet` (with the platform's class, such as bae-m-notice-quiet) draws it as a row: no fill, the screen's text, the glyph in its tone.
-  function NoticeBox(tone, icon, body, quiet) {
-    var glyph = icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac', outline: !!quiet })) : null;
-    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, glyph && 'bae-notice-with-icon', quiet && 'bae-notice-quiet', quiet) }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, body) : body);
+  // `look.quiet` draws it with no fill, the screen's text, the glyph in its tone as an outline; `look.centered` centres everything in the space it's given (a view that failed whole), its glyph drawn by the caller in the title line (noticeGlyph); `look.stage` is for the lightbox's dark stage; `look.platform` is the app's own class (bae-m-notice-box or bae-a-notice-box).
+  // The notice's glyph: an outline when quiet; centred, grey, in front of the title (it says something went wrong and nothing more).
+  function noticeGlyph(tone, icon, look) {
+    return icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac', outline: !!(look.quiet || look.centered), muted: !!look.centered })) : null;
+  }
+  function NoticeBox(tone, icon, body, look) {
+    var quiet = look.quiet;
+    var glyph = look.centered ? null : noticeGlyph(tone, icon, look);
+    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, look.platform, glyph && 'bae-notice-with-icon', quiet && 'bae-notice-quiet', look.centered && 'bae-notice-centered', look.stage && 'bae-notice-stage') }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, body) : body);
   }
   // The notice's words: a title (bold only under a subtitle), the subtitle saying what to do, or the caller's own children.
   function noticeWords(props) {

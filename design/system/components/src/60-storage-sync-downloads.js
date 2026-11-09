@@ -150,17 +150,19 @@
   function MacErrorDetails(props) {
     return h('div', { className: 'bae-errdis-panel' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 })));
   }
-  // macOS's notice: a tinted box in its tone, the glyph leading; a title and a subtitle saying what to do; never the error itself (no Details): a notice that carries an error opens an alert with it when clicked (`MacAlert` with `details`). `action` is a button (Retry) on its own line at the end, in line with the text; `dismiss` puts a dim × at the right, level with the title, that takes the notice away without fixing what it reports (the Activity panel's problems: each still shows where it's fixed, such as Settings → Sync); `dismiss: 'button'` makes it a borderless Dismiss button instead, the two in the sheet's footer row at the right (`MacSheetFooter`). `outlined` is quiet in a hairline frame, for a notice standing among a list's rows (the queue's tail).
+  // macOS's notice: a glyph (`icon: false` drops it), a title and a subtitle saying what to do, then up to two buttons: `action`, the primary one (Retry), and `secondary` (Dismiss, or Details, which opens MacAlert with the error's causes in `details`: a notice never shows the error itself). One button sits on its own line under the text, in line with it; two go at the right in the sheet footer's row, secondary first. `layout: 'centered'` puts it in the middle of the space it's given, the glyph grey in front of the title, the title in secondary text and the buttons centred under it: a view that failed whole (the album grid, the import list, the lightbox's image, with `stage` on its dark stage), or one part of it (the rest of the queue). `dismiss` puts a dim × at the right, level with the title, that takes the notice away without fixing what it reports (the Activity panel's problems: each still shows where it's fixed, such as Settings → Sync). Looks: filled in its tone (default), or `quiet` (no fill, the glyph an outline).
   function MacNotice(props) {
     var tone = props.tone || 'neutral';
-    var words = noticeWords(props);
-    var cross = props.dismiss && props.dismiss !== 'button';
+    var centered = props.layout === 'centered';
+    var words = centered ? h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true }), h('div', null, noticeWords(props))) : noticeWords(props);
+    var primary = props.action ? h(MacButton, { key: 'p' }, props.action) : null;
+    var buttons = props.secondary ? h(centered ? 'div' : MacSheetFooter, centered ? { className: 'bae-notice-centered-row' } : null, h(MacButton, { key: 's', kind: 'borderless' }, props.secondary), primary)
+      : primary ? h('span', { className: centered ? 'bae-notice-centered-row' : 'bae-m-notice-action' }, primary) : null;
     var body = h('div', { className: 'bae-m-notice' },
-      cross ? h('div', { className: 'bae-m-notice-top' }, h('div', { className: 'bae-m-notice-words' }, words),
+      props.dismiss ? h('div', { className: 'bae-m-notice-top' }, h('div', { className: 'bae-m-notice-words' }, words),
         h('span', { className: 'bae-m-notice-dismiss' }, h(MacIconButton, { icon: 'close', size: 14, faint: true, label: 'Dismiss' }))) : words,
-      props.action && props.dismiss === 'button' ? h(MacSheetFooter, null, h(MacButton, { kind: 'borderless' }, 'Dismiss'), h(MacButton, null, props.action)) :
-      props.action ? h('span', { className: 'bae-m-notice-action' }, h(MacButton, null, props.action)) : null);
-    return NoticeBox(tone, props.icon, body, (props.quiet || props.outlined) && cx('bae-m-notice-quiet', props.outlined && 'bae-notice-outlined'));
+      buttons);
+    return NoticeBox(tone, props.icon, body, { platform: 'bae-m-notice-box', quiet: props.quiet, centered: centered, stage: props.stage });
   }
   // A popover hanging from a title-bar button, its arrow pointing up at it.
   function MacPopover(props) {
@@ -190,18 +192,21 @@
   function AndroidErrorDetails(props) {
     return h('div', { className: 'bae-errdis-panel' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy' }, h(AndroidIconButton, { icon: 'copy', label: 'Copy details' })));
   }
-  // Android's notice: MacNotice's parts from Android's own; no Details either (tapping opens a dialog holding `AndroidErrorDetails`); `action` a text button on its own line at the end, its label in line with the text; `dismiss` an × at the right, level with the title, or with `'button'` a Dismiss text button, the two in the dialog's actions row at the right (`AndroidDialogActions`); `outlined` as MacNotice's.
+  // Android's notice: MacNotice's parts from Android's own. Two buttons go at the right in the dialog's actions row, secondary first, both text buttons; one sits on its own line at the end, its label in line with the text. Centred, the primary is an outlined button. Details opens an AndroidDialog holding `AndroidErrorDetails`.
   function AndroidNotice(props) {
     var tone = props.tone || 'neutral';
-    var words = noticeWords(props);
-    var cross = props.dismiss && props.dismiss !== 'button';
+    var centered = props.layout === 'centered';
+    var words = centered ? h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true }), h('div', null, noticeWords(props))) : noticeWords(props);
+    var primary = props.action ? h(AndroidButton, { key: 'p', kind: centered ? 'outlined' : 'text' }, props.action) : null;
+    var buttons = props.secondary ? h(centered ? 'div' : AndroidDialogActions, centered ? { className: 'bae-notice-centered-row' } : null, h(AndroidButton, { key: 's', kind: 'text' }, props.secondary), primary)
+      : primary ? h('span', { className: centered ? 'bae-notice-centered-row' : 'bae-a-notice-action' }, primary) : null;
     var body = h('div', { className: 'bae-a-notice' },
-      cross ? h('div', { className: 'bae-a-notice-top' }, h('div', { className: 'bae-a-notice-words' }, words),
+      props.dismiss ? h('div', { className: 'bae-a-notice-top' }, h('div', { className: 'bae-a-notice-words' }, words),
         h('span', { className: 'bae-a-notice-dismiss' }, h(AndroidIconButton, { icon: 'close', size: 20, label: 'Dismiss', className: 'bae-a-icon-muted' }))) : words,
-      props.action && props.dismiss === 'button' ? h(AndroidDialogActions, null, h(AndroidButton, { kind: 'text' }, 'Dismiss'), h(AndroidButton, { kind: 'text' }, props.action)) :
-      props.action ? h('span', { className: 'bae-a-notice-action' }, h(AndroidButton, { kind: 'text' }, props.action)) : null);
-    return NoticeBox(tone, props.icon, body, (props.quiet || props.outlined) && cx('bae-a-notice-quiet', props.outlined && 'bae-notice-outlined'));
+      buttons);
+    return NoticeBox(tone, props.icon, body, { platform: 'bae-a-notice-box', quiet: props.quiet, centered: centered, stage: props.stage });
   }
+
   // The Activity sheet (SyncActivity.kt's, grown to hold every problem): the title, Needs Attention with the caller's notices (children), bae couldn't read sync's status (no button), and sync's own with Open Sync Settings; nothing retries in place; then the transfers (the downloads line opens Downloads), or up to date.
   function AndroidActivity(props) {
     var t = function (s, c) { return h('div', { className: cx(c || 'bae-a-act-line', 'bae-a-act-text') }, s); };
