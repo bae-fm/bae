@@ -183,6 +183,7 @@
     <string name="download_waiting">Αναμονή λήψης</string>
     <string name="download_ahead">%1$d πριν από αυτό</string>
     <string name="download_waiting_for_network">Αναμονή δικτύου</string>
+    <string name="download_failed">Η λήψη απέτυχε</string>
     <string name="upload_waiting_for_wifi">Αναμονή Wi-Fi</string>
     <string name="upload_retrying_at">Επανάληψη στις %1$s</string>
     <string name="upload_waiting_for_file">Αναμονή για %1$s</string>

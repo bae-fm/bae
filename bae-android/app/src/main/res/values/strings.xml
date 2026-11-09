@@ -226,6 +226,7 @@
     <string name="download_waiting">Waiting to download</string>
     <string name="download_ahead">%1$d ahead</string>
     <string name="download_waiting_for_network">Waiting for network</string>
+    <string name="download_failed">Download failed</string>
     <string name="upload_waiting_for_wifi">Waiting for Wi-Fi</string>
     <string name="upload_retrying_at">Retrying at %1$s</string>
     <string name="upload_waiting_for_file">Waiting for %1$s</string>

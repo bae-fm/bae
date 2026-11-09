@@ -176,6 +176,7 @@
     <string name="download_waiting">다운로드 대기 중</string>
     <string name="download_ahead">앞에 %1$d개</string>
     <string name="download_waiting_for_network">네트워크 대기 중</string>
+    <string name="download_failed">다운로드 실패</string>
     <string name="upload_waiting_for_wifi">Wi-Fi 대기 중</string>
     <string name="upload_retrying_at">%1$s에 다시 시도</string>
     <string name="upload_waiting_for_file">%1$s 대기 중</string>

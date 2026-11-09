@@ -184,6 +184,7 @@
     <string name="download_waiting">En attente de téléchargement</string>
     <string name="download_ahead">%1$d avant</string>
     <string name="download_waiting_for_network">En attente du réseau</string>
+    <string name="download_failed">Échec du téléchargement</string>
     <string name="upload_waiting_for_wifi">En attente du Wi-Fi</string>
     <string name="upload_retrying_at">Nouvel essai à %1$s</string>
     <string name="upload_waiting_for_file">En attente de %1$s</string>

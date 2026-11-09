@@ -39,6 +39,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.downloads.ActiveDownloadProgress
 import fm.bae.app.ui.downloads.WaitingToDownloadText
@@ -232,8 +233,10 @@ private fun DownloadFailedControl(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    ErrorNotice(
-        DisplayError(error),
+    TitledErrorNotice(
+        title = stringResource(R.string.download_failed),
+        advice = null,
+        error = DisplayError(error),
         action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
         look = NoticeLook.QUIET,
     )
