@@ -10,6 +10,10 @@ import SwiftUI
 struct StorageInspectorFileRow: View {
     let row: BridgeStorageInspectorFile
 
+    /// The inset a plain macOS list gives its rows at each side, which
+    /// `listRowInsets` adds to rather than replaces.
+    private static let plainListRowInset: CGFloat = 8
+
     var body: some View {
         RowItem {
             mark
@@ -25,13 +29,17 @@ struct StorageInspectorFileRow: View {
                 .monospacedDigit()
         }
         .padding(.vertical, ThemeSpace.related)
-        // The row's own padding is its whole height: the list adds none.
+        // The row's own padding is its whole height: the list adds none
+        // vertically. Sideways a plain list insets its rows by
+        // `plainListRowInset` itself, so the row asks for the rest of the
+        // screen edge, putting its names on the edge the transfer rows above
+        // keep.
         .listRowInsets(
             EdgeInsets(
                 top: 0,
-                leading: ThemeSpace.edge,
+                leading: ThemeSpace.edge - Self.plainListRowInset,
                 bottom: 0,
-                trailing: ThemeSpace.edge
+                trailing: ThemeSpace.edge - Self.plainListRowInset
             )
         )
         .help(help)
