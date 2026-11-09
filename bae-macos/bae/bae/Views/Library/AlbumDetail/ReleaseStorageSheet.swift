@@ -75,7 +75,7 @@ struct ReleaseStorageSheet: View {
             .padding()
             Divider()
             if let releaseError {
-                ErrorDetailDisclosure(error: releaseError)
+                ErrorNotice(error: releaseError)
                     .padding()
             }
             else {

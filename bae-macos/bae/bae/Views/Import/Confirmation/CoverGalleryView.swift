@@ -93,7 +93,7 @@ struct CoverGalleryView: View {
             Divider()
             HStack(spacing: ThemeSpace.edge) {
                 if let failure = error ?? remoteItems.failure {
-                    ErrorDetailDisclosure(error: failure)
+                    ErrorNotice(error: failure)
                 }
                 Spacer(minLength: ThemeSpace.group)
                 // Saving can download a remote cover, or read a release's
@@ -227,10 +227,10 @@ struct CoverGalleryView: View {
         VStack(spacing: ThemeSpace.related) {
             if browser.cursor != nil || !remoteItems.isLoading { remoteStatus }
             if let error {
-                ErrorDetailDisclosure(error: error)
+                ErrorNotice(error: error)
             }
             if let failure = remoteItems.failure {
-                ErrorDetailDisclosure(
+                ErrorNotice(
                     error: failure,
                     action: onRefresh.map { ErrorAction(perform: $0) }
                 )

@@ -36,7 +36,7 @@ public struct ErrorAction {
 /// `bare` leaves out the box and its glyph, for an error already inside a
 /// notice that holds it. The line is primary text on the tint; secondary text
 /// is primary text made see-through.
-public struct ErrorDetailDisclosure: View {
+public struct ErrorNotice: View {
     private let error: DisplayError
     private let tone: StatusTone
     private let bare: Bool

@@ -39,7 +39,7 @@ struct RenameLibrarySheet: View {
                 }
                 if let error = state.error {
                     Section {
-                        ErrorDetailDisclosure(error: error)
+                        ErrorNotice(error: error)
                     }
                 }
             }

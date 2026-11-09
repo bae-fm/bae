@@ -191,10 +191,10 @@ struct DiscogsSettingsContent: View {
                 )
             }
             if let saveError {
-                ErrorDetailDisclosure(error: saveError)
+                ErrorNotice(error: saveError)
             }
             if let readError {
-                ErrorDetailDisclosure(error: readError)
+                ErrorNotice(error: readError)
             }
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 Text(

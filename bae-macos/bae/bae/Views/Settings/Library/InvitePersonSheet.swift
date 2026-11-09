@@ -102,7 +102,7 @@ struct InvitePersonSheet: View {
             }
             .formStyle(.grouped)
             if let error {
-                ErrorDetailDisclosure(error: error)
+                ErrorNotice(error: error)
                     .padding(.horizontal)
             }
             MacSheetFooter {

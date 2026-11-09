@@ -34,7 +34,7 @@
                     }
                     : nil
                 if let error = store.error {
-                    ErrorDetailDisclosure(error: error, action: retry)
+                    ErrorNotice(error: error, action: retry)
                 }
                 else if store.activity?.retryOffered == true {
                     Button(localizedCoreString("core.activity.retry_now")) {
@@ -55,7 +55,7 @@
                     if let failure = activity.failure,
                         let displayed = DisplayError(failure)
                     {
-                        ErrorDetailDisclosure(error: displayed)
+                        ErrorNotice(error: displayed)
                     }
                     PendingRecordsView(
                         records: activity.attention,

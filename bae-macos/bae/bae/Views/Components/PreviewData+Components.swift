@@ -130,12 +130,12 @@
 
     #Preview("Error Detail Disclosure") {
         VStack(alignment: .leading, spacing: ThemeSpace.section) {
-            ErrorDetailDisclosure(error: PreviewData.displayErrorWithDetail)
-            ErrorDetailDisclosure(
+            ErrorNotice(error: PreviewData.displayErrorWithDetail)
+            ErrorNotice(
                 error: PreviewData.displayErrorSimple,
                 tone: .warning
             )
-            ErrorDetailDisclosure(
+            ErrorNotice(
                 error: PreviewData.displayErrorWithDetail,
                 action: ErrorAction {}
             )

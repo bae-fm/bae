@@ -413,7 +413,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
                 .formStyle(.grouped)
 
                 if let error {
-                    ErrorDetailDisclosure(error: error)
+                    ErrorNotice(error: error)
                         .padding(.horizontal)
                         .padding(.bottom, ThemeSpace.related)
                 }

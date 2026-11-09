@@ -201,7 +201,7 @@ struct WelcomeChooseView: View {
                     .frame(maxWidth: StepProgressLayout.width)
             }
             if let error {
-                ErrorDetailDisclosure(error: error)
+                ErrorNotice(error: error)
             }
             Spacer()
         }
@@ -304,7 +304,7 @@ private struct WelcomeLoadErrorCallout: View {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 title
                     .themeText(.heading)
-                ErrorDetailDisclosure(error: error, bare: true)
+                ErrorNotice(error: error, bare: true)
                 if let guidance {
                     guidance
                         .themeText(.body)
@@ -337,7 +337,7 @@ private struct RemovalErrorCallout: View {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text("Couldn't remove the library")
                     .themeText(.heading)
-                ErrorDetailDisclosure(
+                ErrorNotice(
                     error: error,
                     bare: true,
                     action: removals.unfinished == nil

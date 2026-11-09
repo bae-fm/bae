@@ -44,7 +44,7 @@ struct ImportConfirmationBanners: View {
         importFailureBanner
 
         if let error {
-            ErrorDetailDisclosure(error: DisplayError(line: error))
+            ErrorNotice(error: DisplayError(line: error))
         }
     }
 
@@ -86,12 +86,12 @@ struct ImportConfirmationBanners: View {
         if case .error(let bridgeError) = importStatus,
             let displayed = DisplayError(bridgeError)
         {
-            ErrorDetailDisclosure(error: displayed)
+            ErrorNotice(error: displayed)
         }
     }
 
     private func persistedFailure(_ error: DisplayError) -> some View {
-        ErrorDetailDisclosure(
+        ErrorNotice(
             error: error,
             action: ErrorAction(isDisabled: !canEdit, perform: onRetry)
         )

@@ -13,7 +13,7 @@ struct LoadErrorNotice: View {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(verbatim: loadError.step.title)
                     .themeText(.heading)
-                ErrorDetailDisclosure(error: loadError.error, bare: true)
+                ErrorNotice(error: loadError.error, bare: true)
                 if let advice = loadError.step.advice {
                     Text(verbatim: advice)
                         .themeText(.body)

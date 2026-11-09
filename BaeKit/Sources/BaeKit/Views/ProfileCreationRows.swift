@@ -53,7 +53,7 @@ public struct ProfileCreationRows: View {
                 )
             }
             if let error {
-                ErrorDetailDisclosure(error: error)
+                ErrorNotice(error: error)
             }
         }
     }

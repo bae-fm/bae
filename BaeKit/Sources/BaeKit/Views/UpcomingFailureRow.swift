@@ -14,7 +14,7 @@ public struct UpcomingFailureRow: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            ErrorDetailDisclosure(error: failure)
+            ErrorNotice(error: failure)
             Button("Retry", action: onRetry)
         }
         .padding(ThemeSpace.group)

@@ -65,7 +65,7 @@ struct BootstrapCodeView: View {
             .formStyle(.grouped)
             .disabled(form.isRunning)
             if let error = form.error {
-                ErrorDetailDisclosure(error: error)
+                ErrorNotice(error: error)
                     .padding(.horizontal)
                     .padding(.bottom, ThemeSpace.related)
             }
@@ -171,7 +171,7 @@ struct BootstrapCodeView: View {
                     .themeText(.mono)
                 Button("Scan") { showScanner = true }
                 if let decodeError = form.decodeError {
-                    ErrorDetailDisclosure(error: decodeError)
+                    ErrorNotice(error: decodeError)
                 }
             }
         }
@@ -256,7 +256,7 @@ private struct JoinWaitingView: View {
                 }
             }
             if let error = form.error {
-                ErrorDetailDisclosure(error: error)
+                ErrorNotice(error: error)
             }
             HStack(spacing: ThemeSpace.group) {
                 if form.cancellable {

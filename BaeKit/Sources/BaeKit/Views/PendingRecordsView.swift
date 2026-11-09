@@ -45,7 +45,7 @@ private struct PendingRecordRow: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             Text(record.subject.localizedLine)
                 .themeText(.strong)
-            ErrorDetailDisclosure(
+            ErrorNotice(
                 error: DisplayError(
                     line: localizedCoreString(record.reason.key),
                     detail: record.reason.detail
@@ -56,7 +56,7 @@ private struct PendingRecordRow: View {
                 }
             )
             if let error {
-                ErrorDetailDisclosure(error: error)
+                ErrorNotice(error: error)
             }
         }
         .onDisappear { task?.cancel() }

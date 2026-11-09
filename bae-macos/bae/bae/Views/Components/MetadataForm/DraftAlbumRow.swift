@@ -79,7 +79,7 @@ struct DraftAlbumRow: View {
             TextField("Search", text: $query)
                 .textFieldStyle(.boxed)
             if let searchError {
-                ErrorDetailDisclosure(error: searchError)
+                ErrorNotice(error: searchError)
             }
             ForEach(results, id: \.albumId) { result in
                 Button {

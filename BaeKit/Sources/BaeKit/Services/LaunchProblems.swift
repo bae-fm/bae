@@ -47,7 +47,7 @@ private struct LaunchProblemNotice: View {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(verbatim: localizedCoreString(title))
                     .themeText(.heading)
-                ErrorDetailDisclosure(error: error, bare: true)
+                ErrorNotice(error: error, bare: true)
                 Text(verbatim: localizedCoreString(advice))
                     .themeText(.body)
                     .foregroundStyle(NoticeText.secondary)

@@ -133,7 +133,7 @@ struct InviteCodeSheet: View {
     @ViewBuilder
     private var cancelControls: some View {
         if let error {
-            ErrorDetailDisclosure(error: error)
+            ErrorNotice(error: error)
         }
         Button("Cancel invitation", role: .destructive) {
             confirmingCancel = true

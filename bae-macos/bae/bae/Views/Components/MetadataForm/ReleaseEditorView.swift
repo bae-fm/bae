@@ -54,7 +54,7 @@ struct ReleaseEditorView: View {
             })
                 ?? session.failure
             {
-                ErrorDetailDisclosure(error: shown)
+                ErrorNotice(error: shown)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let searchSection {

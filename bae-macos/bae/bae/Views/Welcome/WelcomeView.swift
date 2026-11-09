@@ -80,7 +80,7 @@ struct WelcomeView: View {
         case .choose:
             VStack(spacing: 0) {
                 if let resumeError {
-                    ErrorDetailDisclosure(error: resumeError)
+                    ErrorNotice(error: resumeError)
                         .padding()
                 }
                 WelcomeChooseView(
