@@ -547,6 +547,7 @@
 .bae-m-castpop-casting > strong { flex: 1; font-weight: 600; }
 .bae-a-scrim { position: absolute; inset: 0; z-index: 8; background: rgba(0,0,0,0.32); }
 .bae-a-sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 120px; overflow: hidden; border-radius: 28px 28px 0 0; background: var(--surface); font-family: var(--font-android); }
+.bae-a-sheet-title { margin: 0; padding: 0 var(--space-edge) var(--space-group); font: 400 22px/28px var(--font-android); color: var(--text-primary); }
 .bae-a-sheet-handle { width: 32px; height: 4px; margin: 22px auto; border-radius: 2px; background: var(--text-secondary); opacity: 0.4; }
 .bae-a-queuelabel { display: flex; align-items: center; padding: 0 8px 0 16px; min-height: 48px; }
 .bae-a-qrow { display: flex; align-items: center; gap: 12px; padding: 8px 4px 8px 12px; background: var(--surface); }

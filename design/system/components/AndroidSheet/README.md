@@ -1,5 +1,5 @@
 # AndroidSheet
 
-A bottom sheet over its screen: the queue, the full player, the cast picker.
+A bottom sheet over its screen, for something secondary to the screen that asks for no decision: the queue, the full player, the cast picker, the Activity sheet, a library's details. `title` names it. Swiping down or tapping outside closes it, so it has no Close button. A decision (a confirmation, a choice that has to be made) is an `AndroidDialog`, and a whole task with fields is its own screen. **On iOS** (not built yet) the same content is a sheet too, at its medium height for details and the queue, full height for a task; there a sheet also holds forms, with Cancel and Done at its top. **On macOS** it is a popover for details hanging off what they describe, or a sheet on the window for a task.
 
 **In the code:** Android: Material's `ModalBottomSheet`.

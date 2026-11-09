@@ -67,7 +67,7 @@
 
   // ---- Queue and playback (Android) ----
   function AndroidSheet(props) {
-    return h('div', { className: 'bae-a-scrim' }, h('div', { className: 'bae-a-sheet', style: props.top != null ? { top: Number(props.top) } : null }, h('div', { className: 'bae-a-sheet-handle' }), props.children));
+    return h('div', { className: 'bae-a-scrim' }, h('div', { className: 'bae-a-sheet', style: props.top != null ? { top: Number(props.top) } : null }, h('div', { className: 'bae-a-sheet-handle' }), props.title ? h('h2', { className: 'bae-a-sheet-title' }, props.title) : null, props.children));
   }
   function AndroidQueueLabel(props) {
     return h('div', { className: 'bae-a-queuelabel' }, h('span', { className: 'bae-a-eyebrow', style: { paddingTop: 0, flex: 1 } }, props.title),
