@@ -575,10 +575,11 @@ ImageHold = "RemoteImageHost"
 "bae-bridge/src/host/closing_libraries.rs" = ["ClosingLibraries::new"]
 # A dev reset creates the library and opens it.
 "bae-bridge/src/host/dev_reset.rs" = ["BridgeHost::run_dev_reset"]
-# The sink the app built at launch, taken back as core's by the host the app
-# builds on it.
+# The sink, clock and id source the app built at launch, taken back as core's
+# by the host the app builds on it.
 "bae-bridge/src/init.rs" = [
     "BridgeDiagnostics::core",
+    "BridgeDiagnostics::sources",
     "configure_diagnostics",
 ]
 # A library just set up opens.

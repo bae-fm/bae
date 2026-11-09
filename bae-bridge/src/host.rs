@@ -317,12 +317,12 @@ impl BridgeHost {
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
     ) -> Result<Arc<Self>, BridgeError> {
+        let (clock, ids) = diagnostics.sources();
         let diagnostics = diagnostics.core().clone();
         let coven = coven::Coven::in_memory_reporting_to(
             app_dir.core().coven_app_dir(),
             diagnostics.bug_sink(),
         );
-        let (clock, ids) = system_sources();
         Self::start(diagnostics, app_dir, coven, clock, ids, bae_playback::AudioFocus::Unshared)
     }
 }
@@ -336,9 +336,9 @@ impl BridgeHost {
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
     ) -> Result<Arc<Self>, BridgeError> {
+        let (clock, ids) = diagnostics.sources();
         let diagnostics = diagnostics.core().clone();
         let coven = installation(&diagnostics, app_dir.core())?;
-        let (clock, ids) = system_sources();
         Self::start(diagnostics, app_dir, coven, clock, ids, bae_playback::AudioFocus::Unshared)
     }
 }
@@ -354,10 +354,10 @@ impl BridgeHost {
         app_dir: Arc<BridgeAppDir>,
         audio_focus: Box<dyn crate::BridgeAudioFocus>,
     ) -> Result<Arc<Self>, BridgeError> {
+        let (clock, ids) = diagnostics.sources();
         let diagnostics = diagnostics.core().clone();
         let coven = installation(&diagnostics, app_dir.core())?;
         let audio_focus = crate::PlatformAudioFocus::new(audio_focus, diagnostics.clone());
-        let (clock, ids) = system_sources();
         Self::start(
             diagnostics,
             app_dir,
@@ -442,13 +442,20 @@ impl BridgeHost {
         let store = crate::from_app::store(&library_id)?;
         let builder = self.builder();
         let report = opening.report();
+        let clock = self.clock.clone();
         self.operations
             .clone()
             .run("BridgeHost.unsent_before_removal", move || async move {
                 self.closed(store).await?;
                 Ok(crate::BridgeUnsentWork::from_core(
-                    bae_library::unsent_before_removal(builder, store, report, &self.diagnostics)
-                        .await?,
+                    bae_library::unsent_before_removal(
+                        builder,
+                        store,
+                        report,
+                        clock,
+                        &self.diagnostics,
+                    )
+                    .await?,
                 ))
             })
             .await
@@ -608,14 +615,6 @@ pub fn init_app_on_fixture(
         restore_playback,
         &opening,
     )
-}
-
-/// The system wall clock a host is built over, and the UUIDv7 ids that clock
-/// times.
-fn system_sources() -> (coven::ClockRef, coven::IdSourceRef) {
-    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let ids = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
-    (clock, ids)
 }
 
 /// This device's libraries as coven keeps them under `app_dir`, their

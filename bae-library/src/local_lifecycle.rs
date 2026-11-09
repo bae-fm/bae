@@ -216,17 +216,14 @@ pub async fn unsent_before_removal(
     builder: coven::CovenBuilder,
     store: coven::StoreId,
     on_open_progress: impl Fn(coven::Progress<coven::OpenStep>),
+    clock: coven::ClockRef,
     diagnostics: &Diagnostics,
 ) -> Result<coven::UnsentWork, LibraryError> {
     let handle = bae_store::configure_store(builder, crate::SCHEMA)
         .open(store, on_open_progress)
         .await
         .map_err(|error| bae_store::DbError::from(coven::task::reported(diagnostics, error)))?;
-    let store = bae_store::Store::new(
-        handle,
-        std::sync::Arc::new(coven::SystemClock),
-        diagnostics.bug_sink(),
-    );
+    let store = bae_store::Store::new(handle, clock, diagnostics.bug_sink());
     let unsent = store.unsent_before_removal().await;
     let closed = store.close().await;
     let unsent = unsent?;

@@ -169,6 +169,7 @@ impl BridgeHost {
                         |status| steps.bootstrap(status, true),
                         report,
                         &cancel,
+                        self.clock.clone(),
                         &self.diagnostics,
                     )
                     .await
@@ -274,7 +275,7 @@ impl BridgeHost {
                     self.builder(),
                     &code,
                     &device_name,
-                    Arc::new(coven::SystemClock),
+                    self.clock.clone(),
                     |status| {
                         let cancellable = bae_library::join_cancellable(&status);
                         steps.bootstrap(status, cancellable)
@@ -324,7 +325,7 @@ impl BridgeHost {
                 let joined = bae_library::resume_join(
                     || self.builder(),
                     &join.join,
-                    Arc::new(coven::SystemClock),
+                    self.clock.clone(),
                     |status| {
                         let cancellable = bae_library::join_cancellable(&status);
                         steps.bootstrap(status, cancellable)

@@ -257,6 +257,7 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
                 |_| {},
                 |_| {},
                 &cancel,
+                std::sync::Arc::new(coven::SystemClock),
                 &bae_diagnostics::Diagnostics::noop(),
             )
             .await
@@ -323,6 +324,7 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
         |_| {},
         |_| {},
         &cancel,
+        std::sync::Arc::new(coven::SystemClock),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -417,6 +419,7 @@ async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_
                 |_| {},
                 |_| {},
                 &cancel,
+                std::sync::Arc::new(coven::SystemClock),
                 &bae_diagnostics::Diagnostics::noop(),
             )
             .await
@@ -497,6 +500,7 @@ async fn a_restore_stopped_after_its_record_finishes_without_the_code() {
             |_| {},
             |_| {},
             &cancel,
+            std::sync::Arc::new(coven::SystemClock),
             &bae_diagnostics::Diagnostics::noop(),
         ),
     )
@@ -625,14 +629,20 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
             |_| {},
             |_| {},
             &cancel,
+            std::sync::Arc::new(coven::SystemClock),
             &bae_diagnostics::Diagnostics::noop(),
         ),
     )
     .await;
-    let counted =
-        unsent_before_removal(builder(), store, |_| (), &bae_diagnostics::Diagnostics::noop())
-            .await
-            .expect_err("counting opens the library, which only finishing the restore allows");
+    let counted = unsent_before_removal(
+        builder(),
+        store,
+        |_| (),
+        std::sync::Arc::new(coven::SystemClock),
+        &bae_diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .expect_err("counting opens the library, which only finishing the restore allows");
     assert!(format!("{counted:?}").contains("ReplacementUnfinished"), "{counted:?}");
 
     // The restored copy waits in a hidden directory inside the store's.
@@ -861,6 +871,7 @@ async fn a_restore_over_this_devices_copy_keeps_its_settings() {
         |_| {},
         |_| {},
         &cancel,
+        std::sync::Arc::new(coven::SystemClock),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await

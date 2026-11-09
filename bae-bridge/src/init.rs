@@ -80,6 +80,18 @@ pub enum BridgeScreen {
 #[derive(uniffi::Object)]
 pub struct BridgeDiagnostics {
     inner: Diagnostics,
+    /// The wall clock and the ids it times: made once here, where the
+    /// process starts, and handed on to the host and everything it builds.
+    clock: coven::ClockRef,
+    ids: coven::IdSourceRef,
+}
+
+/// The system wall clock a process runs on, and the UUIDv7 ids that clock
+/// times.
+fn system_sources() -> (coven::ClockRef, coven::IdSourceRef) {
+    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
+    let ids = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
+    (clock, ids)
 }
 
 impl BridgeDiagnostics {
@@ -89,15 +101,23 @@ impl BridgeDiagnostics {
         &self.inner
     }
 
+    /// The process's clock and id source, which the host takes from the
+    /// diagnostics it is built over.
+    pub(crate) fn sources(&self) -> (coven::ClockRef, coven::IdSourceRef) {
+        (self.clock.clone(), self.ids.clone())
+    }
+
     #[cfg(test)]
     pub(crate) fn noop() -> Arc<Self> {
-        Arc::new(Self { inner: Diagnostics::noop() })
+        let (clock, ids) = system_sources();
+        Arc::new(Self { inner: Diagnostics::noop(), clock, ids })
     }
 
     /// A sink that sends nothing and reports each bug to `bugs`.
     #[cfg(test)]
     pub(crate) fn reporting_bugs_to(bugs: Arc<dyn bae_diagnostics::BugReporter>) -> Arc<Self> {
-        Arc::new(Self { inner: Diagnostics::noop().reporting_bugs_to(bugs) })
+        let (clock, ids) = system_sources();
+        Arc::new(Self { inner: Diagnostics::noop().reporting_bugs_to(bugs), clock, ids })
     }
 }
 
@@ -130,17 +150,21 @@ pub fn configure_diagnostics(
 ) -> Arc<BridgeDiagnostics> {
     configure_logging();
     install_panic_logging();
-    let clock = Arc::new(coven::SystemClock);
-    let ids = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
+    let (clock, ids) = system_sources();
     let bugs: Arc<dyn bae_diagnostics::BugReporter> = Arc::new(PlatformBugReporter(bug_reporter));
-    let inner = match Diagnostics::configure(config.into_core(), clock, ids, bugs.clone()) {
+    let inner = match Diagnostics::configure(
+        config.into_core(),
+        clock.clone(),
+        ids.clone(),
+        bugs.clone(),
+    ) {
         Ok(diagnostics) => diagnostics,
         Err(error) => {
             tracing::error!("telemetry init failed: {error}; continuing without telemetry");
             Diagnostics::noop().reporting_bugs_to(bugs)
         }
     };
-    Arc::new(BridgeDiagnostics { inner })
+    Arc::new(BridgeDiagnostics { inner, clock, ids })
 }
 
 fn install_panic_logging() {

@@ -399,6 +399,7 @@ pub async fn restore_replacing_device(
     on_status: impl Fn(coven::BootstrapStatus),
     on_open_progress: impl Fn(coven::Progress<coven::OpenStep>),
     cancel: &watch::Receiver<bool>,
+    clock: coven::ClockRef,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
     // Coven refuses an invite or another library's code too, but only after
@@ -421,7 +422,7 @@ pub async fn restore_replacing_device(
             }))
         }
     };
-    let carried = settings_of_this_copy(builder(), store, diagnostics).await?;
+    let carried = settings_of_this_copy(builder(), store, clock, diagnostics).await?;
     let mut builder = builder();
     auth::authenticate(&mut builder, access, cancel, diagnostics).await?;
     let status = |status| match status {
@@ -480,6 +481,7 @@ pub fn replacement_cancellable(by: coven::ReplacedBy) -> bool {
 async fn settings_of_this_copy(
     builder: coven::CovenBuilder,
     store: coven::StoreId,
+    clock: coven::ClockRef,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Option<bae_preferences::Preferences>, RestoreFromCodeError> {
     let unread = |error: crate::LibraryError| RestoreFromCodeError::SettingsUnread(Box::new(error));
@@ -494,11 +496,7 @@ async fn settings_of_this_copy(
             return Err(unread(bae_store::DbError::from(error).into()));
         }
     };
-    let store = bae_store::Store::new(
-        handle.clone(),
-        std::sync::Arc::new(coven::SystemClock),
-        diagnostics.bug_sink(),
-    );
+    let store = bae_store::Store::new(handle.clone(), clock, diagnostics.bug_sink());
     let settings = bae_preferences::preferences(&store).await;
     let closed = store.close().await;
     let settings = settings.map_err(|error| unread(error.into()))?;
