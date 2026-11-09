@@ -23,6 +23,7 @@ import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.NoticeLook
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeException
 
@@ -38,6 +39,11 @@ internal class QueueFailures(
 ) {
     var command by mutableStateOf<DisplayError?>(null)
         private set
+
+    /** Take the shown command failure away. */
+    fun dismiss() {
+        command = null
+    }
 
     /**
      * Run a queue command that answers, as [run] does, and hand back its answer; null when it failed,
@@ -97,7 +103,9 @@ internal fun QueueCommandFailure(failures: QueueFailures) {
     val failure = failures.command ?: return
     ErrorNotice(
         error = failure,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge),
+        look = NoticeLook.QUIET,
+        onDismiss = failures::dismiss,
     )
 }
 

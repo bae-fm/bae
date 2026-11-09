@@ -37,4 +37,14 @@ class QueueFailuresTest {
 
         assertNull(failures.command)
     }
+
+    @Test
+    fun dismissTakesTheFailureAway() {
+        val failures = QueueFailures(context, BugReports())
+        failures.run("reorderEntry e1 before e2") { error("queue entry e1 has no position") }
+
+        failures.dismiss()
+
+        assertNull(failures.command)
+    }
 }

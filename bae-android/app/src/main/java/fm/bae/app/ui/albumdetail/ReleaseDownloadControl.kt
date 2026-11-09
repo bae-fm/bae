@@ -38,6 +38,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.downloads.ActiveDownloadProgress
 import fm.bae.app.ui.downloads.WaitingToDownloadText
@@ -234,6 +235,7 @@ private fun DownloadFailedControl(
     ErrorNotice(
         DisplayError(error),
         action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
+        look = NoticeLook.QUIET,
     )
     DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
 }

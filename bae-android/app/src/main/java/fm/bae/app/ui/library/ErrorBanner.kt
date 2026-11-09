@@ -11,6 +11,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.NoticeLook
 
 @Composable
 internal fun ErrorBanner(
@@ -19,8 +20,9 @@ internal fun ErrorBanner(
 ) {
     ErrorNotice(
         error = error,
-        modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+        modifier = Modifier.padding(horizontal = ThemeSpace.edge),
         action = onRetry?.let { ErrorAction(stringResource(R.string.retry), onClick = it) },
+        look = NoticeLook.QUIET,
     )
 }
 

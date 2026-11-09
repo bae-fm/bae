@@ -27,6 +27,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadState
@@ -90,6 +91,7 @@ private fun DownloadRowState(
             ErrorNotice(
                 DisplayError(state.error),
                 action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
+                look = NoticeLook.QUIET,
             )
         }
     }

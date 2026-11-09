@@ -15,6 +15,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -57,16 +60,14 @@ val StatusTone.fill: Color
     @Composable
     get() = color.copy(alpha = ThemeOpacity.tint)
 
-/** The glyph a notice in this tone leads with: a filled circle with its mark. */
-private val StatusTone.icon: ImageVector?
-    get() =
-        when (this) {
-            StatusTone.INFO -> Icons.Filled.Info
-            StatusTone.SUCCESS -> Icons.Filled.CheckCircle
-            StatusTone.WARNING -> Icons.Filled.Error
-            StatusTone.DANGER -> Icons.Filled.Error
-            StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
-        }
+/** The glyph a notice in this tone leads with: a filled circle with its mark, or its outline when [outline]. */
+private fun StatusTone.icon(outline: Boolean): ImageVector? =
+    when (this) {
+        StatusTone.INFO -> if (outline) Icons.Outlined.Info else Icons.Filled.Info
+        StatusTone.SUCCESS -> if (outline) Icons.Outlined.CheckCircle else Icons.Filled.CheckCircle
+        StatusTone.WARNING, StatusTone.DANGER -> if (outline) Icons.Outlined.Error else Icons.Filled.Error
+        StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
+    }
 
 /** The glyph's colour: the tone's status icon colour; the rest have no glyph and use [color]. */
 private val StatusTone.iconColor: Color
@@ -86,8 +87,9 @@ fun StatusGlyph(
     tone: StatusTone,
     modifier: Modifier = Modifier,
     size: Dp = ThemeIcon.medium,
+    outline: Boolean = false,
 ) {
-    tone.icon?.let { icon ->
+    tone.icon(outline)?.let { icon ->
         Icon(icon, contentDescription = null, tint = tone.iconColor, modifier = modifier.size(size))
     }
 }
@@ -111,27 +113,39 @@ fun StatusChip(
     )
 }
 
+/** How a notice sits on its screen: on its tone's fill, or with no fill and an outline glyph. */
+enum class NoticeLook { FILLED, QUIET }
+
 /**
- * A notice in its tone, on the tone's fill: the tone's glyph at the top left,
- * centred on the first line of body text beside it.
+ * A notice in its tone: the tone's glyph at the top left, centred on the first
+ * line of body text beside it. [NoticeLook.FILLED] draws it on the tone's fill;
+ * [NoticeLook.QUIET] on the screen, with an outline glyph and no side padding.
  */
 @Composable
 fun Notice(
     tone: StatusTone,
     modifier: Modifier = Modifier,
+    look: NoticeLook = NoticeLook.FILLED,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val quiet = look == NoticeLook.QUIET
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
-                .background(tone.fill, RoundedCornerShape(ThemeRadius.control))
-                .padding(ThemeSpace.group),
+                .then(if (quiet) Modifier else Modifier.background(tone.fill, RoundedCornerShape(ThemeRadius.control)))
+                .then(
+                    if (quiet) {
+                        Modifier.padding(vertical = ThemeSpace.related + ThemeSpace.line)
+                    } else {
+                        Modifier.padding(ThemeSpace.group)
+                    },
+                ),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        if (tone.icon != null) {
-            FirstLineGlyph(tone)
+        if (tone.icon(outline = false) != null) {
+            FirstLineGlyph(tone, outline = quiet)
         }
         content()
     }
@@ -139,7 +153,10 @@ fun Notice(
 
 /** The tone's glyph in a box one body line tall, so it centres on that line; it may overhang the box. */
 @Composable
-private fun FirstLineGlyph(tone: StatusTone) {
+private fun FirstLineGlyph(
+    tone: StatusTone,
+    outline: Boolean,
+) {
     val measurer = rememberTextMeasurer()
     val style = ThemeText.body.style
     val lineHeight =
@@ -147,7 +164,7 @@ private fun FirstLineGlyph(tone: StatusTone) {
             remember(measurer, style) { measurer.measure("A", style).size.height }.toDp()
         }
     Box(Modifier.height(lineHeight), contentAlignment = Alignment.Center) {
-        StatusGlyph(tone, Modifier.wrapContentHeight(unbounded = true))
+        StatusGlyph(tone, Modifier.wrapContentHeight(unbounded = true), outline = outline)
     }
 }
 

@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,8 +63,10 @@ fun ErrorNotice(
     modifier: Modifier = Modifier,
     action: ErrorAction? = null,
     tone: StatusTone = StatusTone.DANGER,
+    look: NoticeLook = NoticeLook.FILLED,
+    onDismiss: (() -> Unit)? = null,
 ) {
-    ErrorNoticeContent(error.line, null, ErrorDetails.of(error), modifier, action, tone)
+    ErrorNoticeContent(error.line, null, ErrorDetails.of(error), modifier, action, tone, look, onDismiss)
 }
 
 /**
@@ -79,7 +83,16 @@ fun TitledErrorNotice(
     action: ErrorAction? = null,
     tone: StatusTone = StatusTone.DANGER,
 ) {
-    ErrorNoticeContent(title, advice, error?.let { ErrorDetails.titled(title, advice, it) }, modifier, action, tone)
+    ErrorNoticeContent(
+        title,
+        advice,
+        error?.let { ErrorDetails.titled(title, advice, it) },
+        modifier,
+        action,
+        tone,
+        NoticeLook.FILLED,
+        null,
+    )
 }
 
 /** On a tint, secondary text is primary text made see-through. */
@@ -97,15 +110,21 @@ private fun ErrorNoticeContent(
     modifier: Modifier,
     action: ErrorAction?,
     tone: StatusTone,
+    look: NoticeLook,
+    onDismiss: (() -> Unit)?,
 ) {
     var detailsShown by rememberSaveable(details) { mutableStateOf(false) }
-    Notice(tone = tone, modifier = modifier) {
+    Notice(tone = tone, modifier = modifier, look = look) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
-            Text(
-                text = title,
-                style = (if (advice != null) ThemeText.strong else ThemeText.body).style,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(verticalAlignment = Alignment.Top) {
+                Text(
+                    text = title,
+                    style = (if (advice != null) ThemeText.strong else ThemeText.body).style,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                onDismiss?.let { DismissButton(it) }
+            }
             advice?.let { Text(text = it, style = ThemeText.body.style, color = onTintSecondary) }
             if (details != null) {
                 Row(
@@ -124,6 +143,19 @@ private fun ErrorNoticeContent(
     }
     if (detailsShown && details != null) {
         ErrorDetailsDialog(details, onDismiss = { detailsShown = false })
+    }
+}
+
+/** The × at a notice's right: a 20dp glyph whose touch area overhangs the notice's padding. */
+@Composable
+private fun DismissButton(onDismiss: () -> Unit) {
+    IconButton(onClick = onDismiss, modifier = Modifier.size(ThemeIcon.medium).wrapContentSize(unbounded = true)) {
+        Icon(
+            imageVector = Icons.Filled.Close,
+            contentDescription = stringResource(R.string.dismiss),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(ThemeIcon.medium),
+        )
     }
 }
 
