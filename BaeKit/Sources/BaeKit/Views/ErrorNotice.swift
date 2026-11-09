@@ -201,11 +201,13 @@ public struct ErrorNotice: View {
         #if canImport(AppKit)
             Button("Details") { ErrorDetailsAlert.show(details) }
                 .buttonStyle(.borderless)
+                .foregroundStyle(.primary)
         #endif
     }
 
     private func actionButton(_ action: ErrorAction) -> some View {
         Button(action: action.perform) { action.title }
+            .tint(.primary)
             .disabled(action.isDisabled)
     }
 
