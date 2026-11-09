@@ -25,8 +25,44 @@ extension ShotScene {
                     )
                 )
             )
-        }
+        },
+        ShotScene(
+            id: "notice-looks",
+            size: CGSize(width: 480, height: 330)
+        ) {
+            ShotStage(NoticeLooksShot())
+        },
     ]
+}
+
+/// A notice with an error behind it, filled with its Details and Retry, then
+/// titled in its own words, then quiet.
+private struct NoticeLooksShot: View {
+    private let error = DisplayError(
+        line: "Couldn’t reach your storage.",
+        detail: "dns error: failed to lookup address information"
+    )
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
+            ErrorNotice(error: error, action: ErrorAction {})
+            ErrorNotice(
+                title: "bae couldn’t open your library",
+                advice: "Check your connection, then quit and reopen bae.",
+                error: error
+            )
+            ErrorNotice(
+                title: "Download failed",
+                advice: nil,
+                error: error,
+                look: .quiet,
+                action: ErrorAction {}
+            )
+        }
+        .padding(ThemeSpace.section)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Theme.background)
+    }
 }
 
 /// The alert a notice's Details opens, as AppKit lays it out: its window's
