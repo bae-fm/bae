@@ -35,6 +35,24 @@ public enum StatusTone: Sendable, Equatable {
         }
     }
 
+    /// The fill of a filled notice: a toned notice has its own, solid and
+    /// light in dark mode; the tones with no glyph keep their tint.
+    public var noticeFill: Color {
+        switch self {
+        case .info: Theme.infoNotice
+        case .success: Theme.successNotice
+        case .warning: Theme.warningNotice
+        case .danger: Theme.dangerNotice
+        case .neutral, .accent, .activity: fill
+        }
+    }
+
+    /// Whether a filled notice draws this tone's text and glyph in
+    /// `Theme.onNotice`, as it has its own fill.
+    var hasNoticeFill: Bool {
+        symbol != nil
+    }
+
     /// The fill behind the tone's own text.
     public var fill: Color {
         color.opacity(ThemeOpacity.tint)
@@ -65,7 +83,8 @@ public enum StatusTone: Sendable, Equatable {
 
 /// How a notice sits in its place.
 public enum NoticeLook: Sendable, Equatable {
-    /// Padded and filled with the tone's tint.
+    /// Padded and filled with the tone's notice colour, its text in
+    /// `onNotice`.
     case filled
     /// No fill, in the screen's own text, with an outline glyph.
     case quiet
@@ -86,6 +105,11 @@ public struct StatusGlyph: View {
     private let outline: Bool
     private let muted: Bool
 
+    @Environment(\.onNoticeFill)
+    private var onNoticeFill
+    @Environment(\.colorScheme)
+    private var colorScheme
+
     /// `muted` draws the glyph in tertiary text, grey, for a failure that
     /// should not call attention to itself.
     public init(
@@ -101,8 +125,41 @@ public struct StatusGlyph: View {
     public var body: some View {
         if let symbol = outline ? tone.outlineSymbol : tone.symbol {
             Image(systemName: symbol)
-                .foregroundStyle(muted ? Theme.textTertiary : tone.iconColor)
+                .foregroundStyle(color)
         }
+    }
+
+    /// On a notice's own fill the glyph is `onNotice` in dark mode, where the
+    /// solid fill is the tone's colour, and the tone's icon colour in light.
+    private var color: Color {
+        if muted { return Theme.textTertiary }
+        if onNoticeFill, colorScheme == .dark { return Theme.onNotice }
+        return tone.iconColor
+    }
+}
+
+private struct OnNoticeFillKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// Whether the view sits on a filled notice's own fill.
+    fileprivate var onNoticeFill: Bool {
+        get { self[OnNoticeFillKey.self] }
+        set { self[OnNoticeFillKey.self] = newValue }
+    }
+}
+
+/// The accent a button or link takes on a filled notice's own fill: the
+/// accent in light mode, `onNotice` in dark, where the accent would vanish on
+/// the solid fill.
+struct NoticeAccent: ViewModifier {
+    @Environment(\.colorScheme)
+    private var colorScheme
+
+    func body(content: Content) -> some View {
+        let color = colorScheme == .dark ? Theme.onNotice : Theme.accent
+        content.foregroundStyle(color).tint(color)
     }
 }
 
@@ -120,9 +177,13 @@ extension View {
         case .filled:
             padding(ThemeSpace.group)
                 .background(
-                    tone.fill,
+                    tone.noticeFill,
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
+                .foregroundStyle(
+                    tone.hasNoticeFill ? Theme.onNotice : Color.primary
+                )
+                .environment(\.onNoticeFill, tone.hasNoticeFill)
         case .quiet:
             padding(.horizontal, ThemeSpace.group)
                 .padding(.vertical, ThemeSpace.related + ThemeSpace.line)

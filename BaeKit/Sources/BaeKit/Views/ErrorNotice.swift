@@ -113,7 +113,9 @@ public struct ErrorNotice: View {
             Text(error.line)
                 .themeText(.body)
                 .foregroundStyle(
-                    tone == .neutral ? NoticeText.secondary : Color.primary
+                    tone == .neutral
+                        ? HierarchicalShapeStyle.secondary
+                        : HierarchicalShapeStyle.primary
                 )
         case .titled(let title, let advice):
             Text(verbatim: title)
@@ -121,7 +123,7 @@ public struct ErrorNotice: View {
             if let advice {
                 Text(verbatim: advice)
                     .themeText(.body)
-                    .foregroundStyle(NoticeText.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -199,16 +201,28 @@ public struct ErrorNotice: View {
     @ViewBuilder
     private func detailsButton(_ details: ErrorDetails) -> some View {
         #if canImport(AppKit)
-            Button("Details") { ErrorDetailsAlert.show(details) }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.primary)
+            colouredButton(
+                Button("Details") { ErrorDetailsAlert.show(details) }
+                    .buttonStyle(.borderless)
+            )
         #endif
     }
 
     private func actionButton(_ action: ErrorAction) -> some View {
-        Button(action: action.perform) { action.title }
-            .tint(.primary)
+        colouredButton(Button(action: action.perform) { action.title })
             .disabled(action.isDisabled)
+    }
+
+    /// A button in the notice's text: on a toned notice's own fill, its accent
+    /// there; anywhere else the screen's text.
+    @ViewBuilder
+    private func colouredButton(_ button: some View) -> some View {
+        if look == .filled && tone.hasNoticeFill {
+            button.modifier(NoticeAccent())
+        }
+        else {
+            button.foregroundStyle(.primary).tint(.primary)
+        }
     }
 
     private var details: ErrorDetails? {
@@ -218,10 +232,4 @@ public struct ErrorNotice: View {
             ErrorDetails(title: title, advice: advice, error: error)
         }
     }
-}
-
-/// Text colours on a notice's tint.
-public enum NoticeText {
-    /// Primary text made see-through, so it takes the tint's colour.
-    public static let secondary = Color.primary.opacity(0.72)
 }
