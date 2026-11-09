@@ -25,7 +25,7 @@
 /* The icon is 1.19 times the text, centred on the first line. */
 .bae-notice-icon { flex: none; display: flex; align-items: center; height: 1lh; }
 .bae-notice-icon .bae-status-glyph { width: 1.19em; height: 1.19em; }
-.bae-status-glyph { color: var(--bae-tone); flex: none; }
+.bae-status-glyph { color: var(--bae-tone); flex: none; overflow: visible; }
 /* The danger glyph is red mixed toward grey: still red, calmer than the warning's amber next to it. */
 .bae-status-glyph.bae-tone-danger { color: color-mix(in srgb, var(--danger) 65%, var(--text-secondary)); }
 .bae-notice-body { flex: 1; min-width: 0; }
