@@ -41,7 +41,7 @@
 .bae-m-notice { position: relative; display: flex; flex-direction: column; gap: 4px; }
 .bae-m-notice-top { display: flex; align-items: flex-start; gap: 12px; }
 .bae-m-notice-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.bae-m-notice-action { flex: none; margin-top: -4px; }
+.bae-m-notice-action { flex: none; margin: -4px 0; }
 .bae-a-notice { display: flex; flex-direction: column; gap: 2px; line-height: 20px; }
 .bae-a-notice-top { display: flex; align-items: flex-start; gap: 8px; }
 .bae-a-notice-words { flex: 1; min-width: 0; }
