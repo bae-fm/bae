@@ -288,9 +288,9 @@ export declare function MacFileRow(props: { name: string; size?: string; state?:
 export declare function MacFileDetails(props: { name: string; folder?: string; kind?: string; format?: string; size?: string }): React.ReactElement;
 export declare function MacNotice(props: NoticeProps): React.ReactElement;
 export declare function MacPopover(props: { width?: number; top?: number; right?: number; children?: React.ReactNode }): React.ReactElement;
-export declare function MacSyncActivity(props: { attention?: string; fault?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string; errorFault?: string; retry?: boolean }): React.ReactElement;
+export declare function MacActivity(props: { children?: React.ReactNode; attention?: string; fault?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string; errorFault?: string; retry?: boolean }): React.ReactElement;
 export declare function AndroidNotice(props: NoticeProps): React.ReactElement;
-export declare function AndroidSyncActivity(props: { attention?: string; fault?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string; errorFault?: string; retry?: boolean }): React.ReactElement;
+export declare function AndroidActivity(props: { children?: React.ReactNode; attention?: string; fault?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string; errorFault?: string; retry?: boolean }): React.ReactElement;
 export declare function AndroidSegmentedButtons(props: { options: string; selected?: string }): React.ReactElement;
 export declare function AndroidDownloadsBar(props: { failed?: boolean; paused?: boolean; idle?: boolean }): React.ReactElement;
 export declare function AndroidDownloadRow(props: { title?: string; detail?: string; state?: 'queued' | 'active' | 'failed'; progress?: number; bytes?: string; error?: string }): React.ReactElement;

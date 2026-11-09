@@ -160,21 +160,24 @@
   function MacPopover(props) {
     return h('div', { className: 'bae-m-popover', style: { width: Number(props.width || 360), top: props.top != null ? Number(props.top) : null, right: props.right != null ? Number(props.right) : null } }, h('span', { className: 'bae-m-popover-arrow' }), props.children);
   }
-  // BaeKit's SyncActivityList: Needs Attention, Transfers, or up to date; then the store's error and Retry Now.
-  function MacSyncActivity(props) {
+  // The toolbar's Activity panel (BaeKit's SyncActivityList, grown to hold every problem): Needs Attention lists what bae needs the person for, as notices: the caller's own (children, such as a sign-in settings file that's missing or a library that wouldn't close), a store that failed, with Retry Now, and sync's (signed out, a record it can't send) with Open Sync Settings. Then Transfers, or up to date.
+  function MacActivity(props) {
     var sec = function (title, body) { return h(MacSection, { title: title }, h(MacBox, null, body)); };
     var label = function (icon, text, sub) { return h('div', { className: 'bae-m-actrow' }, h(Sym, { name: icon, size: 15, className: 'bae-accent' }), h('div', null, h('div', null, text), sub ? h('div', { className: 'bae-m-actrow-sub bae-num' }, sub) : null)); };
     var out = [];
-    if (props.attention) out.push(h(React.Fragment, { key: 'a' }, sec('Needs Attention', [
-      h('div', { key: 'f', className: 'bae-m-actpad' }, h(MacNotice, { tone: 'warning', title: props.attention, details: props.fault })),
-      props.record ? h('div', { key: 'r', className: 'bae-m-actpad' }, h('div', { className: 'bae-strong' }, props.record), h(MacNotice, { tone: 'neutral', title: props.reason })) : null,
-      h('div', { key: 'b', className: 'bae-m-actpad' }, h(MacButton, null, 'Open Sync Settings'))].filter(Boolean))));
+    var problems = [
+      props.children ? h('div', { key: 'c', className: 'bae-m-actpad bae-m-actstack' }, props.children) : null,
+      props.error ? h('div', { key: 'e', className: 'bae-m-actpad' }, h(MacNotice, { tone: 'danger', title: props.error, details: props.errorFault, action: props.retry ? 'Retry Now' : null })) : null,
+      props.attention ? h('div', { key: 'f', className: 'bae-m-actpad' }, h(MacNotice, { tone: 'warning', title: props.attention, details: props.fault })) : null,
+      props.attention && props.record ? h('div', { key: 'r', className: 'bae-m-actpad' }, h('div', { className: 'bae-strong' }, props.record), h(MacNotice, { tone: 'neutral', title: props.reason })) : null,
+      props.attention ? h('div', { key: 'b', className: 'bae-m-actpad' }, h(MacButton, null, 'Open Sync Settings')) : null].filter(Boolean);
+    // The notices are boxes already, so Needs Attention stacks them with no box around them.
+    if (problems.length) out.push(h(React.Fragment, { key: 'a' }, h(MacSection, { title: 'Needs Attention' }, h('div', { className: 'bae-m-actproblems' }, problems))));
     if (props.syncing || props.uploads || props.downloads) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
       props.syncing ? h('div', { key: 's', className: 'bae-m-actpad' }, label('sync', 'Syncing library changes…')) : null,
       props.uploads ? h('div', { key: 'u', className: 'bae-m-actpad' }, label('up', props.uploads, props.uploadBytes)) : null,
       props.downloads ? h('div', { key: 'd', className: 'bae-m-actpad' }, label('down', props.downloads)) : null].filter(Boolean))));
     if (!out.length) out.push(h(React.Fragment, { key: 'i' }, sec(null, h('div', { className: 'bae-m-actpad bae-muted' }, 'Everything is up to date.'))));
-    if (props.error) out.push(h(React.Fragment, { key: 'e' }, sec(null, [h('div', { key: 'e', className: 'bae-m-actpad' }, h(MacNotice, { tone: 'danger', title: props.error, details: props.errorFault, action: props.retry ? 'Retry Now' : null }))])));
     return h('div', { className: 'bae-m-actlist' }, out);
   }
 
@@ -189,19 +192,22 @@
       props.details && props.open ? h('div', { className: 'bae-errdis-panel' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy' }, h(AndroidIconButton, { icon: 'copy', label: 'Copy details' }))) : null);
     return NoticeBox(tone, props.icon, body);
   }
-  // SyncActivity.kt's sheet: the title, Needs Attention, the transfers (the downloads line opens Downloads), or up to date.
-  function AndroidSyncActivity(props) {
+  // The Activity sheet (SyncActivity.kt's, grown to hold every problem): the title, Needs Attention with the caller's notices (children), a store that failed with Retry Now, and sync's own with Open Sync Settings; then the transfers (the downloads line opens Downloads), or up to date.
+  function AndroidActivity(props) {
     var t = function (s, c) { return h('div', { className: c || 'bae-a-act-line' }, s); };
+    var problems = props.children || props.error || props.attention;
     return h('div', { className: 'bae-a-act' },
-      h('div', { className: 'bae-a-act-title' }, 'Sync Activity'),
-      props.attention ? h('div', { className: 'bae-a-act-block' }, h('div', { className: 'bae-strong', style: { paddingTop: 4 } }, 'Needs Attention'), h(AndroidNotice, { tone: 'warning', title: props.attention, details: props.fault }),
-        props.record ? h('div', null, h('div', { className: 'bae-strong' }, props.record), h(AndroidNotice, { tone: 'neutral', title: props.reason })) : null,
-        h(AndroidButton, { kind: 'text', alignTo: 'text' }, 'Open Sync Settings'), h('div', { className: 'bae-divider' })) : null,
+      h('div', { className: 'bae-a-act-title' }, 'Activity'),
+      problems ? h('div', { className: 'bae-a-act-block' }, h('div', { className: 'bae-strong', style: { paddingTop: 4 } }, 'Needs Attention'),
+        props.children,
+        props.error ? h(AndroidNotice, { tone: 'danger', title: props.error, details: props.errorFault, action: props.retry ? 'Retry Now' : null }) : null,
+        props.attention ? h(AndroidNotice, { tone: 'warning', title: props.attention, details: props.fault }) : null,
+        props.attention && props.record ? h('div', null, h('div', { className: 'bae-strong' }, props.record), h(AndroidNotice, { tone: 'neutral', title: props.reason })) : null,
+        props.attention ? h(AndroidButton, { kind: 'text', alignTo: 'text' }, 'Open Sync Settings') : null, h('div', { className: 'bae-divider' })) : null,
       props.syncing ? t('Syncing library changes…') : null,
       props.uploads ? h('div', null, t(props.uploads), props.uploadBytes ? t(props.uploadBytes, 'bae-a-act-sub') : null) : null,
       props.downloads ? h('div', { className: 'bae-a-act-tap' }, t(props.downloads)) : null,
-      !(props.attention || props.syncing || props.uploads || props.downloads) ? t('Everything is up to date.', 'bae-a-act-sub') : null,
-      props.error ? h(AndroidNotice, { tone: 'danger', title: props.error, details: props.errorFault, action: props.retry ? 'Retry Now' : null }) : null);
+      !(problems || props.syncing || props.uploads || props.downloads) ? t('Everything is up to date.', 'bae-a-act-sub') : null);
   }
   function AndroidSegmentedButtons(props) {
     var o = list(props.options);

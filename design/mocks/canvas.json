@@ -349,7 +349,7 @@
   "ErrAndroidLaunch.dc.html": {
    "h": 916,
    "page": "home",
-   "title": "Launch problem banner, above every screen",
+   "title": "Android: a launch problem in the Activity sheet",
    "w": 412,
    "x": 2952,
    "y": 17292
@@ -421,7 +421,7 @@
   "ErrMacNotices.dc.html": {
    "h": 760,
    "page": "home",
-   "title": "macOS: notices at the window’s bottom (the load error has no fill)",
+   "title": "macOS: problems in the Activity panel",
    "w": 1200,
    "x": 3840,
    "y": 18688
