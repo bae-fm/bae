@@ -19,9 +19,12 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +63,39 @@ val StatusTone.fill: Color
     @Composable
     get() = color.copy(alpha = ThemeOpacity.tint)
 
+/** The fill of a filled notice: a toned notice has its own, solid and light in dark mode; the rest keep [fill]. */
+private val StatusTone.noticeFill: Color
+    @Composable
+    get() =
+        when (this) {
+            StatusTone.INFO -> BaeTheme.colors.infoNotice
+            StatusTone.SUCCESS -> BaeTheme.colors.successNotice
+            StatusTone.WARNING -> BaeTheme.colors.warningNotice
+            StatusTone.DANGER -> BaeTheme.colors.dangerNotice
+            StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> fill
+        }
+
+/** Whether a filled notice in this tone has its own fill, under `onNotice` text: the tones with a glyph. */
+private val StatusTone.hasNoticeFill: Boolean
+    get() = icon(outline = false) != null
+
+/** Whether the content sits on a filled notice's own fill. */
+private val LocalOnNoticeFill = compositionLocalOf { false }
+
+/**
+ * The colour of a button in a notice. On a filled toned notice's own fill: the accent in light mode,
+ * `onNotice` in dark, where the accent would vanish on the solid fill. Anywhere else, the screen's
+ * text.
+ */
+internal val noticeButtonColor: Color
+    @Composable
+    get() =
+        when {
+            !LocalOnNoticeFill.current -> LocalContentColor.current
+            BaeTheme.isDark -> BaeTheme.colors.onNotice
+            else -> MaterialTheme.colorScheme.primary
+        }
+
 /** The glyph a notice in this tone leads with: a filled circle with its mark, or its outline when [outline]. */
 private fun StatusTone.icon(outline: Boolean): ImageVector? =
     when (this) {
@@ -83,7 +119,8 @@ private val StatusTone.iconColor: Color
 
 /**
  * The tone's glyph in the tone's glyph colour, or the tertiary text colour when [muted]; nothing for
- * a tone without one.
+ * a tone without one. On a filled notice's own fill in dark mode, where the fill is the tone's colour
+ * solid, it is `onNotice`.
  */
 @Composable
 fun StatusGlyph(
@@ -97,11 +134,22 @@ fun StatusGlyph(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (muted) BaeTheme.colors.textTertiary else tone.iconColor,
+            tint = glyphTint(tone, muted),
             modifier = modifier.size(size),
         )
     }
 }
+
+@Composable
+private fun glyphTint(
+    tone: StatusTone,
+    muted: Boolean,
+): Color =
+    when {
+        muted -> BaeTheme.colors.textTertiary
+        LocalOnNoticeFill.current && BaeTheme.isDark -> BaeTheme.colors.onNotice
+        else -> tone.iconColor
+    }
 
 /** A short label on a tinted fill: a status, a count, a tag or a role. */
 @Composable
@@ -141,25 +189,32 @@ fun Notice(
     content: @Composable RowScope.() -> Unit,
 ) {
     val quiet = look != NoticeLook.FILLED
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .then(if (quiet) Modifier else Modifier.background(tone.fill, RoundedCornerShape(ThemeRadius.control)))
-                .then(
-                    if (quiet) {
-                        Modifier.padding(vertical = ThemeSpace.related + ThemeSpace.line)
-                    } else {
-                        Modifier.padding(ThemeSpace.group)
-                    },
-                ),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    val onFill = !quiet && tone.hasNoticeFill
+    val shape = RoundedCornerShape(ThemeRadius.control)
+    CompositionLocalProvider(
+        LocalOnNoticeFill provides onFill,
+        LocalContentColor provides if (onFill) BaeTheme.colors.onNotice else MaterialTheme.colorScheme.onSurface,
     ) {
-        if (tone.icon(outline = false) != null) {
-            FirstLineGlyph(tone, outline = quiet)
+        Row(
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .then(if (quiet) Modifier else Modifier.background(tone.noticeFill, shape))
+                    .then(
+                        if (quiet) {
+                            Modifier.padding(vertical = ThemeSpace.related + ThemeSpace.line)
+                        } else {
+                            Modifier.padding(ThemeSpace.group)
+                        },
+                    ),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        ) {
+            if (tone.icon(outline = false) != null) {
+                FirstLineGlyph(tone, outline = quiet)
+            }
+            content()
         }
-        content()
     }
 }
 

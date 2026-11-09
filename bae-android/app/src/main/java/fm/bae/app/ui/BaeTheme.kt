@@ -39,6 +39,7 @@ import kotlinx.coroutines.Dispatchers
 val LocalPrimaryFill = staticCompositionLocalOf<Color> { error("BaeTheme provides primary button colors") }
 private val LocalSemanticColors = staticCompositionLocalOf<SemanticColors> { error("BaeTheme provides colours") }
 private val LocalToneSurfaces = staticCompositionLocalOf<ToneSurfaces> { error("BaeTheme provides surfaces") }
+private val LocalIsDark = staticCompositionLocalOf<Boolean> { error("BaeTheme provides the appearance") }
 
 /** The shared theme's roles for the chosen appearance. */
 object BaeTheme {
@@ -51,6 +52,12 @@ object BaeTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalToneSurfaces.current
+
+    /** Whether the chosen appearance is dark. */
+    val isDark: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalIsDark.current
 }
 
 @Composable
@@ -100,6 +107,7 @@ fun BaeTheme(
         LocalAppearanceStore provides appearance,
         LocalPrimaryFill provides preferences.accent.colors.fill,
         LocalSemanticColors provides semanticColors(isDark),
+        LocalIsDark provides isDark,
         LocalToneSurfaces provides preferences.tone.surfaces(isDark),
         LocalTonalElevationEnabled provides false,
     ) {

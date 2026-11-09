@@ -18,8 +18,10 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -101,12 +103,12 @@ fun TitledErrorNotice(
     )
 }
 
-/** On a tint, secondary text is primary text made see-through. */
-private val onTintSecondary: Color
+/** On a notice's fill, secondary text is its text made see-through. */
+private val onNoticeSecondary: Color
     @Composable
-    get() = MaterialTheme.colorScheme.onSurface.copy(alpha = ON_TINT_SECONDARY_ALPHA)
+    get() = LocalContentColor.current.copy(alpha = ON_NOTICE_SECONDARY_ALPHA)
 
-private const val ON_TINT_SECONDARY_ALPHA = 0.72f
+private const val ON_NOTICE_SECONDARY_ALPHA = 0.72f
 
 @Composable
 private fun ErrorNoticeContent(
@@ -193,18 +195,22 @@ private fun FramedNotice(
                 Text(
                     text = title,
                     style = (if (advice != null) ThemeText.strong else ThemeText.body).style,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = LocalContentColor.current,
                     modifier = Modifier.weight(1f),
                 )
                 onDismiss?.let { DismissButton(it) }
             }
-            advice?.let { Text(text = it, style = ThemeText.body.style, color = onTintSecondary) }
+            advice?.let { Text(text = it, style = ThemeText.body.style, color = onNoticeSecondary) }
             if (hasDetails) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.related),
                     horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related, Alignment.End),
                 ) {
-                    TextButton(onClick = onDetails, contentPadding = ACTION_PADDING) {
+                    TextButton(
+                        onClick = onDetails,
+                        colors = ButtonDefaults.textButtonColors(contentColor = noticeButtonColor),
+                        contentPadding = ACTION_PADDING,
+                    ) {
                         Text(stringResource(R.string.details))
                     }
                     action?.let { ErrorActionButton(it) }
@@ -223,7 +229,7 @@ private fun DismissButton(onDismiss: () -> Unit) {
         Icon(
             imageVector = Icons.Filled.Close,
             contentDescription = stringResource(R.string.dismiss),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = onNoticeSecondary,
             modifier = Modifier.size(ThemeIcon.medium),
         )
     }
@@ -239,6 +245,7 @@ private fun ErrorActionButton(
     TextButton(
         onClick = action.onClick,
         enabled = action.enabled,
+        colors = ButtonDefaults.textButtonColors(contentColor = noticeButtonColor),
         contentPadding = ACTION_PADDING,
         modifier = modifier,
     ) { Text(action.label) }
