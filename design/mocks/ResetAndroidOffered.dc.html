@@ -18,7 +18,7 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidScreen"><div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px;box-sizing:border-box;text-align:center;font:400 14px/20px var(--font-android)"><div style="text-align:left;width:100%"><div class="bae-strong">Why the library didn’t open</div><x-import component-from-global-scope="Bae.AndroidErrorDisclosure" message="This device must be reset before it can sync." fault="DeviceResetRequired"></x-import></div><x-import component-from-global-scope="Bae.AndroidButton">Reset this device</x-import></div></x-import>
+<x-import component-from-global-scope="Bae.AndroidScreen"><div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px;box-sizing:border-box;text-align:center;font:400 14px/20px var(--font-android)"><div style="text-align:left;width:100%"><div class="bae-strong">Why the library didn’t open</div><x-import component-from-global-scope="Bae.AndroidNotice" tone="danger" title="This device must be reset before it can sync." details="DeviceResetRequired"></x-import></div><x-import component-from-global-scope="Bae.AndroidButton">Reset this device</x-import></div></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

@@ -62,9 +62,15 @@
       ? h('svg', { className: cls, width: size, height: size, viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' }, h('path', { d: STATUS_SF[tone], fillRule: 'evenodd' }))
       : h(MSymbol, { name: STATUS_MATERIAL[tone], size: size, filled: true, className: cls, fill: 'currentColor' });
   }
-  // A tinted box in its tone. Its text is the size of the screen it sits in (13 on a Mac, 14 on Android); icon (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. One drawing serves both apps: the SF Symbol and Material's filled circle look alike.
-  function Notice(props) {
-    var tone = props.tone || 'neutral';
-    var glyph = props.icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac' })) : null;
-    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, glyph && 'bae-notice-with-icon') }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, props.children) : props.children);
+  // The tinted box MacNotice and AndroidNotice draw in: its text the size of the screen it sits in (13 on a Mac, 14 on Android); `icon` (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. One glyph drawing serves both apps: the SF Symbol and Material's filled circle look alike.
+  function NoticeBox(tone, icon, body) {
+    var glyph = icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac' })) : null;
+    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, glyph && 'bae-notice-with-icon') }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, body) : body);
+  }
+  // The notice's words: a title (bold only under a subtitle), the subtitle saying what to do, or the caller's own children.
+  function noticeWords(props) {
+    return [
+      props.title != null ? h('div', { key: 't', className: cx('bae-notice-title', props.subtitle && 'bae-notice-title-strong') }, props.title) : null,
+      props.subtitle ? h('div', { key: 's', className: 'bae-notice-subtitle' }, props.subtitle) : null,
+      props.children != null ? h(React.Fragment, { key: 'c' }, props.children) : null];
   }

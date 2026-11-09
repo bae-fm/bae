@@ -42,7 +42,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidDialog" title="Your name">
     <x-import component-from-global-scope="Bae.AndroidTextField" label="Name" value="New Name" state="focused" helper="Everyone in the library sees this name."></x-import>
-    <x-import component-from-global-scope="Bae.AndroidErrorDisclosure" message="[Why it failed]" fault="[What went wrong underneath]"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidNotice" tone="danger" title="[Why it failed]" details="[What went wrong underneath]"></x-import>
     <x-import component-from-global-scope="Bae.AndroidDialogActions">
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Cancel</x-import>
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Save</x-import>

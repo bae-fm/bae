@@ -102,7 +102,7 @@
         h('div', { className: 'bae-m-dlrow-text' }, h('span', { className: 'bae-ellipsis' }, props.title || 'Glass Harbor'), h('span', { className: 'bae-muted bae-num bae-m-dlrow-detail' }, props.detail || '9 files · 356 MB')),
         h('span', { className: 'bae-muted bae-m-dlrow-ago' }, props.ago || '2m ago'),
         h('span', { className: 'bae-muted', title: 'Cancel this download' }, h(Sym, { name: 'xcircle', size: 15 }))),
-      h('div', { className: 'bae-m-dlrow-badge' }, h(MacErrorDisclosure, { message: makeLocal ? 'Couldn’t make local' : 'Download failed', action: 'Retry' })));
+      h('div', { className: 'bae-m-dlrow-badge' }, h(MacNotice, { tone: 'danger', title: makeLocal ? 'Couldn’t make local' : 'Download failed', action: 'Retry' })));
   }
   // Under the list: how many releases, the total, then one rate and Pause per queue with work.
   function MacStorageFooter(props) {
@@ -146,17 +146,15 @@
       h('div', { className: 'bae-m-filedet-head' }, h('span', { className: 'bae-ellipsis' }, props.name), h('span', { className: 'bae-muted', title: 'Close file details' }, h(Sym, { name: 'xcircle', size: 15 }))),
       h('div', { className: 'bae-m-filedet-grid' }, row('Folder', props.folder), row('Kind', props.kind), row('Format', props.format), row('Size', props.size)));
   }
-  // BaeKit's ErrorDetailDisclosure: the message in its tone, the fault with Copy details, then Details.
-  // Drawn in a notice of its tone, the notice's glyph leading: the line, then Details, which opens on an inset panel of the causes, one a line (chain, ending in the fault), Copy details in its corner.
-  // bare drops the notice, for a disclosure inside a notice that already holds it.
-  function MacErrorDisclosure(props) {
-    var tone = props.tone || 'danger';
-    var body = h('div', { className: cx('bae-m-errdis', props.action && 'bae-m-errdis-hasaction') },
-      h('div', { className: cx('bae-m-errdis-msg', 'bae-tone-' + tone) }, h('span', null, props.message)),
-      props.action ? h('span', { className: 'bae-m-errdis-action' }, h(MacButton, null, props.action)) : null,
-      props.fault ? h('div', { className: 'bae-m-errdis-more' }, h(Chevron, { className: props.open ? 'bae-m-errdis-open' : null }), 'Details') : null,
-      props.fault && props.open ? h('div', { className: 'bae-errdis-panel' }, h('div', { className: 'bae-errdis-chain' }, props.chain || props.fault), h('span', { className: 'bae-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 }))) : null);
-    return props.bare ? body : h(Notice, { tone: tone }, body);
+  // macOS's notice: a tinted box in its tone, the glyph leading; a title, a subtitle saying what to do, and the error behind Details, whose chevron hangs left of the word. Open, Details shows `details` (the causes, one a line) in an inset panel with Copy in its corner. `action` is a button (Retry) at the box's right, level with the title.
+  function MacNotice(props) {
+    var tone = props.tone || 'neutral';
+    var body = h('div', { className: cx('bae-m-notice', props.action && 'bae-m-notice-hasaction') },
+      noticeWords(props),
+      props.action ? h('span', { className: 'bae-m-notice-action' }, h(MacButton, null, props.action)) : null,
+      props.details ? h('div', { className: 'bae-m-notice-more' }, h(Chevron, { className: props.open ? 'bae-m-notice-open' : null }), 'Details') : null,
+      props.details && props.open ? h('div', { className: 'bae-errdis-panel' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 }))) : null);
+    return NoticeBox(tone, props.icon, body);
   }
   // A popover hanging from a title-bar button, its arrow pointing up at it.
   function MacPopover(props) {
@@ -168,43 +166,42 @@
     var label = function (icon, text, sub) { return h('div', { className: 'bae-m-actrow' }, h(Sym, { name: icon, size: 15, className: 'bae-accent' }), h('div', null, h('div', null, text), sub ? h('div', { className: 'bae-m-actrow-sub bae-num' }, sub) : null)); };
     var out = [];
     if (props.attention) out.push(h(React.Fragment, { key: 'a' }, sec('Needs Attention', [
-      h('div', { key: 'f', className: 'bae-m-actpad' }, h(MacErrorDisclosure, { tone: 'warning', message: props.attention, fault: props.fault })),
-      props.record ? h('div', { key: 'r', className: 'bae-m-actpad' }, h('div', { className: 'bae-strong' }, props.record), h(MacErrorDisclosure, { tone: 'neutral', message: props.reason })) : null,
+      h('div', { key: 'f', className: 'bae-m-actpad' }, h(MacNotice, { tone: 'warning', title: props.attention, details: props.fault })),
+      props.record ? h('div', { key: 'r', className: 'bae-m-actpad' }, h('div', { className: 'bae-strong' }, props.record), h(MacNotice, { tone: 'neutral', title: props.reason })) : null,
       h('div', { key: 'b', className: 'bae-m-actpad' }, h(MacButton, null, 'Open Sync Settings'))].filter(Boolean))));
     if (props.syncing || props.uploads || props.downloads) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
       props.syncing ? h('div', { key: 's', className: 'bae-m-actpad' }, label('sync', 'Syncing library changes…')) : null,
       props.uploads ? h('div', { key: 'u', className: 'bae-m-actpad' }, label('up', props.uploads, props.uploadBytes)) : null,
       props.downloads ? h('div', { key: 'd', className: 'bae-m-actpad' }, label('down', props.downloads)) : null].filter(Boolean))));
     if (!out.length) out.push(h(React.Fragment, { key: 'i' }, sec(null, h('div', { className: 'bae-m-actpad bae-muted' }, 'Everything is up to date.'))));
-    if (props.error) out.push(h(React.Fragment, { key: 'e' }, sec(null, [h('div', { key: 'e', className: 'bae-m-actpad' }, h(MacErrorDisclosure, { message: props.error, fault: props.errorFault, action: props.retry ? 'Retry Now' : null }))])));
+    if (props.error) out.push(h(React.Fragment, { key: 'e' }, sec(null, [h('div', { key: 'e', className: 'bae-m-actpad' }, h(MacNotice, { tone: 'danger', title: props.error, details: props.errorFault, action: props.retry ? 'Retry Now' : null }))])));
     return h('div', { className: 'bae-m-actlist' }, out);
   }
 
   // ---- Android: sync activity and Downloads ----
-  // Android's error box: a danger Notice with Material's glyph, the message, then Details with expand_more after it; open, the causes in the inset panel with Copy at its corner. `action` is the label of a text button at the box's right, level with the message.
-  function AndroidErrorDisclosure(props) {
-    var tone = props.tone || 'danger';
-    var body = h('div', { className: 'bae-a-errdis' },
-      h('div', { className: 'bae-a-errdis-top' },
-        h('div', { className: cx('bae-a-errdis-msg', 'bae-tone-' + tone) }, props.message),
-        props.action ? h('span', { className: 'bae-a-errdis-action' }, h(AndroidButton, { kind: 'text' }, props.action)) : null),
-      props.fault ? h('div', { className: 'bae-a-errdis-more' }, 'Details', h(MSymbol, { name: props.open ? 'expand_less' : 'expand_more', size: 16, fill: 'currentColor' })) : null,
-      props.fault && props.open ? h('div', { className: 'bae-errdis-panel' }, h('div', { className: 'bae-errdis-chain' }, props.chain || props.fault), h('span', { className: 'bae-errdis-copy' }, h(AndroidIconButton, { icon: 'copy', label: 'Copy details' }))) : null);
-    return props.bare ? body : h(Notice, { tone: tone }, body);
+  // Android's notice: MacNotice's parts from Android's own: Details with expand_more after the word, Copy as an icon button, `action` a text button at the box's right, level with the title.
+  function AndroidNotice(props) {
+    var tone = props.tone || 'neutral';
+    var words = noticeWords(props);
+    var body = h('div', { className: 'bae-a-notice' },
+      props.action ? h('div', { className: 'bae-a-notice-top' }, h('div', { className: 'bae-a-notice-words' }, words), h('span', { className: 'bae-a-notice-action' }, h(AndroidButton, { kind: 'text' }, props.action))) : words,
+      props.details ? h('div', { className: 'bae-a-notice-more' }, 'Details', h(MSymbol, { name: props.open ? 'expand_less' : 'expand_more', size: 16, fill: 'currentColor' })) : null,
+      props.details && props.open ? h('div', { className: 'bae-errdis-panel' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy' }, h(AndroidIconButton, { icon: 'copy', label: 'Copy details' }))) : null);
+    return NoticeBox(tone, props.icon, body);
   }
   // SyncActivity.kt's sheet: the title, Needs Attention, the transfers (the downloads line opens Downloads), or up to date.
   function AndroidSyncActivity(props) {
     var t = function (s, c) { return h('div', { className: c || 'bae-a-act-line' }, s); };
     return h('div', { className: 'bae-a-act' },
       h('div', { className: 'bae-a-act-title' }, 'Sync Activity'),
-      props.attention ? h('div', { className: 'bae-a-act-block' }, h('div', { className: 'bae-strong', style: { paddingTop: 4 } }, 'Needs Attention'), h(AndroidErrorDisclosure, { tone: 'warning', message: props.attention, fault: props.fault }),
-        props.record ? h('div', null, h('div', { className: 'bae-strong' }, props.record), h(AndroidErrorDisclosure, { tone: 'neutral', message: props.reason })) : null,
+      props.attention ? h('div', { className: 'bae-a-act-block' }, h('div', { className: 'bae-strong', style: { paddingTop: 4 } }, 'Needs Attention'), h(AndroidNotice, { tone: 'warning', title: props.attention, details: props.fault }),
+        props.record ? h('div', null, h('div', { className: 'bae-strong' }, props.record), h(AndroidNotice, { tone: 'neutral', title: props.reason })) : null,
         h(AndroidButton, { kind: 'text', alignTo: 'text' }, 'Open Sync Settings'), h('div', { className: 'bae-divider' })) : null,
       props.syncing ? t('Syncing library changes…') : null,
       props.uploads ? h('div', null, t(props.uploads), props.uploadBytes ? t(props.uploadBytes, 'bae-a-act-sub') : null) : null,
       props.downloads ? h('div', { className: 'bae-a-act-tap' }, t(props.downloads)) : null,
       !(props.attention || props.syncing || props.uploads || props.downloads) ? t('Everything is up to date.', 'bae-a-act-sub') : null,
-      props.error ? h(AndroidErrorDisclosure, { message: props.error, fault: props.errorFault, action: props.retry ? 'Retry Now' : null }) : null);
+      props.error ? h(AndroidNotice, { tone: 'danger', title: props.error, details: props.errorFault, action: props.retry ? 'Retry Now' : null }) : null);
   }
   function AndroidSegmentedButtons(props) {
     var o = list(props.options);
@@ -223,6 +220,6 @@
         h('div', { className: 'bae-a-browse-count' }, props.detail),
         s === 'queued' ? h('div', { className: 'bae-a-browse-count' }, 'Waiting to download') :
         s === 'active' ? h('div', null, h('div', { className: 'bae-a-dlbar-track' }, h('div', { style: { width: (Number(props.progress || 0.4) * 100) + '%' } })), h('div', { className: 'bae-a-fine bae-muted' }, props.bytes || '120 MB of 300 MB')) :
-        h(AndroidErrorDisclosure, { message: props.error || 'Couldn’t reach your storage.', action: 'Retry' })),
+        h(AndroidNotice, { tone: 'danger', title: props.error || 'Couldn’t reach your storage.', action: 'Retry' })),
       h(AndroidIconButton, { icon: 'close', label: 'Cancel', className: 'bae-a-icon-muted' }));
   }

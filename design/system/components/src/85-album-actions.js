@@ -37,7 +37,7 @@
     var chips = function (parts) { return h('span', { className: 'bae-m-chips' }, parts.filter(Boolean).map(function (x, i) { return h(React.Fragment, { key: i }, x); })); };
     var wait = props.wait ? chip('warning', props.wait) : null;
     var ahead = Number(props.ahead || 0) > 0 ? chip('neutral', props.ahead + ' ahead') : null;
-    var err = function (text) { return h(MacErrorDisclosure, { message: text }); };
+    var err = function (text) { return h(MacNotice, { tone: 'danger', title: text }); };
     var d = props.download, m = props.makeLocal;
     var state = s === 'uploading' ? h('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } }, chip('activity', 'Uploading', 'up'), h('div', { className: 'bae-m-track', style: { flex: 1 } }, h('div', { className: 'bae-accent-bg', style: { width: '40%' } })), h('span', { className: 'bae-muted bae-num' }, '96 MB of 221.2 MB'))
       : s === 'waiting' ? chips([chip('neutral', 'Queued', 'clock'), wait])

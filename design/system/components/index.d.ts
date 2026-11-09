@@ -163,8 +163,7 @@ export declare function AndroidScanCode(props: AndroidScanCodeProps): React.Reac
 
 /** A message on its tone's tint. */
 /** A tinted box in a tone, led by the tone's glyph unless `icon` is false; `set: 'mac'` draws macOS's glyph, top-aligned. */
-export interface NoticeProps { tone?: StatusTone; icon?: boolean; children?: React.ReactNode }
-export declare function Notice(props: NoticeProps): React.ReactElement;
+export interface NoticeProps { tone?: StatusTone; title?: string; subtitle?: string; details?: string; open?: boolean; action?: string; icon?: boolean; children?: React.ReactNode }
 /** A tone's glyph in the tone's colour, a filled circle with its mark; `set: 'mac'` draws the macOS stand-in. Neutral, accent and activity draw nothing. */
 /** Material's disclosure row: its own card, expand_more or expand_less at the end; the AndroidRows it shows join the card. */
 export declare function AndroidDisclosure(props: { label: string; summary?: string; open?: boolean; children?: React.ReactNode }): React.ReactElement;
@@ -287,10 +286,10 @@ export declare function MacTransferSummary(props: { kind?: 'upload' | 'pin'; cou
 export declare function MacTransferReadout(props: { kind?: 'upload' | 'pin'; bytes?: string; rate?: string; progress?: number }): React.ReactElement;
 export declare function MacFileRow(props: { name: string; size?: string; state?: 'rest' | 'queued' | 'sending' | 'pinning'; progress?: number; selected?: boolean }): React.ReactElement;
 export declare function MacFileDetails(props: { name: string; folder?: string; kind?: string; format?: string; size?: string }): React.ReactElement;
-export declare function MacErrorDisclosure(props: { message: string; fault?: string; tone?: 'danger' | 'warning' | 'neutral'; bare?: boolean; open?: boolean; chain?: string; action?: string }): React.ReactElement;
+export declare function MacNotice(props: NoticeProps): React.ReactElement;
 export declare function MacPopover(props: { width?: number; top?: number; right?: number; children?: React.ReactNode }): React.ReactElement;
 export declare function MacSyncActivity(props: { attention?: string; fault?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string; errorFault?: string; retry?: boolean }): React.ReactElement;
-export declare function AndroidErrorDisclosure(props: { message: string; fault?: string; tone?: 'danger' | 'warning' | 'neutral'; bare?: boolean; open?: boolean; chain?: string; action?: string }): React.ReactElement;
+export declare function AndroidNotice(props: NoticeProps): React.ReactElement;
 export declare function AndroidSyncActivity(props: { attention?: string; fault?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string; errorFault?: string; retry?: boolean }): React.ReactElement;
 export declare function AndroidSegmentedButtons(props: { options: string; selected?: string }): React.ReactElement;
 export declare function AndroidDownloadsBar(props: { failed?: boolean; paused?: boolean; idle?: boolean }): React.ReactElement;

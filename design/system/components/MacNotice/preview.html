@@ -1,0 +1,22 @@
+<!-- @dsCard group="macOS" height=760 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacNotice</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement, N = B.MacNotice;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  var chain = 'Couldn’t reach your storage.\nrequest to storage failed\ndns error: failed to lookup address';
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Info', h(N, { tone: 'info', title: 'A newer version of this release is on Discogs.' })),
+    W('Success', h(N, { tone: 'success', title: 'Storage connected.' })),
+    W('Warning', h(N, { tone: 'warning', title: 'Unsent changes will be lost' })),
+    W('Neutral', h(N, { title: 'This library has no albums yet.' })),
+    W('Danger, with Details', h(N, { tone: 'danger', title: 'Couldn’t reach your storage.', details: 'request to storage failed\ndns error: failed to lookup address' })),
+    W('With Retry, Details open', h(N, { tone: 'danger', title: 'Couldn’t reach your storage.', details: 'request to storage failed\ndns error: failed to lookup address', open: true, action: 'Retry' })),
+    W('Title and subtitle', h(N, { tone: 'warning', title: 'Mara Quill’s phone is out of date', subtitle: 'Update bae on it to keep syncing.' })),
+    W('Title, subtitle, Details open', h(N, { tone: 'danger', title: 'bae couldn’t open your library', subtitle: 'Check your connection, then quit and reopen bae.', details: chain, open: true }))));
+</script>
+</body>
+</html>
