@@ -220,9 +220,9 @@ export interface AndroidBrowseRowProps { name: string; count?: string; noImage?:
 export declare function AndroidBrowseRow(props: AndroidBrowseRowProps): React.ReactElement;
 export interface AndroidAlbumHeaderProps { title: string; artist?: string; year?: string; pressing?: string; labels?: string; noCover?: boolean }
 export declare function AndroidAlbumHeader(props: AndroidAlbumHeaderProps): React.ReactElement;
-export interface AndroidDownloadControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'copying' | 'elsewhere'; progress?: number; bytes?: string; ahead?: number; wait?: string; where?: string }
+export interface AndroidDownloadControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'copying' | 'elsewhere'; progress?: number; bytes?: string; where?: string }
 export declare function AndroidDownloadControl(props: AndroidDownloadControlProps): React.ReactElement;
-export declare function AndroidUploadLine(props: { phase?: string; wait?: string }): React.ReactElement;
+export declare function AndroidUploadLine(props: { phase?: string; missing?: string }): React.ReactElement;
 export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; pressing?: string; labels?: string; unplayable?: string; noCover?: boolean; coverSize?: number; children?: React.ReactNode }
 export declare function MacAlbumPanel(props: MacAlbumPanelProps): React.ReactElement;
 export declare function MacTrackColumns(props: { children?: React.ReactNode }): React.ReactElement;
@@ -280,9 +280,9 @@ export declare function MacStorageWindow(props: { filter?: 'All' | 'Local' | 'In
 export declare function MacTable(props: { columns: string; empty?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacTableRow(props: { selected?: boolean; placeholder?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacReleaseCell(props: { title: string }): React.ReactElement;
-export declare function MacStorageChip(props: { state?: 'local' | 'pinned' | 'cloud' | 'transfer' | 'uploading' | 'pinning' | 'detaching' | 'downloadFailed' | 'moveFailed' | 'makeLocalFailed' | 'queued' | 'makeLocalQueued' | 'copying'; label?: string; progress?: number; wait?: string; ahead?: number; file?: string }): React.ReactElement;
+export declare function MacStorageChip(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'pinning' | 'detaching' | 'downloadFailed' | 'moveFailed' | 'makeLocalFailed' | 'queued' | 'uploadQueued' | 'uploadBlocked' | 'makeLocalQueued'; progress?: number; file?: string }): React.ReactElement;
 export declare function MacDownloadRow(props: { kind?: 'pin' | 'makeLocal'; title?: string; detail?: string; ago?: string }): React.ReactElement;
-export declare function MacStorageFooter(props: { releases?: string; total?: string; uploads?: string; pins?: string; exports?: string }): React.ReactElement;
+export declare function MacStorageFooter(props: { releases?: string; total?: string; uploads?: string; pins?: string; exports?: string; uploadsWait?: string; pinsWait?: string; exportsWait?: string }): React.ReactElement;
 export declare function MacTransferSummary(props: { kind?: 'upload' | 'pin'; counts?: string; bytes?: string; rate?: string; progress?: number; cancel?: boolean }): React.ReactElement;
 export declare function MacTransferReadout(props: { kind?: 'upload' | 'pin'; bytes?: string; rate?: string; progress?: number }): React.ReactElement;
 export declare function MacFileRow(props: { name: string; size?: string; state?: 'rest' | 'queued' | 'sending' | 'pinning'; progress?: number; selected?: boolean }): React.ReactElement;
@@ -318,7 +318,7 @@ export declare function MacModal(props: { width?: number; height?: number; child
 export declare function MacModalHeader(props: { title: string; subtitle?: string; large?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacCoverGallery(props: { title?: string; selected?: string; source?: string; current?: string; remote?: 'unlinked'; remoteNames?: string; files?: string }): React.ReactElement;
 export declare function MacLightbox(props: { title?: string; label?: string; source?: string; browse?: boolean; state?: 'loading' | 'failed' }): React.ReactElement;
-export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'waiting'; wait?: string; ahead?: number; download?: 'queued' | 'downloading' | 'failed' | 'copying'; makeLocal?: 'queued' | 'making' | 'failed'; bytes?: string; fileBytes?: string; progress?: number; why?: string; actions?: string }): React.ReactElement;
+export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'waiting'; missing?: string; download?: 'queued' | 'downloading' | 'failed' | 'copying'; makeLocal?: 'queued' | 'making' | 'failed'; progress?: number; why?: string; actions?: string }): React.ReactElement;
 export declare function Stars(props: { value?: number; size?: number; who?: string }): React.ReactElement;
 export declare function Avatar(props: { name: string; image?: string; size?: number }): React.ReactElement;
 export declare function MacListRow(props: { lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; selected?: boolean }): React.ReactElement;

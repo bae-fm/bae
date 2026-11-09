@@ -30,31 +30,27 @@
       h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { style: { opacity: 0.7, fontSize: 11.5 } }, props.source || 'Release Files')),
       h('div', { className: 'bae-m-lb-strip' }, ['Low Tide Hours', 'Low Tide Hours back', 'Low Tide Hours disc', 'Low Tide Hours booklet'].map(function (t, i) { return h('span', { key: i, className: cx('bae-m-lb-thumb', i === 0 && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 56, radius: 6 })); })));
   }
-  // The release's Storage sheet, as StorageStatusBand draws it, in its order: the state line (Local, Pinned, In storage, or an upload's phase with its bar, or the phase of files only `waiting` to upload, then the `wait` chip); the download line (`download`: queued, downloading, failed, copying, with `ahead`, `wait` and `error`); why this Mac can't play it; the make-local line (`makeLocal`: queued, making, failed, with `ahead`, `wait`, `bytes`, `fileBytes`, `progress` and `error`); then the storage actions. Files waiting or moving, a download in flight and a make-local show no actions.
+  // The release's Storage sheet, as StorageStatusBand draws it: one line, the release's state at rest (Local, Pinned, In storage) and beside it at most one pill for a change on its way: Queued to upload or Uploading (`state`: waiting, uploading; the release is Local), Queued to pin or Pinning (`download`: queued, downloading, copying), Queued to make local or Making local… (`makeLocal`: queued, making); the moving ones fill with `progress`. A failed pin (Couldn't pin) or make-local is a danger notice under the line, with Details; an upload held by a missing original (`missing`, the file's name) is a warning notice naming it. What holds a whole queue back shows on the Storage Manager's footer, not here. Then why this Mac can't play it, and the storage actions. Nothing says how many wait ahead or what holds the queue back.
   function MacStorageBand(props) {
     var s = props.state || 'cloud';
-    var chip = function (tone, label, icon) { return h(StatusChip, { tone: tone }, icon ? h(Sym, { name: icon, size: 10 }) : null, label); };
-    var chips = function (parts) { return h('span', { className: 'bae-m-chips' }, parts.filter(Boolean).map(function (x, i) { return h(React.Fragment, { key: i }, x); })); };
-    var wait = props.wait ? chip('warning', props.wait) : null;
-    var ahead = Number(props.ahead || 0) > 0 ? chip('neutral', props.ahead + ' ahead') : null;
-    var failed = function (title) { return h(MacNotice, { tone: 'danger', title: title, secondary: 'Details' }); };
     var d = props.download, m = props.makeLocal;
-    var state = s === 'uploading' ? h('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } }, chip('activity', 'Uploading', 'up'), h('div', { className: 'bae-m-track', style: { flex: 1 } }, h('div', { className: 'bae-accent-bg', style: { width: '40%' } })), h('span', { className: 'bae-muted bae-num' }, '96 MB of 221.2 MB'))
-      : s === 'waiting' ? chips([chip('neutral', 'Queued', 'clock'), wait])
-      : h('div', { className: 'bae-muted', style: { display: 'flex', gap: 6, alignItems: 'center' } }, h(Sym, { name: { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s], size: 14 }), { local: 'Local', pinned: 'Pinned', cloud: 'In storage' }[s]);
-    var download = d === 'queued' ? chips([chip('activity', 'Queued'), ahead, wait])
-      : d === 'downloading' ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } }, h('div', { className: 'bae-muted', style: { display: 'flex', gap: 8, alignItems: 'center' } }, h('span', null, 'Pinning for offline'), h('div', { className: 'bae-m-track', style: { flex: 1 } }, h('div', { className: 'bae-pinning-bg', style: { width: '30%', marginLeft: '25%' } }))), wait ? h('div', null, wait) : null)
-      : d === 'failed' ? failed('Download failed')
-      : d === 'copying' ? h('div', null, chip('activity', 'Copying here')) : null;
-    var makeLocal = m === 'queued' ? chips([chip('activity', 'Queued to make local'), ahead, wait])
-      : m === 'making' ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } }, h('div', { className: 'bae-muted', style: { display: 'flex', gap: 4, alignItems: 'center' } }, h('span', null, 'Making local…'), wait), h(MacTransferReadout, { kind: 'pin', bytes: props.bytes || '120 MB of 356 MB', rate: 'Current file: ' + (props.fileBytes || '12 MB of 34.1 MB'), progress: props.progress || 0.34 }))
-      : m === 'failed' ? failed('Couldn’t make local')
+    var rest = s === 'uploading' || s === 'waiting' ? 'local' : s;
+    var restLabel = h('span', { className: 'bae-m-sband-rest' }, h(Sym, { name: { local: 'folder', pinned: 'pin', cloud: 'cloud' }[rest], size: 14 }), { local: 'Local', pinned: 'Pinned', cloud: 'In storage' }[rest]);
+    var pill = s === 'uploading' ? h(MacStorageChip, { state: 'uploading', progress: props.progress })
+      : s === 'waiting' ? h(MacStorageChip, { state: 'uploadQueued' })
+      : d === 'queued' ? h(MacStorageChip, { state: 'queued' })
+      : d === 'downloading' || d === 'copying' ? h(MacStorageChip, { state: 'pinning', progress: props.progress })
+      : m === 'queued' ? h(MacStorageChip, { state: 'makeLocalQueued' })
+      : m === 'making' ? h(MacStorageChip, { state: 'detaching', progress: props.progress })
       : null;
-    var still = s === 'uploading' || s === 'waiting' || d === 'downloading' || m;
+    var missing = s === 'waiting' && props.missing ? h(MacNotice, { tone: 'warning', title: props.missing + ' is missing', subtitle: 'Restore it to finish uploading.' }) : null;
+    var failed = d === 'failed' ? 'Couldn’t pin' : m === 'failed' ? 'Couldn’t make local' : null;
+    var still = s === 'uploading' || s === 'waiting' || d === 'downloading' || m === 'queued' || m === 'making';
     return h('div', { className: 'bae-m-sband' },
-      state,
-      download,
+      h('div', { className: 'bae-m-sband-line' }, restLabel, pill),
+      missing,
+      failed ? h(MacNotice, { tone: 'danger', title: failed, secondary: 'Details' }) : null,
       props.why ? h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, props.why) : null,
-      makeLocal,
       still ? null : h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, list(props.actions || 'Pin,Make local…,Export…,Save as…').map(function (a) { return h(MacButton, { key: a }, a); })));
   }
+

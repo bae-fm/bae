@@ -29,21 +29,21 @@ body{margin:0}
     <x-import component-from-global-scope="Bae.MacRow" label="Pause uploads">
       <x-import component-from-global-scope="Bae.MacSwitch" on="{{ false }}" label="Pause uploads"></x-import>
     </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="Pause downloads">
-      <x-import component-from-global-scope="Bae.MacSwitch" on="{{ false }}" label="Pause downloads"></x-import>
+    <x-import component-from-global-scope="Bae.MacRow" label="Pause pinning">
+      <x-import component-from-global-scope="Bae.MacSwitch" on="{{ false }}" label="Pause pinning"></x-import>
     </x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacNote">Paused files keep their place and continue when you resume. Changes to the library still sync.</x-import>
   <x-import component-from-global-scope="Bae.MacSection">
     <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Simultaneous uploads">
+      <x-import component-from-global-scope="Bae.MacRow" label="Uploads at once">
         <x-import component-from-global-scope="Bae.MacPopUpButton" value="3"></x-import>
       </x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Simultaneous downloads">
+      <x-import component-from-global-scope="Bae.MacRow" label="Pins at once">
         <x-import component-from-global-scope="Bae.MacPopUpButton" value="3"></x-import>
       </x-import>
     </x-import>
-    <x-import component-from-global-scope="Bae.MacNote">How many files upload to storage at once after an import, and how many download at once when a release is pinned.</x-import>
+    <x-import component-from-global-scope="Bae.MacNote">How many files upload to storage at once after an import, and how many are pinned at once.</x-import>
   </x-import>
 </x-import>
 </x-dc>

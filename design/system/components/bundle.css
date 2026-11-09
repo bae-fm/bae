@@ -798,6 +798,8 @@
 .bae-m-lb-thumb { border-radius: 6px; box-shadow: 0 0 0 1px var(--on-fill-secondary); }
 .bae-m-lb-thumb-on { box-shadow: 0 0 0 2px var(--on-fill); }
 .bae-m-sband { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+.bae-m-sband-line { display: flex; align-items: center; gap: var(--space-related); }
+.bae-m-sband-rest { display: flex; align-items: center; gap: var(--space-compact); color: var(--text-secondary); }
 
 /* ==== part: explore ==== */.bae-stars { display: inline-flex; align-items: center; gap: 2px; }
 .bae-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; background: var(--accent-tint-strong); color: var(--accent); font-weight: 600; font-family: var(--font-sans); }

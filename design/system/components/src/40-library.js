@@ -328,23 +328,23 @@
         props.pressing ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-gap' }, props.pressing) : null, props.labels ? h('div', { className: 'bae-a-albumhead-fact' }, props.labels) : null));
   }
 
-  // The album page's download control for one release, as ReleaseDownloadControl draws it. `queued` and `downloading` take `ahead` and `wait` (Paused, Waiting for network), shown as QueueStandingText does: one fine line under the row, the parts joined by " · ". `copying` is a release moved to storage to be kept here, with its Stop keeping here button.
+  // The album page's pin control for one release, as ReleaseDownloadControl draws it: Pin; Queued to pin, with Cancel; Pinning with its bar and bytes and Cancel pinning; Couldn't pin with Details and Retry, and Cancel; Pinned with Unpin. A release moved to storage to be kept here reads Pinning too. On a release this phone can't play, one line saying where it is. Nothing says how many wait ahead or what holds the queue back.
   function AndroidDownloadControl(props) {
     var s = props.state || 'available';
     function btn(icon, text) { return h('button', { type: 'button', className: 'bae-a-btn bae-a-btn-outlined bae-a-btn-icon' }, h(Glyph, { name: icon, size: 20 }), text); }
     var line = function (t) { return h('span', { className: 'bae-a-fineline' }, t); };
-    var standing = function (k) { var parts = []; if (Number(props.ahead || 0) > 0) parts.push(props.ahead + ' ahead'); if (props.wait) parts.push(props.wait); return parts.length ? h('span', { key: k, className: 'bae-a-fineline' }, parts.join(' · ')) : null; };
     var body =
       s === 'elsewhere' ? line(props.where || 'On Ana’s Mac') :
-      s === 'queued' ? [h('div', { key: 'r', className: 'bae-a-dlrow' }, line('Waiting to download'), btn('close', 'Cancel')), standing('s')] :
-      s === 'downloading' ? [h(AndroidProgress, { key: 'p', value: Number(props.progress || 0.4) }), h('span', { key: 'b', className: 'bae-a-fine' }, props.bytes || '120 MB of 300 MB'), standing('s'), h('div', { key: 'c' }, btn('close', 'Cancel'))] :
-      s === 'failed' ? [h(AndroidNotice, { key: 'e', quiet: true, tone: 'danger', title: 'Download failed', secondary: 'Details', action: 'Retry' }), h('div', { key: 'r' }, btn('close', 'Cancel'))] :
-      s === 'downloaded' ? h('div', { className: 'bae-a-dlrow' }, h(Glyph, { name: 'downloaded', size: 16, className: 'bae-muted' }), line('Downloaded'), btn('remove', 'Remove download')) :
-      s === 'copying' ? h('div', { className: 'bae-a-dlrow' }, h(AndroidSpinner, { size: 20 }), line('Copying here'), btn('close', 'Stop keeping here')) :
-      btn('download', 'Download');
+      s === 'queued' ? h('div', { className: 'bae-a-dlrow' }, line('Queued to pin'), btn('close', 'Cancel')) :
+      s === 'downloading' || s === 'copying' ? [h(AndroidProgress, { key: 'p', value: Number(props.progress || 0.4) }), h('span', { key: 'b', className: 'bae-a-fine' }, 'Pinning · ' + (props.bytes || '120 MB of 300 MB')), h('div', { key: 'c' }, btn('close', 'Cancel pinning'))] :
+      s === 'failed' ? [h(AndroidNotice, { key: 'e', quiet: true, tone: 'danger', title: 'Couldn’t pin', secondary: 'Details', action: 'Retry' }), h('div', { key: 'r' }, btn('close', 'Cancel'))] :
+      s === 'downloaded' ? h('div', { className: 'bae-a-dlrow' }, h(Glyph, { name: 'pin', size: 16, className: 'bae-muted' }), line('Pinned'), btn('unpin', 'Unpin')) :
+      btn('pin', 'Pin');
     return h('div', { className: 'bae-a-dl' }, body);
   }
-  // The album page's upload line, as ReleaseUploadLine draws it: the phase core words, then why the waiting files aren't moving, joined by " · ".
+
+  // The album page's upload line, as ReleaseUploadLine draws it: the phase core words, Queued to upload while the files wait; a missing original (`missing`) as a quiet warning notice naming it.
   function AndroidUploadLine(props) {
-    return h('div', { className: 'bae-a-dl' }, h('span', { className: 'bae-a-fineline' }, [props.phase || 'Queued', props.wait].filter(Boolean).join(' · ')));
+    return h('div', { className: 'bae-a-dl' }, h('span', { className: 'bae-a-fineline' }, props.phase || 'Queued to upload'),
+      props.missing ? h(AndroidNotice, { quiet: true, tone: 'warning', title: props.missing + ' is missing', subtitle: 'Restore it to finish uploading.' }) : null);
   }

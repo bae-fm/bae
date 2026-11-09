@@ -893,7 +893,7 @@ library editor edits it (§3.8), with the folder's images and other files as
 its scan read them: the folder holds no draft once imported. While files of the release wait in this device's
 upload queue, the line under its title names the upload's phase, as the
 Storage manager does (§4.2): Uploading while any file is being sent, beside a
-bar of the bytes of the release's whole size stored or sent, or Queued with no
+bar of the bytes of the release's whole size stored or sent, or Queued to upload with no
 bar while its files only wait. The row reads how many of the release's files
 wait and how many are being sent in the list's own read, from the counts the
 Storage manager reads, so the row changes as each file starts and lands; the
@@ -1910,9 +1910,9 @@ asks coven to keep each file whole on this device once the move finishes:
 coven pins it itself and downloads its copy from storage, never reading the
 original for the cache, and retries a failed download by itself. Until each
 file is pinned, coven lists a request to keep it in `coven_pin_requests`,
-which the release's storage row counts, so the release reads Copying here
-rather than In storage while the download queue holds nothing of it; its
-action is Stop keeping here, the release's unpin, which ends coven's
+which the release's storage row counts, so the release reads Pinning
+beside In storage while the download queue holds nothing of it; its
+action is Cancel pinning, the release's unpin, which ends coven's
 requests in its own write so coven does not pin the files when their copies
 can be fetched.
 
@@ -1951,15 +1951,16 @@ Other devices go on showing the release without playing it.
   streams.
 - **Transfers on the Mac.** Settings lists Transfers after Playback in its
   sidebar, and its pane holds Pause uploads and
-  Pause downloads, then how many files upload and download at once. Either
+  Pause pinning, then Uploads at once and Pins at once, how many files each
+  moves at a time. Either
   pause lasts across restarts, and while either holds, the sidebar says Paused
-  beside Transfers with ↑ for uploads, ↓ for downloads or ⇅ for both. A paused
+  beside Transfers with ↑ for uploads, ↓ for pinning or ⇅ for both. A paused
   file keeps its place; changes to the library still sync. Neither limits
   speed.
 - **Transfers on Android.** Settings lists Appearance, Library, Playback,
   Transfers, Casting and About as rows on one card, each opening a page, in the
-  order of the Mac's sidebar. Transfers opens a page with Download over
-  Wi-Fi only, the setting above, and how many files download at once. A phone
+  order of the Mac's sidebar. Transfers opens a page with Pin over
+  Wi-Fi only, the setting above, and Pins at once, how many files are pinned at a time. A phone
   never uploads release files, so Android has no pause.
 
 **The Storage manager** lists every release with its album's title and
@@ -2012,13 +2013,14 @@ import list shows the phase that makes, §3.2), and while any is
 being sent, how many bytes of its whole size are stored or sent. The counts
 are read in the same query as the row: which files are being sent comes
 from coven's `coven_sending`, a live view of the uploads in flight. While none
-is being sent, the row says why the waiting files do not move, from coven's
-`coven_uploads`, `coven_pending` and `coven_network`: Waiting for the file
-whose original is missing, named, ahead of the rest since it stops that file
-whatever the network does and only restoring it lets the move go on; then
-Waiting for network, or Paused, or Waiting for Wi-Fi when files move only on
-unmetered networks and this one is metered, or Retrying at the time of the
-earliest retry, the first of these that holds. How far
+is being sent, the row reads Queued to upload, and names nothing else that
+holds the files back but a file whose original is missing, from coven's
+`coven_pending`: Waiting for that file, named, since only restoring it lets
+the move go on; the release's storage band shows it as a warning that names the
+file. A pause, the network, a metered network or a retry's time holds the whole
+queue, so it shows once, where the queue shows, never on a release: in place of
+the queue's rate under the list, on the Activity panel's uploads line, and on
+the phones' Pinning screen. How far
 the bytes have got is not in any table: coven's upload watch tells, file by
 file, how much of each file's encrypted object has gone to the connection,
 whether the file goes in parts or in one request. A release's bytes are its
@@ -2039,19 +2041,17 @@ shows a download its files have finished. The storage rows and the album and
 release detail read the entry in their own query.
 
 Each row's storage state is the place it sorts by, which core reads with the
-row: Download failed, its error behind *Details* (§9.7), or Move failed, naming the file whose
+row: Couldn't pin, its error behind *Details* (§9.7), or Move failed, naming the file whose
 original changed since import, first; Uploading, its chip filled as far
-as its bytes have come while any file is being sent; Pinning, either queued,
-with the number of entries ahead of it that have not failed, or filled as far
-as its download has come once it starts, and in either case Paused while the
-queue is paused or Waiting for network while the device has none (the network
-first, since it makes the pause moot); making local, either queued, with the entries ahead of it and what holds the
-queue back, as a pin is, or filled as far as its copies have downloaded
-(§4.4), or Couldn't make local, its error behind *Details*, in the first place with
-Download failed; Copying here while coven downloads the copies a move to the
-cloud asked to keep here, in the place of Pinning, unless the download queue
+as its bytes have come while any file is being sent, or Queued to upload while its files only wait; Pinning, filled as far
+as its download has come once it starts, or Queued to pin before; making local, Making local… filled as far as its copies have downloaded
+(§4.4), or Queued to make local before, or Couldn't make local, its error behind *Details*, in the first place with
+Couldn't pin; Pinning too while coven downloads the copies a move to the
+cloud asked to keep here, unless the download queue
 holds an entry for the release, which the row shows instead; Local, Pinned or
-In storage at rest. No rate shows beside it.
+In storage at rest. No rate shows beside it, nor how many entries wait ahead
+of it or what holds the queue back: a row's storage is its state and at most
+the one change on its way, every waiting state naming what it waits to do.
 A move fails when a file's original changed before its upload
 (coven lists the failed move's files in `coven_moves` until it is cancelled,
 and its pending record names the original, §6.4); the release stays on this
@@ -2060,7 +2060,9 @@ the move.
 
 Under the list, beside its count and total size, each transfer queue
 holding files waiting or on the move shows while it does: uploads, pins
-(§4.3), and exports and saves (§4.6), each with how fast it goes, an export
+(§4.3), and exports and saves (§4.6), each with how fast it goes, or in its
+place what holds the whole queue back (Paused, Waiting for network, Waiting for
+Wi-Fi, Retrying at the earliest retry's time, the first that holds), an export
 with how far its release has been written, and a control that pauses or
 resumes the whole queue. A queue holding only failed entries shows nothing.
 The list's own query reads which queues hold work, whether each is paused,
@@ -2107,7 +2109,7 @@ continue from the bytes it fetched, and nothing of it was pinned, as with a
 cancel. The queue takes no entry while the device has no
 usable network, as coven's network watch says, and goes on when it returns; a
 platform that cannot tell holds nothing back. A pin that fails stays in the queue with its error,
-nothing of it pinned, and its row sorts first, reading Download failed; one that breaks on a bug fails the
+nothing of it pinned, and its row sorts first, reading Couldn't pin; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
 queues only that release's failed pin. coven's record of the failed
@@ -2158,8 +2160,7 @@ pause, cancel, retry and restarts are the pins': pausing stops the download
 that is running at once and its entry stays queued; resuming starts it again
 from its start; the queue is kept across restarts, its entries and pause, and
 the entry that was running starts again. A queued make-local reads Queued to
-make local, with the entries ahead of it and Paused or Waiting for network
-when the queue is held back; one that fails stays with its error, reading
+make local; one that fails stays with its error, reading
 Couldn't make local, until retried or cancelled. A cancel takes the entry out
 and stops the download. bae hands coven the folder and each release's file
 paths below it, in one call
@@ -3067,8 +3068,8 @@ slot and a failed operation of coven's own have theirs, and the failure again
 beside its record would read as a second problem. Then one row per
 thing moving: syncing, while coven's sync state says so (a pass moving, or a
 file being sent or downloaded), the uploads ("2
-uploading · 10 queued", with the bytes their providers confirmed), and the
-offline downloads, which on the phones open the downloads list. With nothing
+uploading · 10 queued to upload", with the bytes their providers confirmed), and
+pinning ("1 pinning · 2 queued to pin"), which on the phones opens the Pinning screen. With nothing
 to show it says everything is up to date. *Retry now* shows only while pressing
 it would run a pass and a failure that pass can clear holds work back. coven
 publishes what a retry made now would do, decided as it answers the retry

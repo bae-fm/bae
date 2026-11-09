@@ -10,6 +10,9 @@ Everything here is drawn at each platform's regular size, the one the apps use b
 - Buttons are verbs: "Set up", "Cancel", "New folder…". An ellipsis on a button means it opens more before acting; on a waiting line it means work is under way: "Checking the folder “Music”…".
 - Placeholders never repeat the label and never end in an ellipsis. Example values are plain and generic: `my-bucket`, `https://s3.home.lan`.
 - Error lines say what is wrong and what to do: "“Music” isn’t empty. Choose an empty folder, or make a new one."
+- Keeping a release's files on a device is pinning, on every platform and every screen: the action is Pin; under way, Pinning; done, Pinned; undone, Unpin; stopped while under way, Cancel pinning; waiting, Queued to pin; failed, Couldn't pin. Never "download", "keep here", "copying here" or "for offline" for it. The screen of pins on Android is Pinning; its settings are Pins at once, Pause pinning and Pin over Wi-Fi only. Making local (moving files out of storage onto this device) is a different action and keeps its own words.
+- A waiting state names what it waits to do: Queued to pin, Queued to upload, Queued to make local, never a bare Queued.
+- A release's storage shows its state and at most one pill for the change on its way; nothing says how many wait ahead of it. What holds a whole queue back (Paused, Waiting for network, Waiting for Wi-Fi, Retrying at…) shows once, in words, where the queue shows: the Storage Manager's footer, the Activity panel's transfer lines, Android's Pinning screen. A release's own problem, such as a missing original that stops its upload, shows on the release.
 - Name no storage company where the choice isn't the person's to make. No exclamation marks, no emoji, no marketing words.
 
 ## Color

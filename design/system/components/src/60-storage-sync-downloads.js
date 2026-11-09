@@ -71,42 +71,37 @@
     return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
   }
   function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
-  // The Storage column, as StorageStateLabel draws it: one chip, or several in a row. At rest: Local, Pinned, In storage. Failed: Download failed, Move failed (`file`), Couldn't make local. Waiting: Queued or Queued to make local, `ahead`, then the `wait`. Moving: Uploading, Pinning and Making local… fill with `progress` and take a `wait` after them; Copying here.
+  // The Storage column, as StorageStateLabel draws it: one chip. At rest: Local, Pinned, In storage. Moving: Uploading, Pinning and Making local… fill with `progress`. Waiting: Queued to pin, Queued to upload, Queued to make local; an upload held by a missing original, Waiting for that `file`, in warning (`uploadBlocked`). Failed, in danger: Couldn't pin, Move failed (`file`), Couldn't make local. Nothing says how many wait ahead or what holds the queue back.
   function MacStorageChip(props) {
     var s = props.state || 'cloud';
     var chip = function (tone, label) { return h(StatusChip, { tone: tone }, label); };
-    var wait = props.wait ? chip('warning', props.wait) : null;
-    var row = function (parts) { return h('span', { className: 'bae-m-chips' }, parts.filter(Boolean)); };
-    var queued = function (label) { return row([h(React.Fragment, { key: 'q' }, chip('activity', label)), Number(props.ahead || 0) > 0 ? h(React.Fragment, { key: 'a' }, chip('neutral', props.ahead + ' ahead')) : null, wait ? h(React.Fragment, { key: 'w' }, wait) : null]); };
     if (s === 'uploading' || s === 'pinning' || s === 'detaching') {
       var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : 'Making local…';
-      var filling = h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
-      return wait ? row([h(React.Fragment, { key: 'p' }, filling), h(React.Fragment, { key: 'w' }, wait)]) : filling;
+      return h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
     }
-    if (s === 'transfer') return chip('activity', props.label || 'Pinning for offline');
-    if (s === 'downloadFailed') return chip('danger', 'Download failed');
+    if (s === 'downloadFailed') return chip('danger', 'Couldn’t pin');
     if (s === 'moveFailed') return chip('danger', 'Move failed: ' + (props.file || '01 Harbor Lights.flac') + ' changed since import');
     if (s === 'makeLocalFailed') return chip('danger', 'Couldn’t make local');
-    if (s === 'queued') return queued('Queued');
-    if (s === 'makeLocalQueued') return queued('Queued to make local');
-    if (s === 'copying') return chip('activity', 'Copying here');
+    if (s === 'queued') return chip('activity', 'Queued to pin');
+    if (s === 'uploadQueued') return chip('activity', 'Queued to upload');
+    if (s === 'uploadBlocked') return chip('warning', 'Waiting for ' + (props.file || '01 Harbor Lights.flac'));
+    if (s === 'makeLocalQueued') return chip('activity', 'Queued to make local');
     var icon = { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s];
     return h(StatusChip, { tone: 'neutral' }, h(Sym, { name: icon, size: 10 }), { local: 'Local', pinned: 'Pinned', cloud: 'In storage' }[s]);
   }
-  // DownloadRow's failed row in the inspector: the kind's icon, title and detail, how long ago it was queued, the cancel mark; under them the failure box with Details and Retry.
+
+  // DownloadRow's failed row in the inspector: the kind's icon, title and detail, the cancel mark; under them the failure (Couldn't pin, or Couldn't make local) with Details and Retry.
   function MacDownloadRow(props) {
     var makeLocal = props.kind === 'makeLocal';
     return h('div', { className: 'bae-m-dlrow' },
-      h(MacItem, { lead: h(Sym, { name: makeLocal ? 'folder' : 'down', size: 16, className: 'bae-muted' }), trail: [
-        h('span', { key: 'a', className: 'bae-muted bae-m-dlrow-ago' }, props.ago || '2m ago'),
-        h('span', { key: 'x', className: 'bae-muted', title: 'Cancel this download' }, h(Sym, { name: 'xcircle', size: 15 }))] },
+      h(MacItem, { lead: h(Sym, { name: makeLocal ? 'folder' : 'pin', size: 16, className: 'bae-muted' }), trail: h('span', { className: 'bae-muted', title: 'Cancel' }, h(Sym, { name: 'xcircle', size: 15 })) },
         h('div', { className: 'bae-m-dlrow-text' }, h('span', { className: 'bae-ellipsis' }, props.title || 'Glass Harbor'), h('span', { className: 'bae-muted bae-num bae-m-dlrow-detail' }, props.detail || '9 files · 356 MB'))),
-      h(MacNotice, { quiet: true, tone: 'danger', title: makeLocal ? 'Couldn’t make local' : 'Download failed', secondary: 'Details', action: 'Retry' }));
+      h(MacNotice, { quiet: true, tone: 'danger', title: makeLocal ? 'Couldn’t make local' : 'Couldn’t pin', secondary: 'Details', action: 'Retry' }));
   }
 
-  // Under the list: how many releases, the total, then one rate and Pause per queue with work.
+  // Under the list: how many releases, the total, then per queue with work its rate, or in its place what holds the whole queue back (`uploadsWait`, `pinsWait`: Paused, Waiting for network, Waiting for Wi-Fi, Retrying at 6:40 PM), and Pause.
   function MacStorageFooter(props) {
-    var q = function (kind, rate, label) { return h('span', { className: 'bae-m-storefoot-q' }, h(Sym, { name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'up' : 'down', size: 11, className: kind === 'uploads' ? 'bae-activity' : kind === 'pins' ? 'bae-pinning' : null }), rate ? h('span', { className: 'bae-num' }, rate) : null, h('span', { title: label }, h(Sym, { name: 'pause', size: 10 }))); };
+    var q = function (kind, rate, label) { var wait = props[kind + 'Wait']; return h('span', { className: 'bae-m-storefoot-q' }, h(Sym, { name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'up' : 'down', size: 11, className: kind === 'uploads' ? 'bae-activity' : kind === 'pins' ? 'bae-pinning' : null }), wait ? h('span', null, wait) : rate ? h('span', { className: 'bae-num' }, rate) : null, h('span', { title: label }, h(Sym, { name: 'pause', size: 10 }))); };
     return h('div', { className: 'bae-m-storefoot' },
       h('span', null, props.releases || '8 releases', props.total ? ' · Total: ' + props.total : ''),
       h('span', { style: { flex: 1 } }),
@@ -248,17 +243,17 @@
     var o = list(props.options);
     return h('div', { className: 'bae-a-seg', role: 'radiogroup' }, o.map(function (x) { var on = x === String(props.selected); return h('span', { key: x, role: 'radio', 'aria-checked': on, className: cx('bae-a-seg-btn', on && 'bae-a-seg-on') }, on ? h(Glyph, { name: 'check', size: 18 }) : null, x); }));
   }
-  // The Downloads screen's bar: Back, the title, Retry and Pause or Resume.
+  // The Pinning screen's bar: Back, the title, Retry and Pause or Resume.
   function AndroidDownloadsBar(props) {
-    return h('header', { className: 'bae-a-dlbar' }, h(AndroidIconButton, { icon: 'back', label: 'Back' }), h('span', { className: 'bae-a-dlbar-title' }, 'Downloads'),
+    return h('header', { className: 'bae-a-dlbar' }, h(AndroidIconButton, { icon: 'back', label: 'Back' }), h('span', { className: 'bae-a-dlbar-title' }, 'Pinning'),
       h(AndroidButton, { kind: 'text', off: !props.failed }, 'Retry'), h(AndroidButton, { kind: 'text', off: !!props.idle }, props.paused ? 'Resume' : 'Pause'));
   }
-  // One entry of the Downloads screen: the release's name with Cancel (×) on its line, its files and size, then its state: waiting, a bar with bytes, or the failure with Details and Retry. A release since removed from the library is named in secondary text, so it doesn't read as a title.
+  // One entry of the Pinning screen: the release's name with Cancel (×) on its line, its files and size, then its state: Queued to pin, a bar with bytes, or Couldn't pin with Details and Retry. A release since removed from the library is named in secondary text, so it doesn't read as a title.
   function AndroidDownloadRow(props) {
     var s = props.state || 'queued';
-    var state = s === 'queued' ? h('div', { className: 'bae-a-browse-count' }, 'Waiting to download')
+    var state = s === 'queued' ? h('div', { className: 'bae-a-browse-count' }, 'Queued to pin')
       : s === 'active' ? h('div', null, h('div', { className: 'bae-a-dlbar-track' }, h('div', { style: { width: (Number(props.progress || 0.4) * 100) + '%' } })), h('div', { className: 'bae-a-fine bae-muted' }, props.bytes || '120 MB of 300 MB'))
-      : h(AndroidNotice, { quiet: true, tone: 'danger', title: 'Download failed', secondary: 'Details', action: 'Retry' });
+      : h(AndroidNotice, { quiet: true, tone: 'danger', title: 'Couldn’t pin', secondary: 'Details', action: 'Retry' });
     return h('div', { className: 'bae-a-dlrow2' },
       h('div', { className: 'bae-a-dlrow2-head' },
         h('div', { className: cx('bae-a-browse-name', !props.title && 'bae-a-dlrow2-gone') }, props.title || 'Release no longer in library'),

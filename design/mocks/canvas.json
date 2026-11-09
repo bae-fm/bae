@@ -309,7 +309,7 @@
   "DownloadsAndroid.dc.html": {
    "h": 916,
    "page": "storage",
-   "title": "Downloads",
+   "title": "Pinning",
    "w": 412,
    "x": 0,
    "y": 5156
@@ -317,7 +317,7 @@
   "DownloadsAndroidEmpty.dc.html": {
    "h": 916,
    "page": "storage",
-   "title": "Downloads: none",
+   "title": "Pinning: none",
    "w": 412,
    "x": 984,
    "y": 5156
@@ -325,7 +325,7 @@
   "DownloadsAndroidFailed.dc.html": {
    "h": 916,
    "page": "storage",
-   "title": "Downloads: one failed",
+   "title": "Pinning: one failed",
    "w": 412,
    "x": 492,
    "y": 5156
@@ -909,7 +909,7 @@
   "LibAndroidAlbumFailed.dc.html": {
    "h": 916,
    "page": "home",
-   "title": "Album: download failed",
+   "title": "Album: couldn’t pin",
    "w": 412,
    "x": 984,
    "y": 8304
@@ -917,7 +917,7 @@
   "LibAndroidAlbumQueued.dc.html": {
    "h": 916,
    "page": "home",
-   "title": "Album: waiting to download",
+   "title": "Album: queued to pin",
    "w": 412,
    "x": 492,
    "y": 8304
@@ -925,7 +925,7 @@
   "LibAndroidAlbumReleases.dc.html": {
    "h": 916,
    "page": "home",
-   "title": "Album: two releases, downloading",
+   "title": "Album: two releases, pinning",
    "w": 412,
    "x": 0,
    "y": 8304
@@ -3126,7 +3126,7 @@
   "StoreMacDownloadFailed.dc.html": {
    "h": 660,
    "page": "storage",
-   "title": "macOS: a failed download, in the inspector",
+   "title": "macOS: a failed pin, in the inspector",
    "w": 1100,
    "x": 7460,
    "y": 1380
@@ -3757,7 +3757,7 @@
   "code-transfers": {
    "page": "settings",
    "size": 24,
-   "text": "What the code needs for these boards:\n- macOS: Pause uploads moves here from the Library pane (LibrarySettingsTab.swift:79). bae change.\n- Android: no Transfers page today. It gets one, with Simultaneous downloads. bae change.\n- Android: Pause uploads goes (SyncUploadPauseControl.kt, shown from SettingsSyncSection.kt). bae change.\n- “Uploads paused” shows here, not on the Sync row. bae change.\n- macOS: Pause downloads beside Pause uploads, lasting across restarts as the upload pause does; either one paused shows the amber Paused beside Transfers, with an arrow for which: ↑ uploads, ↓ downloads, ⇅ both (VoiceOver reads “Uploads paused”, “Downloads paused”, “Uploads and downloads paused”). Today the pin queue pauses only from the footer under the library list, and the spec doesn't say the pause survives a restart (spec/bae.md §4.3). The caption says what the pause holds: “Paused files keep their place and continue when you resume. Changes to the library still sync.” (the upload pause holds release files, not writes: §4.1). Today “While paused, changes wait on this Mac…”. bae change.\n- Order: the pause switches first (macOS Pause uploads and Pause downloads, Android Download over Wi-Fi only), then the counts. bae change.",
+   "text": "What the code needs for these boards:\n- macOS: Pause uploads moves here from the Library pane (LibrarySettingsTab.swift:79). bae change.\n- Android: no Transfers page today. It gets one, with Pins at once. bae change.\n- Android: Pause uploads goes (SyncUploadPauseControl.kt, shown from SettingsSyncSection.kt). bae change.\n- “Uploads paused” shows here, not on the Sync row. bae change.\n- macOS: Pause pinning beside Pause uploads, lasting across restarts as the upload pause does; either one paused shows the amber Paused beside Transfers, with an arrow for which: ↑ uploads, ↓ downloads, ⇅ both (VoiceOver reads “Uploads paused”, “Downloads paused”, “Uploads and downloads paused”). Today the pin queue pauses only from the footer under the library list, and the spec doesn't say the pause survives a restart (spec/bae.md §4.3). The caption says what the pause holds: “Paused files keep their place and continue when you resume. Changes to the library still sync.” (the upload pause holds release files, not writes: §4.1). Today “While paused, changes wait on this Mac…”. bae change.\n- Order: the pause switches first (macOS Pause uploads and Pause pinning, Android Pin over Wi-Fi only), then the counts. bae change.",
    "w": 420,
    "x": 3112,
    "y": 4148
@@ -4734,7 +4734,7 @@
    "fill": "blue",
    "page": "settings",
    "size": 24,
-   "text": "Download over Wi-Fi only (Android), off by default:\nwhile on, coven holds downloads and uploads on a metered network. coven watches the network itself. Playing a track that isn't pinned still streams.",
+   "text": "Pin over Wi-Fi only (Android), off by default:\nwhile on, coven holds downloads and uploads on a metered network. coven watches the network itself. Playing a track that isn't pinned still streams.",
    "w": 380,
    "x": 2192,
    "y": 4148
