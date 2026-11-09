@@ -39,7 +39,7 @@ async fn import_rip() -> (bae_library::test_libraries::TestLibrary, String, temp
     let (library, imported) = bae_library::test_libraries::imported_release_setup(
         release,
         "test",
-        uuid::Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         |dir| {
             for (name, frequency) in FILES.iter().zip([220.0, 440.0, 880.0]) {
                 let audio = bae_audio::encode_i32(

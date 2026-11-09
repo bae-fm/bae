@@ -5,13 +5,12 @@ use super::*;
 use crate::manager::tests::*;
 use bae_records::DbRelease;
 use tempfile::TempDir;
-use uuid::Uuid;
 
 async fn insert_partially_uploaded_release(
     manager: &LibraryManager,
     temp_dir: &std::path::Path,
 ) -> DbRelease {
-    let source_dir = temp_dir.join(Uuid::new_v4().to_string());
+    let source_dir = temp_dir.join(coven::IdSource::new_id(&coven::UuidIds).to_string());
     let release = insert_local_release_with_files(
         manager,
         &source_dir,

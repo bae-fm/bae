@@ -2,7 +2,6 @@ use bae_records::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease};
 use bae_store::SortDirection;
 use bae_views::{AlbumSortCriterion, AlbumSortField, LibraryViews};
 use chrono::{Duration, Utc};
-use uuid::Uuid;
 
 /// A test album and its one credit, inserted together.
 struct ListedAlbum {
@@ -18,7 +17,7 @@ fn make_album(
 ) -> ListedAlbum {
     let now = Utc::now();
     let album = DbAlbum {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         title: title.to_string(),
         year,
         is_compilation: false,
@@ -33,7 +32,10 @@ async fn insert_listed_album(records: &bae_records::Records, listed: &ListedAlbu
     records.insert_album(&listed.album).await.unwrap();
     records.insert_album_artist(&listed.credit).await.unwrap();
     records
-        .insert_release(&DbRelease::new_test(&listed.album.id, &Uuid::new_v4().to_string()))
+        .insert_release(&DbRelease::new_test(
+            &listed.album.id,
+            &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+        ))
         .await
         .unwrap();
 }
@@ -54,7 +56,7 @@ async fn insert_default_artist(records: &bae_records::Records) -> String {
 fn make_artist(name: &str, sort_name: Option<&str>) -> DbArtist {
     let now = Utc::now();
     DbArtist {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: name.to_string(),
         sort_name: sort_name.map(|s| s.to_string()),
         discogs_artist_id: None,

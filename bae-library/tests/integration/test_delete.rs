@@ -1,13 +1,12 @@
 use bae_records::DbTrack;
 use chrono::Utc;
-use uuid::Uuid;
 
 use bae_library::test_libraries::{test_album, test_release};
 
 fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
     let now = Utc::now();
     DbTrack {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         release_id: release_id.to_string(),
         title: format!("Track {}", track_number),
         medium_id: bae_records::identity::release_medium_id(release_id, 1),

@@ -61,7 +61,7 @@ async fn import_image(
     let (library, imported) = bae_library::test_libraries::imported_release_setup(
         release,
         "test",
-        uuid::Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         move |dir| {
             std::fs::write(dir.join(&name), &written).unwrap();
             std::fs::write(

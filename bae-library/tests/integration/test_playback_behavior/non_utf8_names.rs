@@ -13,7 +13,7 @@ async fn a_track_whose_name_is_not_utf8_plays() {
     let (library, imported) = imported_release_setup(
         album,
         "non-utf8-name",
-        uuid::Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         |album_dir| write_first_test_track(album_dir, b"01 Caf\xE9.flac"),
     )
     .await

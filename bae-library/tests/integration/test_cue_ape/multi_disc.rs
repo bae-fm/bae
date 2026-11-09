@@ -169,7 +169,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
     let import_handle = library.start_discogs_import().await;
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     import_handle
         .send_command(ImportCommand {
             destination,

@@ -51,7 +51,7 @@ async fn test_local_import() {
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
     let import_handle = library.start_discogs_import().await;
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     import_handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
@@ -157,7 +157,7 @@ async fn test_local_delete_preserves_files() {
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
     let import_handle = library.start_discogs_import().await;
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     import_handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
@@ -227,7 +227,7 @@ async fn run_import_with_cover_test() {
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
     let import_handle = library.start_discogs_import().await;
     let selected_cover = "scans/back.jpg".to_string();
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     import_handle
         .send_command(ImportCommand {
             selected_cover: Some(CoverSelection::Local(selected_cover.clone())),

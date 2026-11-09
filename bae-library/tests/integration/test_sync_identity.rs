@@ -29,7 +29,7 @@ fn catalog_artist(
         (None, None) => "Artist Name",
     };
     DbArtist {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: name.to_string(),
         sort_name: None,
         discogs_artist_id: discogs_artist_id.map(str::to_string),
@@ -69,7 +69,9 @@ async fn album_credited_to(device: &TestDevice, artist_id: &str, title: &str) ->
     // them.
     let album = DbAlbum::new_test(title, &coven::UuidIds);
     let credit = bae_records::DbAlbumArtist::new_test(&album.id, artist_id);
-    let release = DbRelease { ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string()) };
+    let release = DbRelease {
+        ..DbRelease::new_test(&album.id, &coven::IdSource::new_id(&coven::UuidIds).to_string())
+    };
     device
         .records()
         .insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
@@ -79,7 +81,9 @@ async fn album_credited_to(device: &TestDevice, artist_id: &str, title: &str) ->
 }
 
 async fn remote_release_in(device: &TestDevice, album_id: &str) -> String {
-    let release = DbRelease { ..DbRelease::new_test(album_id, &uuid::Uuid::new_v4().to_string()) };
+    let release = DbRelease {
+        ..DbRelease::new_test(album_id, &coven::IdSource::new_id(&coven::UuidIds).to_string())
+    };
     device.records().insert_release(&release).await.unwrap();
     release.id
 }
@@ -179,10 +183,18 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 .remove(0);
             let album = DbAlbum::new_test("Album", &coven::UuidIds);
             let credit = bae_records::DbAlbumArtist::new_test(&album.id, &artist_id);
-            let release =
-                DbRelease { ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string()) };
-            let track =
-                DbTrack::new_test(&release.id, &uuid::Uuid::new_v4().to_string(), "Track", 1);
+            let release = DbRelease {
+                ..DbRelease::new_test(
+                    &album.id,
+                    &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+                )
+            };
+            let track = DbTrack::new_test(
+                &release.id,
+                &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+                "Track",
+                1,
+            );
             device
                 .records()
                 .insert_album_with_release_and_tracks(
@@ -208,7 +220,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 &work.id,
                 0,
                 Catalog::MusicBrainz,
-                uuid::Uuid::new_v4().to_string(),
+                coven::IdSource::new_id(&coven::UuidIds).to_string(),
                 chrono::Utc::now(),
             );
             device

@@ -102,7 +102,7 @@ impl CueApeTestFixture {
         let (library, imported) = bae_library::test_libraries::imported_release_setup(
             create_test_discogs_release(),
             "test",
-            uuid::Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             copy_cue_ape_fixture,
         )
         .await?;

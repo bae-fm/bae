@@ -119,7 +119,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
             &release_id,
             "front.gif",
             bae_util::content_type::ContentType::Gif,
-            uuid::Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             chrono::Utc::now(),
         );
         fixture.library.manager().add_external_file_for_test(&file, &image_path).await.unwrap();

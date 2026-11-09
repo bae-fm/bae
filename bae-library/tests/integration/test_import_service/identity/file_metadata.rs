@@ -35,7 +35,7 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
         ],
     );
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
@@ -111,7 +111,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
         ],
     );
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(ImportCommand {
             candidate_key: bae_import::CandidateKey::from(b"cue".to_vec()),
@@ -198,7 +198,7 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
         &[TaggedTrack { filename: "01.flac", title: "Track One", track_number: 1 }],
     );
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
@@ -255,7 +255,7 @@ async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
     fs::create_dir_all(image.parent().unwrap()).unwrap();
     fs::write(&image, solid_jpeg(FOLDER_IMAGE_DIMS)).unwrap();
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
@@ -312,7 +312,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     fs::create_dir_all(&identified_dir).unwrap();
     generate_album_files(&identified_dir, &["01 Track One.flac"]);
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(ImportCommand {
             candidate_key: bae_import::CandidateKey::from(b"identified".to_vec()),
@@ -340,7 +340,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
         &[TaggedTrack { filename: "01.flac", title: "Track One", track_number: 1 }],
     );
 
-    let import_id2 = uuid::Uuid::new_v4().to_string();
+    let import_id2 = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(ImportCommand {
             candidate_key: bae_import::CandidateKey::from(b"file-tags".to_vec()),
@@ -412,7 +412,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
         }],
     };
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(ImportCommand {
             user_edit: Some(edit),

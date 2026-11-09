@@ -40,7 +40,7 @@ async fn discovery_reports_a_broken_store_instead_of_omitting_it() {
     let tmp = TempDir::new().unwrap();
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let installation = installation(&app_dir);
-    let id = coven::StoreId(uuid::Uuid::new_v4());
+    let id = coven::StoreId(coven::IdSource::new_id(&coven::UuidIds));
     installation.create_store_dir(id, &coven::UuidIds).unwrap();
     let error = app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
@@ -136,7 +136,7 @@ async fn an_app_dir_under_a_fresh_home_exists_and_holds_a_new_store() {
 
 #[test]
 fn a_library_id_is_a_uuid_never_a_path() {
-    let id = coven::StoreId(uuid::Uuid::new_v4());
+    let id = coven::StoreId(coven::IdSource::new_id(&coven::UuidIds));
     assert_eq!(parse_library_id(&id.to_string()).unwrap(), id);
     for id in ["../outside", "invalid"] {
         assert!(matches!(parse_library_id(id), Err(AppDirError::Invalid(_))));

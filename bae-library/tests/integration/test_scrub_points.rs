@@ -228,7 +228,7 @@ async fn import(release: DiscogsRelease, write_files: impl FnOnce(&Path)) -> Imp
     let (library, imported) = bae_library::test_libraries::imported_release_setup(
         release,
         "test",
-        uuid::Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         write_files,
     )
     .await
@@ -458,7 +458,7 @@ async fn a_served_mp3_decode_holds_the_files_samples() {
     let (library, imported) = bae_library::test_libraries::imported_release_setup(
         release("scrub-points-served-mp3", &[("Track One", "0:12")]),
         "test",
-        uuid::Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         move |dir| std::fs::write(dir.join("01 Track One.mp3"), &written).unwrap(),
     )
     .await

@@ -193,9 +193,13 @@ impl CueFlacTestFixture {
         album: DiscogsRelease,
         generate_files: impl FnOnce(&std::path::Path),
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let (library, imported) =
-            imported_release_setup(album, "test", uuid::Uuid::new_v4().to_string(), generate_files)
-                .await?;
+        let (library, imported) = imported_release_setup(
+            album,
+            "test",
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
+            generate_files,
+        )
+        .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
         let (playback_handle, capture_stream_rx, audio_clock) =
             bae_library::test_libraries::start_manual_playback(&library).await;
@@ -510,7 +514,7 @@ impl MultiWindowPlayback {
         let (library, imported) = imported_release_setup(
             create_multi_window_cue_album(),
             name,
-            uuid::Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             generate_multi_window_cue_flac_files,
         )
         .await
@@ -651,7 +655,7 @@ pub(super) async fn import_second_release(
     generate_cue_flac_files(source.path());
     let release_key = lib.fakes.seed_discogs_test_release(create_cue_flac_test_album());
     let import_handle = lib.library.start_discogs_import().await;
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     import_handle
         .send_command(ImportCommand {
             candidate_key: bae_import::CandidateKey::from(b"second".to_vec()),

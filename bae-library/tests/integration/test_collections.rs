@@ -38,12 +38,12 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     assert!(people.ratings().await.unwrap().is_empty());
     people.set_rating(RatingTarget::Album(album.clone()), Some(Stars::Two)).await.unwrap();
 
-    let id = uuid::Uuid::new_v4();
+    let id = coven::IdSource::new_id(&coven::UuidIds);
     let playlist = people.create_playlist(id, "Evening", Sharing::Private).await.unwrap();
     assert_eq!(playlist.audience, coven::Audience::Circle(person.private_circle));
-    let a = uuid::Uuid::new_v4();
-    let b = uuid::Uuid::new_v4();
-    let c = uuid::Uuid::new_v4();
+    let a = coven::IdSource::new_id(&coven::UuidIds);
+    let b = coven::IdSource::new_id(&coven::UuidIds);
+    let c = coven::IdSource::new_id(&coven::UuidIds);
     people.append_playlist_entry(id, a, first.clone()).await.unwrap();
     people.append_playlist_entry(id, b, second).await.unwrap();
     people.append_playlist_entry(id, c, first.clone()).await.unwrap();

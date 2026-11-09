@@ -76,7 +76,7 @@ pub(crate) async fn create_local_release(
             &release_id,
             name,
             bae_util::content_type::ContentType::Flac,
-            uuid::Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             now,
         );
         mgr.add_external_file_for_test(&db_file, &path).await.unwrap();

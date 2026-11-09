@@ -305,7 +305,7 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
     let (library, imported) = imported_release_setup(
         create_cue_flac_test_album(),
         "test",
-        uuid::Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         generate_cue_flac_files,
     )
     .await

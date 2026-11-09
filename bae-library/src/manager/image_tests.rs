@@ -8,7 +8,6 @@ use bae_records::{LibraryImageType, NewReleaseFile};
 use bae_util::content_type::ContentType;
 use chrono::Utc;
 use tempfile::TempDir;
-use uuid::Uuid;
 
 /// `change_cover` resizes whatever the user picks to a ≤600 JPEG thumbnail
 /// before storing it: a 900×300 PNG release image lands as a 600×200 JPEG file
@@ -53,7 +52,7 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
         &release.id,
         "broken.png",
         ContentType::Png,
-        Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         Utc::now(),
     );
     manager.add_external_file_for_test(&file, &source_path).await.unwrap();
@@ -91,7 +90,7 @@ async fn assert_changed_cover(
         &release.id,
         filename,
         content_type,
-        Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         Utc::now(),
     );
     manager.add_external_file_for_test(&file, &source_path).await.unwrap();
@@ -151,7 +150,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
             &release.id,
             name,
             ContentType::Png,
-            Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             Utc::now(),
         )
     };

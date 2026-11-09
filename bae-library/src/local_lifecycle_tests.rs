@@ -466,7 +466,7 @@ async fn a_directory_that_cannot_be_deleted_leaves_the_removal_to_retry() {
 async fn files_without_a_removal_record_are_left_alone() {
     let home = Home::new();
     let kept = home.library("Kept").await;
-    let hidden = coven::StoreId(uuid::Uuid::new_v4());
+    let hidden = coven::StoreId(coven::IdSource::new_id(&coven::UuidIds));
     std::fs::create_dir_all(home.directory(hidden).join("cache")).unwrap();
     home.point_at(hidden);
     let removed = home.library("Removed").await;

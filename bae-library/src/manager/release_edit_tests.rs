@@ -8,7 +8,6 @@ use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::LookupRef;
 use bae_records::DbAlbum;
 use chrono::Utc;
-use uuid::Uuid;
 
 // ── Re-identify: a catalog applied in an edit session, then saved ─────
 //
@@ -271,7 +270,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
     insert_editable_tracks(manager, &release.id, 1).await;
     let track = manager.records.get_tracks_for_release(&release.id).await.unwrap()[0].clone();
     let composer = DbArtist {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: "Composer Name".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -295,12 +294,12 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
                 &work.id,
                 0,
                 bae_catalogs::catalog::Catalog::MusicBrainz,
-                Uuid::new_v4().to_string(),
+                coven::IdSource::new_id(&coven::UuidIds).to_string(),
                 Utc::now(),
             )],
             works: vec![work],
             track_artist_roles: vec![bae_records::DbTrackArtistRole {
-                id: Uuid::new_v4().to_string(),
+                id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
                 track_id: track.id.clone(),
                 artist_id: composer.id.clone(),
                 position: 0,

@@ -6,7 +6,6 @@ use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbRelease, NewReleaseFile};
 use chrono::Utc;
-use uuid::Uuid;
 
 #[test]
 fn replace_output_dir_restores_prior_export_when_staging_rename_fails() {
@@ -380,7 +379,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
             &release.id,
             name,
             bae_util::content_type::ContentType::Flac,
-            Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             Utc::now(),
         );
         manager.add_external_file_for_test(&file, &source_dir.join(name)).await.unwrap();

@@ -27,7 +27,7 @@ pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
             .unwrap();
     let records = bae_records::test_fixtures::test_records(&db);
     let artist = DbArtist {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: "Artist Name".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -37,7 +37,7 @@ pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
     records.insert_artist(&artist).await.unwrap();
     let mut ids = HashMap::new();
     for (release_name, track_names) in releases {
-        let release_id = uuid::Uuid::new_v4().to_string();
+        let release_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
         ids.insert(release_name.to_string(), release_id.clone());
         let album = DbAlbum::new_test("Album Title", &coven::UuidIds);
         records.insert_album(&album).await.unwrap();
@@ -45,7 +45,7 @@ pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
         records.insert_release(&DbRelease::new_test(&album.id, &release_id)).await.unwrap();
         records.insert_release_medium(&DbReleaseMedium::new_test(&release_id)).await.unwrap();
         for (index, name) in track_names.iter().enumerate() {
-            let track_id = uuid::Uuid::new_v4().to_string();
+            let track_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
             ids.insert(name.to_string(), track_id.clone());
             let number = u32::try_from(index + 1).unwrap();
             records
@@ -225,8 +225,11 @@ async fn test_add_to_queue_gives_duplicates_distinct_ids() {
 #[tokio::test]
 async fn test_add_to_queue_leaves_out_tracks_the_library_lacks() {
     let mut f = release(&["a"]).await;
-    let added =
-        f.queue.add_to_queue(vec![f.id("a"), uuid::Uuid::new_v4().to_string()]).await.unwrap();
+    let added = f
+        .queue
+        .add_to_queue(vec![f.id("a"), coven::IdSource::new_id(&coven::UuidIds).to_string()])
+        .await
+        .unwrap();
     assert_eq!(added, 1);
     assert_eq!(f.upcoming().await, names(&["a"]));
 }

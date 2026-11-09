@@ -158,7 +158,8 @@ pub(crate) async fn picked_discogs_release() -> DiscogsPick {
         .await
         .unwrap();
 
-    let numeric_id = || (uuid::Uuid::new_v4().as_u128() % u128::from(u64::MAX)) as u64;
+    let numeric_id =
+        || (coven::IdSource::new_id(&coven::UuidIds).as_u128() % u128::from(u64::MAX)) as u64;
     let album_artist_id = numeric_id();
     let track_artist_id = numeric_id();
     let source_release_id = numeric_id().to_string();
@@ -211,7 +212,7 @@ pub(crate) async fn picked_discogs_release() -> DiscogsPick {
         images,
         album_artist_id: album_artist_id.to_string(),
         track_artist_id: track_artist_id.to_string(),
-        picture_path: format!("/discogs-artist-{}.png", uuid::Uuid::new_v4()),
+        picture_path: format!("/discogs-artist-{}.png", coven::IdSource::new_id(&coven::UuidIds)),
     }
 }
 

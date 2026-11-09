@@ -24,7 +24,7 @@ async fn two_sequential_imports() {
         let track_name = format!("01 Track {}.flac", i + 1);
         generate_album_files(&album_dir, &[track_name.as_str()]);
 
-        let import_id = uuid::Uuid::new_v4().to_string();
+        let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
         f.handle
             .send_command(bae_import::test_imports::folder_import(
                 &import_id,

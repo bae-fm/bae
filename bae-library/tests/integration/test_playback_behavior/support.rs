@@ -440,7 +440,7 @@ impl PlaybackTestFixture {
         let (library, imported) = imported_release_setup(
             create_test_album(),
             "playback",
-            uuid::Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             |directory| {
                 generate_test_flac_files(directory);
             },

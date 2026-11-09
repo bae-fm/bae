@@ -26,7 +26,12 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     .await;
     let started = "2026-10-18T16:30:00Z".parse().unwrap();
     let mut local = people
-        .begin_play(uuid::Uuid::new_v4(), &track, Some(Duration::from_secs(40)), started)
+        .begin_play(
+            coven::IdSource::new_id(&coven::UuidIds),
+            &track,
+            Some(Duration::from_secs(40)),
+            started,
+        )
         .await
         .unwrap();
     local.set_played(Duration::from_secs(19));
@@ -54,7 +59,12 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     people.record_play(&local).await.unwrap();
     assert_eq!(people.history().await.unwrap()[0].audience, private);
     let mut shared = people
-        .begin_play(uuid::Uuid::new_v4(), &track, Some(Duration::from_secs(100)), started)
+        .begin_play(
+            coven::IdSource::new_id(&coven::UuidIds),
+            &track,
+            Some(Duration::from_secs(100)),
+            started,
+        )
         .await
         .unwrap();
     library.people().set_history_sharing(Sharing::Private).await.unwrap();
@@ -74,7 +84,10 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     );
     assert_eq!(row.played, Duration::from_secs(62));
     assert_ne!(row.id, local.entry().id);
-    let mut unknown = people.begin_play(uuid::Uuid::new_v4(), &track, None, started).await.unwrap();
+    let mut unknown = people
+        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
+        .await
+        .unwrap();
     unknown.set_played(Duration::from_secs(8));
     assert!(!people.record_play(&unknown).await.unwrap());
     unknown.finish_at(Duration::from_secs(8));
@@ -101,7 +114,12 @@ fn retrying_profile_setup_adopts_listening_from_before_the_profile_arrived() {
         let people = devices.b().people();
         let started = "2026-10-18T16:00:00Z".parse().unwrap();
         let mut awaiting_profile = people
-            .begin_play(uuid::Uuid::new_v4(), &track, Some(Duration::from_secs(40)), started)
+            .begin_play(
+                coven::IdSource::new_id(&coven::UuidIds),
+                &track,
+                Some(Duration::from_secs(40)),
+                started,
+            )
             .await
             .unwrap();
         awaiting_profile.set_played(Duration::from_secs(30));

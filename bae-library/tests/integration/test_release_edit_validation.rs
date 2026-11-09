@@ -11,12 +11,11 @@ use bae_import::{ArtistAssignment, ReleaseUserEdit, TrackArtistAssignments, Trac
 use bae_library::LibraryError;
 use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use chrono::Utc;
-use uuid::Uuid;
 
 /// One album, one release, one track — enough for an edit to land on.
 async fn seed(records: &bae_records::Records) -> (String, String) {
     let artist = DbArtist {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: "Original Artist".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -24,14 +23,14 @@ async fn seed(records: &bae_records::Records) -> (String, String) {
         created_at: Utc::now(),
     };
     let album = DbAlbum {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         title: "Original Album".to_string(),
         year: None,
         is_compilation: false,
         created_at: Utc::now(),
     };
     let release = DbRelease {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         album_id: album.id.clone(),
         release_name: None,
         pressing: bae_types::pressing::Pressing::blank(),
@@ -42,7 +41,7 @@ async fn seed(records: &bae_records::Records) -> (String, String) {
         created_at: Utc::now(),
     };
     let track = DbTrack {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         release_id: release.id.clone(),
         title: "Original Track".to_string(),
         medium_id: bae_records::identity::release_medium_id(&release.id, 1),

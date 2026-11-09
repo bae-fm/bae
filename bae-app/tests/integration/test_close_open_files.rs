@@ -24,7 +24,7 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
     let (library, imported) = bae_library::test_libraries::imported_release_setup(
         release,
         "test",
-        uuid::Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         write_tracks,
     )
     .await

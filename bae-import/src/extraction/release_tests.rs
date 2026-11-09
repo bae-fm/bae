@@ -8,7 +8,6 @@ use std::sync::Arc;
 async fn library_with_release(root: &std::path::Path) -> (Store, String) {
     use bae_records::{DbAlbum, DbArtist, DbRelease};
     use chrono::Utc;
-    use uuid::Uuid;
 
     let library_root = root.join("library");
     std::fs::create_dir_all(&library_root).unwrap();
@@ -26,7 +25,7 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
     };
     records.insert_artist(&artist).await.unwrap();
     let album = DbAlbum {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         title: "Test Album".to_string(),
         year: None,
         is_compilation: false,
@@ -38,7 +37,7 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
         .await
         .unwrap();
     let release = DbRelease {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         album_id: album.id.clone(),
         release_name: None,
         pressing: bae_types::pressing::Pressing::blank(),
@@ -109,7 +108,6 @@ async fn test_resolve_release_identity_local() {
     use bae_records::{DbTrack, NewReleaseFile};
     use bae_util::content_type::ContentType;
     use chrono::Utc;
-    use uuid::Uuid;
 
     let temp = tempfile::TempDir::new().unwrap();
     let local_dir = temp.path().join("rip");
@@ -136,7 +134,7 @@ async fn test_resolve_release_identity_local() {
     ] {
         let abs = local_dir.join(filename);
         let file = NewReleaseFile {
-            id: Uuid::new_v4().to_string(),
+            id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
             release_id: release_id.clone(),
             original_filename: filename.to_string(),
             content_type,
@@ -155,7 +153,7 @@ async fn test_resolve_release_identity_local() {
         .unwrap();
     for n in 1..=2 {
         let track = DbTrack {
-            id: Uuid::new_v4().to_string(),
+            id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
             release_id: release_id.clone(),
             title: format!("Track {n}"),
             medium_id: bae_records::identity::release_medium_id(&release_id, 1),
@@ -193,7 +191,6 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
     use bae_records::NewReleaseFile;
     use bae_util::content_type::ContentType;
     use chrono::Utc;
-    use uuid::Uuid;
 
     let categorized = crate::folder_scanner::collect_release_candidate_files_with_scope(
         folder,
@@ -211,7 +208,7 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
     let records = bae_records::test_fixtures::test_records(&db);
     for file in categorized.release_files() {
         let row = NewReleaseFile {
-            id: Uuid::new_v4().to_string(),
+            id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
             release_id: release_id.clone(),
             original_filename: file.relative_path.clone(),
             content_type: file

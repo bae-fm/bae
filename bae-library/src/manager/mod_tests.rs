@@ -13,7 +13,6 @@ use bae_util::content_type::ContentType;
 use chrono::Utc;
 use coven::{MemoryStorage, Storage};
 use tempfile::TempDir;
-use uuid::Uuid;
 
 // Fixture row ids. coven validates every synced row's primary key as a
 // canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
@@ -534,7 +533,7 @@ pub(super) async fn make_local_and_wait(
 pub(super) async fn insert_n_tracks(records: &bae_records::Records, release_id: &str, n: usize) {
     for i in 1..=n {
         let track = bae_records::DbTrack {
-            id: Uuid::new_v4().to_string(),
+            id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
             release_id: release_id.to_string(),
             title: format!("Track {i}"),
             medium_id: bae_records::identity::release_medium_id(release_id, 1),
@@ -806,7 +805,7 @@ pub(super) async fn add_track_audio_sources(
             &track.release_id,
             name,
             ContentType::Flac,
-            Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             now,
         );
         file.source_audio = Some(bae_records::source_audio::SourceAudioFile {
@@ -826,7 +825,7 @@ pub(super) async fn add_track_audio_sources(
         files.push(file);
     }
     let audio_format = bae_records::DbAudioFormat {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         track_id: track.id.clone(),
         content_type: ContentType::Flac,
         pregap_samples: None,
@@ -842,7 +841,7 @@ pub(super) async fn add_track_audio_sources(
         .iter()
         .enumerate()
         .map(|(index, file)| bae_records::DbAudioSegment {
-            id: Uuid::new_v4().to_string(),
+            id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
             audio_format_id: audio_format.id.clone(),
             segment_index: i64::try_from(index).unwrap(),
             role: if index + 1 == files.len() {

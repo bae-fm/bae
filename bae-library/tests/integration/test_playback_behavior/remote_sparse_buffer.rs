@@ -40,7 +40,7 @@ impl RemoteMultiWindowPlayback {
         generate_multi_window_cue_flac_files(&album_dir);
         let release_key = fakes.seed_discogs_test_release(create_multi_window_cue_album());
         let import_handle = library.start_discogs_import().await;
-        let import_id = uuid::Uuid::new_v4().to_string();
+        let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
         import_handle
             .send_command(ImportCommand {
                 candidate_key: bae_import::CandidateKey::from(name.as_bytes().to_vec()),

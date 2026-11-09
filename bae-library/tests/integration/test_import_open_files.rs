@@ -130,7 +130,7 @@ async fn import_a_box_set_under_a_lowered_limit() {
 
     let sampler = OpenFilesPeak::start(&album_dir);
     let started = Instant::now();
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     import_handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,

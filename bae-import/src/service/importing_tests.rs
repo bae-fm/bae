@@ -214,7 +214,10 @@ async fn picked_album(test: &TestService) -> bae_records::DbAlbum {
     let artist = crate::handle::tests::make_artist("Picked Artist", None, None);
     records.insert_artist(&artist).await.unwrap();
     let album = bae_records::DbAlbum::new_test("Picked Album", &coven::UuidIds);
-    let release = bae_records::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
+    let release = bae_records::DbRelease::new_test(
+        &album.id,
+        &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+    );
     records
         .insert_album_with_release_and_tracks(
             &album,
@@ -223,7 +226,7 @@ async fn picked_album(test: &TestService) -> bae_records::DbAlbum {
             &[bae_records::DbReleaseMedium::new_test(&release.id)],
             &[bae_records::DbTrack::new_test(
                 &release.id,
-                &uuid::Uuid::new_v4().to_string(),
+                &coven::IdSource::new_id(&coven::UuidIds).to_string(),
                 "Track 1",
                 1,
             )],

@@ -17,7 +17,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
         std::sync::Arc::new(coven::UuidIds),
     );
     let artist = bae_records::DbArtist {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: "Schema Artist".into(),
         sort_name: None,
         discogs_artist_id: None,
@@ -26,13 +26,16 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     };
     records.insert_artist(&artist).await.unwrap();
     let album = bae_records::DbAlbum {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         title: "Schema Album".into(),
         year: None,
         is_compilation: false,
         created_at: chrono::Utc::now(),
     };
-    let release = bae_records::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
+    let release = bae_records::DbRelease::new_test(
+        &album.id,
+        &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+    );
     let credit = bae_records::DbAlbumArtist::new_test(&album.id, &artist.id);
     records
         .insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
@@ -42,7 +45,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
         &release.id,
         "track.flac",
         bae_util::content_type::ContentType::Flac,
-        uuid::Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         chrono::Utc::now(),
     );
     let original = directory.path().join("track.flac");
@@ -85,7 +88,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
     .await;
     let records = library.records().clone();
     let artist = bae_records::DbArtist {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: "Artist".into(),
         sort_name: None,
         discogs_artist_id: None,
@@ -94,13 +97,16 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
     };
     records.insert_artist(&artist).await.unwrap();
     let album = bae_records::DbAlbum {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         title: "Album".into(),
         year: None,
         is_compilation: false,
         created_at: chrono::Utc::now(),
     };
-    let release = bae_records::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
+    let release = bae_records::DbRelease::new_test(
+        &album.id,
+        &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+    );
     let credit = bae_records::DbAlbumArtist::new_test(&album.id, &artist.id);
     records
         .insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
@@ -112,7 +118,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         &release.id,
         "track.flac",
         bae_util::content_type::ContentType::Flac,
-        uuid::Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         chrono::Utc::now(),
     );
     library.manager().add_external_file_for_test(&file, &source).await.unwrap();

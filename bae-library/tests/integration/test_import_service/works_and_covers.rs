@@ -160,7 +160,7 @@ async fn import_with_cover_art() {
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_with_cover(&album_dir, &["01 Track.flac"]);
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(ImportCommand {
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
@@ -212,7 +212,7 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     fs::create_dir_all(&album_dir).unwrap();
     let cover_path = generate_album_with_oversized_cover(&album_dir, &["01 Track.flac"]);
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(ImportCommand {
             selected_cover: Some(CoverSelection::Local(cover_path)),

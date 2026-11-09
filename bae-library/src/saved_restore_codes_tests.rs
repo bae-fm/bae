@@ -34,8 +34,8 @@ async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
         .await
         .unwrap()
         .id();
-    let elsewhere = coven::StoreId(uuid::Uuid::new_v4());
-    let unreadable_elsewhere = coven::StoreId(uuid::Uuid::new_v4());
+    let elsewhere = coven::StoreId(coven::IdSource::new_id(&coven::UuidIds));
+    let unreadable_elsewhere = coven::StoreId(coven::IdSource::new_id(&coven::UuidIds));
     let code = |store_id| {
         coven::SavedRestoreEntry::Readable(coven::SavedRestoreCode {
             name: "Library".into(),

@@ -18,7 +18,7 @@ async fn local_folder_import() {
         &["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"],
     );
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
@@ -147,7 +147,7 @@ async fn import_produces_audio_format_records() {
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track.flac"]);
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
@@ -189,7 +189,7 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
         )
         .unwrap();
 
-        let import_id = uuid::Uuid::new_v4().to_string();
+        let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
         f.handle
             .send_command(bae_import::test_imports::folder_import(
                 &import_id,
@@ -283,7 +283,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     write_flac(&album_dir.join("01 Quiet Track.flac"), &sine(0.03, sr, 4.0, true), sr);
     write_flac(&album_dir.join("02 Loud Track.flac"), &sine(0.5, sr, 4.0, false), sr);
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
@@ -391,7 +391,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
         &["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"],
     );
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,

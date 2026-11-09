@@ -92,7 +92,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
     let home = Home::new();
     let first = home.create("Library A");
     home.open(first).close();
-    let second = coven::StoreId(uuid::Uuid::new_v4());
+    let second = coven::StoreId(coven::IdSource::new_id(&coven::UuidIds));
     let result = bootstrap(
         home.app_dir.clone(),
         second.to_string(),

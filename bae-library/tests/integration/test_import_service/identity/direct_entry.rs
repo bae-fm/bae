@@ -9,7 +9,7 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track Title.flac"]);
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),

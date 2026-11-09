@@ -8,7 +8,6 @@ use bae_records::test_fixtures::library::LibraryRows;
 use bae_records::{DbRelease, DbTrackWork, DbWork, LibraryImageType, NewReleaseFile};
 use bae_util::content_type::ContentType;
 use chrono::Utc;
-use uuid::Uuid;
 
 #[tokio::test]
 async fn work_detail_release_rows_are_display_ready() {
@@ -333,7 +332,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
         &release.id,
         "cover.jpg",
         bae_util::content_type::ContentType::Jpeg,
-        Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         Utc::now(),
     );
     manager.add_file(&file, 5).await.unwrap();
@@ -503,7 +502,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
             &release.id,
             name,
             facts.content_type.clone(),
-            Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             Utc::now(),
         );
         file.source_audio = Some(facts);
@@ -612,7 +611,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         &release.id,
         "back.jpg",
         bae_util::content_type::ContentType::Jpeg,
-        Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         Utc::now(),
     );
     manager.library.manager().add_file(&image, 1234).await.unwrap();
@@ -655,7 +654,7 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
             &release.id,
             name,
             content_type,
-            Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             Utc::now(),
         );
         manager.library.manager().add_file(&file, 100).await.unwrap();
@@ -759,7 +758,7 @@ async fn a_gallery_read_refuses_another_releases_file() {
         &other.id,
         "cover.jpg",
         bae_util::content_type::ContentType::Jpeg,
-        Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         Utc::now(),
     );
     manager.library.manager().add_file(&file, 5).await.unwrap();

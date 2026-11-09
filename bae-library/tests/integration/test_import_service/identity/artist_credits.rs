@@ -49,7 +49,7 @@ async fn import_and_wait(
     dir: std::path::PathBuf,
     provenance: bae_import::test_imports::DraftSource,
 ) -> (String, String) {
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(&import_id, dir, provenance))
         .await
@@ -94,7 +94,7 @@ async fn album_artist_id(f: &ImportFixture, album_id: &str) -> String {
 
 fn library_artist(name: &str, discogs_artist_id: Option<&str>) -> bae_records::DbArtist {
     bae_records::DbArtist {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: name.to_string(),
         sort_name: None,
         discogs_artist_id: discogs_artist_id.map(str::to_string),
@@ -153,8 +153,8 @@ async fn two_albums_queued_together_make_one_artist() {
     let (catalog_dir, catalog) = discogs_album_folder(&f, "album-one", "Album One");
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
-    let catalog_import = uuid::Uuid::new_v4().to_string();
-    let tagged_import = uuid::Uuid::new_v4().to_string();
+    let catalog_import = coven::IdSource::new_id(&coven::UuidIds).to_string();
+    let tagged_import = coven::IdSource::new_id(&coven::UuidIds).to_string();
     let mut catalog_rx = f.handle.subscribe_import(catalog_import.clone());
     let mut tagged_rx = f.handle.subscribe_import(tagged_import.clone());
     f.handle

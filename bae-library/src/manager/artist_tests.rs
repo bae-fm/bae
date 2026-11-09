@@ -7,7 +7,6 @@ use crate::manager::tests::*;
 use bae_records::{DbAlbum, DbRelease};
 use chrono::Utc;
 use tempfile::TempDir;
-use uuid::Uuid;
 
 #[tokio::test]
 async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
@@ -150,8 +149,18 @@ async fn credited_library_holding(discogs_artist_id: Option<&str>) -> CreditedLi
             .await
             .unwrap();
     }
-    let featured = DbTrack::new_test(&release.id, &Uuid::new_v4().to_string(), "Featured", 1);
-    let plain = DbTrack::new_test(&release.id, &Uuid::new_v4().to_string(), "Plain", 2);
+    let featured = DbTrack::new_test(
+        &release.id,
+        &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+        "Featured",
+        1,
+    );
+    let plain = DbTrack::new_test(
+        &release.id,
+        &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+        "Plain",
+        2,
+    );
     manager.library.manager().records.insert_track(&featured).await.unwrap();
     manager.library.manager().records.insert_track(&plain).await.unwrap();
     for (artist, position, join) in
@@ -278,7 +287,7 @@ async fn a_printed_name_shows_in_place_of_the_artists_while_the_link_names_the_a
 async fn a_merged_artists_credit_prints_the_survivor_unless_a_printed_name_was_stored() {
     let library = credited_library_holding(Some("credited-discogs-id")).await;
     let credit = DbArtist {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: "Artist A".to_string(),
         sort_name: None,
         discogs_artist_id: Some("credited-discogs-id".to_string()),

@@ -259,7 +259,11 @@ fn generate_album_with_oversized_cover(dir: &Path, filenames: &[&str]) -> String
 /// concurrent run served whichever seed landed last. Each built release is a
 /// distinct release and gets a distinct id.
 fn synthetic_release_id(title: &str) -> String {
-    format!("test-{}-{}", title.to_lowercase().replace(' ', "-"), uuid::Uuid::new_v4())
+    format!(
+        "test-{}-{}",
+        title.to_lowercase().replace(' ', "-"),
+        coven::IdSource::new_id(&coven::UuidIds)
+    )
 }
 
 fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {

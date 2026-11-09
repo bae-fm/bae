@@ -5,7 +5,6 @@ use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbAlbum, DbAlbumArtist, DbRelease};
 use chrono::Utc;
-use uuid::Uuid;
 
 fn discogs_identity(group: &str, release: &str) -> bae_catalogs::records::ReleaseRecord {
     bae_catalogs::records::ReleaseRecord::new(
@@ -244,7 +243,7 @@ async fn set_records_does_not_touch_metadata_columns() {
         .await
         .unwrap();
     let track = bae_records::DbTrack {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         release_id: release.id.clone(),
         title: "My Track".to_string(),
         medium_id: bae_records::identity::release_medium_id(&release.id, 1),
@@ -400,7 +399,7 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
     // we're driving the atomic API by hand.
     let now = chrono::Utc::now();
     let fresh_album = DbAlbum {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         title: album_a.title.clone(),
         year: album_a.year,
         is_compilation: album_a.is_compilation,

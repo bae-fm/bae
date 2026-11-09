@@ -418,7 +418,8 @@ async fn an_imported_artist_is_searchable_with_its_picture() {
     let key = fixture.scanned_folder("watched", "Album").await;
     fixture.import.select_candidate_file_tags(key.clone()).await.unwrap();
 
-    let numeric_id = || (uuid::Uuid::new_v4().as_u128() % u128::from(u64::MAX)) as u64;
+    let numeric_id =
+        || (coven::IdSource::new_id(&coven::UuidIds).as_u128() % u128::from(u64::MAX)) as u64;
     let album_artist_id = numeric_id();
     let track_artist_id = numeric_id();
     let source_release_id = numeric_id().to_string();
@@ -462,7 +463,7 @@ async fn an_imported_artist_is_searchable_with_its_picture() {
         .await
         .unwrap();
     let picture_url = images.serve_image(
-        &format!("/discogs-artist-{}.png", uuid::Uuid::new_v4()),
+        &format!("/discogs-artist-{}.png", coven::IdSource::new_id(&coven::UuidIds)),
         bae_catalogs::test_image_host::cover_png(),
     );
     fakes.seed_discogs_artist_image(&album_artist_id.to_string(), None);

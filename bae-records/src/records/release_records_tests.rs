@@ -12,7 +12,6 @@ use bae_store::test_fixtures::{exec, exec_batch};
 use bae_util::test_channels::HANG_GUARD;
 use chrono::Utc;
 use tempfile::TempDir;
-use uuid::Uuid;
 
 /// A store holding a single test artist that the helpers below reference
 /// for inserted albums.
@@ -38,7 +37,7 @@ const TEST_ARTIST_ID: &str = "e36744a5-1a36-460f-891c-e7e558034edf";
 fn make_album(title: &str) -> DbAlbum {
     let now = Utc::now();
     DbAlbum {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         title: title.to_string(),
         year: Some(2024),
         is_compilation: false,
@@ -49,7 +48,7 @@ fn make_album(title: &str) -> DbAlbum {
 fn make_release(album_id: &str) -> DbRelease {
     let now = Utc::now();
     DbRelease {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         album_id: album_id.to_string(),
         release_name: None,
         pressing: bae_types::pressing::Pressing {
@@ -69,7 +68,7 @@ fn make_release(album_id: &str) -> DbRelease {
 fn make_track(release_id: &str, number: i32) -> DbTrack {
     let now = Utc::now();
     DbTrack {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         release_id: release_id.to_string(),
         title: format!("Track {}", number),
         medium_id: crate::identity::release_medium_id(release_id, 1),

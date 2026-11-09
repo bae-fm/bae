@@ -166,7 +166,7 @@ impl CloudOnlyPlaybackFixture {
         generate_test_flac_files(&album_dir);
 
         let import_handle = library.start_discogs_import().await;
-        let import_id = uuid::Uuid::new_v4().to_string();
+        let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
         import_handle
             .send_command(ImportCommand {
                 destination: ImportDestination::Remote { pin: false },

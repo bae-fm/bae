@@ -82,7 +82,7 @@ async fn test_play_that_names_nothing_leaves_the_queue() {
     let empty = f
         .queue
         .play(ContextFill::Release {
-            release_id: uuid::Uuid::new_v4().to_string(),
+            release_id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
             start: ReleaseStart::First,
         })
         .await

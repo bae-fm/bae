@@ -19,7 +19,6 @@ use bae_util::test_channels::HANG_GUARD;
 use chrono::Utc;
 use std::path::Path;
 use tempfile::TempDir;
-use uuid::Uuid;
 
 /// What an import service is started from over a fresh store asking no
 /// catalog, the store, and the directory holding it.
@@ -66,7 +65,7 @@ pub(super) async fn setup_test_import_over(
 pub(crate) fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {
     let now = Utc::now();
     DbArtist {
-        id: Uuid::new_v4().to_string(),
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: name.to_string(),
         sort_name: None,
         discogs_artist_id: discogs_id.map(|s| s.to_string()),
@@ -83,7 +82,8 @@ pub(super) async fn insert_library_release(
     title: &str,
 ) -> (DbAlbum, DbRelease) {
     let album = DbAlbum::new_test(title, &coven::UuidIds);
-    let release = DbRelease::new_test(&album.id, &Uuid::new_v4().to_string());
+    let release =
+        DbRelease::new_test(&album.id, &coven::IdSource::new_id(&coven::UuidIds).to_string());
     bae_records::test_fixtures::test_records(db)
         .insert_album_with_release_and_tracks(
             &album,
@@ -92,7 +92,7 @@ pub(super) async fn insert_library_release(
             &[bae_records::DbReleaseMedium::new_test(&release.id)],
             &[bae_records::DbTrack::new_test(
                 &release.id,
-                &Uuid::new_v4().to_string(),
+                &coven::IdSource::new_id(&coven::UuidIds).to_string(),
                 "Track 1",
                 1,
             )],

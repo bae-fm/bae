@@ -16,7 +16,7 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
@@ -105,7 +105,7 @@ async fn a_user_edit_overlays_the_picked_release() {
         }],
     };
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(ImportCommand {
             user_edit: Some(edit),
@@ -171,7 +171,7 @@ async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
         &[TaggedTrack { filename: "01.flac", title: "Tagged Track", track_number: 1 }],
     );
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(ImportCommand {
             read_file_tags: true,
@@ -302,7 +302,7 @@ async fn a_cross_link_writes_both_catalogs_records() {
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
@@ -365,7 +365,7 @@ async fn a_pick_with_a_partner_writes_both_records() {
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
@@ -432,7 +432,7 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,

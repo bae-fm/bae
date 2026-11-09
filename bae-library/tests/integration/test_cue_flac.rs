@@ -340,7 +340,7 @@ impl CueFlacCaptureFixture {
         let (library, imported) = bae_library::test_libraries::imported_release_setup(
             create_test_discogs_release(),
             "test",
-            uuid::Uuid::new_v4().to_string(),
+            coven::IdSource::new_id(&coven::UuidIds).to_string(),
             copy_cue_flac_fixture_with_seektable,
         )
         .await?;
@@ -568,7 +568,7 @@ async fn test_served_decode_starts_with_the_generated_pregap() {
             )
         },
         "test",
-        uuid::Uuid::new_v4().to_string(),
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
         generate_generated_pregap_album,
     )
     .await
