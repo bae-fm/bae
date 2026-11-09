@@ -200,6 +200,9 @@ fill = "#277A7C"
 # to stay on this device; `onFill` and `onFillSecondary` sit on accent and
 # status fills, on artwork and on the image viewer's `backdrop`; `insetPanel`
 # shades the panel inset in a dialog, such as an error's causes.
+# `textSecondary` is Android's: macOS draws secondary text in the system's own
+# secondary label colour, which follows Increase Contrast and vibrancy, and the
+# design system's `mac-text-secondary` draws that colour on the canvas.
 [semantics.light]
 textPrimary = "#202124"
 textSecondary = "#62656C"

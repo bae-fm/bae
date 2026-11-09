@@ -20,14 +20,14 @@ body{margin:0;background:var(--elevated)}
 .ms-fix{padding:0 12px 10px}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.MacBox">
+<div class="bae-mac"><x-import component-from-global-scope="Bae.MacBox">
 <div class="{{blockClass}}">
 <x-import component-from-global-scope="Bae.MacRow" label="Status" value="{{status}}" tone="{{tone}}"></x-import>
 <sc-if value="{{cause}}" hint-placeholder-val="{{ true }}"><div class="ms-cause">{{cause}}</div></sc-if>
 <sc-if value="{{fix}}" hint-placeholder-val="{{ true }}"><div class="ms-fix"><x-import component-from-global-scope="Bae.MacButton" kind="primary">{{fix}}</x-import></div></sc-if>
 </div>
 <sc-if value="{{lastSynced}}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="Bae.MacRow" label="Last synced" value="{{lastSynced}}"></x-import></sc-if>
-</x-import>
+</x-import></div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"status":{"editor":"text","default":"Cloud full"},"tone":{"editor":"enum","options":["","success","warning","danger"],"default":"danger"},"cause":{"editor":"text","default":"Free up space in the cloud."},"fix":{"editor":"text","default":"Open in browser"},"lastSynced":{"editor":"text","default":"2 hours ago"},"$preview":{"width":460,"height":150}}'>
 class Component extends DCLogic {

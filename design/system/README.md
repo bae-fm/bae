@@ -26,6 +26,7 @@ The apps offer six tones (neutral, slate, plum, midnight, forest, sand), eight a
 - How the color names read: a bare name (`accent`, `accent-blue`, `danger`, `info`) is text and glyphs on background, surface and elevated. `-fill` is a filled shape, and `on-…-fill` is what sits on it. `-selection` is a selected row, and `-tint` a faint wash behind something chosen.
 - `accent`, `accent-fill`, `on-accent-fill` and `accent-selection` are the chosen accent; the boards show pink. Each accent's own set is beside it under Colors.
 - Each status carries a word, never color alone.
+- Secondary text on macOS is the system's own colour (`mac-text-secondary`, measured from NSColor.secondaryLabelColor), which follows Increase Contrast and translucent backgrounds there; the Mac code uses it directly. `text-secondary` is Android's. Every Mac window draws the system colour, and a Mac part board or preview outside a window is marked `bae-mac`.
 
 ## Type
 

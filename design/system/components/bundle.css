@@ -33,6 +33,8 @@
 .bae-m-notice-box.bae-notice-quiet { padding: 10px 0; }
 .bae-a-notice-box.bae-notice-quiet { padding: 10px 0; }
 /* On a tint, greys and grey fills are the primary text made see-through, so they take the tint's colour. */
+/* macOS draws secondary text in the system's own colour (mac-text-secondary); every Mac window, and a Mac board or preview outside one (bae-mac), takes it in place of text-secondary. */
+.bae-m-window, .bae-mac { --text-secondary: var(--mac-text-secondary); }
 .bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
 .bae-notice:not(.bae-notice-quiet) .bae-m-btn-secondary { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
 .bae-notice-title-strong { font-weight: 600; }
