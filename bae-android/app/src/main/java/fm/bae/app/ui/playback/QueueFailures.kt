@@ -24,6 +24,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.TitledErrorNotice
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeException
 
@@ -110,17 +111,21 @@ internal fun QueueCommandFailure(failures: QueueFailures) {
 }
 
 /**
- * Why the read of the context's tail stopped, under its lane, with Retry, which opens it again;
- * nothing while it reads. Rows past the first window stay placeholders until it does.
+ * Why the read of the context's tail stopped, centred under its lane, with Details and Retry, which
+ * opens it again; nothing while it reads. Rows past the first window stay placeholders until it does.
  */
 @Composable
-internal fun UpcomingFailure(session: OpenLibrary) {
+internal fun UpcomingFailureNotice(session: OpenLibrary) {
     val upcoming = session.playback.upcoming
     val failure by upcoming.failure.collectAsState()
-    val shown = failure?.let { LocalContext.current.displayError(it) } ?: return
-    ErrorNotice(
+    val context = LocalContext.current
+    val shown = failure?.let { context.displayError(it) } ?: return
+    TitledErrorNotice(
+        title = context.coreString("ui.queue.upcoming_failed"),
+        advice = null,
         error = shown,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+        modifier = Modifier.padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
+        look = NoticeLook.CENTERED,
         action = ErrorAction(stringResource(R.string.retry), onClick = upcoming::retry),
     )
 }

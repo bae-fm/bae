@@ -239,7 +239,7 @@ private fun LazyListScope.contextLane(
         queue.failures,
         onSkipped,
     )
-    item(key = "upcoming-failure") { UpcomingFailure(session) }
+    item(key = "upcoming-failure") { UpcomingFailureNotice(session) }
 }
 
 /** One lane's rows for [queueRows], read per row; [loadRange] fetches unloaded rows and is null for the manual lane. */
