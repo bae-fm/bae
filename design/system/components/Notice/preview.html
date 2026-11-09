@@ -1,4 +1,4 @@
-<!-- @dsCard group="Both platforms" height=370 -->
+<!-- @dsCard group="Both platforms" height=480 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>Notice</title></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Info', h(B.Notice, { tone: 'info' }, 'A newer version of this release is on Discogs.')), W('Success', h(B.Notice, { tone: 'success' }, 'Storage connected.')), W('Warning', h(B.Notice, { tone: 'warning' }, 'Unsent changes will be lost')), W('Danger', h(B.Notice, { tone: 'danger' }, 'Couldn’t reach storage. Check your connection and try again.')), W('Two lines', h(B.Notice, { tone: 'warning' }, h('div', { className: 'bae-strong' }, 'Mara Quill’s phone is out of date'), h('div', { className: 'bae-muted' }, 'Update bae on it to keep syncing.'))), W('Neutral', h(B.Notice, { tone: 'neutral' }, 'This library has no albums yet.'))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Info', h(B.Notice, { tone: 'info' }, 'A newer version of this release is on Discogs.')), W('Success', h(B.Notice, { tone: 'success' }, 'Storage connected.')), W('Warning', h(B.Notice, { tone: 'warning' }, 'Unsent changes will be lost')), W('Danger', h(B.Notice, { tone: 'danger' }, 'Couldn’t reach storage. Check your connection and try again.')), W('Two lines', h(B.Notice, { tone: 'warning' }, h('div', { className: 'bae-strong' }, 'Mara Quill’s phone is out of date'), h('div', { className: 'bae-muted' }, 'Update bae on it to keep syncing.'))), W('Holding an error', h(B.Notice, { tone: 'danger' }, h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, 'bae couldn’t open your library'), h(B.MacErrorDisclosure, { bare: true, message: 'Couldn’t reach your storage.', fault: 'dns error: failed to lookup address' }), h('div', { className: 'bae-muted' }, 'Check your connection, then quit and reopen bae.')))), W('Neutral', h(B.Notice, { tone: 'neutral' }, 'This library has no albums yet.'))));
 </script>
 </body>
 </html>
