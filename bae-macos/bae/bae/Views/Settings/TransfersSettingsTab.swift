@@ -81,18 +81,18 @@ struct TransfersSettingsTab: View {
 
             Section {
                 control(
-                    label: "Simultaneous uploads",
+                    label: "Uploads at once",
                     value: configStore.config.maxConcurrentUploads,
                     setValue: sync.setMaxConcurrentUploads
                 )
                 control(
-                    label: "Simultaneous downloads",
+                    label: "Downloads at once",
                     value: configStore.config.maxConcurrentDownloads,
                     setValue: downloads.setMaxConcurrentDownloads
                 )
             } footer: {
                 Text(
-                    "How many files upload to storage at once after an import, and how many download at once when a release is pinned."
+                    "How many files upload to storage at once after an import, and how many download at once. Downloads are pinning and making local; they share this limit and Pause downloads."
                 )
                 .themeText(.detail)
                 .foregroundStyle(.secondary)

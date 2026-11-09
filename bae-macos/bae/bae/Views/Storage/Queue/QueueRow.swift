@@ -81,7 +81,7 @@ func queuedRelativeLabel(_ epochMs: Int64) -> String {
         ) {
             Text(verbatim: "Album Title")
                 .lineLimit(1)
-            StatusChip("Queued", symbol: "clock")
+            StatusChip("Queued to pin", symbol: "clock")
         } below: {
             EmptyView()
         }

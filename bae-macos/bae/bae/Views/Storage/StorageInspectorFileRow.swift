@@ -51,7 +51,7 @@ struct StorageInspectorFileRow: View {
     /// mark reads that alone, by its file.
     private enum Place {
         case stored
-        case queued
+        case queued(StorageTransferKind)
         case sending(fileId: String)
         case pinning(fileId: String)
     }
@@ -59,12 +59,12 @@ struct StorageInspectorFileRow: View {
     private var place: Place {
         if let upload = row.upload {
             switch upload.state {
-            case .waiting: return .queued
+            case .waiting: return .queued(.upload)
             case .uploading: return .sending(fileId: upload.fileId)
             }
         }
         switch row.pin {
-        case .waiting: return .queued
+        case .waiting: return .queued(.pin)
         case .downloading(let fileId): return .pinning(fileId: fileId)
         case .kept, nil: return .stored
         }
@@ -74,7 +74,7 @@ struct StorageInspectorFileRow: View {
     private var mark: some View {
         switch place {
         case .stored: StorageFileMark(state: .stored)
-        case .queued: StorageFileMark(state: .queued)
+        case .queued(let kind): StorageFileMark(state: .queued(kind))
         case .sending(let fileId): StorageSendingFileMark(fileId: fileId)
         case .pinning(let fileId): StoragePinningFileMark(fileId: fileId)
         }
@@ -133,7 +133,7 @@ private struct StoragePinningFileMark: View {
 struct StorageFileMark: View {
     enum State {
         case stored
-        case queued
+        case queued(StorageTransferKind)
         case moving(StorageTransferKind, LatestSource<Double>)
     }
 
@@ -143,7 +143,7 @@ struct StorageFileMark: View {
         switch state {
         case .stored:
             Color.clear.accessibilityHidden(true)
-        case .queued:
+        case .queued(let kind):
             Circle()
                 .inset(by: TransferRingNSView.lineWidth)
                 .stroke(
@@ -154,11 +154,19 @@ struct StorageFileMark: View {
                     )
                 )
                 .accessibilityElement()
-                .accessibilityLabel(Text("Queued"))
+                .accessibilityLabel(queuedLabel(kind))
         case .moving(let kind, let source):
             TransferRing(kind: kind, source: source)
                 .accessibilityElement()
                 .accessibilityLabel(movingLabel(kind))
+        }
+    }
+
+    /// What the file waits to do: upload, or be pinned.
+    private func queuedLabel(_ kind: StorageTransferKind) -> Text {
+        switch kind {
+        case .upload: Text(verbatim: BridgeUploadActivity.queued.phaseText)
+        case .pin: Text("Queued to pin")
         }
     }
 
@@ -177,7 +185,8 @@ struct StorageFileMark: View {
         )
         return HStack(spacing: ThemeSpace.group) {
             StorageFileMark(state: .stored)
-            StorageFileMark(state: .queued)
+            StorageFileMark(state: .queued(.upload))
+            StorageFileMark(state: .queued(.pin))
             StorageFileMark(
                 state: .moving(
                     .upload,

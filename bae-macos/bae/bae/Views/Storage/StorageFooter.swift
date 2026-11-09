@@ -138,8 +138,8 @@ private struct StorageQueueControl<Progress: View>: View {
         switch (queue, paused) {
         case (.uploads, false): Text("Pause uploads")
         case (.uploads, true): Text("Resume uploads")
-        case (.pins, false): Text("Pause pinning")
-        case (.pins, true): Text("Resume pinning")
+        case (.pins, false): Text("Pause downloads")
+        case (.pins, true): Text("Resume downloads")
         case (.outputs, false): Text("Pause exports")
         case (.outputs, true): Text("Resume exports")
         }

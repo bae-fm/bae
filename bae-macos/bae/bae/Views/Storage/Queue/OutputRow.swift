@@ -57,7 +57,7 @@ struct OutputRow: View {
     private var stateChip: some View {
         switch op.state {
         case .queued:
-            StatusChip("Queued", symbol: "clock")
+            queuedChip
         case .active:
             HStack(spacing: ThemeSpace.inline) {
                 activeChip
@@ -70,6 +70,15 @@ struct OutputRow: View {
                 symbol: StatusTone.danger.symbol
             )
             .help(error)
+        }
+    }
+
+    /// What the entry waits to do: export, or save.
+    @ViewBuilder
+    private var queuedChip: some View {
+        switch op.kind {
+        case .export: StatusChip("Queued to export", symbol: "clock")
+        case .save: StatusChip("Queued to save", symbol: "clock")
         }
     }
 
