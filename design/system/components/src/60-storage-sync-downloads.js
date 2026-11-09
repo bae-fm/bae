@@ -93,7 +93,7 @@
     var icon = { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s];
     return h(StatusChip, { tone: 'neutral' }, h(Sym, { name: icon, size: 10 }), { local: 'Local', pinned: 'Pinned', cloud: 'In storage' }[s]);
   }
-  // DownloadRow's failed row in the inspector: the kind's icon, title and detail, how long ago it was queued, the cancel mark; under them the failure box with its Retry.
+  // DownloadRow's failed row in the inspector: the kind's icon, title and detail, how long ago it was queued, the cancel mark; under them the failure box with Details and Retry.
   function MacDownloadRow(props) {
     var makeLocal = props.kind === 'makeLocal';
     return h('div', { className: 'bae-m-dlrow' },
@@ -102,7 +102,7 @@
         h('div', { className: 'bae-m-dlrow-text' }, h('span', { className: 'bae-ellipsis' }, props.title || 'Glass Harbor'), h('span', { className: 'bae-muted bae-num bae-m-dlrow-detail' }, props.detail || '9 files · 356 MB')),
         h('span', { className: 'bae-muted bae-m-dlrow-ago' }, props.ago || '2m ago'),
         h('span', { className: 'bae-muted', title: 'Cancel this download' }, h(Sym, { name: 'xcircle', size: 15 }))),
-      h('div', { className: 'bae-m-dlrow-badge' }, h(MacNotice, { quiet: true, tone: 'danger', title: makeLocal ? 'Couldn’t make local' : 'Download failed', action: 'Retry' })));
+      h('div', { className: 'bae-m-dlrow-badge' }, h(MacNotice, { quiet: true, tone: 'danger', title: makeLocal ? 'Couldn’t make local' : 'Download failed', secondary: 'Details', action: 'Retry' })));
   }
   // Under the list: how many releases, the total, then one rate and Pause per queue with work.
   function MacStorageFooter(props) {
@@ -243,6 +243,6 @@
         h('div', { className: 'bae-a-browse-count' }, props.detail),
         s === 'queued' ? h('div', { className: 'bae-a-browse-count' }, 'Waiting to download') :
         s === 'active' ? h('div', null, h('div', { className: 'bae-a-dlbar-track' }, h('div', { style: { width: (Number(props.progress || 0.4) * 100) + '%' } })), h('div', { className: 'bae-a-fine bae-muted' }, props.bytes || '120 MB of 300 MB')) :
-        h(AndroidNotice, { quiet: true, tone: 'danger', title: props.error || 'Couldn’t reach your storage.', action: 'Retry' })),
+        h(AndroidNotice, { quiet: true, tone: 'danger', title: 'Download failed', secondary: 'Details', action: 'Retry' })),
       h(AndroidIconButton, { icon: 'close', label: 'Cancel', className: 'bae-a-icon-muted' }));
   }

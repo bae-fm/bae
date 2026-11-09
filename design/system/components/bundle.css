@@ -56,8 +56,7 @@
 
 .bae-m-window { position: relative; display: flex; overflow: hidden; border-radius: 16px; background: var(--background); color: var(--text-primary); font: 400 13px var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
 .bae-m-window-plain { flex-direction: column; }
-.bae-m-alert { width: 260px; margin-top: 36px; padding: 20px 16px 16px; border-radius: 20px; background: var(--elevated); box-shadow: 0 10px 30px var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: center; color: var(--text-primary); font: 400 13px var(--font-sans); }
-.bae-m-alert-details { text-align: left; }
+.bae-m-alert { width: 260px; margin-top: 36px; padding: 20px 16px 16px; border-radius: 20px; background: var(--elevated); box-shadow: 0 10px 30px var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-alert-title { font-weight: 700; }
 .bae-m-alert-message { font-size: 11px; line-height: 14px; color: var(--text-secondary); }
 .bae-m-alert-buttons { display: flex; flex-direction: row-reverse; gap: 8px; margin-top: 6px; }
@@ -813,7 +812,7 @@
 .bae-word-bob { animation: bae-word-rise 6s ease-in-out -2s infinite, bae-tilt 7.3s ease-in-out -2s infinite; }
 .bae-logo-glow { position: absolute; left: 50%; top: 65%; width: 260%; aspect-ratio: 1; z-index: -1; transform: translate(-50%, -50%); background: radial-gradient(circle closest-side, rgba(247, 168, 196, 0.32), rgba(201, 138, 221, 0.22) 30%, rgba(155, 108, 246, 0.12) 55%, rgba(155, 108, 246, 0.04) 80%, transparent); }
 .bae-logo-pool { position: absolute; left: 50%; top: 90%; width: 125%; height: 34%; z-index: -1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(ellipse, rgba(247, 168, 196, 0.16), rgba(155, 108, 246, 0.06) 50%, transparent 72%); }
-.bae-word-lift { color: var(--sheep-cream); filter: drop-shadow(1px 1px 0 rgba(255, 255, 255, 0.35)); }
+.bae-word-lift { color: var(--logo-word); filter: drop-shadow(1px 1px 0 rgba(255, 255, 255, 0.35)); }
 @media (prefers-reduced-motion: reduce) { .bae-sheep-bob, .bae-word-bob { animation: none; } }
 
 .bae-errdis-panel { position: relative; margin-top: 2px; padding: 8px 30px 8px 10px; border-radius: 8px; background: color-mix(in srgb, black 28%, transparent); }
