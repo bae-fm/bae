@@ -3615,6 +3615,11 @@ queue changed, and a failed write answers its error. The app shows a failed
 write's error. It shows nothing for a command that changed nothing because
 the queue changed: that is rare, and the screen already shows the queue as it
 now is, so the gesture just ends.
+
+When the read of what's playing from's tracks fails, the rows it hasn't read
+stay placeholders, and under them the queue says it couldn't read the rest,
+with *Details* and *Retry*, which reads them again.
+
 The queue screens read each part with its version: a row dragged to a new
 place stays there until the part's read reaches the version the move
 answered, so it never jumps back while the move is on its way, and a move
