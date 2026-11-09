@@ -2,11 +2,11 @@ import BaeKit
 import SwiftUI
 
 /// One output-queue row: album title, file count, size, the preset name for a
-/// save, a state badge, and a cancel button.
+/// save, a state chip, and a cancel button.
 struct OutputRow: View {
     let op: BridgeOutputOp
     /// The latest percent of the export, which a native label beside the
-    /// badge reads each display frame while the export runs.
+    /// state chip reads each display frame while the export runs.
     let percent: LatestSource<UInt8>
     let onCancel: () -> Void
 
@@ -28,8 +28,10 @@ struct OutputRow: View {
                 .themeText(.detail)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
-        } badge: {
-            stateBadge
+
+            stateChip
+        } below: {
+            EmptyView()
         }
     }
 
@@ -52,13 +54,13 @@ struct OutputRow: View {
     }
 
     @ViewBuilder
-    private var stateBadge: some View {
+    private var stateChip: some View {
         switch op.state {
         case .queued:
             StatusChip("Queued", symbol: "clock")
         case .active:
             HStack(spacing: ThemeSpace.inline) {
-                activeBadge
+                activeChip
                 StreamLabel(stream: .exportPercent(percent))
             }
         case .failed(let error):
@@ -72,7 +74,7 @@ struct OutputRow: View {
     }
 
     @ViewBuilder
-    private var activeBadge: some View {
+    private var activeChip: some View {
         switch op.kind {
         case .export:
             StatusChip(

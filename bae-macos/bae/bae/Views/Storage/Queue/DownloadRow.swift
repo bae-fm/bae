@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// One download-queue row: album title, file count, size, a state badge, and a
+/// One download-queue row: album title, file count, size, a state chip, and a
 /// cancel button; once the download failed, a button that queues every failed
 /// download again. A pin and a release being made local read alike but for
 /// their words and the progress they follow.
@@ -33,14 +33,16 @@ struct DownloadRow: View {
                     }
                 }
                 progressView
+                stateChip
             }
-        } badge: {
-            stateBadge
+        } below: {
+            failure
         }
     }
 
+    /// The queued or running state, under the title line.
     @ViewBuilder
-    private var stateBadge: some View {
+    private var stateChip: some View {
         switch (op.kind, op.state) {
         case (.pin, .queued):
             StatusChip("Queued", symbol: "clock")
@@ -58,9 +60,17 @@ struct DownloadRow: View {
                 tone: .activity,
                 symbol: "arrow.down.circle.fill"
             )
-        case (let kind, .failed(let error)):
+        case (_, .failed):
+            EmptyView()
+        }
+    }
+
+    /// The failed download's notice, under the row.
+    @ViewBuilder
+    private var failure: some View {
+        if case .failed(let error) = op.state {
             ErrorNotice(
-                title: kind == .pin
+                title: op.kind == .pin
                     ? String(localized: "Download failed")
                     : String(localized: "Couldn't make local"),
                 advice: nil,

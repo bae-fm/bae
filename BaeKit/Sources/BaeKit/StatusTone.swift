@@ -165,7 +165,8 @@ struct NoticeAccent: ViewModifier {
 
 extension View {
     /// Pads the content as a notice in its tone, and in the filled look fills
-    /// and rounds it; the quiet look has no fill and a little less padding.
+    /// and rounds it; the quiet look has no fill and pads only above and
+    /// below, the row it sits in insetting it at the sides.
     /// The centred looks have no fill and fill the space they are given: the
     /// view they replace, or 300 points where it has none, which no theme
     /// size gives. On the stage they take that space as it is.
@@ -185,8 +186,7 @@ extension View {
                 )
                 .environment(\.onNoticeFill, tone.hasNoticeFill)
         case .quiet:
-            padding(.horizontal, ThemeSpace.group)
-                .padding(.vertical, ThemeSpace.related + ThemeSpace.line)
+            padding(.vertical, ThemeSpace.related + ThemeSpace.line)
         case .centered:
             padding(ThemeSpace.section)
                 .frame(

@@ -10,20 +10,16 @@ import SwiftUI
 struct StorageInspectorFileRow: View {
     let row: BridgeStorageInspectorFile
 
-    /// The mark's side, which every row keeps so the names line up, and the
-    /// gap between the row's columns.
-    private static let markSize: CGFloat = 16
-    private static let columnGap: CGFloat = 10
-
     var body: some View {
-        HStack(spacing: Self.columnGap) {
+        RowItem {
             mark
-                .frame(width: Self.markSize, height: Self.markSize)
+                .frame(width: ThemeSize.lead, height: ThemeSize.lead)
+        } content: {
             Text(row.file.originalFilename)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .foregroundStyle(nameStyle)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        } trail: {
             Text(row.file.fileSizeText)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()

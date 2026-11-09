@@ -3,8 +3,8 @@ import Foundation
 import SwiftUI
 
 /// The layout shared by the download and export queue rows: the content with
-/// its enqueue time and optional cancel button, then its state chip.
-struct QueueRow<Content: View, Badge: View>: View {
+/// its enqueue time and optional cancel button, then what sits under the row.
+struct QueueRow<Content: View, Below: View>: View {
     /// The cancel button's action and the tooltip naming what it abandons.
     struct CancelAction {
         let help: LocalizedStringKey
@@ -16,22 +16,22 @@ struct QueueRow<Content: View, Badge: View>: View {
     var cancel: CancelAction?
     @ViewBuilder
     let content: () -> Content
+    /// What sits under the row at its edge, such as a failure's notice, whose
+    /// glyph takes the row's leading column.
     @ViewBuilder
-    let badge: () -> Badge
+    let below: () -> Below
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-            HStack(alignment: .top, spacing: ThemeSpace.group) {
+            RowItem {
                 Image(systemName: icon)
                     .themeIcon(.medium)
                     .foregroundStyle(.secondary)
-                    .frame(width: ThemeIcon.medium.size)
-
+            } content: {
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     content()
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
+            } trail: {
                 Text(queuedRelativeLabel(createdAt))
                     .themeText(.fine)
                     .foregroundStyle(.secondary)
@@ -46,9 +46,7 @@ struct QueueRow<Content: View, Badge: View>: View {
                 }
             }
 
-            badge()
-                // Under the content, past the icon column.
-                .padding(.leading, ThemeIcon.medium.size + ThemeSpace.group)
+            below()
         }
         .padding(.horizontal)
         .padding(.vertical, ThemeSpace.related)
@@ -79,8 +77,9 @@ func queuedRelativeLabel(_ epochMs: Int64) -> String {
         ) {
             Text(verbatim: "Album Title")
                 .lineLimit(1)
-        } badge: {
             StatusChip("Queued", symbol: "clock")
+        } below: {
+            EmptyView()
         }
         .frame(width: 640)
         .padding(.vertical)
