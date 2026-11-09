@@ -54,10 +54,10 @@ class ErrorAction(
  * corner that copies the whole diagnostic. [action] sits at the box's right,
  * level with the line. [bare] draws the content without the box, for a
  * disclosure already inside a notice. Mirrors the Apple apps'
- * `ErrorDetailDisclosure`.
+ * `ErrorNotice`.
  */
 @Composable
-fun ErrorDetailDisclosure(
+fun ErrorNotice(
     error: DisplayError,
     modifier: Modifier = Modifier,
     action: ErrorAction? = null,
@@ -65,10 +65,10 @@ fun ErrorDetailDisclosure(
     bare: Boolean = false,
 ) {
     if (bare) {
-        ErrorDetailContent(error, action, modifier)
+        ErrorNoticeContent(error, action, modifier)
     } else {
         Notice(tone = tone, modifier = modifier) {
-            ErrorDetailContent(error, action, Modifier.weight(1f))
+            ErrorNoticeContent(error, action, Modifier.weight(1f))
         }
     }
 }
@@ -81,7 +81,7 @@ private val onTintSecondary: Color
 private const val ON_TINT_SECONDARY_ALPHA = 0.72f
 
 @Composable
-private fun ErrorDetailContent(
+private fun ErrorNoticeContent(
     error: DisplayError,
     action: ErrorAction?,
     modifier: Modifier,
@@ -169,9 +169,9 @@ private const val CAUSES_PANEL_SHADE = 0.28f
 
 @Preview(showBackground = true)
 @Composable
-private fun ErrorDetailDisclosurePreview() {
+private fun ErrorNoticePreview() {
     BaeTheme {
-        ErrorDetailDisclosure(
+        ErrorNotice(
             DisplayError(
                 "Couldn't reach the network.",
                 "MusicBrainz network error: error sending request for url (https://musicbrainz.org/…): " +

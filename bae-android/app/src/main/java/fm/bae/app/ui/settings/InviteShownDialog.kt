@@ -30,7 +30,7 @@ import fm.bae.app.currentLocale
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.rememberCopyText
@@ -170,7 +170,7 @@ private fun InviteCodeDialog(
                     }
                     InviteNote(context.coreString("core.access_key.unused_invite", mapOf("key" to key.accessKeyId)))
                 }
-                error?.let { ErrorDetailDisclosure(it) }
+                error?.let { ErrorNotice(it) }
             }
         },
         confirmButton = {

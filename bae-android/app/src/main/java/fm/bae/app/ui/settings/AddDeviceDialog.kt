@@ -35,7 +35,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.rememberCopyText
@@ -150,7 +150,7 @@ internal fun AddDeviceDialogContent(
                 }
                 error?.let {
                     Spacer(modifier = Modifier.height(ThemeSpace.related))
-                    ErrorDetailDisclosure(it)
+                    ErrorNotice(it)
                 }
             }
         },

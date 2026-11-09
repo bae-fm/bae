@@ -59,7 +59,7 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.LoadFailure
@@ -139,7 +139,7 @@ fun AlbumDetailScreen(
                 )
             } else {
                 loadError?.let {
-                    ErrorDetailDisclosure(
+                    ErrorNotice(
                         error = it,
                         modifier = Modifier.align(Alignment.TopCenter).padding(ThemeSpace.related),
                     )

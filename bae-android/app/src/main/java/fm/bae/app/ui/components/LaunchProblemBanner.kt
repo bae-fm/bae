@@ -28,7 +28,7 @@ fun LaunchProblemBanner(signInSettingsError: String?) {
     ) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
             Text(text = context.coreString("ui.load_error.sign_in_settings.title"), style = ThemeText.heading.style)
-            ErrorDetailDisclosure(
+            ErrorNotice(
                 error = DisplayError(context.coreString("ui.load_error.sign_in_settings.advice"), detail),
                 bare = true,
             )

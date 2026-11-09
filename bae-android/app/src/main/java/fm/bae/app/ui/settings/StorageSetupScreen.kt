@@ -44,7 +44,7 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.WaitingIndicator
@@ -128,7 +128,7 @@ internal fun StorageSetupScreen(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            flow.error?.let { ErrorDetailDisclosure(it) }
+            flow.error?.let { ErrorNotice(it) }
             SetupStepContent(
                 step = flow.step,
                 session = session,

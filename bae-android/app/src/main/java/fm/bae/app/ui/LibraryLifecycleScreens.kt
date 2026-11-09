@@ -31,7 +31,7 @@ import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.LoadFailure
 import fm.bae.app.ui.components.PersonNameField
 import fm.bae.app.ui.components.PrimaryButton
@@ -158,7 +158,7 @@ internal fun ProfileRequiredScreen(
     var saving by remember { mutableStateOf(false) }
     LifecycleMessage(stringResource(R.string.profile_required_title)) {
         PersonNameField(name) { name = it }
-        error?.let { ErrorDetailDisclosure(it) }
+        error?.let { ErrorNotice(it) }
         PrimaryButton(
             onClick = {
                 saving = true

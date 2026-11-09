@@ -17,4 +17,4 @@ Android's notice: a tinted box in its tone, the tone's glyph at the top left. It
 
 Its text takes the size of the screen it sits in. The glyph is 1.19 times the text, centred on the first line. Info, success, warning and danger fill with their own notice colour (`info-notice` …), with `on-notice` text; neutral keeps the neutral tint and the screen's text.
 
-**In the code:** Android: `Notice` (`ui/components/Status.kt`); `ErrorDetailDisclosure` (`ui/components/ErrorDetailDisclosure.kt`), which becomes the Details button and its dialog; and each screen's own failed-view drawing (the library screen's, a composer's page), which becomes the centred layout.
+**In the code:** Android: `Notice` (`ui/components/Status.kt`); `ErrorNotice` (`ui/components/ErrorNotice.kt`), which becomes the Details button and its dialog; and each screen's own failed-view drawing (the library screen's, a composer's page), which becomes the centred layout.

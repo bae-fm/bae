@@ -3,7 +3,7 @@ package fm.bae.app
 /**
  * A failure ready to show a person: the localized line, and for a failure core
  * reported, the opaque diagnostic text behind it — the Rust error chain, never
- * translated — which [fm.bae.app.ui.components.ErrorDetailDisclosure] offers
+ * translated — which [fm.bae.app.ui.components.ErrorNotice] offers
  * beside the line with a copy action. A failure this app words itself carries
  * no detail. Mirrors the Apple apps' `DisplayError`.
  */

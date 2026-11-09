@@ -37,7 +37,7 @@ import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.LoadFailure
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
@@ -252,7 +252,7 @@ fun MembersScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         SettingsTopBar(title = pageTitle(page, read), onBack = goBack)
         model.error?.let { shown ->
-            ErrorDetailDisclosure(
+            ErrorNotice(
                 error = shown,
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
             )

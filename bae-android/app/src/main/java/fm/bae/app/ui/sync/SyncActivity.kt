@@ -51,7 +51,7 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.StatusGlyph
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.WaitingIndicator
@@ -170,7 +170,7 @@ internal fun SyncActivityList(
         }
         val retryNow = ErrorAction(context.coreString("core.activity.retry_now"), onClick = onRetryNow)
         val retryOffered = activity?.retryOffered == true
-        error?.let { shown -> item { ErrorDetailDisclosure(shown, action = retryNow.takeIf { retryOffered }) } }
+        error?.let { shown -> item { ErrorNotice(shown, action = retryNow.takeIf { retryOffered }) } }
         if (retryOffered && error == null) {
             item {
                 OutlinedButton(onClick = onRetryNow) {
@@ -189,12 +189,12 @@ private fun LazyListScope.attentionSection(
     if (!activity.needsAttention) return
     item { SectionHeading(context.coreString("core.activity.attention")) }
     activity.failure?.let { failure ->
-        item { FailureDisclosure(context, failure) }
+        item { SyncFailureNotice(context, failure) }
     }
     items(activity.attention) { record ->
         Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
             Text(text = context.coreString(record.subject), style = ThemeText.strong.style)
-            ErrorDetailDisclosure(
+            ErrorNotice(
                 error =
                     DisplayError(
                         context.coreString(record.reason.key),
@@ -290,12 +290,12 @@ internal class TransferBytesView(
 
 /** A failure sync reported, in the warning tone, with its diagnostic behind it; nothing for a cancellation. */
 @Composable
-internal fun FailureDisclosure(
+internal fun SyncFailureNotice(
     context: Context,
     failure: BridgeException,
 ) {
     val shown = context.displayError(failure) ?: return
-    ErrorDetailDisclosure(error = shown, tone = StatusTone.WARNING)
+    ErrorNotice(error = shown, tone = StatusTone.WARNING)
 }
 
 @Composable

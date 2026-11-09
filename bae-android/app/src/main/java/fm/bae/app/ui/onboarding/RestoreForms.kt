@@ -25,7 +25,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.S3KeyFields
@@ -163,7 +163,7 @@ private fun OnboardingForm(
     ) {
         Text(text = title, style = ThemeText.title.style, textAlign = TextAlign.Center)
         content()
-        error?.let { ErrorDetailDisclosure(it) }
+        error?.let { ErrorNotice(it) }
         TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
     }
 }

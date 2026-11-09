@@ -47,7 +47,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.appearance.colors
 import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.RadioRow
 import fm.bae.app.ui.components.RowCard
@@ -105,7 +105,7 @@ internal fun AppearanceSection() {
                 AccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
             }
         }
-        error?.let { ErrorDetailDisclosure(it) }
+        error?.let { ErrorNotice(it) }
     }
 }
 

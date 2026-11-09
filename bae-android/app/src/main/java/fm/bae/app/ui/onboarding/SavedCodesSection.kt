@@ -23,7 +23,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.storageLocationLabel
@@ -91,7 +91,7 @@ private fun SavedCodesContent(
         is SavedCodesList.Failed -> {
             Column(modifier = column, verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
                 Text(text = stringResource(R.string.onboarding_saved_codes_failed), style = ThemeText.heading.style)
-                ErrorDetailDisclosure(list.error)
+                ErrorNotice(list.error)
             }
         }
 
@@ -109,7 +109,7 @@ private fun SavedCodesContent(
                         text = stringResource(R.string.onboarding_saved_code_delete_failed),
                         style = ThemeText.heading.style,
                     )
-                    ErrorDetailDisclosure(error)
+                    ErrorNotice(error)
                 }
                 RowCard {
                     list.entries.forEach { entry ->

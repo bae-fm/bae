@@ -38,7 +38,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Eyebrow
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
@@ -164,7 +164,7 @@ internal fun LazyListScope.queueContent(
     item(key = "command-failure") { QueueCommandFailure(failures) }
     queue.readFailure?.let { failure ->
         item(key = "read-failure") {
-            ErrorDetailDisclosure(error = failure, modifier = Modifier.fillMaxWidth().padding(ThemeSpace.page))
+            ErrorNotice(error = failure, modifier = Modifier.fillMaxWidth().padding(ThemeSpace.page))
         }
         return
     }

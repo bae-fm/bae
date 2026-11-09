@@ -30,7 +30,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.RadioRow
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.downloads.setDownloadConcurrency
@@ -104,7 +104,7 @@ private fun WifiOnlyRows(
         // Whether downloads wait for Wi-Fi is unknown while its read has failed.
         is LiveValue.Failed -> {
             Text(stringResource(R.string.transfers_wifi_only))
-            ErrorDetailDisclosure(unmeteredOnly.error)
+            ErrorNotice(unmeteredOnly.error)
         }
     }
 }

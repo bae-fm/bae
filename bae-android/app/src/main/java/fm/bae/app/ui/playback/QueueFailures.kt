@@ -22,7 +22,7 @@ import fm.bae.app.coreString
 import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeException
 
@@ -95,7 +95,7 @@ internal fun rememberQueueFailures(): QueueFailures {
 @Composable
 internal fun QueueCommandFailure(failures: QueueFailures) {
     val failure = failures.command ?: return
-    ErrorDetailDisclosure(
+    ErrorNotice(
         error = failure,
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
     )
@@ -110,7 +110,7 @@ internal fun UpcomingFailure(session: OpenLibrary) {
     val upcoming = session.playback.upcoming
     val failure by upcoming.failure.collectAsState()
     val shown = failure?.let { LocalContext.current.displayError(it) } ?: return
-    ErrorDetailDisclosure(
+    ErrorNotice(
         error = shown,
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         action = ErrorAction(stringResource(R.string.retry), onClick = upcoming::retry),

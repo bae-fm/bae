@@ -30,7 +30,7 @@ import fm.bae.app.R
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
@@ -117,7 +117,7 @@ internal fun AlbumOptionsMenu(onDelete: () -> Unit) {
 @Composable
 internal fun AlbumDeletionShown(deletion: AlbumDeletion) {
     deletion.error?.let {
-        ErrorDetailDisclosure(
+        ErrorNotice(
             error = it,
             modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         )

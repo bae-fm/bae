@@ -28,7 +28,7 @@ import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.WaitingIndicator
@@ -180,7 +180,7 @@ private fun RestoreCodeSectionContent(
             }
 
             is RestoreCodeState.Failed -> {
-                ErrorDetailDisclosure(state.error)
+                ErrorNotice(state.error)
             }
         }
     }

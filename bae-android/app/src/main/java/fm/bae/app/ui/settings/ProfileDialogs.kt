@@ -17,7 +17,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.RadioRow
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -111,7 +111,7 @@ private fun RenameProfileDialogContent(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                error?.let { ErrorDetailDisclosure(it) }
+                error?.let { ErrorNotice(it) }
             }
         },
         confirmButton = {

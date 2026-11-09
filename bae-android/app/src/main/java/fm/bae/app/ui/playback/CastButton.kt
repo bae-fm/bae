@@ -46,7 +46,7 @@ import fm.bae.app.data.castingDevice
 import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
@@ -178,14 +178,14 @@ private fun PickerFailures(
     castFailure: DisplayError?,
 ) {
     endedFailure?.let { failure ->
-        ErrorDetailDisclosure(
+        ErrorNotice(
             error = failure,
             tone = StatusTone.WARNING,
             modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         )
     }
     castFailure?.let { failure ->
-        ErrorDetailDisclosure(
+        ErrorNotice(
             error = failure,
             modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         )

@@ -37,7 +37,7 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.downloads.ActiveDownloadProgress
 import fm.bae.app.ui.downloads.WaitingToDownloadText
@@ -120,7 +120,7 @@ private fun PlayableReleaseDownloadControl(
             },
         )
         unpinError?.let { shown ->
-            ErrorDetailDisclosure(shown)
+            ErrorNotice(shown)
         }
     }
 }
@@ -231,7 +231,7 @@ private fun DownloadFailedControl(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    ErrorDetailDisclosure(
+    ErrorNotice(
         DisplayError(error),
         action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
     )

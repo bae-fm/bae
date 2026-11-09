@@ -10,14 +10,14 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 
 @Composable
 internal fun ErrorBanner(
     error: DisplayError,
     onRetry: (() -> Unit)? = null,
 ) {
-    ErrorDetailDisclosure(
+    ErrorNotice(
         error = error,
         modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         action = onRetry?.let { ErrorAction(stringResource(R.string.retry), onClick = it) },

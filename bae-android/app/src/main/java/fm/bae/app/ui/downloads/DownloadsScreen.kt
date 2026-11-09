@@ -40,7 +40,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.LoadFailure
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeCountLabel
@@ -110,7 +110,7 @@ private fun DownloadsBody(
         val pageError = page.error
         when {
             state is LiveValue.Failed -> {
-                ErrorDetailDisclosure(
+                ErrorNotice(
                     error = state.error,
                     modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
                 )

@@ -28,7 +28,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -143,7 +143,7 @@ private fun InviteFormFields(
             },
             onChoose = { fields.lifetime = it },
         )
-        error?.let { ErrorDetailDisclosure(it) }
+        error?.let { ErrorNotice(it) }
     }
 }
 

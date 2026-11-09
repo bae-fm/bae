@@ -45,7 +45,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.RowCard
@@ -301,8 +301,8 @@ internal fun SyncScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                     UndoneSetupNotice(session)
                     runner.signIns.steps?.let { StorageSetupLine(it) }
-                    runner.error?.let { ErrorDetailDisclosure(it) }
-                    locationError?.let { ErrorDetailDisclosure(it) }
+                    runner.error?.let { ErrorNotice(it) }
+                    locationError?.let { ErrorNotice(it) }
                 }
             }
             location?.let { place -> item { StorageSection(place) } }
@@ -344,7 +344,7 @@ private fun UndoneSetupNotice(session: OpenLibrary) {
     var dismissing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<DisplayError?>(null) }
     undone?.let { setup ->
-        ErrorDetailDisclosure(
+        ErrorNotice(
             setup.error,
             action =
                 ErrorAction(stringResource(R.string.dismiss), enabled = !dismissing) {
@@ -364,7 +364,7 @@ private fun UndoneSetupNotice(session: OpenLibrary) {
                 },
         )
     }
-    error?.let { ErrorDetailDisclosure(it) }
+    error?.let { ErrorNotice(it) }
 }
 
 /** The dialogs a fix or a pending action opens. */
@@ -505,7 +505,7 @@ private fun PendingRow(
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
         Text(text = context.coreString(record.subject), style = ThemeText.strong.style)
-        ErrorDetailDisclosure(
+        ErrorNotice(
             error =
                 DisplayError(
                     context.coreString(record.reason.key),

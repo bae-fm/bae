@@ -32,7 +32,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.rememberScreenScope
@@ -125,7 +125,7 @@ internal fun ReadFailure(
     error: DisplayError,
     onRetry: () -> Unit,
 ) {
-    ErrorDetailDisclosure(error, action = ErrorAction(stringResource(R.string.retry), onClick = onRetry))
+    ErrorNotice(error, action = ErrorAction(stringResource(R.string.retry), onClick = onRetry))
 }
 
 @Composable
@@ -187,7 +187,7 @@ private fun RenameLibraryDialogContent(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                error?.let { ErrorDetailDisclosure(it) }
+                error?.let { ErrorNotice(it) }
             }
         },
         confirmButton = {

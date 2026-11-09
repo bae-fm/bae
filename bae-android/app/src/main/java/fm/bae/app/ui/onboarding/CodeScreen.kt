@@ -26,7 +26,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.PrimaryButton
 
 private const val TAG = "bae.CodeScreen"
@@ -158,7 +158,7 @@ private fun CodeScreenContent(
         }
         if (error != null) {
             Spacer(modifier = Modifier.height(ThemeSpace.related))
-            ErrorDetailDisclosure(error)
+            ErrorNotice(error)
         }
     }
     if (showCodeDialog) {

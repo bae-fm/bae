@@ -37,7 +37,7 @@ import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
@@ -98,7 +98,7 @@ internal fun FolderChoiceBody(
             ErrorAction(stringResource(R.string.retry), enabled = !browser.busy) { scope.launch { failure.retry() } }
         val error = failure.error
         if (error != null) {
-            ErrorDetailDisclosure(error, action = retry)
+            ErrorNotice(error, action = retry)
         } else {
             TextButton(onClick = retry.onClick, enabled = retry.enabled) { Text(retry.label) }
         }
