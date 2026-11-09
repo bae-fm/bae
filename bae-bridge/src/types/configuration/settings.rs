@@ -485,7 +485,9 @@ impl DatabaseFault for bae_library::LibraryError {
 /// no line to show.
 ///
 /// A cancellation is the user's own doing and says nothing back to them, so it
-/// has no line — and `None` is how that is said. Left to each app, "no line"
+/// has no line. Neither does a queue gesture the queue outran: the screen
+/// already shows the queue as it is, so there is nothing to tell. `None` is how
+/// that is said. Left to each app, "no line"
 /// became `""` on Swift and Kotlin (which then opened a blank error alert,
 /// because nothing filters an empty string) and "an internal error occurred" on
 /// Windows, which is neither internal nor an error. Whether an error is worth
@@ -494,6 +496,7 @@ impl DatabaseFault for bae_library::LibraryError {
 pub fn bridge_error_line_key(error: &BridgeError) -> Option<String> {
     match error {
         BridgeError::Cancelled => None,
+        BridgeError::Diagnostic { category: BridgeErrorCategory::QueueChanged, .. } => None,
         BridgeError::NotFound { entity, .. } => Some(bridge_entity_not_found_key(*entity)),
         BridgeError::Diagnostic { category, .. } => {
             Some(bridge_error_category_key(category.clone()))

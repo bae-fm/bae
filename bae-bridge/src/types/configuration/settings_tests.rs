@@ -193,3 +193,15 @@ async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
     );
     server.await.unwrap();
 }
+
+#[test]
+fn a_queue_change_has_no_line() {
+    let queue_changed =
+        BridgeError::diagnostic(BridgeErrorCategory::QueueChanged, "the queue moved on");
+    assert_eq!(bridge_error_line_key(&queue_changed), None);
+    let export = BridgeError::diagnostic(BridgeErrorCategory::Export, "disk full");
+    assert_eq!(
+        bridge_error_line_key(&export),
+        Some(bridge_error_category_key(BridgeErrorCategory::Export))
+    );
+}
