@@ -29,6 +29,8 @@ fn opening_a_library_with_a_migration_to_run_reports_migrating_it() {
         false,
         bae_app::PlaybackOutput::Device(Box::new(bae_playback::audio_output::FailingAudioDevice)),
         bae_diagnostics::Diagnostics::noop(),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::SequentialIds::new()),
         installation.builder(),
         {
             let reported = reported.clone();

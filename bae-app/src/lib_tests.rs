@@ -90,6 +90,8 @@ fn a_bootstrap_that_fails_after_the_library_starts_closes_it() {
         false,
         super::PlaybackOutput::Device(Box::new(bae_playback::audio_output::FailingAudioDevice)),
         bae_diagnostics::Diagnostics::noop(),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::SequentialIds::new()),
         super::LibraryOpening::Open(handle.clone()),
         |_services, _runtime| -> Result<(), BootstrapError> {
             unreachable!("the bootstrap fails before it composes an owner")

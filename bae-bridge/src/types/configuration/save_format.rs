@@ -55,16 +55,6 @@ pub fn bridge_save_format_name(format: BridgeSaveFormat) -> String {
     format.into_core().name().to_string()
 }
 
-/// The preset a person adds to their list, as core makes it: FLAC, the
-/// default filename pattern and pregap placement, both levels, the cover
-/// embedded, under a new id.
-#[uniffi::export]
-pub fn bridge_new_save_preset() -> BridgeSavePreset {
-    let ids =
-        bae_util::time_ordered_ids::TimeOrderedIds::new(std::sync::Arc::new(coven::SystemClock));
-    BridgeSavePreset::from_core(&bae_preferences::SavePreset::new_flac(&ids))
-}
-
 /// The extension of the files `codec` writes, without its dot.
 #[uniffi::export]
 pub fn bridge_save_codec_extension(codec: &BridgeSaveCodec) -> String {

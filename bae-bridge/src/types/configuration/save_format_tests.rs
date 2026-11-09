@@ -35,21 +35,10 @@ fn each_format_crosses_with_cores_default_and_bitrates() {
     assert_eq!(bridge_save_format_bitrates_kbps(BridgeSaveFormat::Flac), None);
 }
 
-/// A new preset, a codec's extension and whether it can write one file with
-/// a CUE sheet, and a format's name all cross as core gives them.
+/// A codec's extension and whether it can write one file with a CUE sheet
+/// cross as core gives them.
 #[test]
-fn a_new_preset_and_each_codecs_facts_cross_as_core_gives_them() {
-    let preset = bridge_new_save_preset();
-    assert_eq!(preset.name, bridge_save_format_name(BridgeSaveFormat::Flac));
-    assert_eq!(preset.codec, bridge_save_format_default_codec(BridgeSaveFormat::Flac));
-    assert_eq!(
-        preset.filename_tokens,
-        vec![BridgeSaveFilenameToken::TrackNumber, BridgeSaveFilenameToken::Title]
-    );
-    assert_eq!(preset.pregap_placement, BridgeSavePregapPlacement::AppendToPreviousExceptHtoa);
-    assert!(preset.applies_to_track && preset.applies_to_release && preset.embed_cover);
-    assert_ne!(preset.id, bridge_new_save_preset().id);
-
+fn each_codecs_facts_cross_as_core_gives_them() {
     for format in bridge_save_formats() {
         let codec = bridge_save_format_default_codec(format);
         let core = codec.clone().into_core();

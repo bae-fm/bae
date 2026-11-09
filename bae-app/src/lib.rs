@@ -18,8 +18,8 @@ pub mod test_services;
 pub use app_services::*;
 pub use assembly::{start_library_services, PlaybackOutput, ServicesStartError};
 use bae_diagnostics::{AnomalyKind, Diagnostics, TelemetryEvent};
+use coven::ClockRef;
 use coven::IdSourceRef;
-use coven::{ClockRef, SystemClock};
 
 struct BootstrapTiming {
     started: Instant,
@@ -217,6 +217,8 @@ pub fn bootstrap<T, F>(
     restore_playback: bool,
     playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
+    clock: ClockRef,
+    ids: IdSourceRef,
 
     builder: coven::CovenBuilder,
     on_open_progress: impl Fn(coven::Progress<coven::OpenStep>) + Send + 'static,
@@ -235,6 +237,8 @@ where
         restore_playback,
         playback_output,
         diagnostics,
+        clock,
+        ids,
         LibraryOpening::Registered { builder, store, on_progress: Box::new(on_open_progress) },
         compose,
     )
@@ -249,6 +253,8 @@ pub fn bootstrap_prepared<T, F>(
     restore_playback: bool,
     playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
+    clock: ClockRef,
+    ids: IdSourceRef,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -264,6 +270,8 @@ where
         restore_playback,
         playback_output,
         diagnostics,
+        clock,
+        ids,
         LibraryOpening::Open(handle),
         compose,
     )
@@ -283,6 +291,8 @@ pub fn bootstrap_on_fixture<T, F>(
     restore_playback: bool,
     playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
+    clock: ClockRef,
+    ids: IdSourceRef,
 
     builder: coven::CovenBuilder,
     on_open_progress: impl Fn(coven::Progress<coven::OpenStep>) + Send + 'static,
@@ -301,6 +311,8 @@ where
         restore_playback,
         playback_output,
         diagnostics,
+        clock,
+        ids,
         LibraryOpening::Registered { builder, store, on_progress: Box::new(on_open_progress) },
         compose,
     )
@@ -329,14 +341,11 @@ enum LibraryOpening {
 async fn open_store(
     opening: LibraryOpening,
     clock: ClockRef,
-    ids: IdSourceRef,
     diagnostics: &Diagnostics,
 ) -> Result<bae_store::Store, bae_store::DbError> {
     let handle = match opening {
         LibraryOpening::Registered { builder, store, on_progress } => {
             bae_store::configure_store(builder, bae_library::SCHEMA)
-                .clock(clock.clone())
-                .id_source(ids)
                 .open(store, on_progress)
                 .await
                 .map_err(|error| coven::task::reported(diagnostics, error))?
@@ -374,6 +383,8 @@ fn bootstrap_opening<T, F>(
     restore_playback: bool,
     playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
+    clock: ClockRef,
+    ids: IdSourceRef,
 
     builder: LibraryOpening,
     compose: F,
@@ -399,6 +410,8 @@ where
                 restore_playback,
                 playback_output,
                 diagnostics,
+                clock,
+                ids,
                 builder,
                 compose,
             )
@@ -424,6 +437,8 @@ fn bootstrap_inner<T, F>(
     restore_playback: bool,
     playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
+    clock: ClockRef,
+    ids: IdSourceRef,
 
     builder: LibraryOpening,
     compose: F,
@@ -432,9 +447,6 @@ where
     F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError>,
 {
     let timing = BootstrapTiming::start(&library_id);
-
-    let clock: ClockRef = Arc::new(SystemClock);
-    let ids: IdSourceRef = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
 
     let install_id = app_dir
         .install_id(ids.as_ref())
@@ -473,7 +485,7 @@ where
     // built from it here, once, and handed to what holds it.
     let store = timing
         .stage(&library_id, "open the library's store", || {
-            runtime.block_on(open_store(builder, Arc::clone(&clock), ids.clone(), &diagnostics))
+            runtime.block_on(open_store(builder, Arc::clone(&clock), &diagnostics))
         })
         .map_err(classify_open_error)?;
     let preferences = bae_preferences::PreferencesRow::new(store.clone());

@@ -108,6 +108,8 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
                     bae_playback::audio_output::FailingAudioDevice,
                 )),
                 bae_diagnostics::Diagnostics::noop(),
+                std::sync::Arc::new(coven::SystemClock),
+                std::sync::Arc::new(coven::SequentialIds::new()),
                 builder,
                 |_| (),
                 TestApp::start,

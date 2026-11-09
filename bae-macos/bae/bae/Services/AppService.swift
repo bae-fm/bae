@@ -111,7 +111,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         releaseEditor = ReleaseEditor(handle: appHandle, host: host)
         artistEditor = ArtistEditor(handle: appHandle)
         self.importer = importer
-        outputs = Outputs(handle: appHandle)
+        outputs = Outputs(handle: appHandle, host: host)
         discogs = Discogs(handle: appHandle)
         automation = Automation(handle: appHandle)
         subsonic = SubsonicServer(handle: appHandle)

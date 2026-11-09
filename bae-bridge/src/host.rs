@@ -15,8 +15,9 @@ pub struct BridgeHost {
     app_dir: bae_app_dir::AppDir,
     /// This device's libraries as coven keeps them, under `app_dir`.
     coven: coven::Coven,
-    /// Where the ids of what this device's libraries make come from: each
-    /// library this host builds is built over it.
+    /// The wall clock every library this host builds or opens reads, and the
+    /// ids that clock times: one pair for the host and each of its libraries.
+    clock: coven::ClockRef,
     ids: coven::IdSourceRef,
     runtime: Option<tokio::runtime::Runtime>,
     /// Where the host's own calls run, on `runtime`.
@@ -51,6 +52,8 @@ impl BridgeHost {
             restore,
             bae_app::PlaybackOutput::System(self.audio_focus()),
             self.diagnostics.clone(),
+            self.clock.clone(),
+            self.ids.clone(),
             start_handle(self.clone(), self.diagnostics.clone()),
         ))
     }
@@ -72,6 +75,8 @@ impl BridgeHost {
             restore_playback,
             bae_app::PlaybackOutput::System(self.audio_focus()),
             self.diagnostics.clone(),
+            self.clock.clone(),
+            self.ids.clone(),
             self.builder(),
             opening.report(),
             start_handle(self.clone(), self.diagnostics.clone()),
@@ -97,6 +102,8 @@ impl BridgeHost {
             restore_playback,
             bae_app::PlaybackOutput::System(self.audio_focus()),
             self.diagnostics.clone(),
+            self.clock.clone(),
+            self.ids.clone(),
             self.builder(),
             opening.report(),
             start_handle(self.clone(), self.diagnostics.clone()),
@@ -248,6 +255,7 @@ impl BridgeHost {
         let builder = self
             .coven
             .builder()
+            .clock(self.clock.clone())
             .id_source(self.ids.clone())
             .oauth_clients(self.oauth_clients.lock().expect(HOST_LOCK).clone());
         #[cfg(desktop)]
@@ -267,6 +275,7 @@ impl BridgeHost {
         diagnostics: Diagnostics,
         app_dir: Arc<BridgeAppDir>,
         coven: coven::Coven,
+        clock: coven::ClockRef,
         ids: coven::IdSourceRef,
         audio_focus: bae_playback::AudioFocus,
     ) -> Result<Arc<Self>, BridgeError> {
@@ -285,6 +294,7 @@ impl BridgeHost {
             operations,
             app_dir: app_dir.core().clone(),
             coven,
+            clock,
             ids,
             runtime: Some(runtime),
             oauth_clients: Mutex::new(coven::OAuthClients::new(None, None)),
@@ -312,7 +322,8 @@ impl BridgeHost {
             app_dir.core().coven_app_dir(),
             diagnostics.bug_sink(),
         );
-        Self::start(diagnostics, app_dir, coven, system_ids(), bae_playback::AudioFocus::Unshared)
+        let (clock, ids) = system_sources();
+        Self::start(diagnostics, app_dir, coven, clock, ids, bae_playback::AudioFocus::Unshared)
     }
 }
 
@@ -327,7 +338,8 @@ impl BridgeHost {
     ) -> Result<Arc<Self>, BridgeError> {
         let diagnostics = diagnostics.core().clone();
         let coven = installation(&diagnostics, app_dir.core())?;
-        Self::start(diagnostics, app_dir, coven, system_ids(), bae_playback::AudioFocus::Unshared)
+        let (clock, ids) = system_sources();
+        Self::start(diagnostics, app_dir, coven, clock, ids, bae_playback::AudioFocus::Unshared)
     }
 }
 
@@ -345,13 +357,27 @@ impl BridgeHost {
         let diagnostics = diagnostics.core().clone();
         let coven = installation(&diagnostics, app_dir.core())?;
         let audio_focus = crate::PlatformAudioFocus::new(audio_focus, diagnostics.clone());
+        let (clock, ids) = system_sources();
         Self::start(
             diagnostics,
             app_dir,
             coven,
-            system_ids(),
+            clock,
+            ids,
             bae_playback::AudioFocus::Shared(Arc::new(audio_focus)),
         )
+    }
+}
+
+#[uniffi::export]
+impl BridgeHost {
+    /// The preset a person adds to their list, as core makes it: FLAC, the
+    /// default filename pattern and pregap placement, both levels, the cover
+    /// embedded, under an id from the host's id source.
+    pub fn new_save_preset(&self) -> crate::types::BridgeSavePreset {
+        crate::types::BridgeSavePreset::from_core(&bae_preferences::SavePreset::new_flac(
+            self.ids.as_ref(),
+        ))
     }
 }
 
@@ -584,9 +610,12 @@ pub fn init_app_on_fixture(
     )
 }
 
-/// The ids this process's host makes: UUIDv7s timed by the system clock.
-fn system_ids() -> coven::IdSourceRef {
-    Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(Arc::new(coven::SystemClock)))
+/// The system wall clock a host is built over, and the UUIDv7 ids that clock
+/// times.
+fn system_sources() -> (coven::ClockRef, coven::IdSourceRef) {
+    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
+    let ids = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
+    (clock, ids)
 }
 
 /// This device's libraries as coven keeps them under `app_dir`, their

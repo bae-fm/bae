@@ -25,6 +25,8 @@ final class Outputs: Sendable, Observable {
     /// Cancel a release's export — drops a queued/failed entry or aborts the
     /// in-flight one (a partial copy never lands its destination file).
     let cancelOutput: @Sendable (_ releaseId: String) async throws -> Void
+    /// A preset for a new format as core makes it, under an id of its own.
+    let newSavePreset: @Sendable () -> BridgeSavePreset
     /// Replace configured export presets.
     let setSavePresets:
         @Sendable (_ presets: [BridgeSavePreset]) async throws -> Void
@@ -34,6 +36,7 @@ final class Outputs: Sendable, Observable {
         @Sendable (_ presetId: String) async throws -> Void
 
     init(
+        newSavePreset: @escaping @Sendable () -> BridgeSavePreset,
         enqueueExport:
             @escaping @Sendable (String, URL)
             async throws -> Void =
@@ -61,6 +64,7 @@ final class Outputs: Sendable, Observable {
             @escaping @Sendable (String) async throws -> Void = { _ in
             }
     ) {
+        self.newSavePreset = newSavePreset
         self.enqueueExport = enqueueExport
         self.enqueueReleaseSave = enqueueReleaseSave
         self.setOutputsPaused = setOutputsPaused
@@ -70,8 +74,9 @@ final class Outputs: Sendable, Observable {
         self.setDefaultReleaseSavePreset = setDefaultReleaseSavePreset
     }
 
-    convenience init(handle: any AppHandleProtocol) {
+    convenience init(handle: any AppHandleProtocol, host: BridgeHost) {
         self.init(
+            newSavePreset: { host.newSavePreset() },
             enqueueExport: {
                 try await handle.enqueueExport(
                     releaseId: $0,
@@ -100,7 +105,7 @@ final class Outputs: Sendable, Observable {
     #if DEBUG
         // periphery:ignore
         static func stub() -> Outputs {
-            Outputs()
+            Outputs(newSavePreset: { PreviewData.savePresets[0] })
         }
     #endif
 }
