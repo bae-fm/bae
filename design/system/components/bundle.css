@@ -634,16 +634,29 @@
 /* Sync activity */
 .bae-m-popover { position: absolute; z-index: 9; background: var(--elevated); border-radius: 10px; box-shadow: 0 10px 30px var(--shadow), 0 0 0 1px var(--hairline); padding: 4px 14px 14px; max-height: 480px; overflow: hidden; }
 .bae-m-popover-arrow { position: absolute; top: -7px; right: 40px; width: 14px; height: 14px; background: var(--elevated); transform: rotate(45deg); }
-.bae-m-actstack { display: flex; flex-direction: column; gap: 8px; }
-.bae-m-actproblems { display: flex; flex-direction: column; gap: 8px; }
-.bae-m-actproblems > .bae-m-actpad { padding: 0; }
-.bae-m-actproblems > .bae-m-actpad > .bae-m-btn { align-self: flex-start; }
+/* In the Activity panel a problem is a quiet row of its box: no fill, the screen's text, the glyph in its tone. */
+.bae-m-actlist { --text-primary-plain: var(--text-primary); --text-secondary-plain: var(--text-secondary); --accent-plain: var(--accent); }
+.bae-m-actlist .bae-m-box .bae-notice { background: none; border-radius: 0; padding: 10px 12px; color: var(--text-primary); --text-primary: var(--text-primary-plain); --text-secondary: var(--text-secondary-plain); --accent: var(--accent-plain); }
+.bae-m-actlist .bae-m-box .bae-notice .bae-notice-icon .bae-status-glyph { color: var(--bae-tone); }
+.bae-m-actlist .bae-m-box .bae-notice .bae-notice-icon .bae-status-glyph.bae-tone-danger { color: color-mix(in srgb, var(--danger) 65%, var(--text-secondary)); }
+.bae-m-actlist .bae-m-box .bae-notice .bae-errdis-panel { background: color-mix(in srgb, black 28%, transparent); }
+[data-theme="light"] .bae-m-actlist .bae-m-box .bae-notice .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
+.bae-m-actlist .bae-m-box .bae-notice .bae-m-btn-secondary { background: color-mix(in srgb, var(--text-primary) 10%, transparent); }
+.bae-m-actafter { padding-top: 0; padding-left: 38px; align-items: flex-start; }
 .bae-m-actlist { display: flex; flex-direction: column; }
 .bae-m-actrow { display: flex; align-items: flex-start; gap: 8px; font: 400 13px var(--font-sans); }
 .bae-m-actrow-sub { font: 400 11.5px var(--font-sans); color: var(--text-secondary); margin-top: 2px; }
 .bae-m-actpad { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; font: 400 13px var(--font-sans); }
 .bae-a-act { display: flex; flex-direction: column; gap: 8px; padding: 0 16px 16px; font: 400 14px/20px var(--font-android); }
 .bae-a-act-title { font: 600 16px var(--font-android); }
+/* In the Activity sheet a problem is a quiet row, as in the Mac panel. */
+.bae-a-actproblems { --text-primary-plain: var(--text-primary); --text-secondary-plain: var(--text-secondary); --accent-plain: var(--accent); display: flex; flex-direction: column; }
+.bae-a-actproblems .bae-notice { background: none; border-radius: 0; padding: 10px 0; color: var(--text-primary); --text-primary: var(--text-primary-plain); --text-secondary: var(--text-secondary-plain); --accent: var(--accent-plain); }
+.bae-a-actproblems .bae-notice .bae-notice-icon .bae-status-glyph { color: var(--bae-tone); }
+.bae-a-actproblems .bae-notice .bae-notice-icon .bae-status-glyph.bae-tone-danger { color: color-mix(in srgb, var(--danger) 65%, var(--text-secondary)); }
+.bae-a-actproblems .bae-notice .bae-errdis-panel { background: color-mix(in srgb, black 28%, transparent); }
+[data-theme="light"] .bae-a-actproblems .bae-notice .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
+.bae-a-actafter { padding: 0 0 8px 24px; }
 .bae-a-act-block { display: flex; flex-direction: column; gap: 4px; }
 .bae-a-act-sub { font: 400 12px/16px var(--font-android); color: var(--text-secondary); }
 .bae-a-act-tap { border-radius: 4px; }
