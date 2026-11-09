@@ -241,8 +241,6 @@
     <string name="appearance_forest">Wald</string>
     <string name="appearance_sand">Sand</string>
     <string name="details">Details</string>
-    <string name="show_details">Details anzeigen</string>
-    <string name="hide_details">Details ausblenden</string>
     <string name="copy_details">Details kopieren</string>
     <string name="reset_device">Dieses Gerät zurücksetzen</string>
     <string name="reset_device_confirm_title">Dieses Gerät zurücksetzen?</string>

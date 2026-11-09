@@ -265,8 +265,6 @@
     <string name="appearance_forest">غابة</string>
     <string name="appearance_sand">رملي</string>
     <string name="details">التفاصيل</string>
-    <string name="show_details">إظهار التفاصيل</string>
-    <string name="hide_details">إخفاء التفاصيل</string>
     <string name="copy_details">نسخ التفاصيل</string>
     <string name="reset_device">إعادة تعيين هذا الجهاز</string>
     <string name="reset_device_confirm_title">هل تريد إعادة تعيين هذا الجهاز؟</string>

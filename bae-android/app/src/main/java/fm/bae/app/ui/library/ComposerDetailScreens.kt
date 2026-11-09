@@ -39,8 +39,10 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.ErrorAction
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.ErrorText
-import fm.bae.app.ui.components.LoadFailure
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.playback.NowPlayingBar
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeComposerDetail
@@ -135,7 +137,12 @@ private fun ComposerDetailContent(
     }
     Column(modifier = Modifier.fillMaxSize()) {
         rows.error?.let { failure ->
-            LoadFailure(failure.error, onRetry = failure.onRetry)
+            ErrorNotice(
+                error = failure.error,
+                modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+                action = ErrorAction(stringResource(R.string.retry), onClick = failure.onRetry),
+                look = NoticeLook.QUIET,
+            )
         }
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             item {

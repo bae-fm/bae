@@ -21,11 +21,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 import fm.bae.app.data.WindowedBrowserPageStore
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.LoadFailure
+import fm.bae.app.ui.components.ErrorAction
+import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.settings.syncLineText
 import kotlinx.coroutines.launch
@@ -76,7 +80,11 @@ internal fun LibraryPageContent(
         when {
             pageError != null && page.rows.isEmpty() -> {
                 ListPlaceholder {
-                    LoadFailure(pageError.error, onRetry = pageError.onRetry)
+                    ErrorNotice(
+                        error = pageError.error,
+                        look = NoticeLook.CENTERED,
+                        action = ErrorAction(stringResource(R.string.retry), onClick = pageError.onRetry),
+                    )
                 }
             }
 

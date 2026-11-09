@@ -59,10 +59,11 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
-import fm.bae.app.ui.components.LoadFailure
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.library.LibraryDetailTopBar
 import fm.bae.app.ui.playback.NowPlayingBar
@@ -197,7 +198,11 @@ private fun BoxScope.AlbumDetailPlaceholderBox(
 ) {
     when (placeholder) {
         is AlbumDetailPlaceholder.Failed -> {
-            LoadFailure(placeholder.error, onRetry = onRetry, modifier = Modifier.align(Alignment.Center))
+            ErrorNotice(
+                error = placeholder.error,
+                look = NoticeLook.CENTERED,
+                action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
+            )
         }
 
         AlbumDetailPlaceholder.NotInLibrary -> {

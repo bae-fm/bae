@@ -31,11 +31,13 @@ import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.LoadFailure
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PersonNameField
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.ScreenFailureNotice
+import fm.bae.app.ui.components.TitledErrorNotice
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeErrorCategory
@@ -192,7 +194,13 @@ internal fun RemovalIncompleteScreen(
 ) {
     val context = LocalContext.current
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        LoadFailure(DisplayError(context.coreString("ui.load_error.removal.title"), error?.detail), onRetry = onRetry)
+        TitledErrorNotice(
+            title = context.coreString("ui.load_error.removal.title"),
+            advice = null,
+            error = error,
+            look = NoticeLook.CENTERED,
+            action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
+        )
     }
 }
 

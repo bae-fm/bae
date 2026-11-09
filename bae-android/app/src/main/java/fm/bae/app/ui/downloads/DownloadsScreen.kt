@@ -40,8 +40,9 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.LoadFailure
+import fm.bae.app.ui.components.NoticeLook
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDownloadCounts
@@ -117,7 +118,11 @@ private fun DownloadsBody(
             }
 
             pageError != null && page.rows.isEmpty() -> {
-                LoadFailure(pageError.error, onRetry = pageError.onRetry, modifier = Modifier.align(Alignment.Center))
+                ErrorNotice(
+                    error = pageError.error,
+                    look = NoticeLook.CENTERED,
+                    action = ErrorAction(stringResource(R.string.retry), onClick = pageError.onRetry),
+                )
             }
 
             // The first window is a local read; nothing shows until it lands.

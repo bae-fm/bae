@@ -247,8 +247,6 @@
     <string name="appearance_forest">Šuma</string>
     <string name="appearance_sand">Pijesak</string>
     <string name="details">Pojedinosti</string>
-    <string name="show_details">Prikaži pojedinosti</string>
-    <string name="hide_details">Sakrij pojedinosti</string>
     <string name="copy_details">Kopiraj pojedinosti</string>
     <string name="reset_device">Ponovno postavi ovaj uređaj</string>
     <string name="reset_device_confirm_title">Ponovno postaviti ovaj uređaj?</string>

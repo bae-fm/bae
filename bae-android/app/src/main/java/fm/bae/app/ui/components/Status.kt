@@ -81,16 +81,25 @@ private val StatusTone.iconColor: Color
             StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> color
         }
 
-/** The tone's glyph in the tone's glyph colour; nothing for a tone without one. */
+/**
+ * The tone's glyph in the tone's glyph colour, or the tertiary text colour when [muted]; nothing for
+ * a tone without one.
+ */
 @Composable
 fun StatusGlyph(
     tone: StatusTone,
     modifier: Modifier = Modifier,
     size: Dp = ThemeIcon.medium,
     outline: Boolean = false,
+    muted: Boolean = false,
 ) {
     tone.icon(outline)?.let { icon ->
-        Icon(icon, contentDescription = null, tint = tone.iconColor, modifier = modifier.size(size))
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (muted) BaeTheme.colors.textTertiary else tone.iconColor,
+            modifier = modifier.size(size),
+        )
     }
 }
 
@@ -113,8 +122,11 @@ fun StatusChip(
     )
 }
 
-/** How a notice sits on its screen: on its tone's fill, or with no fill and an outline glyph. */
-enum class NoticeLook { FILLED, QUIET }
+/**
+ * How a notice sits on its screen: on its tone's fill; with no fill and an outline glyph; or, for a
+ * view that failed whole, centred in the space it's given (drawn by [ErrorNotice], not by [Notice]).
+ */
+enum class NoticeLook { FILLED, QUIET, CENTERED }
 
 /**
  * A notice in its tone: the tone's glyph at the top left, centred on the first
@@ -128,7 +140,7 @@ fun Notice(
     look: NoticeLook = NoticeLook.FILLED,
     content: @Composable RowScope.() -> Unit,
 ) {
-    val quiet = look == NoticeLook.QUIET
+    val quiet = look != NoticeLook.FILLED
     Row(
         modifier =
             modifier

@@ -63,6 +63,25 @@ class LibraryQueryStoresTest {
             assertEquals("typing moves one search, never opens another", 1, handle.searchSubscriptions.size)
         }
 
+    @Test
+    fun retryOpensTheStandingQueryAgain() =
+        runTest(main) {
+            val handle =
+                FakeAppHandle(
+                    searchResults = { BridgeFixtures.searchResults() },
+                    initialSearchError = { queryFailure() },
+                )
+            val store = SearchQueryStore(Library(handle), backgroundScope)
+            store.activate("query-a")
+            passDebounce()
+            assertTrue(store.state.value.error != null)
+
+            store.retry()
+            passDebounce()
+
+            assertEquals("the query opens on a new search", 2, handle.searchSubscriptions.size)
+        }
+
     /** Moves the virtual clock to the end of the debounce and runs what it releases. */
     private fun TestScope.passDebounce() {
         advanceTimeBy(SEARCH_DEBOUNCE_MS)

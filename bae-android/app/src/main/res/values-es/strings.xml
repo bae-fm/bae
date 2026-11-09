@@ -246,8 +246,6 @@
     <string name="appearance_forest">Bosque</string>
     <string name="appearance_sand">Arena</string>
     <string name="details">Detalles</string>
-    <string name="show_details">Mostrar detalles</string>
-    <string name="hide_details">Ocultar detalles</string>
     <string name="copy_details">Copiar detalles</string>
     <string name="reset_device">Restablecer este dispositivo</string>
     <string name="reset_device_confirm_title">¿Restablecer este dispositivo?</string>

@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,6 +21,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,7 +33,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
@@ -82,6 +87,7 @@ fun TitledErrorNotice(
     modifier: Modifier = Modifier,
     action: ErrorAction? = null,
     tone: StatusTone = StatusTone.DANGER,
+    look: NoticeLook = NoticeLook.FILLED,
 ) {
     ErrorNoticeContent(
         title,
@@ -90,7 +96,7 @@ fun TitledErrorNotice(
         modifier,
         action,
         tone,
-        NoticeLook.FILLED,
+        look,
         null,
     )
 }
@@ -114,6 +120,73 @@ private fun ErrorNoticeContent(
     onDismiss: (() -> Unit)?,
 ) {
     var detailsShown by rememberSaveable(details) { mutableStateOf(false) }
+    if (look == NoticeLook.CENTERED) {
+        CenteredNotice(title, tone, modifier, details != null, { detailsShown = true }, action)
+    } else {
+        FramedNotice(title, advice, details != null, { detailsShown = true }, modifier, action, tone, look, onDismiss)
+    }
+    if (detailsShown && details != null) {
+        ErrorDetailsDialog(details, onDismiss = { detailsShown = false })
+    }
+}
+
+/**
+ * A view that failed whole: in the middle of the space it's given, the title, then Details and
+ * the action in one row.
+ */
+@Composable
+private fun CenteredNotice(
+    title: String,
+    tone: StatusTone,
+    modifier: Modifier,
+    hasDetails: Boolean,
+    onDetails: () -> Unit,
+    action: ErrorAction?,
+) {
+    Column(
+        modifier = modifier.fillMaxSize().heightIn(min = CENTERED_MIN_HEIGHT).padding(ThemeSpace.section),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group, Alignment.CenterVertically),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.compact),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            StatusGlyph(tone, outline = true, muted = true)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.group),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (hasDetails) {
+                TextButton(onClick = onDetails) { Text(stringResource(R.string.details)) }
+            }
+            action?.let { OutlinedButton(onClick = it.onClick, enabled = it.enabled) { Text(it.label) } }
+        }
+    }
+}
+
+/** What a centred notice stands at least this tall, where its space is unbounded. */
+private val CENTERED_MIN_HEIGHT = 300.dp
+
+@Composable
+private fun FramedNotice(
+    title: String,
+    advice: String?,
+    hasDetails: Boolean,
+    onDetails: () -> Unit,
+    modifier: Modifier,
+    action: ErrorAction?,
+    tone: StatusTone,
+    look: NoticeLook,
+    onDismiss: (() -> Unit)?,
+) {
     Notice(tone = tone, modifier = modifier, look = look) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
             Row(verticalAlignment = Alignment.Top) {
@@ -126,12 +199,12 @@ private fun ErrorNoticeContent(
                 onDismiss?.let { DismissButton(it) }
             }
             advice?.let { Text(text = it, style = ThemeText.body.style, color = onTintSecondary) }
-            if (details != null) {
+            if (hasDetails) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.related),
                     horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related, Alignment.End),
                 ) {
-                    TextButton(onClick = { detailsShown = true }, contentPadding = ACTION_PADDING) {
+                    TextButton(onClick = onDetails, contentPadding = ACTION_PADDING) {
                         Text(stringResource(R.string.details))
                     }
                     action?.let { ErrorActionButton(it) }
@@ -140,9 +213,6 @@ private fun ErrorNoticeContent(
                 action?.let { ErrorActionButton(it, Modifier.offset(x = -ThemeSpace.related)) }
             }
         }
-    }
-    if (detailsShown && details != null) {
-        ErrorDetailsDialog(details, onDismiss = { detailsShown = false })
     }
 }
 

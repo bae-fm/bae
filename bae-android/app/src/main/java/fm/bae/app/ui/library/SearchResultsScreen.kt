@@ -29,6 +29,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.displayError
 import fm.bae.app.durationClockLabel
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -37,7 +38,9 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.ErrorAction
+import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.TitledErrorNotice
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackSearchResult
@@ -75,15 +78,21 @@ fun SearchResultsScreen(
     }
 
     val current = state.value
-    val searchFailed = stringResource(R.string.search_failed)
-    val currentError = state.error?.let { searchFailed }
+    val context = LocalContext.current
+    val failure: @Composable (NoticeLook, Modifier) -> Unit = { look, modifier ->
+        TitledErrorNotice(
+            title = stringResource(R.string.search_failed),
+            advice = null,
+            error = state.error?.let(context::displayError),
+            modifier = modifier,
+            look = look,
+            action = ErrorAction(stringResource(R.string.retry), onClick = session.libraryQueries.search::retry),
+        )
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         when {
-            currentError != null && current == null -> {
-                ErrorText(
-                    message = currentError,
-                    modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
-                )
+            state.error != null && current == null -> {
+                failure(NoticeLook.CENTERED, Modifier)
             }
 
             // Library search is a local read; nothing shows until it lands.
@@ -100,11 +109,8 @@ fun SearchResultsScreen(
 
             current != null -> {
                 Column {
-                    currentError?.let {
-                        ErrorText(
-                            message = it,
-                            modifier = Modifier.padding(ThemeSpace.related),
-                        )
+                    if (state.error != null) {
+                        failure(NoticeLook.QUIET, Modifier.padding(horizontal = ThemeSpace.edge))
                     }
                     SearchResultsList(
                         results = current,

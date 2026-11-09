@@ -150,6 +150,13 @@ internal class SearchQueryStore(
         search = null
     }
 
+    /** Open the standing query again, on a new search, after it failed. */
+    fun retry() {
+        val standing = query
+        deactivate()
+        standing?.let(::activate)
+    }
+
     fun cancel() = deactivate()
 
     private fun open(): LibrarySearch {

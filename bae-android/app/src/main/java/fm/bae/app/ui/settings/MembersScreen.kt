@@ -37,8 +37,9 @@ import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.LoadFailure
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.rememberScreenScope
@@ -283,7 +284,11 @@ private fun PeopleContent(
 
         is PeopleRead.Failed -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                LoadFailure(read.error, onRetry = model::retry)
+                ErrorNotice(
+                    error = read.error,
+                    look = NoticeLook.CENTERED,
+                    action = ErrorAction(stringResource(R.string.retry), onClick = model::retry),
+                )
             }
         }
 

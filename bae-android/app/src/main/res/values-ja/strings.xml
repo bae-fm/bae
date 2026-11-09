@@ -235,8 +235,6 @@
     <string name="appearance_forest">フォレスト</string>
     <string name="appearance_sand">サンド</string>
     <string name="details">詳細</string>
-    <string name="show_details">詳細を表示</string>
-    <string name="hide_details">詳細を非表示</string>
     <string name="copy_details">詳細をコピー</string>
     <string name="reset_device">このデバイスをリセット</string>
     <string name="reset_device_confirm_title">このデバイスをリセットしますか？</string>

@@ -246,8 +246,6 @@
     <string name="appearance_forest">Foresta</string>
     <string name="appearance_sand">Sabbia</string>
     <string name="details">Dettagli</string>
-    <string name="show_details">Mostra dettagli</string>
-    <string name="hide_details">Nascondi dettagli</string>
     <string name="copy_details">Copia dettagli</string>
     <string name="reset_device">Reimposta questo dispositivo</string>
     <string name="reset_device_confirm_title">Reimpostare questo dispositivo?</string>
