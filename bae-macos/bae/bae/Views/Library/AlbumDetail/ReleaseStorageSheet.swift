@@ -11,6 +11,7 @@ struct ReleaseStorageSheet: View {
 
     let releaseId: String
     let onAction: (BridgeReleaseStorageAction) -> Void
+    let onCancelPin: () -> Void
     let onExport: () -> Void
     let onSaveAs: () -> Void
     let onDone: () -> Void
@@ -51,12 +52,14 @@ struct ReleaseStorageSheet: View {
     init(
         release: ReleaseDetail,
         onAction: @escaping (BridgeReleaseStorageAction) -> Void,
+        onCancelPin: @escaping () -> Void,
         onExport: @escaping () -> Void,
         onSaveAs: @escaping () -> Void,
         onDone: @escaping () -> Void
     ) {
         releaseId = release.id
         self.onAction = onAction
+        self.onCancelPin = onCancelPin
         self.onExport = onExport
         self.onSaveAs = onSaveAs
         self.onDone = onDone
@@ -82,6 +85,7 @@ struct ReleaseStorageSheet: View {
                 StorageStatusBand(
                     release: release,
                     onAction: onAction,
+                    onCancelPin: onCancelPin,
                     onExport: onExport,
                     onSaveAs: onSaveAs
                 )
@@ -232,6 +236,7 @@ struct ReleaseStorageSheet: View {
         ReleaseStorageSheet(
             release: ReleaseDetail(bridge: release),
             onAction: { _ in },
+            onCancelPin: {},
             onExport: {},
             onSaveAs: {},
             onDone: {},

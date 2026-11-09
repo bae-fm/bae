@@ -36,11 +36,10 @@ public struct ErrorAction {
 /// the right of the title's line, Details first.
 public struct ErrorNotice: View {
     private enum Heading {
-        case line
-        case titled(String, advice: String?)
+        case line(DisplayError)
+        case titled(String, advice: String?, error: DisplayError?)
     }
 
-    private let error: DisplayError
     private let heading: Heading
     private let tone: StatusTone
     private let look: NoticeLook
@@ -54,26 +53,25 @@ public struct ErrorNotice: View {
         look: NoticeLook = .filled,
         action: ErrorAction? = nil
     ) {
-        self.error = error
-        self.heading = .line
+        self.heading = .line(error)
         self.tone = tone
         self.look = look
         self.action = action
     }
 
     /// A notice titled in the caller's words, with `advice` under it. The
-    /// error's line isn't shown, so Details is always there and leads its
-    /// causes with the line.
+    /// error's line isn't shown, so Details is there whenever there is an
+    /// error and leads its causes with the line. With no error there is no
+    /// Details: the title and advice are the whole notice.
     public init(
         title: String,
         advice: String?,
-        error: DisplayError,
+        error: DisplayError?,
         tone: StatusTone = .danger,
         look: NoticeLook = .filled,
         action: ErrorAction? = nil
     ) {
-        self.error = error
-        self.heading = .titled(title, advice: advice)
+        self.heading = .titled(title, advice: advice, error: error)
         self.tone = tone
         self.look = look
         self.action = action
@@ -120,7 +118,7 @@ public struct ErrorNotice: View {
     @ViewBuilder
     private var words: some View {
         switch heading {
-        case .line:
+        case .line(let error):
             Text(error.line)
                 .themeText(.body)
                 .foregroundStyle(
@@ -128,7 +126,7 @@ public struct ErrorNotice: View {
                         ? HierarchicalShapeStyle.secondary
                         : HierarchicalShapeStyle.primary
                 )
-        case .titled(let title, let advice):
+        case .titled(let title, let advice, _):
             Text(verbatim: title)
                 .themeText(advice == nil ? .body : .strong)
             if let advice {
@@ -174,7 +172,7 @@ public struct ErrorNotice: View {
                     .foregroundStyle(titleColor)
                     .multilineTextAlignment(.center)
             }
-            if case .titled(_, let advice?) = heading {
+            if case .titled(_, let advice?, _) = heading {
                 Text(verbatim: advice)
                     .themeText(.body)
                     .foregroundStyle(titleColor)
@@ -197,8 +195,8 @@ public struct ErrorNotice: View {
     private var centeredTitle: String {
         let title =
             switch heading {
-            case .line: error.line
-            case .titled(let title, _): title
+            case .line(let error): error.line
+            case .titled(let title, _, _): title
             }
         return title.hasSuffix(".") ? String(title.dropLast()) : title
     }
@@ -234,9 +232,10 @@ public struct ErrorNotice: View {
 
     private var details: ErrorDetails? {
         switch heading {
-        case .line: ErrorDetails(error: error)
-        case .titled(let title, let advice):
+        case .line(let error): ErrorDetails(error: error)
+        case .titled(let title, let advice, let error?):
             ErrorDetails(title: title, advice: advice, error: error)
+        case .titled(_, _, nil): nil
         }
     }
 }

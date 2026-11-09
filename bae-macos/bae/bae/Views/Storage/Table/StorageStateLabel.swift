@@ -11,7 +11,7 @@ struct StorageStateLabel: View {
     var body: some View {
         switch status {
         case .downloadFailed(let error):
-            StatusChip("Download failed", tone: .danger)
+            StatusChip("Couldn't pin", tone: .danger)
                 .help(error)
         case .moveFailed(let fileName):
             StatusChip(
@@ -19,14 +19,17 @@ struct StorageStateLabel: View {
                 tone: .danger
             )
         case .uploading:
-            HStack(spacing: ThemeSpace.inline) {
+            if let missing = release.upload?.missing {
+                StatusChip("Waiting for \(missing)", tone: .warning)
+            }
+            else if release.upload?.progress.activity == .uploading {
                 StorageUploadingChip(releaseId: release.id)
-                if let missing = release.upload?.missing {
-                    StatusChip("Waiting for \(missing)", tone: .warning)
-                }
+            }
+            else {
+                QueuedUploadChip()
             }
         case .pinning(.queued):
-            StatusChip("Queued", tone: .activity)
+            StatusChip("Queued to pin", tone: .activity)
         case .pinning(.running):
             StoragePinningChip(releaseId: release.id)
         case .makeLocalFailed(let error):
@@ -37,7 +40,7 @@ struct StorageStateLabel: View {
         case .makingLocal(.running):
             StorageMakingLocalChip(releaseId: release.id)
         case .copyingHere:
-            StatusChip("Copying here", tone: .activity)
+            StorageProgressChip(label: "Pinning", kind: .pin, fill: nil)
         case .onOneDevice:
             StatusChip("Local", symbol: "folder")
         case .pinned:
@@ -56,9 +59,19 @@ extension BridgeStorageRowStatus {
     }
 }
 
+/// A release whose files only wait to upload: nothing is moving to fill.
+struct QueuedUploadChip: View {
+    var body: some View {
+        StatusChip(
+            verbatim: BridgeUploadActivity.queued.phaseText,
+            tone: .activity
+        )
+    }
+}
+
 /// An uploading release's chip, filled each frame from the release's latest
 /// upload progress while any file is being sent.
-private struct StorageUploadingChip: View {
+struct StorageUploadingChip: View {
     let releaseId: String
     @Environment(OutboxStore.self)
     private var outboxStore
@@ -74,7 +87,7 @@ private struct StorageUploadingChip: View {
 
 /// A pinning release's chip, filled each frame from the release's latest
 /// download progress; a release still waiting its turn has moved nothing.
-private struct StoragePinningChip: View {
+struct StoragePinningChip: View {
     let releaseId: String
     @Environment(DownloadStore.self)
     private var downloadStore
@@ -90,7 +103,7 @@ private struct StoragePinningChip: View {
 
 /// A release being made local's chip, filled each frame from how far its
 /// files have downloaded into the person's folder.
-private struct StorageMakingLocalChip: View {
+struct StorageMakingLocalChip: View {
     let releaseId: String
     @Environment(DownloadStore.self)
     private var downloadStore

@@ -50,6 +50,7 @@ struct ReleaseStorageSheetTests {
             ReleaseStorageSheet(
                 release: ReleaseDetail(bridge: resting),
                 onAction: { _ in },
+                onCancelPin: {},
                 onExport: {},
                 onSaveAs: {},
                 onDone: {}

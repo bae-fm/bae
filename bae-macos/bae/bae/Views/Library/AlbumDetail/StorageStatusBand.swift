@@ -1,46 +1,35 @@
 import BaeKit
 import SwiftUI
 
-/// A release's storage state, download or upload progress, and storage
-/// actions. An upload's and a make-local's bar and bytes are native views
-/// that read the release's latest progress each frame, so moving bytes run
-/// no SwiftUI update.
+/// A release's storage: the state it rests in and at most one pill for the
+/// change on its way, a notice for what needs the person, and its storage
+/// actions. The pill fills as far as the release's bytes have come, through
+/// native views that read the release's latest progress each frame, so moving
+/// bytes run no SwiftUI update.
 struct StorageStatusBand: View {
     let release: ReleaseDetail
     let onAction: (BridgeReleaseStorageAction) -> Void
+    let onCancelPin: () -> Void
     let onExport: () -> Void
     let onSaveAs: () -> Void
-    @Environment(OutboxStore.self)
-    private var outboxStore
-    @Environment(DownloadStore.self)
-    private var downloadStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            // A cloud transition in flight is the release's storage state
-            // while it runs: its phase, bar, and count are one line.
-            if let upload = release.summary.upload {
-                if upload.progress.activity == .uploading {
-                    uploadLine(upload.progress)
-                        .themeText(.body)
-                }
-                else {
-                    // Files only waiting: nothing is moving to measure.
-                    HStack(spacing: ThemeSpace.related) {
-                        UploadActivityLabel(phaseOf: upload.progress)
-                            .themeText(.body)
-                        if let missing = upload.missing {
-                            StatusChip("Waiting for \(missing)", tone: .warning)
-                        }
-                    }
-                }
-            }
-            else {
+            HStack(spacing: ThemeSpace.related) {
                 storageStatus
+                pill
             }
-            if let download = release.downloadStatus {
-                downloadLine(download)
+            if let missing = release.summary.upload?.missing {
+                ErrorNotice(
+                    title: String(localized: "\(missing) is missing"),
+                    advice: String(
+                        localized: "Restore it to finish uploading."
+                    ),
+                    error: nil,
+                    tone: .warning
+                )
             }
+            failure
             // Why this Mac can't play the release: the device its audio is
             // on, or its originals missing here.
             if let unplayable = release.unplayableLine {
@@ -48,10 +37,7 @@ struct StorageStatusBand: View {
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
-            if let makeLocal = release.makeLocal {
-                makeLocalLine(makeLocal)
-            }
-            else if !release.summary.transitioning {
+            if !release.summary.transitioning {
                 transferActions
             }
         }
@@ -59,48 +45,59 @@ struct StorageStatusBand: View {
         .padding()
     }
 
-    /// The phase, then a bar and the bytes the release holds of its size,
-    /// both read from the release's latest upload progress each frame.
-    private func uploadLine(_ progress: BridgeUploadProgress) -> some View {
-        let source = outboxStore.uploadProgress(forRelease: release.summary.id)
-        return HStack(spacing: ThemeSpace.related) {
-            UploadActivityLabel(phaseOf: progress)
-                .lineLimit(1)
-                .foregroundStyle(.secondary)
-                .truncationMode(.middle)
-                .layoutPriority(1)
-            StreamBar(stream: .upload(source))
-                .frame(minWidth: 48)
-            StreamLabel(stream: .uploadBytes(source))
+    /// The one change on its way: files uploading or waiting to upload, the
+    /// release being pinned or made local, each waiting its turn or moving.
+    @ViewBuilder
+    private var pill: some View {
+        if let upload = release.summary.upload {
+            if upload.progress.activity == .uploading {
+                StorageUploadingChip(releaseId: release.summary.id)
+            }
+            else {
+                QueuedUploadChip()
+            }
+        }
+        else if let download = release.downloadStatus {
+            switch download {
+            case .queued:
+                StatusChip("Queued to pin", tone: .activity)
+            case .downloading:
+                StoragePinningChip(releaseId: release.summary.id)
+            case .copyingHere:
+                StorageProgressChip(label: "Pinning", kind: .pin, fill: nil)
+            case .downloaded, .available, .failed:
+                makeLocalPill
+            }
+        }
+        else {
+            makeLocalPill
         }
     }
 
-    /// Where the release stands in being made local: waiting its turn;
-    /// downloading,
-    /// the transition's words over the bytes the release and the file being
-    /// downloaded hold and a bar of the release's, read from how far its
-    /// files have downloaded into the person's folder each frame; or failed,
-    /// a danger notice whose Details opens the error.
     @ViewBuilder
-    private func makeLocalLine(_ status: BridgeMakeLocalStatus) -> some View {
-        switch status {
+    private var makeLocalPill: some View {
+        switch release.makeLocal {
         case .queued:
             StatusChip("Queued to make local", tone: .activity)
         case .making:
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                Text(BridgeReleaseStorageAction.detachAudio.transferLabel)
-                    .themeText(.body)
-                    .foregroundStyle(.secondary)
-                TransferReadout(
-                    stream: .makeLocal(
-                        downloadStore.makeLocalProgress(
-                            forRelease: release.summary.id
-                        )
-                    ),
-                    kind: .pin
-                )
-            }
-        case .failed(let error):
+            StorageMakingLocalChip(releaseId: release.summary.id)
+        case .failed, nil:
+            EmptyView()
+        }
+    }
+
+    /// A pin or a make-local that failed: a danger notice whose Details opens
+    /// the error.
+    @ViewBuilder
+    private var failure: some View {
+        if case .failed(let error) = release.downloadStatus {
+            ErrorNotice(
+                title: String(localized: "Couldn't pin"),
+                advice: nil,
+                error: DisplayError(line: error)
+            )
+        }
+        if case .failed(let error) = release.makeLocal {
             ErrorNotice(
                 title: String(localized: "Couldn't make local"),
                 advice: nil,
@@ -109,33 +106,10 @@ struct StorageStatusBand: View {
         }
     }
 
-    /// Where the release stands in the download queue: waiting, downloading,
-    /// or failed, a danger notice whose Details opens the error; or, with no
-    /// entry, being copied here by coven.
-    @ViewBuilder
-    private func downloadLine(_ status: BridgeReleaseDownloadStatus)
-        -> some View
-    {
-        switch status {
-        case .queued:
-            StatusChip("Queued", tone: .activity)
-        case .downloading:
-            ProgressLine(
-                BridgeReleaseStorageAction.pin.transferLabel,
-                progress: nil
-            )
-            .themeText(.body)
-        case .failed(let error):
-            ErrorNotice(
-                title: String(localized: "Download failed"),
-                advice: nil,
-                error: DisplayError(line: error)
-            )
-        case .copyingHere:
-            StatusChip("Copying here", tone: .activity)
-        case .downloaded, .available:
-            EmptyView()
-        }
+    /// Whether the release's pin waits its turn, which Cancel pinning ends.
+    private var pinQueued: Bool {
+        if case .queued = release.downloadStatus { return true }
+        return false
     }
 
     /// The resting storage state.
@@ -160,13 +134,23 @@ struct StorageStatusBand: View {
     private var transferActions: some View {
         Group {
             ForEach(release.storageActions, id: \.self) { action in
-                Button(action: { onAction(action) }) {
-                    Label(
-                        action.label(
-                            keepingHere: release.summary.keepingHere
-                        ),
-                        systemImage: action.systemImage
-                    )
+                if action == .pin && pinQueued {
+                    Button(action: onCancelPin) {
+                        Label(
+                            BridgeReleaseStorageAction.cancelPinningLabel,
+                            systemImage: "pin.slash"
+                        )
+                    }
+                }
+                else {
+                    Button(action: { onAction(action) }) {
+                        Label(
+                            action.label(
+                                keepingHere: release.summary.keepingHere
+                            ),
+                            systemImage: action.systemImage
+                        )
+                    }
                 }
             }
             // Export and Save As change no state, so every release offers them.
@@ -194,6 +178,7 @@ struct StorageStatusBand: View {
                 playability: playability
             ),
             onAction: { _ in },
+            onCancelPin: {},
             onExport: {},
             onSaveAs: {}
         )
@@ -257,6 +242,7 @@ struct StorageStatusBand: View {
                 playability: .playable
             ),
             onAction: { _ in },
+            onCancelPin: {},
             onExport: {},
             onSaveAs: {}
         )

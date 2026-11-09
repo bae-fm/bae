@@ -2017,9 +2017,10 @@ file in storage is pinned, so no release reads as both on one device and
 pinned.
 
 A release with files waiting to upload shows, in its row and in its album's
-storage band, how many wait and how many are being sent (its Done row in the
-import list shows the phase that makes, §3.2), and while any is
-being sent, how many bytes of its whole size are stored or sent. The counts
+storage band, Queued to upload, or Uploading filled as far as its bytes have
+come (its Done row in the import list shows the phase that makes, §3.2); the
+Storage manager's inspector shows how many wait, are being sent and are
+stored, and how many bytes of its whole size are stored or sent. The counts
 are read in the same query as the row: which files are being sent comes
 from coven's `coven_sending`, a live view of the uploads in flight. While none
 is being sent, the row reads Queued to upload, and names nothing else that
@@ -2124,7 +2125,9 @@ the queue and on the phones' Pinning screen, never on a release. A pin that fail
 nothing of it pinned, and its row sorts first, reading Couldn't pin; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
-queues only that release's failed pin. coven's record of the failed
+queues only that release's failed pin. While a release's pin waits, its
+storage band offers Cancel pinning in Pin's place, which takes the entry out of
+the queue. coven's record of the failed
 download is listed among the pending records (§6.4), whose *Retry* queues the
 release's pin again; nothing retries it on its own. A read that fails, as a
 track plays, leaves no record: its failure goes to whatever read it. A release
@@ -2180,8 +2183,9 @@ paths below it, in one call
 coven downloads every file, checking its content hash as every download does,
 writes it under a temporary name in its final folder, and renames it once it
 is whole and synced. While it downloads, the release's Storage manager row and
-its storage band show how far: a bar and the bytes of the whole release, and
-the bytes of the file being downloaded. coven reports both as each file's
+its storage band fill Making local… as far as its copies have downloaded, and
+the inspector shows the bytes of the whole release and of the file being
+downloaded. coven reports both as each file's
 bytes arrive, a few times a second; they are kept only in memory, keyed by
 release, beside the tables, in the stream of the active download's progress,
 and the release leaves them as its entry ends, however it ends. Then one

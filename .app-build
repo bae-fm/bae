@@ -10,3 +10,4 @@ step notice-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene no
 step storage-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene storage-manager --tone midnight
 step android-shots ./scripts/shots/android.sh /Volumes/Builds/bae/shots/android
 step welcome-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene welcome- --scene story-1 --tone midnight
+step release-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-storage --tone midnight

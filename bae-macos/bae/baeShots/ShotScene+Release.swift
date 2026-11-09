@@ -46,6 +46,7 @@ extension ShotScene {
                 ReleaseStorageSheet(
                     release: ReleaseDetail(bridge: release),
                     onAction: { _ in },
+                    onCancelPin: {},
                     onExport: {},
                     onSaveAs: {},
                     onDone: {}
@@ -68,5 +69,149 @@ extension ShotScene {
                 .environment(DownloadStore())
             ) { answers.unanswered == 0 }
         },
+        // A release's Storage band in each state it can be in: one change on
+        // its way as one pill, what needs the person as a notice, and the
+        // actions that state offers.
+        ShotScene(
+            id: "release-storage-band-states",
+            size: CGSize(width: 560, height: 1_160)
+        ) {
+            ShotStage(StorageBandStatesShot())
+        },
     ]
+}
+
+/// One Storage band per state, stacked.
+private struct StorageBandStatesShot: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Self.states, id: \.name) { state in
+                StorageStatusBand(
+                    release: state.release,
+                    onAction: { _ in },
+                    onCancelPin: {},
+                    onExport: {},
+                    onSaveAs: {}
+                )
+                Divider()
+            }
+        }
+        .frame(width: 560)
+        .background(Theme.background)
+        .environment(OutboxStore(uploadsPaused: false))
+        .environment(PreviewData.downloadStore())
+    }
+
+    private struct BandState {
+        let name: String
+        let release: ReleaseDetail
+    }
+
+    private static let states: [BandState] = [
+        BandState(
+            name: "queued pin",
+            release: release(
+                actions: [.pin, .detachAudio],
+                downloadStatus: .queued
+            )
+        ),
+        BandState(
+            name: "pinning",
+            release: release(actions: [], downloadStatus: .downloading)
+        ),
+        BandState(
+            name: "copying",
+            release: release(
+                actions: [.unpin, .detachAudio],
+                keepingHere: true,
+                downloadStatus: .copyingHere
+            )
+        ),
+        BandState(
+            name: "failed pin",
+            release: release(
+                actions: [.pin, .detachAudio],
+                downloadStatus: .failed(
+                    error: "The network connection was lost."
+                )
+            )
+        ),
+        BandState(
+            name: "queued upload",
+            release: release(
+                storageState: .onOneDevice,
+                actions: [],
+                upload: upload(.queued)
+            )
+        ),
+        BandState(
+            name: "uploading",
+            release: release(
+                storageState: .onOneDevice,
+                actions: [],
+                upload: upload(.uploading)
+            )
+        ),
+        BandState(
+            name: "missing original",
+            release: release(
+                storageState: .onOneDevice,
+                actions: [],
+                upload: upload(.queued, missing: "01 Track Title.flac")
+            )
+        ),
+        BandState(
+            name: "queued make local",
+            release: release(actions: [], makeLocal: .queued)
+        ),
+        BandState(
+            name: "making local",
+            release: release(actions: [], makeLocal: .making)
+        ),
+        BandState(
+            name: "failed make local",
+            release: release(
+                actions: [.pin, .detachAudio],
+                makeLocal: .failed(error: "The disk is full.")
+            )
+        ),
+    ]
+
+    private static func upload(
+        _ activity: BridgeUploadActivity,
+        missing: String? = nil
+    ) -> BridgeReleaseUpload {
+        BridgeReleaseUpload(
+            progress: BridgeUploadProgress(
+                queued: 1,
+                uploading: activity == .uploading ? 1 : 0,
+                activity: activity
+            ),
+            summary: [],
+            missing: missing
+        )
+    }
+
+    private static func release(
+        storageState: BridgeReleaseStorageState = .inStorage(pinned: false),
+        actions: [BridgeReleaseStorageAction],
+        keepingHere: Bool = false,
+        upload: BridgeReleaseUpload? = nil,
+        downloadStatus: BridgeReleaseDownloadStatus? = nil,
+        makeLocal: BridgeMakeLocalStatus? = nil
+    ) -> ReleaseDetail {
+        var bridge = PreviewData.storageBridgeRelease(
+            storageState: storageState,
+            storageActions: actions,
+            keepingHere: keepingHere,
+            playability: .playable
+        )
+        bridge.upload = upload
+        bridge.transitioning =
+            upload != nil || makeLocal == .queued || makeLocal == .making
+            || downloadStatus == .downloading
+        bridge.downloadStatus = downloadStatus
+        bridge.makeLocal = makeLocal
+        return ReleaseDetail(bridge: bridge)
+    }
 }

@@ -357,6 +357,7 @@ extension AlbumDetailView {
                 onAction: { action in
                     performStorageAction(action, releaseId: detail.id)
                 },
+                onCancelPin: { cancelPin(releaseId: detail.id) },
                 onExport: { exportRelease(releaseId: detail.id) },
                 onSaveAs: { saveReleaseAs(releaseId: detail.id) },
                 onDone: { uiStore.dismissModal() },
@@ -468,6 +469,14 @@ extension AlbumDetailView {
         let downloads = downloads
         runStorageTransition {
             try await downloads.queuePins([releaseId])
+        }
+    }
+
+    /// End a pin that waits in the download queue.
+    private func cancelPin(releaseId: String) {
+        let downloads = downloads
+        runStorageTransition {
+            try await downloads.cancelDownload(releaseId)
         }
     }
 

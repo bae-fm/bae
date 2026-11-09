@@ -16,9 +16,9 @@ struct DownloadRow: View {
 
     var body: some View {
         QueueRow(
-            icon: op.kind == .pin ? "arrow.down.circle" : "internaldrive",
-            createdAt: op.createdAt,
-            cancel: .init(help: "Cancel this download", action: onCancel)
+            icon: op.kind == .pin ? "pin" : "folder",
+            createdAt: nil,
+            cancel: .init(help: "Cancel", action: onCancel)
         ) {
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 HStack(spacing: ThemeSpace.related) {
@@ -45,12 +45,12 @@ struct DownloadRow: View {
     private var stateChip: some View {
         switch (op.kind, op.state) {
         case (.pin, .queued):
-            StatusChip("Queued", symbol: "clock")
+            StatusChip("Queued to pin", symbol: "clock")
         case (.makeLocal, .queued):
             StatusChip("Queued to make local", symbol: "clock")
         case (.pin, .active):
             StatusChip(
-                "Downloading",
+                "Pinning",
                 tone: .activity,
                 symbol: "arrow.down.circle.fill"
             )
@@ -71,7 +71,7 @@ struct DownloadRow: View {
         if case .failed(let error) = op.state {
             ErrorNotice(
                 title: op.kind == .pin
-                    ? String(localized: "Download failed")
+                    ? String(localized: "Couldn't pin")
                     : String(localized: "Couldn't make local"),
                 advice: nil,
                 error: DisplayError(line: error),

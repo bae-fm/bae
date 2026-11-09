@@ -104,7 +104,7 @@ private struct NoticeLooksShot: View {
                 error: error
             )
             ErrorNotice(
-                title: "Download failed",
+                title: "Couldn't pin",
                 advice: nil,
                 error: error,
                 look: .quiet,
@@ -179,6 +179,7 @@ private struct StorageBandFailureShot: View {
         return StorageStatusBand(
             release: release,
             onAction: { _ in },
+            onCancelPin: {},
             onExport: {},
             onSaveAs: {}
         )

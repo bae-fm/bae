@@ -32,7 +32,7 @@ public struct ReleaseSummary: Identifiable, Sendable {
     public let storageActions: [BridgeReleaseStorageAction]
     /// Whether coven is still copying the release's files to this Mac because
     /// the release was moved to the cloud to be kept here. Its Unpin action
-    /// then reads Stop keeping here.
+    /// then reads Cancel pinning.
     public let keepingHere: Bool
     public let fileCount: Int64
     public let totalSize: Int64

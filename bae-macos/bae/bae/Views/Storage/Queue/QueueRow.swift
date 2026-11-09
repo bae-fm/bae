@@ -12,7 +12,9 @@ struct QueueRow<Content: View, Below: View>: View {
     }
 
     let icon: String
-    let createdAt: Int64
+    /// When the entry was queued, in milliseconds since the epoch; nil for a
+    /// row that shows no time.
+    let createdAt: Int64?
     var cancel: CancelAction?
     @ViewBuilder
     let content: () -> Content
@@ -32,10 +34,12 @@ struct QueueRow<Content: View, Below: View>: View {
                     content()
                 }
             } trail: {
-                Text(queuedRelativeLabel(createdAt))
-                    .themeText(.fine)
-                    .foregroundStyle(.secondary)
-                    .fixedSize()
+                if let createdAt {
+                    Text(queuedRelativeLabel(createdAt))
+                        .themeText(.fine)
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                }
 
                 if let cancel {
                     Button(action: cancel.action) {

@@ -14,11 +14,16 @@ extension BridgeReleaseStorageAction {
         }
     }
 
+    /// The words for ending a pin that is under way or waiting.
+    static var cancelPinningLabel: String {
+        String(localized: "Cancel pinning")
+    }
+
     /// `label`, except that Unpin of a release coven is still copying files of
-    /// to this Mac reads Stop keeping here: it ends the copying.
+    /// to this Mac reads Cancel pinning: it ends the copying.
     func label(keepingHere: Bool) -> String {
         if self == .unpin && keepingHere {
-            return String(localized: "Stop keeping here")
+            return Self.cancelPinningLabel
         }
         return label
     }
