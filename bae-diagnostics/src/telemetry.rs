@@ -199,7 +199,6 @@ telemetry_value_enum! {
         GaplessBoundaryDesync => "gapless_boundary_desync",
         SidePauseDesync => "side_pause_desync",
         PreloadStateMissing => "preload_state_missing",
-        QueueEntryUnknown => "queue_entry_unknown",
         EncryptionKeyMissing => "encryption_key_missing",
     }
 }
