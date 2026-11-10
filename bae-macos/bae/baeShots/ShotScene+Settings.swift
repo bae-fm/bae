@@ -69,6 +69,7 @@ extension ShotScene {
             return ShotStage(
                 CastingSettingsTab()
                     .environment(Cast.stub())
+                    .environment(CastStart.stub())
                     .environment(castStore)
                     .environment(
                         PreviewData.makeConfigStore(

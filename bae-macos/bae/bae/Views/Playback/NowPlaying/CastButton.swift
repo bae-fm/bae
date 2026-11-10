@@ -8,17 +8,16 @@ struct CastButton: View {
     private var cast
     @Environment(CastStore.self)
     private var castStore
-    @Environment(UiStore.self)
-    private var uiStore
+    @Environment(CastStart.self)
+    private var start
 
     @State
     private var showPicker = false
-    @State
-    private var start = CastStart()
 
     var body: some View {
         let castingName = castStore.castingDeviceName
         let active = castingName != nil
+        let connectingName = start.connecting?.name
         return Button(action: { showPicker.toggle() }) {
             Image(systemName: active ? "hifispeaker.fill" : "hifispeaker")
                 .themeIcon(.large)
@@ -27,19 +26,17 @@ struct CastButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(IconHoverButtonStyle())
-        .help(active ? castingHelp(castingName) : LocalizedStringKey("Cast"))
+        .help(help(casting: castingName, connecting: connectingName))
         .accessibilityLabel("Cast")
         .popover(isPresented: $showPicker, arrowEdge: .top) {
             CastPickerPopover(
                 receivers: castStore.receivers,
                 endedFailure: castStore.endedFailure,
-                connectingName: start.connecting?.name,
+                connectingName: connectingName,
                 onCast: { receiver in
                     start.cast(
                         to: receiver,
-                        with: cast,
-                        onStarted: { showPicker = false },
-                        onFailure: uiStore.showError
+                        onStarted: { showPicker = false }
                     )
                 },
                 onDisconnect: {
@@ -62,15 +59,26 @@ struct CastButton: View {
             }
         }
         // The bar drops this control when casting turns off, taking an open
-        // picker with it and leaving `showPicker` as it was.
+        // picker with it and leaving `showPicker` as it was. A cast still
+        // connecting is the app's, not the picker's: core calls it off as
+        // casting turns off.
         .onDisappear {
-            start.cancel()
             cast.stopDiscovery(.picker)
         }
     }
 
-    private func castingHelp(_ name: String?) -> LocalizedStringKey {
-        "Casting to \(name ?? "")"
+    /// The device a cast is connecting to, else the one cast to, else what
+    /// the button does.
+    private func help(casting: String?, connecting: String?)
+        -> LocalizedStringKey
+    {
+        if let connecting {
+            return "Connecting to \(connecting)…"
+        }
+        if let casting {
+            return "Casting to \(casting)"
+        }
+        return "Cast"
     }
 }
 

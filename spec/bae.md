@@ -4071,7 +4071,11 @@ merges every source's list and writes it whole, in one write per change, in
 the order the changes came. No discovery outlives the process that ran it, so
 the table is emptied as the library opens. Once the person
 picks a receiver, the picker or the page names it while bae connects, until
-the cast starts or fails. Stopping casting, turning it off, or picking another
+the cast starts or fails. On macOS the cast connecting is the app's, not the
+picker's or the page's: both name it, so does the Cast button's tooltip, and
+closing either leaves it connecting; a cast that fails says why in an alert,
+wherever the person is. On Android, closing the picker calls the connect off.
+Stopping casting, turning it off, or picking another
 receiver while one connects calls that connect off: it moves nothing, and
 nothing says it failed. A connect to a Chromecast already under way runs to
 its end and is closed, which leaves the receiver as an ended session does.

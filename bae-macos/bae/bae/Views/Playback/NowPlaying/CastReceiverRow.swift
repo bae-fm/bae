@@ -79,7 +79,7 @@ struct CastConnectingLine: View {
             Text(
                 "Connecting to \(name)…",
                 comment:
-                    "Cast picker, while bae connects to the device the person picked; the argument is its name."
+                    "Cast picker and Settings → Casting, over the receivers, and the Cast button's tooltip, while bae connects to the device the person picked; the argument is its name."
             )
         }
         .controlSize(.small)

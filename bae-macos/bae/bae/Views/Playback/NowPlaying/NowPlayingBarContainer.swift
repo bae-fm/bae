@@ -134,6 +134,7 @@ struct NowPlayingBarContainer: View {
             .environment(PreviewData.configStore())
             .environment(ImageStore.stub())
             .environment(Cast.stub())
+            .environment(CastStart.stub())
             .environment(CastStore())
     }
 #endif

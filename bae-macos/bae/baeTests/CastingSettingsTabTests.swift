@@ -63,6 +63,7 @@ struct CastingSettingsTabTests {
             let controller = HostingWindowController(
                 content: CastingSettingsTab()
                     .environment(cast)
+                    .environment(CastStart.stub())
                     .environment(CastStore())
                     .environment(
                         PreviewData.makeConfigStore(

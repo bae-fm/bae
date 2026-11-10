@@ -23,6 +23,7 @@ public struct AppServiceComponents {
     fileprivate let sync: Sync
     fileprivate let downloads: Downloads
     fileprivate let cast: Cast
+    fileprivate let castStart: CastStart
 
     public init(
         playbackStore: PlaybackStore,
@@ -39,7 +40,8 @@ public struct AppServiceComponents {
         imageStore: ImageStore,
         sync: Sync,
         downloads: Downloads,
-        cast: Cast
+        cast: Cast,
+        castStart: CastStart
     ) {
         self.playbackStore = playbackStore
         self.configStore = configStore
@@ -56,6 +58,7 @@ public struct AppServiceComponents {
         self.sync = sync
         self.downloads = downloads
         self.cast = cast
+        self.castStart = castStart
     }
 }
 
@@ -130,6 +133,9 @@ open class AppService: @unchecked Sendable, Observable {
     private nonisolated let downloads: Downloads
     /// Cast transport: browse for devices, and move playback to or from one.
     private nonisolated let cast: Cast
+    /// The cast the person started last, while it connects, whichever place
+    /// started it.
+    private let castStart: CastStart
     private let playbackValues: PlaybackValueHandler
 
     #if DEBUG
@@ -177,6 +183,7 @@ open class AppService: @unchecked Sendable, Observable {
         sync = components.sync
         downloads = components.downloads
         cast = components.cast
+        castStart = components.castStart
         playbackValues = PlaybackValueHandler(
             playbackStore: components.playbackStore,
             castStore: components.castStore
@@ -348,6 +355,7 @@ extension AppService {
             .environment(queue)
             .environment(sync)
             .environment(cast)
+            .environment(castStart)
             .environment(castStore)
     }
 }

@@ -3,87 +3,76 @@ import Testing
 
 @testable import bae
 
-/// Starting a cast, shared by the cast picker and the Casting page.
+/// Starting a cast: one start for the app, which outlives the picker or page
+/// that began it.
 @MainActor
 @Suite("Cast start")
 struct CastStartTests {
     private struct Refused: Error {}
 
-    /// What a `Cast`'s `castTo` saw, for the test to read.
-    @MainActor
-    private final class Calls {
-        var ended: [String] = []
-        var started = 0
-        var failures = 0
-
-        func end(_ id: String) { ended.append(id) }
-    }
-
     private func receiver(_ id: String) -> BridgeCastReceiver {
         BridgeCastReceiver(id: id, name: id, kind: .cast, casting: false)
     }
 
-    private func settle(until done: () -> Bool) async {
-        for _ in 0..<10_000 where !done() {
-            await Task.yield()
-        }
-    }
-
-    @Test("a cast that fails stops connecting and reports why")
-    func failureStopsConnecting() async {
-        let calls = Calls()
-        let cast = Cast(castTo: { _ in throw Refused() })
-        let start = CastStart()
-        start.cast(
-            to: receiver("kitchen"),
-            with: cast,
-            onStarted: { calls.started += 1 },
-            onFailure: { error in
-                #expect(error is Refused)
-                calls.failures += 1
-            }
-        )
-        #expect(start.connecting?.id == "kitchen")
-        await settle { calls.failures > 0 }
-        #expect(start.connecting == nil)
-        #expect(calls.failures == 1)
-        #expect(calls.started == 0)
-    }
-
-    @Test("a newer cast cancels the one still connecting")
-    func newerCastCancelsOlder() async {
-        let calls = Calls()
-        let cast = Cast(castTo: { id in
-            do {
-                try await Task.sleep(for: .seconds(60))
-            }
-            catch {
-                await calls.end(id)
-                throw error
+    @Test("a cast connects with no place open, and its failure is reported")
+    func failureIsReported() async {
+        let (answers, answer) = AsyncStream.makeStream(of: Bool.self)
+        let cast = Cast(castTo: { _ in
+            for await accepted in answers {
+                guard accepted else { throw Refused() }
+                return
             }
         })
-        let start = CastStart()
+        let (reports, reported) = AsyncStream.makeStream(of: (any Error).self)
+        let start = CastStart(cast: cast, report: { reported.yield($0) })
+
         start.cast(
             to: receiver("kitchen"),
-            with: cast,
-            onStarted: { calls.started += 1 },
-            onFailure: { _ in calls.failures += 1 }
+            onStarted: { Issue.record("a refused cast started") }
         )
-        await Task.yield()
-        start.cast(
-            to: receiver("den"),
-            with: cast,
-            onStarted: { calls.started += 1 },
-            onFailure: { _ in calls.failures += 1 }
-        )
-        await settle { !calls.ended.isEmpty }
-        #expect(calls.ended == ["kitchen"])
-        #expect(start.connecting?.id == "den")
-        #expect(calls.started == 0)
-        #expect(calls.failures == 0)
-        start.cancel()
-        await settle { calls.ended.count == 2 }
+        #expect(start.connecting?.id == "kitchen")
+
+        answer.yield(false)
+        var errors = reports.makeAsyncIterator()
+        let error = await errors.next()
+        #expect(error is Refused)
         #expect(start.connecting == nil)
-        #expect(calls.failures == 0)
+    }
+
+    @Test("a newer cast calls off the one still connecting")
+    func newerCastCallsOffOlder() async {
+        // Never answers: the kitchen's connect ends only when it is called off.
+        let (silence, keepSilent) = AsyncStream.makeStream(of: Void.self)
+        let (answers, answer) = AsyncStream.makeStream(of: Void.self)
+        let (ends, ended) = AsyncStream.makeStream(of: String.self)
+        let cast = Cast(castTo: { id in
+            if id == "kitchen" {
+                for await _ in silence {}
+                ended.yield(id)
+                throw CancellationError()
+            }
+            for await _ in answers { return }
+        })
+        let (starts, startedOn) = AsyncStream.makeStream(of: String.self)
+        let start = CastStart(
+            cast: cast,
+            report: { Issue.record("a called-off cast reported \($0)") }
+        )
+
+        start.cast(
+            to: receiver("kitchen"),
+            onStarted: { Issue.record("the called-off cast started") }
+        )
+        start.cast(to: receiver("den"), onStarted: { startedOn.yield("den") })
+
+        var endings = ends.makeAsyncIterator()
+        #expect(await endings.next() == "kitchen")
+        #expect(start.connecting?.id == "den")
+
+        answer.yield(())
+        var started = starts.makeAsyncIterator()
+        #expect(await started.next() == "den")
+        #expect(start.connecting == nil)
+        keepSilent.finish()
     }
 }

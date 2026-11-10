@@ -109,6 +109,7 @@
                 .environment(importScene.slot(uiStore: uiStore))
                 .environment(PreviewAudio.stub())
                 .environment(Cast.stub())
+                .environment(CastStart.stub())
                 .environment(CastStore())
                 .environment(SyncActivityStore.preview(needsAttention: false))
                 .albumDetailPreviewEnvironment()

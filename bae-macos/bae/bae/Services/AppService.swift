@@ -93,6 +93,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         let sync = Sync(handle: appHandle, deviceName: deviceName, host: host)
         let downloads = Downloads(handle: appHandle)
         let cast = Cast(handle: appHandle)
+        let castStart = CastStart(
+            cast: cast,
+            report: { uiStore.showError($0) }
+        )
         let importStore = ImportStore()
         let importer = Importer(handle: appHandle, host: host)
         importStore.sessionWriter = CandidateSessionWriter(
@@ -161,7 +165,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             imageStore: imageStore,
             sync: sync,
             downloads: downloads,
-            cast: cast
+            cast: cast,
+            castStart: castStart
         )
         super
             .init(

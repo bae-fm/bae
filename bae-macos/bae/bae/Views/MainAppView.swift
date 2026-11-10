@@ -280,6 +280,7 @@ struct MainAppView: View {
             .environment(SettingsNavigation())
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())
+            .environment(CastStart.stub())
             .environment(CastStore())
             .environment(SyncActivityStore.preview())
             .albumDetailPreviewEnvironment()

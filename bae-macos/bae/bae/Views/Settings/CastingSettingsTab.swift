@@ -14,12 +14,12 @@ struct CastingSettingsTab: View {
     private var configStore
     @Environment(UiStore.self)
     private var uiStore
+    @Environment(CastStart.self)
+    private var start
 
     /// The device an unconfirmed "turn casting off" would disconnect from.
     @State
     private var pendingDisconnect: String?
-    @State
-    private var start = CastStart()
 
     var body: some View {
         Form {
@@ -38,12 +38,7 @@ struct CastingSettingsTab: View {
                     receivers: castStore.receivers,
                     connectingName: start.connecting?.name,
                     onCast: { receiver in
-                        start.cast(
-                            to: receiver,
-                            with: cast,
-                            onStarted: {},
-                            onFailure: uiStore.showError
-                        )
+                        start.cast(to: receiver, onStarted: {})
                     },
                     onDisconnect: cast.stopCasting
                 )
@@ -71,10 +66,7 @@ struct CastingSettingsTab: View {
         // The page asks for as long as it is open: core browses for it only
         // while casting is on, and follows the setting from there.
         .onAppear { cast.startDiscovery(.settingsPage) }
-        .onDisappear {
-            start.cancel()
-            cast.stopDiscovery(.settingsPage)
-        }
+        .onDisappear { cast.stopDiscovery(.settingsPage) }
         .alert(
             "Turn off casting?",
             isPresented: confirmingDisconnect,
@@ -167,6 +159,7 @@ private struct CastReceiversSection: View {
     #Preview("Casting Settings") {
         CastingSettingsTab()
             .environment(Cast.stub())
+            .environment(CastStart.stub())
             .environment(PreviewData.castStore())
             .environment(
                 PreviewData.makeConfigStore(
