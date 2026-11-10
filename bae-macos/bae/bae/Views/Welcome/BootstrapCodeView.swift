@@ -130,7 +130,7 @@ struct BootstrapCodeView: View {
             Text("Enter your restore code, or an invite to a library.")
         case .resumeRestore:
             Text(
-                "Scan or paste the code shown by Add device… on one of your devices. If you've lost every device, use your restore code."
+                "On one of your devices, choose Add… under Your devices, then scan or paste the code it shows. If you've lost every device, use your restore code."
             )
         case .resume:
             Text(

@@ -104351,175 +104351,175 @@
         }
       }
     },
-    "Scan or paste the code shown by Add device… on one of your devices. If you've lost every device, use your restore code." : {
-      "comment" : "Add device screen: explanation under the code field. Add Device… is the People button on another of the person's devices that shows the code.",
+    "On one of your devices, choose Add… under Your devices, then scan or paste the code it shows. If you've lost every device, use your restore code." : {
+      "comment" : "Add device screen: explanation under the code field. Add… under Your devices, in People and devices settings, is the button on another of the person's devices that shows the code.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "امسح أو الصق الرمز الذي يعرضه «إضافة جهاز…» على أحد أجهزتك. إذا فقدت كل أجهزتك، فاستخدم رمز الاستعادة."
+            "value" : "على أحد أجهزتك، اختر «إضافة…» ضمن «أجهزتك»، ثم امسح الرمز الذي يظهر أو الصقه. إذا فقدت كل أجهزتك، فاستخدم رمز الاستعادة."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сканирайте или поставете кода, който „Добавяне на устройство…“ показва на някое от устройствата ви. Ако сте загубили всичките си устройства, използвайте кода си за възстановяване."
+            "value" : "На някое от устройствата си изберете „Добавяне…“ под „Вашите устройства“, след което сканирайте или поставете показания код. Ако сте загубили всичките си устройства, използвайте кода си за възстановяване."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naskenujte nebo vložte kód, který zobrazí „Přidat zařízení…“ na některém z vašich zařízení. Pokud jste přišli o všechna zařízení, použijte svůj kód pro obnovení."
+            "value" : "Na některém ze svých zařízení zvolte „Přidat…“ v části „Vaše zařízení“ a pak naskenujte nebo vložte zobrazený kód. Pokud jste přišli o všechna zařízení, použijte svůj kód pro obnovení."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scan eller indsæt koden, som »Tilføj enhed…« viser på en af dine enheder. Hvis du har mistet alle dine enheder, så brug din gendannelseskode."
+            "value" : "Vælg »Tilføj…« under »Dine enheder« på en af dine enheder, og scan eller indsæt derefter koden, den viser. Hvis du har mistet alle dine enheder, så brug din gendannelseskode."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scanne den Code, den „Gerät hinzufügen …“ auf einem deiner Geräte zeigt, oder füge ihn ein. Wenn du alle Geräte verloren hast, verwende deinen Wiederherstellungscode."
+            "value" : "Wähle auf einem deiner Geräte „Hinzufügen …“ unter „Deine Geräte“ und scanne dann den angezeigten Code oder füge ihn ein. Wenn du alle Geräte verloren hast, verwende deinen Wiederherstellungscode."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σαρώστε ή επικολλήστε τον κωδικό που εμφανίζει το «Προσθήκη συσκευής…» σε μία από τις συσκευές σας. Αν χάσατε όλες τις συσκευές σας, χρησιμοποιήστε τον κωδικό επαναφοράς σας."
+            "value" : "Σε μία από τις συσκευές σας επιλέξτε «Προσθήκη…» στις «Οι συσκευές σας» και μετά σαρώστε ή επικολλήστε τον κωδικό που εμφανίζεται. Αν χάσατε όλες τις συσκευές σας, χρησιμοποιήστε τον κωδικό επαναφοράς σας."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scan or paste the code shown by Add device… on one of your devices. If you've lost every device, use your restore code."
+            "value" : "On one of your devices, choose Add… under Your devices, then scan or paste the code it shows. If you've lost every device, use your restore code."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escanea o pega el código que muestra “Añadir dispositivo…” en uno de tus dispositivos. Si has perdido todos tus dispositivos, usa tu código de restauración."
+            "value" : "En uno de tus dispositivos, elige “Añadir…” en “Tus dispositivos” y luego escanea o pega el código que muestre. Si has perdido todos tus dispositivos, usa tu código de restauración."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skannaa tai liitä koodi, jonka ”Lisää laite…” näyttää jossakin laitteessasi. Jos olet menettänyt kaikki laitteesi, käytä palautuskoodiasi."
+            "value" : "Valitse jossakin laitteessasi ”Lisää…” kohdassa ”Laitteesi” ja skannaa tai liitä sitten näkyviin tuleva koodi. Jos olet menettänyt kaikki laitteesi, käytä palautuskoodiasi."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scannez ou collez le code qu’affiche « Ajouter un appareil… » sur l’un de vos appareils. Si vous avez perdu tous vos appareils, utilisez votre code de restauration."
+            "value" : "Sur l’un de vos appareils, choisissez « Ajouter… » sous « Vos appareils », puis scannez ou collez le code affiché. Si vous avez perdu tous vos appareils, utilisez votre code de restauration."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "סרוק או הדבק את הקוד ש“הוספת מכשיר…” מציג באחד המכשירים שלך. אם איבדת את כל המכשירים, השתמש בקוד השחזור שלך."
+            "value" : "באחד המכשירים שלך, בחר “הוספה…” תחת “המכשירים שלך”, ואז סרוק או הדבק את הקוד שמוצג. אם איבדת את כל המכשירים, השתמש בקוד השחזור שלך."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skenirajte ili zalijepite kod koji „Dodaj uređaj…” prikazuje na jednom od vaših uređaja. Ako ste izgubili sve uređaje, upotrijebite svoj kod za vraćanje."
+            "value" : "Na jednom od svojih uređaja odaberite „Dodaj…” u odjeljku „Vaši uređaji”, zatim skenirajte ili zalijepite prikazani kod. Ako ste izgubili sve uređaje, upotrijebite svoj kod za vraćanje."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Olvasd be vagy illeszd be a kódot, amelyet az „Eszköz hozzáadása…” mutat az egyik eszközödön. Ha minden eszközödet elvesztetted, használd a visszaállítási kódodat."
+            "value" : "Az egyik eszközödön válaszd az „Eszközeid” alatti „Hozzáadás…” lehetőséget, majd olvasd be vagy illeszd be a megjelenő kódot. Ha minden eszközödet elvesztetted, használd a visszaállítási kódodat."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scansiona o incolla il codice che “Aggiungi dispositivo…” mostra su uno dei tuoi dispositivi. Se hai perso tutti i dispositivi, usa il tuo codice di ripristino."
+            "value" : "Su uno dei tuoi dispositivi scegli “Aggiungi…” sotto “I tuoi dispositivi”, poi scansiona o incolla il codice mostrato. Se hai perso tutti i dispositivi, usa il tuo codice di ripristino."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "いずれかのデバイスの「デバイスを追加…」に表示されるコードをスキャンするか貼り付けてください。すべてのデバイスを失った場合は、復元コードを使用してください。"
+            "value" : "いずれかのデバイスで「あなたのデバイス」の「追加…」を選び、表示されるコードをスキャンするか貼り付けてください。すべてのデバイスを失った場合は、復元コードを使用してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "내 기기 중 하나의 ‘기기 추가…’에 표시되는 코드를 스캔하거나 붙여넣으세요. 모든 기기를 잃어버렸다면 복원 코드를 사용하세요."
+            "value" : "내 기기 중 하나에서 ‘내 기기’ 아래 ‘추가…’를 선택한 다음, 표시되는 코드를 스캔하거나 붙여넣으세요. 모든 기기를 잃어버렸다면 복원 코드를 사용하세요."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skann eller lim inn koden som «Legg til enhet…» viser på en av enhetene dine. Har du mistet alle enhetene dine, bruker du gjenopprettingskoden din."
+            "value" : "Velg «Legg til…» under «Enhetene dine» på en av enhetene dine, og skann eller lim inn koden som vises. Har du mistet alle enhetene dine, bruker du gjenopprettingskoden din."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scan of plak de code die ‘Apparaat toevoegen…’ op een van je apparaten toont. Ben je al je apparaten kwijt, gebruik dan je herstelcode."
+            "value" : "Kies op een van je apparaten ‘Toevoegen…’ onder ‘Je apparaten’ en scan of plak daarna de getoonde code. Ben je al je apparaten kwijt, gebruik dan je herstelcode."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeskanuj lub wklej kod, który pokazuje „Dodaj urządzenie…” na jednym z twoich urządzeń. Jeśli nie masz już żadnego urządzenia, użyj swojego kodu przywracania."
+            "value" : "Na jednym ze swoich urządzeń wybierz „Dodaj…” w sekcji „Twoje urządzenia”, a potem zeskanuj lub wklej wyświetlony kod. Jeśli nie masz już żadnego urządzenia, użyj swojego kodu przywracania."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escaneie ou cole o código que “Adicionar dispositivo…” mostra em um dos seus dispositivos. Se você perdeu todos os seus dispositivos, use seu código de restauração."
+            "value" : "Em um dos seus dispositivos, escolha “Adicionar…” em “Seus dispositivos” e depois escaneie ou cole o código mostrado. Se você perdeu todos os seus dispositivos, use seu código de restauração."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Digitalize ou cole o código que «Adicionar dispositivo…» mostra num dos seus dispositivos. Se perdeu todos os seus dispositivos, use o seu código de restauração."
+            "value" : "Num dos seus dispositivos, escolha «Adicionar…» em «Os seus dispositivos» e depois digitalize ou cole o código mostrado. Se perdeu todos os seus dispositivos, use o seu código de restauração."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scanează sau lipește codul afișat de „Adaugă dispozitiv…” pe unul dintre dispozitivele tale. Dacă ai pierdut toate dispozitivele, folosește codul tău de restaurare."
+            "value" : "Pe unul dintre dispozitivele tale, alege „Adaugă…” sub „Dispozitivele tale”, apoi scanează sau lipește codul afișat. Dacă ai pierdut toate dispozitivele, folosește codul tău de restaurare."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naskenujte alebo vložte kód, ktorý zobrazí „Pridať zariadenie…“ na niektorom z vašich zariadení. Ak ste prišli o všetky zariadenia, použite svoj kód na obnovenie."
+            "value" : "Na niektorom zo svojich zariadení vyberte „Pridať…“ v časti „Vaše zariadenia“ a potom naskenujte alebo vložte zobrazený kód. Ak ste prišli o všetky zariadenia, použite svoj kód na obnovenie."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skanna eller klistra in koden som ”Lägg till enhet…” visar på en av dina enheter. Om du har förlorat alla dina enheter använder du din återställningskod."
+            "value" : "Välj ”Lägg till…” under ”Dina enheter” på en av dina enheter och skanna eller klistra sedan in koden som visas. Om du har förlorat alla dina enheter använder du din återställningskod."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cihazlarınızdan birinde “Cihaz ekle…” seçeneğinin gösterdiği kodu tarayın veya yapıştırın. Tüm cihazlarınızı kaybettiyseniz geri yükleme kodunuzu kullanın."
+            "value" : "Cihazlarınızdan birinde “Cihazlarınız” altında “Ekle…” seçeneğini seçin, ardından görünen kodu tarayın veya yapıştırın. Tüm cihazlarınızı kaybettiyseniz geri yükleme kodunuzu kullanın."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Відскануйте або вставте код, який показує «Додати пристрій…» на одному з ваших пристроїв. Якщо ви втратили всі пристрої, скористайтеся своїм кодом відновлення."
+            "value" : "На одному з ваших пристроїв виберіть «Додати…» у розділі «Ваші пристрої», а потім відскануйте або вставте код, що з’явиться. Якщо ви втратили всі пристрої, скористайтеся своїм кодом відновлення."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "扫描或粘贴你的某台设备上“添加设备…”显示的代码。如果你丢失了所有设备，请使用你的恢复码。"
+            "value" : "在你的某台设备上，选择“你的设备”下的“添加…”，然后扫描或粘贴显示的代码。如果你丢失了所有设备，请使用你的恢复码。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "掃描或貼上你的某部裝置上「新增裝置…」顯示的代碼。如果你遺失了所有裝置，請使用你的還原碼。"
+            "value" : "在你的某部裝置上，選擇「你的裝置」下的「新增…」，然後掃描或貼上顯示的代碼。如果你遺失了所有裝置，請使用你的還原碼。"
           }
         }
       }
