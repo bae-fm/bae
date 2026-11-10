@@ -29,7 +29,7 @@ mod telemetry;
 pub mod test_panic;
 mod ui_error;
 
-pub use background::{lock_or_crash, ReportedTask, ReportedThread};
+pub use background::{lock_or_crash, ReportedTask, ReportedThread, Unfinished};
 pub use error_category::{
     bootstrap_category, cloud_unlock_category, creation_category, database_category,
     deletion_category, device_only_category, file_read_category, key_category,

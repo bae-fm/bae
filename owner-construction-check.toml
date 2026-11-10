@@ -629,7 +629,7 @@ OpenCalls = "LibrarySessions"
 # The one place a task that reports its panic starts, and the one for a
 # thread: each hands its handle to the caller, which aborts or joins it.
 "bae-diagnostics/src/background.rs" = [
-    "Diagnostics::spawn_reported",
+    "Diagnostics::spawn_ending",
     "Diagnostics::spawn_thread_reported",
 ]
 # A test's candidate runtime opens its own tables.

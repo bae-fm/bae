@@ -354,6 +354,22 @@ impl LibraryManager {
         self.diagnostics.blocking(operation, work).await
     }
 
+    /// Run `task` on the manager's runtime and hand how it ended, its value
+    /// or its panic, reported first, to `end` ([`Diagnostics::spawn_ending`]).
+    /// The running operation a cancel aborts, whose outcome is what `end`
+    /// returned.
+    pub(crate) fn spawn_ending<T: Send + 'static, U: Send + 'static>(
+        &self,
+        name: &'static str,
+        task: impl Future<Output = T> + Send + 'static,
+        end: impl FnOnce(Result<T, Bug>) -> U + Send + 'static,
+    ) -> bae_transfers::RunningOp<
+        impl Future<Output = Result<U, bae_diagnostics::Unfinished>> + Send + 'static,
+    > {
+        let task = self.diagnostics.spawn_ending(&self.runtime_handle, name, task, end);
+        bae_transfers::RunningOp::new(task.abort_handle(), task.outcome())
+    }
+
     /// Report `bug`, work that panicked, and hand it back for the caller's
     /// own error, as [`Self::bug`] does for a join.
     pub fn panicked(&self, bug: Bug) -> Bug {

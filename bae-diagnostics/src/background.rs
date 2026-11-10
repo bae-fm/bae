@@ -12,6 +12,9 @@
 //! - Work nobody awaits runs under [`Diagnostics::spawn_reported`] or
 //!   [`Diagnostics::spawn_thread_reported`]: a panic is reported, and the
 //!   owner's `on_panic` ends what the work served so its reader sees it end.
+//!   Work whose owner ends what it served the same way whether it finished or
+//!   panicked runs under [`Diagnostics::spawn_ending`]: one `end` hears how
+//!   it ended, and what `end` returns is what a joiner of the task gets.
 //! - A lock whose guarded state spans operations is taken with
 //!   [`lock_or_crash`]: a panic that poisoned it left that state not known to
 //!   be valid.
@@ -123,14 +126,35 @@ impl Diagnostics {
         task: impl Future<Output = ()> + Send + 'static,
         on_panic: impl FnOnce(Bug) + Send + 'static,
     ) -> ReportedTask {
+        self.spawn_ending(runtime, name, task, move |ended| {
+            if let Err(bug) = ended {
+                on_panic(bug);
+            }
+        })
+    }
+
+    /// Run `task` on `runtime`, and hand how it ended to `end`: its value, or
+    /// its panic, reported first. For work whose owner ends what it served
+    /// the same way either way, with something only one of the two may take:
+    /// the handler a failed buffer's reader hears, the channel a transfer
+    /// says it failed on. What `end` returns is what the task's joiner gets
+    /// ([`ReportedTask::outcome`]). A panic in `end` is reported too, and
+    /// goes no further. Aborting the returned task aborts the work, and calls
+    /// nothing.
+    pub fn spawn_ending<T: Send + 'static, U: Send + 'static>(
+        &self,
+        runtime: &tokio::runtime::Handle,
+        name: &'static str,
+        task: impl Future<Output = T> + Send + 'static,
+        end: impl FnOnce(Result<T, Bug>) -> U + Send + 'static,
+    ) -> ReportedTask<U> {
         let diagnostics = self.clone();
-        ReportedTask {
-            task: runtime.spawn(async move {
-                if let Err(failed) = caught(name, task).await {
-                    diagnostics.end_panicked(failed, on_panic);
-                }
-            }),
-        }
+        let task = runtime.spawn(async move {
+            let ended = caught(name, task).await.map_err(|bug| diagnostics.panicked(bug));
+            caught_sync(name, || end(ended))
+                .inspect_err(|again| diagnostics.report_panic("end what the work served", again))
+        });
+        ReportedTask { task }
     }
 
     /// Start a dedicated thread running `body`. On a panic, report it and
@@ -162,7 +186,7 @@ impl Diagnostics {
         let operation = bug.operation;
         let bug = self.panicked(bug);
         if let Err(again) = caught_sync(operation, || on_panic(bug)) {
-            self.report_panic("end the work a panic stopped", &again);
+            self.report_panic("end what the work served", &again);
         }
     }
 }
@@ -180,17 +204,36 @@ impl fmt::Display for Located<'_> {
     }
 }
 
-/// A task [`Diagnostics::spawn_reported`] started. Dropping it leaves the task
-/// running.
+/// A task [`Diagnostics::spawn_reported`] or [`Diagnostics::spawn_ending`]
+/// started, which hands its joiner what its `end` returned. Dropping it leaves
+/// the task running.
 #[derive(Debug)]
-pub struct ReportedTask {
-    task: tokio::task::JoinHandle<()>,
+pub struct ReportedTask<U = ()> {
+    task: tokio::task::JoinHandle<Result<U, Bug>>,
 }
 
-impl ReportedTask {
-    /// End the work at its next await. Its `on_panic` is not called.
+/// Why a joiner of a [`ReportedTask`] gets nothing from its `end`.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum Unfinished {
+    /// The task was aborted, or its runtime dropped it as it shut down,
+    /// before `end` ran.
+    #[error("the work was stopped before it ended")]
+    Stopped,
+    /// `end` panicked, and was reported.
+    #[error(transparent)]
+    Panicked(Bug),
+}
+
+impl<U> ReportedTask<U> {
+    /// End the work at its next await. Its `end` is not called.
     pub fn abort(&self) {
         self.task.abort();
+    }
+
+    /// A handle that ends the work as [`Self::abort`] does, for an owner that
+    /// hands the task's join to someone else.
+    pub fn abort_handle(&self) -> tokio::task::AbortHandle {
+        self.task.abort_handle()
     }
 
     pub fn is_finished(&self) -> bool {
@@ -200,15 +243,30 @@ impl ReportedTask {
     /// Wait until the work has ended: finished, aborted, or panicked and
     /// already reported.
     pub async fn ended(self) {
-        // The task catches its work's panic and an abort is an end the
-        // caller asked for, so only reporting the panic panicking is left.
-        if let Err(error) = self.task.await {
-            if error.is_panic() {
-                tracing::error!(
-                    "reporting a panic panicked: {}",
-                    bae_util::task_failure::panic_message(error.into_panic().as_ref())
-                );
+        // A stop is an end the caller or the runtime asked for, and a panic in
+        // `end` was reported where it happened.
+        if let Err(unfinished) = self.outcome().await {
+            tracing::debug!("a reported task ended unfinished: {unfinished}");
+        }
+    }
+
+    /// Wait until the work has ended, and take what its `end` returned.
+    pub async fn outcome(self) -> Result<U, Unfinished> {
+        match self.task.await {
+            Ok(Ok(value)) => Ok(value),
+            Ok(Err(bug)) => Err(Unfinished::Panicked(bug)),
+            // The task catches its work's panic and `end`'s, so only
+            // reporting a panic panicking is left.
+            Err(error) if error.is_panic() => {
+                let message = bae_util::task_failure::panic_message(error.into_panic().as_ref());
+                tracing::error!("reporting a panic panicked: {message}");
+                Err(Unfinished::Panicked(Bug {
+                    operation: "report a panic",
+                    message,
+                    location: None,
+                }))
             }
+            Err(_) => Err(Unfinished::Stopped),
         }
     }
 }

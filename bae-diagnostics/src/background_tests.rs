@@ -135,7 +135,75 @@ async fn a_panic_in_on_panic_is_reported_and_goes_no_further() {
     );
     task.ended().await;
     let operations: Vec<String> = reports.reports().into_iter().map(|(op, _)| op).collect();
-    assert_eq!(operations, vec!["fan out progress", "end the work a panic stopped"]);
+    assert_eq!(operations, vec!["fan out progress", "end what the work served"]);
+}
+
+/// A task that panics is reported, and its `end` hears the panic and hands
+/// the joiner what it makes of it.
+#[tokio::test]
+async fn spawn_ending_reports_a_panic_and_hands_end_s_value_to_the_joiner() {
+    let (diagnostics, reports) = reporting();
+    let task = diagnostics.spawn_ending(
+        &tokio::runtime::Handle::current(),
+        "fill a buffer",
+        async {
+            tokio::task::yield_now().await;
+            if true {
+                test_panic::panics("window past the end");
+            }
+            7
+        },
+        |ended: Result<i32, Bug>| ended,
+    );
+    assert_eq!(
+        task.outcome().await,
+        Ok(Err(test_panic::bug("fill a buffer", "window past the end")))
+    );
+    assert_eq!(reports.reports(), vec![test_panic::report("fill a buffer", "window past the end")]);
+}
+
+/// A task that finishes hands its value to `end`, and reports nothing.
+#[tokio::test]
+async fn spawn_ending_hands_a_finished_value_to_end() {
+    let (diagnostics, reports) = reporting();
+    let task = diagnostics.spawn_ending(
+        &tokio::runtime::Handle::current(),
+        "count the files",
+        async { 7 },
+        |ended: Result<i32, Bug>| ended.map(|count| count * 2),
+    );
+    assert_eq!(task.outcome().await, Ok(Ok(14)));
+    assert!(reports.reports().is_empty());
+}
+
+/// An aborted task's `end` never runs, and its joiner hears it was stopped.
+#[tokio::test]
+async fn spawn_ending_tells_the_joiner_of_an_abort() {
+    let (diagnostics, reports) = reporting();
+    let task = diagnostics.spawn_ending(
+        &tokio::runtime::Handle::current(),
+        "wait",
+        std::future::pending::<()>(),
+        |_| panic!("an aborted task's end does not run"),
+    );
+    task.abort();
+    assert_eq!(task.outcome().await, Err(Unfinished::Stopped));
+    assert!(reports.reports().is_empty());
+}
+
+/// A panic in `end` is reported, and the joiner hears it.
+#[tokio::test]
+async fn spawn_ending_reports_a_panic_in_end_to_the_joiner() {
+    let (diagnostics, reports) = reporting();
+    let task = diagnostics.spawn_ending(
+        &tokio::runtime::Handle::current(),
+        "record the transfer",
+        async {},
+        |_| -> () { panic!("progress channel gone") },
+    );
+    assert!(matches!(task.outcome().await, Err(Unfinished::Panicked(_))));
+    let operations: Vec<String> = reports.reports().into_iter().map(|(op, _)| op).collect();
+    assert_eq!(operations, vec!["end what the work served"]);
 }
 
 #[test]

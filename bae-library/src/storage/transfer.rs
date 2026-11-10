@@ -10,12 +10,11 @@
 use std::future::Future;
 
 use crate::{LibraryError, LibraryManager};
-use bae_diagnostics::{LocalId, TelemetryEvent};
+use bae_diagnostics::{LocalId, TelemetryEvent, Unfinished};
 use bae_transfers::DownloadTransferProgress;
 use bae_transfers::Finished;
 use bae_transfers::RunningOp;
 use bae_types::release_storage::ReleaseStorageAction;
-use bae_util::task_failure::{caught, TaskFailed};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
@@ -66,7 +65,7 @@ impl LibraryManager {
     {
         let library_manager = self.clone();
         let pinned_release_id = release_id.clone();
-        let (progress, task) =
+        let (progress, running) =
             spawn_transfer(ReleaseTransfer::new(self.clone(), release_id), move |tx| async move {
                 library_manager
                     .pin_release_files_with_progress(&pinned_release_id, entry, |progress| {
@@ -74,28 +73,23 @@ impl LibraryManager {
                     })
                     .await
             });
-        let abort = task.abort_handle();
-        let manager = self.clone();
-        let outcome = async move {
+        running.then(|ended| async move {
             let drained = drive(TransferProgressFeed(progress)).await;
-            match task.await {
+            match ended.await {
                 Ok(Some(finished)) => drained.map(|()| finished),
-                // The transfer failed or was aborted, which the drain says.
+                // The transfer failed, which the drain says.
                 Ok(None) => drained.and_then(|()| {
                     Err(LibraryError::Storage(
                         "the pin ended without finishing its queue entry".to_string(),
                     ))
                 }),
-                Err(join_error) if join_error.is_cancelled() => drained
+                Err(Unfinished::Stopped) => drained
                     .and_then(|()| Err(LibraryError::Storage("the pin was cancelled".to_string()))),
-                // The transfer catches its own work's panic, so this is a
-                // panic in recording how it ended.
-                Err(join_error) => {
-                    Err(manager.bug(TaskFailed::of_join("pin a release", join_error)).into())
-                }
+                // A panic in recording how the transfer ended, reported as it
+                // happened.
+                Err(Unfinished::Panicked(bug)) => Err(bug.into()),
             }
-        };
-        RunningOp::new(abort, outcome)
+        })
     }
 }
 
@@ -173,53 +167,60 @@ impl ReleaseTransfer {
 /// panic in the transfer is reported as a bug and ends it as failed, on the
 /// progress channel like any failure, so a caller that drains the channel
 /// alone still hears how it ended. Returns the progress channel to drain and
-/// the task, so a caller that needs to join or abort the transfer can.
+/// the running transfer, whose outcome is how it ended.
 fn spawn_transfer<Run, Fut, Done>(
     transfer: ReleaseTransfer,
     run: Run,
-) -> (mpsc::UnboundedReceiver<TransferProgress>, tokio::task::JoinHandle<Option<Done>>)
+) -> (
+    mpsc::UnboundedReceiver<TransferProgress>,
+    RunningOp<impl Future<Output = Result<Option<Done>, Unfinished>> + Send + 'static>,
+)
 where
     Run: FnOnce(ProgressTx) -> Fut + Send + 'static,
     Fut: Future<Output = Result<Done, LibraryError>> + Send + 'static,
     Done: Send + 'static,
 {
     let (tx, rx) = mpsc::unbounded_channel();
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the transfer catches and reports its own panic, and its caller joins the task for the transfer's result, which Diagnostics::spawn_reported does not hand back"
-    )]
-    let task = tokio::spawn(async move {
-        let result = caught("pin a release", async {
+    // The task runs the transfer and `end` records how it ended: one
+    // transfer, held by both.
+    let transfer = std::sync::Arc::new(transfer);
+    let ended_transfer = transfer.clone();
+    let manager = transfer.library_manager.clone();
+    let progress = tx.clone();
+    let running = manager.spawn_ending(
+        "pin a release",
+        async move {
             let file_count = transfer.start().await?;
             info!(
                 release_id = %transfer.release_id,
                 file_count,
                 "release transfer started"
             );
-            let done = run(tx.clone()).await?;
+            let done = run(progress.clone()).await?;
             transfer.complete(file_count);
             send_progress(
-                &tx,
+                &progress,
                 TransferProgress::Complete { release_id: transfer.release_id.clone() },
             );
             Ok::<_, LibraryError>(done)
-        })
-        .await
-        .unwrap_or_else(|bug| Err(transfer.library_manager.panicked(bug).into()));
-        match result {
-            Ok(done) => Some(done),
-            Err(error) => {
-                transfer.fail(&error);
-                send_progress(
-                    &tx,
-                    TransferProgress::Failed { release_id: transfer.release_id.clone(), error },
-                );
-                None
+        },
+        move |ended| {
+            let transfer = ended_transfer;
+            match ended.unwrap_or_else(|bug| Err(bug.into())) {
+                Ok(done) => Some(done),
+                Err(error) => {
+                    transfer.fail(&error);
+                    send_progress(
+                        &tx,
+                        TransferProgress::Failed { release_id: transfer.release_id.clone(), error },
+                    );
+                    None
+                }
             }
-        }
-    });
+        },
+    );
 
-    (rx, task)
+    (rx, running)
 }
 
 fn send_progress(tx: &ProgressTx, progress: TransferProgress) {

@@ -41,6 +41,12 @@ impl<Fut> RunningOp<Fut> {
         RunningOp { abort: self.abort, outcome: Box::pin(self.outcome) }
     }
 
+    /// The same operation with its outcome handed to `then`, whose future
+    /// awaits it as part of the outcome it makes.
+    pub fn then<Next>(self, then: impl FnOnce(Fut) -> Next) -> RunningOp<Next> {
+        RunningOp { abort: self.abort, outcome: then(self.outcome) }
+    }
+
     pub async fn finish(self) -> Fut::Output
     where
         Fut: Future,
