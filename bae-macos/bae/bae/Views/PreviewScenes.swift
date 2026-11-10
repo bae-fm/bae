@@ -67,6 +67,19 @@
             .windowBackground()
         }
 
+        /// The screen that offers resetting this device, in the welcome
+        /// window's chrome, saying `error`.
+        static func deviceReset(error: LoadError) -> some View {
+            WelcomeWindowChrome {
+                DeviceResetView(
+                    prompt: .offered,
+                    error: error,
+                    onReset: {},
+                    onCancel: {}
+                )
+            }
+        }
+
         /// The album grid backed by the fixture albums, wired with the same live
         /// stores and stub services the app injects at the main window root.
         static func libraryGrid() -> some View {

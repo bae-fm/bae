@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// An error notice's primary button, such as Retry: at the right of the
-/// title's line, Details first when the notice has both.
+/// A notice's button, such as Retry: at the right of the title's line,
+/// Details first when the notice has both.
 public struct ErrorAction {
     /// One target of a menu action.
     public struct Choice {
@@ -21,15 +21,20 @@ public struct ErrorAction {
 
     fileprivate let title: Text
     fileprivate let isDisabled: Bool
+    fileprivate let shortcut: KeyboardShortcut?
     fileprivate let kind: Kind
 
+    /// `shortcut` presses the button from anywhere in the window, such as
+    /// Escape for a Cancel that leaves the screen.
     public init(
         _ title: LocalizedStringKey = "Retry",
         isDisabled: Bool = false,
+        shortcut: KeyboardShortcut? = nil,
         perform: @escaping () -> Void
     ) {
         self.title = Text(title)
         self.isDisabled = isDisabled
+        self.shortcut = shortcut
         self.kind = .button(perform)
     }
 
@@ -37,6 +42,7 @@ public struct ErrorAction {
     public init(_ title: LocalizedStringKey, choices: [Choice]) {
         self.title = Text(title)
         self.isDisabled = false
+        self.shortcut = nil
         self.kind = .menu(choices)
     }
 
@@ -48,6 +54,7 @@ public struct ErrorAction {
     ) {
         self.title = Text(verbatim: title)
         self.isDisabled = isDisabled
+        self.shortcut = nil
         self.kind = .button(perform)
     }
 }
@@ -74,7 +81,8 @@ public enum NoticeDetailsOpening {
 /// line or a title the caller words with what to do under it, and buttons. The
 /// notice never shows the error itself: when there is a detail, its Details
 /// button opens the causes in an alert, with Copy details. The buttons sit at
-/// the right of the title's line, Details first.
+/// the right of the title's line: Details first, then the secondary button,
+/// such as Cancel, then the action.
 public struct Notice: View {
     private enum Heading {
         case line(DisplayError)
@@ -85,6 +93,7 @@ public struct Notice: View {
     private let tone: StatusTone
     private let look: NoticeLook
     private let action: ErrorAction?
+    private let secondary: ErrorAction?
     private let buttons: NoticeButtons
     private let detailsOpening: NoticeDetailsOpening
     private let onDismiss: (() -> Void)?
@@ -100,6 +109,7 @@ public struct Notice: View {
         tone: StatusTone = .danger,
         look: NoticeLook = .filled,
         action: ErrorAction? = nil,
+        secondary: ErrorAction? = nil,
         buttons: NoticeButtons = .inline,
         detailsOpening: NoticeDetailsOpening = .button,
         onDismiss: (() -> Void)? = nil
@@ -108,6 +118,7 @@ public struct Notice: View {
         self.tone = tone
         self.look = look
         self.action = action
+        self.secondary = secondary
         self.buttons = buttons
         self.detailsOpening = detailsOpening
         self.onDismiss = onDismiss
@@ -124,6 +135,7 @@ public struct Notice: View {
         tone: StatusTone = .danger,
         look: NoticeLook = .filled,
         action: ErrorAction? = nil,
+        secondary: ErrorAction? = nil,
         buttons: NoticeButtons = .inline,
         detailsOpening: NoticeDetailsOpening = .button,
         onDismiss: (() -> Void)? = nil
@@ -132,6 +144,7 @@ public struct Notice: View {
         self.tone = tone
         self.look = look
         self.action = action
+        self.secondary = secondary
         self.buttons = buttons
         self.detailsOpening = detailsOpening
         self.onDismiss = onDismiss
@@ -216,14 +229,19 @@ public struct Notice: View {
     }
 
     private var hasChoiceButtons: Bool {
-        (details != nil && detailsOpening == .button) || action != nil
+        (details != nil && detailsOpening == .button) || secondary != nil
+            || action != nil
     }
 
-    /// Details, when it is a button, then the action.
+    /// Details, when it is a button, then the secondary button, then the
+    /// action.
     private var choiceButtons: some View {
         HStack(spacing: ThemeSpace.related) {
             if let details, detailsOpening == .button {
                 detailsButton(details)
+            }
+            if let secondary {
+                actionButton(secondary)
             }
             if let action {
                 actionButton(action)
@@ -272,7 +290,7 @@ extension Notice {
     }
 
     /// The centred layout: the glyph and the title in one row, with the
-    /// buttons in a row under it, Details first.
+    /// buttons in a row under it: Details, the secondary button, the action.
     private var centered: some View {
         let onStage = look == .centeredOnStage
         let secondaryColor = onStage ? Theme.onFillSecondary : Color.secondary
@@ -304,6 +322,9 @@ extension Notice {
             HStack(spacing: ThemeSpace.group) {
                 if let details {
                     detailsButton(details)
+                }
+                if let secondary {
+                    actionButton(secondary)
                 }
                 if let action {
                     actionButton(action)
@@ -342,6 +363,7 @@ extension Notice {
         case .button(let perform):
             colouredButton(Button(action: perform) { action.title })
                 .disabled(action.isDisabled)
+                .keyboardShortcut(action.shortcut)
         case .menu(let choices):
             colouredButton(
                 Menu {

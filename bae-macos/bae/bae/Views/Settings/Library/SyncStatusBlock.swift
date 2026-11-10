@@ -7,7 +7,8 @@ private let logger = Logger.bae("SyncStatusBlock")
 
 /// What the buttons of a sync state's fix hand back to the settings window.
 struct SyncFixActions {
-    /// Shows the device-reset warning for the active library.
+    /// Shows the screen that offers resetting this device for the active
+    /// library.
     let onResetDevice: () -> Void
     /// Asks Sparkle for a newer version of the app.
     let onCheckForUpdates: () -> Void

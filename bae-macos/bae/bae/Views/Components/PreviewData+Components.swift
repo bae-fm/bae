@@ -91,6 +91,22 @@
             }
             return error
         }()
+
+        /// Opening a library found that this installation is another copy
+        /// of a device: only a reset fixes it.
+        static let resetRequiredError: DisplayError = {
+            guard
+                let error = DisplayError(
+                    BridgeError.Diagnostic(
+                        category: .deviceResetRequired,
+                        detail: "this installation is another copy of a device"
+                    ) as any Error
+                )
+            else {
+                fatalError("a Diagnostic error always yields a DisplayError")
+            }
+            return error
+        }()
     }
 
     // The record fixtures stay off the main actor: the library fixtures that

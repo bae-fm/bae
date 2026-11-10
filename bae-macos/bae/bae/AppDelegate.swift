@@ -376,8 +376,8 @@ extension AppDelegate {
         }
     }
 
-    /// Show the device-reset warning for a library, from Settings' pending
-    /// list.
+    /// Show the screen that offers resetting this device for a library, from
+    /// Settings.
     func presentDeviceReset(libraryId: String) {
         loadError = nil
         screen = .resetRequired(libraryId: libraryId)

@@ -2,9 +2,11 @@ import BaeKit
 import SwiftUI
 
 /// Offered when opening a library found a damaged database or another copy of
-/// this device: the warning first, then the reset, which loads the library
-/// from storage again under a fresh device id. Also offers finishing a reset
-/// that stopped partway, once finishing it failed.
+/// this device, or from Settings when sync found one: why, as a centred
+/// notice, with the reset, whose warning an alert shows before it runs. A
+/// reset that failed says so, and Retry runs it again without the warning the
+/// person already accepted. Also offers finishing a reset that stopped
+/// partway, once finishing it failed. Cancel leaves either without resetting.
 struct DeviceResetView: View {
     /// Why the screen asks for a reset.
     enum Prompt {
@@ -22,16 +24,86 @@ struct DeviceResetView: View {
     let onReset: () -> Void
     let onCancel: () -> Void
 
+    @State
+    private var confirming = false
+
     var body: some View {
+        switch prompt {
+        case .offered: offered
+        case .unfinished: unfinished
+        }
+    }
+
+    private var offered: some View {
+        offeredNotice
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .alert("Reset this device?", isPresented: $confirming) {
+                Button(
+                    localizedCoreString("core.sync.reset_device.confirm"),
+                    role: .destructive,
+                    action: onReset
+                )
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(localizedCoreString("core.sync.reset_device.warning"))
+            }
+    }
+
+    /// Why a reset is offered: the error opening the library found, or with
+    /// none, as from Settings, the reset's own line. A failed reset is titled
+    /// by what failed instead, its error behind Details.
+    @ViewBuilder
+    private var offeredNotice: some View {
+        let cancel = ErrorAction(
+            "Cancel",
+            shortcut: .cancelAction,
+            perform: onCancel
+        )
+        let offer = ErrorAction("Reset this device…") { confirming = true }
+        if let error, error.step == .deviceReset {
+            Notice(
+                title: error.step.title,
+                advice: nil,
+                error: error.error,
+                look: .centered,
+                action: ErrorAction("Retry", perform: onReset),
+                secondary: cancel
+            )
+        }
+        else if let error {
+            Notice(
+                error: error.error,
+                look: .centered,
+                action: offer,
+                secondary: cancel
+            )
+        }
+        else {
+            Notice(
+                title: BridgeErrorCategory.deviceResetRequired.localizedLine,
+                advice: nil,
+                error: nil,
+                look: .centered,
+                action: offer,
+                secondary: cancel
+            )
+        }
+    }
+
+    private var unfinished: some View {
         VStack(spacing: ThemeSpace.edge) {
             Spacer()
-            Text(title)
+            Text("Finish resetting this device?")
                 .themeText(.title)
-            Text(message)
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: WelcomeLayout.columnWidth)
+            Text(
+                BridgeErrorCategory.replacementUnfinished(by: .reset)
+                    .localizedLine
+            )
+            .themeText(.body)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: WelcomeLayout.columnWidth)
             if let error {
                 Notice(
                     title: error.step.title,
@@ -44,7 +116,7 @@ struct DeviceResetView: View {
                 Button("Cancel", action: onCancel)
                     .buttonStyle(.bordered)
                     .keyboardShortcut(.cancelAction)
-                Button(confirmTitle, role: .destructive, action: onReset)
+                Button("Finish resetting", role: .destructive, action: onReset)
                     .buttonStyle(.bordered)
             }
             Spacer()
@@ -52,47 +124,19 @@ struct DeviceResetView: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-
-    private var title: LocalizedStringKey {
-        switch prompt {
-        case .offered: "Reset this device?"
-        case .unfinished: "Finish resetting this device?"
-        }
-    }
-
-    private var message: String {
-        switch prompt {
-        case .offered:
-            localizedCoreString("core.sync.reset_device.warning")
-        case .unfinished:
-            BridgeErrorCategory.replacementUnfinished(by: .reset)
-                .localizedLine
-        }
-    }
-
-    private var confirmTitle: String {
-        switch prompt {
-        case .offered:
-            localizedCoreString("core.sync.reset_device.confirm")
-        case .unfinished:
-            String(localized: "Finish resetting")
-        }
-    }
 }
 
 #if DEBUG
     #Preview("Reset required") {
-        WelcomeWindowChrome {
-            DeviceResetView(
-                prompt: .offered,
-                error: LoadError(
-                    .deviceReset,
-                    PreviewData.displayErrorWithDetail
-                ),
-                onReset: {},
-                onCancel: {}
-            )
-        }
+        PreviewScenes.deviceReset(
+            error: LoadError(.resetOffered, PreviewData.resetRequiredError)
+        )
+    }
+
+    #Preview("Reset failed") {
+        PreviewScenes.deviceReset(
+            error: LoadError(.deviceReset, PreviewData.displayErrorWithDetail)
+        )
     }
 
     #Preview("Reset unfinished") {

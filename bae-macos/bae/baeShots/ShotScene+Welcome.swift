@@ -7,7 +7,8 @@ import SwiftUI
 extension ShotScene {
     /// The welcome's list of this Mac's libraries, its window over a Mac that
     /// holds libraries and over one that holds none and no saved restore
-    /// code, and a library's details.
+    /// code, the screen that offers a reset and the one a failed reset lands
+    /// on, and a library's details.
     static let welcomeScenes: [ShotScene] = [
         ShotScene(
             id: "welcome-libraries",
@@ -59,6 +60,26 @@ extension ShotScene {
                         )
                     )
                 }
+            )
+        },
+        ShotScene(id: "welcome-reset-offered", size: WelcomeWindow.size) {
+            ShotStage(
+                PreviewScenes.deviceReset(
+                    error: LoadError(
+                        .resetOffered,
+                        PreviewData.resetRequiredError
+                    )
+                )
+            )
+        },
+        ShotScene(id: "welcome-reset-failed", size: WelcomeWindow.size) {
+            ShotStage(
+                PreviewScenes.deviceReset(
+                    error: LoadError(
+                        .deviceReset,
+                        PreviewData.displayErrorWithDetail
+                    )
+                )
             )
         },
         detailsScene("welcome-library-details", PreviewData.standingSynced),

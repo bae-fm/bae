@@ -5,7 +5,8 @@ import os.log
 private let logger = Logger.bae("LibrarySettings")
 
 struct LibrarySettingsTab: View {
-    /// Shows the device-reset warning for the active library.
+    /// Shows the screen that offers resetting this device for the active
+    /// library.
     let onResetDevice: () -> Void
     /// Closes the active library and asks for the person's restore code to
     /// restore it over this device's copy.
