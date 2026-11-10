@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.glance.appwidget.updateAll
 import fm.bae.app.data.BrowserPageStores
 import fm.bae.app.data.Cast
+import fm.bae.app.data.CastStart
 import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
@@ -87,6 +88,16 @@ class OpenLibrary internal constructor(
     // Holds the multicast lock discovery needs, so it is built with the session
     // rather than per picker.
     val cast = Cast(appHandle, appContext)
+
+    // The cast connecting belongs to the open library, not to the picker or the page that started it.
+    val castStart =
+        CastStart(
+            scope = runtime.scope,
+            castTo = cast::castTo,
+            failureOf = { runtime.errors.display(it) },
+            pickerOpen = { cast.pickerOpen },
+            tell = { messages.show(it) },
+        )
     val configStore: ConfigStore get() = stores.config
     val syncStatusStore: SyncStatusStore get() = stores.syncStatus
     val syncActivityStore: SyncActivityStore get() = stores.syncActivity

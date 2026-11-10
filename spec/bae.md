@@ -4088,7 +4088,9 @@ picks a receiver, the picker or the page names it while bae connects, until
 the cast starts or fails. On macOS the cast connecting is the app's, not the
 picker's or the page's: both name it, so does the Cast button's tooltip, and
 closing either leaves it connecting; a cast that fails says why in an alert,
-wherever the person is. On Android, closing the picker calls the connect off.
+wherever the person is. On Android it is the open library's too: closing the
+picker or the page leaves it connecting, both name it, and a cast that fails
+says why in the picker while it is open and in a snackbar otherwise.
 Stopping casting, turning it off, or picking another
 receiver while one connects calls that connect off: it moves nothing, and
 nothing says it failed. A connect to a Chromecast already under way runs to

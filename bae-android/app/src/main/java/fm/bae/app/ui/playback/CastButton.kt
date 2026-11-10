@@ -44,7 +44,10 @@ fun CastButton(session: OpenLibrary) {
         // The picker asks for discovery while it is open, and a browse clears the list as it starts.
         DisposableEffect(Unit) {
             session.cast.startDiscovery(BridgeBrowsingFor.PICKER)
-            onDispose { session.cast.stopDiscovery(BridgeBrowsingFor.PICKER) }
+            onDispose {
+                session.cast.stopDiscovery(BridgeBrowsingFor.PICKER)
+                session.castStart.clearFailure()
+            }
         }
         CastPickerSheet(
             session = session,
@@ -77,15 +80,16 @@ private fun CastPickerSheet(
     endedFailure: DisplayError?,
     onDismiss: () -> Unit,
 ) {
-    val start = rememberCastStart(session)
     val receivers by session.castStore.receivers.collectAsState()
+    val connecting by session.castStart.connecting.collectAsState()
+    val castFailure by session.castStart.failure.collectAsState()
 
     TitledSheet(title = stringResource(R.string.cast), onDismiss = onDismiss) {
-        PickerFailures(endedFailure = endedFailure, castFailure = start.failure)
+        PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
         CastReceiverRows(
             receivers = receivers,
-            connectingName = start.connecting?.name,
-            onCast = { receiver -> start.cast(receiver) { onDismiss() } },
+            connectingName = connecting?.name,
+            onCast = { receiver -> session.castStart.cast(receiver) { onDismiss() } },
             onDisconnect = {
                 session.cast.stopCasting()
                 onDismiss()

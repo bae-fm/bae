@@ -736,7 +736,6 @@ private fun CastingSettingsScene(receivers: List<BridgeCastReceiver>) {
                 enabled = true,
                 receivers = receivers,
                 connectingName = null,
-                castFailure = null,
                 transcodeFormat = BridgeCastTranscodeFormat.MP3,
                 onBack = {},
                 onCast = {},
