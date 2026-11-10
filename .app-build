@@ -18,6 +18,7 @@ step folder-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene fo
 step import-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene import- --tone midnight
 step release-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-storage --tone midnight
 step release-files-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-files- --tone midnight
+step sync-setup-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene sync-setup --tone midnight
 step settings-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene settings- --tone midnight
 step cast-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene cast- --tone midnight
 step activity-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene activity- --tone midnight
