@@ -751,7 +751,7 @@ pub enum AutomationOutputKind {
 pub struct AutomationQueuedRelease {
     pub title: String,
     pub file_count: i64,
-    pub total_size: i64,
+    pub total_size: u64,
 }
 
 /// One queued release output in the `output_status` snapshot.

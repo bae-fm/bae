@@ -173,7 +173,7 @@ pub fn queue_rows_sql<P: QueuedPayload>(keyed: Option<&ListOrder>, tail: &str) -
             COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = q.release_id), 0), \
             COALESCE((SELECT SUM(coven.size) FROM release_files rf \
                 JOIN coven_files coven ON coven.id = rf.file \
-                WHERE rf.release_id = q.release_id), 0){keys} \
+                WHERE rf.release_id = q.release_id), 0) AS queued_total_size{keys} \
          FROM {table} q \
          LEFT JOIN releases r ON r.id = q.release_id \
          LEFT JOIN albums a ON a.id = r.album_id \
@@ -203,7 +203,7 @@ fn queue_row<P: QueuedPayload>(row: &Row<'_>) -> rusqlite::Result<ReleaseQueueRo
         Some(QueuedRelease {
             title: row.get(at + 3)?,
             file_count: row.get(at + 4)?,
-            total_size: row.get(at + 5)?,
+            total_size: bae_store::read::count_column(row, "queued_total_size")?,
         })
     } else {
         None

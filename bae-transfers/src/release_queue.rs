@@ -49,7 +49,7 @@ pub struct QueuedRelease {
     pub title: String,
     pub file_count: i64,
     /// Total size in bytes across the release's files.
-    pub total_size: i64,
+    pub total_size: u64,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

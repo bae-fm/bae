@@ -21,6 +21,7 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.formatFileSize
+import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorAction
@@ -135,5 +136,5 @@ private fun BridgeQueuedRelease.detailText(context: Context): String {
             fileCount.toInt(),
             fileCount.toInt(),
         )
-    return "$files · ${context.formatFileSize(totalSize)}"
+    return "$files · ${context.formatFileSize(totalSize.requireDisplayableByteCount())}"
 }
