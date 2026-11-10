@@ -191,8 +191,10 @@ pub(super) async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStora
     manager.storage.clone()
 }
 
-/// Connect injected storage and wait for its first pass to end synced; sync
-/// and uploads run.
+/// Connect injected storage and wait for a pass begun after the setup to end
+/// synced, so what this device wrote before the setup is in storage; sync and
+/// uploads run. The setup's own end reads as synced already, while those
+/// writes still wait in the send queue for a pass to send them.
 pub(super) async fn connect_test_cloud_uploading(manager: &TestManager) -> Arc<MemoryStorage> {
     manager
         .library
@@ -207,11 +209,8 @@ pub(super) async fn connect_test_cloud_uploading(manager: &TestManager) -> Arc<M
         )
         .await
         .unwrap();
-    let mut status = manager.library.manager().subscribe_sync_status();
-    crate::followed::value_matching(&mut status, |status| {
-        status.coven.state == coven::SyncState::Synced
-    })
-    .await;
+    let pass = manager.library.manager().retry_now().await.unwrap().await;
+    assert!(matches!(pass, bae_sync_status::SyncRetryOutcome::Synced), "{pass:?}");
     manager.storage.clone()
 }
 

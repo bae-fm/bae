@@ -72,14 +72,28 @@ async fn a_library_without_storage_reports_nothing_unsent() {
     assert!(work.is_empty(), "{work:?}");
 }
 
-/// An open library stands by its live sync status: it reports unsent changes
-/// once it commits a release whose files it hasn't uploaded, with when it last
-/// synced.
+/// An open library stands by its live sync status: as sync words it once its
+/// first pass has sent what it held, and as holding unsent changes once it
+/// commits a release whose files it hasn't uploaded, with when it last synced
+/// either way.
 #[tokio::test]
 async fn an_open_library_stands_by_its_live_sync_status() {
     let (test, _temp) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
+
+    let synced = manager.standing().await.unwrap();
+
+    assert!(
+        matches!(
+            &synced.state,
+            crate::StandingState::Sync(shown)
+                if shown.status == bae_sync_status::SyncStatusWord::Synced
+        ),
+        "{synced:?}"
+    );
+    assert!(synced.last_synced.is_some(), "{synced:?}");
+
     let files = TempDir::new().unwrap();
     insert_release_with_queued_uploads(
         manager,
@@ -89,8 +103,8 @@ async fn an_open_library_stands_by_its_live_sync_status() {
     )
     .await;
 
-    let standing = manager.standing().await.unwrap();
+    let unsent = manager.standing().await.unwrap();
 
-    assert_eq!(standing.state, crate::StandingState::UnsentChanges);
-    assert!(standing.last_synced.is_some(), "{standing:?}");
+    assert_eq!(unsent.state, crate::StandingState::UnsentChanges);
+    assert!(unsent.last_synced.is_some(), "{unsent:?}");
 }

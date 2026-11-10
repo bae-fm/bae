@@ -239,6 +239,9 @@ async fn startup_and_retry_publish_the_native_connection_status() {
     manager.start().unwrap();
     let mut values = manager.subscribe_sync_status();
     manager.attach_and_start_sync_at_startup().await;
+    // Nothing waits to send, and the fixed clock never reaches the next idle
+    // pass, so a pass is asked for: it meets storage offline.
+    manager.store.sync_now();
     crate::followed::value_matching(&mut values, |value| {
         matches!(
             value.shown_pass(),
@@ -277,6 +280,9 @@ async fn reconnect_sync_runs_the_pass_a_backing_off_loop_was_waiting_for() {
     manager.start().unwrap();
     let mut values = manager.subscribe_sync_status();
     manager.attach_and_start_sync_at_startup().await;
+    // Nothing waits to send, and the fixed clock never reaches the next idle
+    // pass, so a pass is asked for: it meets storage offline.
+    manager.store.sync_now();
     crate::followed::value_matching(&mut values, |value| {
         matches!(
             value.shown_pass(),
