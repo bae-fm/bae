@@ -34,7 +34,7 @@
         h('div', { className: 'bae-scan-buttons' }, kids(props.children)));
     };
   }
-  // The six digits two devices both show while one lets the other in, so the person can check they match: large, spaced in two groups of three, centred. `waiting` says what the device is waiting for, beside a spinner so the screen shows it's still checking, ending in an ellipsis. Android's `dialog` is the smaller size for inside a dialog.
+  // The six digits two devices both show while one lets the other in, so the person can check they match: large, spaced in two groups of three, centred. `waiting` says what the device is waiting for, beside a spinner so the screen shows it's still checking, ending in an ellipsis. `dialog` sets it a step further from the line above it, inside a dialog or sheet; on Android it's also the smaller size.
   function MatchCode(prefix, Spin) {
     return function (props) {
       return h('div', { className: cx(prefix + '-code', props.dialog && prefix + '-code-dialog') },

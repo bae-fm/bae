@@ -238,6 +238,7 @@
 .bae-a-step-top .bae-a-step-head { text-align: start; }
 .bae-a-code { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); text-align: center; }
 .bae-a-code-digits { font: 500 40px/48px var(--font-android); letter-spacing: 3px; color: var(--text-primary); }
+.bae-a-code-dialog, .bae-m-code-dialog { padding-top: var(--space-related); }
 .bae-a-code-dialog .bae-a-code-digits { font-size: 32px; line-height: 40px; letter-spacing: 2px; }
 .bae-a-btn { height: 40px; padding: 0 var(--space-section); border-radius: 20px; border: 0; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
 .bae-a-btn-large { height: 48px; border-radius: 24px; font-size: 15px; }
@@ -283,6 +284,8 @@
 .bae-a-scrim { position: absolute; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; z-index: 10; }
 .bae-a-dialog { padding: var(--space-section); border-radius: 28px; background: var(--elevated); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-edge); font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
 .bae-a-dialog-title { margin: 0; font: 400 24px/32px var(--font-android); color: var(--text-primary); }
+.bae-a-dialog-head { display: flex; flex-direction: column; gap: var(--space-related); }
+.bae-a-dialog-message { margin: 0; text-wrap: pretty; }
 .bae-a-dialog-actions { margin-top: var(--space-related); display: flex; justify-content: flex-end; gap: var(--space-related); }
 
 .bae-a-note { padding: var(--space-related) var(--space-page) 0; font: 400 12px/16px var(--font-android); color: var(--text-secondary); }

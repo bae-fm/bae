@@ -111,10 +111,10 @@ export declare function AndroidCard(props: AndroidCardProps): React.ReactElement
 
 /** A screen that walks through one step, centred: a headline, an optional line under it, then the step's content and buttons. */
 /** The six digits two devices both show while one lets the other in, centred; `waiting` is what the device waits for, beside a spinner. */
-export interface MatchCodeProps { code: string; waiting?: string }
+export interface MatchCodeProps { code: string; waiting?: string; dialog?: boolean }
 export declare function MacMatchCode(props: MatchCodeProps): React.ReactElement;
 /** `dialog` is the smaller size for inside a dialog. */
-export declare function AndroidMatchCode(props: MatchCodeProps & { dialog?: boolean }): React.ReactElement;
+export declare function AndroidMatchCode(props: MatchCodeProps): React.ReactElement;
 
 export interface AndroidStepProps { title: string; text?: string; top?: boolean; children?: React.ReactNode }
 export declare function AndroidStep(props: AndroidStepProps): React.ReactElement;
@@ -154,7 +154,7 @@ export interface AndroidRadioProps { label: string; checked?: boolean }
 export declare function AndroidRadio(props: AndroidRadioProps): React.ReactElement;
 
 /** A dialog over a dimmed screen: title, content, and AndroidDialogActions last. */
-export interface AndroidDialogProps { title?: string; width?: number; children?: React.ReactNode }
+export interface AndroidDialogProps { title?: string; message?: string; width?: number; children?: React.ReactNode }
 export declare function AndroidDialog(props: AndroidDialogProps): React.ReactElement;
 
 /** A dialog's buttons, on the right. */

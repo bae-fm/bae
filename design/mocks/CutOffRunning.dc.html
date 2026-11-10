@@ -35,7 +35,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
     </x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Add device" action="{{yes}}" leading-icon="add"></x-import>
   </x-import>
-</x-import><x-import component-from-global-scope="Bae.AndroidDialog" title="This device is still syncing with the cloud" width="320">Wait for it to end, then try again.<x-import component-from-global-scope="Bae.AndroidDialogActions"><x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{yes}}">Not yet</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="text">Retry</x-import></x-import></x-import></div>
+</x-import><x-import component-from-global-scope="Bae.AndroidDialog" title="This device is still syncing with the cloud" width="320" message="Wait for it to end, then try again."><x-import component-from-global-scope="Bae.AndroidDialogActions"><x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{yes}}">Not yet</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="text">Retry</x-import></x-import></x-import></div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

@@ -35,8 +35,8 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
     </x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Add device" action="{{yes}}" leading-icon="add"></x-import>
   </x-import>
-  <x-import component-from-global-scope="Bae.AndroidDialog" title="Tablet wants to join" width="340">
-    Add it if its screen shows this code:
+  <x-import component-from-global-scope="Bae.AndroidDialog" title="Tablet wants to join" width="340" message="Make sure this code is showing:">
+    
     <x-import component-from-global-scope="Bae.AndroidMatchCode" code="412 778" dialog="{{yes}}"></x-import>
     <x-import component-from-global-scope="Bae.AndroidDialogActions">
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{yes}}">Decline</x-import>

@@ -117,7 +117,10 @@
   function AndroidDialog(props) {
     return h('div', { className: 'bae-a-scrim' },
       h('div', { role: 'dialog', 'aria-label': props.title, className: 'bae-a-dialog', style: { width: Number(props.width || 312) } },
-        props.title ? h('h2', { className: 'bae-a-dialog-title' }, props.title) : null,
+        // `message`: the line under the title, tight to it, as Material sets a dialog's supporting text under its headline.
+        props.title || props.message ? h('div', { className: 'bae-a-dialog-head' },
+          props.title ? h('h2', { className: 'bae-a-dialog-title' }, props.title) : null,
+          props.message ? h('p', { className: 'bae-a-dialog-message' }, props.message) : null) : null,
         props.children));
   }
 
