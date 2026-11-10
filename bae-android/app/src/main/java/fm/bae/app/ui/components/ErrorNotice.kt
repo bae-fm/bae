@@ -88,7 +88,8 @@ enum class NoticeButtons {
  * the causes in a dialog. Details and [action] sit at the right of the title's
  * line, Details first, or under the words when [buttons] says so. Given
  * [onOpenDetails], the notice has no Details button: tapping it hands the
- * details to the caller, who shows them. Mirrors the Apple apps' `Notice`.
+ * details to the caller, who shows them; the notice is then its title alone, and
+ * what to do is the message of what the caller shows. Mirrors the Apple apps' `Notice`.
  */
 @Composable
 fun ErrorNotice(
@@ -119,7 +120,8 @@ fun ErrorNotice(
  * A failure under a title the app words for what failed, with [advice], what
  * to do about it. [error] is null when core says the failure has nothing to
  * show; with one, Details opens its causes led by the category's line, or a
- * tap hands them to [onOpenDetails], as [ErrorNotice] says.
+ * tap hands them to [onOpenDetails], as [ErrorNotice] says: the notice is then
+ * the title alone, and [advice] is the message of the details it hands over.
  */
 @Composable
 fun TitledErrorNotice(
@@ -169,12 +171,13 @@ private fun ErrorNoticeContent(
     buttons: NoticeButtons,
 ) {
     var detailsShown by rememberSaveable(details) { mutableStateOf(false) }
+    val opensDetails = details != null && onOpenDetails != null
     if (look == NoticeLook.CENTERED) {
         CenteredNotice(title, tone, modifier, details != null, { detailsShown = true }, action)
     } else {
         FramedNotice(
             title = title,
-            advice = advice,
+            advice = if (opensDetails) null else advice,
             hasDetails = details != null && onOpenDetails == null,
             onDetails = { detailsShown = true },
             modifier =
