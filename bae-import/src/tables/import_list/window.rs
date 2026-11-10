@@ -22,7 +22,7 @@ use crate::tables::import_state::{
     cover_read_columns, read_cover, read_provenance, read_release_link, RuntimeFactColumns,
     PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS, RUNTIME_FACT_COLUMNS,
 };
-use crate::tables::release_groupings::{block_of, load_candidate_on};
+use crate::tables::release_groupings::{block_of, release_of_stored};
 use crate::tables::source_releases::load_release_records_on;
 use crate::triage::{
     import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
@@ -50,6 +50,7 @@ pub(super) fn materialise(
     let mut headers = header_rows(sql, list, keys)?.into_iter().peekable();
     let releases = release_rows(sql, list.id, keys)?;
     let imported = ImportedReads::of(sql, &releases)?;
+    let mut scanned = scanned_items(sql, keys, &releases)?;
     let mut releases = releases.into_iter().peekable();
     keys.iter()
         .enumerate()
@@ -69,9 +70,9 @@ pub(super) fn materialise(
             let release =
                 releases.next_if(|release| release.position == position).ok_or_else(missing)?;
             if key.item == Item::Invalid {
-                return invalid_item(sql, release);
+                return invalid_item(&mut scanned, release);
             }
-            candidate_item(sql, &imported, release, header_position)
+            candidate_item(sql, &imported, &mut scanned, release, header_position)
         })
         .collect()
 }
@@ -209,6 +210,15 @@ struct ReleaseRows {
     cover: Option<CoverSelection>,
 }
 
+impl ReleaseRows {
+    /// Whether the row is a current candidate this device did not import
+    /// that holds no draft row, so it shows the folder's own cover its blank
+    /// draft comes with, read from its scan.
+    fn reads_blank_cover(&self) -> bool {
+        self.imported.is_none() && self.current && !self.drafted
+    }
+}
+
 /// The releases of the window `keys`, in its order.
 fn release_rows(
     sql: &SqlReadContext<'_>,
@@ -320,12 +330,31 @@ fn release_rows(
         .collect()
 }
 
+/// The scan items the window's rows read their files from, by key, read in
+/// one statement: a folder that failed validation shows what its scan read,
+/// and a current candidate holding no draft row shows its files' blank
+/// cover. Only such a row reads its scan's files.
+fn scanned_items(
+    sql: &SqlReadContext<'_>,
+    keys: &[ItemKey],
+    releases: &[ReleaseRows],
+) -> Result<HashMap<CandidateKey, folder_scans::StoredScanItem>, DbError> {
+    let wanted: Vec<(&std::path::Path, &CandidateKey)> = releases
+        .iter()
+        .filter(|release| {
+            keys[release.position].item == Item::Invalid || release.reads_blank_cover()
+        })
+        .map(|release| (release.watched_folder_path.as_path(), &release.key))
+        .collect();
+    folder_scans::load_items_by_keys(sql, &wanted, folder_scans::RowSources::Any)
+}
+
 /// A folder that failed validation, as its row shows it: what its scan read.
-fn invalid_item(sql: &SqlReadContext<'_>, release: ReleaseRows) -> Result<WindowItemRows, DbError> {
-    // Only a row inside a window shows what its files are, so only such a
-    // row's files are read.
-    let stored = folder_scans::load_item_by_key(sql, &release.key, folder_scans::RowSources::Any)?;
-    let candidate = match stored.map(|(_, stored)| stored.item) {
+fn invalid_item(
+    scanned: &mut HashMap<CandidateKey, folder_scans::StoredScanItem>,
+    release: ReleaseRows,
+) -> Result<WindowItemRows, DbError> {
+    let candidate = match scanned.remove(&release.key).map(|stored| stored.item) {
         Some(ScanItem::Invalid(candidate)) => candidate,
         stored => {
             return Err(DbError::unreadable(
@@ -369,6 +398,7 @@ impl ImportedReads {
 fn candidate_item(
     sql: &SqlReadContext<'_>,
     imported_reads: &ImportedReads,
+    scanned: &mut HashMap<CandidateKey, folder_scans::StoredScanItem>,
     release: ReleaseRows,
     header_position: Option<u64>,
 ) -> Result<WindowItemRows, DbError> {
@@ -416,7 +446,7 @@ fn candidate_item(
                 ),
                 release_link,
                 picked,
-                cover: row_cover(sql, &release)?,
+                cover: row_cover(sql, scanned, &release)?,
             }
         }
     };
@@ -520,25 +550,20 @@ impl LinkedRows {
 /// reads its scan's files.
 fn row_cover(
     sql: &SqlReadContext<'_>,
+    scanned: &mut HashMap<CandidateKey, folder_scans::StoredScanItem>,
     release: &ReleaseRows,
 ) -> Result<Option<crate::CoverImageSource>, DbError> {
     let blank;
-    let cover = match (release.current, release.drafted) {
-        (true, false) => {
-            blank = load_candidate_on(sql, &release.key)?
-                .ok_or_else(|| {
-                    DbError::unreadable(
-                        format!("the scan_candidate rows of listed {}", release.key),
-                        0,
-                    )
-                })?
-                .candidate
-                .blank_cover()
-                .as_ref()
-                .map(crate::cover_art::PreparedCover::selection);
-            blank.as_ref()
-        }
-        _ => release.cover.as_ref(),
+    let cover = if release.reads_blank_cover() {
+        let unreadable =
+            || DbError::unreadable(format!("the scan_candidate rows of listed {}", release.key), 0);
+        let stored = scanned.remove(&release.key).ok_or_else(unreadable)?;
+        let (candidate, _) =
+            release_of_stored(&release.watched_folder_path, stored)?.ok_or_else(unreadable)?;
+        blank = candidate.blank_cover().as_ref().map(crate::cover_art::PreparedCover::selection);
+        blank.as_ref()
+    } else {
+        release.cover.as_ref()
     };
     cover
         .map(|cover| {

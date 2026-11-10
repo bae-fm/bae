@@ -22,6 +22,7 @@ use crate::RelativeFolder;
 use bae_types::audio_format::AudioFormat;
 use bae_util::audio_container::AudioContainer;
 use bae_util::content_type::ContentType;
+use std::collections::HashMap;
 use track_sheets::{StoredSheet, StoredSheetAudio, SHEET_AUDIO_JSON, SHEET_JSON};
 
 mod track_sheets;
@@ -45,35 +46,52 @@ impl RowSources {
     }
 }
 
-/// Whose rows a read takes in: every entry's under a root, or the one entry's
-/// at a key, which each table's primary key reaches directly.
+/// Whose rows a read takes in: every entry's under a root, the one entry's
+/// at a key, which each table's primary key reaches directly, or the entries
+/// at several keys, each under its root.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum EntryRows<'a> {
     Root(&'a Path),
     Entry { root: &'a Path, key: &'a CandidateKey },
+    Keys(&'a [(&'a Path, &'a CandidateKey)]),
 }
 
-impl<'a> EntryRows<'a> {
-    fn root(self) -> &'a Path {
-        match self {
-            Self::Root(root) | Self::Entry { root, .. } => root,
-        }
-    }
-
+impl EntryRows<'_> {
     /// The condition keeping these entries of `scan_candidate`, aliased
-    /// `candidate`, binding the root as `?1` and the key as `?2`.
+    /// `candidate`, binding the root as `?1` and the key as `?2`, or the
+    /// roots and keys as one JSON array in `?1`.
     fn condition(self) -> &'static str {
         match self {
             Self::Root(_) => "candidate.watched_folder_path = ?1",
             Self::Entry { .. } => "candidate.watched_folder_path = ?1 AND candidate.path = ?2",
+            Self::Keys(_) => {
+                "(candidate.watched_folder_path, candidate.path) IN \
+                 (SELECT unhex(value ->> 0), unhex(value ->> 1) FROM json_each(?1))"
+            }
         }
     }
 
     /// What [`Self::condition`] binds.
-    fn params(self) -> rusqlite::ParamsFromIter<Vec<Vec<u8>>> {
+    fn params(self) -> rusqlite::ParamsFromIter<Vec<rusqlite::types::Value>> {
+        use rusqlite::types::Value;
         rusqlite::params_from_iter(match self {
-            Self::Root(root) => vec![coven::path_bytes(root)],
-            Self::Entry { root, key } => vec![coven::path_bytes(root), key.as_bytes().to_vec()],
+            Self::Root(root) => vec![Value::Blob(coven::path_bytes(root))],
+            Self::Entry { root, key } => {
+                vec![Value::Blob(coven::path_bytes(root)), Value::Blob(key.as_bytes().to_vec())]
+            }
+            Self::Keys(keys) => vec![Value::Text(
+                serde_json::Value::Array(
+                    keys.iter()
+                        .map(|(root, key)| {
+                            serde_json::json!([
+                                hex::encode(coven::path_bytes(root)),
+                                hex::encode(key.as_bytes())
+                            ])
+                        })
+                        .collect(),
+                )
+                .to_string(),
+            )],
         })
     }
 }
@@ -123,6 +141,22 @@ pub(crate) fn load_item_by_key(
     sources: RowSources,
 ) -> Result<Option<(PathBuf, StoredScanItem)>, DbError> {
     load_item_by_key_rows(sql, entry_key, sources)?.map(|process| process()).transpose()
+}
+
+/// The entries at `keys`, each under the root it is paired with, in one
+/// statement, by key. An entry no row stores is absent.
+pub(crate) fn load_items_by_keys(
+    sql: &impl coven::SqlRead,
+    keys: &[(&Path, &CandidateKey)],
+    sources: RowSources,
+) -> Result<HashMap<CandidateKey, StoredScanItem>, DbError> {
+    if keys.is_empty() {
+        return Ok(HashMap::new());
+    }
+    Ok(load_candidate_items_rows(sql, EntryRows::Keys(keys), sources)?()?
+        .into_iter()
+        .map(|item| (item.key.clone(), item))
+        .collect())
 }
 
 pub(crate) fn load_item_by_key_rows(
@@ -362,6 +396,7 @@ const SKIPPED_FILES_JSON: &str = "(SELECT json_group_array(json_object( \
        AND skipped.candidate_path = candidate.path)";
 
 struct CandidateRow {
+    watched_folder_path: PathBuf,
     path: CandidateKey,
     generation: i64,
     kind: String,
@@ -388,7 +423,7 @@ pub(crate) fn load_candidate_items_rows(
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
     let rows = sql.query(
         &format!(
-            "SELECT candidate.path, candidate.generation, candidate.kind, candidate.name, \
+            "SELECT candidate.watched_folder_path, candidate.path, candidate.generation, candidate.kind, candidate.name, \
                     candidate.relative_folder, candidate.folder, candidate.file_root, \
                     candidate.scope, candidate.file_edit_revision, candidate.grouping_key, \
                     {files} AS files, {PARTS_JSON} AS parts, \
@@ -407,6 +442,7 @@ pub(crate) fn load_candidate_items_rows(
         entries.params(),
         |row| {
             Ok(CandidateRow {
+                watched_folder_path: path_column::get(row, "watched_folder_path")?,
                 path: row.get("path")?,
                 generation: row.get("generation")?,
                 kind: row.get("kind")?,
@@ -432,7 +468,6 @@ pub(crate) fn load_candidate_items_rows(
             })
         },
     )?;
-    let watched_folder_path = entries.root().to_path_buf();
     Ok(Box::new(move || {
         let mut items = Vec::with_capacity(rows.len());
         for row in rows {
@@ -441,7 +476,7 @@ pub(crate) fn load_candidate_items_rows(
                 "invalid" => ScanItem::Invalid(InvalidCandidate {
                     path: row.folder,
                     name: row.name,
-                    watched_folder_path: watched_folder_path.clone(),
+                    watched_folder_path: row.watched_folder_path,
                     relative_folder: row.relative_folder,
                     grouping: row.grouping_key,
                     files: skipped_files_of(&row.path, &row.skipped_files)?,
@@ -456,7 +491,7 @@ pub(crate) fn load_candidate_items_rows(
                             files: files_of(&row.path, &row.files)?,
                             parts: parts_of(&row.path, &row.parts)?,
                         },
-                        watched_folder_path: watched_folder_path.clone(),
+                        watched_folder_path: row.watched_folder_path,
                         scope: scope_of(&row.scope)?,
                         file_edit_revision: to_u64(
                             row.file_edit_revision,

@@ -83,15 +83,14 @@ pub(super) fn load_candidate_on(
     let Some((root, stored)) = folder_scans::load_item_by_key(sql, key, RowSources::Any)? else {
         return Ok(None);
     };
-    folder_scans::stored_entry_belongs(&root, &stored.key, &stored.item)?;
-    let (candidate, settled) = match stored.item {
-        ScanItem::Valid(candidate) => (candidate, true),
-        ScanItem::Discovered(candidate) => (candidate, false),
-        ScanItem::Invalid(_) => return Ok(None),
+    let generation = stored.generation;
+    let key = stored.key.clone();
+    let Some((candidate, settled)) = release_of_stored(&root, stored)? else {
+        return Ok(None);
     };
     let taken_in = sql.query_row(
         "SELECT EXISTS(SELECT 1 FROM release_grouping_member WHERE member_key = ?)",
-        [key],
+        [&key],
         |row| row.get::<_, bool>(0),
     )?;
     let error = match &candidate.grouping {
@@ -101,9 +100,23 @@ pub(super) fn load_candidate_on(
     Ok(Some(StoredReleaseCandidate {
         actionable: settled && !taken_in && error.is_none(),
         candidate,
-        generation: stored.generation,
+        generation,
         error,
     }))
+}
+
+/// The release the stored entry `stored`, under `root`, holds, and whether
+/// the scan settled on it; `None` for a folder that failed validation.
+pub(super) fn release_of_stored(
+    root: &Path,
+    stored: folder_scans::StoredScanItem,
+) -> Result<Option<(FolderCandidate, bool)>, DbError> {
+    folder_scans::stored_entry_belongs(root, &stored.key, &stored.item)?;
+    Ok(match stored.item {
+        ScanItem::Valid(candidate) => Some((candidate, true)),
+        ScanItem::Discovered(candidate) => Some((candidate, false)),
+        ScanItem::Invalid(_) => None,
+    })
 }
 
 /// Whether the person set this release aside: a grouping's own flag, or a

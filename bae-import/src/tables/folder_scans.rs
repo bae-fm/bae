@@ -37,7 +37,9 @@ use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
 pub(super) use self::cover_choice::{cover_refusal, stored_cover_choice};
-pub(super) use self::read::{load_item_by_key, require_current_candidate, RowSources};
+pub(super) use self::read::{
+    load_item_by_key, load_items_by_keys, require_current_candidate, RowSources, StoredScanItem,
+};
 /// Named only by a test that commits a reading under a stamp it took.
 #[cfg(test)]
 pub(crate) use self::reading::FolderReadingStamp;
