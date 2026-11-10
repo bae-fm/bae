@@ -17,6 +17,8 @@ macOS's notice: a tinted box in its tone, the tone's glyph at the top left. It s
 | `stage` | On the lightbox's dark stage, in its text colours. |
 | children | Other content, in place of or after the title. |
 
+Inside a `MacBox` a filled notice keeps to the rows' edges: it is inset by the rows' padding, never out to the box's sides.
+
 Its text takes the size of the screen it sits in. The glyph is 1.19 times the text, centred on the first line. In light, info, success, warning and danger fill with their own pale notice colour (`info-notice` …), with `on-notice` text. In dark, every notice has the neutral fill and the screen's text, and only the glyph carries the tone: a coloured fill over a dark screen reads grey or brown when see-through and glares when solid.
 
 **In the code:** macOS: `Notice` (`BaeKit/Sources/BaeKit/Views/Notice.swift`), whose Details button opens an alert and whose centred look draws a view that failed whole.
