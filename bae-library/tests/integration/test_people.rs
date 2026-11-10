@@ -1,4 +1,5 @@
 use super::dropbox_sign_in::DropboxSignIn;
+use super::test_joined_library::loaded;
 use bae_library::test_libraries::{
     connect_storage, made_profile, made_profile_on, requested_profile_on, storage_library,
 };
@@ -61,8 +62,8 @@ pub(super) fn on_app_runtime(body: impl std::future::Future<Output = ()> + Send 
 /// An owner's library on shared S3 or Dropbox storage, with Robin's profile.
 pub(super) struct Household {
     _dir: tempfile::TempDir,
-    owner: coven::CovenHandle,
-    storage: std::sync::Arc<coven::MemoryStorage>,
+    pub(super) owner: coven::CovenHandle,
+    pub(super) storage: std::sync::Arc<coven::MemoryStorage>,
     sources: bae_library::test_libraries::TestSources,
     robin: bae_people::people::PersonProfile,
 }
@@ -180,7 +181,7 @@ impl Household {
 
     /// A device of its own, `installation`, reaching the household's
     /// storage: with S3's key, or as the Dropbox guest's account.
-    fn device(&self, installation: &coven::Coven) -> coven::CovenBuilder {
+    pub(super) fn device(&self, installation: &coven::Coven) -> coven::CovenBuilder {
         use coven::Storage;
         let storage = match self.storage.config().provider() {
             coven::CloudProvider::S3 => self.storage.for_device(),
@@ -224,7 +225,7 @@ impl Household {
     }
 
     /// Approve the first request among the owner's open invites.
-    async fn approve(&self) {
+    pub(super) async fn approve(&self) {
         let mut invites =
             self.owner.subscribe(|sql| Ok::<_, coven::CovenError>(coven::Invite::list(sql)?));
         let deciding = |invite: &coven::Invite| match bae_library::people::invite_shown(invite) {
@@ -342,7 +343,7 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         })
         .await
         .unwrap();
-        let (guest, profile) = joined.unwrap().unwrap();
+        let (guest, profile) = loaded(joined.unwrap().unwrap());
         let profile = joined_profile(&guest, &household, profile).await;
         let owner_profile = household.robin.clone();
         assert_eq!(profile.name, "Rowan");
@@ -384,7 +385,7 @@ fn a_replacement_invite_writes_no_profile() {
         })
         .await
         .unwrap();
-        let (lost, profile) = joined.unwrap().unwrap();
+        let (lost, profile) = loaded(joined.unwrap().unwrap());
         let rowan = joined_profile(&lost, &household, profile).await;
         // Rowan's profile reaches storage before the device is lost.
         lost.start_sync().await.unwrap();
@@ -415,7 +416,7 @@ fn a_replacement_invite_writes_no_profile() {
         })
         .await
         .unwrap();
-        let (replacement, profile) = joined.unwrap().unwrap();
+        let (replacement, profile) = loaded(joined.unwrap().unwrap());
         assert!(profile.is_none());
         let people = bae_people::People::new(bae_store::test_devices::store_under(
             replacement.clone(),
@@ -555,7 +556,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         })
         .await
         .unwrap();
-        let (guest, profile) = joined.unwrap().unwrap();
+        let (guest, profile) = loaded(joined.unwrap().unwrap());
         assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
         guest.close().await.unwrap();
         household.owner.close().await.unwrap();
@@ -708,7 +709,7 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
         })
         .await
         .unwrap();
-        let (guest, profile) = joined.unwrap().unwrap();
+        let (guest, profile) = loaded(joined.unwrap().unwrap());
         assert_eq!(sign_in.presented(), presented);
         assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
         guest.close().await.unwrap();
@@ -744,7 +745,7 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
         })
         .await
         .unwrap();
-        let (guest, profile) = joined.unwrap().unwrap();
+        let (guest, profile) = loaded(joined.unwrap().unwrap());
         assert_eq!(sign_in.presented(), presented + 1);
         assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
         guest.close().await.unwrap();
@@ -842,7 +843,7 @@ fn a_join_whose_request_was_sent_goes_on_after_its_invite_ends() {
         })
         .await
         .unwrap();
-        let (guest, profile) = joined.unwrap().expect("the sent request is approved");
+        let (guest, profile) = loaded(joined.unwrap().expect("the sent request is approved"));
         assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
         guest.close().await.unwrap();
         household.owner.close().await.unwrap();

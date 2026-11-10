@@ -131,13 +131,28 @@ pub async fn restore_from_saved_code(
     .map_err(|error| reported_restore_error(diagnostics, error))
 }
 
-/// The membership is established even if asking for its profile failed.
-/// Retain this handle and retry profile creation; do not join as another
-/// identity. The profile request is `None` for an invite that replaced an
-/// existing member's keys: that person keeps the row they already have
-/// (§5.4). An asked-for profile is written once sync has made the person's
-/// private circle.
-pub type JoinedLibrary = (coven::CovenHandle, Option<Result<(), bae_people::people::ProfileError>>);
+/// A join that let this device in: the library's open handle, and what came
+/// of the join beside it.
+pub type JoinedLibrary = (coven::CovenHandle, JoinOutcome);
+
+/// What came of a join that let this device in, beside the library it opened.
+pub struct JoinOutcome {
+    /// The profile the join asked for with the invite's name. The membership
+    /// is established even if asking failed: retain the handle and ask
+    /// again; do not join as another identity. `None` when the join asked
+    /// for none: for an invite that replaced an existing member's keys, whose
+    /// person keeps the row they already have, and for a library that
+    /// hasn't loaded far enough to know this device's person, whose profile
+    /// Settings offers once it has (§5.4). An asked-for profile is written
+    /// once sync has made the person's private circle.
+    pub profile: Option<Result<(), bae_people::people::ProfileError>>,
+    /// What failed once coven had published the library: its first load
+    /// (lost storage access among the causes), or keeping the published
+    /// library. The library is open all the same, and its sync goes on from
+    /// where the load stopped; its sync state shows a load that can't reach
+    /// storage (§5.6).
+    pub published_failure: Option<Box<coven::BootstrapError>>,
+}
 
 /// The app's hold on a running join: cancel it before its request is sent, or
 /// check for approval at once. One control covers coven's join and any
@@ -153,7 +168,9 @@ impl JoinControl {
     }
 
     /// Cancel the join. Once its request may have been sent, coven keeps the
-    /// join and the call ends with `BootstrapError::JoinRequestSent`.
+    /// join and the call ends with `BootstrapError::JoinRequestSent`; once
+    /// the join has found its approval, the cancel changes nothing, and the
+    /// call opens the library.
     pub fn cancel(&self) {
         self.sign_in.send_replace(true);
         self.join.cancel();
@@ -168,18 +185,21 @@ impl JoinControl {
 /// Whether a join's cancel can still take the join back at `status`: until
 /// its request may have been sent, which is while it opens its database and
 /// while it connects. After that coven keeps the join and the cancel ends in
-/// `BootstrapError::JoinRequestSent`.
+/// `BootstrapError::JoinRequestSent`, and once the join has found its
+/// approval, publishing and loading the library, nothing stops it.
 pub fn join_cancellable(status: &coven::BootstrapStatus) -> bool {
     matches!(status, coven::BootstrapStatus::Opening(_) | coven::BootstrapStatus::Connecting)
 }
 
 /// Join a library from an invite. The person's profile takes the name the
-/// admin typed in the invite (§5.4). Dropping the call keeps the join for
-/// `resume_join`. An invite that has ended by `clock`, with no join for its
-/// library under way here, ends the call with `None` before any sign-in:
-/// coven sends no first request after the invite ends and would end the join
-/// as soon as it was signed in. A join under way may have sent its request,
-/// which coven goes on waiting for (§5.6).
+/// admin typed in the invite (§5.4). Dropping the call before the join finds
+/// its approval keeps the join for `resume_join`; once it has, coven
+/// publishes the library, which then loads, and the call returns it open
+/// even when its load failed. An invite that has ended by `clock`, with no
+/// join for its library under way here, ends the call with `None` before
+/// any sign-in: coven sends no first request after the invite ends and would
+/// end the join as soon as it was signed in. A join under way may have sent
+/// its request, which coven goes on waiting for (§5.6).
 pub async fn join_with_invite(
     mut builder: coven::CovenBuilder,
     code: &str,
@@ -213,14 +233,8 @@ pub async fn join_with_invite(
         on_status,
         &control.join,
     ))
-    .await
-    .map_err(|error| reported_restore_error(diagnostics, error))?;
-    Ok(match joined {
-        Some(handle) => {
-            Some(with_profile(handle, invite.invitee.as_deref(), clock, diagnostics).await)
-        }
-        None => None,
-    })
+    .await;
+    admitted(joined, invite.invitee.as_deref(), clock, diagnostics).await
 }
 
 /// The joins this device has under way, each as its saved invite reads.
@@ -262,14 +276,8 @@ pub async fn resume_join(
             resume(signed_in).await
         }
         resumed => resumed,
-    }
-    .map_err(|error| reported_restore_error(diagnostics, error))?;
-    Ok(match joined {
-        Some(handle) => {
-            Some(with_profile(handle, join.invitee.as_deref(), clock, diagnostics).await)
-        }
-        None => None,
-    })
+    };
+    admitted(joined, join.invitee.as_deref(), clock, diagnostics).await
 }
 
 /// The restores of a library onto this device that stopped after they
@@ -326,16 +334,56 @@ fn invite_info(code: &str) -> Result<coven::InviteInfo, RestoreFromCodeError> {
     }
 }
 
+/// What a join call came to, once coven answered it: the library it let this
+/// device into, with the profile asked for under the invite's name, or none
+/// when the invite ended without letting it in. A library coven published
+/// is the join's however its first load went: coven lists it as no join,
+/// and its sync goes on with the load (§5.6).
+async fn admitted(
+    joined: Result<Option<coven::CovenHandle>, coven::BootstrapError>,
+    invitee: Option<&str>,
+    clock: coven::ClockRef,
+    diagnostics: &bae_diagnostics::Diagnostics,
+) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
+    let (handle, published_failure) =
+        match joined.map_err(|error| coven::task::reported(diagnostics, error)) {
+            Ok(None) => return Ok(None),
+            Ok(Some(handle)) => (handle, None),
+            Err(coven::BootstrapError::Published { handle, source }) => {
+                tracing::warn!(
+                    "the joined library is published and open, after a failure: {}",
+                    bae_util::error_text::CauseChain(&*source)
+                );
+                (handle, Some(source))
+            }
+            Err(error) => return Err(restore_error(error)),
+        };
+    let profile =
+        match (with_profile(&handle, invitee, clock, diagnostics).await, &published_failure) {
+            // A load that stopped before it applied this device's admission
+            // knows no person to make a profile for; Settings offers one once
+            // sync has loaded that far (§5.4).
+            (Some(Err(bae_people::people::ProfileError::NotRegistered)), Some(_)) => {
+                tracing::info!(
+                    "the joined library hasn't loaded this device's person: no profile asked"
+                );
+                None
+            }
+            (profile, _) => profile,
+        };
+    Ok(Some((handle, JoinOutcome { profile, published_failure })))
+}
+
 /// Ask for the joined person's profile with the invite's name; an invite
 /// that replaced an existing member's keys names nobody, and asks for
 /// nothing.
 async fn with_profile(
-    handle: coven::CovenHandle,
+    handle: &coven::CovenHandle,
     invitee: Option<&str>,
     clock: coven::ClockRef,
     diagnostics: &bae_diagnostics::Diagnostics,
-) -> JoinedLibrary {
-    let profile = match invitee {
+) -> Option<Result<(), bae_people::people::ProfileError>> {
+    match invitee {
         Some(name) => Some(
             bae_people::People::new(bae_store::Store::new(
                 handle.clone(),
@@ -346,8 +394,7 @@ async fn with_profile(
             .await,
         ),
         None => None,
-    };
-    (handle, profile)
+    }
 }
 
 /// Replace this device after the caller has warned that unsent edits are discarded.

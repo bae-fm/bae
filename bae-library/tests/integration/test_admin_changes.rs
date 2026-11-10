@@ -45,7 +45,7 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
         })
         .await
         .unwrap();
-        let (guest, _profile) = joined.unwrap().unwrap();
+        let (guest, _profile) = super::test_joined_library::loaded(joined.unwrap().unwrap());
 
         let mut changes = library.manager().subscribe_admin_changes();
         let done = bae_library::followed::value_matching(&mut changes, |changes| {

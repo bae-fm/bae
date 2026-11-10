@@ -29,6 +29,7 @@ mod test_image_track_audio;
 mod test_import_open_files;
 mod test_import_service;
 mod test_imported_release;
+mod test_joined_library;
 mod test_library_create_cost;
 mod test_people;
 mod test_playback_behavior;

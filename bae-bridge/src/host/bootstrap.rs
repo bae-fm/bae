@@ -258,8 +258,10 @@ impl BridgeHost {
     }
     /// Join a library from an invite. The profile takes the invite's name.
     /// Dropping the call, as leaving the screen does, keeps the join for
-    /// `resume_join`; only `control.cancel()` cancels, and only before the
-    /// request may have been sent.
+    /// `resume_join` until it finds its approval; only `control.cancel()`
+    /// cancels, and only before the request may have been sent. Once
+    /// approved, the library opens even when its first load fails, as
+    /// `Published` with the failure.
     pub async fn join_with_invite(
         self: Arc<Self>,
         code: String,

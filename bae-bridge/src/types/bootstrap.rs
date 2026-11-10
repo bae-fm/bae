@@ -51,14 +51,16 @@ pub enum BridgeBootstrapStatus {
         confirmation: String,
         next_check: BridgeNextCheck,
     },
-    /// Loading the library from storage.
+    /// Loading the library from storage. A join reports it for the check
+    /// that finds its approval, then, after `Committing`, for loading the
+    /// library it published.
     Loading,
     /// Registering this device with the library once it is loaded, in a
     /// restore or a reset; a join's approval registered its device. No count:
     /// how much the registration reads isn't known until it has read it.
     Registering,
     /// Keeping this device's keys and publishing the library, the last work
-    /// before it opens. No count.
+    /// before it opens; a join loads the library after it. No count.
     Committing,
     Pending {
         records: Vec<BridgePendingRecord>,
@@ -69,7 +71,8 @@ pub enum BridgeBootstrapStatus {
 pub struct BridgeBootstrapState {
     pub status: BridgeBootstrapStatus,
     /// Whether the call can still be cancelled: a restore until it ends, a
-    /// join while it opens or connects, a device reset never.
+    /// join while it opens or connects, a device reset never. A join that
+    /// has found its approval opens the library whatever a cancel says.
     pub cancellable: bool,
 }
 
@@ -354,6 +357,10 @@ pub enum BridgeBootstrapResult {
     Opened {
         library: Arc<crate::OpenedLibrary>,
     },
+    /// The library is published and opens, and `error` failed after: keeping
+    /// it on this device, or a joined library's first load, such as one that
+    /// lost its storage access, which its sync state then shows and its sync
+    /// retries.
     Published {
         library: Arc<crate::OpenedLibrary>,
         error: BridgeError,
@@ -382,21 +389,31 @@ impl BridgeBootstrapResult {
         Self::Opened { library: Arc::new(crate::OpenedLibrary::new(handle, host)) }
     }
     /// A join's outcome: the library with its profile written, or kept for a
-    /// replacement; the library without a profile to retry; or the invite
-    /// ended without letting this device in.
+    /// replacement; the library without a profile to retry; the library
+    /// with what failed once it was published; or the invite ended without
+    /// letting this device in. A profile to retry is the one the person acts
+    /// on; a failure beside it core logged.
     pub(crate) fn joined(
         result: Result<Option<bae_library::JoinedLibrary>, bae_library::RestoreFromCodeError>,
         host: Arc<crate::BridgeHost>,
     ) -> Result<Self, BridgeError> {
-        match result {
-            Ok(Some((handle, None | Some(Ok(_))))) => Ok(Self::opened(handle, host)),
-            Ok(Some((handle, Some(Err(error))))) => Ok(Self::ProfileRequired {
-                library: Arc::new(crate::OpenedLibrary::new(handle, host)),
-                error: error.into(),
-            }),
-            Ok(None) => Ok(Self::Declined),
-            Err(error) => Self::failure(error, host),
-        }
+        let (handle, bae_library::JoinOutcome { profile, published_failure }) = match result {
+            Ok(Some(joined)) => joined,
+            Ok(None) => return Ok(Self::Declined),
+            Err(error) => return Self::failure(error, host),
+        };
+        let library = Arc::new(crate::OpenedLibrary::new(handle, host));
+        Ok(match (profile, published_failure) {
+            (Some(Err(error)), _) => Self::ProfileRequired { library, error: error.into() },
+            (None | Some(Ok(())), Some(failure)) => Self::Published {
+                library,
+                error: BridgeError::categorized(
+                    bae_diagnostics::bootstrap_category(&failure),
+                    failure,
+                ),
+            },
+            (None | Some(Ok(())), None) => Self::Opened { library },
+        })
     }
     pub(crate) fn failure(
         error: bae_library::RestoreFromCodeError,

@@ -2669,6 +2669,20 @@ use it before Dan, and only the number shows whose request it is.
 His phone then writes his `people` row with that name while it joins.
 Everyone's devices show Dan by name.
 
+**Once Ana approves.** As soon as Dan's phone finds her approval, the library
+is on his phone and the join is over: coven keeps his keys and publishes the
+library, then loads it, and a cancel changes nothing from then on
+([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)).
+When the load fails, because his phone lost its access to the storage first
+(Ana removed him, or the provider took the share back), the library opens all
+the same, under the name the invite carried, and the app says what failed.
+It is no failed join, and the first screen lists no join under way for it: it
+is a library that can't reach its storage, which its sync state shows, which
+sync retries, and which Dan removes as he removes any library. A load that
+bae quitting stops leaves the same library, whose sync loads the rest once it
+opens. A load that stopped before it knew Dan asks for no profile; Settings
+offers to create it once sync has loaded that far (§5.4).
+
 **Open invites.** Until it ends, each invite Ana's laptop made is a row in
 People: the person's name, marked invited, with when it expires. The rows
 follow coven's list of this device's open invites
@@ -4126,7 +4140,7 @@ library is registered there by id.
 | `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this device's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, keeping this device's settings, which a restore failing before its record leaves as it was; called again, finishes a restore that stopped after its record (§6.4) |
 | `resume_replacement` | finishes this device's reset or restore of a library that stopped after its record, from what coven kept: no code, and no sign-in unless the provider refuses the kept one; told which call the listing names, so a restore's finishing can be cancelled and a reset's can't (§6.4) |
-| `join_with_invite` | joins a library from an invite and writes the person's profile with the name the invite carries (§5.6) |
+| `join_with_invite` | joins a library from an invite and writes the person's profile with the name the invite carries; once approved, returns the library open even when its first load failed, with that failure (§5.6) |
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
 | `unfinished_restores`, `resume_restore` | list the restores onto this device that stopped after they recorded themselves, and finish one after bae restarts, without the code, signing in only when coven has no sign-in it can use; a cancel before the device registered takes the restore back (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after its record (§6.4) |
@@ -4185,7 +4199,9 @@ where they stand state by state: a new installation's database opening, then
 connecting, waiting for approval (a join's), loading, registering this device
 (a restore's and a reset's: the admin's approval registered a joining device),
 and finishing: keeping this device's keys and publishing the library, the last
-work before it opens
+work before it opens. A join reports loading for the check that finds its
+approval, then finishes, then reports loading again for the library it
+published
 ([coven E10](https://github.com/bae-fm/coven/blob/main/spec/api.md#e10-joining-and-restore)).
 The app pulls these states as it pulls every screen value, each time the
 state changes; the counts of the step that counts, the open's steps as above
@@ -4201,7 +4217,8 @@ runs only when it has work. The apps show each step's name over its bar on
 the restore and join screens, and on the screen a reset loads on.
 Registering and finishing have no count, since how much the registration
 reads isn't known until it has read it: the apps name each as they name
-connecting, and a join finishing can no longer be cancelled. Each state says
+connecting, and a join that has found its approval can no longer be
+cancelled. Each state says
 whether the call can still be cancelled: a restore until it ends, a join while
 it opens or connects, a reset never; the apps show Cancel only while it says
 so.
