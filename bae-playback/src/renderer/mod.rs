@@ -25,7 +25,7 @@ pub use channel::{
 };
 pub use format::{RendererFlavor, RendererStreamFormat, TRANSCODE_BITRATE_KBPS};
 pub use media_source::{CoverUrlProvider, MediaUrlProvider, RendererMediaSource, ServedTrack};
-pub use picker::{CastDevice, CastPicker, RendererKind};
+pub use picker::{CastDevice, CastPicker, CastReceiver, RendererKind};
 pub use session::{EventCallback, RendererSession, RendererSessionEvent};
 
 #[cfg(test)]

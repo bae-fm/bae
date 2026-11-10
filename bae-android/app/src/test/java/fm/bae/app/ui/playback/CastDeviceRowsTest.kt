@@ -14,10 +14,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeCastDevice
+import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeRendererKind
 
-/** Discovery runs while the picker is open, so an empty list says it is looking, and found devices replace that line. */
+/** Discovery runs while the picker is open, so an empty list says it is looking, and found receivers replace that line. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class CastDeviceRowsTest {
@@ -26,18 +26,19 @@ class CastDeviceRowsTest {
 
     @Test
     fun anEmptyListIsStillLookingAndDevicesAppearAsFound() {
-        var devices by mutableStateOf(emptyList<BridgeCastDevice>())
+        var receivers by mutableStateOf(emptyList<BridgeCastReceiver>())
         compose.setContent {
             BaeTheme {
                 Column {
-                    CastDeviceRows(devices = devices, castingTo = null, connectingName = null, onDisconnect = {}, onCast = {})
+                    CastDeviceRows(receivers = receivers, castingTo = null, connectingName = null, onDisconnect = {}, onCast = {})
                 }
             }
         }
 
         compose.onNodeWithText("Looking for devices…").assertIsDisplayed()
 
-        devices = listOf(BridgeCastDevice(id = "speaker-1", name = "Living Room Speaker", kind = BridgeRendererKind.CAST))
+        receivers =
+            listOf(BridgeCastReceiver(id = "speaker-1", name = "Living Room Speaker", kind = BridgeRendererKind.CAST, casting = false))
         compose.waitForIdle()
 
         compose.onNodeWithText("Living Room Speaker").assertIsDisplayed()
@@ -47,12 +48,18 @@ class CastDeviceRowsTest {
     /** Connecting to a device can take a while, so the picker names the device it is connecting to until the cast starts. */
     @Test
     fun aConnectingCastNamesItsDevice() {
-        val speaker = BridgeCastDevice(id = "speaker-1", name = "Living Room Speaker", kind = BridgeRendererKind.CAST)
+        val speaker = BridgeCastReceiver(id = "speaker-1", name = "Living Room Speaker", kind = BridgeRendererKind.CAST, casting = false)
         var connecting by mutableStateOf<String?>(null)
         compose.setContent {
             BaeTheme {
                 Column {
-                    CastDeviceRows(devices = listOf(speaker), castingTo = null, connectingName = connecting, onDisconnect = {}, onCast = {})
+                    CastDeviceRows(
+                        receivers = listOf(speaker),
+                        castingTo = null,
+                        connectingName = connecting,
+                        onDisconnect = {},
+                        onCast = {},
+                    )
                 }
             }
         }

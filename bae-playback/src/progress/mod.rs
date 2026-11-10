@@ -101,13 +101,14 @@ pub struct PlaybackPositions {
     pub preview: Option<PreviewPosition>,
 }
 
-/// A remote renderer playback moved to: its stable id, which the UI matches
-/// against the device list, and its name, which it shows. Names need not be
-/// unique across devices.
+/// A remote renderer playback moved to: its stable id, its name, which the
+/// UI shows, and its kind, so the picker can list it before discovery finds
+/// it again. Names need not be unique across devices.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RemoteDevice {
     pub id: String,
     pub name: String,
+    pub kind: crate::renderer::RendererKind,
 }
 
 /// Where playback is going, for the cast surfaces: the speaker button's state,

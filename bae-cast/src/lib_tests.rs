@@ -260,7 +260,7 @@ fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
 #[test]
 fn the_picker_lists_the_devices_from_the_library() {
     let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
-    let listed = services.subscribe_cast_devices();
+    let listed = services.subscribe_cast_receivers();
     let until_listed = |names: &[&str]| {
         runtime.block_on(async {
             tokio::time::timeout(HANG_GUARD, async {
@@ -286,10 +286,11 @@ fn the_picker_lists_the_devices_from_the_library() {
     let devices = until_listed(&["Kitchen", "Study"]);
     assert_eq!(
         devices[0],
-        bae_playback::renderer::CastDevice {
+        bae_playback::renderer::CastReceiver {
             id: "cast-1".to_string(),
             name: "Kitchen".to_string(),
             kind: bae_playback::renderer::RendererKind::Cast,
+            casting: false,
         }
     );
 

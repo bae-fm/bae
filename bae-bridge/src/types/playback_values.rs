@@ -1,4 +1,4 @@
-use super::{BridgeImageRef, BridgeRepeatMode};
+use super::{BridgeImageRef, BridgeRendererKind, BridgeRepeatMode};
 
 /// One local file range to audition, by sample bounds only: an import
 /// candidate has no byte seek positions yet.
@@ -257,18 +257,19 @@ pub enum BridgeMediaControlPlayback {
     },
 }
 
-/// The remote renderer playback is on: its stable id, which the UI matches
-/// against the device list, and its name, which it shows.
+/// The remote renderer playback is on: its stable id, its name, which the
+/// UI shows, and its kind.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeRemoteDevice {
     pub id: String,
     pub name: String,
+    pub kind: BridgeRendererKind,
 }
 
 mirror_struct! {
     BridgeRemoteDevice = bae_playback::RemoteDevice,
     from_core: pub(crate) fn,
-    fields: { id, name },
+    fields: { id, name, kind: (BridgeRendererKind) },
 }
 
 /// Where playback is going, for the cast surfaces: this device's own output,

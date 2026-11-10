@@ -650,7 +650,11 @@ pub(super) fn test_stream_provider() -> crate::renderer::MediaUrlProvider {
 }
 
 pub(super) fn test_device() -> crate::RemoteDevice {
-    crate::RemoteDevice { id: "renderer-device-id".to_string(), name: "Speaker Name".to_string() }
+    crate::RemoteDevice {
+        id: "renderer-device-id".to_string(),
+        name: "Speaker Name".to_string(),
+        kind: crate::renderer::RendererKind::Cast,
+    }
 }
 
 pub(super) fn remote_connect(channel: FakeChannel) -> RemoteConnect {

@@ -32,7 +32,7 @@ struct CastingSettingsTab: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             if configStore.config.castEnabled {
-                CastReceiversSection(devices: castStore.devices)
+                CastReceiversSection(receivers: castStore.receivers)
             }
             if CastTranscodeFormatPicker.isShown(for: configStore.config) {
                 Section {
@@ -112,17 +112,17 @@ struct CastingSettingsTab: View {
 /// the first one answers. Browsing has no end while the page is open, so an
 /// empty list is still looking.
 private struct CastReceiversSection: View {
-    let devices: [BridgeCastDevice]
+    let receivers: [BridgeCastReceiver]
 
     var body: some View {
         Section {
-            if devices.isEmpty {
+            if receivers.isEmpty {
                 WaitingIndicator("Looking for receivers…")
             }
             else {
-                ForEach(devices, id: \.id) { device in
-                    LabeledContent(device.name) {
-                        Text(verbatim: kindName(device.kind))
+                ForEach(receivers, id: \.id) { receiver in
+                    LabeledContent(receiver.name) {
+                        Text(verbatim: kindName(receiver.kind))
                     }
                 }
             }

@@ -197,20 +197,24 @@ pub struct BridgeSubsonicConfig {
     pub bind_address: String,
 }
 
-/// A discovered remote-renderer device (Cast or UPnP), for the device picker.
-/// One list, tagged by `kind` — the picker doesn't segregate by protocol.
+/// A receiver as the cast picker and the Casting page list it: the one
+/// playback is cast to first, then what discovery found, by name. One list,
+/// tagged by `kind`; the picker doesn't segregate by protocol. Mirrors
+/// `bae_playback::renderer::CastReceiver`.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeCastDevice {
+pub struct BridgeCastReceiver {
     /// Opaque id passed back to `cast_to`.
     pub id: String,
     /// Display name shown in the picker.
     pub name: String,
-    /// Which protocol the device speaks, so the row can carry a flavor hint.
+    /// Which protocol the receiver speaks, so the row can carry a flavor hint.
     pub kind: BridgeRendererKind,
+    /// Whether playback is cast to it.
+    pub casting: bool,
 }
 
-/// The protocol flavor of a discovered device.
-#[derive(Debug, Clone, Copy, uniffi::Enum)]
+/// The protocol flavor of a receiver.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeRendererKind {
     Cast,
     Dlna,
@@ -218,17 +222,16 @@ pub enum BridgeRendererKind {
 }
 
 mirror_enum! {
-    #[cfg(feature = "cast")]
     BridgeRendererKind = bae_playback::renderer::RendererKind,
-    from_core: fn,
+    from_core: pub(crate) fn,
     variants: { Cast, Dlna, AirPlay },
 }
 
 mirror_struct! {
     #[cfg(feature = "cast")]
-    BridgeCastDevice = bae_playback::renderer::CastDevice,
+    BridgeCastReceiver = bae_playback::renderer::CastReceiver,
     from_core: pub(crate) fn,
-    fields: { id, name, kind: (BridgeRendererKind) },
+    fields: { id, name, kind: (BridgeRendererKind), casting },
 }
 
 /// A place that lists the receivers bae finds, and so asks it to browse.

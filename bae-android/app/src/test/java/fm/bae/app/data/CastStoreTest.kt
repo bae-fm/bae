@@ -13,6 +13,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeRemoteDevice
 import uniffi.bae_bridge.BridgeRemotePlayback
+import uniffi.bae_bridge.BridgeRendererKind
 
 /**
  * The cast button and the picker's active row read the casting device off the
@@ -22,7 +23,7 @@ import uniffi.bae_bridge.BridgeRemotePlayback
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class CastStoreTest {
-    private val device = BridgeRemoteDevice(id = "cast-2", name = "Speaker Name")
+    private val device = BridgeRemoteDevice(id = "cast-2", name = "Speaker Name", kind = BridgeRendererKind.CAST)
 
     @Test
     fun statusCarriesTheCastingDevice() {
@@ -64,19 +65,19 @@ class CastStoreTest {
     }
 
     @Test
-    fun devicesSurfaceTheLatestList() {
+    fun receiversSurfaceTheLatestList() {
         val store = CastStore()
-        assertTrue(store.devices.value.isEmpty())
+        assertTrue(store.receivers.value.isEmpty())
 
-        store.setDevices(
+        store.setReceivers(
             listOf(
-                BridgeFixtures.castDevice(id = "cast-1", name = "Kitchen"),
-                BridgeFixtures.castDevice(id = "cast-2", name = "Study"),
+                BridgeFixtures.castReceiver(id = "cast-1", name = "Kitchen"),
+                BridgeFixtures.castReceiver(id = "cast-2", name = "Study"),
             ),
         )
-        assertEquals(listOf("Kitchen", "Study"), store.devices.value.map { it.name })
+        assertEquals(listOf("Kitchen", "Study"), store.receivers.value.map { it.name })
 
-        store.setDevices(emptyList())
-        assertTrue(store.devices.value.isEmpty())
+        store.setReceivers(emptyList())
+        assertTrue(store.receivers.value.isEmpty())
     }
 }

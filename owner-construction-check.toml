@@ -282,7 +282,7 @@ task_types = [
     "ArtistDetailSubscription",
     "ArtistSearchSubscription",
     "CandidateRuntimeSubscription",
-    "CastDevicesSubscription",
+    "CastReceiversSubscription",
     "ComposerBrowseSubscription",
     "ComposerDetailSubscription",
     "ComposerDetailRowsSubscription",

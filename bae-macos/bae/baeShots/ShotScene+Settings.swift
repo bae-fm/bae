@@ -28,25 +28,28 @@ extension ShotScene {
         },
         castingSettings(
             "settings-casting",
-            devices: [
-                BridgeCastDevice(
+            receivers: [
+                BridgeCastReceiver(
                     id: "cast-den",
                     name: "Den receiver",
-                    kind: .dlna
+                    kind: .dlna,
+                    casting: false
                 ),
-                BridgeCastDevice(
+                BridgeCastReceiver(
                     id: "cast-kitchen",
                     name: "Kitchen",
-                    kind: .airPlay
+                    kind: .airPlay,
+                    casting: false
                 ),
-                BridgeCastDevice(
+                BridgeCastReceiver(
                     id: "cast-living-room",
                     name: "Living Room",
-                    kind: .cast
+                    kind: .cast,
+                    casting: false
                 ),
             ]
         ),
-        castingSettings("settings-casting-looking", devices: []),
+        castingSettings("settings-casting-looking", receivers: []),
         transfersSettings("settings-transfers", uploadsPaused: false),
         transfersSettings(
             "settings-transfers-uploads-paused",
@@ -77,14 +80,14 @@ extension ShotScene {
         syncPage("sync-status-failed", .previewFailed),
     ]
 
-    /// The Casting tab with casting on and `devices` found.
+    /// The Casting tab with casting on and `receivers` found.
     private static func castingSettings(
         _ id: String,
-        devices: [BridgeCastDevice]
+        receivers: [BridgeCastReceiver]
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 500, height: 600)) {
             let castStore = CastStore()
-            castStore.devices = devices
+            castStore.receivers = receivers
             return ShotStage(
                 CastingSettingsTab()
                     .environment(Cast.stub())

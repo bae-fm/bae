@@ -34,11 +34,12 @@ extension ShotScene {
         ) {
             ShotStage(
                 CastPickerPopover(
-                    devices: [
-                        BridgeCastDevice(
+                    receivers: [
+                        BridgeCastReceiver(
                             id: "speaker-1",
                             name: "Kitchen",
-                            kind: .cast
+                            kind: .cast,
+                            casting: false
                         )
                     ],
                     castingDevice: nil,

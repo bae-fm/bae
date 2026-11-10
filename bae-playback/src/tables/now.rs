@@ -10,6 +10,7 @@ use super::preview_target::{preview_target_from_row, preview_target_values};
 use super::queue::repeat_from_row;
 use super::track_display::track_display_on;
 use super::*;
+use crate::renderer::picker::{kind_column, kind_from_column};
 use crate::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 use crate::{
     LoadingTrack, NowPlayingTrack, NowPlayingValues, PlaybackChange, PlaybackFailure,
@@ -119,11 +120,12 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
             };
             sql.execute(
                 "UPDATE playback_now SET remote = ?, remote_device_id = ?, \
-                     remote_device_name = ?, remote_end_detail = ?",
+                     remote_device_name = ?, remote_device_kind = ?, remote_end_detail = ?",
                 params![
                     kind,
                     device.map(|device| device.id.as_str()),
                     device.map(|device| device.name.as_str()),
+                    device.map(|device| kind_column(device.kind)),
                     detail,
                 ],
             )?;
@@ -184,7 +186,7 @@ pub(super) fn reset_playback_now_on(
              duration_ms = NULL, pause_reason = NULL, side_boundary_id = NULL, \
              side_boundary_kind = NULL, side_label = NULL, side_resumes_at = NULL, \
              remote = 'local', remote_device_id = NULL, remote_device_name = NULL, \
-             remote_end_detail = NULL, preview = 'idle', preview_path = NULL, \
+             remote_device_kind = NULL, remote_end_detail = NULL, preview = 'idle', preview_path = NULL, \
              preview_start_sample = NULL, preview_end_sample = NULL, preview_duration_ms = NULL, \
              failure = NULL, failure_problem = NULL, failure_detail = NULL, \
              failure_device = NULL, failure_device_state = NULL, failures = 0",
@@ -380,8 +382,11 @@ fn remote_from_row(row: &Row<'_>) -> rusqlite::Result<RemotePlayback> {
     if remote == "local" {
         return Ok(RemotePlayback::Local);
     }
-    let device =
-        RemoteDevice { id: row.get("remote_device_id")?, name: row.get("remote_device_name")? };
+    let device = RemoteDevice {
+        id: row.get("remote_device_id")?,
+        name: row.get("remote_device_name")?,
+        kind: kind_from_column(row, "remote_device_kind")?,
+    };
     Ok(match remote.as_str() {
         "on" => RemotePlayback::On(device),
         "ended" => RemotePlayback::Ended { device, detail: row.get("remote_end_detail")? },

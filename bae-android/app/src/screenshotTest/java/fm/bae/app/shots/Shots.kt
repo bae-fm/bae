@@ -70,7 +70,7 @@ import fm.bae.app.ui.settings.SyncStatusScene
 import fm.bae.app.ui.settings.TransfersContent
 import fm.bae.app.ui.settings.sceneOtherPerson
 import fm.bae.app.ui.sync.SyncActivityList
-import uniffi.bae_bridge.BridgeCastDevice
+import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCountLabel
@@ -510,16 +510,16 @@ private fun LibrarySettingsScene(
 @Composable
 fun CastingSettingsFound() {
     CastingSettingsScene(
-        devices =
+        receivers =
             listOf(
-                BridgeCastDevice(id = "cast-den", name = "Den receiver", kind = BridgeRendererKind.DLNA),
-                BridgeCastDevice(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY),
-                BridgeCastDevice(id = "cast-living-room", name = "Living Room", kind = BridgeRendererKind.CAST),
+                BridgeCastReceiver(id = "cast-den", name = "Den receiver", kind = BridgeRendererKind.DLNA, casting = false),
+                BridgeCastReceiver(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY, casting = false),
+                BridgeCastReceiver(id = "cast-living-room", name = "Living Room", kind = BridgeRendererKind.CAST, casting = false),
             ),
     )
 }
 
-/** The cast picker's sheet body over the devices found, casting to one of them. */
+/** The cast picker's sheet body over the receivers found, casting to one of them, which core lists first. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -528,13 +528,18 @@ fun CastPicker() {
         Surface(color = BottomSheetDefaults.ContainerColor) {
             TitledSheetContent(stringResource(R.string.cast)) {
                 CastDeviceRows(
-                    devices =
+                    receivers =
                         listOf(
-                            BridgeCastDevice(id = "cast-den", name = "Den receiver", kind = BridgeRendererKind.DLNA),
-                            BridgeCastDevice(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY),
-                            BridgeCastDevice(id = "cast-living-room", name = "Living Room", kind = BridgeRendererKind.CAST),
+                            BridgeCastReceiver(
+                                id = "cast-living-room",
+                                name = "Living Room",
+                                kind = BridgeRendererKind.CAST,
+                                casting = true,
+                            ),
+                            BridgeCastReceiver(id = "cast-den", name = "Den receiver", kind = BridgeRendererKind.DLNA, casting = false),
+                            BridgeCastReceiver(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY, casting = false),
                         ),
-                    castingTo = BridgeRemoteDevice(id = "cast-living-room", name = "Living Room"),
+                    castingTo = BridgeRemoteDevice(id = "cast-living-room", name = "Living Room", kind = BridgeRendererKind.CAST),
                     connectingName = null,
                     onDisconnect = {},
                     onCast = {},
@@ -547,17 +552,17 @@ fun CastPicker() {
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun CastingSettingsLooking() {
-    CastingSettingsScene(devices = emptyList())
+    CastingSettingsScene(receivers = emptyList())
 }
 
-/** The Casting page with casting on and [devices] found. */
+/** The Casting page with casting on and [receivers] found. */
 @Composable
-private fun CastingSettingsScene(devices: List<BridgeCastDevice>) {
+private fun CastingSettingsScene(receivers: List<BridgeCastReceiver>) {
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             CastingPage(
                 enabled = true,
-                devices = devices,
+                receivers = receivers,
                 transcodeFormat = BridgeCastTranscodeFormat.MP3,
                 onBack = {},
                 onEnabledChange = {},

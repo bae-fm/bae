@@ -40,7 +40,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeBrowsingFor
-import uniffi.bae_bridge.BridgeCastDevice
+import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 
 /** What flipping the casting toggle should do. */
@@ -79,7 +79,7 @@ internal fun CastingSettingsScreen(
 ) {
     val config by session.configStore.config.collectAsState()
     val status by session.castStore.status.collectAsState()
-    val devices by session.castStore.devices.collectAsState()
+    val receivers by session.castStore.receivers.collectAsState()
     var pendingDisconnect by remember { mutableStateOf<String?>(null) }
 
     fun setTranscodeFormat(format: BridgeCastTranscodeFormat) {
@@ -115,7 +115,7 @@ internal fun CastingSettingsScreen(
 
     CastingPage(
         enabled = config.castEnabled,
-        devices = devices,
+        receivers = receivers,
         transcodeFormat = config.castTranscodeFormat,
         onBack = onBack,
         onEnabledChange = {
@@ -132,7 +132,7 @@ internal fun CastingSettingsScreen(
 @Composable
 internal fun CastingPage(
     enabled: Boolean,
-    devices: List<BridgeCastDevice>,
+    receivers: List<BridgeCastReceiver>,
     transcodeFormat: BridgeCastTranscodeFormat,
     onBack: () -> Unit,
     onEnabledChange: (Boolean) -> Unit,
@@ -153,7 +153,7 @@ internal fun CastingPage(
                     text = stringResource(R.string.settings_casting_receivers),
                     modifier = Modifier.padding(horizontal = ThemeSpace.edge),
                 )
-                CastReceivers(devices = devices)
+                CastReceivers(receivers = receivers)
                 CastingCaption(stringResource(R.string.settings_casting_receivers_help))
                 CastingCard {
                     CastTranscodeFormatPicker(selected = transcodeFormat, onSelect = onTranscodeFormatChange)

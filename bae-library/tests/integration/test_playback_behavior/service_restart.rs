@@ -254,7 +254,11 @@ async fn a_service_that_ends_while_casting_tells_the_receiver_to_stop() {
             let finished = Arc::new(AtomicBool::new(false));
             fixture.playback_handle.play_on(
                 Box::new(FakeReceiver { stops: stops.clone(), finished: finished.clone() }),
-                RemoteDevice { id: "receiver".to_string(), name: "Receiver".to_string() },
+                RemoteDevice {
+                    id: "receiver".to_string(),
+                    name: "Receiver".to_string(),
+                    kind: bae_playback::renderer::RendererKind::Cast,
+                },
                 RendererMediaSource::new(
                     Arc::new(|track_id, _format| Ok(format!("http://receiver.test/{track_id}"))),
                     Arc::new(|cover| format!("http://receiver.test/cover/{}", cover.id)),

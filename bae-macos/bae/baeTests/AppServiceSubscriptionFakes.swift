@@ -6,18 +6,18 @@ import Foundation
 // The subscriptions the faked `AppHandle` in `AppServiceSubscriptionTests`
 // hands out: each answers what its test delivers, or nothing.
 
-/// A cast device list that lists nothing: its one pull answers that it was
+/// A cast receiver list that lists nothing: its one pull answers that it was
 /// cancelled, which ends the screen's pulls.
-final class NoCastDevices: CastDevicesSubscription, @unchecked Sendable {
+final class NoCastReceivers: CastReceiversSubscription, @unchecked Sendable {
     init() {
-        super.init(noHandle: CastDevicesSubscription.NoHandle())
+        super.init(noHandle: CastReceiversSubscription.NoHandle())
     }
 
     required init(unsafeFromHandle handle: UInt64) {
         super.init(unsafeFromHandle: handle)
     }
 
-    override func next() async throws -> [BridgeCastDevice] {
+    override func next() async throws -> [BridgeCastReceiver] {
         throw BridgeError.Cancelled
     }
 

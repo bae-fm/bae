@@ -2,6 +2,7 @@
 //! makes of it, and how failures count.
 
 use super::*;
+use crate::renderer::RendererKind;
 use crate::tables::tests::*;
 use crate::{AudioOutputProblem, PlaybackErrorReason};
 use crate::{
@@ -49,10 +50,17 @@ async fn each_change_reads_back_as_written() {
         assert_eq!(shown, Ok(state), "read back as {read:?}");
     }
 
-    let device = RemoteDevice { id: "speaker-1".to_string(), name: "Kitchen".to_string() };
+    // Each kind reads back as the one written.
+    let device =
+        |kind| RemoteDevice { id: "speaker-1".to_string(), name: "Kitchen".to_string(), kind };
     for remote in [
-        RemotePlayback::On(device.clone()),
-        RemotePlayback::Ended { device, detail: "the receiver stopped".to_string() },
+        RemotePlayback::On(device(RendererKind::Cast)),
+        RemotePlayback::On(device(RendererKind::Dlna)),
+        RemotePlayback::On(device(RendererKind::AirPlay)),
+        RemotePlayback::Ended {
+            device: device(RendererKind::AirPlay),
+            detail: "the receiver stopped".to_string(),
+        },
         RemotePlayback::Local,
     ] {
         row.apply(&PlaybackChange::Remote(remote.clone())).await.unwrap();

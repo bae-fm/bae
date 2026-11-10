@@ -15,9 +15,9 @@ struct CastButton: View {
     private var showPicker = false
     @State
     private var castTask: Task<Void, Never>?
-    /// The device a cast is connecting to, while it does.
+    /// The receiver a cast is connecting to, while it does.
     @State
-    private var connecting: BridgeCastDevice?
+    private var connecting: BridgeCastReceiver?
 
     var body: some View {
         let castingName = castStore.castingDeviceName
@@ -34,7 +34,7 @@ struct CastButton: View {
         .accessibilityLabel("Cast")
         .popover(isPresented: $showPicker, arrowEdge: .top) {
             CastPickerPopover(
-                devices: castStore.devices,
+                receivers: castStore.receivers,
                 castingDevice: castStore.castingDevice,
                 endedFailure: castStore.endedFailure,
                 connectingName: connecting?.name,
@@ -66,13 +66,13 @@ struct CastButton: View {
         }
     }
 
-    private func castTo(_ device: BridgeCastDevice) {
+    private func castTo(_ receiver: BridgeCastReceiver) {
         castTask?.cancel()
         let cast = cast
-        connecting = device
+        connecting = receiver
         castTask = Task {
             do {
-                try await cast.castTo(device.id)
+                try await cast.castTo(receiver.id)
                 connecting = nil
                 showPicker = false
             }
@@ -93,14 +93,14 @@ struct CastButton: View {
 
 /// The device picker: the casting row while casting, or why the last device
 /// stopped when its link was lost, the device a cast is connecting to, then
-/// the discovered devices.
+/// the receivers, the one cast to first and checked.
 struct CastPickerPopover: View {
-    let devices: [BridgeCastDevice]
+    let receivers: [BridgeCastReceiver]
     let castingDevice: BridgeRemoteDevice?
     let endedFailure: DisplayError?
     /// The device a cast is connecting to, while it does.
     let connectingName: String?
-    let onCast: (BridgeCastDevice) -> Void
+    let onCast: (BridgeCastReceiver) -> Void
     let onDisconnect: () -> Void
 
     var body: some View {
@@ -127,7 +127,7 @@ struct CastPickerPopover: View {
                     .padding(.vertical, ThemeSpace.line)
                 Divider()
             }
-            if devices.isEmpty {
+            if receivers.isEmpty {
                 Text("No Cast devices found")
                     .themeText(.body)
                     .foregroundStyle(.secondary)
@@ -135,8 +135,8 @@ struct CastPickerPopover: View {
                     .padding(.horizontal, ThemeSpace.inline)
             }
             else {
-                ForEach(devices, id: \.id) { device in
-                    deviceRow(device)
+                ForEach(receivers, id: \.id) { receiver in
+                    receiverRow(receiver)
                 }
             }
         }
@@ -161,17 +161,16 @@ struct CastPickerPopover: View {
         .padding(.vertical, ThemeSpace.line)
     }
 
-    private func deviceRow(_ device: BridgeCastDevice) -> some View {
-        let isActive = device.id == castingDevice?.id
-        return Button(action: { onCast(device) }) {
+    private func receiverRow(_ receiver: BridgeCastReceiver) -> some View {
+        Button(action: { onCast(receiver) }) {
             HStack(spacing: ThemeSpace.inline) {
-                Image(systemName: deviceIcon(device.kind))
+                Image(systemName: deviceIcon(receiver.kind))
                     .foregroundStyle(.secondary)
-                Text(device.name)
+                Text(receiver.name)
                     .themeText(.rowTitle)
                     .lineLimit(1)
                 Spacer()
-                if isActive {
+                if receiver.casting {
                     Image(systemName: "checkmark")
                         .foregroundStyle(Theme.accent)
                 }

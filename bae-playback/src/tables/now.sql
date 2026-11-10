@@ -28,10 +28,12 @@ CREATE TABLE IF NOT EXISTS playback_now (
     is_muted    INTEGER NOT NULL CHECK (is_muted IN (0, 1)),
     -- Where playback goes: this device's own output, a remote renderer, or
     -- back here after the link to the renderer was lost, with why
-    -- (untranslated).
+    -- (untranslated). The renderer is named by its id, its name and its
+    -- kind, so the cast picker lists it while a new search hasn't found it.
     remote             TEXT NOT NULL CHECK (remote IN ('local', 'on', 'ended')),
     remote_device_id   TEXT,
     remote_device_name TEXT,
+    remote_device_kind TEXT CHECK (remote_device_kind IN ('cast', 'dlna', 'airplay')),
     remote_end_detail  TEXT,
     -- The file range a preview auditions (its path as coven's bytes), and
     -- the clip's length.
@@ -64,7 +66,8 @@ CREATE TABLE IF NOT EXISTS playback_now (
         AND (side_boundary_id IS NULL) = (side_label IS NULL)),
     CHECK (side_resumes_at IS NULL OR side_boundary_id IS NOT NULL),
     CHECK ((remote = 'local') = (remote_device_id IS NULL)
-        AND (remote = 'local') = (remote_device_name IS NULL)),
+        AND (remote = 'local') = (remote_device_name IS NULL)
+        AND (remote = 'local') = (remote_device_kind IS NULL)),
     CHECK ((remote = 'ended') = (remote_end_detail IS NOT NULL)),
     CHECK ((preview = 'idle') = (preview_path IS NULL)
         AND (preview = 'idle') = (preview_start_sample IS NULL)

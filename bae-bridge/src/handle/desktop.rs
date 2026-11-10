@@ -74,12 +74,16 @@ impl AppHandle {
             .collect()
     }
 
-    /// The receivers the cast picker lists, by name: the first list at once,
-    /// then one after each change discovery finds.
-    pub fn subscribe_cast_devices(
+    /// The receivers the cast picker lists, the cast-to receiver first, then
+    /// by name: the first list at once, then one after each change discovery
+    /// finds or playback moving to or off a receiver.
+    pub fn subscribe_cast_receivers(
         &self,
-    ) -> std::sync::Arc<crate::screens::CastDevicesSubscription> {
-        crate::screens::cast_devices(self.services.subscribe_cast_devices(), self.runtime.clone())
+    ) -> std::sync::Arc<crate::screens::CastReceiversSubscription> {
+        crate::screens::cast_receivers(
+            self.services.subscribe_cast_receivers(),
+            self.runtime.clone(),
+        )
     }
 }
 

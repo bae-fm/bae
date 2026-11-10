@@ -11,21 +11,21 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.WaitingIndicator
-import uniffi.bae_bridge.BridgeCastDevice
+import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeRendererKind
 
 /** The receivers bae has found, or a spinner until the first answers: browsing has no end while the page is open. */
 @Composable
-internal fun CastReceivers(devices: List<BridgeCastDevice>) {
+internal fun CastReceivers(receivers: List<BridgeCastReceiver>) {
     CastingCard {
-        if (devices.isEmpty()) {
+        if (receivers.isEmpty()) {
             WaitingIndicator(text = stringResource(R.string.settings_casting_looking))
         } else {
-            devices.forEachIndexed { index, device ->
+            receivers.forEachIndexed { index, receiver ->
                 if (index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = ThemeSpace.group))
-                Text(text = device.name)
+                Text(text = receiver.name)
                 Text(
-                    text = castReceiverKindName(device.kind),
+                    text = castReceiverKindName(receiver.kind),
                     style = ThemeText.body.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

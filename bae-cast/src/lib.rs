@@ -34,7 +34,7 @@ use bae_playback::renderer::{
     CoverUrlProvider, MediaUrlProvider, RendererChannel, RendererFlavor, RendererMediaSource,
     RendererStreamFormat, TRANSCODE_BITRATE_KBPS,
 };
-use bae_playback::{PlaybackProgress, RemoteDevice, RemotePlayback};
+use bae_playback::{PlaybackProgress, RemotePlayback};
 use bae_preferences::SubsonicCredential;
 use bae_util::task_failure::{caught, caught_sync, TaskFailed};
 use rand::RngCore;
@@ -647,8 +647,7 @@ impl CastController {
         if let RendererConnection::AirPlay { addr, port, capabilities } = &device.connection {
             let sink =
                 build_airplay_sink(&self.ids, &self.diagnostics, *addr, *port, capabilities)?;
-            self.services
-                .playback_play_on_airplay(sink, RemoteDevice { id: device.id, name: device.name });
+            self.services.playback_play_on_airplay(sink, device.remote());
             return Ok(());
         }
 
@@ -701,7 +700,7 @@ impl CastController {
 
         self.services.playback_play_on(
             channel,
-            RemoteDevice { id: device.id, name: device.name },
+            device.remote(),
             RendererMediaSource::new(stream_provider, cover_provider, flavor),
         );
         Ok(())

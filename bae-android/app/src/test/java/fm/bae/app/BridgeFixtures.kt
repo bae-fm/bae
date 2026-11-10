@@ -4,7 +4,7 @@ import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistSummary
-import uniffi.bae_bridge.BridgeCastDevice
+import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
@@ -232,11 +232,11 @@ object BridgeFixtures {
             wait = wait,
         )
 
-    fun castDevice(
+    fun castReceiver(
         id: String = "cast-1",
         name: String = "Kitchen",
         kind: BridgeRendererKind = BridgeRendererKind.CAST,
-    ): BridgeCastDevice = BridgeCastDevice(id = id, name = name, kind = kind)
+    ): BridgeCastReceiver = BridgeCastReceiver(id = id, name = name, kind = kind, casting = false)
 
     fun library(
         id: String,

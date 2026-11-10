@@ -46,7 +46,7 @@ import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeBrowsingFor
-import uniffi.bae_bridge.BridgeCastDevice
+import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeRemoteDevice
 import uniffi.bae_bridge.BridgeRendererKind
@@ -108,11 +108,11 @@ private fun CastPickerSheet(
     val context = LocalContext.current
     val scope = rememberScreenScope()
     var castJob by remember { mutableStateOf<Job?>(null) }
-    // The device a cast is connecting to, while it does.
-    var connecting by remember { mutableStateOf<BridgeCastDevice?>(null) }
+    // The receiver a cast is connecting to, while it does.
+    var connecting by remember { mutableStateOf<BridgeCastReceiver?>(null) }
     // A failed cast shows here: a snackbar would sit behind the open sheet.
     var castFailure by remember { mutableStateOf<DisplayError?>(null) }
-    val devices by session.castStore.devices.collectAsState()
+    val receivers by session.castStore.receivers.collectAsState()
 
     DisposableEffect(Unit) {
         onDispose { castJob?.cancel() }
@@ -121,25 +121,25 @@ private fun CastPickerSheet(
     TitledSheet(title = stringResource(R.string.cast), onDismiss = onDismiss) {
         PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
         CastDeviceRows(
-            devices = devices,
+            receivers = receivers,
             castingTo = castingTo,
             connectingName = connecting?.name,
             onDisconnect = {
                 session.cast.stopCasting()
                 onDismiss()
             },
-            onCast = { device ->
+            onCast = { receiver ->
                 castJob?.cancel()
                 castFailure = null
-                connecting = device
+                connecting = receiver
                 castJob =
                     scope.launch {
                         try {
-                            session.cast.castTo(device.id)
+                            session.cast.castTo(receiver.id)
                             connecting = null
                             onDismiss()
                         } catch (e: BridgeException) {
-                            logger.error("Failed to cast to ${device.id}", e)
+                            logger.error("Failed to cast to ${receiver.id}", e)
                             connecting = null
                             castFailure = context.displayError(e)
                         }
@@ -170,14 +170,17 @@ private fun PickerFailures(
     }
 }
 
-/** The casting row, if any, the device a cast is connecting to, then the devices discovery has found so far. */
+/**
+ * The casting row, if any, the receiver a cast is connecting to, then the
+ * receivers, the one cast to first and checked.
+ */
 @Composable
 internal fun CastDeviceRows(
-    devices: List<BridgeCastDevice>,
+    receivers: List<BridgeCastReceiver>,
     castingTo: BridgeRemoteDevice?,
     connectingName: String?,
     onDisconnect: () -> Unit,
-    onCast: (BridgeCastDevice) -> Unit,
+    onCast: (BridgeCastReceiver) -> Unit,
 ) {
     if (castingTo != null) {
         CastingRow(deviceName = castingTo.name, onDisconnect = onDisconnect)
@@ -185,14 +188,13 @@ internal fun CastDeviceRows(
     if (connectingName != null) {
         WaitingRow(text = stringResource(R.string.cast_connecting, connectingName))
     }
-    if (devices.isEmpty()) {
+    if (receivers.isEmpty()) {
         LookingForDevicesRow()
     } else {
-        devices.forEach { device ->
-            DeviceRow(
-                device = device,
-                isActive = device.id == castingTo?.id,
-                onCast = { onCast(device) },
+        receivers.forEach { receiver ->
+            ReceiverRow(
+                receiver = receiver,
+                onCast = { onCast(receiver) },
             )
         }
     }
@@ -244,9 +246,8 @@ private fun CastingRow(
 }
 
 @Composable
-private fun DeviceRow(
-    device: BridgeCastDevice,
-    isActive: Boolean,
+private fun ReceiverRow(
+    receiver: BridgeCastReceiver,
     onCast: () -> Unit,
 ) {
     Row(
@@ -258,18 +259,18 @@ private fun DeviceRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = deviceIcon(device.kind),
+            imageVector = deviceIcon(receiver.kind),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.width(ThemeSpace.group))
         Text(
-            text = device.name,
+            text = receiver.name,
             style = ThemeText.rowTitle.style,
             maxLines = 1,
             modifier = Modifier.weight(1f),
         )
-        if (isActive) {
+        if (receiver.casting) {
             Icon(
                 imageVector = Icons.Filled.Check,
                 contentDescription = null,

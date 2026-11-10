@@ -20,7 +20,8 @@
                 .on(
                     device: BridgeRemoteDevice(
                         id: "cast-living-room",
-                        name: "Living Room Speaker"
+                        name: "Living Room Speaker",
+                        kind: .cast
                     )
                 )
             )

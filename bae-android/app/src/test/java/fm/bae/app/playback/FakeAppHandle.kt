@@ -19,7 +19,7 @@ import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeBrowsingFor
-import uniffi.bae_bridge.BridgeCastDevice
+import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailRow
@@ -79,7 +79,7 @@ import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeUnsentWork
 import uniffi.bae_bridge.BridgeUploadReleasesOutcome
 import uniffi.bae_bridge.BridgeWorkDetail
-import uniffi.bae_bridge.CastDevicesSubscription
+import uniffi.bae_bridge.CastReceiversSubscription
 import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailRowsSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
@@ -187,7 +187,7 @@ internal open class FakeAppHandle(
 
     override fun feedPinFileShares(): KeyedValueStream = FakeKeyedValueStream()
 
-    override fun subscribeCastDevices(): CastDevicesSubscription = FakeCastDevicesSubscription()
+    override fun subscribeCastReceivers(): CastReceiversSubscription = FakeCastReceiversSubscription()
 
     override fun subscribeQueue(): QueueSubscription = FakeQueueSubscription()
 
@@ -808,18 +808,18 @@ internal class FakeKeyedValueStream : KeyedValueStream(NoHandle) {
     }
 }
 
-/** A cast device list nothing delivers: each pull waits until cancelled. */
-internal class FakeCastDevicesSubscription : CastDevicesSubscription(NoHandle) {
-    private val devices = Channel<List<BridgeCastDevice>>(Channel.UNLIMITED)
+/** A cast receiver list nothing delivers: each pull waits until cancelled. */
+internal class FakeCastReceiversSubscription : CastReceiversSubscription(NoHandle) {
+    private val receivers = Channel<List<BridgeCastReceiver>>(Channel.UNLIMITED)
 
-    override suspend fun next(): List<BridgeCastDevice> = devices.receive()
+    override suspend fun next(): List<BridgeCastReceiver> = receivers.receive()
 
     override suspend fun cancel() {
-        devices.close(BridgeException.Cancelled())
+        receivers.close(BridgeException.Cancelled())
     }
 
     override fun close() {
-        devices.close(BridgeException.Cancelled())
+        receivers.close(BridgeException.Cancelled())
     }
 }
 

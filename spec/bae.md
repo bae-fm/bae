@@ -3958,9 +3958,11 @@ second to open joins it and keeps what it found, and it ends when the last of
 them closes or casting is turned off. Desktops and Android browse the network
 themselves.
 The picker and the page list what discovery found from a device-local table,
-by name: one task merges every source's list and writes it whole, in one write
-per change, in the order the changes came. No discovery outlives the process
-that ran it, so the table is emptied as the library opens. Once the person
+by name, after the receiver playback is cast to, which playback names with its
+kind, so it is listed while a new search hasn't found it again: one task
+merges every source's list and writes it whole, in one write per change, in
+the order the changes came. No discovery outlives the process that ran it, so
+the table is emptied as the library opens. Once the person
 picks a receiver, the picker names it while bae connects, until the cast
 starts or fails.
 
@@ -4382,14 +4384,15 @@ seek; volume and mute; queue edits; repeat and shuffle; play on a receiver or
 stop; preview a file before import. What playback is doing is one
 device-local row, `playback_now`, which playback writes as each value
 changes, before it tells anyone else of the change: the playing track and its
-phase, volume, mute, where playback is going, the preview, and why playback
-last failed, numbered, until it next plays. Starting playback with the
-library resets the row to stopped, keeping the volume and mute only when it
-resumes what it played. The app pulls a live query of that row joined with
-the playing track's display and the queue's repeat mode, a value after each
-change; while the row names a track the library no longer holds, until
-playback moves off it, no value is sent. A failure shows once wherever the
-person is: a value reading a failure whose number was shown shows nothing.
+phase, volume, mute, where playback is going (a receiver by its id, name and
+kind), the preview, and why playback last failed, numbered, until it next
+plays. Starting playback with the library resets the row to stopped, keeping
+the volume and mute only when it resumes what it played. The app pulls a
+live query of that row joined with the playing track's display and the
+queue's repeat mode, a value after each change; while the row names a track
+the library no longer holds, until playback moves off it, no value is sent.
+A failure shows once wherever the person is: a value reading a failure whose
+number was shown shows nothing.
 Each time tracks go into Up next, the write that puts them in counts the
 addition on the queue's row, with how many tracks it put in; starting
 playback with the library zeroes the count, so no earlier addition is
@@ -5052,7 +5055,7 @@ membership's (`membership.sql`).
 | `playback_manual` | Up next entry, in order: the track it plays |
 | `playback_context` | entry of what's playing from, in play order: its track and its place before shuffle |
 | `playback_state` | the one row of what this device was playing (§7.8) |
-| `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver, preview, last failure and the count of failures (§9.4) |
+| `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver and its kind, preview, last failure and the count of failures (§9.4) |
 | `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on, and the count of seeks applied (§9.4) |
 | `cast_device` | receiver the cast picker lists, as discovery last found it: its id, name and kind (Cast, UPnP or AirPlay) |
 

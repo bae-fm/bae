@@ -6,21 +6,22 @@ import fm.bae.app.coreString
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import uniffi.bae_bridge.BridgeCastDevice
+import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeRemoteDevice
 import uniffi.bae_bridge.BridgeRemotePlayback
 
 /**
  * Cast state for the playback surfaces: where playback is going (this device,
- * a renderer, or back here after a renderer's link was lost), and what the
- * last browse found. Both follow retained value subscriptions.
+ * a renderer, or back here after a renderer's link was lost), and the
+ * receivers the picker lists, the one cast to first and marked. Both follow
+ * retained value subscriptions.
  */
 class CastStore {
     private val _status = MutableStateFlow<BridgeRemotePlayback>(BridgeRemotePlayback.Local)
     val status: StateFlow<BridgeRemotePlayback> = _status.asStateFlow()
 
-    private val _devices = MutableStateFlow<List<BridgeCastDevice>>(emptyList())
-    val devices: StateFlow<List<BridgeCastDevice>> = _devices.asStateFlow()
+    private val _receivers = MutableStateFlow<List<BridgeCastReceiver>>(emptyList())
+    val receivers: StateFlow<List<BridgeCastReceiver>> = _receivers.asStateFlow()
 
     /**
      * Apply the retained status, which every playback value repeats. Returns
@@ -33,15 +34,12 @@ class CastStore {
         return (remote as? BridgeRemotePlayback.Ended)?.takeIf { it != previous }
     }
 
-    fun setDevices(devices: List<BridgeCastDevice>) {
-        _devices.value = devices
+    fun setReceivers(receivers: List<BridgeCastReceiver>) {
+        _receivers.value = receivers
     }
 }
 
-/**
- * The device playback is on, else null. The picker marks the device whose id
- * matches; device names need not be unique.
- */
+/** The device playback is on, else null. */
 fun castingDevice(status: BridgeRemotePlayback): BridgeRemoteDevice? =
     when (status) {
         is BridgeRemotePlayback.On -> status.device

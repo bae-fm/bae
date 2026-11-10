@@ -3,19 +3,18 @@ import Observation
 
 /// Cast state for the playback surfaces: where playback is going (this device,
 /// a renderer, or back here after a renderer's link was lost) and the
-/// discovered device list. Retained playback values drive the status,
-/// including receiver-side ends; the cast-device value stream drives the device
-/// list while the picker or the Casting settings page is open.
+/// receivers the picker lists. Retained playback values drive the status,
+/// including receiver-side ends; the receivers' value stream drives the list,
+/// the one cast to first and marked.
 @MainActor
 @Observable
 public final class CastStore {
     public var status: BridgeRemotePlayback = .local
-    public var devices: [BridgeCastDevice] = []
+    public var receivers: [BridgeCastReceiver] = []
 
     public init() {}
 
-    /// The device playback is on, else `nil`. The picker marks the device whose
-    /// id matches; device names need not be unique.
+    /// The device playback is on, else `nil`.
     public var castingDevice: BridgeRemoteDevice? {
         if case .on(let device) = status {
             return device

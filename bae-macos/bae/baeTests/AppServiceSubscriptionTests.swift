@@ -576,8 +576,8 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         )
     }
 
-    override func subscribeCastDevices() -> CastDevicesSubscription {
-        NoCastDevices()
+    override func subscribeCastReceivers() -> CastReceiversSubscription {
+        NoCastReceivers()
     }
 
     override func subscribeLibraryName() -> LibraryNameSubscription {

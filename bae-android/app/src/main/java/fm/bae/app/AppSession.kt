@@ -177,11 +177,11 @@ class OpenLibrary internal constructor(
         subscribeToTransfers(scope)
         screenSubscriptions +=
             ScreenSubscription(
-                appHandle.subscribeCastDevices().let { pulled(it::next, it::cancel) },
+                appHandle.subscribeCastReceivers().let { pulled(it::next, it::cancel) },
                 scope,
-                onValue = stores.cast::setDevices,
+                onValue = stores.cast::setReceivers,
                 // The picker keeps the list it has; the next read that succeeds replaces it.
-                onError = { error -> subscriptionFailed("cast devices", error) },
+                onError = { error -> subscriptionFailed("cast receivers", error) },
             )
         screenSubscriptions += queue(scope)
     }

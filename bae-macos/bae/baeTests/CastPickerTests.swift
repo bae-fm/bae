@@ -19,11 +19,12 @@ struct CastPickerTests {
         let size = NSSize(width: 300, height: 160)
         try await SnapshotTestSupport.withHostedWindow(
             CastPickerPopover(
-                devices: [
-                    BridgeCastDevice(
+                receivers: [
+                    BridgeCastReceiver(
                         id: "speaker-1",
                         name: "Kitchen",
-                        kind: .cast
+                        kind: .cast,
+                        casting: false
                     )
                 ],
                 castingDevice: nil,

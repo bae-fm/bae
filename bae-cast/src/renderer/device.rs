@@ -9,6 +9,7 @@
 use std::net::IpAddr;
 
 use bae_playback::renderer::{CastDevice, RendererKind};
+use bae_playback::RemoteDevice;
 
 use crate::airplay::AirPlayCapabilities;
 
@@ -39,6 +40,11 @@ impl RendererDevice {
     /// The device as the picker lists it.
     pub fn listed(&self) -> CastDevice {
         CastDevice { id: self.id.clone(), name: self.name.clone(), kind: self.kind() }
+    }
+
+    /// The device as playback names the receiver it plays on.
+    pub fn remote(&self) -> RemoteDevice {
+        RemoteDevice { id: self.id.clone(), name: self.name.clone(), kind: self.kind() }
     }
 }
 

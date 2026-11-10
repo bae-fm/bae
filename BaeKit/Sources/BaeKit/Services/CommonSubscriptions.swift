@@ -14,7 +14,7 @@ final class CommonSubscriptions {
     private var playbackTimeline:
         ScreenSubscription<PlaybackTimelineSubscription>?
     private var queueAdditions: ScreenSubscription<QueueAdditionsSubscription>?
-    private var castDevices: ScreenSubscription<CastDevicesSubscription>?
+    private var castReceivers: ScreenSubscription<CastReceiversSubscription>?
     private var config: ScreenSubscription<ConfigSubscription>?
     private var queue: ScreenSubscription<QueueSubscription>?
     private var uploadsPaused: ScreenSubscription<UploadsPausedSubscription>?
@@ -71,9 +71,11 @@ final class CommonSubscriptions {
             onValue: applyQueueAddition,
             onError: onError
         )
-        castDevices = ScreenSubscription(
-            appHandle.subscribeCastDevices(),
-            onValue: { [castStore] devices in castStore.devices = devices },
+        castReceivers = ScreenSubscription(
+            appHandle.subscribeCastReceivers(),
+            onValue: { [castStore] receivers in
+                castStore.receivers = receivers
+            },
             onError: onError
         )
         config = ScreenSubscription(
