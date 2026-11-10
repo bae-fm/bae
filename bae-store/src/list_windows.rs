@@ -4,7 +4,10 @@
 //! row's sort key through the order's index: the window after the row starts
 //! just past it, the window before the row ends just short of it, and the read
 //! seeks to the row rather than stepping over the rows before it. Every other
-//! window is read by its offset, which steps over every row before it.
+//! window is read by its offset, which steps over every row before it; or,
+//! for a list whose length the read knows (`read_windows_reaching`), from
+//! whichever of the list's top, its end and its nearest known row steps over
+//! the fewest, noting rows on the way for later reads to start from.
 //!
 //! A row's place is known when an earlier window of the same read held it, or
 //! when the list's last read held it and no row of the list has moved since.
@@ -225,6 +228,11 @@ impl Seek {
         params.push((":limit", &limit));
         params.push((":offset", &offset));
         run(&params)
+    }
+
+    /// How many of the order's leading terms the seek holds equal.
+    pub fn held_equal(&self) -> usize {
+        self.equal
     }
 
     /// Whether the seek reads every row in the order's own run: the seek of
@@ -488,12 +496,6 @@ fn known_beside<'k>(
     )
 }
 
-/// Whether `window` is read from a known row beside it, and not by its
-/// offset: the way `read_windows` reads it.
-pub fn is_read_beside_known(window: &LibraryPageWindow, known: &Places) -> bool {
-    window.limit > 0 && matches!(known_beside(window, known), (Some(_), _) | (_, Some(_)))
-}
-
 /// Read each of `windows`, in offset order, from the known row beside it
 /// when there is one and by its offset otherwise. `read` runs the list's
 /// statement under a seek, for at most `limit` rows from `offset`, and gives
@@ -537,6 +539,179 @@ pub fn read_windows<R, E>(
         read_windows.push((window.clone(), rows.into_iter().map(|(row, _)| row).collect()));
     }
     Ok(WindowsRead { windows: read_windows, found })
+}
+
+/// What a list whose length is known reads a window by offset with: its
+/// length, so a window nearer its end is read backwards from there, and how
+/// many rows apart the read notes the rows it passes on the way, so a later
+/// read of a window anywhere it passed starts within that many rows of it.
+#[derive(Debug, Clone, Copy)]
+pub struct Reach {
+    pub total: u64,
+    pub stride: u64,
+}
+
+/// Where a window's read starts: before the list's first row, after its
+/// last, or at a known row, by its place.
+#[derive(Clone, Copy)]
+enum From<'k> {
+    Top,
+    End,
+    After(u64, &'k OrderKey),
+    Before(u64, &'k OrderKey),
+}
+
+impl Reach {
+    /// The window `window` covers, clamped to the list's rows: its first
+    /// row's place and how many rows it holds.
+    fn clamped(&self, window: &LibraryPageWindow) -> (u64, u64) {
+        (window.offset, window.limit.min(self.total.saturating_sub(window.offset)))
+    }
+
+    /// The start of the read of `window` that passes the fewest rows before
+    /// reaching it, and how many it passes: the list's top or end, or the
+    /// nearest row `known` places before or after it.
+    fn nearest<'k>(&self, window: &LibraryPageWindow, known: &'k Places) -> (From<'k>, u64) {
+        let (offset, limit) = self.clamped(window);
+        let end = offset + limit;
+        let mut starts = vec![(From::Top, offset), (From::End, self.total - end)];
+        if let Some((&place, key)) = known.range(end..).next() {
+            starts.push((From::Before(place, key), place - end));
+        }
+        if let Some((&place, key)) = known.range(..offset).next_back() {
+            starts.push((From::After(place, key), offset - place - 1));
+        }
+        // The first of the nearest: a row beside the window before the
+        // list's ends, and a row before it before one after it.
+        starts.into_iter().rev().min_by_key(|(_, passed)| *passed).expect("a list has a top")
+    }
+
+    /// How many rows the read of `window` passes before reaching it.
+    pub fn rows_passed(&self, window: &LibraryPageWindow, known: &Places) -> u64 {
+        self.nearest(window, known).1
+    }
+}
+
+/// Read each of `windows`, in offset order, from whichever start passes the
+/// fewest rows before it: the list's top, its end (reading backwards), or the
+/// nearest row whose place `known` holds, with the rows between skipped. A
+/// read passing more than `reach.stride` rows steps that many at a time from
+/// its start, noting each row it steps to, which `found` returns with each
+/// window's first and last rows. `read` runs the list's statement under a
+/// seek for at most `limit` rows from `offset`, each with its key, and
+/// `count` counts the rows a seek reads, up to `cap`.
+pub fn read_windows_reaching<R, E>(
+    order: &ListOrder,
+    windows: &LibraryPageWindows,
+    mut known: Places,
+    reach: Reach,
+    mut read: impl FnMut(&Seek, u64, u64) -> Result<Vec<Keyed<R>>, E>,
+    mut count: impl FnMut(&Seek, u64) -> Result<u64, E>,
+) -> Result<WindowsRead<R>, E> {
+    let stride = reach.stride.max(1);
+    let mut found = Places::new();
+    let mut read_windows = Vec::with_capacity(windows.len());
+    for window in windows {
+        let (offset, limit) = reach.clamped(window);
+        if limit == 0 {
+            read_windows.push((window.clone(), Vec::new()));
+            continue;
+        }
+        let (start, mut passed) = reach.nearest(window, &known);
+        let mut noted = Vec::new();
+        let rows = match start {
+            From::Top | From::After(..) => {
+                let mut at = match start {
+                    From::After(place, key) => Some((place, key.clone())),
+                    From::Top | From::End | From::Before(..) => None,
+                };
+                while passed >= stride {
+                    let from = at.as_ref().map(|(_, key)| key);
+                    let Some((_, key)) =
+                        stepped(order, from, Side::After, stride - 1, 1, &mut read, &mut count)?
+                            .pop()
+                    else {
+                        break;
+                    };
+                    let place = at.as_ref().map_or(stride - 1, |(place, _)| place + stride);
+                    noted.push((place, key.clone()));
+                    at = Some((place, key));
+                    passed -= stride;
+                }
+                let from = at.as_ref().map(|(_, key)| key);
+                stepped(order, from, Side::After, passed, limit, &mut read, &mut count)?
+            }
+            From::End | From::Before(..) => {
+                let mut at = match start {
+                    From::Before(place, key) => Some((place, key.clone())),
+                    From::Top | From::End | From::After(..) => None,
+                };
+                while passed >= stride {
+                    let from = at.as_ref().map(|(_, key)| key);
+                    let Some((_, key)) =
+                        stepped(order, from, Side::Before, stride - 1, 1, &mut read, &mut count)?
+                            .pop()
+                    else {
+                        break;
+                    };
+                    let place = at.as_ref().map_or(reach.total, |(place, _)| *place) - stride;
+                    noted.push((place, key.clone()));
+                    at = Some((place, key));
+                    passed -= stride;
+                }
+                let from = at.as_ref().map(|(_, key)| key);
+                let mut rows =
+                    stepped(order, from, Side::Before, passed, limit, &mut read, &mut count)?;
+                rows.reverse();
+                rows
+            }
+        };
+        if let (Some((_, first)), Some((_, last))) = (rows.first(), rows.last()) {
+            noted.push((offset, first.clone()));
+            noted.push((offset + rows.len() as u64 - 1, last.clone()));
+        }
+        for (place, key) in noted {
+            known.insert(place, key.clone());
+            found.insert(place, key);
+        }
+        read_windows.push((window.clone(), rows.into_iter().map(|(row, _)| row).collect()));
+    }
+    Ok(WindowsRead { windows: read_windows, found })
+}
+
+/// Up to `limit` rows on `side` of the row at `from` (from the list's top or
+/// end, for `None`), nearest first, past the `skip` nearest: each seek on that
+/// side counted, up to the rows still to skip, until one holds the rows wanted.
+fn stepped<R, E>(
+    order: &ListOrder,
+    from: Option<&OrderKey>,
+    side: Side,
+    mut skip: u64,
+    limit: u64,
+    read: &mut impl FnMut(&Seek, u64, u64) -> Result<Vec<Keyed<R>>, E>,
+    count: &mut impl FnMut(&Seek, u64) -> Result<u64, E>,
+) -> Result<Vec<Keyed<R>>, E> {
+    let Some(key) = from else {
+        let everything = Seek { reversed: side == Side::Before, ..order.everything() };
+        return read(&everything, limit, skip);
+    };
+    let mut rows = Vec::new();
+    for seek in order.seeks(key, side) {
+        let wanted = limit - rows.len() as u64;
+        if wanted == 0 {
+            break;
+        }
+        if skip > 0 {
+            let held = count(&seek, skip + 1)?;
+            if held <= skip {
+                skip -= held;
+                continue;
+            }
+        }
+        rows.extend(read(&seek, wanted, skip)?);
+        skip = 0;
+    }
+    Ok(rows)
 }
 
 /// Up to `limit` rows from `seeks`, run in turn until they hold that many.

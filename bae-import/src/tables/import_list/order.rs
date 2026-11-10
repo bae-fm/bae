@@ -2,11 +2,11 @@
 //! sorts runs them in, and the reads that take a window of them or find where
 //! one sits.
 //!
-//! Every order is read off the placement's order indexes, so a window read
-//! by its offset reads about as many index entries as its offset and limit,
-//! one read from an item beside it about as many as its limit
-//! (`list_windows`), and a position is the count of the items before it in
-//! the same order. Found's members sort in their header's place, so Found is
+//! Every order is read off the placement's order indexes, so a window costs
+//! about as many index entries as lie between it and the nearest start a read
+//! can take, the list's top, its end or an item an earlier read placed, plus
+//! its limit (`list_windows`), and a position is the count of the items
+//! before it in the same order. Found's members sort in their header's place, so Found is
 //! read in runs off three of them. A search that finds few rows has its
 //! windows read from those rows instead, sorted, each member by its header's
 //! terms. Done runs in two parts: the releases coven still has uploads queued
@@ -341,6 +341,9 @@ pub(super) struct Items<'a> {
     tab: TriageTab,
     order: ImportListOrder,
     shown: Shown<'a>,
+    /// Each statement the stream ran, for a test to read the plans of.
+    #[cfg(test)]
+    ran: std::cell::RefCell<Vec<String>>,
 }
 
 /// The stretch of one part a window reaches: the part, the places in the
@@ -369,7 +372,20 @@ impl<'a> Items<'a> {
         order: ImportListOrder,
         shown: Shown<'a>,
     ) -> Self {
-        Self { list, tab, order, shown }
+        Self {
+            list,
+            tab,
+            order,
+            shown,
+            #[cfg(test)]
+            ran: std::cell::RefCell::new(Vec::new()),
+        }
+    }
+
+    /// The statements the stream ran since the last call, in order.
+    #[cfg(test)]
+    pub(super) fn take_ran(&self) -> Vec<String> {
+        self.ran.take()
     }
 
     /// The parts the tab runs in, in order.
@@ -512,6 +528,8 @@ impl<'a> Items<'a> {
         named.extend_from_slice(extra);
         let bound: Vec<(&str, &dyn ToSql)> =
             named.into_iter().filter(|(name, _)| names(statement, name)).collect();
+        #[cfg(test)]
+        self.ran.borrow_mut().push(statement.to_string());
         run(bound.as_slice())
     }
 
@@ -642,15 +660,18 @@ impl<'a> Items<'a> {
         Ok(reached)
     }
 
-    /// The items `window` covers, in order, clamped to what the list holds,
-    /// each part read from a row beside the window whose place `known`
-    /// holds when there is one (`list_windows`), and the places of the
-    /// window's first and last items in each part it reaches.
+    /// The items `window` covers, in order, clamped to the list's
+    /// `reach.total`, and the places of its first and last items in each
+    /// part and of the items its read stepped to: read by offset from the
+    /// rows a search finds, else from whichever of the part's top, its end
+    /// and the rows `known` places passes the fewest items, stepping
+    /// `reach.stride` at a time (`list_windows`).
     pub(super) fn window(
         &self,
         sql: &impl coven::SqlRead,
         window: &LibraryPageWindow,
         known: &Places,
+        reach: Reach,
     ) -> Result<(Vec<ItemKey>, Places), DbError> {
         let mut items = Vec::new();
         let mut found = Places::new();
@@ -662,12 +683,24 @@ impl<'a> Items<'a> {
                 .take_while(|(place, _)| end.is_none_or(|end| **place < end))
                 .map(|(place, key)| (place - start, key.clone()))
                 .collect();
-            let WindowsRead { windows: read, found: places } = read_windows(
-                &order,
-                &bae_store::LibraryPageWindows::from([LibraryPageWindow { offset, limit }]),
-                in_part,
-                |seek, limit, offset| self.window_of(sql, part, &order, seek, limit, offset),
-            )?;
+            let windows =
+                bae_store::LibraryPageWindows::from([LibraryPageWindow { offset, limit }]);
+            let read =
+                |seek: &Seek, limit, offset| self.window_of(sql, part, &order, seek, limit, offset);
+            let WindowsRead { windows: read, found: places } = match self.shown {
+                Shown::Found => read_windows(&order, &windows, Places::new(), read)?,
+                Shown::View | Shown::Revealing { .. } => read_windows_reaching(
+                    &order,
+                    &windows,
+                    in_part,
+                    Reach {
+                        total: end.unwrap_or(reach.total.max(start)) - start,
+                        stride: reach.stride,
+                    },
+                    read,
+                    |seek, cap| self.count_seek(sql, part, &order, seek, Some(cap)),
+                )?,
+            };
             found.extend(places.into_iter().map(|(place, key)| (place + start, key)));
             for (_, keys) in read {
                 for columns in keys {
@@ -705,17 +738,20 @@ impl<'a> Items<'a> {
     }
 
     /// Where the header of the group each of `keys` is listed under sits in
-    /// the list, for the items of the window at `offset`: `None` for a header
-    /// and for an item in no group. A group's header leads its members, so a
-    /// member's header is the last header of its group in the window before
-    /// it, or, for the members a window starts with, the one before the
-    /// window: where `headers` says it sits, else found by reading the items
-    /// up to it. Every header the window holds or finds goes into `headers`.
+    /// the list, for the items of the window at `offset`, the first of them
+    /// at `first` in the list's order: `None` for a header and for an item in
+    /// no group. A group's header leads its members, so a member's header is
+    /// the last header of its group in the window before it, or, for the
+    /// members a window starts with, the one before the window: where
+    /// `headers` says it sits, else as many items before the window as the
+    /// window's first member has of its group before it. Every header the
+    /// window holds or finds goes into `headers`.
     pub(super) fn header_positions(
         &self,
         sql: &impl coven::SqlRead,
         offset: u64,
         keys: &[ItemKey],
+        first: Option<&OrderKey>,
         headers: &mut HeaderPlaces,
     ) -> Result<Vec<Option<u64>>, DbError> {
         let mut leading: Option<(&[u8], &[u8], u64)> = None;
@@ -738,27 +774,48 @@ impl<'a> Items<'a> {
                     position
                 }
                 (_, Some(&position)) => position,
-                _ => self
-                    .position_where(
-                        sql,
-                        "s.item = 'group' AND s.watched_folder_path = :root AND s.key = :group",
-                        &[(":root", &root), (":group", &group)],
-                    )?
-                    .ok_or_else(|| {
-                        DbError::unreadable(
-                            format!(
-                                "the import_list_placement header of the group listing {}",
-                                key.shown()
-                            ),
+                _ => {
+                    // Only the members a window starts with have their header
+                    // above it, and those follow it unbroken.
+                    let (0, Some(first)) = (index, first) else {
+                        return Err(DbError::unreadable(
+                            format!("the header of the group listing {}", key.shown()),
                             hex::encode(group),
-                        )
-                    })?,
+                        ));
+                    };
+                    offset - self.unit_items_before(sql, first)?
+                }
             };
             headers.insert(group_key, header);
             leading = Some((root, group, header));
             positions.push(Some(header));
         }
         Ok(positions)
+    }
+
+    /// How many of the list's items sit before the member at `key` among the
+    /// items of its group, its header first: counted off the indexes of the
+    /// runs Found is read in, over the group alone, by the seeks before it
+    /// that hold its header's terms and number. A searching list's items are
+    /// the same, so its group is counted the same way.
+    fn unit_items_before(&self, sql: &impl coven::SqlRead, key: &OrderKey) -> Result<u64, DbError> {
+        let shown = match self.shown {
+            Shown::Found => Shown::View,
+            shown @ (Shown::View | Shown::Revealing { .. }) => shown,
+        };
+        let walked = Items::new(self.list, self.tab, self.order, shown);
+        let order = walked.part_order(Part::Whole);
+        // The terms up to the folder, then the header's number.
+        let unit = terms(self.order).0.len() + 1;
+        let mut counted = 0;
+        for seek in order.seeks_before(key) {
+            if seek.held_equal() >= unit {
+                counted += walked.count_seek(sql, Part::Whole, &order, &seek, None)?;
+            }
+        }
+        #[cfg(test)]
+        self.ran.borrow_mut().extend(walked.take_ran());
+        Ok(counted)
     }
 
     /// Where the first item meeting `condition` (over the stream's columns
@@ -882,27 +939,39 @@ impl<'a> Items<'a> {
     ) -> Result<u64, DbError> {
         let mut counted = 0;
         for seek in order.seeks_before(key) {
-            let statement = match self.run_sources() {
-                Some(sources) => {
-                    format!("SELECT count(*) FROM ({})", run(self.order, sources, &seek))
-                }
-                None => {
-                    let PartSql { with, from, .. } = self.part(part);
-                    format!(
-                        "{with} SELECT count(*) FROM {from} AND {condition}",
-                        condition = order.condition(&seek)
-                    )
-                }
-            };
-            let count = seek.bound(0, 0, |bound| {
-                self.query(sql, &statement, bound, |row| row.get::<_, i64>(0))
-            })?;
-            counted += to_u64(
-                count.into_iter().next().expect("a count answers one row"),
-                "an import list position",
-            )?;
+            counted += self.count_seek(sql, part, order, &seek, None)?;
         }
         Ok(counted)
+    }
+
+    /// How many of `part`'s items `seek` reads in the part's order, `order`,
+    /// counting no further than `cap`.
+    fn count_seek(
+        &self,
+        sql: &impl coven::SqlRead,
+        part: Part,
+        order: &ListOrder,
+        seek: &Seek,
+        cap: Option<u64>,
+    ) -> Result<u64, DbError> {
+        let rows = match self.run_sources() {
+            Some(sources) => format!("SELECT 1 FROM ({})", run(self.order, sources, seek)),
+            None => {
+                let PartSql { with, from, .. } = self.part(part);
+                format!("{with} SELECT 1 FROM {from} AND {}", order.condition(seek))
+            }
+        };
+        let statement = match cap {
+            Some(_) => format!("SELECT count(*) FROM ({rows} LIMIT :limit)"),
+            None => format!("SELECT count(*) FROM ({rows})"),
+        };
+        let count = seek.bound(cap.unwrap_or(0), 0, |bound| {
+            self.query(sql, &statement, bound, |row| row.get::<_, i64>(0))
+        })?;
+        to_u64(
+            count.into_iter().next().expect("a count answers one row"),
+            "an import list position",
+        )
     }
 
     /// Where the release at `key` sits in the list; `None` when the list

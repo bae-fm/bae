@@ -998,11 +998,20 @@ moved:
 each release's shown text is kept, case folded, in a trigram index beside its
 placement (Appendix A.7), so a search of three characters or more reads the
 rows holding it, and a shorter one reads every release's text from the
-index. A search that finds few rows reads a window it is asked for by its offset from
-them, sorted; one that finds many reads it in the list's order, testing each
-row. A window beside a row the list already placed, as scrolling asks for it,
-is read in the list's order by the same index seek, whatever the search finds.
-Found reads its windows past the members of the groups it folds shut, so
+index. A window is read in the list's order from whichever start passes the
+fewest rows before it: the list's top, its end, read backwards, or the nearest
+row the list already placed, the rows between skipped by counting them through
+the index; a window beside such a row, as scrolling asks for it, starts just
+past it. A read that passes many rows notes the place of a row about every
+thousand of the tab's rows it passes, which hold, like every place a read
+finds, while the list stands as it stood (§9.2), so a later jump anywhere the
+read passed starts within about a thousand rows of it. A search reads each
+row the list's order passes and tests it; one that finds few rows reads a
+window from the rows it finds instead, sorted, when that reads fewer rows
+than the order would pass from its nearest start.
+The header of the group a window starts inside is placed by counting the
+group's rows before the window, not the list's. Found reads its windows past
+the members of the groups it folds shut, so
 with every group folded a window costs about the headers it shows; and whether
 a header offers to read its folder as one release is kept on the header as the
 rows below it and the readings stored for it change.
@@ -4330,7 +4339,7 @@ Reads come two ways:
   (`library_list_versions`, `release_queue_versions`, `import_list_versions`, Appendix A), and a read
   starts from its last read's rows only while those counts stand. Any other window, such as one a jump to
   the middle of the list reaches, is read by its offset, past every row before
-  it. The playback queue's upcoming tracks are read by offset alone: the
+  it; the import list's instead from its nearest start, as §3.2 says. The playback queue's upcoming tracks are read by offset alone: the
   offset passes over the context lane's positions before any track is read,
   so a deep window costs little. The Storage manager's search counts what it
   finds first: from library search's indexes when its text is in fewer

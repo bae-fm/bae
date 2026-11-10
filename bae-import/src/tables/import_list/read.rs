@@ -31,9 +31,11 @@ type Standing = (ImportListId, u64, Vec<i64>);
 const LIST_SOURCES: &[&str] =
     &["import_list_placement", "local_release_origin", "release_storage", "scan_candidate"];
 
-/// What a read found of a list: each window's first and last items in each
-/// part, the headers of the groups its windows list, and what its search
-/// counted. All of it holds while the list stands as it stood for that read:
+/// What the reads of a list found while it stood as it stands: the places of
+/// each window's first and last items in each part and of the items each read
+/// stepped to on its way to a window, the headers of the groups its windows
+/// list, and what its search counted. All of it holds while the list stands
+/// as it stood for those reads:
 /// the counts read the placement, the folds and the filter, which `Standing`
 /// holds by their versions and the view's revision.
 #[derive(Debug, Clone, Default)]
@@ -43,10 +45,10 @@ struct ListPlaces {
     search_counts: Option<summary::SearchCounts>,
 }
 
-/// One read of the list for `request`, each window read from an item beside
-/// it when this read or, while the list stands as it stood then, the last
-/// read through `places` found one (`list_windows`); `None` once the list is
-/// closed.
+/// One read of the list for `request`, each window read from the nearest
+/// place this read or, while the list stands as it stood then, the reads
+/// before it through `places` found, or from the list's top or end, whichever
+/// passes the fewest items (`list_windows`); `None` once the list is closed.
 fn load_import_list_on(
     sql: &SqlReadContext<'_>,
     request: &ImportListRequest,
@@ -67,13 +69,19 @@ fn load_import_list_on(
         .iter()
         .map(|window| {
             let items = list.items(listed.shown(window, &known.items));
-            let (keys, read) = items.window(sql, window, &known.items)?;
-            known.items.extend(read.clone());
-            found.items.extend(read);
-            let headers = items.header_positions(sql, window.offset, &keys, &mut known.headers)?;
+            let (keys, read) = items.window(sql, window, &known.items, listed.reach())?;
+            let headers = items.header_positions(
+                sql,
+                window.offset,
+                &keys,
+                read.get(&window.offset),
+                &mut known.headers,
+            )?;
+            known.items.extend(read);
             Ok((window.clone(), window::materialise(sql, &list, &keys, &headers)?))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
+    found.items = known.items;
     found.headers = known.headers;
     places.keep(standing, found);
     let watched_folders = super::watched_folders::watched_folders_on(sql)?;

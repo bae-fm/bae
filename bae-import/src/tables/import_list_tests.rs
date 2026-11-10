@@ -622,10 +622,11 @@ impl ImportTables {
             .read(move |sql| {
                 let row = list_row(&sql, list)?.expect("the test's list is open");
                 let everything = bae_store::LibraryPageWindow { offset: 0, limit: u64::MAX };
+                let reach = summary::listed(&sql, &row, &summary::counts(&sql)?, None)?.reach();
                 let keys = |shown| -> Result<Vec<String>, DbError> {
                     Ok(row
                         .items(shown)
-                        .window(&sql, &everything, &Places::new())?
+                        .window(&sql, &everything, &Places::new(), reach)?
                         .0
                         .into_iter()
                         .map(|item| format!("{:?} {}", item.item, hex::encode(&item.key)))

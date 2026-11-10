@@ -51,8 +51,8 @@ pub use watched_folders::{WatchedFolderRefusal, WatchedFoldersRemoved};
 use bae_catalogs::catalog::Catalog;
 use bae_records::*;
 use bae_store::list_windows::{
-    is_read_beside_known, list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Places,
-    Seek, SortTerm, WindowsRead,
+    list_versions_on, read_windows, read_windows_reaching, Keyed, KnownPlaces, ListOrder, Places,
+    Reach, Seek, SortTerm, WindowsRead,
 };
 use bae_store::path_column;
 use bae_store::query::*;

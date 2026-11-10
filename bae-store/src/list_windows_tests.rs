@@ -195,3 +195,63 @@ fn a_window_nobody_asks_for_is_not_told() {
     let told = WindowsTold::new([window(0, 2)].into());
     assert!(told.changed(vec![delivery(2, &[3, 4])]).is_empty());
 }
+
+/// How many of `seek`'s rows of `t` there are, up to `cap`.
+fn count(conn: &Connection, order: &ListOrder, seek: &Seek, cap: u64) -> rusqlite::Result<u64> {
+    let statement = format!(
+        "SELECT count(*) FROM (SELECT 1 FROM t WHERE {condition} LIMIT :limit)",
+        condition = order.condition(seek),
+    );
+    seek.bound(cap, 0, |params| {
+        let params: Vec<_> = params.iter().filter(|(name, _)| *name != ":offset").collect();
+        let params: Vec<(&str, &dyn rusqlite::ToSql)> =
+            params.into_iter().map(|(name, value)| (*name, *value)).collect();
+        conn.query_row(&statement, params.as_slice(), |row| row.get::<_, i64>(0))
+            .map(|held| held as u64)
+    })
+}
+
+/// Every window, read from whichever of the list's top, its end and a known
+/// row far before or after it passes the fewest rows, with every stride,
+/// holds the rows reading it by its offset holds, in every order; and each
+/// row the read stepped to on its way sits where it says.
+#[test]
+fn a_window_reached_from_any_start_holds_its_offsets_rows() {
+    let conn = rows();
+    for order in orders() {
+        let everything = read(&conn, &order, &order.everything(), 1_000, 0).unwrap();
+        for stride in [1, 7, 50] {
+            for offset in (0..200_u64).step_by(9) {
+                let window = LibraryPageWindow { offset, limit: 6 };
+                let expected = everything
+                    .iter()
+                    .skip(offset as usize)
+                    .take(6)
+                    .map(|(id, _)| id.clone())
+                    .collect::<Vec<_>>();
+                let mut starts = vec![Places::new()];
+                for place in [offset.saturating_sub(40), (offset + 46).min(199)] {
+                    starts.push(Places::from([(place, everything[place as usize].1.clone())]));
+                }
+                for known in starts {
+                    let WindowsRead { windows, found } = read_windows_reaching(
+                        &order,
+                        &LibraryPageWindows::from([window.clone()]),
+                        known.clone(),
+                        Reach { total: 200, stride },
+                        |seek, limit, offset| read(&conn, &order, seek, limit, offset),
+                        |seek, cap| count(&conn, &order, seek, cap),
+                    )
+                    .unwrap();
+                    assert_eq!(
+                        windows[0].1, expected,
+                        "{order:?} stride {stride} at {offset} from {known:?}"
+                    );
+                    for (place, key) in &found {
+                        assert_eq!(key, &everything[*place as usize].1, "{order:?} at {place}");
+                    }
+                }
+            }
+        }
+    }
+}
