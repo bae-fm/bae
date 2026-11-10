@@ -147,7 +147,13 @@ async fn import_list_window_cost() {
 async fn import_list_search_window_cost() {
     for n in SIZES {
         let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
-        let took = grow_import_list(&db, tmp.path(), 0, n).await;
+        // In watched folders of 20,000 rows each: a scan's write passes the
+        // rows of its watched folder, so one folder of 500,000 would take
+        // hours to fill.
+        let mut took = Duration::ZERO;
+        for start in (0..n).step_by(20_000) {
+            took += grow_import_list(&db, tmp.path(), start, (start + 20_000).min(n)).await;
+        }
         eprintln!("WINDOW_COST scanned n={n} in {:.1} s", took.as_secs_f64());
         let text = "Album 1";
         let view =
