@@ -739,8 +739,6 @@ internal open class FakeAppHandle(
 
     override suspend fun removeLibrary(closing: BridgeLibraryClosing?): BridgeLibraryRemoval = unfaked("removeLibrary")
 
-    override suspend fun unsentBeforeRemoval(): Boolean = unfaked("unsentBeforeRemoval")
-
     override fun subscribeStorageBrowse(
         sort: BridgeStorageSort,
         filter: BridgeStorageFilter,

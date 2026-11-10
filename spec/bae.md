@@ -4300,7 +4300,7 @@ library is registered there by id.
 | `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings that can't be read, a reset or restore of this device's copy that didn't finish, with the call that finishes it, or a removal from this device that didn't finish |
 | `bae_app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it, and one whose removal didn't finish fails saying so |
 | `AppServices::close` | stops playback, saving where it was, then identification and import, waits for the Discogs key-validation writes still in flight, then closes the store |
-| `unsent_before_removal` | counts what removing a library would discard: the edits and files this device hasn't sent, for the open library or, opening its store briefly, one that isn't open (§6.4) |
+| `unsent_before_removal` | counts what removing a library that isn't open would discard: the edits and files this device hasn't sent, opening its store briefly (§6.4) |
 | `AppServices::remove_library` | stops the library's services, records the removal, leaves the store discarding what this device hasn't sent, then deletes the library from this device and the record last (§6.4) |
 | `remove_unopenable_library` | records the removal of a library that can't open, deletes its store from this device without opening it, losing what it hasn't sent, then its files and the record last (§6.4) |
 | `UnfinishedRemoval::find`, `finish_removals` | report recorded removals that stopped partway, and finish them (§6.4) |

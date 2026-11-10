@@ -11,6 +11,5 @@ impl AppServices {
         self.stop_workers(steps).await.map_err(bae_library::LibraryRemovalError::Stop)?;
         self.inner.manager.remove_library(coven, steps).await
     }
-    delegate_async!(manager, unsent_before_removal => unsent_before_removal() -> Result<coven::UnsentWork, bae_library::LibraryError>);
     delegate_async!(manager, standing => standing() -> Result<bae_library::LibraryStanding, bae_library::LibraryError>);
 }

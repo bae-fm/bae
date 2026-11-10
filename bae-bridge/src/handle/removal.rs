@@ -54,16 +54,6 @@ impl BridgeUnfinishedRemoval {
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
-    /// Whether removing this library would discard edits or files this
-    /// device hasn't sent, as coven decides it, for the person to confirm
-    /// first. Nothing about the library changes.
-    pub async fn unsent_before_removal(self: std::sync::Arc<Self>) -> Result<bool, BridgeError> {
-        self.run_exported("AppHandle.unsent_before_removal", |this| async move {
-            Ok(!this.services.unsent_before_removal().await?.is_empty())
-        })
-        .await
-    }
-
     /// Stop services and leave the store before deleting its local files,
     /// discarding what this device hasn't uploaded. Each step it runs is
     /// written to `closing`'s stream, when the app shows the removal.
