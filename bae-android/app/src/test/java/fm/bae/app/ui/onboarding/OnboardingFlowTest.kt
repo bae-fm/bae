@@ -118,8 +118,12 @@ class OnboardingFlowTest {
             ),
         )
 
-    /** Where the running restore stands, which a test says in place of core. */
-    private val states = SaidStates()
+    /**
+     * Where each restore the flow runs stands, which a test says in place of
+     * core: one subscription per setup, as core opens one for each, the
+     * latest last.
+     */
+    private val said = mutableListOf<SaidStates>()
 
     private fun newFlow(restoreOver: RestoreOver? = null): OnboardingFlow {
         val flow =
@@ -127,7 +131,7 @@ class OnboardingFlowTest {
                 scope,
                 RuntimeEnvironment.getApplication(),
                 OnboardingCore(host, NoErrorDisplays::display, ::FakeBootstrapCancellation, ::unfakedOpenProgress) {
-                    LibrarySetupStatus.written(FakeLibrarySetup(), states, LatestStream.written(), scope)
+                    LibrarySetupStatus.written(FakeLibrarySetup(), SaidStates().also { said += it }, LatestStream.written(), scope)
                 },
                 null,
                 restoreOver,
@@ -161,7 +165,7 @@ class OnboardingFlowTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         val loading = BridgeBootstrapState(BridgeBootstrapStatus.Loading, cancellable = true)
-        states.say(loading)
+        said.last().say(loading)
         shadowOf(Looper.getMainLooper()).idle()
 
         val running = flow.step as OnboardingStep.Running
