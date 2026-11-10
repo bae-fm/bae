@@ -109,6 +109,8 @@ it	%lld files	one
 it	Cloud provider
 nl	Release exports
 nl	Disc TOC
+de	In cloud
+nl	In cloud
 
 # "provider" is an established it/nl loanword (see "Cloud provider" and the
 # "Provider" key above); the sentence around it is a real translation.

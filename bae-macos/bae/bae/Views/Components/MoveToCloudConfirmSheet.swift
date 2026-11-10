@@ -16,13 +16,13 @@ struct MoveToCloudConfirmSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            Text("Move to storage")
+            Text("Move to cloud")
                 .themeText(.heading)
             Toggle("Pinned", isOn: pinned)
             MacSheetFooter {
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
-                Button("Move to storage") { onConfirm() }
+                Button("Move to cloud") { onConfirm() }
                     .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
             }
@@ -44,7 +44,7 @@ struct MoveToCloudConfirmSheet: View {
 }
 
 #if DEBUG
-    #Preview("Move to storage") {
+    #Preview("Move to cloud") {
         MoveToCloudConfirmSheet(onConfirm: {}, onCancel: {})
             .frame(width: 420)
             .environment(PreviewData.configStore())

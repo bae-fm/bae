@@ -7,7 +7,7 @@ extension BridgeReleaseStorageAction {
     /// sites read the same wording.
     var label: String {
         switch self {
-        case .upload: String(localized: "Move to storage")
+        case .upload: String(localized: "Move to cloud")
         case .detachAudio: String(localized: "Make local…")
         case .pin: String(localized: "Pin")
         case .unpin: String(localized: "Unpin")

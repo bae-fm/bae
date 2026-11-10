@@ -54,11 +54,11 @@ struct KeychainRestoreSection: View {
             switch pending {
             case .readable(let saved):
                 Text(
-                    "This removes the restore code for “\(saved.info.name)” from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in your storage."
+                    "This removes the restore code for “\(saved.info.name)” from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in the cloud."
                 )
             case .unreadable:
                 Text(
-                    "This removes the restore code from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in your storage."
+                    "This removes the restore code from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in the cloud."
                 )
             }
         }

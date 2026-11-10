@@ -149,7 +149,7 @@ struct LightboxView<Item: LightboxImage>: View {
                 Text(
                     "Loading the image…",
                     comment:
-                        "Lightbox, while bae reads the image shown large, which can come from the library's storage."
+                        "Lightbox, while bae reads the image shown large, which can come from the library's cloud."
                 )
                 .themeText(.body)
                 .foregroundStyle(Theme.onFillSecondary)

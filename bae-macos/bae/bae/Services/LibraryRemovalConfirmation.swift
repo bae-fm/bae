@@ -53,7 +53,7 @@ enum LibraryRemovalConfirmation {
         }
         return String(
             localized:
-                "The library will remain in storage and on your other devices."
+                "The library will remain in the cloud and on your other devices."
         )
     }
 
@@ -94,7 +94,7 @@ enum LibraryRemovalConfirmation {
         case .uncounted:
             return String(
                 localized:
-                    "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; if the library is kept in storage, it stays there."
+                    "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; if the library is kept in the cloud, it stays there."
             )
         }
     }

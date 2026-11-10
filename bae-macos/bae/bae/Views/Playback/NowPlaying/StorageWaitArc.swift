@@ -69,7 +69,7 @@ final class StorageWaitArcNSView: NSView {
             String(
                 localized: "Downloading the track…",
                 comment:
-                    "Spoken for the arc that turns around Play while the track about to play waits on the library's storage."
+                    "Spoken for the arc that turns around Play while the track about to play waits on the library's cloud."
             )
         )
     }

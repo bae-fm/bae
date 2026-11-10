@@ -24,7 +24,7 @@ struct ImportCheckboxToggle: View {
 
     #Preview("Checkbox toggles") {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            ImportCheckboxToggle("In storage", isOn: .constant(true))
+            ImportCheckboxToggle("In cloud", isOn: .constant(true))
             ImportCheckboxToggle("Pinned", isOn: .constant(false))
         }
         .padding()

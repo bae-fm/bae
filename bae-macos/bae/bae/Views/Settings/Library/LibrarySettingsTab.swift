@@ -225,7 +225,7 @@ private struct SyncSettingsPage: View {
             }
             SyncLastSyncedSection()
             if let location = configStore.storage {
-                Section("Storage") {
+                Section("Cloud home") {
                     CloudProviderConnectedSection(location: location)
                 }
                 SyncPendingList(
@@ -461,7 +461,7 @@ private struct RestoreCodeSettingsPage: View {
 
     #Preview("Restore code failed") {
         restoreCodeSectionPreview(
-            .failed(DisplayError(line: "Couldn't reach your storage."))
+            .failed(DisplayError(line: "Couldn't reach the cloud."))
         )
     }
 #endif

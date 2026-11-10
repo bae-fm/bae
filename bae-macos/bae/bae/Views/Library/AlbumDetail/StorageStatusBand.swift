@@ -124,7 +124,7 @@ struct StorageStatusBand: View {
                 Text("Pinned")
             case .inStorage(pinned: false):
                 Image(systemName: "cloud")
-                Text("In storage")
+                Text("In cloud")
             }
         }
         .themeText(.body)

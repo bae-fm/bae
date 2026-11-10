@@ -237,7 +237,7 @@ struct PeopleAndDevicesPage: View {
         .alert(
             cutOffRetry?.reason == .deviceNotGone
                 ? "This device's removal hasn't reached this Mac yet"
-                : "A request to your storage is still running",
+                : "A request to the cloud is still running",
             isPresented: Binding(
                 get: { cutOffRetry != nil },
                 set: { if !$0 { cutOffRetry = nil } }

@@ -125,7 +125,7 @@ struct ImportCandidateBulkSelectionCard: View {
     /// The import's storage choices, lined up under the Import row's label.
     private var storageChoices: some View {
         HStack(spacing: ThemeSpace.group) {
-            ImportCheckboxToggle("In storage", isOn: $storageCloud)
+            ImportCheckboxToggle("In cloud", isOn: $storageCloud)
             if storageCloud {
                 ImportCheckboxToggle("Pinned", isOn: $storagePinned)
             }

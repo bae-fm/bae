@@ -92,7 +92,7 @@ struct StorageManagerView: View {
                 Picker("Filter", selection: $filter) {
                     Text("All").tag(BridgeStorageFilter.all)
                     Text("Local").tag(BridgeStorageFilter.local)
-                    Text("In storage").tag(BridgeStorageFilter.remote)
+                    Text("Cloud").tag(BridgeStorageFilter.remote)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()

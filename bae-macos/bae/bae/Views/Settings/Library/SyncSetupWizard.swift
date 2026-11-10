@@ -280,7 +280,7 @@ struct SyncSetupWizard: View {
                 fields: {
                     Section {
                         Text(
-                            "This library will be kept in bae's iCloud storage, using the Apple Account this Mac is signed in to."
+                            "This library's cloud home will be bae's space in iCloud, using the Apple Account this Mac is signed in to."
                         )
                         .themeText(.body)
                         .foregroundStyle(.secondary)
