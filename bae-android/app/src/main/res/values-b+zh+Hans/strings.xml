@@ -159,6 +159,7 @@
     <string name="members_this_device">此设备</string>
     <string name="members_role_member">成员</string>
     <string name="members_remove">移除</string>
+    <string name="members_remove_menu">移除…</string>
     <string name="members_remove_confirm_title">移除此设备？</string>
     <string name="members_remove_confirm_body">%1$s 将无法访问此库。</string>
     <string name="join_request_approve">批准</string>

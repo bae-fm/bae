@@ -168,27 +168,13 @@ private struct LibraryRow: View {
     }
 
     private var moreMenu: some View {
-        Menu {
-            menuItems
-        } label: {
-            Image(systemName: "ellipsis")
-                .themeIcon(.medium)
-                .frame(
-                    width: ThemeSize.hitTarget,
-                    height: ThemeSize.hitTarget
+        MoreMenu { menuItems }
+            .popover(isPresented: $showsDetails, arrowEdge: .bottom) {
+                WelcomeLibraryDetails(
+                    library: library,
+                    readStanding: readStanding
                 )
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .tint(.secondary)
-        .fixedSize()
-        .accessibilityLabel(Text("More"))
-        .popover(isPresented: $showsDetails, arrowEdge: .bottom) {
-            WelcomeLibraryDetails(
-                library: library,
-                readStanding: readStanding
-            )
-        }
+            }
     }
 
     @ViewBuilder

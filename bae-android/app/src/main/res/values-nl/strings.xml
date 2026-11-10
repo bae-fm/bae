@@ -163,6 +163,7 @@
     <string name="members_this_device">Dit apparaat</string>
     <string name="members_role_member">Lid</string>
     <string name="members_remove">Verwijderen</string>
+    <string name="members_remove_menu">Verwijderen…</string>
     <string name="members_remove_confirm_title">Dit apparaat verwijderen?</string>
     <string name="members_remove_confirm_body">%1$s verliest de toegang tot deze bibliotheek.</string>
     <string name="join_request_approve">Goedkeuren</string>

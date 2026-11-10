@@ -1,26 +1,17 @@
 package fm.bae.app.ui.onboarding
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -37,6 +28,7 @@ import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.LibraryEnding
+import fm.bae.app.ui.components.MoreMenu
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import fm.bae.app.ui.components.RowCard
@@ -193,38 +185,32 @@ private fun LibraryMenu(
     busy: Boolean,
     callbacks: WelcomeLibrariesCallbacks,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }, enabled = !busy) {
-            Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            if (library.state is BridgeLibraryState.Openable) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.library_details_menu)) },
-                    onClick = {
-                        expanded = false
-                        callbacks.onDetails(library)
-                    },
-                )
-            }
+    MoreMenu(enabled = !busy) { close ->
+        if (library.state is BridgeLibraryState.Openable) {
             DropdownMenuItem(
-                text = {
-                    Text(
-                        stringResource(
-                            when (LibraryEnding.of(library.state)) {
-                                LibraryEnding.REMOVE -> R.string.library_remove_menu
-                                LibraryEnding.DELETE -> R.string.library_delete_menu
-                            },
-                        ),
-                    )
-                },
+                text = { Text(stringResource(R.string.library_details_menu)) },
                 onClick = {
-                    expanded = false
-                    callbacks.onRemove(library)
+                    close()
+                    callbacks.onDetails(library)
                 },
             )
         }
+        DropdownMenuItem(
+            text = {
+                Text(
+                    stringResource(
+                        when (LibraryEnding.of(library.state)) {
+                            LibraryEnding.REMOVE -> R.string.library_remove_menu
+                            LibraryEnding.DELETE -> R.string.library_delete_menu
+                        },
+                    ),
+                )
+            },
+            onClick = {
+                close()
+                callbacks.onRemove(library)
+            },
+        )
     }
 }
 

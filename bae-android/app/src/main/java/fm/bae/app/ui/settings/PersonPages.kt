@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,8 +24,8 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.MoreMenu
 import fm.bae.app.ui.components.RowCard
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeMember
@@ -145,8 +146,14 @@ private fun RemoveDeviceButton(
     own: Boolean,
     callbacks: MemberCallbacks,
 ) {
-    DestructiveTextButton(onClick = { callbacks.onRemoveDevice(device, own) }) {
-        Text(stringResource(R.string.members_remove))
+    MoreMenu { close ->
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.members_remove_menu)) },
+            onClick = {
+                close()
+                callbacks.onRemoveDevice(device, own)
+            },
+        )
     }
 }
 

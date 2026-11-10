@@ -159,6 +159,7 @@
     <string name="members_this_device">このデバイス</string>
     <string name="members_role_member">メンバー</string>
     <string name="members_remove">削除</string>
+    <string name="members_remove_menu">削除…</string>
     <string name="members_remove_confirm_title">このデバイスを削除しますか？</string>
     <string name="members_remove_confirm_body">%1$s はこのライブラリにアクセスできなくなります。</string>
     <string name="join_request_approve">承認</string>

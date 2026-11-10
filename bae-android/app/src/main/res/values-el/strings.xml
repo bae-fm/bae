@@ -167,6 +167,7 @@
     <string name="members_this_device">Αυτή η συσκευή</string>
     <string name="members_role_member">Μέλος</string>
     <string name="members_remove">Αφαίρεση</string>
+    <string name="members_remove_menu">Αφαίρεση…</string>
     <string name="members_remove_confirm_title">Αφαίρεση αυτής της συσκευής;</string>
     <string name="members_remove_confirm_body">Η συσκευή %1$s χάνει την πρόσβαση σε αυτή τη βιβλιοθήκη.</string>
     <string name="join_request_approve">Έγκριση</string>

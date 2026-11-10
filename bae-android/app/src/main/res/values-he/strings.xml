@@ -167,6 +167,7 @@
     <string name="members_this_device">המכשיר הזה</string>
     <string name="members_role_member">חבר</string>
     <string name="members_remove">הסר</string>
+    <string name="members_remove_menu">הסר…</string>
     <string name="members_remove_confirm_title">להסיר את המכשיר הזה?</string>
     <string name="members_remove_confirm_body">%1$s יאבד גישה לספרייה הזו.</string>
     <string name="join_request_approve">אשר</string>

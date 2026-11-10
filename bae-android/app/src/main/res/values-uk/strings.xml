@@ -171,6 +171,7 @@
     <string name="members_this_device">Цей пристрій</string>
     <string name="members_role_member">Учасник</string>
     <string name="members_remove">Видалити</string>
+    <string name="members_remove_menu">Видалити…</string>
     <string name="members_remove_confirm_title">Видалити цей пристрій?</string>
     <string name="members_remove_confirm_body">%1$s втрачає доступ до цієї бібліотеки.</string>
     <string name="join_request_approve">Схвалити</string>

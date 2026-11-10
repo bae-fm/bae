@@ -167,6 +167,7 @@
     <string name="members_this_device">Cet appareil</string>
     <string name="members_role_member">Membre</string>
     <string name="members_remove">Supprimer</string>
+    <string name="members_remove_menu">Supprimer…</string>
     <string name="members_remove_confirm_title">Supprimer cet appareil ?</string>
     <string name="members_remove_confirm_body">%1$s perd l’accès à cette bibliothèque.</string>
     <string name="join_request_approve">Approuver</string>

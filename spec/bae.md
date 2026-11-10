@@ -2608,20 +2608,21 @@ editable by every member.
 
 **People and devices.** Settings keeps the library's people on a page of their
 own, with two sections. *You* holds the person's name, with *Change…*, which
-renames their profile in a sheet that says everyone in the library sees the
-name and keeps the name as typed when the rename fails; their role, which
-only an admin changes, and from another person's page; their listening
-history, *Only me* or *Everyone in the library* (§5.3); and *Devices*, which
-opens *Your devices*: each of the person's devices, this one reading *This
-device* with no *Remove…* since a device leaves by removing the library from
-it, then *Add…* last. *People* has one row for each other person, with their
-role and how many devices they have, and the open invites below them. An
-admin's row opens that person's page: their role, with *Make admin* or *Make
-member*, *Remove from library…* in red, and their devices, each with
-*Remove…*. A member's person rows open nothing: a member has nothing to do
-there. On Android the Name row opens the rename dialog, and
-listening history is chosen from radio rows in a dialog. A person with no profile yet creates one in *You* in place of the name
-(§5.4). Removing a person or a device still asks first.
+renames their profile in a sheet that says everyone in the library sees the name
+and keeps the name as typed when the rename fails; their role, which only an
+admin changes, and from another person's page; their listening history, *Only
+me* or *Everyone in the library* (§5.3); and *Devices*, which opens *Your
+devices*: each of the person's devices, this one reading *This device* with no
+menu since a device leaves by removing the library from it, and each other
+device with a ⋯ menu (⋮ on Android) holding *Remove…*, then *Add…* last.
+*People* has one row for each other person, with their role and how many devices
+they have, and the open invites below them. An admin's row opens that person's
+page: their role, with *Make admin* or *Make member*, *Remove from library…* in
+red, and their devices, each with a ⋯ menu (⋮ on Android) holding *Remove…*. A
+member's person rows open nothing: a member has nothing to do there. On Android
+the Name row opens the rename dialog, and listening history is chosen from radio
+rows in a dialog. A person with no profile yet creates one in *You* in place of
+the name (§5.4). Removing a person or a device still asks first.
 
 Removing a person or a device, changing a role, renaming the library and
 approving a request are admin changes. Each is one write on the device that asks: coven checks it

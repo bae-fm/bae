@@ -167,6 +167,7 @@
     <string name="members_this_device">Den här enheten</string>
     <string name="members_role_member">Medlem</string>
     <string name="members_remove">Ta bort</string>
+    <string name="members_remove_menu">Ta bort…</string>
     <string name="members_remove_confirm_title">Ta bort den här enheten?</string>
     <string name="members_remove_confirm_body">%1$s förlorar åtkomsten till det här biblioteket.</string>
     <string name="join_request_approve">Godkänn</string>

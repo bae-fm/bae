@@ -167,6 +167,7 @@
     <string name="members_this_device">Tämä laite</string>
     <string name="members_role_member">Jäsen</string>
     <string name="members_remove">Poista</string>
+    <string name="members_remove_menu">Poista…</string>
     <string name="members_remove_confirm_title">Poistetaanko tämä laite?</string>
     <string name="members_remove_confirm_body">%1$s menettää pääsyn tähän kirjastoon.</string>
     <string name="join_request_approve">Hyväksy</string>

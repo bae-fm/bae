@@ -441,9 +441,9 @@ extension PeopleAndDevicesPage {
 
     // MARK: - Devices
 
-    /// A person's devices, each removable when allowed; on this person's own
-    /// page the device this Mac is reads "This device" with no Remove, and
-    /// Add is last.
+    /// A person's devices, each with a ⋯ menu that removes it when allowed; on
+    /// this person's own page the device this Mac is reads "This device" with
+    /// no menu, and Add is last.
     @ViewBuilder
     private func devicesSections(_ person: BridgePerson) -> some View {
         let member = person.membership
@@ -451,10 +451,11 @@ extension PeopleAndDevicesPage {
             ForEach(member.activeDevices, id: \.id) { device in
                 LabeledContent {
                     if device.canRemove {
-                        Button("Remove…", role: .destructive) {
-                            removal = .device(device, own: member.isSelf)
+                        MoreMenu {
+                            Button("Remove…") {
+                                removal = .device(device, own: member.isSelf)
+                            }
                         }
-                        .buttonStyle(.borderless)
                         .disabled(task != nil)
                     }
                     else if device.isSelf {

@@ -159,6 +159,7 @@
     <string name="members_this_device">이 기기</string>
     <string name="members_role_member">멤버</string>
     <string name="members_remove">제거</string>
+    <string name="members_remove_menu">제거…</string>
     <string name="members_remove_confirm_title">이 기기를 제거할까요?</string>
     <string name="members_remove_confirm_body">%1$s 기기는 이 라이브러리에 접근할 수 없게 됩니다.</string>
     <string name="join_request_approve">승인</string>

@@ -171,6 +171,7 @@
     <string name="members_this_device">Toto zařízení</string>
     <string name="members_role_member">Člen</string>
     <string name="members_remove">Odebrat</string>
+    <string name="members_remove_menu">Odebrat…</string>
     <string name="members_remove_confirm_title">Odebrat toto zařízení?</string>
     <string name="members_remove_confirm_body">%1$s ztratí přístup k této knihovně.</string>
     <string name="join_request_approve">Schválit</string>

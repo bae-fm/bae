@@ -167,6 +167,7 @@
     <string name="members_this_device">Denne enhed</string>
     <string name="members_role_member">Medlem</string>
     <string name="members_remove">Fjern</string>
+    <string name="members_remove_menu">Fjern…</string>
     <string name="members_remove_confirm_title">Vil du fjerne denne enhed?</string>
     <string name="members_remove_confirm_body">%1$s mister adgangen til dette bibliotek.</string>
     <string name="join_request_approve">Godkend</string>

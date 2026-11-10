@@ -167,6 +167,7 @@
     <string name="members_this_device">Ez az eszköz</string>
     <string name="members_role_member">Tag</string>
     <string name="members_remove">Eltávolítás</string>
+    <string name="members_remove_menu">Eltávolítás…</string>
     <string name="members_remove_confirm_title">Eltávolítod ezt az eszközt?</string>
     <string name="members_remove_confirm_body">%1$s elveszíti a hozzáférést ehhez a könyvtárhoz.</string>
     <string name="join_request_approve">Jóváhagyás</string>

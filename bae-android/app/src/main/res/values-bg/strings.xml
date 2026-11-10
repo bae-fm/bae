@@ -163,6 +163,7 @@
     <string name="members_this_device">Това устройство</string>
     <string name="members_role_member">Член</string>
     <string name="members_remove">Премахване</string>
+    <string name="members_remove_menu">Премахване…</string>
     <string name="members_remove_confirm_title">Премахване на това устройство?</string>
     <string name="members_remove_confirm_body">%1$s губи достъп до тази библиотека.</string>
     <string name="join_request_approve">Одобряване</string>
