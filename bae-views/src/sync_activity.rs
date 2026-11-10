@@ -98,7 +98,7 @@ impl SyncActivity {
         });
         let download_total = &downloads.total;
         let downloads =
-            (download_total.active + download_total.queued > 0).then(|| DownloadQueueActivity {
+            (download_total.active + download_total.queued > 0).then_some(DownloadQueueActivity {
                 active: download_total.active,
                 queued: download_total.queued,
                 wait: downloads.wait,
