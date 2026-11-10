@@ -27,7 +27,7 @@ export interface MacBoxProps { elevated?: boolean; empty?: string; children?: Re
 export declare function MacBox(props: MacBoxProps): React.ReactElement;
 
 /** One line of a MacBox: label on the left, then value (grey, or in tone with a dot), controls passed as children, and a chevron when it opens something. action draws the label as an accent action ("Invite…"); destructive colors it danger, for an action that removes something. */
-export interface MacRowProps { label?: string; destructive?: boolean; strong?: boolean; tag?: string; note?: string; noteTone?: 'danger' | 'warning' | 'success'; waiting?: boolean; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; nested?: boolean; onClick?: () => void; children?: React.ReactNode }
+export interface MacRowProps { label?: string; destructive?: boolean; strong?: boolean; tag?: string; note?: string; noteTone?: 'danger' | 'warning' | 'success'; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; nested?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function MacRow(props: MacRowProps): React.ReactElement;
 export declare function MacItem(props: { lead?: React.ReactNode; trail?: React.ReactNode; children?: React.ReactNode }): React.ReactElement;
 
@@ -36,7 +36,7 @@ export interface MacFieldRowProps { label?: string; labelWidth?: number; alignTe
 export declare function MacFieldRow(props: MacFieldRowProps): React.ReactElement;
 
 /** kind: primary is the one action a screen is for; secondary is everything else; borderless is words with no chrome, for an action at the end of a row; icon is a glyph-only button (label is its accessible name). destructive colors the words danger. */
-export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' | 'icon'; icon?: 'copy' | 'check'; size?: 'small' | 'regular' | 'large'; label?: string; destructive?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' | 'icon'; icon?: 'copy' | 'check'; size?: 'small' | 'regular' | 'large'; label?: string; destructive?: boolean; muted?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function MacButton(props: MacButtonProps): React.ReactElement;
 
 /** A text field with its label on the left (labelWidth px), or the label as a placeholder (labelHidden). note is a grey line under it; error a red one, shown when state is error. Leave out label when a MacFieldRow holds the field and gives the label. Children sit after the field. */

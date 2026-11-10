@@ -6,7 +6,8 @@
 .bae-divider { height: 1px; flex: none; background: var(--hairline); }
 .bae-off { opacity: var(--opacity-off); }
 .bae-dot { width: 8px; height: 8px; border-radius: 4px; flex: none; background: currentColor; }
-.bae-progress-track { position: relative; height: 6px; border-radius: var(--radius-bar); background: var(--well); overflow: hidden; }
+/* The track is a hairline's tint, as macOS draws its bar's empty part, not a dark well. Android draws its own (below). */
+.bae-progress-track { position: relative; height: 6px; border-radius: var(--radius-bar); background: var(--hairline); overflow: hidden; }
 .bae-progress-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--radius-bar); background: var(--accent); }
 .bae-progress-moving { width: 30%; left: 38%; animation: bae-progress-move 1.4s ease-in-out infinite; }
 @keyframes bae-progress-move { 0% { left: -30%; } 100% { left: 100%; } }
@@ -109,7 +110,6 @@
 .bae-m-row-title { display: flex; align-items: center; gap: 6px; }
 .bae-m-row-note { font-size: 11.5px; line-height: 16px; color: var(--text-secondary); }
 .bae-m-row-note[class*="bae-tone-"] { color: var(--bae-tone); }
-.bae-m-row-waiting { width: 140px; height: 3px; margin-top: 2px; }
 .bae-m-row-value { color: var(--text-secondary); white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 .bae-m-row-value[class*="bae-tone-"] { color: var(--bae-tone); }
 .bae-m-row-value .bae-dot { width: 7px; height: 7px; }
@@ -122,6 +122,8 @@
 .bae-m-btn-secondary { background: var(--tile); color: var(--text-primary); }
 .bae-m-btn-primary { background: var(--accent-fill); color: var(--on-accent-fill); }
 .bae-m-btn-borderless { padding: 0 var(--space-inline); background: none; color: var(--text-primary); }
+/* muted: the label in secondary text, for buttons under quiet words (a failed view's centred notice). */
+.bae-m-btn.bae-m-btn-muted { color: var(--text-secondary); }
 .bae-m-btn-destructive { color: var(--danger); }
 .bae-m-btn-icon { width: var(--size-control); height: var(--size-control); padding: 0; background: none; color: var(--text-secondary); border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; vertical-align: -3px; }
 .bae-m-btn:hover:not(:disabled) { box-shadow: inset 0 0 0 100px var(--hover); }
@@ -132,10 +134,10 @@
 .bae-m-field { display: flex; flex-direction: column; gap: var(--space-inline); color: var(--text-primary); font: 400 13px var(--font-sans); min-width: 0; }
 .bae-m-field-line { display: flex; align-items: center; gap: var(--space-group); }
 .bae-m-field-label { flex: none; }
-.bae-m-input { flex: 1; min-width: 0; box-sizing: border-box; height: var(--size-field); padding: 0 10px; border: 0; outline: none; border-radius: 8px; background: var(--field); box-shadow: inset 0 0 0 1px var(--hairline); color: var(--text-primary); font: 400 13px/16px var(--font-sans); }
+.bae-m-input { flex: 1; min-width: 0; box-sizing: border-box; height: var(--size-field); padding: 0 10px; border: 0; outline: none; border-radius: 8px; background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); color: var(--text-primary); font: 400 13px/16px var(--font-sans); }
 .bae-m-input:hover:not(:disabled) { background: var(--field-hover); }
 .bae-m-input::placeholder { color: var(--text-tertiary); }
-.bae-m-input:focus, .bae-m-input-focused { background: var(--field-hover); box-shadow: inset 0 0 0 1px var(--hairline), 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
+.bae-m-input:focus, .bae-m-input-focused { background: var(--field-hover); box-shadow: inset 0 0 0 1px var(--field-edge), 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .bae-m-input-error, .bae-m-input-error:focus { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
 .bae-m-field-note { padding-left: 10px; font: 400 11.5px/15px var(--font-sans); color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-tertiary)); }
 .bae-m-field-note-error { color: var(--danger); }
@@ -153,11 +155,13 @@
 .bae-m-popupbutton:disabled { opacity: var(--opacity-off); }
 
 /* macOS's disclosure: its own box; the chevron leads inside the row and turns down when open; the rows it shows line up with the label. */
-.bae-m-disclosure-toggle { width: 100%; border: 0; background: none; text-align: left; gap: var(--space-compact); cursor: pointer; }
+.bae-m-disclosure-toggle { width: 100%; border: 0; background: none; text-align: left; gap: var(--space-related); cursor: pointer; }
+/* The chevron sits centred in the leading column (size-lead), so it has room to turn and the label starts on the same edge as MacItem's text and a nested row's. */
+.bae-m-disclosure-lead { width: var(--size-lead); flex: none; display: flex; align-items: center; justify-content: center; }
 .bae-m-disclosure-mark { width: 6px; height: 10px; flex: none; color: var(--text-secondary); transition: transform 0.15s; }
 .bae-m-disclosure-mark-open { transform: rotate(90deg); }
-.bae-m-disclosure > .bae-m-row:not(.bae-m-disclosure-toggle) { padding-left: calc(var(--space-group) + var(--space-hang)); }
-.bae-m-disclosure > .bae-divider:not(:nth-child(2)) { margin-left: calc(var(--space-group) + var(--space-hang)); }
+.bae-m-disclosure > .bae-m-row:not(.bae-m-disclosure-toggle) { padding-left: calc(var(--space-group) + var(--size-lead) + var(--space-related)); }
+.bae-m-disclosure > .bae-divider:not(:nth-child(2)) { margin-left: calc(var(--space-group) + var(--size-lead) + var(--space-related)); }
 .bae-a-disclosure-mark { display: inline-flex; color: var(--text-secondary); }
 
 .bae-m-scrim { position: absolute; inset: 0; background: none; display: flex; justify-content: center; align-items: flex-start; z-index: 10; }
@@ -180,7 +184,7 @@
 .bae-a-main { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 .bae-a-section { margin: 0; padding: var(--space-section) var(--space-page) var(--space-related); font: 500 14px/20px var(--font-android); color: var(--accent); }
-.bae-a-card { margin: var(--space-related) var(--space-edge) 0; display: flex; flex-direction: column; gap: 2px; flex: none; border-radius: 20px; overflow: hidden; }
+.bae-a-card { margin: var(--space-related) var(--space-edge) 0; display: flex; flex-direction: column; gap: var(--space-line); flex: none; border-radius: 20px; overflow: hidden; }
 .bae-a-card > *, .bae-a-card .bae-a-row { background: var(--surface); border-radius: 4px; }
 .bae-a-card > .bae-divider { display: none; }
 .bae-a-main > .bae-a-card:first-child { margin-top: var(--space-edge); }
@@ -194,7 +198,8 @@
 .bae-a-row-title { font-size: 16px; line-height: 24px; display: flex; align-items: center; gap: var(--space-related); }
 .bae-a-row-action { color: var(--accent); font-weight: 500; }
 .bae-a-row-destructive { color: var(--danger); }
-.bae-a-row-subtitle { font-size: 14px; line-height: 20px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+/* Supporting text wraps, as Material's list items let it run to more lines: a setting's explanation is read whole, never cut off. */
+.bae-a-row-subtitle { font-size: 14px; line-height: 20px; color: var(--text-secondary); display: flex; align-items: baseline; gap: 6px; }
 .bae-a-row-subtitle[class*="bae-tone-"] { color: var(--bae-tone); }
 .bae-a-row-trail { display: flex; align-items: center; gap: var(--space-edge); font-size: 14px; color: var(--text-secondary); }
 .bae-a-row-icon { flex: none; fill: var(--text-secondary); }
@@ -294,12 +299,17 @@
 .bae-a-scan .bae-scan-text, .bae-a-scan .bae-scan-note { font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
 .bae-a-scan .bae-scan-text { color: var(--text-primary); }
 
+/* A nested row depends on the row above (a switch it only matters under): it joins that row with no gap and no divider, on the same left edge, and dims while the switch is off. */
 .bae-m-row-nested { padding-top: 0; min-height: 0; }
-.bae-a-row-nested { padding-top: 0; min-height: 0; }
+.bae-m-row-nested-off { opacity: 0.45; }
+/* A nested row joins the switch row above it into one piece of the card: no gap, no corners between them, and set in from the card's edge. */
+.bae-a-row-nested { padding-top: 0; min-height: 0; padding-left: calc(var(--space-edge) + var(--space-section)); }
+.bae-a-card > .bae-a-row.bae-a-row-nested { margin-top: calc(-1 * var(--space-line)); border-top-left-radius: 0; border-top-right-radius: 0; }
+.bae-a-card > .bae-a-row:has(+ .bae-a-row-nested) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .bae-spinner { animation: bae-spin 0.9s linear infinite; flex: none; }
 @keyframes bae-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bae-spinner { animation-duration: 2.4s; } }
-.bae-m-spinner { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); font: 400 13px var(--font-sans); }
+.bae-m-spinner { display: inline-flex; align-items: center; gap: var(--space-related); color: var(--text-secondary); font: 400 11.5px var(--font-sans); }
 .bae-a-spinner { display: inline-flex; align-items: center; gap: 12px; color: var(--accent); font: 400 14px/20px var(--font-android); }
 .bae-a-spinner > span { color: var(--text-secondary); }
 
@@ -411,8 +421,8 @@
 .bae-a-libhead-chevron { color: var(--text-secondary); fill: currentColor; }
 .bae-a-iconbtn .bae-glyph { fill: currentColor; }
 .bae-a-iconbtn { color: var(--text-primary); }
-/* tonal: Material's filled tonal icon button, a 40dp tinted container, for a control inside a line, such as the Activity sheet's Pause. */
-.bae-a-iconbtn-tonal { width: 40px; height: 40px; border-radius: 20px; background: var(--accent-tint); }
+/* tonal: Material's filled tonal icon button at its extra-small size, a 32dp tinted container (the touch target stays 48dp), for a control inside a line, such as the Activity sheet's Pause. */
+.bae-a-iconbtn-tonal { width: 32px; height: 32px; border-radius: 16px; background: var(--accent-tint); }
 .bae-a-icon-muted { color: var(--text-secondary); }
 .bae-a-icon-accent { color: var(--accent); }
 .bae-a-sync-warn { color: var(--warning-icon); }
@@ -659,7 +669,9 @@
 .bae-m-actrow { padding: 0 var(--space-group); font: 400 13px var(--font-sans); }
 .bae-m-actline { padding: 10px 0; }
 .bae-m-actxfer { display: flex; justify-content: space-between; align-items: center; gap: var(--space-related); }
-.bae-m-actxfer-bar { margin-top: var(--space-compact); }
+.bae-m-actxfer-bar { margin-top: var(--space-related); }
+/* A transfer line carries words and a bar, so it gets a group's room above and below, more than a one-line row. */
+.bae-m-actline-xfer { padding: var(--space-group) 0 calc(var(--space-group) + var(--space-inline)); }
 .bae-m-actxfer-end { display: flex; align-items: center; gap: var(--space-compact); }
 .bae-m-actfoot { display: flex; margin-top: var(--space-group); }
 .bae-m-actrow-sub { font: 400 11.5px var(--font-sans); color: var(--text-secondary); margin-top: 2px; }
@@ -715,8 +727,8 @@
 .bae-a-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 16px/24px var(--font-android); color: var(--text-secondary); }
 .bae-notice-centered-row { display: flex; align-items: center; gap: var(--space-group); }
 .bae-notice-centered-title { display: flex; align-items: flex-start; gap: var(--space-compact); }
-/* muted: a status glyph in grey, saying only that something went wrong (a failed view's centred notice). */
-.bae-status-glyph.bae-status-glyph-muted { color: var(--text-tertiary); }
+/* muted: a status glyph in the message's own grey, saying only that something went wrong (a failed view's centred notice). */
+.bae-status-glyph.bae-status-glyph-muted { color: var(--text-secondary); }
 /* stage: on the lightbox's dark stage, in the stage's text colours, sized to its words. */
 .bae-notice-stage { --text-primary: var(--on-fill); --text-secondary: var(--on-fill-secondary); --text-tertiary: var(--on-fill-secondary); }
 .bae-notice.bae-notice-centered.bae-notice-stage { min-height: 0; padding: 0; }
@@ -847,6 +859,9 @@
 [data-theme="light"] .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
 .bae-errdis-chain { font: 400 11px/16px var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
 .bae-errdis-panel .bae-errdis-copy { position: absolute; top: 8px; right: 8px; }
+/* On macOS Copy shows only under the pointer (or keyboard focus); on Android, with no pointer, it always shows. */
+.bae-errdis-panel-hover .bae-errdis-copy { opacity: 0; transition: opacity 0.12s; }
+.bae-errdis-panel-hover:hover .bae-errdis-copy, .bae-errdis-panel-hover:focus-within .bae-errdis-copy { opacity: 1; }
 .bae-errdis-panel .bae-a-iconbtn { position: absolute; top: 0; right: 0; width: 40px; height: 40px; }
 .bae-errdis-panel:has(.bae-a-iconbtn) { min-height: 40px; box-sizing: border-box; padding-right: 44px; }
 .bae-errdis-panel .bae-a-iconbtn svg { width: 16px; height: 16px; }

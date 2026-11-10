@@ -29,10 +29,10 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Playback" back="{{yes}}">
   <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Pause between sides and discs" subtitle="Playback stops where a record is turned over or a disc changed.">
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Pause between sides and discs">
       <x-import component-from-global-scope="Bae.AndroidSwitch" on="{{yes}}" label="Pause between sides and discs"></x-import>
     </x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Countdown" subtitle="Off" nested="{{yes}}"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Resume automatically" subtitle="Never" nested="{{yes}}"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Restore on launch" subtitle="Restores the last session's track, position, queue and volume when the app opens.">
       <x-import component-from-global-scope="Bae.AndroidSwitch" on="{{yes}}" label="Restore on launch"></x-import>
     </x-import>

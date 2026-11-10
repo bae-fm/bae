@@ -143,14 +143,15 @@
   }
   // An error's causes, one a line, in an inset panel with Copy in its corner, in an alert (`MacAlert`'s `details`).
   function MacErrorDetails(props) {
-    return h('div', { className: 'bae-errdis-panel' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 })));
+    return h('div', { className: 'bae-errdis-panel bae-errdis-panel-hover' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 })));
   }
   // macOS's notice: a glyph (`icon: false` drops it), a title and a subtitle saying what to do, then up to two buttons: `action`, the primary one (Retry), and `secondary` (Dismiss, or Details, which opens MacAlert with the error's causes in `details`: a notice never shows the error itself). The buttons sit on the title's line at the right, secondary first; `buttons: 'below'` puts them on a line under the text. `dismiss` adds an × at the end of that line. `layout: 'centered'` is a failed view.
   function MacNotice(props) {
     var tone = props.tone || 'neutral';
     var centered = props.layout === 'centered';
-    var primary = props.action ? h(MacButton, { key: 'p' }, props.action) : null;
-    var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless' }, props.secondary) : null;
+    // Centred, the notice is quiet words: its buttons' labels are secondary text, so nothing in it is brighter than the message.
+    var primary = props.action ? h(MacButton, { key: 'p', muted: centered }, props.action) : null;
+    var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless', muted: centered }, props.secondary) : null;
     var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-m-notice-dismiss' }, h(MacIconButton, { icon: 'close', size: 14, faint: true, label: 'Dismiss' })) : null;
     if (centered) {
       var title = h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true }), h('div', null, noticeWords(props)));
@@ -183,7 +184,7 @@
     // A transfer: what it does, then how far (done of total, or what holds the queue), then a bar; syncing has no count, so its bar moves.
     // `held` is the queue's pause state: a queue's line ends in Pause, or Resume while paused; pinning and making local are one queue, so both lines' buttons act on it together.
     var xfer = function (key, label, count, progress, held) {
-      return row(key, h('div', { className: 'bae-m-actline' },
+      return row(key, h('div', { className: 'bae-m-actline bae-m-actline-xfer' },
         h('div', { className: 'bae-m-actxfer' }, h('span', null, label), h('span', { className: 'bae-m-actxfer-end' }, count ? h('span', { className: 'bae-muted bae-num' }, count) : null,
           held != null ? h(MacIconButton, { icon: held ? 'play' : 'pause', size: 13, small: true, boxed: true, label: held ? 'Resume' : 'Pause' }) : null)),
         h('div', { className: 'bae-progress-track bae-m-actxfer-bar' }, h('div', { className: cx('bae-progress-fill', progress == null && 'bae-progress-moving'), style: progress == null ? null : { width: (Number(progress) * 100) + '%' } }))));
@@ -242,7 +243,7 @@
     var xfer = function (key, label, count, progress, tap, held) {
       return h('div', { key: key, className: cx('bae-a-actxfer', tap && 'bae-a-act-tap') },
         h('div', { className: 'bae-a-actxfer-line' }, h('span', null, label), h('span', { className: 'bae-a-actxfer-end' }, count ? h('span', { className: 'bae-muted' }, count) : null,
-          held != null ? h(AndroidIconButton, { icon: held ? 'play' : 'pause', size: 20, tonal: true, label: held ? 'Resume' : 'Pause' }) : null)),
+          held != null ? h(AndroidIconButton, { icon: held ? 'play' : 'pause', size: 18, tonal: true, label: held ? 'Resume' : 'Pause' }) : null)),
         h('div', { className: 'bae-progress-track' }, h('div', { className: cx('bae-progress-fill', progress == null && 'bae-progress-moving'), style: progress == null ? null : { width: (Number(progress) * 100) + '%' } })));
     };
     return h('div', { className: 'bae-a-act' },

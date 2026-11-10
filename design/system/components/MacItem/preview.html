@@ -9,7 +9,7 @@
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Icon, text, trailing', h(B.MacItem, { lead: h(B.StatusGlyph, { tone: 'danger', set: 'mac', outline: true }), trail: '2m ago' }, 'Download failed')),
-    W('Empty lead keeps the edge', h('div', null, h(B.MacItem, { lead: h(B.StatusGlyph, { tone: 'warning', set: 'mac', outline: true }) }, 'Dropbox signed this device out.'), h(B.MacItem, { trail: '34.1 MB' }, '01 Harbor Lights.flac'))),
+    W('Empty lead keeps the edge', h('div', { style: { display: 'flex', flexDirection: 'column', gap: 'var(--space-group)' } }, h(B.MacItem, { lead: h(B.StatusGlyph, { tone: 'warning', set: 'mac', outline: true }) }, 'Dropbox signed this device out.'), h(B.MacItem, { trail: '34.1 MB' }, '01 Harbor Lights.flac'))),
     W('Two lines', h(B.MacItem, { lead: h(B.StatusGlyph, { tone: 'info', set: 'mac', outline: true }) }, h('div', null, '3 uploading'), h('div', { className: 'bae-muted' }, '96 MB of 221 MB'))),
     W('Among rows, with a notice', h('div', null, h(B.MacFileRow, { name: '01 Harbor Lights.flac', size: '34.1 MB' }), h(B.MacDownloadRow, null), h(B.MacFileRow, { name: '02 The Long Way Home.flac', size: '38.9 MB' })))));
 </script>

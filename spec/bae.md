@@ -3727,6 +3727,10 @@ or Next, to start side B. A CD box set pauses between discs the same way.
   the same number. Closing the prompt stops the countdown and waits for Play.
 - **Settings.** Pausing is on by default: a side break is part of how the
   record was made. Turning it on also catches a crossing already prepared.
+  Playback settings show it as *Pause between sides and discs*, with
+  *Resume automatically* (Never, or after 5, 15, 30, 45 or 60 seconds)
+  joined under it with no divider: the two read as one setting, so neither
+  needs a note.
 
 ### 7.4 Pregaps
 
