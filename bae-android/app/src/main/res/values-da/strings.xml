@@ -130,6 +130,7 @@
     <string name="onboarding_libraries_title">Dine biblioteker</string>
     <string name="library_delete_confirm_title">Vil du slette “%1$s”?</string>
     <string name="library_unsent_changes_lost">Ændringer, der ikke er sendt, går tabt</string>
+    <string name="library_remove_failed_title">“%1$s” kunne ikke fjernes</string>
     <string name="library_delete_confirm_body">Dette bibliotek er ikke synkroniseret, så det slettes for altid. Dine lydfiler bliver liggende i deres mapper.</string>
     <string name="library_delete">Slet</string>
     <string name="library_not_synced">Ikke synkroniseret</string>

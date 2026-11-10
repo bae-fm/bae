@@ -126,6 +126,7 @@
     <string name="onboarding_libraries_title">Je bibliotheken</string>
     <string name="library_delete_confirm_title">‘%1$s’ verwijderen?</string>
     <string name="library_unsent_changes_lost">Niet-verzonden wijzigingen gaan verloren</string>
+    <string name="library_remove_failed_title">Kan ‘%1$s’ niet verwijderen</string>
     <string name="library_delete_confirm_body">Deze bibliotheek is niet gesynchroniseerd en wordt daarom definitief verwijderd. Je audiobestanden blijven in hun mappen.</string>
     <string name="library_delete">Verwijderen</string>
     <string name="library_not_synced">Niet gesynchroniseerd</string>

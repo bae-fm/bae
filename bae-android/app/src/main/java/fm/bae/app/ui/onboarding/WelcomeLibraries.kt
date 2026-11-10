@@ -81,12 +81,12 @@ internal data class RunningRemoval(
 )
 
 /**
- * A removal that failed, with what the person confirmed, when they had: Retry
- * runs it again from there, and asks again when the failure came before they
- * were asked.
+ * A removal that failed, shown in a dialog naming [library], with what the
+ * person confirmed, when they had: Retry runs it again from there, and asks
+ * again when the failure came before they were asked.
  */
 internal data class FailedRemoval(
-    val libraryId: String,
+    val library: BridgeLibrary,
     val error: DisplayError,
     val confirmed: PendingRemoval?,
 )
@@ -173,7 +173,6 @@ internal class WelcomeLibraries(
     private val scope: CoroutineScope,
     private val core: WelcomeLibrariesCore,
     private val errorDisplay: (BridgeException) -> DisplayError?,
-    private val removalFailureLine: (DisplayError) -> DisplayError,
     private val onFilesRemain: (DisplayError?) -> Unit,
 ) {
     var list by mutableStateOf<WelcomeLibrariesList>(WelcomeLibrariesList.Loading)
@@ -278,7 +277,7 @@ internal class WelcomeLibraries(
                 throw e
             } catch (e: BridgeException) {
                 logger.error("reading what removing ${library.id} loses failed", e)
-                fail(library.id, e, confirmed = null)
+                fail(library, e, confirmed = null)
             } finally {
                 running = null
             }
@@ -292,7 +291,7 @@ internal class WelcomeLibraries(
 
     /**
      * Remove the library once the person confirmed what it loses, then read
-     * the list again. A failure stays on the library's row, with Retry.
+     * the list again. A failure shows in a dialog naming the library, with Retry.
      */
     fun remove(confirmed: PendingRemoval) {
         check(running == null) { "one library removal at a time" }
@@ -307,7 +306,7 @@ internal class WelcomeLibraries(
                     throw e
                 } catch (e: BridgeException) {
                     logger.error("removing ${library.id} failed", e)
-                    fail(library.id, e, confirmed)
+                    fail(library, e, confirmed)
                     return@launch
                 } finally {
                     running = null
@@ -326,12 +325,14 @@ internal class WelcomeLibraries(
     }
 
     /** Run the removal [failure] stopped, from what the person confirmed, or ask again if they hadn't. */
-    fun retry(
-        failure: FailedRemoval,
-        library: BridgeLibrary,
-    ) {
+    fun retry(failure: FailedRemoval) {
         val confirmed = failure.confirmed
-        if (confirmed == null) askToRemove(library) else remove(confirmed)
+        if (confirmed == null) askToRemove(failure.library) else remove(confirmed)
+    }
+
+    /** Close the dialog that shows a failed removal, leaving the library as it was. */
+    fun dismissFailure() {
+        failed = null
     }
 
     private suspend fun removeNow(confirmed: PendingRemoval): BridgeLibraryRemoval {
@@ -347,11 +348,11 @@ internal class WelcomeLibraries(
     }
 
     private fun fail(
-        libraryId: String,
+        library: BridgeLibrary,
         error: BridgeException,
         confirmed: PendingRemoval?,
     ) {
         val shown = errorDisplay(error) ?: return
-        failed = FailedRemoval(libraryId, removalFailureLine(shown), confirmed)
+        failed = FailedRemoval(library, shown, confirmed)
     }
 }

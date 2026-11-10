@@ -126,6 +126,7 @@
     <string name="onboarding_libraries_title">Arşivleriniz</string>
     <string name="library_delete_confirm_title">“%1$s” silinsin mi?</string>
     <string name="library_unsent_changes_lost">Gönderilmemiş değişiklikler kaybolacak</string>
+    <string name="library_remove_failed_title">“%1$s” kaldırılamadı</string>
     <string name="library_delete_confirm_body">Bu kitaplık eşitlenmediği için kalıcı olarak silinecek. Ses dosyalarınız klasörlerinde kalır.</string>
     <string name="library_delete">Sil</string>
     <string name="library_not_synced">Eşitlenmedi</string>

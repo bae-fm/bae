@@ -3558,12 +3558,11 @@ fail, saying the laptop left the library and its files are still on it.
   On Android's first screen no library is open, so a library that opens is
   opened to count what it hasn't sent and again to leave its store, its row
   showing each step in place of its storage line, and a library that can't open
-  is removed without opening, as on a Mac. On a Mac a removal that fails, or the
-  count before it, shows an alert, "Couldn't remove “Household”", with the
-  error's line, *Retry* and *Cancel*: *Retry* counts and asks again, or runs
-  again the removal the person confirmed, and the row goes back to its name. On
-  Android a removal that fails says why on the
-  row, with *Retry* in place of its ⋮ menu; one that left the store but not this
+  is removed without opening, as on a Mac. A removal that fails, or the count
+  before it, shows an alert on a Mac and a dialog on Android, "Couldn't remove
+  “Household”", with the error's line, *Retry* and *Cancel*: *Retry* counts and
+  asks again, or runs again the removal the person confirmed, and the row goes
+  back to its name; one that left the store but not this
   device's files goes on to the screen that finishes deleting them.
 - **Unsent edits.** Dan's laptop still holds edits it hasn't sent. Before
   removing, bae asks coven what this device hasn't sent, and the confirmation

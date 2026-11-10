@@ -54,6 +54,7 @@ import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.library.LibraryHeaderMenu
 import fm.bae.app.ui.library.SceneGrid
 import fm.bae.app.ui.onboarding.LibraryDetailsRows
+import fm.bae.app.ui.onboarding.RemovalFailedText
 import fm.bae.app.ui.onboarding.StandingRead
 import fm.bae.app.ui.onboarding.WelcomeActions
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
@@ -108,6 +109,7 @@ import java.time.Instant
 //   Welcome ⇒ welcome, WelcomeLibraries ⇒ welcome-libraries, WelcomeLibraryDetails ⇒ welcome-library-details,
 //   WelcomeLibraryDetailsUnsent ⇒ welcome-library-details-unsent, WelcomeAddLibrary ⇒ welcome-add-library,
 //   RemoveLibraryUnsent ⇒ remove-library-unsent, RemoveLibrary ⇒ remove-library,
+//   RemoveLibraryFailed ⇒ remove-library-failed,
 //   LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒ library-grid-scrolled, LibraryGrouped ⇒ library-grouped, LibraryGroupedPinned ⇒
 //   library-grouped-pinned, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
 //   library-view-menu, AlbumDetail ⇒ album-detail, CastPicker ⇒ cast-picker, CastingSettingsFound ⇒
@@ -199,6 +201,13 @@ fun RemoveLibraryUnsent() {
 fun RemoveLibrary() {
     val nothing = BridgeUnsentWork(writes = 0u, files = 0u, isEmpty = true)
     DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(nothing)) }
+}
+
+/** The dialog for a removal that failed. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun RemoveLibraryFailed() {
+    DialogScene { RemovalFailedText(sceneLibrary, DisplayError("Couldn’t reach your storage.")) }
 }
 
 private val sceneLibrary =

@@ -130,6 +130,7 @@
     <string name="onboarding_libraries_title">As suas bibliotecas</string>
     <string name="library_delete_confirm_title">Eliminar «%1$s»?</string>
     <string name="library_unsent_changes_lost">As alterações não enviadas serão perdidas</string>
+    <string name="library_remove_failed_title">Não foi possível remover «%1$s»</string>
     <string name="library_delete_confirm_body">Esta biblioteca não está sincronizada, por isso será eliminada definitivamente. Os seus ficheiros de áudio ficam nas respetivas pastas.</string>
     <string name="library_delete">Eliminar</string>
     <string name="library_not_synced">Não sincronizada</string>

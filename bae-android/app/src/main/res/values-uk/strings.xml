@@ -132,6 +132,7 @@
     <string name="onboarding_libraries_title">Ваші бібліотеки</string>
     <string name="library_delete_confirm_title">Видалити «%1$s»?</string>
     <string name="library_unsent_changes_lost">Ненадіслані зміни буде втрачено</string>
+    <string name="library_remove_failed_title">Не вдалося вилучити «%1$s»</string>
     <string name="library_delete_confirm_body">Цю бібліотеку не синхронізовано, тому її буде видалено назавжди. Ваші аудіофайли залишаться у своїх теках.</string>
     <string name="library_delete">Видалити</string>
     <string name="library_not_synced">Не синхронізовано</string>

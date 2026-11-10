@@ -123,6 +123,7 @@
     <string name="onboarding_libraries_title">你的库</string>
     <string name="library_delete_confirm_title">删除“%1$s”？</string>
     <string name="library_unsent_changes_lost">未发送的更改将会丢失</string>
+    <string name="library_remove_failed_title">无法移除“%1$s”</string>
     <string name="library_delete_confirm_body">该库未同步，因此将被永久删除。你的音频文件会保留在原文件夹中。</string>
     <string name="library_delete">删除</string>
     <string name="library_not_synced">未同步</string>

@@ -15,7 +15,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,7 +27,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
@@ -42,7 +40,6 @@ import fm.bae.app.ui.components.LibraryEnding
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import fm.bae.app.ui.components.RowCard
-import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.StepProgressLine
 import fm.bae.app.ui.components.cardRowDivider
 import fm.bae.app.ui.settings.libraryDetail
@@ -61,7 +58,6 @@ internal class WelcomeLibrariesCallbacks(
     val onDetails: (BridgeLibrary) -> Unit,
     val onRemove: (BridgeLibrary) -> Unit,
     val onAdd: () -> Unit,
-    val onRetry: (FailedRemoval, BridgeLibrary) -> Unit,
 )
 
 /**
@@ -81,16 +77,22 @@ internal fun WelcomeLibrariesSection(
     WelcomeLibrariesContent(
         list = libraries.list,
         running = libraries.running,
-        failed = libraries.failed,
         callbacks =
             WelcomeLibrariesCallbacks(
                 onOpen = onOpen,
                 onDetails = libraries::showDetails,
                 onRemove = libraries::askToRemove,
                 onAdd = onAdd,
-                onRetry = libraries::retry,
             ),
     )
+    libraries.failed?.let { failure ->
+        RemovalFailedDialog(
+            library = failure.library,
+            error = failure.error,
+            onRetry = { libraries.retry(failure) },
+            onCancel = libraries::dismissFailure,
+        )
+    }
     libraries.details?.let { LibraryDetailsSheet(it, onDismiss = libraries::closeDetails) }
     libraries.pending?.let { pending ->
         RemoveLibraryDialog(
@@ -111,7 +113,6 @@ internal fun WelcomeLibrariesSection(
 private fun WelcomeLibrariesContent(
     list: WelcomeLibrariesList,
     running: RunningRemoval?,
-    failed: FailedRemoval?,
     callbacks: WelcomeLibrariesCallbacks,
 ) {
     val column = Modifier.widthIn(max = librariesWidth).fillMaxWidth().padding(bottom = ThemeSpace.section)
@@ -135,7 +136,6 @@ private fun WelcomeLibrariesContent(
                             library = library,
                             busy = running != null,
                             running = running?.takeIf { it.libraryId == library.id },
-                            failed = failed?.takeIf { it.libraryId == library.id },
                             callbacks = callbacks,
                         )
                     }
@@ -156,15 +156,13 @@ private fun WelcomeLibrariesContent(
  * doesn't open, with a ⋮ menu of Details, for a library that opens, and
  * Remove, or Delete for a library that was never synced. A tap opens it,
  * unless its settings can't be read. While it is counted or removed the row
- * shows the step, and when its removal failed, why, with Retry in place of the
- * menu.
+ * shows the step.
  */
 @Composable
 private fun WelcomeLibraryRow(
     library: BridgeLibrary,
     busy: Boolean,
     running: RunningRemoval?,
-    failed: FailedRemoval?,
     callbacks: WelcomeLibrariesCallbacks,
 ) {
     if (running != null) {
@@ -172,11 +170,10 @@ private fun WelcomeLibraryRow(
         return
     }
     val detail = libraryDetail(library.state)
-    val subtitle = failed?.error?.line ?: detail.text
     CardRow(
         title = library.name,
-        subtitle = subtitle,
-        tone = if (failed != null) StatusTone.DANGER else detail.tone,
+        subtitle = detail.text,
+        tone = detail.tone,
         // A library whose settings can't be read offers nothing to open.
         onClick =
             if (!busy && library.state !is BridgeLibraryState.Unreadable) {
@@ -185,13 +182,7 @@ private fun WelcomeLibraryRow(
                 null
             },
     ) {
-        if (failed != null) {
-            TextButton(onClick = { callbacks.onRetry(failed, library) }, enabled = !busy) {
-                Text(stringResource(R.string.retry))
-            }
-        } else {
-            LibraryMenu(library, busy, callbacks)
-        }
+        LibraryMenu(library, busy, callbacks)
     }
 }
 
@@ -286,10 +277,7 @@ internal fun WelcomeLibrariesScene() {
 }
 
 @Composable
-private fun WelcomeLibrariesPreviewContent(
-    onAdd: () -> Unit,
-    failed: FailedRemoval? = null,
-) {
+private fun WelcomeLibrariesPreviewContent(onAdd: () -> Unit) {
     val dropbox =
         BridgeLibraryState.Openable(
             storage =
@@ -308,14 +296,12 @@ private fun WelcomeLibrariesPreviewContent(
                 ),
             ),
         running = null,
-        failed = failed,
         callbacks =
             WelcomeLibrariesCallbacks(
                 onOpen = {},
                 onDetails = {},
                 onRemove = {},
                 onAdd = onAdd,
-                onRetry = { _, _ -> },
             ),
     )
 }
@@ -325,10 +311,7 @@ private fun WelcomeLibrariesPreviewContent(
 private fun WelcomeLibrariesPreview() {
     BaeTheme {
         Column(modifier = Modifier.padding(ThemeSpace.page)) {
-            WelcomeLibrariesPreviewContent(
-                onAdd = {},
-                failed = FailedRemoval("lib-1", DisplayError("Couldn’t reach your storage."), confirmed = null),
-            )
+            WelcomeLibrariesPreviewContent(onAdd = {})
         }
     }
 }

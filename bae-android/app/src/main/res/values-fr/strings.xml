@@ -129,6 +129,7 @@
     <string name="onboarding_libraries_title">Vos bibliothèques</string>
     <string name="library_delete_confirm_title">Supprimer « %1$s » ?</string>
     <string name="library_unsent_changes_lost">Les modifications non envoyées seront perdues</string>
+    <string name="library_remove_failed_title">Impossible de supprimer « %1$s »</string>
     <string name="library_delete_confirm_body">Cette bibliothèque n’est pas synchronisée, elle sera donc supprimée définitivement. Vos fichiers audio restent dans leurs dossiers.</string>
     <string name="library_delete">Supprimer</string>
     <string name="library_not_synced">Non synchronisée</string>

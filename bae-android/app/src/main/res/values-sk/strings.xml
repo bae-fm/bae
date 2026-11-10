@@ -138,6 +138,7 @@
     <string name="onboarding_libraries_title">Tvoje knižnice</string>
     <string name="library_delete_confirm_title">Odstrániť „%1$s“?</string>
     <string name="library_unsent_changes_lost">Neodoslané zmeny sa stratia</string>
+    <string name="library_remove_failed_title">„%1$s“ sa nepodarilo odstrániť</string>
     <string name="library_delete_confirm_body">Táto knižnica nie je synchronizovaná, preto sa natrvalo odstráni. Tvoje zvukové súbory zostanú vo svojich priečinkoch.</string>
     <string name="library_delete">Odstrániť</string>
     <string name="library_not_synced">Nesynchronizovaná</string>

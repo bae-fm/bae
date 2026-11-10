@@ -138,6 +138,7 @@
     <string name="onboarding_libraries_title">مكتباتك</string>
     <string name="library_delete_confirm_title">حذف «%1$s»؟</string>
     <string name="library_unsent_changes_lost">ستُفقد التغييرات غير المُرسلة</string>
+    <string name="library_remove_failed_title">تعذّرت إزالة «%1$s»</string>
     <string name="library_delete_confirm_body">هذه المكتبة غير متزامنة، لذا ستُحذف نهائيًا. تبقى ملفاتك الصوتية في مجلداتها.</string>
     <string name="library_delete">حذف</string>
     <string name="library_not_synced">غير متزامنة</string>

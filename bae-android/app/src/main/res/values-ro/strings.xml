@@ -134,6 +134,7 @@
     <string name="onboarding_libraries_title">Bibliotecile tale</string>
     <string name="library_delete_confirm_title">Ștergi „%1$s”?</string>
     <string name="library_unsent_changes_lost">Modificările netrimise se vor pierde</string>
+    <string name="library_remove_failed_title">Nu s-a putut elimina „%1$s”</string>
     <string name="library_delete_confirm_body">Această bibliotecă nu este sincronizată, așa că va fi ștearsă definitiv. Fișierele tale audio rămân în dosarele lor.</string>
     <string name="library_delete">Șterge</string>
     <string name="library_not_synced">Nesincronizată</string>

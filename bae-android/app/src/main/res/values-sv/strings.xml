@@ -130,6 +130,7 @@
     <string name="onboarding_libraries_title">Dina bibliotek</string>
     <string name="library_delete_confirm_title">Radera ”%1$s”?</string>
     <string name="library_unsent_changes_lost">Ändringar som inte har skickats går förlorade</string>
+    <string name="library_remove_failed_title">Det gick inte att ta bort ”%1$s”</string>
     <string name="library_delete_confirm_body">Det här biblioteket är inte synkroniserat, så det raderas för alltid. Dina ljudfiler ligger kvar i sina mappar.</string>
     <string name="library_delete">Radera</string>
     <string name="library_not_synced">Inte synkroniserat</string>

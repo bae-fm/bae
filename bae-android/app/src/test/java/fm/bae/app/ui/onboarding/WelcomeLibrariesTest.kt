@@ -73,7 +73,6 @@ private class FakeLibraries(
             scope,
             core(),
             errorDisplay = { DisplayError("Storage refused") },
-            removalFailureLine = { it.copy(line = "Couldn’t remove the library: ${it.line}") },
             onFilesRemain = {},
         )
 
@@ -305,7 +304,7 @@ class WelcomeLibrariesTest {
     }
 
     @Test
-    fun aFailedRemovalSaysWhyOnItsRowAndRetryRunsItAgain() {
+    fun aFailedRemovalIsADialogAndRetryRunsItAgain() {
         val fake = FakeLibraries(listOf(synced))
         fake.failure = BridgeException.Diagnostic(BridgeErrorCategory.Keyring, "refused")
         showLibraries(fake)
@@ -315,13 +314,33 @@ class WelcomeLibrariesTest {
         compose.onNode(hasText("Remove") and hasAnyAncestor(isDialog())).performClick()
 
         compose.waitUntil(HANG_GUARD_MS) { compose.onAllNodesWithTextCount("Retry") == 1 }
-        compose.onNodeWithText("Couldn’t remove the library: Storage refused").assertIsDisplayed()
+        compose.onNodeWithText("Couldn’t remove “Home Library”").assertIsDisplayed()
+        compose.onNodeWithText("Storage refused").assertIsDisplayed()
 
         fake.failure = null
         compose.onNodeWithText("Retry").performClick()
 
         compose.waitUntil(HANG_GUARD_MS) { fake.libraries.isEmpty() }
         assertEquals(listOf("list", "unsent synced", "remove synced", "remove synced", "list"), fake.calls)
+    }
+
+    @Test
+    fun cancellingAFailedRemovalLeavesTheRowAsItWas() {
+        val fake = FakeLibraries(listOf(synced))
+        fake.failure = BridgeException.Diagnostic(BridgeErrorCategory.Keyring, "refused")
+        showLibraries(fake)
+
+        chooseFromMenu("Remove…")
+        compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent synced") }
+        compose.onNode(hasText("Remove") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(HANG_GUARD_MS) { compose.onAllNodesWithTextCount("Retry") == 1 }
+
+        compose.onNodeWithText("Cancel").performClick()
+
+        compose.onNodeWithText("Retry").assertDoesNotExist()
+        compose.onNodeWithText("Home Library").assertIsDisplayed()
+        compose.onNodeWithContentDescription("More").assertIsDisplayed()
+        assertEquals(listOf("list", "unsent synced", "remove synced"), fake.calls)
     }
 
     @Test

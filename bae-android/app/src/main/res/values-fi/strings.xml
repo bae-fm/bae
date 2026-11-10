@@ -130,6 +130,7 @@
     <string name="onboarding_libraries_title">Kirjastosi</string>
     <string name="library_delete_confirm_title">Poistetaanko ”%1$s”?</string>
     <string name="library_unsent_changes_lost">Lähettämättömät muutokset menetetään</string>
+    <string name="library_remove_failed_title">Kirjastoa ”%1$s” ei voitu poistaa</string>
     <string name="library_delete_confirm_body">Tätä kirjastoa ei ole synkronoitu, joten se poistetaan pysyvästi. Äänitiedostosi pysyvät kansioissaan.</string>
     <string name="library_delete">Poista</string>
     <string name="library_not_synced">Ei synkronoitu</string>

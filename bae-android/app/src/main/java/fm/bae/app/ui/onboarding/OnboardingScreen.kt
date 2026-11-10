@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeApp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
-import fm.bae.app.coreString
 import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.displayError
@@ -132,9 +131,6 @@ internal fun OnboardingScreen(
                     scope,
                     WelcomeLibrariesCore.live(app.host, scope, app.bugs),
                     errorDisplay = { context.displayError(it) },
-                    removalFailureLine = { failure ->
-                        failure.copy(line = "${context.coreString("ui.load_error.removal.title")}: ${failure.line}")
-                    },
                     onFilesRemain = { actions?.onFilesRemain?.invoke(it) },
                 )
             }

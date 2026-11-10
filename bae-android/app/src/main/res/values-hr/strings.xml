@@ -129,6 +129,7 @@
     <string name="onboarding_libraries_title">Vaše fonoteke</string>
     <string name="library_delete_confirm_title">Izbrisati „%1$s”?</string>
     <string name="library_unsent_changes_lost">Neposlane promjene bit će izgubljene</string>
+    <string name="library_remove_failed_title">Nije moguće ukloniti „%1$s”</string>
     <string name="library_delete_confirm_body">Ova fonoteka nije sinkronizirana, pa će se trajno izbrisati. Vaše audiodatoteke ostaju u svojim mapama.</string>
     <string name="library_delete">Izbriši</string>
     <string name="library_not_synced">Nije sinkronizirana</string>

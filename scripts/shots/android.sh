@@ -95,6 +95,7 @@ PeopleAndDevicesPerson:people-and-devices-person
 PeopleAndDevicesYours:people-and-devices-yours
 PinningList:pinning-list
 RemoveLibrary:remove-library
+RemoveLibraryFailed:remove-library-failed
 RemoveLibraryUnsent:remove-library-unsent
 RestoreCodeMasked:restore-code-masked
 RestoreCodeShown:restore-code-shown
