@@ -31,7 +31,7 @@ struct IdentificationProgressView: View {
             }
             .buttonStyle(.plain)
             .help("Go to a candidate still being identified")
-            Button("Cancel all", role: .destructive, action: onCancelAll)
+            Button("Cancel all", action: onCancelAll)
                 .controlSize(.small)
                 .help(
                     "Stop identifying every candidate still waiting or running"
