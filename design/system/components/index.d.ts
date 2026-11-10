@@ -119,8 +119,8 @@ export declare function AndroidMatchCode(props: MatchCodeProps & { dialog?: bool
 export interface AndroidStepProps { title: string; text?: string; top?: boolean; children?: React.ReactNode }
 export declare function AndroidStep(props: AndroidStepProps): React.ReactElement;
 
-/** One line of a card: title (with a tag chip after it), a subtitle under it (in tone with a dot), controls as children, and an icon on the right. action draws the title as an accent action; destructive colors it danger, for an action that removes something. */
-export interface AndroidRowProps { title: string; tag?: string; subtitle?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; icon?: 'chevron' | 'edit' | 'expand' | 'more' | 'refresh'; leadingIcon?: 'add'; action?: boolean; destructive?: boolean; selected?: boolean; nested?: boolean; onClick?: () => void; children?: React.ReactNode }
+/** One line of a card: title (with a tag chip after it), a subtitle under it (in tone with a dot), controls as children, and an icon on the right. action draws the title as an accent action; destructive colors it danger, for an action that removes something. place and joinsNext are AndroidCard's: it passes each row its place among its rows (first, middle, last, alone), which sets the row's tile and corners, and whether the next row is nested under it. */
+export interface AndroidRowProps { title: string; tag?: string; subtitle?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; icon?: 'chevron' | 'edit' | 'expand' | 'more' | 'refresh'; leadingIcon?: 'add'; action?: boolean; destructive?: boolean; selected?: boolean; nested?: boolean; place?: 'first' | 'middle' | 'last' | 'alone'; joinsNext?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function AndroidRow(props: AndroidRowProps): React.ReactElement;
 
 /** kind: filled for the action a screen is for, outlined beside it, text in dialogs and rows. large is the full-width size on the welcome screen. */

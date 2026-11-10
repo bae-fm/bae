@@ -205,9 +205,11 @@
 .bae-a-main { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 .bae-a-section { margin: 0; padding: var(--space-section) var(--space-page) var(--space-related); font: 500 14px/20px var(--font-android); color: var(--accent); }
-.bae-a-card { margin: var(--space-related) var(--space-edge) 0; display: flex; flex-direction: column; gap: var(--space-line); flex: none; border-radius: 20px; overflow: hidden; }
-.bae-a-card > *, .bae-a-card .bae-a-row { background: var(--surface); border-radius: 4px; }
-.bae-a-card > .bae-divider { display: none; }
+.bae-a-card { margin: var(--space-related) var(--space-edge) 0; display: flex; flex-direction: column; gap: var(--space-line); flex: none; }
+/* A tile of a card (a row, or what the card wraps around anything else): 4dp corners, 20dp on the card's outer ones. */
+.bae-a-card-tile { background: var(--surface); border-radius: 4px; }
+.bae-a-card-tile-first, .bae-a-card-tile-alone { border-top-left-radius: 20px; border-top-right-radius: 20px; }
+.bae-a-card-tile-last, .bae-a-card-tile-alone { border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
 .bae-a-main > .bae-a-card:first-child { margin-top: var(--space-edge); }
 .bae-a-section + .bae-a-card { margin-top: 0; }
 
@@ -332,9 +334,8 @@
 .bae-m-row-nested { padding-top: 0; min-height: 0; }
 .bae-m-row-nested-off { opacity: 0.45; }
 /* A nested row joins the switch row above it into one piece of the card: no gap, no corners between them, and set in from the card's edge. */
-.bae-a-row-nested { padding-top: 0; min-height: 0; padding-left: calc(var(--space-edge) + var(--space-section)); }
-.bae-a-card > .bae-a-row.bae-a-row-nested { margin-top: calc(-1 * var(--space-line)); border-top-left-radius: 0; border-top-right-radius: 0; }
-.bae-a-card > .bae-a-row:has(+ .bae-a-row-nested) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.bae-a-row-nested { padding-top: 0; min-height: 0; padding-left: calc(var(--space-edge) + var(--space-section)); margin-top: calc(-1 * var(--space-line)); border-top-left-radius: 0; border-top-right-radius: 0; }
+.bae-a-row-joins-next { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .bae-spinner { animation: bae-spin 0.9s linear infinite; flex: none; }
 @keyframes bae-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bae-spinner { animation-duration: 2.4s; } }
