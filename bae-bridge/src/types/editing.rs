@@ -1,9 +1,9 @@
 #[cfg(desktop)]
 use super::*;
 use super::{
-    BridgeDiscogsDetail, BridgeDurationClock, BridgeImageRef, BridgeMediaCount, BridgePackaging,
+    BridgeDiscogsDetail, BridgeDurationClock, BridgeMediaCount, BridgePackaging,
     BridgePressingFacts, BridgeReleaseArea, BridgeReleaseLabel, BridgeReleaseStatus,
-    BridgeSourceAudioLayout, BridgeSourceAudioSummary, BridgeTrackSide,
+    BridgeSourceAudioLayout, BridgeTrackSide,
 };
 
 /// Mirror of `bae_import::ReleaseUserEdit` — a normalized, validated
