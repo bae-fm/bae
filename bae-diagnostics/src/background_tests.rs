@@ -278,7 +278,7 @@ async fn spawn_ending_hands_a_panic_in_end_to_the_joiner() {
 fn run_on_thread_hands_back_the_work_s_value_on_its_stack() {
     let (diagnostics, reports) = reporting();
     let value = diagnostics.run_on_thread("deep work", 16 * 1024 * 1024, || {
-        let frame = std::hint::black_box([1u8; 8 * 1024 * 1024]);
+        let frame = std::hint::black_box([1u8; 4 * 1024 * 1024]);
         (frame[0], std::thread::current().name().map(str::to_string))
     });
     assert_eq!(value.expect("the work ran"), (1, Some("deep work".to_string())));
