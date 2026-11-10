@@ -32,6 +32,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFastValue
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeImportDestination
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteAccess
 import uniffi.bae_bridge.BridgeInviteLifetime
@@ -504,12 +505,8 @@ internal open class FakeAppHandle(
         unfaked("setIdentifyAutomatically")
     }
 
-    override suspend fun setImportPinned(enabled: Boolean) {
-        unfaked("setImportPinned")
-    }
-
-    override suspend fun setImportToCloud(enabled: Boolean) {
-        unfaked("setImportToCloud")
+    override suspend fun setImportDestination(destination: BridgeImportDestination) {
+        unfaked("setImportDestination")
     }
 
     override suspend fun setImportWhenIdentified(enabled: Boolean) {

@@ -33,7 +33,9 @@
                 .environment(UiStore())
                 .environment(ImportSelection())
                 .environment(OutboxStore(uploadsPaused: false))
-                .environment(PreviewData.configStore())
+                .environment(
+                    PreviewData.configStore(storage: PreviewData.previewStorage)
+                )
                 .environment(Importer.stub())
                 .environment(Library.stub())
                 .environment(Playback.stub())
@@ -50,8 +52,7 @@
         @MainActor
         static func make(
             candidate: Candidate,
-            storageCloud: Binding<Bool>,
-            storagePinned: Binding<Bool>,
+            importDestination: Binding<BridgeImportDestination>,
             previewingTarget: BridgePreviewTarget? = nil,
             libraryStatus: BridgeLibraryStatus? = nil,
             runtime: BridgeCandidateRuntimeSnapshot? = nil
@@ -68,8 +69,7 @@
                 editActions: ReleaseFieldWriter { _, _ in },
                 editingCommands: EditingCommitCommands(),
                 endEditing: {},
-                storageCloud: storageCloud,
-                storagePinned: storagePinned,
+                importDestination: importDestination,
                 mappingActions: inertMappingActions(),
                 commitActions: ImportCommitActions(
                     confirmImport: {},
@@ -123,15 +123,12 @@
         let images: ImageStore
 
         @State
-        private var storageCloud = true
-        @State
-        private var storagePinned = true
+        private var importDestination = BridgeImportDestination.cloudPinned
 
         var body: some View {
             ImportMappingPreview.make(
                 candidate: PreviewData.sheetMappingCandidate,
-                storageCloud: $storageCloud,
-                storagePinned: $storagePinned
+                importDestination: $importDestination
             )
             .frame(width: width, height: 900)
             .importPreviewEnvironment(images: images)
@@ -141,14 +138,10 @@
     #Preview("Mapping pane — blank draft") {
         @Previewable
         @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
+        var importDestination = BridgeImportDestination.cloudPinned
         ImportMappingPreview.make(
             candidate: PreviewData.blankDraftMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
+            importDestination: $importDestination
         )
         .frame(width: 1212, height: 700)
         .importPreviewEnvironment()
@@ -157,14 +150,10 @@
     #Preview("Mapping pane — a release picked") {
         @Previewable
         @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
+        var importDestination = BridgeImportDestination.cloudPinned
         ImportMappingPreview.make(
             candidate: PreviewData.mappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned,
+            importDestination: $importDestination,
             previewingTarget: BridgePreviewTarget(
                 path: URL(fileURLWithPath: "/tmp/fake/Track 3.flac").pathBytes,
                 name: "Track 3.flac",
@@ -179,14 +168,10 @@
     #Preview("Mapping pane — Discogs applied") {
         @Previewable
         @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
+        var importDestination = BridgeImportDestination.cloudPinned
         ImportMappingPreview.make(
             candidate: PreviewData.discogsMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
+            importDestination: $importDestination
         )
         .frame(width: 1212, height: 900)
         .importPreviewEnvironment()
@@ -195,14 +180,10 @@
     #Preview("Mapping pane — both sources applied") {
         @Previewable
         @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
+        var importDestination = BridgeImportDestination.cloudPinned
         ImportMappingPreview.make(
             candidate: PreviewData.pairedMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
+            importDestination: $importDestination
         )
         .frame(width: 1212, height: 900)
         .importPreviewEnvironment()
@@ -211,14 +192,10 @@
     #Preview("Mapping pane — Lookup, no search") {
         @Previewable
         @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
+        var importDestination = BridgeImportDestination.cloudPinned
         ImportMappingPreview.make(
             candidate: PreviewData.unidentifiedMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
+            importDestination: $importDestination
         )
         .frame(width: 1212, height: 700)
         .importPreviewEnvironment()
@@ -227,14 +204,10 @@
     #Preview("Mapping pane — direct entry") {
         @Previewable
         @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
+        var importDestination = BridgeImportDestination.cloudPinned
         ImportMappingPreview.make(
             candidate: PreviewData.directEntryMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
+            importDestination: $importDestination
         )
         .frame(width: 1212, height: 900)
         .importPreviewEnvironment()
@@ -243,14 +216,10 @@
     #Preview("Mapping pane — several matches to pick") {
         @Previewable
         @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
+        var importDestination = BridgeImportDestination.cloudPinned
         ImportMappingPreview.make(
             candidate: PreviewData.severalMatchesMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
+            importDestination: $importDestination
         )
         .frame(width: 1212, height: 900)
         .importPreviewEnvironment()
@@ -273,14 +242,10 @@
     #Preview("Mapping pane — CUE ignored") {
         @Previewable
         @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
+        var importDestination = BridgeImportDestination.cloudPinned
         ImportMappingPreview.make(
             candidate: PreviewData.moreTracksMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
+            importDestination: $importDestination
         )
         .frame(width: 1212, height: 900)
         .importPreviewEnvironment()
@@ -289,14 +254,10 @@
     #Preview("Mapping pane — CUE ignored, narrow") {
         @Previewable
         @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
+        var importDestination = BridgeImportDestination.cloudPinned
         ImportMappingPreview.make(
             candidate: PreviewData.moreTracksMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
+            importDestination: $importDestination
         )
         .frame(width: 760, height: 900)
         .importPreviewEnvironment()
@@ -305,14 +266,10 @@
     #Preview("Mapping pane — File tags selected") {
         @Previewable
         @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
+        var importDestination = BridgeImportDestination.cloudPinned
         ImportMappingPreview.make(
             candidate: PreviewData.fileMetadataMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
+            importDestination: $importDestination
         )
         .frame(width: 1212, height: 900)
         .importPreviewEnvironment()

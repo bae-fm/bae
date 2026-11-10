@@ -21,36 +21,17 @@ struct ImportView: View {
     @Environment(ConfigStore.self)
     var configStore
 
-    /// The stored import storage choice; shown only when the library syncs.
-    var storageCloud: Binding<Bool> {
+    /// The stored import destination; shown only when the library syncs.
+    var importDestination: Binding<BridgeImportDestination> {
         Binding(
-            get: { configStore.config.importStorage.cloud },
-            set: { enabled in
-                writeStorageChoice {
-                    try await importer.setImportToCloud(enabled)
+            get: { configStore.config.importDestination },
+            set: { destination in
+                Task { @MainActor in
+                    do { try await importer.setImportDestination(destination) }
+                    catch { uiStore.showError(error) }
                 }
             }
         )
-    }
-
-    var storagePinned: Binding<Bool> {
-        Binding(
-            get: { configStore.config.importStorage.pinned },
-            set: { enabled in
-                writeStorageChoice {
-                    try await importer.setImportPinned(enabled)
-                }
-            }
-        )
-    }
-
-    private func writeStorageChoice(
-        _ write: @escaping @MainActor () async throws -> Void
-    ) {
-        Task { @MainActor in
-            do { try await write() }
-            catch { uiStore.showError(error) }
-        }
     }
 
     /// Candidate writes by what they act on; a repeated command cancels the

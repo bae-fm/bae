@@ -63,10 +63,10 @@ async fn repeated_imports_keep_independent_copies() {
     let pressing = f.fakes.seed_discogs_test_release(discogs_release("Album Title", &["Track"]));
     let mut copies = Vec::new();
     for (index, destination) in [
-        ImportDestination::Local,
-        ImportDestination::Local,
-        ImportDestination::Remote { pin: false },
-        ImportDestination::Remote { pin: false },
+        ImportDestination::ThisDevice,
+        ImportDestination::ThisDevice,
+        ImportDestination::Cloud,
+        ImportDestination::Cloud,
     ]
     .into_iter()
     .enumerate()
@@ -115,7 +115,7 @@ async fn repeated_imports_keep_independent_copies() {
                 *prior_files
             );
         }
-        if matches!(destination, ImportDestination::Remote { .. }) {
+        if destination.goes_to_cloud() {
             assert_eq!(f.library.manager().drain_uploads_expecting_work().await.unwrap(), 1);
             assert!(f
                 .library
@@ -161,7 +161,7 @@ async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
         &f,
         &album_dir,
         None,
-        ImportDestination::Remote { pin: false },
+        ImportDestination::Cloud,
         bae_import::test_imports::DraftSource::FileTags,
     )
     .await

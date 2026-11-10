@@ -6,7 +6,7 @@
 //! Its tables are `row.sql`.
 
 use super::{
-    CastTranscodeFormat, DiscogsValidation, IdentificationPreferences, ImportStoragePreferences,
+    CastTranscodeFormat, DiscogsValidation, IdentificationPreferences, ImportDestination,
     LookupCatalogPreferences, McpConfig, Preferences, PreferencesError, ReplayGainMode,
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePreset, SidePauseCountdown, SubsonicConfig,
 };
@@ -118,9 +118,11 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
             max_concurrent_downloads: concurrency("max_concurrent_downloads")?,
             show_remaining_time: flag("show_remaining_time")?,
             library_full_width: flag("library_full_width")?,
-            import_storage: ImportStoragePreferences {
-                cloud: flag("import_to_cloud")?,
-                pinned: flag("import_pinned")?,
+            import_destination: match row.get::<_, String>("import_destination")?.as_str() {
+                "this_device" => ImportDestination::ThisDevice,
+                "cloud" => ImportDestination::Cloud,
+                "cloud_pinned" => ImportDestination::CloudPinned,
+                other => return Err(invalid(row, "import_destination", other)),
             },
             identification: IdentificationPreferences {
                 automatic: flag("identify_automatically")?,
@@ -244,7 +246,7 @@ fn write_preferences_on(
         max_concurrent_downloads,
         show_remaining_time,
         library_full_width,
-        import_storage,
+        import_destination,
         identification,
         cast_enabled,
         cast_transcode_format,
@@ -257,7 +259,7 @@ fn write_preferences_on(
              pause_between_sides = ?, side_pause_countdown_seconds = ?, \
              max_concurrent_uploads = ?, max_concurrent_downloads = ?, \
              show_remaining_time = ?, library_full_width = ?, \
-             import_to_cloud = ?, import_pinned = ?, identify_automatically = ?, \
+             import_destination = ?, identify_automatically = ?, \
              import_when_identified = ?, ask_musicbrainz = ?, ask_discogs = ?, \
              cast_enabled = ?, cast_transcode_format = ?, mcp_enabled = ?, mcp_port = ?, \
              subsonic_enabled = ?, subsonic_port = ?, subsonic_username = ?, \
@@ -281,8 +283,11 @@ fn write_preferences_on(
             max_concurrent_downloads.get(),
             show_remaining_time,
             library_full_width,
-            import_storage.cloud,
-            import_storage.pinned,
+            match import_destination {
+                ImportDestination::ThisDevice => "this_device",
+                ImportDestination::Cloud => "cloud",
+                ImportDestination::CloudPinned => "cloud_pinned",
+            },
             identification.automatic,
             identification.import_when_identified,
             identification.catalogs.musicbrainz,

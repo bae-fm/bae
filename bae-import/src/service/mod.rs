@@ -93,8 +93,8 @@ pub(crate) struct PreparedImportFile {
 
 fn destination_label(destination: ImportDestination) -> &'static str {
     match destination {
-        ImportDestination::Remote { .. } => "remote",
-        ImportDestination::Local => "local",
+        ImportDestination::Cloud | ImportDestination::CloudPinned => "remote",
+        ImportDestination::ThisDevice => "local",
     }
 }
 

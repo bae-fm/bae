@@ -10,8 +10,8 @@ import XCTest
 @MainActor
 final class MoveToCloudConfirmSheetTests: XCTestCase {
     func testPinChoiceWritesTheStoredImportChoice() async throws {
-        var writes: [Bool] = []
-        let importer = Importer(setImportPinned: { writes.append($0) })
+        var writes: [BridgeImportDestination] = []
+        let importer = Importer(setImportDestination: { writes.append($0) })
         let size = NSSize(width: 420, height: 220)
         try await SnapshotTestSupport.withHostedWindow(
             MoveToCloudConfirmSheet(onConfirm: {}, onCancel: {})
@@ -38,7 +38,7 @@ final class MoveToCloudConfirmSheetTests: XCTestCase {
 
             // The preview library's stored choice is pinned, so moving the
             // switch stores the other answer.
-            XCTAssertEqual(writes, [false])
+            XCTAssertEqual(writes, [.cloud])
         }
     }
 }

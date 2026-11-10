@@ -1730,8 +1730,8 @@ fetches them (step 2). Every stored image is downscaled to at most 600 pixels
 on a side and stored as JPEG.
 
 **Where it goes.** Each import lands on this device or goes to storage, as
-the person last chose (§4.2), and an import to storage stays whole here too once
-stored when the Pinned choice is on. Either import stages its files with
+the person last chose (§4.2): This Mac, Cloud, or Cloud, pinned, one choice, and
+an import to storage stays whole here too once stored when it is Cloud, pinned. Either import stages its files with
 coven in the same transaction as its rows: on this device only for a local
 import, and for storage for an import to storage, which queues their upload, so
 the choice is never lost, and needs no connection to record it.
@@ -2019,7 +2019,7 @@ one that kept its size and modification time: the rows describe the file as
 imported, and a changed file would give every device audio that doesn't
 match them. A release moves only when every one of its files is on
 this device only and none is moving already; a release made local again
-(§4.4) moves like one imported here. The stored Pinned choice (Appendix C)
+(§4.4) moves like one imported here. The stored Cloud, pinned choice (Appendix C)
 asks coven to keep each file whole on this device once the move finishes:
 coven pins it itself and downloads its copy from storage, never reading the
 original for the cache, and retries a failed download by itself. Until each
@@ -2045,7 +2045,7 @@ Other devices go on showing the release without playing it.
 
 - **An import to storage** (§3.7) stages its files for storage in the same write as
   its rows, each read whole once and compared with the scan as a local
-  import's are, kept here once stored when the Pinned choice says so. Its
+  import's are, kept here once stored when the choice is Cloud, pinned. Its
   files are one move, as a release moved to storage is: other devices see
   them on the importing device until all are stored, and cancelling its upload
   leaves it a local release on that device.
@@ -5519,7 +5519,7 @@ Replay gain has no control in the apps.
 | `max_concurrent_uploads`, `max_concurrent_downloads` | 3 | files moved at once, 1 to 8; adding this device, joining, and a restore or reset of this device's copy read the library from storage at the default, since the row is in the store being read; the library opens at the row's limits |
 | `show_remaining_time` | off | the seek bar counts down |
 | `library_full_width` | off | the library page spans the window |
-| `import_to_cloud`, `import_pinned` | on, on | where an import goes, and whether it stays here |
+| `import_destination` | cloud, pinned | where an import goes: this device, the cloud, or the cloud with a whole copy kept here; one choice, offered as a pop-up on the import card, on the bulk pane's Import row and as Import to in Settings, which dims while automatic import is off; with no cloud storage in the library, an import stays on this device whatever it says, and the pop-up is not shown |
 | `identify_automatically` | on | identifying found releases on their own |
 | `import_when_identified` | off | importing what any run picks unattended |
 | `ask_musicbrainz`, `ask_discogs` | both on | which catalogs are asked |

@@ -12,8 +12,7 @@ struct ImportCommitControls {
     /// What the last import left: a failure, which Import retries, or
     /// nothing.
     let importStatus: BridgeCandidateImportStatus?
-    let storageCloud: Binding<Bool>
-    let storagePinned: Binding<Bool>
+    let importDestination: Binding<BridgeImportDestination>
     let actions: ImportCommitActions
 }
 
@@ -237,19 +236,9 @@ struct ImportReleaseHeader: View {
                     .foregroundStyle(Theme.warning)
                 }
                 if configStore.syncs {
-                    HStack(spacing: ThemeSpace.related) {
-                        ImportCheckboxToggle(
-                            "In cloud",
-                            isOn: commit.storageCloud
-                        )
-                        if commit.storageCloud.wrappedValue {
-                            ImportCheckboxToggle(
-                                "Pinned",
-                                isOn: commit.storagePinned
-                            )
-                        }
-                    }
-                    .fixedSize()
+                    ImportDestinationPicker(
+                        destination: commit.importDestination
+                    )
                 }
                 ImportConfirmationCardAction(
                     importStatus: commit.importStatus,

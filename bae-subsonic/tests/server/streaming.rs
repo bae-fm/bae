@@ -492,7 +492,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
                 parts: Vec::new(),
             },
             selected_cover: None,
-            destination: ImportDestination::Local,
+            destination: ImportDestination::ThisDevice,
             read_file_tags: false,
             pick: Some(bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
@@ -658,7 +658,7 @@ async fn a_stored_wav_is_served_as_audio_wav() {
                 parts: Vec::new(),
             },
             selected_cover: None,
-            destination: ImportDestination::Local,
+            destination: ImportDestination::ThisDevice,
             pick: Some(bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::Discogs,

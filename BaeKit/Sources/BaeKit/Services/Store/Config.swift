@@ -28,9 +28,9 @@ public struct Config: Equatable {
     /// imported straight away, whether the run started on its own or a person
     /// asked for it. Independent of `identifyAutomatically`.
     public let importWhenIdentified: Bool
-    /// The import storage choice, shown and changed in the import pane and
+    /// Where an import goes, shown and changed in the import pane and
     /// Settings; core reads it as each import starts.
-    public let importStorage: BridgeImportStorage
+    public let importDestination: BridgeImportDestination
     /// Which catalogs Find online asks, one entry per catalog in core's order.
     /// Core folds the person's choice and the catalog's credentials into one
     /// availability, so the switches on the Find online header and in Settings
@@ -79,7 +79,7 @@ public struct Config: Equatable {
         maxConcurrentTransfers = bridge.maxConcurrentTransfers
         identifyAutomatically = bridge.identifyAutomatically
         importWhenIdentified = bridge.importWhenIdentified
-        importStorage = bridge.importStorage
+        importDestination = bridge.importDestination
         lookupCatalogs = bridge.lookupCatalogs
         hasSourceToSearch = bridge.hasSourceToSearch
         showRemainingTime = bridge.showRemainingTime

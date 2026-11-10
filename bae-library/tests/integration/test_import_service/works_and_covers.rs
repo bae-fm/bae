@@ -97,7 +97,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &f,
         &first_dir,
         None,
-        ImportDestination::Local,
+        ImportDestination::ThisDevice,
         bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, first_mb),
             partners: vec![],
@@ -124,7 +124,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &f,
         &second_dir,
         None,
-        ImportDestination::Local,
+        ImportDestination::ThisDevice,
         bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, second_mb),
             partners: vec![],

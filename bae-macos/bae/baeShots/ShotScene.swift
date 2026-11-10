@@ -52,7 +52,11 @@ struct ShotScene {
                     images: images
                 )
             },
-            settingsImport("settings-import-key-stored", discogsUsable: true),
+            settingsImport(
+                "settings-import-key-stored",
+                discogsUsable: true,
+                importsAutomatically: true
+            ),
             settingsImport(
                 "settings-import-no-key",
                 discogsUsable: false,
@@ -279,8 +283,7 @@ extension ShotScene {
             return ShotStage(
                 ImportMappingPreview.make(
                     candidate: PreviewData.mappingCandidate,
-                    storageCloud: .constant(true),
-                    storagePinned: .constant(true),
+                    importDestination: .constant(.cloudPinned),
                     libraryStatus: libraryStatus
                 )
                 .importPreviewEnvironment(images: images),
@@ -348,7 +351,8 @@ extension ShotScene {
         _ id: String,
         discogsUsable: Bool,
         discogs: BridgeSourceAvailability? = nil,
-        discogsTokenStatus: BridgeDiscogsTokenStatus? = nil
+        discogsTokenStatus: BridgeDiscogsTokenStatus? = nil,
+        importsAutomatically: Bool = false
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 700, height: 620)) {
             ShotStage(
@@ -358,7 +362,11 @@ extension ShotScene {
                             libraryFullWidth: false,
                             discogsUsable: discogsUsable,
                             discogs: discogs,
-                            discogsTokenStatus: discogsTokenStatus
+                            discogsTokenStatus: discogsTokenStatus,
+                            importWhenIdentified: importsAutomatically,
+                            importDestination: importsAutomatically
+                                ? .cloudPinned : .cloud,
+                            storage: PreviewData.previewStorage
                         )
                     )
                     .environment(

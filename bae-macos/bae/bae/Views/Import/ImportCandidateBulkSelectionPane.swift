@@ -9,9 +9,7 @@ struct ImportCandidateBulkSelectionPane: View {
     @Environment(ConfigStore.self)
     private var configStore
     @Binding
-    var storageCloud: Bool
-    @Binding
-    var storagePinned: Bool
+    var importDestination: BridgeImportDestination
     /// Run one of the selection's actions; the caller confirms any that
     /// replaces the person's choices.
     let onPerform: (ImportCandidateActionOffer) -> Void
@@ -29,8 +27,7 @@ struct ImportCandidateBulkSelectionPane: View {
                         ),
                         isRunning: selection.isRunning,
                         showsStorageChoices: configStore.syncs,
-                        storageCloud: $storageCloud,
-                        storagePinned: $storagePinned,
+                        importDestination: $importDestination,
                         onPerform: onPerform
                     )
                     if let running = selection.running {
@@ -62,12 +59,10 @@ struct ImportCandidateBulkSelectionCard: View {
     let offers: [ImportCandidateActionOffer]
     let isRunning: Bool
     /// Whether the library syncs, which is what gives Import its
-    /// storage choices.
+    /// destination choice.
     let showsStorageChoices: Bool
     @Binding
-    var storageCloud: Bool
-    @Binding
-    var storagePinned: Bool
+    var importDestination: BridgeImportDestination
     let onPerform: (ImportCandidateActionOffer) -> Void
 
     var body: some View {
@@ -106,11 +101,12 @@ struct ImportCandidateBulkSelectionCard: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 ForEach(rows(in: group)) { offer in
-                    BulkActionRow(offer: offer) { onPerform(offer) }
-                        .disabled(isRunning || !offer.enabled)
-                    if offer.action == .import, showsStorageChoices {
-                        storageChoices
-                    }
+                    BulkActionRow(
+                        offer: offer,
+                        importDestination: offer.action == .import
+                            && showsStorageChoices ? $importDestination : nil
+                    ) { onPerform(offer) }
+                    .disabled(isRunning || !offer.enabled)
                 }
             }
         }
@@ -120,21 +116,6 @@ struct ImportCandidateBulkSelectionCard: View {
             RoundedRectangle(cornerRadius: ThemeRadius.card)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         }
-    }
-
-    /// The import's storage choices, lined up under the Import row's label.
-    private var storageChoices: some View {
-        HStack(spacing: ThemeSpace.group) {
-            ImportCheckboxToggle("In cloud", isOn: $storageCloud)
-            if storageCloud {
-                ImportCheckboxToggle("Pinned", isOn: $storagePinned)
-            }
-        }
-        .padding(.leading, ImportBulkActionRowMetrics.labelInset)
-        .padding(.trailing, ImportBulkActionRowMetrics.horizontal)
-        .padding(.bottom, ImportBulkActionRowMetrics.vertical)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .disabled(isRunning)
     }
 
     /// The groups that have at least one row.
@@ -185,8 +166,7 @@ enum ImportBulkActionGroup: CaseIterable, Identifiable {
     }
 }
 
-/// The rows' geometry, shared by the rows themselves and by what lines up under
-/// a row's label.
+/// The rows' geometry, shared by the rows themselves and the group titles.
 enum ImportBulkActionRowMetrics {
     static let horizontal = ThemeSpace.group
     static let vertical = ThemeSpace.related
@@ -195,14 +175,14 @@ enum ImportBulkActionRowMetrics {
     /// Fixed, so every row's label starts at the same place whatever its
     /// symbol measures.
     static let iconWidth = icon.size
-    /// Where a row's label starts, from the group's leading edge.
-    static let labelInset = horizontal + iconWidth + spacing
 }
 
 /// One row of the grouped list: the action's symbol, its name, and how many of
-/// the selected folders it applies to.
+/// the selected folders it applies to. The Import row also holds where the
+/// import goes, before its count.
 private struct BulkActionRow: View {
     let offer: ImportCandidateActionOffer
+    let importDestination: Binding<BridgeImportDestination>?
     let action: () -> Void
 
     private var isConstructive: Bool { offer.isConstructive }
@@ -222,6 +202,9 @@ private struct BulkActionRow: View {
                         isConstructive ? Color.primary : Color.secondary
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
+                if let importDestination {
+                    ImportDestinationPicker(destination: importDestination)
+                }
                 if let count = offer.count {
                     StatusChip(
                         Text(verbatim: count.formatted()).monospacedDigit(),

@@ -20,7 +20,7 @@ fn local_import_command(
             parts: Vec::new(),
         },
         selected_cover: None,
-        destination: ImportDestination::Local,
+        destination: ImportDestination::ThisDevice,
         pick: None,
         read_file_tags: false,
         user_edit: None,
@@ -91,7 +91,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
                 parts: Vec::new(),
             },
             expectation(),
-            ImportDestination::Local,
+            ImportDestination::ThisDevice,
         )
         .await
         .expect("the retried import lands");
@@ -351,7 +351,7 @@ async fn an_import_deletes_what_it_spent_and_the_done_row_still_shows() {
                 parts: Vec::new(),
             },
             expectation,
-            ImportDestination::Local,
+            ImportDestination::ThisDevice,
         )
         .await
         .expect("the import lands");
@@ -471,7 +471,7 @@ async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
                 parts: Vec::new(),
             },
             expectation,
-            ImportDestination::Local,
+            ImportDestination::ThisDevice,
         )
         .await
         .expect("the import lands");
@@ -533,14 +533,14 @@ async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
 
 #[tokio::test]
 async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
-    assert_reading_progress(ImportDestination::Remote { pin: false }).await;
+    assert_reading_progress(ImportDestination::Cloud).await;
 }
 
 /// A local import reads each original whole too, for the hashes its move to
 /// the cloud is checked against, so its progress counts the bytes read.
 #[tokio::test]
 async fn local_reading_progress_advances_while_coven_reads_a_dominant_file() {
-    assert_reading_progress(ImportDestination::Local).await;
+    assert_reading_progress(ImportDestination::ThisDevice).await;
 }
 
 async fn assert_reading_progress(destination: ImportDestination) {
@@ -661,7 +661,7 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
                 },
                 file_tag_snapshot: Some(queued),
             },
-            ImportDestination::Local,
+            ImportDestination::ThisDevice,
         )
         .await
         .expect("the reading the import was queued against still stands");
@@ -697,7 +697,7 @@ async fn an_imported_release_keeps_each_documents_kind() {
                 parts: Vec::new(),
             },
             stored,
-            ImportDestination::Local,
+            ImportDestination::ThisDevice,
         )
         .await
         .expect("the release imports");

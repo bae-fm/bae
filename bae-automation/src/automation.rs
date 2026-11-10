@@ -315,7 +315,7 @@ impl Automation {
     }
 
     /// Start an import of a candidate from what it stores, to where the stored
-    /// storage choice says; while the release its run picked is read in full,
+    /// import destination says; while the release its run picked is read in full,
     /// it imports once that read stores the pick.
     pub async fn start_import(
         &self,

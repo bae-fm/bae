@@ -32,10 +32,14 @@ struct MoveToCloudConfirmSheet: View {
 
     private var pinned: Binding<Bool> {
         Binding(
-            get: { configStore.config.importStorage.pinned },
+            get: { configStore.config.importDestination == .cloudPinned },
             set: { enabled in
                 Task { @MainActor in
-                    do { try await importer.setImportPinned(enabled) }
+                    do {
+                        try await importer.setImportDestination(
+                            enabled ? .cloudPinned : .cloud
+                        )
+                    }
                     catch { uiStore.showError(error) }
                 }
             }

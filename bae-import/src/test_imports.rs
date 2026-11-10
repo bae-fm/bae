@@ -102,7 +102,7 @@ pub fn discogs_release(release_id: impl Into<String>) -> DraftSource {
 ///
 /// ```ignore
 /// ImportCommand {
-///     destination: ImportDestination::Remote { pin: false },
+///     destination: ImportDestination::Cloud,
 ///     ..bae_import::test_imports::folder_import(&import_id, album_dir, DraftSource::FileTags)
 /// }
 /// ```
@@ -120,7 +120,7 @@ pub fn folder_import(
             parts: Vec::new(),
         },
         selected_cover: None,
-        destination: crate::ImportDestination::Local,
+        destination: crate::ImportDestination::ThisDevice,
         pick: None,
         read_file_tags: false,
         user_edit: None,

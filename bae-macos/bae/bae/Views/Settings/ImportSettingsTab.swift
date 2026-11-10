@@ -49,6 +49,13 @@ struct ImportSettingsTab: View {
                         "Adds the album to your library once bae is sure of the match.",
                     isOn: importWhenIdentified
                 )
+                if configStore.syncs {
+                    LabeledContent("Import to") {
+                        ImportDestinationPicker(destination: importDestination)
+                    }
+                    .padding(.leading, ThemeSpace.edge)
+                    .disabled(!configStore.config.importWhenIdentified)
+                }
             }
         }
         .formStyle(.grouped)
@@ -159,6 +166,15 @@ struct ImportSettingsTab: View {
         -> LocalizedStringKey
     {
         "Search \(bridgeLookupCatalogName(catalog: catalog))"
+    }
+
+    private var importDestination: Binding<BridgeImportDestination> {
+        Binding(
+            get: { configStore.config.importDestination },
+            set: { destination in
+                write { try await importer.setImportDestination(destination) }
+            }
+        )
     }
 
     private var importWhenIdentified: Binding<Bool> {

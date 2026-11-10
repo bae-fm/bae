@@ -138,7 +138,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
                     },
                     file_tag_snapshot: Some(snapshot),
                 },
-                ImportDestination::Local,
+                ImportDestination::ThisDevice,
             )
             .await;
         if explicit {

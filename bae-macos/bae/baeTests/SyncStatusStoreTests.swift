@@ -144,10 +144,7 @@ struct SyncStatusStoreTests {
             maxConcurrentTransfers: 8,
             identifyAutomatically: true,
             importWhenIdentified: false,
-            importStorage: BridgeImportStorage(
-                cloud: true,
-                pinned: true
-            ),
+            importDestination: .cloudPinned,
             lookupCatalogs: [
                 BridgeLookupCatalogSetting(
                     catalog: .musicBrainz,

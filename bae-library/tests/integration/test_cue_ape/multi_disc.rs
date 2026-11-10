@@ -137,7 +137,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         bae_util::http::Http::for_test(),
     )
     .await;
-    if let ImportDestination::Remote { .. } = destination {
+    if destination.goes_to_cloud() {
         bae_library::test_libraries::connect_storage(library.manager(), library.store(), &storage)
             .await;
     }
@@ -244,8 +244,8 @@ async fn wait_for_multi_disc_cue_ape_import_ready(
     progress_rx: &mut bae_import::ImportProgressFeed,
 ) -> (String, String) {
     match destination {
-        ImportDestination::Local => wait_for_import_complete(progress_rx).await,
-        ImportDestination::Remote { .. } => {
+        ImportDestination::ThisDevice => wait_for_import_complete(progress_rx).await,
+        ImportDestination::Cloud | ImportDestination::CloudPinned => {
             let (release_id, album_id) = wait_for_import_complete(progress_rx).await;
             library_manager
                 .drain_uploads_expecting_work()
@@ -276,15 +276,15 @@ async fn wait_for_multi_disc_cue_ape_import_ready(
 /// cover each explicitly to prevent a regression on any one path.
 #[tokio::test]
 async fn test_multi_disc_cue_ape_local() {
-    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Local).await;
+    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::ThisDevice).await;
 }
 
 #[tokio::test]
 async fn test_multi_disc_cue_ape_remote_pin() {
-    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Remote { pin: true }).await;
+    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::CloudPinned).await;
 }
 
 #[tokio::test]
 async fn test_multi_disc_cue_ape_remote_unpin() {
-    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Remote { pin: false }).await;
+    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Cloud).await;
 }

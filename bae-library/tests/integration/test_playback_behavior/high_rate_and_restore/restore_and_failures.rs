@@ -169,7 +169,7 @@ impl CloudOnlyPlaybackFixture {
         let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
         import_handle
             .send_command(ImportCommand {
-                destination: ImportDestination::Remote { pin: false },
+                destination: ImportDestination::Cloud,
                 ..bae_import::test_imports::folder_import(
                     &import_id,
                     album_dir.clone(),

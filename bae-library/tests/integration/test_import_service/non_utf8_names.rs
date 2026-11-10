@@ -263,7 +263,7 @@ async fn a_track_whose_name_is_not_utf8_uploads() {
     let key = bae_import::CandidateKey::folder(&album);
     f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
 
-    f.library.manager().set_import_to_cloud(true).await.unwrap();
+    f.library.manager().set_import_destination(ImportDestination::Cloud).await.unwrap();
     let import_id = f.handle.start_import(&key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let outcome = bae_import::test_imports::wait_for_import_end(&mut progress_rx).await;

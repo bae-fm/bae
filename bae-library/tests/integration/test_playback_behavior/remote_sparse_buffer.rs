@@ -44,7 +44,7 @@ impl RemoteMultiWindowPlayback {
         import_handle
             .send_command(ImportCommand {
                 candidate_key: bae_import::CandidateKey::from(name.as_bytes().to_vec()),
-                destination: ImportDestination::Remote { pin: false },
+                destination: ImportDestination::Cloud,
                 ..bae_import::test_imports::folder_import(
                     &import_id,
                     album_dir.clone(),

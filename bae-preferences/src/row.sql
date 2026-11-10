@@ -28,10 +28,10 @@ CREATE TABLE IF NOT EXISTS preferences (
     max_concurrent_downloads INTEGER NOT NULL CHECK (max_concurrent_downloads BETWEEN 1 AND 8),
     show_remaining_time INTEGER NOT NULL CHECK (show_remaining_time IN (0, 1)),
     library_full_width  INTEGER NOT NULL CHECK (library_full_width IN (0, 1)),
-    -- Where an import goes: to storage when the library syncs, and
-    -- whether it stays downloaded here.
-    import_to_cloud INTEGER NOT NULL CHECK (import_to_cloud IN (0, 1)),
-    import_pinned   INTEGER NOT NULL CHECK (import_pinned IN (0, 1)),
+    -- Where an import goes: this device, the cloud, or the cloud with a whole
+    -- copy kept here.
+    import_destination TEXT NOT NULL
+        CHECK (import_destination IN ('this_device', 'cloud', 'cloud_pinned')),
     -- Whether a found release is identified on its own, whether what a run
     -- picks unattended is imported, and which catalogs identification asks.
     identify_automatically INTEGER NOT NULL CHECK (identify_automatically IN (0, 1)),
@@ -91,10 +91,10 @@ INSERT OR IGNORE INTO preferences (
     singleton, discogs_key, replay_gain_mode, default_track_save_preset,
     default_release_save_preset, pause_between_sides, side_pause_countdown_seconds,
     max_concurrent_uploads, max_concurrent_downloads, show_remaining_time,
-    library_full_width, import_to_cloud, import_pinned, identify_automatically,
+    library_full_width, import_destination, identify_automatically,
     import_when_identified, ask_musicbrainz, ask_discogs, cast_enabled,
     cast_transcode_format, mcp_enabled, mcp_port, subsonic_enabled, subsonic_port,
     subsonic_username, subsonic_bind_address)
 VALUES (
-    1, NULL, 'off', 'flac', 'flac', 1, NULL, 3, 3, 0, 0, 1, 1, 1, 0, 1, 1, 0, 'mp3', 0,
+    1, NULL, 'off', 'flac', 'flac', 1, NULL, 3, 3, 0, 0, 'cloud_pinned', 1, 0, 1, 1, 0, 'mp3', 0,
     47777, 0, 4533, '', '127.0.0.1');

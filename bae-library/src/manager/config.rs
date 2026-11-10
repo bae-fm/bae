@@ -130,25 +130,14 @@ impl LibraryManager {
         .await
     }
 
-    /// Whether imports go to storage, when the library syncs.
-    pub async fn set_import_to_cloud(
+    /// Where an import goes: this device, the cloud, or the cloud with a
+    /// whole copy kept here.
+    pub async fn set_import_destination(
         &self,
-        enabled: bool,
+        destination: bae_preferences::ImportDestination,
     ) -> Result<(), bae_preferences::PreferencesError> {
         self.update_preferences(move |prefs| {
-            prefs.import_storage.cloud = enabled;
-            Ok(())
-        })
-        .await
-    }
-
-    /// Whether a release that goes to the cloud also stays downloaded here.
-    pub async fn set_import_pinned(
-        &self,
-        enabled: bool,
-    ) -> Result<(), bae_preferences::PreferencesError> {
-        self.update_preferences(move |prefs| {
-            prefs.import_storage.pinned = enabled;
+            prefs.import_destination = destination;
             Ok(())
         })
         .await

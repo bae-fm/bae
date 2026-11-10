@@ -130,8 +130,7 @@ struct ImportMappingPaneTests {
         try await SnapshotTestSupport.withHostedWindow(
             ImportMappingPreview.make(
                 candidate: candidate,
-                storageCloud: .constant(false),
-                storagePinned: .constant(false)
+                importDestination: .constant(.thisDevice)
             )
             .frame(width: size.width, height: size.height)
             .importPreviewEnvironment(),

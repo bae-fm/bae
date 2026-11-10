@@ -22,12 +22,12 @@ pub struct BridgeConfig {
     /// Changing it affects no candidate already found or queued.
     pub identify_automatically: bool,
     /// Whether what an identification run settles on as needing nothing from
-    /// anyone is imported straight away, going where `import_storage` says —
+    /// anyone is imported straight away, going where `import_destination` says —
     /// whether the run started on its own or a person asked for it. Independent
     /// of `identify_automatically`.
     pub import_when_identified: bool,
-    /// The import storage choice, which core reads as each import starts.
-    pub import_storage: BridgeImportStorage,
+    /// Where an import goes, which core reads as each import starts.
+    pub import_destination: BridgeImportDestination,
     /// Which catalogs Find online asks, one entry per catalog in core's
     /// order — what the switches on the Find online header and in Settings
     /// render, those being two views of one setting. Core folds the person's
@@ -110,13 +110,15 @@ mirror_enum! {
     variants: { Mp3, Wav },
 }
 
-/// The import storage choice. Mirrors `bae_preferences::ImportStoragePreferences`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeImportStorage {
-    /// Whether imports go to storage, when the library syncs.
-    pub cloud: bool,
-    /// Whether a release that goes to the cloud stays downloaded here.
-    pub pinned: bool,
+/// Where an import goes. Mirrors `bae_preferences::ImportDestination`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeImportDestination {
+    /// The files stay on this device and are never uploaded.
+    ThisDevice,
+    /// The files are uploaded, so every device can play them.
+    Cloud,
+    /// The files are uploaded, and this device keeps a whole copy too.
+    CloudPinned,
 }
 
 /// Whether Find online asks one catalog, and when it does not, why not. Mirrors

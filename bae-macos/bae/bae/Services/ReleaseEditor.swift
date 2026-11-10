@@ -166,7 +166,7 @@ final class ReleaseEditor: Observable {
 
     /// Move Local releases to Cloud. While core admits each, its row reads
     /// the transfer running; once admitted, its files waiting in the queue.
-    /// Core keeps the releases here as the stored import storage choice says.
+    /// Core keeps the releases here as the stored import destination says.
     func moveReleasesToCloud(_ releaseIds: [String]) async throws {
         switch try await moveReleasesToCloudAction(releaseIds) {
         case .complete:

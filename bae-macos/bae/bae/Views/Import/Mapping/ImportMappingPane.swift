@@ -25,9 +25,7 @@ struct ImportMappingPane: View {
     let editingCommands: EditingCommitCommands
     let endEditing: @MainActor () async -> Void
     @Binding
-    var storageCloud: Bool
-    @Binding
-    var storagePinned: Bool
+    var importDestination: BridgeImportDestination
     let mappingActions: ImportMappingActions
     let commitActions: ImportCommitActions
     let albumActions: DraftAlbumActions
@@ -108,8 +106,7 @@ struct ImportMappingPane: View {
             untitledTrackCount: Int(mapping.untitledTrackCount),
             folderCheck: candidate.folderCheck,
             importStatus: candidate.importStatus,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned,
+            importDestination: $importDestination,
             actions: commitActions,
         )
     }

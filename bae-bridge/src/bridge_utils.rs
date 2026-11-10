@@ -1,11 +1,18 @@
 #[cfg(desktop)]
 use crate::types::BridgeOutputKind;
 use crate::types::{
-    BridgeCastTranscodeFormat, BridgeConfig, BridgeDiscogsTokenStatus, BridgeImportStorage,
+    BridgeCastTranscodeFormat, BridgeConfig, BridgeDiscogsTokenStatus, BridgeImportDestination,
     BridgeLookupCatalog, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeSaveBitDepth,
     BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePreset, BridgeSidePauseCountdown,
     BridgeSourceAvailability, BridgeSubsonicConfig,
 };
+
+mirror_enum! {
+    BridgeImportDestination = bae_preferences::ImportDestination,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { ThisDevice, Cloud, CloudPinned },
+}
 
 mirror_enum! {
     BridgeSourceAvailability = bae_preferences::SourceAvailability,
@@ -141,7 +148,7 @@ impl BridgeConfig {
             side_pause_countdown,
             max_concurrent_uploads,
             max_concurrent_downloads,
-            import_storage,
+            import_destination,
             identification,
             show_remaining_time,
             library_full_width,
@@ -159,7 +166,6 @@ impl BridgeConfig {
             // one answer a surface renders.
             catalogs: _,
         } = identification;
-        let bae_preferences::ImportStoragePreferences { cloud, pinned } = import_storage;
         let bae_preferences::McpConfig { enabled, port } = mcp;
         let bae_preferences::SubsonicConfig {
             enabled: subsonic_enabled,
@@ -178,7 +184,7 @@ impl BridgeConfig {
             max_concurrent_transfers: bae_preferences::MAX_CONCURRENT_TRANSFERS,
             identify_automatically: *automatic,
             import_when_identified: *import_when_identified,
-            import_storage: BridgeImportStorage { cloud: *cloud, pinned: *pinned },
+            import_destination: BridgeImportDestination::from_core(*import_destination),
             lookup_catalogs,
             has_source_to_search: bae_preferences::asks_a_source(&config.prefs.metadata_sources()),
             show_remaining_time: *show_remaining_time,

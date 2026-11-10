@@ -198,11 +198,11 @@ mod conversion_roundtrip {
             "/library",
         );
         config.prefs.identification.import_when_identified = true;
-        config.prefs.import_storage.pinned = false;
+        config.prefs.import_destination = bae_preferences::ImportDestination::Cloud;
 
         let bridge = BridgeConfig::from_core(&config);
         assert!(bridge.import_when_identified);
-        assert_eq!(bridge.import_storage, BridgeImportStorage { cloud: true, pinned: false });
+        assert_eq!(bridge.import_destination, BridgeImportDestination::Cloud);
     }
 
     #[test]

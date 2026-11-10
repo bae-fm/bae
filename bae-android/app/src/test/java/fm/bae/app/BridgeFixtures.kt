@@ -17,7 +17,7 @@ import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeGalleryItem
-import uniffi.bae_bridge.BridgeImportStorage
+import uniffi.bae_bridge.BridgeImportDestination
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeLookupCatalog
@@ -260,7 +260,7 @@ object BridgeFixtures {
             maxConcurrentTransfers = 8u,
             identifyAutomatically = true,
             importWhenIdentified = false,
-            importStorage = BridgeImportStorage(cloud = true, pinned = true),
+            importDestination = BridgeImportDestination.CLOUD_PINNED,
             // Every source in core's order, matching this fixture's Discogs
             // state below: MusicBrainz is asked and, as the only source still
             // being asked, cannot be switched off; Discogs holds no key, so its

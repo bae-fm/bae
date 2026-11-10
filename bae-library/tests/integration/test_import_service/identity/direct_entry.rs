@@ -20,7 +20,7 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
                 parts: Vec::new(),
             },
             selected_cover: None,
-            destination: ImportDestination::Local,
+            destination: ImportDestination::ThisDevice,
             pick: None,
             read_file_tags: false,
             user_edit: Some(ReleaseUserEdit {

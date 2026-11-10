@@ -166,7 +166,7 @@ async fn seed_library() -> Library {
                 parts: Vec::new(),
             },
             selected_cover: None,
-            destination: ImportDestination::Local,
+            destination: ImportDestination::ThisDevice,
             pick: None,
             read_file_tags: true,
             user_edit: None,
@@ -197,7 +197,7 @@ async fn seed_library() -> Library {
                 parts: Vec::new(),
             },
             selected_cover: None,
-            destination: ImportDestination::Local,
+            destination: ImportDestination::ThisDevice,
             read_file_tags: false,
             pick: Some(bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(

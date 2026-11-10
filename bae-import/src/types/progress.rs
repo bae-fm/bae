@@ -11,7 +11,9 @@
 //!    and write every row in one transaction.
 //!
 //! An import always lands as a local, playable release. An
-//! [`ImportDestination::Remote`](super::ImportDestination::Remote) import
+//! import to the cloud
+//! ([`ImportDestination::Cloud`](super::ImportDestination::Cloud) or
+//! [`ImportDestination::CloudPinned`](super::ImportDestination::CloudPinned))
 //! then uploads to the cloud in the background.
 
 /// Progress updates during import

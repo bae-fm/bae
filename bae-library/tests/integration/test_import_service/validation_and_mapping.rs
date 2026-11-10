@@ -41,7 +41,7 @@ async fn a_track_that_does_not_decode_fully_fails_its_import() {
         &f,
         &album_dir,
         None,
-        ImportDestination::Local,
+        ImportDestination::ThisDevice,
         bae_import::test_imports::DraftSource::FileTags,
     )
     .await
@@ -532,7 +532,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         &f,
         &album_dir,
         None,
-        ImportDestination::Local,
+        ImportDestination::ThisDevice,
         bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
@@ -580,7 +580,7 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         &f,
         &album_dir,
         None,
-        ImportDestination::Local,
+        ImportDestination::ThisDevice,
         bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,

@@ -104,7 +104,7 @@ async fn a_local_import_moves_to_the_cloud_and_cancelling_the_move_keeps_it_here
         &f,
         &album,
         None,
-        ImportDestination::Local,
+        ImportDestination::ThisDevice,
         bae_import::test_imports::DraftSource::FileTags,
     )
     .await
@@ -143,7 +143,7 @@ async fn a_cloud_import_s_upload_cancels_to_a_release_on_this_device() {
         &f,
         &album,
         None,
-        ImportDestination::Remote { pin: false },
+        ImportDestination::Cloud,
         bae_import::test_imports::DraftSource::FileTags,
     )
     .await
@@ -175,7 +175,7 @@ async fn a_release_made_local_moves_back_to_the_cloud() {
         &f,
         &album,
         None,
-        ImportDestination::Remote { pin: false },
+        ImportDestination::Cloud,
         bae_import::test_imports::DraftSource::FileTags,
     )
     .await

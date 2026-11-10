@@ -88,7 +88,7 @@ async fn every_preference_reads_back_as_set() {
         max_concurrent_downloads: NonZeroU32::new(4).unwrap(),
         show_remaining_time: true,
         library_full_width: true,
-        import_storage: ImportStoragePreferences { cloud: false, pinned: false },
+        import_destination: ImportDestination::ThisDevice,
         identification: IdentificationPreferences {
             automatic: false,
             import_when_identified: true,
@@ -121,6 +121,12 @@ async fn each_choice_of_each_setting_reads_back() {
     ] {
         set(&db, move |prefs| prefs.discogs = discogs).await;
         assert_eq!(preferences(&db).await.unwrap().discogs, discogs);
+    }
+    for destination in
+        [ImportDestination::ThisDevice, ImportDestination::Cloud, ImportDestination::CloudPinned]
+    {
+        set(&db, move |prefs| prefs.import_destination = destination).await;
+        assert_eq!(preferences(&db).await.unwrap().import_destination, destination);
     }
     for mode in [ReplayGainMode::Off, ReplayGainMode::Track, ReplayGainMode::Album] {
         set(&db, move |prefs| prefs.replay_gain_mode = mode).await;

@@ -8,6 +8,7 @@
 
 use super::*;
 use crate::manager::tests::*;
+use bae_preferences::ImportDestination;
 use bae_records::{DbLibraryImage, DbRelease, NewReleaseFile};
 use chrono::Utc;
 use tempfile::TempDir;
@@ -938,10 +939,9 @@ async fn upload_pins_as_the_stored_choice_says() {
         &[("track.flac", b"evictable-bytes")],
     )
     .await;
-
-    manager.set_import_pinned(true).await.unwrap();
+    manager.set_import_destination(ImportDestination::CloudPinned).await.unwrap();
     manager.upload_releases(std::slice::from_ref(&kept.id)).await.unwrap();
-    manager.set_import_pinned(false).await.unwrap();
+    manager.set_import_destination(ImportDestination::Cloud).await.unwrap();
     manager.upload_releases(std::slice::from_ref(&evictable.id)).await.unwrap();
 
     manager.drain_uploads_expecting_work().await.unwrap();

@@ -16,15 +16,16 @@ struct ImportCandidateBulkSelectionPaneTests {
     /// axes, so a pane far wider than the card doesn't strand it in a corner.
     @Test("the card is centered in the pane at its own width")
     func theCardIsCenteredInThePane() async throws {
-        // A storage checkbox is a real AppKit button, so where one lands in the
-        // pane, less where it sits inside the card, is the card's own origin.
+        // The destination pop-up is a real AppKit control, so where it lands in
+        // the pane, less where it sits inside the card, is the card's own
+        // origin.
         let cardSize = Self.cardSize(showsStorageChoices: true)
         let inCard = try await SnapshotTestSupport.withHostedWindow(
             Self.card(showsStorageChoices: true),
             size: cardSize
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            return try #require(Self.leadingCheckbox(in: host))
+            return try #require(Self.destinationPopUpFrame(in: host))
         }
         let inPane = try await Self.withHostedPane(
             configStore: PreviewData.connectedConfigStore(
@@ -32,7 +33,7 @@ struct ImportCandidateBulkSelectionPaneTests {
             )
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            return try #require(Self.leadingCheckbox(in: host))
+            return try #require(Self.destinationPopUpFrame(in: host))
         }
 
         #expect(cardSize.width == ImportCandidateBulkSelectionCard.width)
@@ -121,37 +122,44 @@ struct ImportCandidateBulkSelectionPaneTests {
     }
 
     /// Where imported files go is a question only for a library with a cloud
-    /// home, and it belongs to the import row: the choices sit inside the card,
-    /// lined up with the rows' names.
-    @Test("the storage choices are drawn only for a library that syncs")
-    func theStorageChoicesFollowWhetherTheLibrarySyncs() async throws {
+    /// home, and it belongs to the import row: one pop-up in the card, before
+    /// the row's count, which takes the clicks over it and adds no row.
+    @Test("the destination pop-up is drawn only for a library that syncs")
+    func theDestinationFollowsWhetherTheLibrarySyncs() async throws {
         try await Self.withHostedPane(
             configStore: PreviewData.configStore()
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            #expect(Self.checkboxes(in: host).isEmpty)
+            #expect(Self.popUps(in: host).isEmpty)
         }
 
-        let leading = try await Self.withHostedPane(
+        try await Self.withHostedPane(
             configStore: PreviewData.connectedConfigStore(
                 storage: PreviewData.previewStorage
             )
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            #expect(Self.checkboxes(in: host).count == 2)
-            return try #require(Self.leadingCheckbox(in: host))
+            let popUps = Self.popUps(in: host)
+            #expect(popUps.count == 1)
+            let popUp = try #require(popUps.first)
+            let center = popUp.convert(
+                NSPoint(x: popUp.bounds.midX, y: popUp.bounds.midY),
+                to: host
+            )
+            let hit = host.hitTest(host.convert(center, to: host.superview))
+            #expect(
+                hit === popUp || hit?.isDescendant(of: popUp) == true,
+                "a click on the pop-up reaches it, not the row around it"
+            )
         }
-        let name =
-            (Self.paneSize.width - ImportCandidateBulkSelectionCard.width) / 2
-            + ImportCandidateBulkSelectionCard.padding
-            + ImportBulkActionRowMetrics.labelInset
-        #expect(
-            abs(leading.minX - name) <= 1,
-            "the choices start at \(leading.minX), the rows' names at \(name)"
-        )
-        #expect(
+        // The pop-up is a little taller than the count beside it, so the row
+        // grows by that, never by a row of its own.
+        let growth =
             Self.cardSize(showsStorageChoices: true).height
-                > Self.cardSize(showsStorageChoices: false).height
+            - Self.cardSize(showsStorageChoices: false).height
+        #expect(
+            (0..<12).contains(growth),
+            "the pop-up sits on the Import row and adds no row: \(growth)"
         )
     }
 
@@ -198,8 +206,7 @@ struct ImportCandidateBulkSelectionPaneTests {
             offers: offers,
             isRunning: false,
             showsStorageChoices: showsStorageChoices,
-            storageCloud: .constant(true),
-            storagePinned: .constant(true),
+            importDestination: .constant(.cloudPinned),
             onPerform: { _ in }
         )
     }
@@ -213,8 +220,7 @@ struct ImportCandidateBulkSelectionPaneTests {
         try await SnapshotTestSupport.withHostedWindow(
             AnyView(
                 ImportCandidateBulkSelectionPane(
-                    storageCloud: .constant(true),
-                    storagePinned: .constant(true),
+                    importDestination: .constant(.cloudPinned),
                     onPerform: { _ in }
                 )
                 .environment(selection())
@@ -233,17 +239,15 @@ struct ImportCandidateBulkSelectionPaneTests {
             .fittingSize
     }
 
-    /// SwiftUI's checkbox is an AppKit button, so the storage choices are the
-    /// buttons the hosted tree holds.
-    private static func checkboxes(in host: NSView) -> [NSButton] {
+    /// SwiftUI's pop-up picker is an AppKit pop-up button, so the destination
+    /// choice is the pop-up the hosted tree holds.
+    private static func popUps(in host: NSView) -> [NSPopUpButton] {
         SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSButton }
+            .compactMap { $0 as? NSPopUpButton }
     }
 
-    private static func leadingCheckbox(in host: NSView) -> CGRect? {
-        checkboxes(in: host)
-            .map { $0.convert($0.bounds, to: host) }
-            .min { $0.minX < $1.minX }
+    /// Where the destination pop-up sits in `host`.
+    private static func destinationPopUpFrame(in host: NSView) -> CGRect? {
+        popUps(in: host).first.map { $0.convert($0.bounds, to: host) }
     }
-
 }

@@ -1,6 +1,6 @@
 use super::*;
 
-/// An import goes where the stored storage choice says when it starts; the
+/// An import goes where the stored import destination says when it starts; the
 /// caller names only the candidate.
 #[tokio::test]
 async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
@@ -36,8 +36,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
 
-    f.library.manager().set_import_to_cloud(true).await.unwrap();
-    f.library.manager().set_import_pinned(true).await.unwrap();
+    f.library.manager().set_import_destination(ImportDestination::CloudPinned).await.unwrap();
     let outcome = import_outcome(&f, &keys[0]).await;
     let bae_import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
         panic!("the cloud choice queues the release's upload: {outcome:?}");
@@ -75,7 +74,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         "the import keeps the selected offline pin"
     );
 
-    f.library.manager().set_import_to_cloud(false).await.unwrap();
+    f.library.manager().set_import_destination(ImportDestination::ThisDevice).await.unwrap();
     assert!(
         matches!(import_outcome(&f, &keys[1]).await, bae_import::ImportProgress::Complete { .. }),
         "the local choice completes the release where it is"
@@ -121,7 +120,7 @@ async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
             &f,
             &album,
             None,
-            ImportDestination::Local,
+            ImportDestination::ThisDevice,
             bae_import::test_imports::DraftSource::FileTags,
         )
         .await

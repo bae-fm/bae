@@ -44,7 +44,7 @@ impl LibraryManager {
             }
         }
 
-        let pin = self.preferences().await?.import_storage.pinned;
+        let pin = self.preferences().await?.import_destination.keeps_files_here();
         let moved = match self.move_releases(release_ids, pin).await {
             Ok(moved) => moved,
             // Without storage nothing moved, and every release of the

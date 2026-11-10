@@ -4,6 +4,7 @@
 
 use crate::cue_sheet::CueSheet;
 use bae_audio::ProbeResult;
+pub use bae_preferences::ImportDestination;
 use bae_records::DbTrack;
 use std::{path::PathBuf, sync::Arc};
 
@@ -29,36 +30,6 @@ pub struct ImportCommand {
     pub read_file_tags: bool,
     #[cfg(any(test, feature = "test-utils"))]
     pub user_edit: Option<crate::ReleaseUserEdit>,
-}
-
-/// Whether an import attaches its files for background upload. Every release's
-/// rows sync; a local import keeps its file paths only on this device.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ImportDestination {
-    /// Files stay in place on this device; never uploaded.
-    Local,
-    /// Stage files with coven for the cloud in the import transaction and
-    /// upload them in the background.
-    Remote {
-        /// Whether this device keeps the files whole once they are stored,
-        /// pinned rather than evictable.
-        pin: bool,
-    },
-}
-
-impl ImportDestination {
-    /// Where an import goes: to the cloud, pinned as chosen, when the stored
-    /// choice is the cloud and the library syncs; locally otherwise.
-    pub fn of(
-        storage: bae_preferences::ImportStoragePreferences,
-        storage_configured: bool,
-    ) -> Self {
-        if storage.cloud && storage_configured {
-            Self::Remote { pin: storage.pinned }
-        } else {
-            Self::Local
-        }
-    }
 }
 
 /// One import track's metadata and the audio that supplies its samples.
@@ -100,7 +71,3 @@ pub struct CueAnalyzedAudioFile {
     pub path: PathBuf,
     pub probe: ProbeResult,
 }
-
-#[cfg(test)]
-#[path = "import_run_tests.rs"]
-mod tests;

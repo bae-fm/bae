@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 mod catalog_availability;
 mod identification;
-mod import_storage;
+mod import_destination;
 mod presentation;
 mod row;
 mod save;
@@ -20,7 +20,7 @@ pub use catalog_availability::{
     asked_sources, asks_a_source, is_the_only_asked_source, CatalogAvailability, SourceAvailability,
 };
 pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
-pub use import_storage::ImportStoragePreferences;
+pub use import_destination::ImportDestination;
 pub use presentation::LookupCatalogSetting;
 pub use row::{carry_preferences, preferences, subscribe_preferences, PreferencesRow};
 #[cfg(any(test, feature = "test-utils"))]
@@ -297,9 +297,9 @@ pub struct Preferences {
     /// centering its content in a width-capped column. Defaults to `false`
     /// (capped).
     pub library_full_width: bool,
-    /// Where an import puts its release: the cloud or this device, and whether
-    /// a cloud release stays downloaded here.
-    pub import_storage: ImportStoragePreferences,
+    /// Where an import puts its release: this device, the cloud, or the cloud
+    /// with a whole copy kept here.
+    pub import_destination: ImportDestination,
     /// How identification runs: on its own or not, what an automatic run goes
     /// on to do, and the catalogs it asks.
     pub identification: IdentificationPreferences,
@@ -347,7 +347,7 @@ impl Default for Preferences {
             max_concurrent_downloads: default_transfer_concurrency(),
             show_remaining_time: false,
             library_full_width: false,
-            import_storage: ImportStoragePreferences::default(),
+            import_destination: ImportDestination::default(),
             identification: IdentificationPreferences::default(),
             cast_enabled: false,
             cast_transcode_format: CastTranscodeFormat::Mp3,

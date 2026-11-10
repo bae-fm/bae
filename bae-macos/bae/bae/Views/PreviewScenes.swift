@@ -284,12 +284,13 @@
                 in: PreviewData.importTabScene().store
             )
             return ImportCandidateBulkSelectionPane(
-                storageCloud: .constant(true),
-                storagePinned: .constant(true),
+                importDestination: .constant(.cloudPinned),
                 onPerform: { _ in }
             )
             .environment(selection)
-            .environment(PreviewData.configStore())
+            .environment(
+                PreviewData.configStore(storage: PreviewData.previewStorage)
+            )
             .windowBackground()
         }
     }

@@ -74,8 +74,8 @@ private struct ImportOperations: Sendable {
         @MainActor @Sendable (BridgeLookupCatalog, Bool) async throws -> Void
     let setImportWhenIdentified:
         @MainActor @Sendable (Bool) async throws -> Void
-    let setImportToCloud: @MainActor @Sendable (Bool) async throws -> Void
-    let setImportPinned: @MainActor @Sendable (Bool) async throws -> Void
+    let setImportDestination:
+        @MainActor @Sendable (BridgeImportDestination) async throws -> Void
 }
 
 extension ImportOperations {
@@ -269,11 +269,8 @@ extension ImportOperations {
             setImportWhenIdentified: {
                 try await handle.setImportWhenIdentified(enabled: $0)
             },
-            setImportToCloud: {
-                try await handle.setImportToCloud(enabled: $0)
-            },
-            setImportPinned: {
-                try await handle.setImportPinned(enabled: $0)
+            setImportDestination: {
+                try await handle.setImportDestination(destination: $0)
             }
         )
     }
@@ -424,12 +421,9 @@ final class Importer: Sendable, Observable {
         setImportWhenIdentified:
             @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
             },
-        setImportToCloud:
-            @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
-            },
-        setImportPinned:
-            @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
-            }
+        setImportDestination:
+            @escaping @MainActor @Sendable (BridgeImportDestination)
+            async throws -> Void = { _ in }
     ) {
         operations = ImportOperations(
             candidateSourceFolders: candidateSourceFolders,
@@ -476,8 +470,7 @@ final class Importer: Sendable, Observable {
             setIdentifyAutomatically: setIdentifyAutomatically,
             setMetadataSourceEnabled: setMetadataSourceEnabled,
             setImportWhenIdentified: setImportWhenIdentified,
-            setImportToCloud: setImportToCloud,
-            setImportPinned: setImportPinned
+            setImportDestination: setImportDestination
         )
     }
 
@@ -804,16 +797,13 @@ extension Importer {
         try await operations.setImportWhenIdentified(enabled)
     }
 
-    /// Whether an import goes to storage, when there is any.
+    /// Where an import goes: this device, the cloud, or the cloud with a
+    /// whole copy kept here.
     @MainActor
-    func setImportToCloud(_ enabled: Bool) async throws {
-        try await operations.setImportToCloud(enabled)
-    }
-
-    /// Whether a release that goes to the cloud stays downloaded here.
-    @MainActor
-    func setImportPinned(_ enabled: Bool) async throws {
-        try await operations.setImportPinned(enabled)
+    func setImportDestination(_ destination: BridgeImportDestination)
+        async throws
+    {
+        try await operations.setImportDestination(destination)
     }
 
     convenience init(handle: any AppHandleProtocol, host: BridgeHost) {

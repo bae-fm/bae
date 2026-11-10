@@ -186,6 +186,49 @@ struct ImportSettingsTabTests {
         }
     }
 
+    /// Where an import goes is one pop-up under Import automatically, which
+    /// only a library with cloud storage has, and which waits while
+    /// importing automatically is off.
+    @Test("Import to shows with cloud storage and waits while importing is off")
+    func importToFollowsStorageAndAutomaticImport() async throws {
+        let cases = [
+            ImportToCase(
+                storage: nil,
+                importsAutomatically: true,
+                popUpEnabled: nil
+            ),
+            ImportToCase(
+                storage: PreviewData.previewStorage,
+                importsAutomatically: false,
+                popUpEnabled: false
+            ),
+            ImportToCase(
+                storage: PreviewData.previewStorage,
+                importsAutomatically: true,
+                popUpEnabled: true
+            ),
+        ]
+        for importTo in cases {
+            try await SnapshotTestSupport.withHostedWindow(
+                tab(
+                    recorder: ImportSettingRecorder(),
+                    configStore: PreviewData.makeConfigStore(
+                        libraryFullWidth: false,
+                        importWhenIdentified: importTo.importsAutomatically,
+                        storage: importTo.storage
+                    )
+                ),
+                size: Self.size
+            ) { _, host in
+                try await SnapshotTestSupport.settle(host)
+
+                #expect(
+                    popUps(in: host).first?.isEnabled == importTo.popUpEnabled
+                )
+            }
+        }
+    }
+
     /// How many files move at once is its own pane: it is not a metadata
     /// answer, and unlike everything here it stays on this device.
     @Test("the tab carries no transfer controls")
@@ -227,6 +270,11 @@ struct ImportSettingsTabTests {
         switches(in: host).dropLast().last
     }
 
+    private func popUps(in host: NSView) -> [NSPopUpButton] {
+        SnapshotTestSupport.descendants(of: host)
+            .compactMap { $0 as? NSPopUpButton }
+    }
+
     private func keyField(in host: NSView) -> NSTextField? {
         SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSTextField }
@@ -235,6 +283,14 @@ struct ImportSettingsTabTests {
                     == String(localized: "Your free Discogs key")
             }
     }
+}
+
+/// One library and the Import to pop-up it should show: none without storage,
+/// otherwise enabled only while importing automatically is on.
+private struct ImportToCase {
+    let storage: BridgeStorageLocation?
+    let importsAutomatically: Bool
+    let popUpEnabled: Bool?
 }
 
 @MainActor

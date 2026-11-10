@@ -433,9 +433,9 @@ impl ImportService {
                 original.modified_at(),
             )?;
             let place = match destination {
-                ImportDestination::Local => coven::Place::DeviceOnly,
-                ImportDestination::Remote { pin: true } => coven::Place::CloudKeptHere,
-                ImportDestination::Remote { pin: false } => coven::Place::Cloud,
+                ImportDestination::ThisDevice => coven::Place::DeviceOnly,
+                ImportDestination::CloudPinned => coven::Place::CloudKeptHere,
+                ImportDestination::Cloud => coven::Place::Cloud,
             };
             bytes_read += u128::from(file.version.size);
             let completed_percent = ((bytes_read * 100) / total_bytes).min(100) as u8;
@@ -607,12 +607,14 @@ impl ImportService {
         .await?;
 
         let progress = match destination {
-            ImportDestination::Remote { .. } => ImportProgress::RemoteUploadQueued {
-                id: db_release.id.to_string(),
-                import_id: import_id.to_string(),
-                album_id: album_id.to_string(),
-            },
-            ImportDestination::Local => ImportProgress::Complete {
+            ImportDestination::Cloud | ImportDestination::CloudPinned => {
+                ImportProgress::RemoteUploadQueued {
+                    id: db_release.id.to_string(),
+                    import_id: import_id.to_string(),
+                    album_id: album_id.to_string(),
+                }
+            }
+            ImportDestination::ThisDevice => ImportProgress::Complete {
                 id: db_release.id.to_string(),
                 import_id: import_id.to_string(),
                 album_id: album_id.to_string(),

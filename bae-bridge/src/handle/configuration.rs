@@ -50,14 +50,10 @@ forward! { async this => {
         Ok(this.services.set_import_when_identified(enabled).await?)
     }
 
-    /// Whether an import goes to storage, when the library syncs.
-    fn set_import_to_cloud(enabled: bool) -> () {
-        Ok(this.services.set_import_to_cloud(enabled).await?)
-    }
-
-    /// Whether a release that goes to the cloud also stays downloaded here.
-    fn set_import_pinned(enabled: bool) -> () {
-        Ok(this.services.set_import_pinned(enabled).await?)
+    /// Where an import goes: this device, the cloud, or the cloud with a whole
+    /// copy kept here. One choice, shared by every place that offers it.
+    fn set_import_destination(destination: crate::types::BridgeImportDestination) -> () {
+        Ok(this.services.set_import_destination(destination.into_core()).await?)
     }
 
     /// Ask, or stop asking, one metadata source. Refused when it would leave

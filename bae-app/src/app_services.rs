@@ -422,8 +422,7 @@ impl AppServices {
     delegate_async!(manager, set_library_full_width => set_library_full_width(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_identify_automatically => set_identify_automatically(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_import_when_identified => set_import_when_identified(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
-    delegate_async!(manager, set_import_to_cloud => set_import_to_cloud(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
-    delegate_async!(manager, set_import_pinned => set_import_pinned(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, set_import_destination => set_import_destination(destination: bae_preferences::ImportDestination) -> Result<(), bae_preferences::PreferencesError>);
 
     /// Ask, or stop asking, one metadata source — the switch on the Find online
     /// header and in Settings, which are two views of this one preference.

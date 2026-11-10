@@ -7,8 +7,10 @@
 
         /// A new preview ConfigStore for each preview scene.
         @MainActor
-        static func configStore() -> ConfigStore {
-            makeConfigStore(libraryFullWidth: false)
+        static func configStore(
+            storage: BridgeStorageLocation? = nil
+        ) -> ConfigStore {
+            makeConfigStore(libraryFullWidth: false, storage: storage)
         }
 
         /// A preview CastStore mid-session, so the casting settings preview shows
@@ -79,6 +81,8 @@
             musicBrainz: BridgeSourceAvailability = .on,
             discogs: BridgeSourceAvailability? = nil,
             discogsTokenStatus: BridgeDiscogsTokenStatus? = nil,
+            importWhenIdentified: Bool = false,
+            importDestination: BridgeImportDestination = .cloudPinned,
             storage: BridgeStorageLocation? = nil
         ) -> ConfigStore {
             let tokenStatus =
@@ -98,11 +102,8 @@
                         maxConcurrentDownloads: 3,
                         maxConcurrentTransfers: 8,
                         identifyAutomatically: identifyAutomatically,
-                        importWhenIdentified: false,
-                        importStorage: BridgeImportStorage(
-                            cloud: true,
-                            pinned: true
-                        ),
+                        importWhenIdentified: importWhenIdentified,
+                        importDestination: importDestination,
                         lookupCatalogs: catalogs,
                         // As core answers it: whether any catalog is asked.
                         hasSourceToSearch: catalogs.contains {

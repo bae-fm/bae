@@ -14,8 +14,7 @@ extension ImportView {
                 .frame(minWidth: 410, idealWidth: 420, maxWidth: 460)
             if importSelection.summary.count > 1 {
                 ImportCandidateBulkSelectionPane(
-                    storageCloud: storageCloud,
-                    storagePinned: storagePinned,
+                    importDestination: importDestination,
                     onPerform: requestCandidateAction
                 )
                 .frame(
