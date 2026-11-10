@@ -3913,6 +3913,11 @@ whose AirPlay advertisement states no features, shows as one bae can't connect
 to because it advertises settings bae can't read, even when its other
 advertisement reads; the log names the setting and the text it carried.
 
+A receiver that advertises as both AirPlay and RAOP is one receiver. Its id is its MAC
+without colons, in capitals, whether it came from the AirPlay `deviceid` or the
+MAC that begins the RAOP name, and it shows once, at the AirPlay 2 dialect when
+it has one.
+
 **Finding receivers.** Casting is off by default: it browses the local network
 and serves audio from this machine. While on, devices are searched for only
 while the picker or the Casting settings page is open, and on Android the page

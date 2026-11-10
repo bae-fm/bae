@@ -18,7 +18,7 @@ fn airplay2_service_maps_to_device() {
         &txt(&[("deviceid", "AA:BB:CC:DD:EE:FF"), ("features", AIRPLAY2_FEATURES)]),
     )
     .expect("a service with an address maps");
-    assert_eq!(device.id, "AA:BB:CC:DD:EE:FF");
+    assert_eq!(device.id, "AABBCCDDEEFF");
     assert_eq!(device.name, "Kitchen");
     assert_eq!(device.addr, v4(10, 0, 0, 4));
     assert_eq!(device.port, 7000);
@@ -98,6 +98,34 @@ fn same_receiver_on_both_services_prefers_airplay2() {
     assert_eq!(snap.len(), 1, "one entry per receiver");
     assert_eq!(snap[0].capabilities.as_ref().unwrap().dialect, Dialect::AirPlay2);
     assert_eq!(snap[0].port, 7000);
+}
+
+/// A Mac advertises `_airplay._tcp` with a colon-separated `deviceid` and
+/// `_raop._tcp` as `AABBCCDDEEFF@Name` with no `deviceid`: the two are one
+/// receiver, whatever case or separators the id was written in.
+#[test]
+fn colon_deviceid_and_raop_name_prefix_are_one_receiver() {
+    let raop = map_device(
+        RendererServiceType::Raop,
+        "A483E771D10D@Den",
+        5000,
+        [v4(10, 0, 0, 7)].into_iter(),
+        &txt(&[("et", "1"), ("cn", "1")]),
+    )
+    .unwrap();
+    let airplay = map_device(
+        RendererServiceType::AirPlay,
+        "Den",
+        7000,
+        [v4(10, 0, 0, 7)].into_iter(),
+        &txt(&[("deviceid", "a4:83:e7:71:d1:0d"), ("features", AIRPLAY2_FEATURES)]),
+    )
+    .unwrap();
+    assert_eq!(airplay.id, raop.id);
+
+    let snap = dedupe_by_id([&raop, &airplay].into_iter());
+    assert_eq!(snap.len(), 1, "one entry per receiver");
+    assert_eq!(snap[0].capabilities.as_ref().unwrap().dialect, Dialect::AirPlay2);
 }
 
 /// A receiver whose AirPlay advertisement bae can't read shows as one it

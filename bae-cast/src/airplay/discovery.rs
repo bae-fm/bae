@@ -35,7 +35,8 @@ const SERVICE_TYPES: [RendererServiceType; 2] =
 /// decide how to connect.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct AirPlayDevice {
-    /// Stable receiver identifier — the device id (MAC) it advertises, used to
+    /// Stable receiver identifier — the device id (MAC) it advertises, as
+    /// [`normalise_mac`] writes it, used to
     /// collapse the same receiver seen on both service types.
     pub id: String,
     /// Human-readable name for the picker.
@@ -273,7 +274,8 @@ fn device_from_resolved(
 /// reachable address. IPv4 is preferred (AirPlay receivers advertise it and the
 /// RTSP control connection is IPv4 LAN). The device id is the advertised
 /// `deviceid`, falling back to the MAC prefix of a RAOP instance name
-/// (`AABBCCDDEEFF@Name`), then to the instance label.
+/// (`AABBCCDDEEFF@Name`), either as a [`normalise_mac`] MAC, then to the
+/// instance label as it is.
 pub(crate) fn map_device(
     service_type: RendererServiceType,
     instance: &str,
@@ -287,8 +289,8 @@ pub(crate) fn map_device(
         .or_else(|| raop_mac_prefix(instance))
         .map(str::trim)
         .filter(|id| !id.is_empty())
-        .unwrap_or(instance)
-        .to_string();
+        .map(normalise_mac)
+        .unwrap_or_else(|| instance.to_string());
 
     let name = raop_name_suffix(instance).unwrap_or(instance).trim().to_string();
     let name = if name.is_empty() { id.clone() } else { name };
@@ -302,6 +304,13 @@ pub(crate) fn map_device(
         );
     }
     Some(AirPlayDevice { id, name, addr, port, capabilities })
+}
+
+/// A MAC as one id however it was written: `_airplay._tcp` states `deviceid` as
+/// `a4:83:e7:71:d1:0d`, a RAOP instance name as `A483E771D10D`, and the same
+/// receiver must get the same id from both.
+fn normalise_mac(mac: &str) -> String {
+    mac.chars().filter(|c| *c != ':').map(|c| c.to_ascii_uppercase()).collect()
 }
 
 /// The instance label of a service fullname (`"Living Room._airplay._tcp.local."`
