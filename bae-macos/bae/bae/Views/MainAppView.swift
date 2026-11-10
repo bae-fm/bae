@@ -283,6 +283,7 @@ struct MainAppView: View {
             .environment(CastStart.stub())
             .environment(CastStore())
             .environment(SyncActivityStore.preview())
+            .environment(\.libraryLoadError, nil)
             .albumDetailPreviewEnvironment()
             .mainWindowPreviewEnvironment()
             .padding(.top, 1)

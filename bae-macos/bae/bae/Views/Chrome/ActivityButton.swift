@@ -140,6 +140,12 @@ private struct ActivityGlyph: View {
             .environment(SyncActivityStore.preview())
             .environment(SettingsNavigation())
             .environment(\.openSettingsWindow, OpenSettingsWindowAction {})
+            .environment(\.openStorageManager, OpenStorageManagerAction {})
+            .environment(\.libraryLoadError, nil)
+            .environment(Sync.stub())
+            .environment(Downloads.stub())
+            .environment(Outputs.stub())
+            .environment(UiStore())
             .padding()
     }
 
@@ -148,6 +154,12 @@ private struct ActivityGlyph: View {
             .environment(SyncActivityStore.preview(needsAttention: false))
             .environment(SettingsNavigation())
             .environment(\.openSettingsWindow, OpenSettingsWindowAction {})
+            .environment(\.openStorageManager, OpenStorageManagerAction {})
+            .environment(\.libraryLoadError, nil)
+            .environment(Sync.stub())
+            .environment(Downloads.stub())
+            .environment(Outputs.stub())
+            .environment(UiStore())
             .padding()
     }
 
