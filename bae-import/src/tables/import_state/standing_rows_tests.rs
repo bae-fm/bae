@@ -15,13 +15,13 @@ use bae_store::Store;
 /// `key`'s release scanned under `/music`, as the scan stores it.
 async fn scanned(db: &Store, key: &crate::CandidateKey) {
     let tables = crate::tables::ImportTables::new(db.clone());
-    scan_key(&tables, std::path::Path::new("/music"), key).await;
+    scan_key(&tables, &host_root("/music"), key).await;
 }
 
 /// The files the scan identifies `key`'s release as.
 fn files_of(key: &crate::CandidateKey) -> CandidateFiles {
     CandidateFiles {
-        content_hash: key_candidate(std::path::Path::new("/music"), key).files.content_hash(),
+        content_hash: key_candidate(&host_root("/music"), key).files.content_hash(),
         file_edit_revision: 0,
     }
 }

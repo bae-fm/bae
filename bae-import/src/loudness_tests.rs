@@ -370,7 +370,8 @@ async fn a_read_that_panics_measures_nothing() {
         panic!("the track is a read that panicked");
     };
     let at = bug.location.clone().expect("the read's panic names where it began");
-    assert_eq!(at.file, "bae-audio/src/sparse_buffer.rs");
+    // `file!()` spells the path with the host's separator.
+    assert_eq!(at.file.replace('\\', "/"), "bae-audio/src/sparse_buffer.rs");
     assert_eq!(reports.reports(), Vec::new());
 }
 

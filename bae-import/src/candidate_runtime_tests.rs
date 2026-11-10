@@ -6,6 +6,7 @@
 use super::*;
 use crate::folder_scanner::{CategorizedFiles, InvalidCandidate};
 use crate::identification::tests::*;
+use crate::tables::watched_path::host_root;
 use crate::types::{ImportPhase, ImportProgress, PrepareStep};
 use crate::CandidateFiles;
 use crate::IdentifyRunId;
@@ -135,7 +136,7 @@ pub(super) async fn scanned_key(
     runtime: &CandidateRuntime,
     key: &crate::CandidateKey,
 ) -> CandidateFiles {
-    crate::tables::tests::scan_key(&runtime.tables, std::path::Path::new("/watch"), key).await
+    crate::tables::tests::scan_key(&runtime.tables, &host_root("/watch"), key).await
 }
 
 /// Report `state` as `run` of `key` does: the run started with it stored,
