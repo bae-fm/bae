@@ -278,7 +278,7 @@ export interface SidePauseProps { kind?: 'side' | 'disc'; label?: string; countd
 export declare function MacSidePause(props: SidePauseProps): React.ReactElement;
 export interface MacCastPopoverProps { devices?: string; casting?: string; connecting?: string; right?: number; bottom?: number }
 export declare function MacCastPopover(props: MacCastPopoverProps): React.ReactElement;
-export interface MacCastRowProps { name: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean }
+export interface MacCastRowProps { name: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean }
 export declare function MacCastRow(props: MacCastRowProps): React.ReactElement;
 export declare function AndroidSheet(props: { top?: number; title?: string; children?: React.ReactNode }): React.ReactElement;
 export interface AndroidQueueLabelProps { title: string; clear?: boolean; shuffle?: boolean }
@@ -287,7 +287,7 @@ export interface AndroidQueueRowProps { title: string; artist?: string; album?: 
 export declare function AndroidQueueRow(props: AndroidQueueRowProps): React.ReactElement;
 export interface AndroidFullPlayerProps { title: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean }
 export declare function AndroidFullPlayer(props: AndroidFullPlayerProps): React.ReactElement;
-export interface AndroidCastRowProps { name?: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; waiting?: string }
+export interface AndroidCastRowProps { name?: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean; waiting?: string }
 export declare function AndroidCastRow(props: AndroidCastRowProps): React.ReactElement;
 export interface AndroidCheckboxProps { label: string; on?: boolean }
 export declare function AndroidCheckbox(props: AndroidCheckboxProps): React.ReactElement;

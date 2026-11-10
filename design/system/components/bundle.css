@@ -341,8 +341,10 @@
 .bae-m-row-nested { padding-top: 0; min-height: 0; }
 .bae-m-row-nested-off { opacity: 0.45; }
 /* A nested row joins the switch row above it into one piece of the card: no gap, no corners between them, and set in from the card's edge. */
-.bae-a-row-nested { padding-top: 0; min-height: 0; padding-left: calc(var(--space-edge) + var(--space-section)); margin-top: calc(-1 * var(--space-line)); border-top-left-radius: 0; border-top-right-radius: 0; }
-.bae-a-row-joins-next { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.bae-a-row-nested { padding-top: 0; min-height: 0; padding-left: calc(var(--space-edge) + var(--space-section)); }
+/* The card finds the pair itself, whether a row is the card's child or sits in a tile of its own: the tile above a nested row loses its bottom corners, the nested row's tile its top corners and the gap. */
+.bae-a-card > :has(+ .bae-a-row-nested), .bae-a-card > :has(+ * .bae-a-row-nested) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.bae-a-card > .bae-a-row-nested, .bae-a-card > :has(.bae-a-row-nested) { margin-top: calc(-1 * var(--space-line)); border-top-left-radius: 0; border-top-right-radius: 0; }
 .bae-spinner { animation: bae-spin 0.9s linear infinite; flex: none; }
 @keyframes bae-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bae-spinner { animation-duration: 2.4s; } }

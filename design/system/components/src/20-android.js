@@ -32,15 +32,12 @@
     return h('h2', { className: 'bae-a-section' }, props.title || props.children);
   }
 
-  // Each row in the card draws its own tile; `place` tells it where it sits (first, middle, last or alone) so it rounds the card's outer corners and only those. A row that opens the group's next row (`nested`) tells the one above it to join. Anything else a card holds sits in a tile of the card's own.
+  // Each row in the card draws its own tile; `place` tells it where it sits (first, middle, last or alone) so it rounds the card's outer corners and only those. A row nested under the one above (`nested`) joins it into one piece; bundle.css finds the pair, so it holds however the rows are wrapped. Anything else a card holds sits in a tile of the card's own.
   function AndroidCard(props) {
     var list = kids(props.children);
     return h('div', { className: 'bae-a-card' }, list.map(function (c, i) {
       var place = list.length === 1 ? 'alone' : i === 0 ? 'first' : i === list.length - 1 ? 'last' : 'middle';
-      if (c && c.type === AndroidRow) {
-        var next = list[i + 1];
-        return React.cloneElement(c, { place: place, joinsNext: !!(next && next.type === AndroidRow && next.props.nested) });
-      }
+      if (c && c.type === AndroidRow) return React.cloneElement(c, { place: place });
       return h('div', { key: c && c.key != null ? c.key : i, className: cx('bae-a-card-tile', 'bae-a-card-tile-' + place) }, c);
     }));
   }
@@ -50,14 +47,14 @@
     var head = h(AndroidRow, { key: 'h', title: props.label, subtitle: props.summary }, h('span', { className: 'bae-a-disclosure-mark' }, h(MSymbol, { name: props.open ? 'expand_less' : 'expand_more', size: 24, fill: 'currentColor' })));
     return h(AndroidCard, null, [head].concat(props.open ? kids(props.children) : []));
   }
-  // `place` and `joinsNext` are AndroidCard's: the row's place among the card's rows, and whether the next row is nested under it.
+  // `place` is AndroidCard's: the row's place among the card's rows.
   function AndroidRow(props) {
     var trail = kids(props.children);
     var lines = h('div', { className: 'bae-a-row-lines' },
       h('div', { className: cx('bae-a-row-title', props.action && 'bae-a-row-action', props.destructive && 'bae-a-row-destructive') }, props.title, props.tag ? h(StatusChip, null, props.tag) : null),
       props.subtitle ? h('div', { className: cx('bae-a-row-subtitle', props.tone && 'bae-tone-' + props.tone) },
         props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.subtitle) : null);
-    return h('div', { className: cx('bae-a-row', props.place && 'bae-a-card-tile bae-a-card-tile-' + props.place, props.nested && 'bae-a-row-nested', props.joinsNext && 'bae-a-row-joins-next', !props.subtitle && 'bae-a-row-one', props.selected && 'bae-a-row-selected'), role: props.onClick ? 'button' : null, onClick: props.onClick },
+    return h('div', { className: cx('bae-a-row', props.place && 'bae-a-card-tile bae-a-card-tile-' + props.place, props.nested && 'bae-a-row-nested', !props.subtitle && 'bae-a-row-one', props.selected && 'bae-a-row-selected'), role: props.onClick ? 'button' : null, onClick: props.onClick },
       props.leadingIcon ? h(Material, { name: props.leadingIcon, className: cx('bae-a-row-lead', props.action && 'bae-a-row-lead-action') }) : null,
       lines,
       trail.length ? h('span', { className: 'bae-a-row-trail' }, trail) : null,

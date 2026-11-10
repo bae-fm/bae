@@ -3458,6 +3458,38 @@
    "w": 900,
    "x": 980,
    "y": 12192
+  },
+  "CastingMenu.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Casting: a receiver’s menu",
+   "w": 412,
+   "x": 4286,
+   "y": 5444
+  },
+  "CastingInfo.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Casting: a receiver’s details",
+   "w": 412,
+   "x": 4778,
+   "y": 5444
+  },
+  "MacCastingMenu.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Casting: a receiver’s menu",
+   "w": 690,
+   "x": 5270,
+   "y": 5444
+  },
+  "MacCastingInfo.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Casting: a receiver’s details",
+   "w": 690,
+   "x": 6040,
+   "y": 5444
   }
  },
  "createdOnFiles": {
@@ -3670,7 +3702,7 @@
   "code-casting": {
    "page": "settings",
    "size": 24,
-   "text": "What the code needs for these boards:\n- While casting is on, the Casting page lists the receivers bae finds with the picker’s own rows (tap to cast; the one being cast to says Casting with Disconnect), from the same device-local table the picker reads, and browses only while the page is open, as the picker does. spec/bae.md §7 “Finding receivers” says devices are searched for only while the picker is open; it changes to the picker or this page. Today the page has no list (CastingSettingsTab.swift, SettingsCastSection.kt). bae change.\n- Until the first receiver answers, the list shows a spinner and “Looking for receivers…” (MacSpinner, AndroidSpinner); it fills in as receivers answer, with no end state, since browsing runs while the page is open.\n- Convert to shows while casting is on, as today (CastTranscodeFormatPicker).\n- Turning casting off while a cast plays asks “Turn off casting?” / “This will stop casting to <device>.” as today; not drawn.\n- Android: the switch's explanation is a caption under the card, not the row's second line, which cut it off.",
+   "text": "What the code needs for these boards:\n- While casting is on, the Casting page lists the receivers bae finds with the picker’s own rows (tap to cast; the one being cast to says Casting), from the same device-local table the picker reads, and browses only while the page is open, as the picker does. spec/bae.md §7 “Finding receivers” says devices are searched for only while the picker is open; it changes to the picker or this page. Today the page has no list (CastingSettingsTab.swift, SettingsCastSection.kt). bae change.\n- Until the first receiver answers, the list shows a spinner and “Looking for receivers…” (MacSpinner, AndroidSpinner); it fills in as receivers answer, with no end state, since browsing runs while the page is open.\n- Convert to shows while casting is on, as today (CastTranscodeFormatPicker).\n- Turning casting off while a cast plays asks “Turn off casting?” / “This will stop casting to <device>.” as today; not drawn.\n- Android: the switch's explanation is a caption under the card, not the row's second line, which cut it off.\n- The page's rows end in ⋮ (Android) or a ⋯ button (macOS) in place of Disconnect, as Welcome's library rows do: Details… on every row, and Disconnect on the one being cast to. The picker keeps Disconnect on its row. spec/bae.md §7 “The Casting page” changes with it. bae change.\n- Details: a sheet (Android) or a popover off the ⋯ (macOS) titled with the receiver's name: Status (Casting, or Available), Type (Chromecast, AirPlay, UPnP), Model, and Address. The receiver list carries only id, name and kind today (BridgeCastReceiver); the model comes from what the receiver advertises (a Cast or AirPlay TXT record, a UPnP device description) and the address from where discovery found it (RendererDevice's connection), so both reach the device-local receiver table and the bridge. A receiver that states no model leaves the row out. bae change.",
    "w": 420,
    "x": 3786,
    "y": 5444
@@ -3809,7 +3841,7 @@
    "fill": "blue",
    "page": "import",
    "size": 24,
-   "text": "Import is macOS only. These boards draw the import window as the code has it, from the design system's Import parts; the examples are made up. The preview scenes and baeShots list more states than are drawn here (PreviewData+ImportSearch.swift, ShotScene+FindOnline.swift).",
+   "text": "Import is desktop only. These boards draw the import window as the code has it, from the design system's Import parts; the examples are made up. The preview scenes and baeShots list more states than are drawn here (PreviewData+ImportSearch.swift, ShotScene+FindOnline.swift).",
    "w": 900,
    "x": 0,
    "y": -320
@@ -4043,7 +4075,7 @@
    "page": "import",
    "x": 0,
    "y": 0,
-   "text": "Import, the list: macOS only",
+   "text": "Import, the list: desktop only",
    "kind": "title1",
    "w": 240,
    "maxW": 7500
@@ -4394,7 +4426,7 @@
    "page": "settings",
    "x": 0,
    "y": 11296,
-   "text": "Automation: macOS only",
+   "text": "Automation: desktop only",
    "kind": "title1",
    "w": 240,
    "maxW": 2810
@@ -4412,7 +4444,7 @@
    "page": "settings",
    "x": 0,
    "y": 9136,
-   "text": "Formats: macOS only",
+   "text": "Formats: desktop only",
    "kind": "title1",
    "w": 240,
    "maxW": 3580
@@ -4430,7 +4462,7 @@
    "page": "settings",
    "x": 0,
    "y": 7896,
-   "text": "Import: macOS only",
+   "text": "Import: desktop only",
    "kind": "title1",
    "w": 240,
    "maxW": 4350
@@ -4448,7 +4480,7 @@
    "page": "settings",
    "x": 0,
    "y": 10216,
-   "text": "Subsonic: macOS only",
+   "text": "Subsonic: desktop only",
    "kind": "title1",
    "w": 240,
    "maxW": 2810
@@ -4654,7 +4686,7 @@
    "fill": "blue",
    "page": "library",
    "size": 24,
-   "text": "Set up sync:\nmacOS only, from Set up sync… on a library that isn't synced. The baeium edition offers S3 only, so it opens on the S3 form. Each step that waits says so: signing in in the browser, listing folders, then setup's own steps over a bar. When setup fails, its screen comes back with what was entered: the reason sits under the field it’s about, or at the top when it’s about no one field. Every screen has Cancel and no Back: Cancel takes you back one screen, and on Choose it closes the sheet. The sheet ends on the restore code, for every provider: bae can’t tell whether iCloud Keychain carries it off this Mac. Done lands on the Sync page, which reads Syncing… while the library uploads, then Synced, and holds the Restore code section.\n\nEach provider's row below shows every step coven reports, in order, with the words bae shows. No step has a count, so the bar moves without filling.",
+   "text": "Set up sync:\ndesktop only, from Set up sync… on a library that isn't synced. The baeium edition offers S3 only, so it opens on the S3 form. Each step that waits says so: signing in in the browser, listing folders, then setup's own steps over a bar. When setup fails, its screen comes back with what was entered: the reason sits under the field it’s about, or at the top when it’s about no one field. Every screen has Cancel and no Back: Cancel takes you back one screen, and on Choose it closes the sheet. The sheet ends on the restore code, for every provider: bae can’t tell whether iCloud Keychain carries it off this Mac. Done lands on the Sync page, which reads Syncing… while the library uploads, then Synced, and holds the Restore code section.\n\nEach provider's row below shows every step coven reports, in order, with the words bae shows. No step has a count, so the bar moves without filling.",
    "w": 380,
    "x": 770,
    "y": 2852
@@ -4706,7 +4738,7 @@
    "fill": "blue",
    "page": "library",
    "size": 24,
-   "text": "How the sync states behave:\n- coven gives the state; bae picks the words and the fix.\n- When several hold, the first shows: Not synced, Removed from the library, Device needs reset, Update needed, Signed out, No access, Folder missing, Clock is wrong, Cloud full, Offline · unsent changes, Offline, Sync failed, Syncing…, Waiting to sync, Synced.\n- Not synced is macOS only: a phone joins a library and never makes one.\n- Syncing… only while something is sent or received, not on quiet passes.\n- Waiting to sync: online, with changes held back. Gray when uploads are paused or an upload waits to retry; amber when the provider asked bae to wait, saying when it resumes. Android never uploads files, so its only reason is the provider's wait.\n- Synced means data and files both: a file still uploading is Syncing….\n- Offline with changes waiting is Offline · unsent changes, with no count.\n- Signed out names the provider and its sign-in: Dropbox and OneDrive sign in from bae; iCloud from System Settings. S3 has no sign-in: it reads Access key not accepted and asks for a new key for the same bucket. An expired sign-in reads the same as none saved.\n- Sync failed: any failure with no state of its own, its cause in plain words, always with Retry now; it also retries by itself. A file that can't be uploaded (missing, or changed since import) names the file until it's back as it was; nothing skips it. Phones never upload, so their causes are local ones, a provider error or a damaged change.\n- The Library page's Sync row shows the state only. The top of the Sync page shows the state, its cause and its fix, then Last synced under a problem state (never under Synced), then the storage details.\n- Settings' Library row (Android) and the settings sidebar's Library item (macOS) show the state only when it's amber or red.\n- No Sync stopped, no Checking sync… and no Disconnect anywhere.\n- No raw ids on the Sync page: a row shows a name or isn't there.",
+   "text": "How the sync states behave:\n- coven gives the state; bae picks the words and the fix.\n- When several hold, the first shows: Not synced, Removed from the library, Device needs reset, Update needed, Signed out, No access, Folder missing, Clock is wrong, Cloud full, Offline · unsent changes, Offline, Sync failed, Syncing…, Waiting to sync, Synced.\n- Not synced is desktop only: a phone joins a library and never makes one.\n- Syncing… only while something is sent or received, not on quiet passes.\n- Waiting to sync: online, with changes held back. Gray when uploads are paused or an upload waits to retry; amber when the provider asked bae to wait, saying when it resumes. Android never uploads files, so its only reason is the provider's wait.\n- Synced means data and files both: a file still uploading is Syncing….\n- Offline with changes waiting is Offline · unsent changes, with no count.\n- Signed out names the provider and its sign-in: Dropbox and OneDrive sign in from bae; iCloud from System Settings. S3 has no sign-in: it reads Access key not accepted and asks for a new key for the same bucket. An expired sign-in reads the same as none saved.\n- Sync failed: any failure with no state of its own, its cause in plain words, always with Retry now; it also retries by itself. A file that can't be uploaded (missing, or changed since import) names the file until it's back as it was; nothing skips it. Phones never upload, so their causes are local ones, a provider error or a damaged change.\n- The Library page's Sync row shows the state only. The top of the Sync page shows the state, its cause and its fix, then Last synced under a problem state (never under Synced), then the storage details.\n- Settings' Library row (Android) and the settings sidebar's Library item (macOS) show the state only when it's amber or red.\n- No Sync stopped, no Checking sync… and no Disconnect anywhere.\n- No raw ids on the Sync page: a row shows a name or isn't there.",
    "w": 460,
    "x": 8470,
    "y": 7652
@@ -5070,6 +5102,10 @@
   "MacCastingOn.dc.html",
   "CastingLooking.dc.html",
   "MacCastingLooking.dc.html",
+  "MacCastingInfo.dc.html",
+  "MacCastingMenu.dc.html",
+  "CastingInfo.dc.html",
+  "CastingMenu.dc.html",
   "LibAndroidAlbums.dc.html",
   "LibAndroidAlbum.dc.html",
   "LibAndroidArtist.dc.html",

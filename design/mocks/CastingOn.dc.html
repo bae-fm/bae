@@ -34,9 +34,9 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
   <x-import component-from-global-scope="Bae.AndroidNote">Scan for Cast, AirPlay, and UPnP receivers on your network.</x-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="Receivers on your network"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidCastRow" name="Living Room" kind="cast" active="{{ true }}"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidCastRow" name="Kitchen" kind="airplay"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidCastRow" name="Den receiver" kind="upnp"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidCastRow" name="Living Room" kind="cast" active="{{ true }}" menu="{{ true }}"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidCastRow" name="Kitchen" kind="airplay" menu="{{ true }}"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidCastRow" name="Den receiver" kind="upnp" menu="{{ true }}"></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Convert to" subtitle="MP3"></x-import>
