@@ -57,7 +57,7 @@ struct InviteCodeSheet: View {
             titleVisibility: .visible,
             presenting: invite
         ) { shown in
-            Button("Cancel invitation", role: .destructive) { cancel(shown) }
+            Button("Cancel invitation") { cancel(shown) }
             Button(
                 localizedCoreString("core.invite.cancel_confirm.keep"),
                 role: .cancel
@@ -130,7 +130,7 @@ struct InviteCodeSheet: View {
         if let error {
             Notice(error: error)
         }
-        Button("Cancel invitation", role: .destructive) {
+        Button("Cancel invitation") {
             confirmingCancel = true
         }
         .disabled(task != nil)
