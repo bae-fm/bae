@@ -458,6 +458,9 @@ task_types = [
     # dropped, one saved image's track, and one pin's transfer.
     "CancelSaveOnDrop",
     "CancelSetupOnDrop",
+    # One standing call on an open library, which holds the library's session
+    # open while the call runs, its close waiting for it.
+    "RunningCall",
     "ImageTrack",
     "ReleaseTransfer",
     "Running",
@@ -523,6 +526,9 @@ ImageHold = "RemoteImageHost"
 # takes it out of the record.
 OpenRecord = "LibrarySessions"
 CloseUnderWay = "LibrarySessions"
+# The calls running on a library that left the record, which its close waits
+# for before it runs.
+OpenCalls = "LibrarySessions"
 
 # Where the app opens: the bootstrap builds the runtime, the clock, the ids,
 # the HTTP client and the library's owners once, and starts the services that

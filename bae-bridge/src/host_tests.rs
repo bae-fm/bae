@@ -253,3 +253,60 @@ fn a_standing_asked_during_a_close_waits_for_it_then_reads_the_closed_store() {
     assert_eq!(standing, crate::BridgeLibraryStanding::from_core(closed));
     drop(app);
 }
+
+/// A standing call that found the library open holds its session open: a
+/// close that begins while the call runs waits for it, so the call answers
+/// from the open library rather than failing on a runtime shutting down.
+#[test]
+fn a_standing_running_as_its_library_closes_answers_before_the_close_runs() {
+    /// What the test hears first once the close has begun.
+    enum Heard {
+        CloseWaits,
+        CloseEnded(Result<(), crate::BridgeError>),
+    }
+    let root = tempfile::tempdir().unwrap();
+    let host = crate::handle::tests::test_host(root.path());
+    let caller = tokio::runtime::Runtime::new().unwrap();
+    let opened = crate::handle::tests::create_opened_library(&host, &caller, "Busy Library");
+    let app = opened.open(50, false).unwrap();
+    let id = opened.library_id();
+    drop(opened);
+    let (reached, release) = host.library_sessions.hold_next_call();
+    let standing = caller.spawn(host.clone().library_standing(id));
+    reached.recv_timeout(bae_util::test_channels::HANG_GUARD).expect("the call finds the library");
+
+    let (telling, heard) = std::sync::mpsc::channel();
+    let closer = std::thread::spawn({
+        let app = app.clone();
+        let telling = telling.clone();
+        move || telling.send(Heard::CloseEnded(app.close_library(None))).unwrap()
+    });
+    std::thread::spawn({
+        let host = host.clone();
+        move || {
+            host.library_sessions.wait_for_close_waiting_on_calls();
+            // The test has gone on once the close ended first.
+            drop(telling.send(Heard::CloseWaits));
+        }
+    });
+    let first = heard.recv_timeout(bae_util::test_channels::HANG_GUARD).unwrap();
+    release.send(()).unwrap();
+    let standing = caller.block_on(standing).unwrap();
+
+    let standing = standing.expect("the call answers from the open library");
+    assert!(
+        matches!(
+            &standing.state,
+            crate::BridgeStandingState::Sync { shown }
+                if shown.status == crate::BridgeSyncStatusWord::NotSynced
+        ),
+        "{standing:?}"
+    );
+    assert!(matches!(first, Heard::CloseWaits), "the close ran while a call on its library ran");
+    closer.join().unwrap();
+    let Ok(Heard::CloseEnded(closed)) = heard.recv() else {
+        panic!("the close ends after the call");
+    };
+    closed.unwrap();
+    drop(app);
+}

@@ -727,7 +727,9 @@ pub(crate) fn start_handle(
 mod bootstrap;
 pub use bootstrap::*;
 mod library_sessions;
-pub(crate) use library_sessions::{CloseUnderWay, LibrarySessions, OpenRecord, OpenStanding};
+pub(crate) use library_sessions::{
+    CloseUnderWay, LibrarySessions, OpenCalls, OpenRecord, OpenStanding,
+};
 #[cfg(all(feature = "dev-reset", desktop, unix))]
 mod dev_reset;
 mod steps;

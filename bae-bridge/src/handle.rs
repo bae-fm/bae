@@ -149,8 +149,9 @@ enum SessionState {
 
 /// What is left of a session once it has begun to end.
 enum Ending {
-    /// Close the open library on the runtime, then end the runtime.
-    Close(tokio::runtime::Runtime),
+    /// Close the open library on the runtime once the calls that found it
+    /// open have ended, then end the runtime.
+    Close { runtime: tokio::runtime::Runtime, calls: crate::OpenCalls },
     /// Removing the library deleted its store; only the runtime is left to end.
     Removed(tokio::runtime::Runtime),
     /// The runtime has ended.
@@ -163,7 +164,10 @@ impl SessionState {
     /// dropped, so a call that names the store waits for it.
     fn ending(self) -> (Ending, Option<crate::CloseUnderWay>) {
         match self {
-            Self::Open { runtime, record } => (Ending::Close(runtime), Some(record.close())),
+            Self::Open { runtime, record } => {
+                let (under_way, calls) = record.close();
+                (Ending::Close { runtime, calls }, Some(under_way))
+            }
             Self::Removed(runtime) => (Ending::Removed(runtime), None),
             Self::Ended => (Ending::Ended, None),
         }
@@ -278,7 +282,8 @@ impl Session {
 /// runtime has ended, so what it holds outlives the runtime's tasks.
 fn end(ending: Ending, closing: impl std::future::Future<Output = Closing>) -> Option<Closing> {
     let (runtime, closed) = match ending {
-        Ending::Close(runtime) => {
+        Ending::Close { runtime, calls } => {
+            calls.wait();
             let closed = runtime.block_on(closing);
             (runtime, closed)
         }
