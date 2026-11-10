@@ -271,7 +271,7 @@ onFillSecondary = "#B3FFFFFF"
 textPrimary = "#F2F2F4"
 textSecondary = "#A8A8B3"
 textTertiary = "#6A6A7A"
-danger = "#FF7B7B"
+danger = "#F06A7A"
 success = "#8BCBA4"
 warning = "#E6BE77"
 info = "#87B5FF"
@@ -279,7 +279,7 @@ info = "#87B5FF"
 # tone, since a filled shape needs less darkness than text; in dark mode the
 # tone, danger mixed toward secondary text (design/system/tokens.json
 # `danger-icon` and the rest).
-dangerIcon = "#E48E91"
+dangerIcon = "#DB848E"
 warningIcon = "#E6BE77"
 infoIcon = "#87B5FF"
 successIcon = "#8BCBA4"
