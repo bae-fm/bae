@@ -12,13 +12,9 @@ where Row.ID: Sendable {
         List {
             ForEach(0..<list.totalCount, id: \.self) { index in
                 row(index)
-                    .listRowInsets(
-                        EdgeInsets(
-                            top: 0,
-                            leading: ThemeSpace.related,
-                            bottom: ThemeSpace.hairline,
-                            trailing: ThemeSpace.related
-                        )
+                    .plainListRowEdge(
+                        ThemeSpace.related,
+                        bottom: ThemeSpace.hairline
                     )
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)

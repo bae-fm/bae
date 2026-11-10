@@ -11,6 +11,26 @@ extension ShotScene {
     /// a file's document panel over the window, and the add-device sheet's
     /// code and the device that joined from it.
     static let libraryScenes: [ShotScene] = [
+        // The composer/artist browser's list, beside the canvas's
+        // MacBrowseRow list: where its rows' highlight and names sit.
+        ShotScene(
+            id: "library-browse-list",
+            size: CGSize(width: 320, height: 420)
+        ) {
+            let images = PreviewData.artImageStore()
+            let list = PreviewData.composerList()
+            return ShotStage(
+                BrowseList(list: list) { index in
+                    BrowseListRow(
+                        summary: list.row(at: index),
+                        isSelected: index == 0,
+                        select: { _ in }
+                    )
+                }
+                .environment(images),
+                images: images
+            )
+        },
         ShotScene(
             id: "album-detail-records",
             size: CGSize(width: 1100, height: 800)
