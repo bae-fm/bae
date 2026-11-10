@@ -260,15 +260,19 @@ fn coven_path_text(arguments: &SqlArguments<'_>) -> rusqlite::Result<rusqlite::t
 }
 
 /// The schema's triggers follow coven's `coven_files`, `coven_pins`,
-/// `coven_upload_queue` and `coven_sync_status`, which coven creates before it
-/// migrates; a bare library pins, queues and syncs nothing, so tables of the
-/// same shape let the triggers exist, and a test whose rows reference a file
+/// `coven_pin_requests`, `coven_moves`, `coven_upload_queue` and
+/// `coven_sync_status`, which coven creates before it migrates; a bare library
+/// pins, moves, queues and syncs nothing, so tables with the columns of
+/// coven's let the triggers exist, and a test whose rows reference a file
 /// writes the file's stand-in record itself.
 #[cfg(any(test, feature = "test-utils"))]
 const STAND_IN_COVEN_TABLES: &str = "CREATE TABLE coven_files (id TEXT PRIMARY KEY NOT NULL, \
     audience TEXT NOT NULL, size INTEGER NOT NULL, hash BLOB, coordinates TEXT NOT NULL, \
-    namespace TEXT NOT NULL, shares TEXT) STRICT, WITHOUT ROWID; \
+    namespace TEXT NOT NULL) STRICT, WITHOUT ROWID; \
     CREATE TABLE coven_pins (file TEXT PRIMARY KEY NOT NULL) STRICT, WITHOUT ROWID; \
+    CREATE TABLE coven_pin_requests (file TEXT PRIMARY KEY NOT NULL) STRICT, WITHOUT ROWID; \
+    CREATE TABLE coven_moves (move INTEGER NOT NULL, state TEXT NOT NULL, \
+    file TEXT PRIMARY KEY NOT NULL) STRICT, WITHOUT ROWID; \
     CREATE TABLE coven_upload_queue (file TEXT PRIMARY KEY NOT NULL, \
     position INTEGER NOT NULL) STRICT, WITHOUT ROWID; \
     CREATE TABLE coven_sync_status (singleton INTEGER PRIMARY KEY NOT NULL, \
@@ -301,3 +305,7 @@ pub(crate) fn open_bare_library(conn: &rusqlite::Connection, schema: Schema) {
         conn.execute_batch(statement).expect("the bare library's schema applies");
     }
 }
+
+#[cfg(test)]
+#[path = "schema_tests.rs"]
+mod tests;
