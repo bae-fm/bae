@@ -37,7 +37,7 @@ struct StorageContentsInspector: View {
                 Notice(
                     error: error,
                     look: .centered,
-                    action: ErrorAction {
+                    action: error.retryAction {
                         reader?.retry()
                     }
                 )

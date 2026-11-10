@@ -188,7 +188,7 @@ extension LibraryView {
                     Notice(
                         error: error,
                         look: .centered,
-                        action: ErrorAction {
+                        action: error.retryAction {
                             Task { await albumList.loadInitial() }
                         }
                     )
@@ -242,7 +242,7 @@ extension LibraryView {
                     Notice(
                         error: error,
                         look: .centered,
-                        action: ErrorAction {
+                        action: error.retryAction {
                             Task { await composerList.loadInitial() }
                         }
                     )
@@ -293,7 +293,7 @@ extension LibraryView {
                     Notice(
                         error: error,
                         look: .centered,
-                        action: ErrorAction {
+                        action: error.retryAction {
                             Task { await artistList.loadInitial() }
                         }
                     )

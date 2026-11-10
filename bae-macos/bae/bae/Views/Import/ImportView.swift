@@ -144,7 +144,7 @@ struct ImportView: View {
             advice: nil,
             error: failure,
             look: .centered,
-            action: ErrorAction { listSlot.startLoad() }
+            action: failure.retryAction { listSlot.startLoad() }
         )
     }
 

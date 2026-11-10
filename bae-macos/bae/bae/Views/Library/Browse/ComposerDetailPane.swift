@@ -24,7 +24,7 @@ struct ComposerDetailPane: View {
                             Notice(
                                 error: error,
                                 look: .centered,
-                                action: ErrorAction {
+                                action: error.retryAction {
                                     Task { await rows.loadInitial() }
                                 }
                             )

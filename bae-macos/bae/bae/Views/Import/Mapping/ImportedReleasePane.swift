@@ -51,7 +51,7 @@ struct ImportedReleasePane: View {
                 Notice(
                     error: loadError,
                     look: .centered,
-                    action: ErrorAction {
+                    action: loadError.retryAction {
                         Task { await load() }
                     }
                 )

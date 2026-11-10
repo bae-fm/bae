@@ -232,7 +232,9 @@ struct CoverGalleryView: View {
             if let failure = remoteItems.failure {
                 Notice(
                     error: failure,
-                    action: onRefresh.map { ErrorAction(perform: $0) }
+                    action: onRefresh.flatMap {
+                        failure.retryAction(perform: $0)
+                    }
                 )
             }
         }

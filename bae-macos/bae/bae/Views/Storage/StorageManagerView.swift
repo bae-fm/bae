@@ -158,7 +158,7 @@ struct StorageManagerView: View {
                     Notice(
                         error: error,
                         look: .centered,
-                        action: ErrorAction {
+                        action: error.retryAction {
                             Task { await list.loadInitial() }
                         }
                     )

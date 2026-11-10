@@ -414,3 +414,15 @@ extension Notice {
         }
     }
 }
+
+extension DisplayError {
+    /// Retry for this failure, running `perform`: nil when core says making
+    /// the same call again can't get past it, so the notice offers none.
+    public func retryAction(
+        isDisabled: Bool = false,
+        perform: @escaping () -> Void
+    ) -> ErrorAction? {
+        offersRetry
+            ? ErrorAction(isDisabled: isDisabled, perform: perform) : nil
+    }
+}

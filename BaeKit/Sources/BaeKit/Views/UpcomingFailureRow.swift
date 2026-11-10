@@ -18,7 +18,7 @@ public struct UpcomingFailureRow: View {
             advice: nil,
             error: failure,
             look: .centered,
-            action: ErrorAction(perform: onRetry)
+            action: failure.retryAction(perform: onRetry)
         )
         .padding(.vertical, ThemeSpace.group)
         .padding(.horizontal, ThemeSpace.inline)

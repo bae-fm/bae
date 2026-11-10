@@ -11,6 +11,7 @@ import Foundation
 public protocol LocalizedFailure {
     var localizedLine: String? { get }
     var shownDetail: String? { get }
+    var retryRuledOut: Bool { get }
 }
 
 extension BridgeError: LocalizedFailure {}
@@ -27,6 +28,11 @@ public struct DisplayError: Equatable, Sendable {
 
     public let line: String
     public let detail: String?
+    /// Whether a surface offers Retry on this failure: always, unless core
+    /// says making the same call again can't get past it — a damaged
+    /// database, a bug, an edit to fix. Prose the UI wrote, and a failure
+    /// core keys without saying, have nothing ruling a retry out.
+    public let offersRetry: Bool
 
     /// The opening portion the Details alert shows. Copy continues to use
     /// `detail`, which retains the complete diagnostic.
@@ -63,6 +69,7 @@ public struct DisplayError: Equatable, Sendable {
     public init(line: String) {
         self.line = line
         self.detail = nil
+        self.offersRetry = true
     }
 
     /// A failure the UI writes the headline for but core wrote the fault text
@@ -73,18 +80,33 @@ public struct DisplayError: Equatable, Sendable {
     public init(line: String, detail: String?) {
         self.line = line
         self.detail = detail
+        self.offersRetry = true
+    }
+
+    private init(line: String, detail: String?, offersRetry: Bool) {
+        self.line = line
+        self.detail = detail
+        self.offersRetry = offersRetry
     }
 
     /// Put the operation or object that failed before the existing localized
     /// line without discarding the opaque diagnostic offered by "Copy details".
     public func addingContext(_ context: String) -> DisplayError {
-        DisplayError(line: "\(context): \(line)", detail: detail)
+        DisplayError(
+            line: "\(context): \(line)",
+            detail: detail,
+            offersRetry: offersRetry
+        )
     }
 
     /// The same failure under a line the caller words around this one —
     /// "Save failed: <line>" — keeping the diagnostic for "Copy details".
     public func rewording(_ reword: (String) -> String) -> DisplayError {
-        DisplayError(line: reword(line), detail: detail)
+        DisplayError(
+            line: reword(line),
+            detail: detail,
+            offersRetry: offersRetry
+        )
     }
 
     /// A playback failure — the one typed core failure that is not a Swift
@@ -99,6 +121,7 @@ public struct DisplayError: Equatable, Sendable {
         guard let line = failure.localizedLine else { return nil }
         self.line = line
         self.detail = failure.shownDetail
+        self.offersRetry = !failure.retryRuledOut
     }
 
     /// Any error on its way to a human.
@@ -119,10 +142,12 @@ public struct DisplayError: Equatable, Sendable {
         guard let failure = error as? LocalizedFailure else {
             self.line = error.localizedDescription
             self.detail = nil
+            self.offersRetry = true
             return
         }
         guard let line = failure.localizedLine else { return nil }
         self.line = line
         self.detail = failure.shownDetail
+        self.offersRetry = !failure.retryRuledOut
     }
 }

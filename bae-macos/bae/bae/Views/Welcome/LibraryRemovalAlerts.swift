@@ -45,13 +45,18 @@ enum LibraryRemovalAlerts {
     }
 
     /// Says why the count or the removal of `failed.library` failed, with
-    /// Retry first and Cancel.
+    /// Retry first and Cancel; with OK alone when core says retrying can't
+    /// get past it.
     static func failure(_ failed: FailedRemoval) -> NSAlert {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Couldn't remove “\(failed.library.name)”"
         )
         alert.informativeText = failed.error.line
+        guard failed.error.offersRetry else {
+            alert.addButton(withTitle: String(localized: "OK"))
+            return alert
+        }
         alert.addButton(withTitle: String(localized: "Retry"))
         let cancel = alert.addButton(withTitle: String(localized: "Cancel"))
         cancel.keyEquivalent = "\u{1b}"

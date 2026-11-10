@@ -109,7 +109,9 @@ struct WelcomeChooseView: View {
         guard let failed = removals.failed else { return }
         let retry = LibraryRemovalAlerts.failure(failed).runModal()
         removals.dismissFailure()
-        guard retry == .alertFirstButtonReturn else { return }
+        guard failed.error.offersRetry, retry == .alertFirstButtonReturn else {
+            return
+        }
         switch failed.retry {
         case .ask:
             await askToRemove(failed.library)

@@ -135,7 +135,7 @@ struct ReleaseStorageSheet: View {
                 Notice(
                     error: error,
                     look: .centered,
-                    action: ErrorAction {
+                    action: error.retryAction {
                         self.error = nil
                         reader?.retry()
                     }

@@ -65,6 +65,13 @@ extension BridgeError {
     public var shownDetail: String? {
         bridgeErrorShownDetail(error: self)
     }
+
+    /// Whether core says making the same call again can't get past this
+    /// error: a damaged database, a bug, an edit to fix, a call only another
+    /// call answers. Core's answer, not this app's.
+    public var retryRuledOut: Bool {
+        !bridgeErrorRetryCanHelp(error: self)
+    }
 }
 
 /// A bridge error's `localizedDescription` is core's keyed line in the current
@@ -105,6 +112,18 @@ extension BridgePlaybackErrorReason {
         case .syncDisconnected, .onOtherDevice, .originalMissing,
             .audioOutput:
             return nil
+        }
+    }
+
+    /// Only the diagnostic arm carries core's answer, its error's; core
+    /// keys the others without saying whether playing again can pass.
+    public var retryRuledOut: Bool {
+        switch self {
+        case .diagnostic(let error):
+            return error.retryRuledOut
+        case .syncDisconnected, .onOtherDevice, .originalMissing,
+            .audioOutput:
+            return false
         }
     }
 }

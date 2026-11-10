@@ -45,6 +45,37 @@ struct DisplayErrorTests {
         #expect(displayed.detailSummary == nil)
     }
 
+    /// Core says whether retrying can get past a failure: a busy database
+    /// can pass when asked again, a damaged one never does, and the answer
+    /// survives a caller's rewording. Prose the UI wrote rules nothing out.
+    @Test("a failure offers Retry only when core says a retry can help")
+    func retryFollowsCore() throws {
+        let busy = try #require(
+            DisplayError(
+                BridgeError.Diagnostic(
+                    category: .databaseBusy,
+                    detail: "database is locked"
+                )
+                    as any Error
+            )
+        )
+        let damaged = try #require(
+            DisplayError(
+                BridgeError.Diagnostic(
+                    category: .databaseDamaged,
+                    detail: "damaged database"
+                )
+                    as any Error
+            )
+        )
+
+        #expect(busy.offersRetry)
+        #expect(!damaged.offersRetry)
+        #expect(!damaged.addingContext("Save failed").offersRetry)
+        #expect(damaged.retryAction {} == nil)
+        #expect(DisplayError(line: "Couldn’t load the image").offersRetry)
+    }
+
     @Test("a not-found renders its entity's line and has no detail to disclose")
     func notFoundRendersEntityLine() throws {
         let error = BridgeError.NotFound(entity: .library, id: "library-1")

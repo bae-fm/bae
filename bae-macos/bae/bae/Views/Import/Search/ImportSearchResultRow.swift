@@ -122,7 +122,7 @@ struct ImportSearchResultRow: View {
         if let failure = rowFailure {
             Notice(
                 error: failure.error,
-                action: ErrorAction(
+                action: failure.error.retryAction(
                     isDisabled: !isPickable,
                     perform: failure.retry
                 )

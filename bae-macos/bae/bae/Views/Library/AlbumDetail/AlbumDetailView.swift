@@ -221,7 +221,7 @@ struct AlbumDetailView: View {
             Notice(
                 error: error,
                 look: .centered,
-                action: ErrorAction {
+                action: error.retryAction {
                     detailReader?.retry()
                 }
             )

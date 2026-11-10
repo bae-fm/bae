@@ -99,7 +99,7 @@ struct ImportConfirmationBanners: View {
     private func persistedFailure(_ error: DisplayError) -> some View {
         Notice(
             error: error,
-            action: ErrorAction(isDisabled: !canEdit, perform: onRetry)
+            action: error.retryAction(isDisabled: !canEdit, perform: onRetry)
         )
     }
 }
