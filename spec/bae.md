@@ -3048,25 +3048,26 @@ location whose marker is missing or names another library.
 **Dropbox and OneDrive setup.** The person signs in through the browser, then
 picks the empty folder the library lives in, in one folder picker for both
 providers: a line over the list, the folders to choose from (a chosen one is
-marked), *New folder…*, and the folder setup found holding other files. Only
-the provider's facts differ. On Dropbox the folder is a shared folder, so the
-household can be invited to it: the list is flat, and a new folder is made at
-the top of the person's Dropbox and shared. On OneDrive any folder will do: the list shows
-where the person is, each folder opens into the folders inside it, and a new
-folder is made in the one shown. *New folder…* shows a name field in the list,
-its text aligned with the folder names above it, and *Create* adds the new
-folder to the list and chooses it. A name already taken there is refused with
-a line naming it, leaving the list as it was. Set up needs a chosen folder,
-and checks it first: a folder holding anything returns to the list, saying
-the folder isn't empty and to choose an empty one or make a new one
-(coven's `OwnLocationRequired`), and that folder isn't set up until another is
-chosen. The picker moves into a folder only once its folders have loaded; a
+filled in the accent), *New folder…*, and the folder setup found holding other
+files. Only the provider's facts differ. On Dropbox the folder is a shared
+folder, so the household can be invited to it: the list is flat, and a new
+folder is made at the top of the person's Dropbox and shared. On OneDrive any
+folder will do: the list shows where the person is, each folder opens into the
+folders inside it, and a new folder is made in the one shown. *New folder…*
+shows a name field in the list, its text aligned with the folder names above it,
+and *Create* adds the new folder to the list and chooses it. A name already
+taken there is refused with a line naming it, leaving the list as it was. Set up
+needs a chosen folder, and checks it first: a folder holding anything returns to
+the list, saying the folder isn't empty and to choose an empty one or make a new
+one (coven's `OwnLocationRequired`), and that folder isn't set up until another
+is chosen. The picker moves into a folder only once its folders have loaded; a
 listing that fails leaves it where it was, with the failure (and Retry, on
 Android), and a top that fails to list shows only that. macOS and Android both
 have this picker; on Android *New folder* asks for the name in a dialog, and the
 chosen folder is marked by its row's background. coven holds the sign-in; bae
-never sees its tokens. bae's Dropbox app has access to the whole Dropbox, not an app folder:
-an app folder can't be shared, so a household couldn't be invited to it.
+never sees its tokens. bae's Dropbox app has access to the whole Dropbox, not an
+app folder: an app folder can't be shared, so a household couldn't be invited to
+it.
 
 **The folder in Settings.** Every connection to a Dropbox shared folder or a
 OneDrive folder reads the folder's name and web address as the signed-in

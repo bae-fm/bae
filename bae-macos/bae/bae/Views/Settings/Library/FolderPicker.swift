@@ -66,6 +66,9 @@
     struct FolderPicker: View {
         let browser: StorageFolderBrowser
 
+        @Environment(\.accentChoice)
+        private var accent
+
         var body: some View {
             @Bindable
             var browser = browser
@@ -141,12 +144,7 @@
             let chosen = browser.selected == folder
             return HStack {
                 Text(folder.name)
-                    .fontWeight(chosen ? .semibold : .regular)
                 Spacer()
-                if chosen {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(Color.accentColor)
-                }
                 if browser.nests {
                     Button {
                         browser.open(folder)
@@ -157,6 +155,10 @@
                     .disabled(browser.isWorking)
                 }
             }
+            .foregroundStyle(chosen ? Theme.onFill : Color.primary)
+            .padding(ThemeSpace.fieldInset)
+            .background(chosen ? accent.buttonColor : Color.clear)
+            .padding(-ThemeSpace.fieldInset)
             .contentShape(Rectangle())
             .onTapGesture { browser.select(folder) }
             .accessibilityAddTraits(chosen ? .isSelected : [])
