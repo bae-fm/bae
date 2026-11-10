@@ -9,7 +9,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -50,7 +49,7 @@ class SyncPullsTest {
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(BridgeSyncStatusWord.SYNCED, (store.line.value as SyncLine.Read).shown.status)
 
-        runBlocking { session.dispose(null) }
+        session.disposeOnMain(scope)
         scope.cancel()
     }
 
@@ -78,7 +77,7 @@ class SyncPullsTest {
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(settled, store.activity.value)
 
-        runBlocking { session.dispose(null) }
+        session.disposeOnMain(scope)
         scope.cancel()
     }
 

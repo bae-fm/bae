@@ -16,7 +16,10 @@ import fm.bae.app.playback.PlaybackSystem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 
 /**
  * A library opened over [handle] with fresh stores, as a Robolectric test reads it; [syncStatus] and [syncActivity] are its
@@ -57,4 +60,19 @@ internal fun openTestLibrary(
             ),
         appContext = context,
     )
+}
+
+/**
+ * Dispose this library as the app does, on the main thread with its looper running, and return once it has finished.
+ * Disposing hands work back to the main thread (the player's close, the widget job's redraw), so a test that holds the
+ * main thread in `runBlocking { dispose(null) }` can wait forever on work only that thread's looper could run.
+ */
+internal fun OpenLibrary.disposeOnMain(scope: CoroutineScope) {
+    val disposing = scope.async { dispose(null) }
+    val deadline = System.nanoTime() + HANG_GUARD_MS * 1_000_000
+    while (!disposing.isCompleted) {
+        check(System.nanoTime() < deadline) { "dispose did not finish within the hang guard" }
+        shadowOf(Looper.getMainLooper()).idle()
+    }
+    runBlocking { disposing.await() }
 }
