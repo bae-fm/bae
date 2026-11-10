@@ -3567,12 +3567,14 @@ which coven reports as the last pass's failure. There, and only there, bae
 offers to reset the device: load the library from storage again under a fresh
 device id. Before it does, a warning says that edits on this device
 that haven't synced will be discarded. The person was told before choosing, so
-nothing is shown after; bae doesn't present coven's reset notice. On a Mac the
-screen says why in the middle of the window and offers *Reset this device…*,
-whose alert gives the warning, with *Cancel*; *Cancel* on the screen leaves it
-without resetting, back to the open library or to the library list. A reset
-that fails returns to that screen saying "Couldn’t reset this device", with
-*Retry*, which resets again without the warning the person already accepted.
+nothing is shown after; bae doesn't present coven's reset notice. The screen
+says why in the middle of the window and offers *Reset this device…*, whose
+alert (a dialog on Android) gives the warning, with *Cancel*. Leaving the
+screen without resetting, by *Cancel* on a Mac or Back on Android, returns to
+the open library, to the Mac's library list, or on a phone with no library
+open, to onboarding. A reset that fails returns to that screen saying
+"Couldn’t reset this device", with *Retry*, which resets again without the
+warning the person already accepted.
 
 **A reset or restore that stops partway.** A reset, or a restore with the
 person's current code, loads the new copy beside this device's copy, records

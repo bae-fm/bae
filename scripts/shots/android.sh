@@ -102,6 +102,10 @@ PinningList:pinning-list
 RemoveLibrary:remove-library
 RemoveLibraryFailed:remove-library-failed
 RemoveLibraryUnsent:remove-library-unsent
+ResetFailed:reset-failed
+ResetOffered:reset-offered
+ResetOfferedLight:reset-offered-light
+ResetUnfinished:reset-unfinished
 RestoreCodeMasked:restore-code-masked
 RestoreCodeShown:restore-code-shown
 S3KeyDialogScene:onboarding-s3-key

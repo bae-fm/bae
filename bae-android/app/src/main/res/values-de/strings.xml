@@ -243,7 +243,7 @@
     <string name="appearance_sand">Sand</string>
     <string name="details">Details</string>
     <string name="copy_details">Details kopieren</string>
-    <string name="reset_device">Dieses Gerät zurücksetzen</string>
+    <string name="reset_device">Dieses Gerät zurücksetzen…</string>
     <string name="reset_device_confirm_title">Dieses Gerät zurücksetzen?</string>
     <string name="reset_device_confirm">Zurücksetzen</string>
     <string name="restore_device_title">Diese Bibliothek wiederherstellen</string>

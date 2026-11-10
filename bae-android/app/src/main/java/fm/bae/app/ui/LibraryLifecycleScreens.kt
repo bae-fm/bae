@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.DisplayError
+import fm.bae.app.FailedStep
 import fm.bae.app.R
 import fm.bae.app.ScreenFailure
 import fm.bae.app.coreString
@@ -30,10 +31,12 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.ErrorAction
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.ScreenFailureNotice
+import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeErrorCategory
@@ -65,26 +68,53 @@ internal fun DeviceResetDialog(
 
 /**
  * Opening failed in a way only a device reset fixes; the reset is offered
- * after its warning. With no [error] to show, after a reset was cancelled, the
- * screen says why a reset is offered.
+ * after its warning. The screen says why: [error]'s own line, or with none,
+ * after a reset was cancelled, the reset's line. A reset that failed is titled
+ * by what failed instead, and Retry resets again without the warning the
+ * person already accepted. Back leaves without resetting.
  */
 @Composable
 internal fun ResetOfferedScreen(
     libraryId: String,
     error: ScreenFailure?,
     onReset: (BridgeDeviceReset) -> Unit,
+    onLeave: () -> Unit,
 ) {
     val context = LocalContext.current
     var reset by remember(libraryId) { mutableStateOf<BridgeDeviceReset?>(null) }
-    val offer: @Composable () -> Unit = {
-        PrimaryButton(onClick = { reset = AppSessionHolder.prepareDeviceReset(context, libraryId) }) {
-            Text(stringResource(R.string.reset_device))
+    BackHandler(onBack = onLeave)
+    val offer =
+        ErrorAction(stringResource(R.string.reset_device)) {
+            reset = AppSessionHolder.prepareDeviceReset(context, libraryId)
         }
-    }
-    if (error == null) {
-        LifecycleMessage(context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeviceResetRequired)), offer)
-    } else {
-        LifecycleFailure(error, offer)
+    val reason = error?.error
+    when {
+        error != null && error.step == FailedStep.DEVICE_RESET -> {
+            TitledErrorNotice(
+                title = context.coreString(error.step.titleKey),
+                advice = null,
+                error = reason,
+                look = NoticeLook.CENTERED,
+                action =
+                    ErrorAction(stringResource(R.string.retry)) {
+                        onReset(AppSessionHolder.prepareDeviceReset(context, libraryId))
+                    },
+            )
+        }
+
+        reason != null -> {
+            ErrorNotice(reason, look = NoticeLook.CENTERED, action = offer)
+        }
+
+        else -> {
+            TitledErrorNotice(
+                title = context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeviceResetRequired)),
+                advice = null,
+                error = null,
+                look = NoticeLook.CENTERED,
+                action = offer,
+            )
+        }
     }
     reset?.let { prepared ->
         DeviceResetDialog(
@@ -101,8 +131,8 @@ internal fun ResetOfferedScreen(
 /**
  * A reset of this device's copy stopped partway, and finishing it failed, as
  * [error] says; finishing tries again from what core kept, without the
- * warning the person already accepted. Leaving keeps the library waiting for
- * it.
+ * warning the person already accepted. With no [error], the screen says the
+ * reset didn't finish. Back leaves, keeping the library waiting for it.
  */
 @Composable
 internal fun ResetUnfinishedScreen(
@@ -112,12 +142,27 @@ internal fun ResetUnfinishedScreen(
 ) {
     val context = LocalContext.current
     BackHandler(onBack = onLeave)
-    LifecycleMessage(
-        context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(BridgeReplacedBy.RESET))),
-    ) {
-        error?.let { ScreenFailureNotice(it) }
-        PrimaryButton(onClick = onFinish) { Text(stringResource(R.string.finish_reset)) }
-        TextButton(onClick = onLeave) { Text(stringResource(R.string.cancel)) }
+    val finish = ErrorAction(stringResource(R.string.finish_reset), onClick = onFinish)
+    if (error == null) {
+        TitledErrorNotice(
+            title =
+                context.coreString(
+                    bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(BridgeReplacedBy.RESET)),
+                ),
+            advice = null,
+            error = null,
+            tone = StatusTone.WARNING,
+            look = NoticeLook.CENTERED,
+            action = finish,
+        )
+    } else {
+        TitledErrorNotice(
+            title = context.coreString(error.step.titleKey),
+            advice = null,
+            error = error.error,
+            look = NoticeLook.CENTERED,
+            action = finish,
+        )
     }
 }
 
@@ -175,22 +220,6 @@ private fun LifecycleMessage(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        content()
-    }
-}
-
-/** A failure in place of the message, titled by its step, above what the screen offers. */
-@Composable
-private fun LifecycleFailure(
-    failure: ScreenFailure,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group, Alignment.CenterVertically),
-    ) {
-        ScreenFailureNotice(failure)
         content()
     }
 }

@@ -234,6 +234,7 @@ private fun RecoveryScreen(
                 libraryId = libraryId,
                 error = current.error,
                 onReset = { prepared -> reset(prepared) { AppScreen.ResetOffered(libraryId, it) } },
+                onLeave = { AppSessionHolder.leaveRecovery(onScreen) },
             )
         }
 
@@ -256,7 +257,7 @@ private fun RecoveryScreen(
             ResetUnfinishedScreen(
                 error = current.error,
                 onFinish = { scope.launch { AppSessionHolder.finishReset(context, libraryId, onScreen) } },
-                onLeave = { AppSessionHolder.leaveFinishing(onScreen) },
+                onLeave = { AppSessionHolder.leaveRecovery(onScreen) },
             )
         }
 
@@ -271,7 +272,7 @@ private fun RecoveryScreen(
                         ),
                     // The library opens only once the restore finishes, so
                     // going back leaves it waiting.
-                    onBack = { AppSessionHolder.leaveFinishing(onScreen) },
+                    onBack = { AppSessionHolder.leaveRecovery(onScreen) },
                     start = RestoreOver.Start.FINISH,
                 ),
                 oauthProvidersError,
@@ -283,7 +284,7 @@ private fun RecoveryScreen(
             DeletionUnfinishedScreen(
                 error = current.error,
                 onFinish = { scope.launch { AppSessionHolder.finishDeletion(context, libraryId, onScreen) } },
-                onLeave = { AppSessionHolder.leaveFinishing(onScreen) },
+                onLeave = { AppSessionHolder.leaveRecovery(onScreen) },
             )
         }
     }

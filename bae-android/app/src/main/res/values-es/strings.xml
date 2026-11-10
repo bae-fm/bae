@@ -248,7 +248,7 @@
     <string name="appearance_sand">Arena</string>
     <string name="details">Detalles</string>
     <string name="copy_details">Copiar detalles</string>
-    <string name="reset_device">Restablecer este dispositivo</string>
+    <string name="reset_device">Restablecer este dispositivo…</string>
     <string name="reset_device_confirm_title">¿Restablecer este dispositivo?</string>
     <string name="reset_device_confirm">Restablecer</string>
     <string name="restore_device_title">Restaurar esta biblioteca</string>

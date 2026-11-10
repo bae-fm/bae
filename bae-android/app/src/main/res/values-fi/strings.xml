@@ -241,7 +241,7 @@
     <string name="appearance_sand">Hiekka</string>
     <string name="details">Tiedot</string>
     <string name="copy_details">Kopioi tiedot</string>
-    <string name="reset_device">Nollaa tämä laite</string>
+    <string name="reset_device">Nollaa tämä laite…</string>
     <string name="reset_device_confirm_title">Nollataanko tämä laite?</string>
     <string name="reset_device_confirm">Nollaa</string>
     <string name="restore_device_title">Palauta tämä kirjasto</string>

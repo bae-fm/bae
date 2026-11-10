@@ -634,11 +634,11 @@ object AppSessionHolder {
     }
 
     /**
-     * Leave a screen that finishes a reset or restore without running its
-     * call: back to the open library, or, with none open, to onboarding,
-     * since that library opens only once its call finishes.
+     * Leave a recovery screen without running its call: back to the open
+     * library, or, with none open, to onboarding, since that library opens
+     * only once its call runs.
      */
-    fun leaveFinishing(onScreen: (AppScreen) -> Unit) {
+    fun leaveRecovery(onScreen: (AppScreen) -> Unit) {
         onScreen(openOrOnboarding())
     }
 

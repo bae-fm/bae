@@ -255,7 +255,7 @@
     <string name="appearance_sand">Пісочний</string>
     <string name="details">Подробиці</string>
     <string name="copy_details">Копіювати подробиці</string>
-    <string name="reset_device">Скинути цей пристрій</string>
+    <string name="reset_device">Скинути цей пристрій…</string>
     <string name="reset_device_confirm_title">Скинути цей пристрій?</string>
     <string name="reset_device_confirm">Скинути</string>
     <string name="restore_device_title">Відновити цю бібліотеку</string>

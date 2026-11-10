@@ -243,7 +243,7 @@
     <string name="appearance_sand">Zand</string>
     <string name="details">Details</string>
     <string name="copy_details">Details kopiëren</string>
-    <string name="reset_device">Dit apparaat herstellen</string>
+    <string name="reset_device">Dit apparaat herstellen…</string>
     <string name="reset_device_confirm_title">Dit apparaat herstellen?</string>
     <string name="reset_device_confirm">Herstellen</string>
     <string name="restore_device_title">Deze bibliotheek herstellen</string>

@@ -241,7 +241,7 @@
     <string name="appearance_sand">Sand</string>
     <string name="details">Detaljer</string>
     <string name="copy_details">Kopiera detaljer</string>
-    <string name="reset_device">Återställ den här enheten</string>
+    <string name="reset_device">Återställ den här enheten…</string>
     <string name="reset_device_confirm_title">Återställa den här enheten?</string>
     <string name="reset_device_confirm">Återställ</string>
     <string name="restore_device_title">Återställ det här biblioteket</string>
