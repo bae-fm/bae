@@ -3653,6 +3653,8 @@ fail, saying the laptop left the library and its files are still on it.
   and neither platform's Settings removes the library. A row whose library doesn't sync
   says "Not synced" and offers *Delete* in place of *Remove*. Neither platform
   asks the person to unlock the device first: the confirmation is the only step.
+  *Remove* loses nothing (the library stays in the cloud), so it is the
+  confirmation's accent button, the Mac alert's default; only *Delete* is red.
   On Android's first screen no library is open, so a library that opens is
   opened to count what it hasn't sent and again to leave its store, its row
   showing each step in place of its storage line, and a library that can't open

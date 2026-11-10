@@ -38,7 +38,9 @@ enum LibraryRemovalAlerts {
         }
         let ending = LibraryRemovalConfirmation.Ending(of: library)
         let action = alert.addButton(withTitle: ending.action)
-        action.hasDestructiveAction = true
+        // Removing loses nothing (the library stays in the cloud), so it is the
+        // plain default button; only a never-synced library's Delete is red.
+        action.hasDestructiveAction = ending == .delete
         let cancel = alert.addButton(withTitle: String(localized: "Cancel"))
         cancel.keyEquivalent = "\u{1b}"
         return alert
