@@ -87,6 +87,15 @@ impl SqlArguments<'_> {
             Self::Bare(context) => context.get(index),
         }
     }
+
+    /// Argument `index`, counted from zero, as SQLite holds it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn get_raw(&self, index: usize) -> rusqlite::types::ValueRef<'_> {
+        match self {
+            Self::Store(arguments) => arguments.get_raw(index),
+            Self::Bare(context) => context.get_raw(index),
+        }
+    }
 }
 
 /// A scalar SQL function the schema names. A change to what it computes
@@ -242,21 +251,14 @@ impl Schema {
     }
 }
 
-/// `coven_path_text` as coven registers it: a path's bytes shown through
-/// coven's exports.
+/// `coven_path_text` as coven registers it: coven's own function.
 #[cfg(any(test, feature = "test-utils"))]
 static COVEN_PATH_TEXT: SchemaFunction =
     SchemaFunction { name: "coven_path_text", arguments: 1, version: 0, compute: coven_path_text };
 
 #[cfg(any(test, feature = "test-utils"))]
 fn coven_path_text(arguments: &SqlArguments<'_>) -> rusqlite::Result<rusqlite::types::Value> {
-    Ok(match arguments.get::<Option<Vec<u8>>>(0)? {
-        None => rusqlite::types::Value::Null,
-        Some(bytes) => rusqlite::types::Value::Text(coven::path_text(
-            &coven::path_from_bytes(bytes)
-                .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?,
-        )),
-    })
+    coven::path_text_sql(arguments.get_raw(0))
 }
 
 /// Open an in-memory library on `schema` on `conn`, a fresh in-memory
