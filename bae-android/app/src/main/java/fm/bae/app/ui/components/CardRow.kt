@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
@@ -34,8 +33,9 @@ import fm.bae.app.ui.appearance.ThemeText
  * the far end. [action] makes the row itself the action ("Add device", last in
  * its card), with [leadingIcon] before it when it adds to the list; [selected]
  * tints the row for the one choice made. In a [RowCard] a hairline divides the
- * row from the one above it. A row with an [onClick] opens or
- * changes something, which [onClickLabel] names for screen readers.
+ * row from the one above it. The [subtitle] wraps, read whole, as Material's supporting
+ * text does. A row with an [onClick] opens or changes something, which [onClickLabel] names for
+ * screen readers.
  */
 @Composable
 internal fun CardRow(
@@ -103,16 +103,14 @@ private fun Subtitle(
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.compact),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
         val color = tone?.color ?: MaterialTheme.colorScheme.onSurfaceVariant
-        if (tone != null) Box(modifier = Modifier.size(DOT).background(color, CircleShape))
+        if (tone != null) FirstLineBox { Box(modifier = Modifier.size(DOT).background(color, CircleShape)) }
         Text(
             text = text,
             style = ThemeText.body.style,
             color = color,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
