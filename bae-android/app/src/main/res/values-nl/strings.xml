@@ -167,7 +167,7 @@
     <string name="join_request_approve">Goedkeuren</string>
     <string name="join_request_confirmation">Bevestigingsnummer</string>
     <string name="onboarding_add_device">Apparaat toevoegen</string>
-    <string name="onboarding_icon_description">bae-pictogram</string>
+    <string name="onboarding_tagline">Je muziek, overal</string>
     <string name="onboarding_camera_permission_required">Cameratoestemming is vereist om QR-codes te scannen</string>
     <string name="oauth_unconfigured">Aanmelden bij de opslag van deze bibliotheek is niet geconfigureerd in deze build.</string>
     <string name="signing_in">Aanmelden…</string>

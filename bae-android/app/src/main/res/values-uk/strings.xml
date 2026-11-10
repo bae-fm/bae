@@ -175,7 +175,7 @@
     <string name="join_request_approve">Схвалити</string>
     <string name="join_request_confirmation">Номер підтвердження</string>
     <string name="onboarding_add_device">Додати пристрій</string>
-    <string name="onboarding_icon_description">значок bae</string>
+    <string name="onboarding_tagline">Ваша музика, будь-де</string>
     <string name="onboarding_camera_permission_required">Для сканування QR-кодів потрібен дозвіл на доступ до камери</string>
     <string name="oauth_unconfigured">Вхід до сховища цієї бібліотеки не налаштовано в цій збірці.</string>
     <string name="signing_in">Вхід…</string>

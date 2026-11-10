@@ -2597,8 +2597,9 @@ the accounts runs, coven changes nothing and the app says a request to the
 storage is still running, with the same two buttons. Another person's device
 removed by an admin gets only **OK**: its person does the step.
 
-A new phone's first screen is bae's sheep and name over **Scan code** and
-**Enter code**, with no other words: the code says what it is for. An invite
+A new phone's first screen shows bae's sheep and name over "Your music,
+everywhere", with **Scan code** and **Enter code** at its foot: the code says
+what it is for. An invite
 joins someone's library, and the person's own restore code adds this device to
 theirs. An Android phone that holds libraries lists them above the two buttons
 under **Your libraries**, each opening on a tap, with a ⋮ menu holding

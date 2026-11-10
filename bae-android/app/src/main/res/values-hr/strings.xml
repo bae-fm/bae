@@ -171,7 +171,7 @@
     <string name="join_request_approve">Odobri</string>
     <string name="join_request_confirmation">Broj potvrde</string>
     <string name="onboarding_add_device">Dodaj uređaj</string>
-    <string name="onboarding_icon_description">ikona bae</string>
+    <string name="onboarding_tagline">Vaša glazba, posvuda</string>
     <string name="onboarding_camera_permission_required">Za skeniranje QR kodova potrebna je dozvola za kameru</string>
     <string name="oauth_unconfigured">Prijava u pohranu ove fonoteke nije konfigurirana u ovoj verziji.</string>
     <string name="signing_in">Prijava…</string>

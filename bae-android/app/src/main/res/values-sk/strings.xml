@@ -181,7 +181,7 @@
     <string name="join_request_approve">Schváliť</string>
     <string name="join_request_confirmation">Potvrdzovacie číslo</string>
     <string name="onboarding_add_device">Pridať zariadenie</string>
-    <string name="onboarding_icon_description">ikona bae</string>
+    <string name="onboarding_tagline">Tvoja hudba, všade</string>
     <string name="onboarding_camera_permission_required">Na skenovanie QR kódov je potrebné povolenie kamery</string>
     <string name="oauth_unconfigured">Prihlásenie do úložiska tejto knižnice nie je v tomto zostavení nastavené.</string>
     <string name="signing_in">Prihlasuje sa…</string>

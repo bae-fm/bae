@@ -1,3 +1,17 @@
+import com.android.build.api.variant.ApplicationAndroidComponentsExtension
+import com.android.ide.common.vectordrawable.Svg2Vector
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // Android's own SVG-to-vector converter, at the version AGP 8.7.3 is built with.
+        classpath("com.android.tools:sdk-common:31.7.3")
+    }
+}
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -157,6 +171,50 @@ android {
             java.srcDir("generated/theme/kotlin")
             res.srcDir("generated/theme/res")
         }
+    }
+}
+
+// The sheep and the word as vector drawables, converted at build from the design's own
+// files (icon-source.svg and design/system/assets/Logos/bae-word.svg), so each has one
+// copy to edit. A drawing the converter can't carry whole fails the build.
+abstract class LogoDrawables : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val sheep: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val word: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun convert() {
+        val drawable = outputDir.get().asFile.resolve("drawable")
+        drawable.deleteRecursively()
+        drawable.mkdirs()
+        convert(sheep.get().asFile, drawable.resolve("logo_sheep.xml"))
+        convert(word.get().asFile, drawable.resolve("logo_word.xml"))
+    }
+
+    private fun convert(svg: File, xml: File) {
+        val problems = xml.outputStream().use { Svg2Vector.parseSvgToXml(svg.toPath(), it) }
+        check(problems.isEmpty()) { "${svg.name} did not convert whole: $problems" }
+    }
+}
+
+val logoDrawables =
+    tasks.register<LogoDrawables>("logoDrawables") {
+        val repository = rootDir.parentFile
+        sheep.set(repository.resolve("icon-source.svg"))
+        word.set(repository.resolve("design/system/assets/Logos/bae-word.svg"))
+        outputDir.set(layout.buildDirectory.dir("generated/logo/res"))
+    }
+
+extensions.configure<ApplicationAndroidComponentsExtension> {
+    onVariants { variant ->
+        variant.sources.res?.addGeneratedSourceDirectory(logoDrawables, LogoDrawables::outputDir)
     }
 }
 

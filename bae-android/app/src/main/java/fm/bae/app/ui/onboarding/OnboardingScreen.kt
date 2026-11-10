@@ -2,7 +2,6 @@ package fm.bae.app.ui.onboarding
 
 import android.text.format.DateUtils
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,6 +38,7 @@ import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.Logo
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.components.WaitingIndicator
@@ -143,18 +141,33 @@ internal fun OnboardingScreen(
         }
     OnboardingSteps(
         flow,
-        libraries = libraries?.let { model -> { WelcomeLibrariesSection(model) { actions?.onOpen?.invoke(it) } } },
+        libraries =
+            libraries?.let { model ->
+                val listed = (model.list as? WelcomeLibrariesList.Loaded)?.libraries?.isNotEmpty() == true
+                WelcomeLibrariesView(listed = listed) {
+                    WelcomeLibrariesSection(model) { actions?.onOpen?.invoke(it) }
+                }
+            },
     )
 }
 
 /**
+ * The list of this device's libraries the welcome shows, drawn by [content],
+ * and whether it [listed] any: the welcome's layout depends on it.
+ */
+internal class WelcomeLibrariesView(
+    val listed: Boolean,
+    val content: @Composable () -> Unit,
+)
+
+/**
  * The screen for where [flow] stands. The welcome shows [libraries], the list
- * of this device's libraries, above its actions.
+ * of this device's libraries.
  */
 @Composable
 internal fun OnboardingSteps(
     flow: OnboardingFlow,
-    libraries: (@Composable () -> Unit)? = null,
+    libraries: WelcomeLibrariesView? = null,
 ) {
     var scanning by remember { mutableStateOf(false) }
     val requestScan = rememberScanRequest(onDenied = { flow.error = DisplayError(it) }, onOpen = { scanning = true })
@@ -212,14 +225,14 @@ internal fun OnboardingSteps(
 }
 
 /**
- * The start screens' column: bae's icon and wordmark, an optional title and
- * message, then [actions]. Centered when it fits, and scrolled when it
+ * The column of a restore over this device's copy: the logo, [title] and
+ * [message], then [actions]. Centered when it fits, and scrolled when it
  * doesn't, such as on a phone held sideways.
  */
 @Composable
 internal fun OnboardingStartColumn(
-    title: String?,
-    message: String?,
+    title: String,
+    message: String,
     actions: @Composable ColumnScope.() -> Unit,
 ) {
     // The scroll keeps the screen's height as the column's minimum, so a
@@ -233,26 +246,16 @@ internal fun OnboardingStartColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Image(
-            painter = painterResource(R.drawable.sheep_icon),
-            contentDescription = stringResource(R.string.onboarding_icon_description),
-            modifier = Modifier.size(120.dp),
+        Logo(size = 120.dp, bob = false, glow = false)
+        Spacer(modifier = Modifier.height(ThemeSpace.group))
+        Text(text = title, style = ThemeText.title.style, textAlign = TextAlign.Center)
+        Spacer(modifier = Modifier.height(ThemeSpace.group))
+        Text(
+            text = message,
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(ThemeSpace.related))
-        Text(text = "bae", style = ThemeText.wordmark.style, color = BaeTheme.colors.logoWord)
-        title?.let {
-            Spacer(modifier = Modifier.height(ThemeSpace.group))
-            Text(text = it, style = ThemeText.title.style, textAlign = TextAlign.Center)
-        }
-        message?.let {
-            Spacer(modifier = Modifier.height(ThemeSpace.group))
-            Text(
-                text = it,
-                style = ThemeText.body.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-        }
         Spacer(modifier = Modifier.height(ThemeSpace.page))
         actions()
     }

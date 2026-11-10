@@ -163,7 +163,7 @@
     <string name="join_request_approve">승인</string>
     <string name="join_request_confirmation">확인 번호</string>
     <string name="onboarding_add_device">기기 추가</string>
-    <string name="onboarding_icon_description">bae 아이콘</string>
+    <string name="onboarding_tagline">내 음악, 어디서나</string>
     <string name="onboarding_camera_permission_required">QR 코드를 스캔하려면 카메라 권한이 필요합니다</string>
     <string name="oauth_unconfigured">이 라이브러리의 스토리지 로그인이 이 빌드에는 설정되어 있지 않습니다.</string>
     <string name="signing_in">로그인 중…</string>

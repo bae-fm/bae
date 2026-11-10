@@ -167,7 +167,7 @@
     <string name="join_request_approve">Одобряване</string>
     <string name="join_request_confirmation">Номер за потвърждение</string>
     <string name="onboarding_add_device">Добавяне на устройство</string>
-    <string name="onboarding_icon_description">икона на bae</string>
+    <string name="onboarding_tagline">Вашата музика, навсякъде</string>
     <string name="onboarding_camera_permission_required">Необходимо е разрешение за камерата, за да сканирате QR кодове</string>
     <string name="oauth_unconfigured">Влизането в хранилището на тази библиотека не е конфигурирано в тази версия.</string>
     <string name="signing_in">Влизане…</string>

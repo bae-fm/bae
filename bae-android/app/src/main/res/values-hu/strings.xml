@@ -171,7 +171,7 @@
     <string name="join_request_approve">Jóváhagyás</string>
     <string name="join_request_confirmation">Megerősítő szám</string>
     <string name="onboarding_add_device">Eszköz hozzáadása</string>
-    <string name="onboarding_icon_description">bae ikon</string>
+    <string name="onboarding_tagline">A zenéd mindenhol</string>
     <string name="onboarding_camera_permission_required">A QR-kódok beolvasásához kameraengedély szükséges</string>
     <string name="oauth_unconfigured">A könyvtár tárhelyére való bejelentkezés ebben a buildben nincs beállítva.</string>
     <string name="signing_in">Bejelentkezés…</string>

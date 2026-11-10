@@ -176,7 +176,7 @@
     <string name="join_request_approve">Aprobă</string>
     <string name="join_request_confirmation">Număr de confirmare</string>
     <string name="onboarding_add_device">Adaugă dispozitiv</string>
-    <string name="onboarding_icon_description">pictograma bae</string>
+    <string name="onboarding_tagline">Muzica ta, oriunde</string>
     <string name="onboarding_camera_permission_required">Este necesară permisiunea camerei pentru a scana coduri QR</string>
     <string name="oauth_unconfigured">Conectarea la stocarea acestei biblioteci nu este configurată în această versiune.</string>
     <string name="signing_in">Se conectează…</string>

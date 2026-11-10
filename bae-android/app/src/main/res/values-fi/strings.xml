@@ -171,7 +171,7 @@
     <string name="join_request_approve">Hyväksy</string>
     <string name="join_request_confirmation">Vahvistusnumero</string>
     <string name="onboarding_add_device">Lisää laite</string>
-    <string name="onboarding_icon_description">baen kuvake</string>
+    <string name="onboarding_tagline">Musiikkisi kaikkialla</string>
     <string name="onboarding_camera_permission_required">QR-koodien skannaaminen edellyttää kameran käyttöoikeutta</string>
     <string name="oauth_unconfigured">Kirjautumista tämän kirjaston tallennustilaan ei ole määritetty tässä versiossa.</string>
     <string name="signing_in">Kirjaudutaan sisään…</string>

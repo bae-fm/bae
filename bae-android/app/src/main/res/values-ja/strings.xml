@@ -163,7 +163,7 @@
     <string name="join_request_approve">承認</string>
     <string name="join_request_confirmation">確認番号</string>
     <string name="onboarding_add_device">デバイスを追加</string>
-    <string name="onboarding_icon_description">bae アイコン</string>
+    <string name="onboarding_tagline">あなたの音楽を、どこでも</string>
     <string name="onboarding_camera_permission_required">QRコードをスキャンするにはカメラの許可が必要です</string>
     <string name="oauth_unconfigured">このライブラリのストレージへのサインインは、このビルドでは設定されていません。</string>
     <string name="signing_in">サインイン中…</string>

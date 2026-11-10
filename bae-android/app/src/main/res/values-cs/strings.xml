@@ -175,7 +175,7 @@
     <string name="join_request_approve">Schválit</string>
     <string name="join_request_confirmation">Potvrzovací číslo</string>
     <string name="onboarding_add_device">Přidat zařízení</string>
-    <string name="onboarding_icon_description">ikona bae</string>
+    <string name="onboarding_tagline">Vaše hudba, všude</string>
     <string name="onboarding_camera_permission_required">Pro skenování QR kódů je vyžadováno oprávnění ke kameře</string>
     <string name="oauth_unconfigured">Přihlášení k úložišti této knihovny není v tomto sestavení nakonfigurováno.</string>
     <string name="signing_in">Přihlašuje se…</string>

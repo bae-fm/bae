@@ -175,7 +175,7 @@
     <string name="join_request_approve">Zatwierdź</string>
     <string name="join_request_confirmation">Numer potwierdzenia</string>
     <string name="onboarding_add_device">Dodaj urządzenie</string>
-    <string name="onboarding_icon_description">ikona bae</string>
+    <string name="onboarding_tagline">Twoja muzyka, wszędzie</string>
     <string name="onboarding_camera_permission_required">Do skanowania kodów QR wymagane jest pozwolenie na dostęp do aparatu</string>
     <string name="oauth_unconfigured">Logowanie do magazynu tej biblioteki nie jest skonfigurowane w tej wersji.</string>
     <string name="signing_in">Logowanie…</string>

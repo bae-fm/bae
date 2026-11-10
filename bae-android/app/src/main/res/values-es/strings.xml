@@ -171,7 +171,7 @@
     <string name="join_request_approve">Aprobar</string>
     <string name="join_request_confirmation">Número de confirmación</string>
     <string name="onboarding_add_device">Añadir dispositivo</string>
-    <string name="onboarding_icon_description">icono de bae</string>
+    <string name="onboarding_tagline">Tu música, en todas partes</string>
     <string name="onboarding_camera_permission_required">Se necesita permiso de cámara para escanear códigos QR</string>
     <string name="oauth_unconfigured">El inicio de sesión en el almacenamiento de esta biblioteca no está configurado en esta versión.</string>
     <string name="signing_in">Iniciando sesión…</string>

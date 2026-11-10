@@ -171,7 +171,7 @@
     <string name="join_request_approve">Godkjenn</string>
     <string name="join_request_confirmation">Bekreftelsesnummer</string>
     <string name="onboarding_add_device">Legg til enhet</string>
-    <string name="onboarding_icon_description">bae-symbol</string>
+    <string name="onboarding_tagline">Musikken din, overalt</string>
     <string name="onboarding_camera_permission_required">Kameratillatelse kreves for å skanne QR-koder</string>
     <string name="oauth_unconfigured">Pålogging til bibliotekets lagring er ikke satt opp i denne versjonen.</string>
     <string name="signing_in">Logger på…</string>

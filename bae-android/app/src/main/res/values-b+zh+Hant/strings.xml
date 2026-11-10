@@ -163,7 +163,7 @@
     <string name="join_request_approve">核准</string>
     <string name="join_request_confirmation">確認碼</string>
     <string name="onboarding_add_device">新增裝置</string>
-    <string name="onboarding_icon_description">bae 圖示</string>
+    <string name="onboarding_tagline">你的音樂，隨處可聽</string>
     <string name="onboarding_camera_permission_required">需要相機權限才能掃描 QR 碼</string>
     <string name="oauth_unconfigured">此建置尚未設定登入此資料庫的儲存空間。</string>
     <string name="signing_in">正在登入…</string>

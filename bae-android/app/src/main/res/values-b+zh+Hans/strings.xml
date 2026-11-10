@@ -163,7 +163,7 @@
     <string name="join_request_approve">批准</string>
     <string name="join_request_confirmation">确认码</string>
     <string name="onboarding_add_device">添加设备</string>
-    <string name="onboarding_icon_description">bae 图标</string>
+    <string name="onboarding_tagline">你的音乐，随处可听</string>
     <string name="onboarding_camera_permission_required">扫描二维码需要相机权限</string>
     <string name="oauth_unconfigured">此版本未配置登录此库的存储。</string>
     <string name="signing_in">正在登录…</string>

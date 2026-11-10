@@ -167,7 +167,7 @@
     <string name="join_request_approve">Onayla</string>
     <string name="join_request_confirmation">Onay numarası</string>
     <string name="onboarding_add_device">Cihaz ekle</string>
-    <string name="onboarding_icon_description">bae simgesi</string>
+    <string name="onboarding_tagline">Müziğiniz, her yerde</string>
     <string name="onboarding_camera_permission_required">QR kodlarını taramak için kamera izni gerekli</string>
     <string name="oauth_unconfigured">Bu kitaplığın depolamasında oturum açma bu derlemede yapılandırılmamış.</string>
     <string name="signing_in">Oturum açılıyor…</string>

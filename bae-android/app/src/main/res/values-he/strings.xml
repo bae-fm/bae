@@ -171,7 +171,7 @@
     <string name="join_request_approve">אשר</string>
     <string name="join_request_confirmation">מספר אימות</string>
     <string name="onboarding_add_device">הוספת מכשיר</string>
-    <string name="onboarding_icon_description">סמל bae</string>
+    <string name="onboarding_tagline">המוזיקה שלך, בכל מקום</string>
     <string name="onboarding_camera_permission_required">נדרשת הרשאת מצלמה כדי לסרוק קודי QR</string>
     <string name="oauth_unconfigured">הכניסה לאחסון של ספרייה זו אינה מוגדרת בגרסה זו.</string>
     <string name="signing_in">מתחבר…</string>

@@ -171,7 +171,7 @@
     <string name="join_request_approve">Έγκριση</string>
     <string name="join_request_confirmation">Αριθμός επιβεβαίωσης</string>
     <string name="onboarding_add_device">Προσθήκη συσκευής</string>
-    <string name="onboarding_icon_description">εικονίδιο bae</string>
+    <string name="onboarding_tagline">Η μουσική σας, παντού</string>
     <string name="onboarding_camera_permission_required">Απαιτείται άδεια κάμερας για τη σάρωση κωδικών QR</string>
     <string name="oauth_unconfigured">Η σύνδεση στον χώρο αποθήκευσης αυτής της βιβλιοθήκης δεν έχει διαμορφωθεί σε αυτή την έκδοση.</string>
     <string name="signing_in">Σύνδεση…</string>

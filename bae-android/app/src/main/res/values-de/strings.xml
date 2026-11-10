@@ -167,7 +167,7 @@
     <string name="join_request_approve">Genehmigen</string>
     <string name="join_request_confirmation">Bestätigungsnummer</string>
     <string name="onboarding_add_device">Gerät hinzufügen</string>
-    <string name="onboarding_icon_description">bae-Symbol</string>
+    <string name="onboarding_tagline">Deine Musik, überall</string>
     <string name="onboarding_camera_permission_required">Zum Scannen von QR-Codes ist eine Kameraberechtigung erforderlich</string>
     <string name="oauth_unconfigured">Die Anmeldung beim Speicher dieser Bibliothek ist in diesem Build nicht konfiguriert.</string>
     <string name="signing_in">Anmeldung läuft…</string>

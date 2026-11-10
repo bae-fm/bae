@@ -271,7 +271,7 @@ private fun RunningLibraryRow(
  */
 @Composable
 internal fun WelcomeLibrariesScene() {
-    WelcomeScene(libraries = { WelcomeLibrariesPreviewContent(failed = null) })
+    WelcomeScene(libraries = WelcomeLibrariesView(listed = true) { WelcomeLibrariesPreviewContent(failed = null) })
 }
 
 @Composable
