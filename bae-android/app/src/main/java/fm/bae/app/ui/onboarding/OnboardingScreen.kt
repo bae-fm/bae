@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -323,7 +323,7 @@ internal fun OnboardingProgress(
         }
         onCancel?.let {
             Spacer(modifier = Modifier.height(ThemeSpace.section))
-            OutlinedButton(onClick = it) { Text(stringResource(R.string.cancel)) }
+            FilledTonalButton(onClick = it) { Text(stringResource(R.string.cancel)) }
         }
     }
 }
@@ -372,7 +372,7 @@ private fun WaitingForApproval(
         }
     Text(text = countdown, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(modifier = Modifier.height(ThemeSpace.section))
-    OutlinedButton(onClick = onCheckNow, enabled = status.nextCheck is BridgeNextCheck.At) {
+    FilledTonalButton(onClick = onCheckNow, enabled = status.nextCheck is BridgeNextCheck.At) {
         Text(stringResource(R.string.onboarding_check_now))
     }
 }

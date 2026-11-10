@@ -12,9 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -434,7 +434,7 @@ internal fun SyncStatusBlock(
                 }
                 shown.fix?.let { fix ->
                     syncFixLabel(fix)?.let { label ->
-                        OutlinedButton(
+                        PrimaryButton(
                             onClick = { onFix(fix) },
                             modifier = Modifier.padding(BLOCK_PADDING),
                         ) {
@@ -539,7 +539,7 @@ private fun PendingRow(
                 }
 
                 else -> {
-                    OutlinedButton(onClick = { onAction(record.action) }) {
+                    FilledTonalButton(onClick = { onAction(record.action) }) {
                         Text(context.coreString(checkNotNull(actionKey) { "${record.action} has a label" }))
                     }
                 }
