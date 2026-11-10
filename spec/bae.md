@@ -4985,7 +4985,7 @@ each device and hands playback the channel or sink.
   tasks and threads through the spawners that end what a panicking task or
   thread served; clippy refuses a bare `tokio::spawn`, a runtime's or a task
   set's `spawn`, or `std::thread::spawn` outside them, bar work whose caller
-  joins it at once, a task set that joins every task it holds, and test
+  joins it at once, a task set or tracker that joins every task it holds, and test
   code. A service's own
   thread that such a panic ends, the import worker's or the folder scan
   coordinator's, ends its service with it: a later call that waits on the

@@ -185,6 +185,10 @@ impl LibraryManager {
             },
             on_panic,
         );
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the tracked work is a reported task's end, and closing the manager waits for the tracker"
+        )]
         self.tasks.tracker.spawn_on(task.ended(), &self.runtime_handle);
         Ok(())
     }
@@ -264,6 +268,10 @@ impl LibraryManager {
             let stop = crate::CancellationToken::new();
             let work = operation(stop.clone());
             let manager = self.clone();
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "the work runs under caught and the caller awaits its join, and closing the manager waits for the tracker"
+            )]
             self.tasks.tracker.spawn_on(
                 async move {
                     let work = caught(name, work);

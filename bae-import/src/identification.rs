@@ -133,6 +133,10 @@ pub(crate) fn start(
     let loop_token = token.clone();
     let loop_context = context.clone();
     let loop_tasks = tasks.clone();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the queue runs under caught, and the executor thread waits for the tracker before it ends"
+    )]
     tasks.spawn_on(
         async move {
             let ran = bae_util::task_failure::caught(

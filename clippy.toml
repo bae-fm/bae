@@ -28,4 +28,10 @@ disallowed-methods = [
     { path = "tokio::runtime::Runtime::spawn", reason = "use Diagnostics::spawn_reported or spawn_ending, which end what a task that panics served" },
     { path = "tokio::task::JoinSet::spawn", reason = "use Diagnostics::spawn_reported or spawn_ending, unless the set joins every task and hears its panic" },
     { path = "tokio::task::JoinSet::spawn_on", reason = "use Diagnostics::spawn_reported or spawn_ending, unless the set joins every task and hears its panic" },
+    { path = "tokio_util::task::TaskTracker::spawn", reason = "use Diagnostics::spawn_reported or spawn_ending and track what it returns, unless the tracker's owner waits for it before it ends and the work reports its own panic" },
+    { path = "tokio_util::task::TaskTracker::spawn_on", reason = "use Diagnostics::spawn_reported or spawn_ending and track what it returns, unless the tracker's owner waits for it before it ends and the work reports its own panic" },
+    { path = "tokio_util::task::TaskTracker::spawn_local", reason = "use Diagnostics::spawn_reported or spawn_ending and track what it returns, unless the tracker's owner waits for it before it ends and the work reports its own panic" },
+    { path = "tokio_util::task::TaskTracker::spawn_local_on", reason = "use Diagnostics::spawn_reported or spawn_ending and track what it returns, unless the tracker's owner waits for it before it ends and the work reports its own panic" },
+    { path = "tokio_util::task::TaskTracker::spawn_blocking", reason = "use Diagnostics::blocking, unless the tracker's owner waits for it before it ends" },
+    { path = "tokio_util::task::TaskTracker::spawn_blocking_on", reason = "use Diagnostics::blocking, unless the tracker's owner waits for it before it ends" },
 ]
