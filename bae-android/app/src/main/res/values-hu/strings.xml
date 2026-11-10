@@ -258,6 +258,8 @@
     <string name="onboarding_code_invalid">Ez nem visszaállítási kód és nem is meghívó.</string>
     <string name="onboarding_restore_title">Könyvtár visszaállítása</string>
     <string name="onboarding_s3_key_explanation">Ez a könyvtár egy S3-kompatibilis tárolóban van. Add meg a hozzá használt hozzáférési kulcsot.</string>
+    <string name="onboarding_s3_key_title">S3-kulcs</string>
+    <string name="onboarding_s3_key_prompt">Add meg az S3-tároló hitelesítő adatait.</string>
     <string name="s3_access_key_id">Hozzáférési kulcs azonosítója</string>
     <string name="s3_secret_access_key">Titkos hozzáférési kulcs</string>
     <string name="onboarding_restore_action">Visszaállítás</string>

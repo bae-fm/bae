@@ -58,6 +58,9 @@ import fm.bae.app.ui.library.LibraryHeaderMenu
 import fm.bae.app.ui.library.SceneGrid
 import fm.bae.app.ui.onboarding.LibraryDetailsRows
 import fm.bae.app.ui.onboarding.RemovalFailedText
+import fm.bae.app.ui.onboarding.RestoreText
+import fm.bae.app.ui.onboarding.S3KeyDialog
+import fm.bae.app.ui.onboarding.S3KeyInput
 import fm.bae.app.ui.onboarding.StandingRead
 import fm.bae.app.ui.onboarding.WelcomeActions
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
@@ -211,6 +214,21 @@ fun RemoveLibrary() {
 @Composable
 fun DeleteAlbumDialogScene() {
     BaeTheme { DeleteAlbumDialog(onConfirm = {}, onDismiss = {}) }
+}
+
+/** The dialog asking for the S3 access key a restore code lacks. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun S3KeyDialogScene() {
+    BaeTheme {
+        S3KeyDialog(
+            text = RestoreText.ADD,
+            keys = S3KeyInput(accessKeyId = "AKIA4EXAMPLE"),
+            error = null,
+            onRestore = {},
+            onBack = {},
+        )
+    }
 }
 
 /** The dialog for a removal that failed. */

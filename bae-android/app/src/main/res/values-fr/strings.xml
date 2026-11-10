@@ -265,6 +265,8 @@
     <string name="onboarding_code_invalid">Ce n’est ni un code de restauration ni une invitation.</string>
     <string name="onboarding_restore_title">Restaurer votre bibliothèque</string>
     <string name="onboarding_s3_key_explanation">Cette bibliothèque est stockée dans un bucket compatible S3. Saisissez la clé d’accès que vous utilisez pour celui-ci.</string>
+    <string name="onboarding_s3_key_title">Clé S3</string>
+    <string name="onboarding_s3_key_prompt">Saisissez vos identifiants pour le bucket S3.</string>
     <string name="s3_access_key_id">ID de clé d’accès</string>
     <string name="s3_secret_access_key">Clé d’accès secrète</string>
     <string name="onboarding_restore_action">Restaurer</string>

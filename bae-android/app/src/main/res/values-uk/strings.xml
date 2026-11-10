@@ -272,6 +272,8 @@
     <string name="onboarding_code_invalid">Це не код відновлення і не запрошення.</string>
     <string name="onboarding_restore_title">Відновлення бібліотеки</string>
     <string name="onboarding_s3_key_explanation">Ця бібліотека зберігається в S3-сумісному бакеті. Введіть ключ доступу, який ви для нього використовуєте.</string>
+    <string name="onboarding_s3_key_title">Ключ S3</string>
+    <string name="onboarding_s3_key_prompt">Введіть облікові дані для S3-бакета.</string>
     <string name="s3_access_key_id">ID ключа доступу</string>
     <string name="s3_secret_access_key">Секретний ключ доступу</string>
     <string name="onboarding_restore_action">Відновити</string>

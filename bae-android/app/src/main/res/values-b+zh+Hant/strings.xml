@@ -254,6 +254,8 @@
     <string name="onboarding_code_invalid">這不是還原碼，也不是邀請。</string>
     <string name="onboarding_restore_title">還原你的資料庫</string>
     <string name="onboarding_s3_key_explanation">此資料庫儲存在相容 S3 的儲存貯體中。請輸入你用於該儲存貯體的存取金鑰。</string>
+    <string name="onboarding_s3_key_title">S3 金鑰</string>
+    <string name="onboarding_s3_key_prompt">請輸入 S3 儲存貯體的憑證。</string>
     <string name="s3_access_key_id">存取金鑰 ID</string>
     <string name="s3_secret_access_key">私密存取金鑰</string>
     <string name="onboarding_restore_action">還原</string>

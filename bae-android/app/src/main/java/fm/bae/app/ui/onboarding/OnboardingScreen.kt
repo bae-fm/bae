@@ -158,6 +158,43 @@ internal class WelcomeLibrariesView(
 )
 
 /**
+ * A restore code read: the form to restore from, or, when the code lacks its S3
+ * key, the code screen behind a dialog asking for it.
+ */
+@Composable
+private fun RestoreStep(
+    flow: OnboardingFlow,
+    step: OnboardingStep.Restore,
+    requestScan: () -> Unit,
+    libraries: WelcomeLibrariesView?,
+) {
+    if (step.needsS3Key) {
+        CodeScreen(
+            flow = flow,
+            step = OnboardingStep.EnterCode(step.entry),
+            text = codeScreenText(step.entry),
+            onScan = requestScan,
+            libraries = libraries,
+            showsError = false,
+        )
+        S3KeyDialog(
+            text = RestoreText.of(step.entry),
+            keys = remember { S3KeyInput() },
+            error = flow.error,
+            onRestore = { flow.restore(step, it) },
+            onBack = { flow.back(step) },
+        )
+    } else {
+        RestoreForm(
+            step = step,
+            error = flow.error,
+            onRestore = { flow.restore(step, it) },
+            onBack = { flow.back(step) },
+        )
+    }
+}
+
+/**
  * The screen for where [flow] stands. The welcome shows [libraries], the list
  * of this device's libraries.
  */
@@ -189,12 +226,7 @@ internal fun OnboardingSteps(
 
         is OnboardingStep.Restore -> {
             BackHandler { flow.back(step) }
-            RestoreForm(
-                step = step,
-                error = flow.error,
-                onRestore = { flow.restore(step, it) },
-                onBack = { flow.back(step) },
-            )
+            RestoreStep(flow, step, requestScan, libraries)
         }
 
         is OnboardingStep.RestoreSaved -> {

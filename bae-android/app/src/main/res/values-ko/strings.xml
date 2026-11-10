@@ -254,6 +254,8 @@
     <string name="onboarding_code_invalid">복원 코드나 초대가 아닙니다.</string>
     <string name="onboarding_restore_title">라이브러리 복원</string>
     <string name="onboarding_s3_key_explanation">이 라이브러리는 S3 호환 버킷에 저장되어 있습니다. 이 버킷에 사용하는 액세스 키를 입력하세요.</string>
+    <string name="onboarding_s3_key_title">S3 키</string>
+    <string name="onboarding_s3_key_prompt">S3 버킷의 자격 증명을 입력하세요.</string>
     <string name="s3_access_key_id">액세스 키 ID</string>
     <string name="s3_secret_access_key">보안 액세스 키</string>
     <string name="onboarding_restore_action">복원</string>

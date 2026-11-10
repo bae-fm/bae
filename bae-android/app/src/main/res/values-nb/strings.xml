@@ -258,6 +258,8 @@
     <string name="onboarding_code_invalid">Dette er verken en gjenopprettingskode eller en invitasjon.</string>
     <string name="onboarding_restore_title">Gjenopprett biblioteket ditt</string>
     <string name="onboarding_s3_key_explanation">Dette biblioteket ligger i en S3-kompatibel bøtte. Skriv inn tilgangsnøkkelen du bruker for den.</string>
+    <string name="onboarding_s3_key_title">S3-nøkkel</string>
+    <string name="onboarding_s3_key_prompt">Skriv inn legitimasjonen for S3-bøtten.</string>
     <string name="s3_access_key_id">Tilgangsnøkkel-ID</string>
     <string name="s3_secret_access_key">Hemmelig tilgangsnøkkel</string>
     <string name="onboarding_restore_action">Gjenopprett</string>

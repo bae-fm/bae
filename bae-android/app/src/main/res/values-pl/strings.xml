@@ -272,6 +272,8 @@
     <string name="onboarding_code_invalid">To nie jest kod przywracania ani zaproszenie.</string>
     <string name="onboarding_restore_title">Przywróć swoją bibliotekę</string>
     <string name="onboarding_s3_key_explanation">Ta biblioteka jest przechowywana w zasobniku zgodnym z S3. Wpisz klucz dostępu, którego do niego używasz.</string>
+    <string name="onboarding_s3_key_title">Klucz S3</string>
+    <string name="onboarding_s3_key_prompt">Wpisz dane uwierzytelniające do zasobnika S3.</string>
     <string name="s3_access_key_id">Identyfikator klucza dostępu</string>
     <string name="s3_secret_access_key">Tajny klucz dostępu</string>
     <string name="onboarding_restore_action">Przywróć</string>

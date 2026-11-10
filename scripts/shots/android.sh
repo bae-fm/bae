@@ -100,6 +100,7 @@ RemoveLibraryFailed:remove-library-failed
 RemoveLibraryUnsent:remove-library-unsent
 RestoreCodeMasked:restore-code-masked
 RestoreCodeShown:restore-code-shown
+S3KeyDialogScene:onboarding-s3-key
 S3SetupRegionMismatch:s3-setup-region-mismatch
 SyncStatusFailed:sync-status-failed
 SyncStatusOffline:sync-status-offline

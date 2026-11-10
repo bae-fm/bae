@@ -266,6 +266,8 @@
     <string name="onboarding_code_invalid">Ovo nije kod za vraćanje ni pozivnica.</string>
     <string name="onboarding_restore_title">Vraćanje fonoteke</string>
     <string name="onboarding_s3_key_explanation">Ova je fonoteka pohranjena u S3-kompatibilnom bucketu. Unesite pristupni ključ koji za njega koristite.</string>
+    <string name="onboarding_s3_key_title">S3 ključ</string>
+    <string name="onboarding_s3_key_prompt">Unesite vjerodajnice za S3 bucket.</string>
     <string name="s3_access_key_id">ID pristupnog ključa</string>
     <string name="s3_secret_access_key">Tajni pristupni ključ</string>
     <string name="onboarding_restore_action">Vrati</string>

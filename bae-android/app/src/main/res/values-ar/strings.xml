@@ -284,6 +284,8 @@
     <string name="onboarding_code_invalid">هذا ليس رمز استرداد ولا دعوة.</string>
     <string name="onboarding_restore_title">استعادة مكتبتك</string>
     <string name="onboarding_s3_key_explanation">هذه المكتبة مخزّنة في حاوية متوافقة مع S3. أدخل مفتاح الوصول الذي تستخدمه لها.</string>
+    <string name="onboarding_s3_key_title">مفتاح S3</string>
+    <string name="onboarding_s3_key_prompt">أدخل بيانات اعتماد حاوية S3.</string>
     <string name="s3_access_key_id">معرّف مفتاح الوصول</string>
     <string name="s3_secret_access_key">مفتاح الوصول السري</string>
     <string name="onboarding_restore_action">استعادة</string>

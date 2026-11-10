@@ -264,6 +264,8 @@
     <string name="onboarding_code_invalid">Acesta nu este un cod de restaurare sau o invitație.</string>
     <string name="onboarding_restore_title">Restaurează-ți biblioteca</string>
     <string name="onboarding_s3_key_explanation">Această bibliotecă este stocată într-un bucket compatibil S3. Introdu cheia de acces pe care o folosești pentru el.</string>
+    <string name="onboarding_s3_key_title">Cheie S3</string>
+    <string name="onboarding_s3_key_prompt">Introdu datele de autentificare pentru bucketul S3.</string>
     <string name="s3_access_key_id">ID cheie de acces</string>
     <string name="s3_secret_access_key">Cheie de acces secretă</string>
     <string name="onboarding_restore_action">Restaurează</string>

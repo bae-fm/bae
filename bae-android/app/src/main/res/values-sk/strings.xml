@@ -270,6 +270,8 @@
     <string name="onboarding_code_invalid">Toto nie je kód na obnovenie ani pozvánka.</string>
     <string name="onboarding_restore_title">Obnoviť knižnicu</string>
     <string name="onboarding_s3_key_explanation">Táto knižnica je uložená v buckete kompatibilnom s S3. Zadaj prístupový kľúč, ktorý preň používaš.</string>
+    <string name="onboarding_s3_key_title">Kľúč S3</string>
+    <string name="onboarding_s3_key_prompt">Zadaj prihlasovacie údaje pre bucket S3.</string>
     <string name="s3_access_key_id">ID prístupového kľúča</string>
     <string name="s3_secret_access_key">Tajný prístupový kľúč</string>
     <string name="onboarding_restore_action">Obnoviť</string>

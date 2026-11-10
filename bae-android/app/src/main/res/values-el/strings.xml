@@ -258,6 +258,8 @@
     <string name="onboarding_code_invalid">Αυτό δεν είναι κωδικός επαναφοράς ούτε πρόσκληση.</string>
     <string name="onboarding_restore_title">Επαναφορά της βιβλιοθήκης σας</string>
     <string name="onboarding_s3_key_explanation">Αυτή η βιβλιοθήκη είναι αποθηκευμένη σε bucket συμβατό με S3. Εισαγάγετε το κλειδί πρόσβασης που χρησιμοποιείτε για αυτό.</string>
+    <string name="onboarding_s3_key_title">Κλειδί S3</string>
+    <string name="onboarding_s3_key_prompt">Εισαγάγετε τα διαπιστευτήρια για το bucket S3.</string>
     <string name="s3_access_key_id">Αναγνωριστικό κλειδιού πρόσβασης</string>
     <string name="s3_secret_access_key">Μυστικό κλειδί πρόσβασης</string>
     <string name="onboarding_restore_action">Επαναφορά</string>

@@ -254,6 +254,8 @@
     <string name="onboarding_code_invalid">これは復元コードでも招待でもありません。</string>
     <string name="onboarding_restore_title">ライブラリを復元</string>
     <string name="onboarding_s3_key_explanation">このライブラリは S3 互換のバケットに保存されています。そのバケットで使うアクセスキーを入力してください。</string>
+    <string name="onboarding_s3_key_title">S3 キー</string>
+    <string name="onboarding_s3_key_prompt">S3 バケットの認証情報を入力してください。</string>
     <string name="s3_access_key_id">アクセスキー ID</string>
     <string name="s3_secret_access_key">シークレットアクセスキー</string>
     <string name="onboarding_restore_action">復元</string>

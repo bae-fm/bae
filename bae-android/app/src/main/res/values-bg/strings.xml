@@ -260,6 +260,8 @@
     <string name="onboarding_code_invalid">Това не е код за възстановяване или покана.</string>
     <string name="onboarding_restore_title">Възстановяване на библиотеката ви</string>
     <string name="onboarding_s3_key_explanation">Тази библиотека се съхранява в S3-съвместим bucket. Въведете ключа за достъп, който използвате за него.</string>
+    <string name="onboarding_s3_key_title">S3 ключ</string>
+    <string name="onboarding_s3_key_prompt">Въведете данните за достъп до S3 bucket.</string>
     <string name="s3_access_key_id">ID на ключа за достъп</string>
     <string name="s3_secret_access_key">Таен ключ за достъп</string>
     <string name="onboarding_restore_action">Възстановяване</string>

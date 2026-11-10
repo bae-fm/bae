@@ -258,6 +258,8 @@
     <string name="onboarding_code_invalid">Tämä ei ole palautuskoodi eikä kutsu.</string>
     <string name="onboarding_restore_title">Palauta kirjastosi</string>
     <string name="onboarding_s3_key_explanation">Tämä kirjasto on S3-yhteensopivassa säilössä. Syötä sen käyttöön käyttämäsi käyttöavain.</string>
+    <string name="onboarding_s3_key_title">S3-avain</string>
+    <string name="onboarding_s3_key_prompt">Syötä S3-säilön tunnistetiedot.</string>
     <string name="s3_access_key_id">Käyttöavaimen tunnus</string>
     <string name="s3_secret_access_key">Salainen käyttöavain</string>
     <string name="onboarding_restore_action">Palauta</string>

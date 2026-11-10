@@ -105,13 +105,14 @@ internal fun CodeScreen(
     text: CodeScreenText?,
     onScan: () -> Unit,
     libraries: WelcomeLibrariesView?,
+    showsError: Boolean = true,
 ) {
     var showCodeDialog by remember { mutableStateOf(false) }
     var codeInput by remember { mutableStateOf("") }
     val savedCodes = flow.savedCodes
     CodeScreenContent(
         text = text,
-        error = flow.error,
+        error = if (showsError) flow.error else null,
         libraries = libraries,
         savedCodes = {
             if (savedCodes != null) SavedCodesSection(codes = savedCodes, onOpen = flow::openSaved)

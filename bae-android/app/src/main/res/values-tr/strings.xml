@@ -260,6 +260,8 @@
     <string name="onboarding_code_invalid">Bu bir geri yükleme kodu ya da davet değil.</string>
     <string name="onboarding_restore_title">Kitaplığınızı geri yükleyin</string>
     <string name="onboarding_s3_key_explanation">Bu kitaplık S3 uyumlu bir kovada depolanıyor. Bunun için kullandığınız erişim anahtarını girin.</string>
+    <string name="onboarding_s3_key_title">S3 anahtarı</string>
+    <string name="onboarding_s3_key_prompt">S3 kovası için kimlik bilgilerinizi girin.</string>
     <string name="s3_access_key_id">Erişim anahtarı kimliği</string>
     <string name="s3_secret_access_key">Gizli erişim anahtarı</string>
     <string name="onboarding_restore_action">Geri yükle</string>

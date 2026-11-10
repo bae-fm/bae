@@ -260,6 +260,8 @@
     <string name="onboarding_code_invalid">Das ist weder ein Wiederherstellungscode noch eine Einladung.</string>
     <string name="onboarding_restore_title">Deine Bibliothek wiederherstellen</string>
     <string name="onboarding_s3_key_explanation">Diese Bibliothek liegt in einem S3-kompatiblen Bucket. Gib den Zugriffsschlüssel ein, den du dafür verwendest.</string>
+    <string name="onboarding_s3_key_title">S3-Schlüssel</string>
+    <string name="onboarding_s3_key_prompt">Gib die Zugangsdaten für den S3-Bucket ein.</string>
     <string name="s3_access_key_id">Zugriffsschlüssel-ID</string>
     <string name="s3_secret_access_key">Geheimer Zugriffsschlüssel</string>
     <string name="onboarding_restore_action">Wiederherstellen</string>

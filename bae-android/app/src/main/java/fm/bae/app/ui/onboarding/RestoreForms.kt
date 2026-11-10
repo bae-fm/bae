@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,6 +28,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.LabeledValueRow
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.storageLocationLabel
@@ -68,8 +70,9 @@ internal class RestoreText(
 }
 
 /**
- * The person's own restore code, read: S3 asks for the bucket's access key;
- * the account providers sign in as the restore runs.
+ * The person's own restore code, read, that needs nothing typed in: the
+ * account providers sign in as the restore runs, and an S3 code holds its key.
+ * An S3 code without one asks in [S3KeyDialog].
  */
 @Composable
 internal fun RestoreForm(
@@ -88,8 +91,59 @@ internal fun RestoreForm(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        RestoreAction(needsKey = step.needsS3Key, action = text.action, onRestore = onRestore)
+        RestoreAction(needsKey = false, action = text.action, onRestore = onRestore)
     }
+}
+
+/** The access key the person has typed so far into the S3 key dialog. */
+internal class S3KeyInput(
+    accessKeyId: String = "",
+    secretAccessKey: String = "",
+) {
+    var accessKeyId by mutableStateOf(accessKeyId)
+    var secretAccessKey by mutableStateOf(secretAccessKey)
+}
+
+/**
+ * The S3 access key a restore code lacks, asked for in a dialog over the code
+ * screen: Add restores with it, Back returns to the code screen. A failed
+ * restore returns here, so the dialog shows the error.
+ */
+@Composable
+internal fun S3KeyDialog(
+    text: RestoreText,
+    keys: S3KeyInput,
+    error: DisplayError?,
+    onRestore: (BridgeS3Credentials) -> Unit,
+    onBack: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onBack,
+        title = { Text(stringResource(R.string.onboarding_s3_key_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
+                Text(stringResource(R.string.onboarding_s3_key_prompt))
+                S3KeyFields(
+                    accessKeyId = keys.accessKeyId,
+                    secretAccessKey = keys.secretAccessKey,
+                    onAccessKeyIdChange = { keys.accessKeyId = it.trim() },
+                    onSecretAccessKeyChange = { keys.secretAccessKey = it.trim() },
+                )
+                error?.let { ErrorNotice(it, look = NoticeLook.QUIET) }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onRestore(BridgeS3Credentials(keys.accessKeyId, keys.secretAccessKey)) },
+                enabled = keys.accessKeyId.isNotEmpty() && keys.secretAccessKey.isNotEmpty(),
+            ) {
+                Text(stringResource(text.action))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+        },
+    )
 }
 
 /**

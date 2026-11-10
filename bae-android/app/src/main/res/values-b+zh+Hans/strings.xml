@@ -254,6 +254,8 @@
     <string name="onboarding_code_invalid">这不是恢复码，也不是邀请。</string>
     <string name="onboarding_restore_title">恢复你的库</string>
     <string name="onboarding_s3_key_explanation">此库存储在兼容 S3 的存储桶中。请输入你用于该存储桶的访问密钥。</string>
+    <string name="onboarding_s3_key_title">S3 密钥</string>
+    <string name="onboarding_s3_key_prompt">请输入 S3 存储桶的凭据。</string>
     <string name="s3_access_key_id">访问密钥 ID</string>
     <string name="s3_secret_access_key">私有访问密钥</string>
     <string name="onboarding_restore_action">恢复</string>
