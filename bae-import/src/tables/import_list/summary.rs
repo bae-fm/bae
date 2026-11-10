@@ -5,7 +5,8 @@
 //! makes of a list on its own: where a candidate would be revealed, and the
 //! first one being identified.
 
-use super::order::{sorted_terms, tab_of, unit_join, uploading_cte, Item};
+use super::order::{sorted_terms, unit_join, uploading_cte, Item};
+use super::views::tab_of;
 use super::*;
 use crate::list::{ImportCandidateListLocation, NarrowedCount};
 use crate::RelativeFolder;

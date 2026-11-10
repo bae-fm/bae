@@ -189,10 +189,10 @@ fn list_row(sql: &impl coven::SqlRead, id: ImportListId) -> Result<Option<ListRo
     Ok(Some(ListRow {
         id,
         view: ImportListView {
-            tab: order::tab_of(&tab)?,
+            tab: views::tab_of(&tab)?,
             filter_text,
             pending_filter: pending_filter_of(&pending_filter)?,
-            order: order::order_of(&order)?,
+            order: views::order_of(&order)?,
         },
         view_revision: to_u64(view_revision, "a list's view revision")?,
         selection_revision: to_u64(selection_revision, "a list's selection revision")?,

@@ -3,7 +3,8 @@
 //! folding its groups. Each is one write the list's live query answers, and
 //! each answers with the view revision the read that reflects it carries.
 
-use super::order::{order_column, tab_column, Shown};
+use super::order::Shown;
+use super::views::{order_column, tab_column};
 use super::*;
 use crate::FolderReleaseDecisionKey;
 

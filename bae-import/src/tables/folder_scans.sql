@@ -141,8 +141,10 @@ BEGIN
     WHERE watched_folder_path = NEW.watched_folder_path;
 END;
 
--- The release a grouping reads as one, which goes with the grouping.
-CREATE INDEX IF NOT EXISTS idx_scan_candidate_grouping ON scan_candidate (grouping_key);
+-- The release a grouping reads as one, which goes with the grouping. A
+-- scanned release with no grouping has no entry.
+CREATE INDEX IF NOT EXISTS idx_scan_candidate_grouping ON scan_candidate (grouping_key)
+    WHERE grouping_key IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_content_hash
     ON scan_candidate (content_hash) WHERE content_hash IS NOT NULL;

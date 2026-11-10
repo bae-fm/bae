@@ -3,7 +3,7 @@
 //! The window's rows, the selection and the pane read it alike, so all of them
 //! say the same.
 
-use super::order::tab_of;
+use super::views::tab_of;
 use super::*;
 use crate::{
     CandidateActionBasis, ListedRelease, NeedsYouReason, PendingStanding, StoredLookup,

@@ -595,3 +595,32 @@ async fn the_folder_files_reader_is_found_by_its_index() {
         "the reader is found by its index: {plan:?}"
     );
 }
+
+/// A grouping that goes finds the release it reads as one by the grouping
+/// index, which holds no scanned release outside a grouping: removing it
+/// reads no other release.
+#[tokio::test]
+async fn a_grouping_going_finds_its_release_by_its_index() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    // Explaining the delete runs none of it.
+    let (root, program) = db
+        .call(|sql| {
+            let root = sql.query_row(
+                "SELECT rootpage FROM sqlite_schema WHERE name = 'idx_scan_candidate_grouping'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )?;
+            let program = sql.query(
+                "EXPLAIN DELETE FROM release_grouping WHERE key = ?",
+                [b"grouping".to_vec()],
+                |row| Ok((row.get::<_, String>(1)?, row.get::<_, i64>(3)?)),
+            )?;
+            Ok((root, program))
+        })
+        .await
+        .unwrap();
+    assert!(
+        program.iter().any(|(opcode, page)| opcode == "OpenRead" && *page == root),
+        "the release is found by the grouping index (root {root}): {program:?}"
+    );
+}

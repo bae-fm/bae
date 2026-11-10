@@ -128,33 +128,33 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
 -- A release by its key alone, as a standing or a selection names it.
 CREATE INDEX IF NOT EXISTS import_list_placement_by_key ON import_list_placement (key);
 
--- A group's header and members.
-CREATE INDEX IF NOT EXISTS import_list_placement_by_group
-    ON import_list_placement (watched_folder_path, group_folder);
-
 -- The release at a folder, and those nested below it.
 CREATE INDEX IF NOT EXISTS import_list_placement_by_folder
     ON import_list_placement (watched_folder_path, folder);
 
--- Each tab's rows in each order the list shows them in, for Done and
--- Skipped, which hold no group; undated rows come last either way. Found's
--- groups are read in runs instead (below).
+-- Done's and Skipped's rows, which hold no group, in each order the list
+-- shows them in; undated rows come last either way. Found's rows are read in
+-- runs instead (below), so these hold none of them.
 CREATE INDEX IF NOT EXISTS import_list_newest_first ON import_list_placement (
     tab, unit_date IS NULL, unit_date DESC, root_position, watched_folder_path, unit_path,
     item = 'group' DESC, own_date IS NULL, own_date DESC,
-    display_path COLLATE natural_order, key);
+    display_path COLLATE natural_order, key)
+    WHERE tab <> 'pending';
 
 CREATE INDEX IF NOT EXISTS import_list_oldest_first ON import_list_placement (
     tab, unit_date IS NULL, unit_date, root_position, watched_folder_path, unit_path,
-    item = 'group' DESC, own_date IS NULL, own_date, display_path COLLATE natural_order, key);
+    item = 'group' DESC, own_date IS NULL, own_date, display_path COLLATE natural_order, key)
+    WHERE tab <> 'pending';
 
 CREATE INDEX IF NOT EXISTS import_list_path_ascending ON import_list_placement (
     tab, root_position, watched_folder_path, unit_path, item = 'group' DESC,
-    display_path COLLATE natural_order, key);
+    display_path COLLATE natural_order, key)
+    WHERE tab <> 'pending';
 
 CREATE INDEX IF NOT EXISTS import_list_path_descending ON import_list_placement (
     tab, root_position DESC, watched_folder_path DESC, unit_path DESC, item = 'group' DESC,
-    display_path COLLATE natural_order DESC, key DESC);
+    display_path COLLATE natural_order DESC, key DESC)
+    WHERE tab <> 'pending';
 
 -- Found reads each order in three runs, so a member sorts in its header's
 -- place and no read passes a folded group's members: the headers and the

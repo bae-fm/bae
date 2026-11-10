@@ -14,6 +14,7 @@
 //! order. The first part is the outbox's handful; the second is read by its
 //! index like any other tab.
 
+use super::views::tab_column;
 use super::*;
 use crate::{FolderReleaseDecisionKey, ImportListOrder, TriageTab};
 use bae_store::list_windows::OrderKey;
@@ -66,44 +67,6 @@ impl ItemKey {
     /// The key as text for the log.
     pub(super) fn shown(&self) -> String {
         crate::CandidateKey::from(self.key.clone()).to_string()
-    }
-}
-
-/// The tab as the placement's `tab` column holds it.
-pub(super) fn tab_column(tab: TriageTab) -> &'static str {
-    match tab {
-        TriageTab::Pending => "pending",
-        TriageTab::Done => "done",
-        TriageTab::Skipped => "skipped",
-    }
-}
-
-pub(super) fn tab_of(column: &str) -> Result<TriageTab, DbError> {
-    match column {
-        "pending" => Ok(TriageTab::Pending),
-        "done" => Ok(TriageTab::Done),
-        "skipped" => Ok(TriageTab::Skipped),
-        other => Err(DbError::unreadable("an import list's stored tab", other)),
-    }
-}
-
-/// The order as the list's `list_order` column holds it.
-pub(super) fn order_column(order: ImportListOrder) -> &'static str {
-    match order {
-        ImportListOrder::NewestFirst => "newest_first",
-        ImportListOrder::OldestFirst => "oldest_first",
-        ImportListOrder::PathAscending => "path_ascending",
-        ImportListOrder::PathDescending => "path_descending",
-    }
-}
-
-pub(super) fn order_of(column: &str) -> Result<ImportListOrder, DbError> {
-    match column {
-        "newest_first" => Ok(ImportListOrder::NewestFirst),
-        "oldest_first" => Ok(ImportListOrder::OldestFirst),
-        "path_ascending" => Ok(ImportListOrder::PathAscending),
-        "path_descending" => Ok(ImportListOrder::PathDescending),
-        other => Err(DbError::unreadable("import_list.list_order", other)),
     }
 }
 
@@ -461,9 +424,14 @@ impl<'a> Items<'a> {
     /// place of as `unit`.
     fn part(&self, part: Part) -> PartSql {
         let (source, condition) = self.source();
-        let join = match self.tab {
-            TriageTab::Pending => unit_join("i", "unit"),
-            TriageTab::Done | TriageTab::Skipped => String::new(),
+        // Done's and Skipped's rows are read off the order indexes, which hold
+        // no Found row; naming that lets SQLite read them, since it can't tell
+        // from the bound tab.
+        let (join, condition) = match self.tab {
+            TriageTab::Pending => (unit_join("i", "unit"), condition.to_string()),
+            TriageTab::Done | TriageTab::Skipped => {
+                (String::new(), format!("{condition} AND i.tab <> 'pending'"))
+            }
         };
         let order = self.part_order(part).clause();
         match part {
