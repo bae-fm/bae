@@ -371,13 +371,16 @@ merge.
 writes the credit, so nothing landing in between can make it wrong:
 
 1. A credit carrying a MusicBrainz or Discogs id is the library artist holding
-   that id, followed through any merge. One id is one artist: where several
-   hold it, the write merges them into the one with the smallest id, which
-   takes the ids and sort name it lacks from the others, and the credit
-   names it. Where the credit's two ids disagree, naming two artists or an
-   artist that holds a different id of the other catalog, the MusicBrainz id
-   decides: the credit's Discogs id is dropped, and the credit goes by its
-   MusicBrainz id alone.
+   that id, followed through any merge, or the new artist an earlier credit
+   of the same write makes holding it. One id is one artist: where several
+   library artists hold it, the write merges them into the one with the
+   smallest id, which takes the ids and sort name it lacks from the others,
+   and the credit names it. Where the credit's two ids disagree, naming two
+   artists or an artist that holds a different id of the other catalog, the
+   MusicBrainz id decides: the credit's Discogs id is dropped, and the credit
+   goes by its MusicBrainz id alone. MusicBrainz' and Discogs' Various
+   Artists entries are one artist: a credit naming one by its id alone, which
+   no artist holds, goes by both.
 2. Otherwise it is the one library artist whose folded name matches and whose
    ids don't contradict the credit. The folding ignores case, accents and
    spacing, and takes a word-final sigma (ς) as σ.
@@ -401,17 +404,24 @@ name.
   artist holding a different Discogs id is that artist, which keeps its own
   Discogs id. A credit whose name alone matches an artist holding a
   different id is not that artist (rule 2).
-- **Credits that disagree with each other.** The write is refused and
-  nothing of it lands (`ConflictingSourceIds`, naming the credit) where it
-  would give one artist two ids of one catalog: two of its credits share one
-  catalog id and carry different ids of the other, or a credit names
-  Discogs' Various Artists entry by that id alone while the artist holding
-  MusicBrainz' Various Artists id holds another Discogs id. A catalog's
-  credit carries one catalog's id and a typed credit none, so only MCP's
+- **Credits that disagree with each other.** A write's credits meet the new
+  artists its earlier credits make by rule 1, as they meet library artists,
+  and no write is refused for its ids. Two credits sharing a MusicBrainz id
+  and carrying different Discogs ids are one artist, holding the first's
+  Discogs id; two sharing a Discogs id and carrying different MusicBrainz
+  ids are two, the second going by its MusicBrainz id alone. A credit whose
+  ids name a new artist of the write's and another artist makes them one
+  where neither holds an id contradicting the credit or the other, and
+  otherwise goes by its MusicBrainz id. A catalog's credit carries one
+  catalog's id and a typed credit none, so only MCP's
   `release_metadata_update`, whose credits carry the ids its caller wrote,
-  can make either: the first in one edit, the second by an edit that gives
-  the Various Artists artist another Discogs id, after which every write
-  crediting Discogs' entry is refused.
+  brings these about.
+- **Various Artists holding another id.** A credit naming Discogs' Various
+  Artists entry alone, which no artist holds, is the artist holding
+  MusicBrainz' Various Artists id, even one an edit gave another Discogs id,
+  which it keeps. A credit naming MusicBrainz' entry alone, which no artist
+  holds, where the artist holding Discogs' entry holds another MusicBrainz
+  id, is not that artist: it goes by its MusicBrainz id (rule 1).
 
 **Record labels.** A label row holds a name, its name key, and the label's
 MusicBrainz and Discogs ids where known. A release's label row names one, or
@@ -5472,7 +5482,6 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `ChangedMeanwhile` | asks again, on what now stands: what a change acted on changed before it was written, and nothing was written (a release, album or file deleted before a change of it, an album or release a deletion was planned against, a release whose tracks came or went under an edit, a cover or artist image replaced again, a release picked as its album's primary that moved to another album, an artist given a printed name that was deleted or merged, an artist a credit picked that left the library, a candidate or the watched folders that changed under a change to them, a cancel that came after the import began writing) |
 | `InvalidEdit` | fixes what they typed, as the line says: an album title, an artist, an artist's name, a year |
 | `WatchedFolderOverlap` | watches another folder: the one they asked for holds, or lies in, a watched folder, and the detail names both |
-| `ConflictingSourceIds` | reads which artist the detail names: the write's credits would give one artist two ids of one catalog, and nothing was written. Only ids an MCP `release_metadata_update` wrote bring it about (§2.3, "Credits that disagree with each other"); MCP's caller gets it as an `import` error, "artist '…' has conflicting source IDs" |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |

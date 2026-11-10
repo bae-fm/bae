@@ -580,8 +580,9 @@ mod release_album {
 
 /// An MCP metadata edit hands over its credits' catalog ids as the caller
 /// wrote them, so its credits can disagree about one artist where a catalog's
-/// never do: the write is refused and nothing of it lands.
-mod conflicting_source_ids {
+/// never do. The MusicBrainz id decides, as for any credit, and the edit
+/// lands.
+mod disagreeing_source_ids {
     use super::*;
     use bae_catalogs::credits::ArtistCredit;
     use bae_import::{ArtistAssignment, Credited, ReleaseUserEdit, TrackArtistAssignments};
@@ -653,20 +654,28 @@ mod conflicting_source_ids {
             .await
     }
 
-    async fn album_title(library: &TestLibrary, release_id: &str) -> String {
+    /// The title of the release's album, and the artist of each of its
+    /// credits.
+    async fn album(
+        library: &TestLibrary,
+        release_id: &str,
+    ) -> (String, Vec<bae_records::DbArtist>) {
         let manager = library.manager();
         let album_id = manager.get_album_id_for_release(release_id).await.unwrap();
-        manager.get_album_by_id(&album_id).await.unwrap().expect("the release's album").title
+        let title =
+            manager.get_album_by_id(&album_id).await.unwrap().expect("the release's album").title;
+        let credits = manager.get_artists_for_album(&album_id).await.unwrap();
+        (title, credits.into_iter().map(|credit| credit.artist).collect())
     }
 
-    /// Two credits sharing a MusicBrainz id and naming two Discogs ids are
-    /// one artist with two Discogs ids, which no write records.
+    /// Two credits sharing a MusicBrainz id are one artist, which keeps the
+    /// Discogs id the first gives it; the second's is dropped.
     #[tokio::test(flavor = "multi_thread")]
-    async fn two_credits_naming_one_artist_by_different_discogs_ids_are_refused() {
+    async fn two_credits_naming_one_artist_by_different_discogs_ids_keep_the_first() {
         let (library, imported, automation) = imported_release().await;
         let musicbrainz = "00000000-0000-4000-8000-000000000001";
 
-        let refused = update(
+        update(
             &automation,
             &imported.release_id,
             "Edited Title",
@@ -676,18 +685,33 @@ mod conflicting_source_ids {
             ],
         )
         .await
-        .expect_err("the credits disagree about the artist's Discogs id");
+        .expect("the MusicBrainz id decides which artist both credits are");
 
-        assert_eq!(refused.kind(), "import");
-        assert_eq!(refused.message(), "artist 'Artist Name' has conflicting source IDs");
-        assert_eq!(album_title(&library, &imported.release_id).await, "Album Title");
+        let (title, artists) = album(&library, &imported.release_id).await;
+        assert_eq!(title, "Edited Title");
+        let ids: Vec<_> = artists
+            .iter()
+            .map(|artist| {
+                (
+                    artist.id.as_str(),
+                    artist.musicbrainz_artist_id.as_deref(),
+                    artist.discogs_artist_id.as_deref(),
+                )
+            })
+            .collect();
+        let artist = artists[0].id.as_str();
+        assert_eq!(
+            ids,
+            [(artist, Some(musicbrainz), Some("1001")), (artist, Some(musicbrainz), Some("1001"))]
+        );
     }
 
     /// An edit that gives the library's Various Artists artist another
-    /// Discogs id than Discogs' own Various Artists entry leaves every later
-    /// credit of that entry refused.
+    /// Discogs id leaves it the artist a later credit of Discogs' own Various
+    /// Artists entry names: the two entries are one artist, whose MusicBrainz
+    /// id decides, and it keeps the Discogs id it holds.
     #[tokio::test(flavor = "multi_thread")]
-    async fn a_various_artists_artist_holding_another_discogs_id_refuses_discogs_various_artists() {
+    async fn discogs_various_artists_is_the_various_artists_artist_holding_another_discogs_id() {
         let (library, imported, automation) = imported_release().await;
         let various = &bae_records::VARIOUS_ARTISTS;
 
@@ -699,18 +723,21 @@ mod conflicting_source_ids {
         )
         .await
         .expect("a new artist holds the edit's two ids");
-        let refused = update(
+        let (_, first) = album(&library, &imported.release_id).await;
+        update(
             &automation,
             &imported.release_id,
             "Second Edit",
             vec![credit("Various Artists", None, Some(various.discogs))],
         )
         .await
-        .expect_err("the Various Artists artist holds another Discogs id");
+        .expect("Discogs' Various Artists entry names the Various Artists artist");
 
-        assert_eq!(refused.kind(), "import");
-        assert_eq!(refused.message(), "artist 'Various Artists' has conflicting source IDs");
-        assert_eq!(album_title(&library, &imported.release_id).await, "First Edit");
+        let (title, artists) = album(&library, &imported.release_id).await;
+        assert_eq!(title, "Second Edit");
+        assert_eq!(artists, first);
+        assert_eq!(artists[0].musicbrainz_artist_id.as_deref(), Some(various.musicbrainz));
+        assert_eq!(artists[0].discogs_artist_id.as_deref(), Some("1001"));
     }
 }
 

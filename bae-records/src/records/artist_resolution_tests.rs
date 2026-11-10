@@ -258,6 +258,125 @@ async fn a_discogs_artist_holding_another_musicbrainz_id_leaves_the_credit_its_m
     assert_eq!(resolved.inserts[0].discogs_artist_id, None);
 }
 
+/// Two credits of one write sharing a MusicBrainz id are one artist, which
+/// keeps the Discogs id the first gave it: the second credit's MusicBrainz id
+/// names that artist, and its Discogs id that disagrees is dropped.
+#[tokio::test]
+async fn credits_of_one_write_sharing_a_musicbrainz_id_keep_the_first_discogs_id() {
+    let (db, _tmp) = library().await;
+
+    let resolved = resolve(
+        &db,
+        &[
+            credit("first", "Artist Name", Some("discogs-1"), Some("mb-1")),
+            credit("second", "Artist Name", Some("discogs-2"), Some("mb-1")),
+        ],
+    )
+    .await;
+
+    let identity = crate::identity::artist_id(Some("mb-1"), None).unwrap();
+    assert_eq!(resolved.ids, [identity.as_str(), identity.as_str()]);
+    assert_eq!(resolved.inserts.len(), 1);
+    assert_eq!(resolved.inserts[0].discogs_artist_id.as_deref(), Some("discogs-1"));
+}
+
+/// Two credits of one write sharing a Discogs id and carrying two MusicBrainz
+/// ids are two artists: the second goes by its MusicBrainz id alone.
+#[tokio::test]
+async fn credits_of_one_write_sharing_a_discogs_id_with_two_musicbrainz_ids_are_two_artists() {
+    let (db, _tmp) = library().await;
+
+    let resolved = resolve(
+        &db,
+        &[
+            credit("first", "Artist Name", Some("discogs-1"), Some("mb-1")),
+            credit("second", "Artist Name", Some("discogs-1"), Some("mb-2")),
+        ],
+    )
+    .await;
+
+    let first = crate::identity::artist_id(Some("mb-1"), None).unwrap();
+    let second = crate::identity::artist_id(Some("mb-2"), None).unwrap();
+    assert_eq!(resolved.ids, [first.as_str(), second.as_str()]);
+    let held: Vec<_> = resolved
+        .inserts
+        .iter()
+        .map(|artist| {
+            (artist.musicbrainz_artist_id.as_deref(), artist.discogs_artist_id.as_deref())
+        })
+        .collect();
+    assert_eq!(held, [(Some("mb-1"), Some("discogs-1")), (Some("mb-2"), None)]);
+}
+
+/// A credit whose Discogs id names a library artist and whose MusicBrainz id
+/// names an artist this write makes, holding another Discogs id, is the one
+/// this write makes; the library artist keeps its ids.
+#[tokio::test]
+async fn a_credit_naming_a_new_artist_by_musicbrainz_and_a_library_artist_by_discogs_is_the_new_one(
+) {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "by-discogs", "Artist Name", Some("discogs-1"), None).await;
+
+    let resolved = resolve(
+        &db,
+        &[
+            credit("first", "Artist Name", Some("discogs-2"), Some("mb-1")),
+            credit("second", "Artist Name", Some("discogs-1"), Some("mb-1")),
+        ],
+    )
+    .await;
+
+    let identity = crate::identity::artist_id(Some("mb-1"), None).unwrap();
+    assert_eq!(resolved.ids, [identity.as_str(), identity.as_str()]);
+    assert_eq!(resolved.inserts.len(), 1);
+    assert_eq!(resolved.inserts[0].discogs_artist_id.as_deref(), Some("discogs-2"));
+    assert!(resolved.external_id_updates.is_empty(), "{:?}", resolved.external_id_updates);
+    assert!(resolved.merges.is_empty());
+}
+
+/// A credit naming Discogs' Various Artists entry alone is the artist holding
+/// MusicBrainz' Various Artists id, which keeps the other Discogs id it holds.
+#[tokio::test]
+async fn discogs_various_artists_is_the_musicbrainz_one_holding_another_discogs_id() {
+    let (db, _tmp) = library().await;
+    let various = &crate::VARIOUS_ARTISTS;
+    add_artist(&db, "various", "Various Artists", Some("discogs-1"), Some(various.musicbrainz))
+        .await;
+
+    let resolved =
+        resolve(&db, &[credit("credit", "Various Artists", Some(various.discogs), None)]).await;
+
+    assert_eq!(resolved.ids, ["various"]);
+    assert!(resolved.inserts.is_empty());
+    assert!(
+        resolved
+            .external_id_updates
+            .iter()
+            .all(|(_, artist)| artist.discogs_artist_id.as_deref() != Some(various.discogs)),
+        "{:?}",
+        resolved.external_id_updates
+    );
+}
+
+/// A credit naming MusicBrainz' Various Artists entry alone, where the
+/// artist holding Discogs' entry holds another MusicBrainz id, goes by its
+/// MusicBrainz id: a new artist.
+#[tokio::test]
+async fn musicbrainz_various_artists_is_not_a_discogs_one_holding_another_musicbrainz_id() {
+    let (db, _tmp) = library().await;
+    let various = &crate::VARIOUS_ARTISTS;
+    add_artist(&db, "various", "Various Artists", Some(various.discogs), Some("mb-1")).await;
+
+    let resolved =
+        resolve(&db, &[credit("credit", "Various Artists", None, Some(various.musicbrainz))]).await;
+
+    let identity = crate::identity::artist_id(Some(various.musicbrainz), None).unwrap();
+    assert_eq!(resolved.ids, [identity.as_str()]);
+    assert_eq!(resolved.inserts.len(), 1);
+    assert_eq!(resolved.inserts[0].discogs_artist_id, None);
+    assert!(resolved.external_id_updates.is_empty(), "{:?}", resolved.external_id_updates);
+}
+
 /// One catalog id is one artist: two library artists holding it are merged
 /// into the smaller id, which the credit names and which takes the other's
 /// ids where it has none.
