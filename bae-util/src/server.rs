@@ -182,6 +182,11 @@ where
         S::IntoFuture: Send + 'static,
         Err: Display + Send,
     {
+        // Held from before the task exists until `Running` is stored: a serve
+        // future that fails at once records its stop through the same lock, so
+        // the stop lands after `Running` and replaces it, never the reverse.
+        // Nothing awaits while it is held.
+        let mut state = self.inner.lock().await;
         let cancellation = CancellationToken::new();
         let serving = serve(&cancellation).into_future();
 
@@ -215,7 +220,7 @@ where
         );
 
         let status = ServerStatus::Running { url: url.clone() };
-        *self.inner.lock().await = ServerState::Running { identity, url, cancellation, task };
+        *state = ServerState::Running { identity, url, cancellation, task };
         status
     }
 }
