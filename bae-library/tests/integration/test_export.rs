@@ -135,65 +135,71 @@ async fn export_track_from_cloud_only_release() {
     assert_eq!(exported_pcm.samples, original_pcm.samples);
 }
 
-/// The track-save filename suggestion renders the *selected* preset's token
-/// pattern: two presets with different patterns give different stems for the
-/// same track. DB-only — no audio or cloud read.
+/// The one filename pattern names every file a save writes, whatever the
+/// format: a single track's suggested name and each file of a release save in
+/// FLAC and in MP3 come from it, and setting the pattern changes all of them.
+/// The suggestion is DB-only — no audio or cloud read.
 #[tokio::test]
-async fn save_track_suggested_name_uses_the_preset_tokens() {
+async fn one_filename_pattern_names_every_format() {
     bae_util::test_logs::install();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "Track Two");
     let release_id = import_unknown_local(&f, &album_dir).await;
     let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
+    let manager = f.library.manager();
 
-    let mut presets = f.library.manager().save_presets().await.unwrap();
-    presets.push(SavePreset {
-        id: "title-only".to_string(),
-        name: "Title only".to_string(),
-        codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
-        filename_tokens: vec![SaveFilenameToken::Title],
-        pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
-        applies_to_track: true,
-        applies_to_release: false,
-        embed_cover: true,
-    });
-    presets.push(SavePreset {
-        id: "num-title".to_string(),
-        name: "Number and title".to_string(),
-        codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
-        filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
-        pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
-        applies_to_track: true,
-        applies_to_release: false,
-        embed_cover: true,
-    });
-    f.library.manager().set_save_presets(presets).await.unwrap();
+    let saved_names = |preset: SavePreset, tokens: Vec<SaveFilenameToken>| {
+        let (f, release_id) = (&f, &release_id);
+        async move {
+            let target = f.temp_path().join(format!("out-{}-{}", preset.id, tokens.len()));
+            fs::create_dir_all(&target).unwrap();
+            f.library
+                .manager()
+                .export_release(
+                    release_id,
+                    &target,
+                    OutputKind::Save { preset, filename_tokens: tokens },
+                )
+                .await
+                .expect("the release save succeeds");
+            let folder = fs::read_dir(&target).unwrap().next().unwrap().unwrap().path();
+            let mut names: Vec<String> = fs::read_dir(folder)
+                .unwrap()
+                .map(|entry| entry.unwrap().file_name().to_string_lossy().to_string())
+                .filter(|name| name != ".bae-output")
+                .collect();
+            names.sort();
+            names
+        }
+    };
+    let presets = manager.save_presets().await.unwrap();
+    let flac = presets.iter().find(|preset| preset.id == "flac").unwrap().clone();
+    let mp3 = presets.iter().find(|preset| preset.id == "mp3").unwrap().clone();
 
-    let title_only = f
-        .library
-        .manager()
-        .save_track_suggested_name(&tracks[0].id, "title-only")
-        .await
-        .expect("title-only preset renders a stem");
-    let num_title = f
-        .library
-        .manager()
-        .save_track_suggested_name(&tracks[0].id, "num-title")
-        .await
-        .expect("num-title preset renders a stem");
-
-    assert_eq!(title_only, "Track One");
-    assert_ne!(title_only, num_title, "a different token pattern must yield a different stem");
-    assert!(
-        num_title.contains("Track One"),
-        "the number-and-title stem still contains the title: {num_title}"
+    // A new library names files by track number, then title.
+    let default_tokens = manager.preferences().await.unwrap().save_filename_tokens;
+    assert_eq!(default_tokens, vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]);
+    assert_eq!(manager.save_track_suggested_name(&tracks[0].id).await.unwrap(), "01 Track One");
+    assert_eq!(
+        saved_names(flac.clone(), default_tokens.clone()).await,
+        vec!["01 Track One.flac", "01 Track Two.flac"]
+    );
+    assert_eq!(
+        saved_names(mp3.clone(), default_tokens).await,
+        vec!["01 Track One.mp3", "01 Track Two.mp3"]
     );
 
-    // An unknown preset id can't back a track suggestion.
-    let err = f.library.manager().save_track_suggested_name(&tracks[0].id, "no-such-preset").await;
-    assert!(err.is_err(), "an unknown preset id is rejected");
+    // Set once, the new pattern names a track's suggestion and both formats'
+    // release saves.
+    manager.set_save_filename_tokens(vec![SaveFilenameToken::Title]).await.unwrap();
+    let tokens = manager.preferences().await.unwrap().save_filename_tokens;
+    assert_eq!(tokens, vec![SaveFilenameToken::Title]);
+    assert_eq!(manager.save_track_suggested_name(&tracks[0].id).await.unwrap(), "Track One");
+    assert_eq!(saved_names(flac, tokens.clone()).await, vec!["Track One.flac", "Track Two.flac"]);
+    assert_eq!(saved_names(mp3, tokens).await, vec!["Track One.mp3", "Track Two.mp3"]);
 }
 
 /// A save reads the cover only when the preset embeds: with art on the
@@ -274,7 +280,6 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
         codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
-        filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
         pregap_placement: SavePregapPlacement::SingleFileWithCue,
         applies_to_track: false,
         applies_to_release: true,
@@ -288,7 +293,11 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     fs::create_dir_all(&target).unwrap();
     f.library
         .manager()
-        .export_release(&release_id, &target, OutputKind::Save { preset: image_preset })
+        .export_release(
+            &release_id,
+            &target,
+            OutputKind::Save { preset: image_preset, filename_tokens: default_tokens() },
+        )
         .await
         .expect("single-file CUE release save must succeed");
 
@@ -357,7 +366,11 @@ async fn a_release_image_is_named_as_its_folder_is() {
     fs::create_dir_all(&target).unwrap();
     f.library
         .manager()
-        .export_release(&release_id, &target, OutputKind::Save { preset: image_preset })
+        .export_release(
+            &release_id,
+            &target,
+            OutputKind::Save { preset: image_preset, filename_tokens: default_tokens() },
+        )
         .await
         .expect("the release image saves");
 
@@ -442,8 +455,7 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
     bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track Title");
     bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "track title");
     let release_id = import_unknown_local(&f, &album_dir).await;
-    let mut preset = flac_save_preset("titles", SavePregapPlacement::AppendToPreviousExceptHtoa);
-    preset.filename_tokens = vec![SaveFilenameToken::Title];
+    let preset = flac_save_preset("titles", SavePregapPlacement::AppendToPreviousExceptHtoa);
     let mut presets = f.library.manager().save_presets().await.unwrap();
     presets.push(preset.clone());
     f.library.manager().set_save_presets(presets).await.unwrap();
@@ -453,7 +465,11 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
     let error = f
         .library
         .manager()
-        .export_release(&release_id, &target, OutputKind::Save { preset })
+        .export_release(
+            &release_id,
+            &target,
+            OutputKind::Save { preset, filename_tokens: vec![SaveFilenameToken::Title] },
+        )
         .await
         .expect_err("two tracks written at one path fail the save");
 
@@ -493,13 +509,17 @@ async fn export_release_missing_file_is_hard_error() {
     );
 }
 
+/// The pattern a new library starts with.
+fn default_tokens() -> Vec<SaveFilenameToken> {
+    vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
+}
+
 /// A release save preset over `placement`, FLAC at the source depth.
 fn flac_save_preset(id: &str, placement: SavePregapPlacement) -> SavePreset {
     SavePreset {
         id: id.to_string(),
         name: id.to_string(),
         codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
-        filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
         pregap_placement: placement,
         applies_to_track: false,
         applies_to_release: true,
@@ -525,7 +545,11 @@ async fn peak_sources_open_saving(
     let sampler = bae_util::open_files_peak::OpenFilesPeak::start(source_dir);
     f.library
         .manager()
-        .export_release(release_id, &target, OutputKind::Save { preset })
+        .export_release(
+            release_id,
+            &target,
+            OutputKind::Save { preset, filename_tokens: default_tokens() },
+        )
         .await
         .expect("the release save succeeds");
     let peak = sampler.finish();

@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The export filename pattern editor: reorderable token chips and an "Add:"
+/// The filename pattern editor for Save as…: reorderable token chips and an "Add:"
 /// row of unused tokens.
 struct FilenameTokenEditor: View {
     let tokens: [BridgeSaveFilenameToken]
@@ -171,15 +171,12 @@ extension BridgeSaveFilenameToken {
         self = token
     }
 
-    /// The settings preview filename for a pattern; an empty pattern falls back
-    /// to the title, as the exporter does.
-    static func previewFilename(
-        tokens: [Self],
-        fileExtension: String
-    ) -> String {
+    /// The settings preview of a pattern's file name, without the extension,
+    /// which the format gives; an empty pattern falls back to the title, as
+    /// the exporter does.
+    static func previewStem(tokens: [Self]) -> String {
         let stem = tokens.map(\.sampleValue).joined(separator: " ")
-        return
-            "\(stem.isEmpty ? Self.title.sampleValue : stem).\(fileExtension)"
+        return stem.isEmpty ? Self.title.sampleValue : stem
     }
 }
 

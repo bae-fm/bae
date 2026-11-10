@@ -35,9 +35,6 @@ struct SavePresetEditor: View {
                         )
                     }
                 }
-                Section("File naming") {
-                    filenameGroup
-                }
                 Section {
                     coverRow
                     scopeRow
@@ -186,25 +183,6 @@ struct SavePresetEditor: View {
         .labelsHidden()
     }
 
-    private var filenameGroup: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            FilenameTokenEditor(
-                tokens: preset.filenameTokens,
-                setTokens: { tokens in
-                    var changed = preset
-                    changed.filenameTokens = tokens
-                    update(changed)
-                }
-            )
-            Text(
-                "Preview: \(Text(previewFilename).monospaced())"
-            )
-            .fieldNote()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .presetEditorRowInsets()
-    }
-
     private var scopeRow: some View {
         LabeledContent("Show in Save as… for") {
             HStack(spacing: ThemeSpace.edge) {
@@ -229,13 +207,6 @@ struct SavePresetEditor: View {
                 changed.embedCover = enabled
                 update(changed)
             }
-        )
-    }
-
-    private var previewFilename: String {
-        BridgeSaveFilenameToken.previewFilename(
-            tokens: preset.filenameTokens,
-            fileExtension: preset.codec.fileExtension
         )
     }
 

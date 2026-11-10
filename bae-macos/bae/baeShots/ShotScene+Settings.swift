@@ -5,7 +5,8 @@ import SwiftUI
 
 extension ShotScene {
     /// Settings panes: Playback with pausing between sides on, so its
-    /// countdown shows under the switch; Casting on, with the receivers it
+    /// countdown shows under the switch; Formats, with the file names pattern
+    /// at its bottom; Casting on, with the receivers it
     /// found and still looking for the first; and the Library tab of a synced
     /// library, one whose sync failed, and one only on this Mac; then the Sync
     /// page in each state the boards draw.
@@ -31,6 +32,17 @@ extension ShotScene {
             "settings-casting-looking",
             receivers: BridgeCastReceiverList(casting: nil, found: [])
         ),
+        ShotScene(
+            id: "settings-formats",
+            size: CGSize(width: 500, height: 640)
+        ) {
+            ShotStage(
+                FormatsSettingsTab()
+                    .environment(PreviewData.configStore())
+                    .environment(Outputs.stub())
+                    .environment(UiStore())
+            )
+        },
         transfersSettings("settings-transfers", uploadsPaused: false),
         transfersSettings(
             "settings-transfers-uploads-paused",

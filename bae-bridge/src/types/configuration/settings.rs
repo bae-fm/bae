@@ -64,7 +64,6 @@ pub struct BridgeSavePreset {
     pub id: String,
     pub name: String,
     pub codec: BridgeSaveCodec,
-    pub filename_tokens: Vec<BridgeSaveFilenameToken>,
     pub pregap_placement: BridgeSavePregapPlacement,
     pub applies_to_track: bool,
     pub applies_to_release: bool,

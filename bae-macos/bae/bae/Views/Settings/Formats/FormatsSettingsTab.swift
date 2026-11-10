@@ -24,6 +24,7 @@ struct FormatsSettingsTab: View {
         Form {
             formatsSection
             defaultsSection
+            fileNamesSection
         }
         .formStyle(.grouped)
         .sheet(item: $editingPreset) { editing in
@@ -57,6 +58,37 @@ struct FormatsSettingsTab: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private var fileNamesSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+                FilenameTokenEditor(
+                    tokens: configStore.config.filenameTokens,
+                    setTokens: { tokens in
+                        set { try await outputs.setFilenameTokens(tokens) }
+                    }
+                )
+                Text(
+                    "Preview: \(Text(previewStem).monospaced())"
+                )
+                .fieldNote()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } header: {
+            Text("File names")
+        } footer: {
+            Text("How Save as… names each track's file, in every format.")
+                .themeText(.detail)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var previewStem: String {
+        BridgeSaveFilenameToken.previewStem(
+            tokens: configStore.config.filenameTokens
+        )
     }
 
     private var formatsSection: some View {

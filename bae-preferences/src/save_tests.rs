@@ -6,7 +6,6 @@ fn single_file_cue_preset_is_release_only() {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
         codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
-        filename_tokens: default_save_filename_tokens(),
         pregap_placement: SavePregapPlacement::SingleFileWithCue,
         applies_to_track: true,
         applies_to_release: true,
@@ -23,7 +22,6 @@ fn single_file_cue_preset_is_release_only() {
         id: "opus-image".to_string(),
         name: "Opus image".to_string(),
         codec: SaveCodec::OpusOgg { bitrate_kbps: 192 },
-        filename_tokens: default_save_filename_tokens(),
         pregap_placement: SavePregapPlacement::SingleFileWithCue,
         applies_to_track: false,
         applies_to_release: true,
@@ -39,7 +37,6 @@ fn aac_bitrate_is_validated_against_its_bounds() {
         id: "aac".to_string(),
         name: "AAC".to_string(),
         codec: SaveCodec::Aac { bitrate_kbps },
-        filename_tokens: default_save_filename_tokens(),
         pregap_placement: default_export_pregap_placement(),
         applies_to_track: true,
         applies_to_release: true,
@@ -67,7 +64,6 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
             id: "preset".to_string(),
             name: "Preset".to_string(),
             codec,
-            filename_tokens: default_save_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,
@@ -92,7 +88,7 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
 }
 
 /// Add format's preset: FLAC at its starting depth, named for the format,
-/// numbered by title, pregaps appended except the hidden first-track audio,
+/// pregaps appended except the hidden first-track audio,
 /// for tracks and releases, with the cover, under an id of its own.
 #[test]
 fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
@@ -108,7 +104,6 @@ fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
             id: "new".to_string(),
             name: "FLAC".to_string(),
             codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
-            filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
             pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
             applies_to_track: true,
             applies_to_release: true,

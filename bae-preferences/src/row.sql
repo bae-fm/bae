@@ -78,13 +78,12 @@ CREATE TABLE IF NOT EXISTS save_preset (
         OR (NOT applies_to_track AND codec NOT IN ('aac', 'opus_ogg')))
 ) STRICT;
 
--- A save preset's filename pattern: its tokens in order.
-CREATE TABLE IF NOT EXISTS save_preset_filename_token (
-    preset_id TEXT NOT NULL REFERENCES save_preset (id) ON DELETE CASCADE,
-    position  INTEGER NOT NULL CHECK (position >= 0),
-    token     TEXT NOT NULL CHECK (token IN (
-        'title', 'artist', 'album', 'year', 'track_number', 'disc_number', 'track_total')),
-    PRIMARY KEY (preset_id, position)
+-- The filename pattern every save names its files by, whatever the format:
+-- its tokens in order.
+CREATE TABLE IF NOT EXISTS save_filename_token (
+    position INTEGER PRIMARY KEY CHECK (position >= 0),
+    token    TEXT NOT NULL CHECK (token IN (
+        'title', 'artist', 'album', 'year', 'track_number', 'disc_number', 'track_total'))
 ) STRICT;
 
 INSERT OR IGNORE INTO save_preset (
@@ -93,9 +92,8 @@ INSERT OR IGNORE INTO save_preset (
 VALUES
     ('flac', 0, 'FLAC', 'flac', 24, NULL, 'append_to_previous_except_htoa', 1, 1, 1),
     ('mp3', 1, 'MP3', 'mp3', NULL, 320, 'append_to_previous_except_htoa', 1, 1, 1);
-INSERT OR IGNORE INTO save_preset_filename_token (preset_id, position, token)
-VALUES ('flac', 0, 'track_number'), ('flac', 1, 'title'),
-    ('mp3', 0, 'track_number'), ('mp3', 1, 'title');
+INSERT OR IGNORE INTO save_filename_token (position, token)
+VALUES (0, 'track_number'), (1, 'title');
 INSERT OR IGNORE INTO preferences (
     singleton, discogs_key, replay_gain_mode, default_track_save_preset,
     default_release_save_preset, pause_between_sides, side_pause_countdown_seconds,

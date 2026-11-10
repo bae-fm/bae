@@ -34,7 +34,7 @@ pub use server::{
 };
 
 #[cfg(any(test, feature = "test-utils"))]
-use save::default_save_presets;
+use save::{default_save_filename_tokens, default_save_presets};
 
 /// The preferences' part of the library's schema.
 pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[row::SCHEMA];
@@ -273,6 +273,9 @@ pub struct Preferences {
     pub replay_gain_mode: ReplayGainMode,
     /// Configured export presets offered by release and track export.
     pub save_presets: Vec<SavePreset>,
+    /// The one filename pattern every save names its files by, whatever the
+    /// format: tokens in order, rendered by the library's save.
+    pub save_filename_tokens: Vec<SaveFilenameToken>,
     /// Id of the preset a track save defaults to. A required, valid preset id
     /// that applies to track saves (config validation keeps it non-dangling).
     pub default_track_save_preset: String,
@@ -338,6 +341,7 @@ impl Default for Preferences {
             discogs: None,
             replay_gain_mode: ReplayGainMode::Off,
             save_presets: default_save_presets(),
+            save_filename_tokens: default_save_filename_tokens(),
             default_track_save_preset: "flac".to_string(),
             default_release_save_preset: "flac".to_string(),
             pause_between_sides: true,

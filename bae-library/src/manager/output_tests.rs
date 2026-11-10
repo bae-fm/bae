@@ -443,7 +443,7 @@ async fn enqueue_release_save_captures_the_preset() {
     manager.set_save_presets(edited).await.unwrap();
 
     let snap = output_queue_now(manager).await;
-    let bae_transfers::OutputKind::Save { preset } = &snap.rows[0].op.payload.kind else {
+    let bae_transfers::OutputKind::Save { preset, .. } = &snap.rows[0].op.payload.kind else {
         panic!("expected a queued save op");
     };
     assert_eq!(

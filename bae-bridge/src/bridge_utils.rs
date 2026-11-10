@@ -109,7 +109,7 @@ impl BridgeOutputKind {
     pub(crate) fn from_core(kind: &bae_transfers::OutputKind) -> Self {
         match kind {
             bae_transfers::OutputKind::Export => BridgeOutputKind::Export,
-            bae_transfers::OutputKind::Save { preset } => {
+            bae_transfers::OutputKind::Save { preset, .. } => {
                 BridgeOutputKind::Save { preset_name: preset.name.clone() }
             }
         }
@@ -122,7 +122,6 @@ impl BridgeSavePreset {
             id,
             name,
             codec,
-            filename_tokens,
             pregap_placement,
             applies_to_track,
             applies_to_release,
@@ -132,11 +131,6 @@ impl BridgeSavePreset {
             id: id.clone(),
             name: name.clone(),
             codec: BridgeSaveCodec::from_core(codec),
-            filename_tokens: filename_tokens
-                .iter()
-                .copied()
-                .map(BridgeSaveFilenameToken::from_core)
-                .collect(),
             pregap_placement: BridgeSavePregapPlacement::from_core(*pregap_placement),
             applies_to_track: *applies_to_track,
             applies_to_release: *applies_to_release,
@@ -149,7 +143,6 @@ impl BridgeSavePreset {
             id,
             name,
             codec,
-            filename_tokens,
             pregap_placement,
             applies_to_track,
             applies_to_release,
@@ -159,10 +152,6 @@ impl BridgeSavePreset {
             id,
             name,
             codec: codec.into_core(),
-            filename_tokens: filename_tokens
-                .into_iter()
-                .map(BridgeSaveFilenameToken::into_core)
-                .collect(),
             pregap_placement: pregap_placement.into_core(),
             applies_to_track,
             applies_to_release,
@@ -184,6 +173,7 @@ impl BridgeConfig {
             // Playback loudness policy; not surfaced on the config screen.
             replay_gain_mode: _,
             save_presets,
+            save_filename_tokens,
             default_track_save_preset,
             default_release_save_preset,
             pause_between_sides,
@@ -233,6 +223,11 @@ impl BridgeConfig {
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,
             save_presets: save_presets.iter().map(BridgeSavePreset::from_core).collect(),
+            filename_tokens: save_filename_tokens
+                .iter()
+                .copied()
+                .map(BridgeSaveFilenameToken::from_core)
+                .collect(),
             default_track_save_preset: default_track_save_preset.clone(),
             default_release_save_preset: default_release_save_preset.clone(),
             cast_enabled: *cast_enabled,

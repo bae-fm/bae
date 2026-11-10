@@ -89,6 +89,18 @@ forward! { async this => {
             .await?)
     }
 
+    fn set_filename_tokens(tokens: Vec<crate::types::BridgeSaveFilenameToken>) -> () {
+        Ok(this
+            .services
+            .set_save_filename_tokens(
+                tokens
+                    .into_iter()
+                    .map(crate::types::BridgeSaveFilenameToken::into_core)
+                    .collect(),
+            )
+            .await?)
+    }
+
     fn set_default_track_save_preset(preset_id: String) -> () {
         Ok(this.services.set_default_track_save_preset(preset_id).await?)
     }

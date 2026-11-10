@@ -318,6 +318,19 @@ impl LibraryManager {
         .await
     }
 
+    /// Set the one filename pattern every save names its files by, whatever
+    /// the format.
+    pub async fn set_save_filename_tokens(
+        &self,
+        tokens: Vec<bae_preferences::SaveFilenameToken>,
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        self.update_preferences(move |prefs| {
+            prefs.save_filename_tokens = tokens;
+            Ok(())
+        })
+        .await
+    }
+
     pub async fn set_default_track_save_preset(
         &self,
         preset_id: String,

@@ -111,6 +111,7 @@
                         showRemainingTime: false,
                         libraryFullWidth: libraryFullWidth,
                         savePresets: savePresets,
+                        filenameTokens: exportFilenameTokens,
                         defaultTrackSavePreset: "flac",
                         defaultReleaseSavePreset: "flac",
                         castEnabled: castEnabled,

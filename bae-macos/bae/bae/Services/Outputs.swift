@@ -30,6 +30,9 @@ final class Outputs: Sendable, Observable {
     /// Replace configured export presets.
     let setSavePresets:
         @Sendable (_ presets: [BridgeSavePreset]) async throws -> Void
+    /// Set the one filename pattern every save names its files by.
+    let setFilenameTokens:
+        @Sendable (_ tokens: [BridgeSaveFilenameToken]) async throws -> Void
     let setDefaultTrackSavePreset:
         @Sendable (_ presetId: String) async throws -> Void
     let setDefaultReleaseSavePreset:
@@ -57,6 +60,10 @@ final class Outputs: Sendable, Observable {
             @escaping @Sendable ([BridgeSavePreset]) async throws -> Void = {
                 _ in
             },
+        setFilenameTokens:
+            @escaping @Sendable ([BridgeSaveFilenameToken]) async throws
+            -> Void = { _ in
+            },
         setDefaultTrackSavePreset:
             @escaping @Sendable (String) async throws -> Void = { _ in
             },
@@ -70,6 +77,7 @@ final class Outputs: Sendable, Observable {
         self.setOutputsPaused = setOutputsPaused
         self.cancelOutput = cancelOutput
         self.setSavePresets = setSavePresets
+        self.setFilenameTokens = setFilenameTokens
         self.setDefaultTrackSavePreset = setDefaultTrackSavePreset
         self.setDefaultReleaseSavePreset = setDefaultReleaseSavePreset
     }
@@ -93,6 +101,9 @@ final class Outputs: Sendable, Observable {
             setOutputsPaused: { try await handle.setOutputsPaused(paused: $0) },
             cancelOutput: { try await handle.cancelOutput(releaseId: $0) },
             setSavePresets: { try await handle.setSavePresets(presets: $0) },
+            setFilenameTokens: {
+                try await handle.setFilenameTokens(tokens: $0)
+            },
             setDefaultTrackSavePreset: {
                 try await handle.setDefaultTrackSavePreset(presetId: $0)
             },

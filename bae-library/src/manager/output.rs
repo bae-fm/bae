@@ -40,8 +40,13 @@ impl LibraryManager {
         preset_id: &str,
     ) -> Result<(), LibraryError> {
         let preset = self.save_preset_for(preset_id, bae_preferences::SaveLevel::Release).await?;
-        self.enqueue_output(release_id, target_dir, bae_transfers::OutputKind::Save { preset })
-            .await
+        let filename_tokens = self.preferences().await?.save_filename_tokens;
+        self.enqueue_output(
+            release_id,
+            target_dir,
+            bae_transfers::OutputKind::Save { preset, filename_tokens },
+        )
+        .await
     }
 
     /// Shared enqueue body for both release-level outputs. Skips ids already in
@@ -212,7 +217,7 @@ impl LibraryManager {
             bae_transfers::OutputKind::Export => {
                 self.copy_release_files_to_staging(release_id, &folder, staging.path()).await?;
             }
-            bae_transfers::OutputKind::Save { preset } => {
+            bae_transfers::OutputKind::Save { preset, filename_tokens } => {
                 info!(
                     release_id,
                     folder = folder.as_str(),
@@ -220,7 +225,14 @@ impl LibraryManager {
                     preset = preset.id.as_str(),
                     "Writing release output"
                 );
-                self.save_release_tracks_to_dir(&release, &folder, preset, staging.path()).await?;
+                self.save_release_tracks_to_dir(
+                    &release,
+                    &folder,
+                    preset,
+                    &filename_tokens,
+                    staging.path(),
+                )
+                .await?;
             }
         }
 

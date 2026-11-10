@@ -50,6 +50,9 @@ public struct Config: Equatable {
     public let libraryFullWidth: Bool
     /// Configured export presets offered by release and track export.
     public let savePresets: [BridgeSavePreset]
+    /// The one filename pattern every save names its files by, whatever the
+    /// format.
+    public let filenameTokens: [BridgeSaveFilenameToken]
     /// Id of the preset a track save defaults to (valid + track-applicable).
     public let defaultTrackSavePreset: String
     /// Id of the preset a release save defaults to (valid + release-applicable).
@@ -82,6 +85,7 @@ public struct Config: Equatable {
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth
         savePresets = bridge.savePresets
+        filenameTokens = bridge.filenameTokens
         defaultTrackSavePreset = bridge.defaultTrackSavePreset
         defaultReleaseSavePreset = bridge.defaultReleaseSavePreset
         castEnabled = bridge.castEnabled

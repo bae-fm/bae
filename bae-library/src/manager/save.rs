@@ -120,26 +120,23 @@ impl LibraryManager {
     }
 
     /// The default filename (stem, no extension) a single-track "Save as…"
-    /// suggests for `track_id` under the preset named by `preset_id` (must exist
-    /// and apply to track saves), rendered from that preset's token pattern and
-    /// the track's tag data, and written as a release save writes it
-    /// (`save_file_name`). Reads no audio and no cover —
-    /// only the database — so seeding a save panel never touches a whole file or
-    /// the cloud.
-    pub async fn save_track_suggested_name(
-        &self,
-        track_id: &str,
-        preset_id: &str,
-    ) -> Result<String, LibraryError> {
-        let preset = self.save_preset_for(preset_id, bae_preferences::SaveLevel::Track).await?;
+    /// suggests for `track_id`, rendered from the library's one filename
+    /// pattern and the track's tag data, and written as a release save writes
+    /// it (`save_file_name`). The name is the same in every format. Reads no
+    /// audio and no cover — only the database — so seeding a save panel never
+    /// touches a whole file or the cloud.
+    pub async fn save_track_suggested_name(&self, track_id: &str) -> Result<String, LibraryError> {
+        let filename_tokens = self.preferences().await?.save_filename_tokens;
         let meta = TrackAudioMeta::resolve(&self.records, track_id).await?;
         let resolved = self.resolve_save_tags(&meta.release, &meta.track).await?;
-        let stem = crate::save::render_save_filename(&preset.filename_tokens, &resolved);
-        let extension = preset.codec.extension();
-        let name = crate::save::save_file_name(&stem, extension);
+        let stem = crate::save::render_save_filename(&filename_tokens, &resolved);
+        // coven's name for a file depends on its extension only when a name
+        // is cut to fit; `flac` and `aiff` are the longest, so the stem fits
+        // under every format's extension.
+        let name = crate::save::save_file_name(&stem, "flac");
         Ok(name
             .to_str()
-            .and_then(|name| name.strip_suffix(&format!(".{extension}")))
+            .and_then(|name| name.strip_suffix(".flac"))
             .expect("coven writes a name made of text as text, keeping its extension")
             .to_string())
     }
@@ -193,12 +190,13 @@ impl LibraryManager {
     }
 
     /// Save `release`, written in the folder named `folder`, into
-    /// `staging_dir` under `preset`.
+    /// `staging_dir` under `preset`, each file named by `filename_tokens`.
     pub(super) async fn save_release_tracks_to_dir(
         &self,
         release: &DbRelease,
         folder: &str,
         preset: bae_preferences::SavePreset,
+        filename_tokens: &[bae_preferences::SaveFilenameToken],
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
         let release_id = release.id.as_str();
@@ -232,7 +230,7 @@ impl LibraryManager {
                     },
                 )
                 .await?;
-            let stem = crate::save::render_save_filename(&preset.filename_tokens, &plan.resolved);
+            let stem = crate::save::render_save_filename(filename_tokens, &plan.resolved);
             let output_path =
                 unique_output_path(staging_dir, &stem, preset.codec.extension(), &mut used_paths);
             saves.push((plan, output_path));

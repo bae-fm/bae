@@ -288,17 +288,17 @@ object BridgeFixtures {
                         id = "flac",
                         name = "FLAC",
                         codec = BridgeSaveCodec.Flac(bitDepth = BridgeSaveBitDepth.BITS24),
-                        filenameTokens =
-                            listOf(
-                                BridgeSaveFilenameToken.TRACK_NUMBER,
-                                BridgeSaveFilenameToken.TITLE,
-                            ),
                         pregapPlacement =
                             BridgeSavePregapPlacement.APPEND_TO_PREVIOUS_EXCEPT_HTOA,
                         appliesToTrack = true,
                         appliesToRelease = true,
                         embedCover = true,
                     ),
+                ),
+            filenameTokens =
+                listOf(
+                    BridgeSaveFilenameToken.TRACK_NUMBER,
+                    BridgeSaveFilenameToken.TITLE,
                 ),
             defaultTrackSavePreset = "flac",
             defaultReleaseSavePreset = "flac",

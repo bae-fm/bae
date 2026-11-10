@@ -287,7 +287,10 @@ async fn an_output_keeps_its_target_and_preset() {
         created_at: 9,
         payload: OutputRequest {
             target_dir: "/Users/ana/Music/Out".into(),
-            kind: OutputKind::Save { preset: preset.clone() },
+            kind: OutputKind::Save {
+                preset: preset.clone(),
+                filename_tokens: vec![bae_preferences::SaveFilenameToken::Artist],
+            },
         },
     };
     let export = ReleaseQueueEntry {

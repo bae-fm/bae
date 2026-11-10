@@ -18,9 +18,10 @@ pub enum SaveFilenameToken {
     TrackTotal,
 }
 
-/// The filename pattern the schema's default presets and a new preset start
-/// with: the zero-padded track number, then the title.
-fn default_save_filename_tokens() -> Vec<SaveFilenameToken> {
+/// The filename pattern the schema starts a library with: the zero-padded
+/// track number, then the title.
+#[cfg(any(test, feature = "test-utils"))]
+pub(super) fn default_save_filename_tokens() -> Vec<SaveFilenameToken> {
     vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
 }
 
@@ -169,7 +170,6 @@ pub struct SavePreset {
     pub id: String,
     pub name: String,
     pub codec: SaveCodec,
-    pub filename_tokens: Vec<SaveFilenameToken>,
     pub pregap_placement: SavePregapPlacement,
     pub applies_to_track: bool,
     pub applies_to_release: bool,
@@ -205,7 +205,7 @@ impl SavePreset {
     }
 
     /// The preset a person adds to their list: FLAC at its starting codec,
-    /// named for the format, the default filename pattern, pregaps appended
+    /// named for the format, pregaps appended
     /// to the track before except the hidden first-track audio, offered for
     /// tracks and releases, embedding the cover, under an id from `ids`.
     pub fn new_flac(ids: &dyn coven::IdSource) -> Self {
@@ -214,7 +214,6 @@ impl SavePreset {
             id: ids.new_id().simple().to_string(),
             name: format.name().to_string(),
             codec: format.default_codec(),
-            filename_tokens: default_save_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,
@@ -281,7 +280,6 @@ pub(super) fn default_save_presets() -> Vec<SavePreset> {
             id: "flac".to_string(),
             name: "FLAC".to_string(),
             codec: SaveFormat::Flac.default_codec(),
-            filename_tokens: default_save_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,
@@ -291,7 +289,6 @@ pub(super) fn default_save_presets() -> Vec<SavePreset> {
             id: "mp3".to_string(),
             name: "MP3".to_string(),
             codec: SaveFormat::Mp3.default_codec(),
-            filename_tokens: default_save_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,

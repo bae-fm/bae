@@ -884,7 +884,6 @@ pub(super) fn release_only_image_preset() -> bae_preferences::SavePreset {
         codec: bae_preferences::SaveCodec::Flac {
             bit_depth: bae_preferences::SaveBitDepth::Bits16,
         },
-        filename_tokens: vec![bae_preferences::SaveFilenameToken::Title],
         pregap_placement: bae_preferences::SavePregapPlacement::SingleFileWithCue,
         applies_to_track: false,
         applies_to_release: true,

@@ -223,6 +223,7 @@ extension LibrarySessionOpenerTests {
             showRemainingTime: false,
             libraryFullWidth: false,
             savePresets: [],
+            filenameTokens: [],
             defaultTrackSavePreset: "flac",
             defaultReleaseSavePreset: "flac",
             castEnabled: false,

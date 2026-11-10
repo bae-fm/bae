@@ -788,12 +788,12 @@ forward! {
         }
 
         /// The default filename stem (no extension) a single-track "Save as…"
-        /// suggests for `track_id` under the preset named by `preset_id`, rendered
-        /// from that preset's token pattern. Reads only the database — no audio or
-        /// cover — while seeding a save panel.
-        fn save_track_suggested_name(track_id: String, preset_id: String) -> String {
+        /// suggests for `track_id`, rendered from the library's one filename
+        /// pattern, the same in every format. Reads only the database — no audio
+        /// or cover — while seeding a save panel.
+        fn save_track_suggested_name(track_id: String) -> String {
             this.services
-                .save_track_suggested_name(&track_id, &preset_id)
+                .save_track_suggested_name(&track_id)
                 .await
                 .map_err(BridgeError::from)
         }

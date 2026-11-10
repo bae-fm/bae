@@ -41,6 +41,11 @@ async fn a_new_library_starts_at_the_defaults() {
         SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
         "the default FLAC preset writes 24-bit"
     );
+    assert_eq!(
+        prefs.save_filename_tokens,
+        vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
+        "every format starts named by track number, then title"
+    );
 }
 
 /// Every preference set away from its default reads back as set. Spelled
@@ -57,15 +62,6 @@ async fn every_preference_reads_back_as_set() {
                 id: "wav".to_string(),
                 name: "WAV \"24-bit\" — 設定".to_string(),
                 codec: SaveCodec::Wav { bit_depth: SaveBitDepth::Bits24 },
-                filename_tokens: vec![
-                    SaveFilenameToken::Artist,
-                    SaveFilenameToken::Album,
-                    SaveFilenameToken::Year,
-                    SaveFilenameToken::DiscNumber,
-                    SaveFilenameToken::TrackNumber,
-                    SaveFilenameToken::TrackTotal,
-                    SaveFilenameToken::Title,
-                ],
                 pregap_placement: SavePregapPlacement::Exclude,
                 applies_to_track: true,
                 applies_to_release: false,
@@ -75,12 +71,20 @@ async fn every_preference_reads_back_as_set() {
                 id: "image".to_string(),
                 name: "Image".to_string(),
                 codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
-                filename_tokens: Vec::new(),
                 pregap_placement: SavePregapPlacement::SingleFileWithCue,
                 applies_to_track: false,
                 applies_to_release: true,
                 embed_cover: true,
             },
+        ],
+        save_filename_tokens: vec![
+            SaveFilenameToken::Artist,
+            SaveFilenameToken::Album,
+            SaveFilenameToken::Year,
+            SaveFilenameToken::DiscNumber,
+            SaveFilenameToken::TrackNumber,
+            SaveFilenameToken::TrackTotal,
+            SaveFilenameToken::Title,
         ],
         default_track_save_preset: "wav".to_string(),
         default_release_save_preset: "image".to_string(),

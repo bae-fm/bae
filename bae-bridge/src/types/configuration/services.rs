@@ -47,6 +47,9 @@ pub struct BridgeConfig {
     pub library_full_width: bool,
     /// Configured export presets offered by release and track export.
     pub save_presets: Vec<BridgeSavePreset>,
+    /// The one filename pattern every save names its files by, whatever the
+    /// format.
+    pub filename_tokens: Vec<BridgeSaveFilenameToken>,
     /// Id of the preset a track save defaults to (a valid, track-applicable
     /// preset id; core keeps it non-dangling).
     pub default_track_save_preset: String,

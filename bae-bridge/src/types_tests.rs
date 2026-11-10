@@ -366,10 +366,6 @@ mod conversion_roundtrip {
             codec: bae_preferences::SaveCodec::Flac {
                 bit_depth: bae_preferences::SaveBitDepth::Bits24,
             },
-            filename_tokens: vec![
-                bae_preferences::SaveFilenameToken::Artist,
-                bae_preferences::SaveFilenameToken::Title,
-            ],
             pregap_placement: bae_preferences::SavePregapPlacement::Exclude,
             applies_to_track: true,
             applies_to_release: false,
@@ -378,6 +374,22 @@ mod conversion_roundtrip {
         let bridge = BridgeSavePreset::from_core(&core);
         assert!(!bridge.embed_cover);
         assert_eq!(core, bridge.into_core());
+    }
+
+    #[test]
+    fn the_config_carries_the_one_filename_pattern() {
+        let mut config = bae_preferences::Config::with_defaults(
+            coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
+            "/library",
+        );
+        config.prefs.save_filename_tokens = vec![
+            bae_preferences::SaveFilenameToken::Artist,
+            bae_preferences::SaveFilenameToken::Title,
+        ];
+        assert_eq!(
+            BridgeConfig::from_core(&config).filename_tokens,
+            vec![BridgeSaveFilenameToken::Artist, BridgeSaveFilenameToken::Title]
+        );
     }
 
     #[cfg(desktop)]

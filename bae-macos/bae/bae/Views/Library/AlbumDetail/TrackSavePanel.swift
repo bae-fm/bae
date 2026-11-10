@@ -11,50 +11,36 @@ struct SaveFilePanel {
     let formatDelegate: SaveFormatDelegate
 }
 
-/// A track-save format choice paired with the stem its preset's pattern
-/// suggests. Built together in one pass, so the stem is never absent — the
-/// track panel and its format delegate read it directly, no lookup or fallback.
-/// (The release flow doesn't pre-render stems, so this pairing is panel-local
-/// rather than a field on the shared `SaveFormatChoice`.)
-struct TrackSaveChoice {
-    let choice: SaveFormatChoice
-    let suggestedStem: String
-}
-
 /// Builds the `NSSavePanel` for a track save, with its format-picker accessory
-/// wired to a delegate that keeps the extension and the suggested stem in sync
-/// as the preset changes.
+/// wired to a delegate that swaps the extension as the preset changes. The
+/// name never depends on the format, so a format change leaves the stem alone.
 enum TrackSavePanel {
-    /// Build the save panel for a track save, seeded from the default preset's
-    /// suggestion; the caller runs the panel and reads `formatPopup` for the
-    /// chosen preset. The delegate must be retained for the modal's lifetime.
+    /// Build the save panel for a track save, seeded with `suggestedStem`, which
+    /// core renders from the library's one filename pattern; the caller runs
+    /// the panel and reads `formatPopup` for the chosen preset. The delegate
+    /// must be retained for the modal's lifetime.
     @MainActor
     static func make(
-        saveChoices: [TrackSaveChoice],
+        suggestedStem stem: String,
+        choices: [SaveFormatChoice],
         selectedPresetId: String
     ) -> SaveFilePanel {
         guard
-            let selected = saveChoices.first(where: {
-                $0.choice.presetId == selectedPresetId
+            let selected = choices.first(where: {
+                $0.presetId == selectedPresetId
             })
         else {
             preconditionFailure("the selected preset is one of the choices")
         }
-        let stem = selected.suggestedStem
 
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "\(stem).\(selected.choice.extensionName)"
+        panel.nameFieldStringValue = "\(stem).\(selected.extensionName)"
         panel.canCreateDirectories = true
 
-        // Format picker accessory: swaps extension and re-suggests the stem on
-        // change (the delegate replaces it only when the user hasn't edited it).
-        let formatDelegate = SaveFormatDelegate(
-            panel: panel,
-            saveChoices: saveChoices,
-            lastSuggestion: stem
-        )
+        // Format picker accessory: swaps the extension on change.
+        let formatDelegate = SaveFormatDelegate(panel: panel, choices: choices)
         let formatPopup = SaveFormatPopup.make(
-            choices: saveChoices.map(\.choice),
+            choices: choices,
             selectedPresetId: selectedPresetId,
             frame: NSRect(x: 54, y: 5, width: 190, height: 24)
         )
@@ -70,7 +56,7 @@ enum TrackSavePanel {
         accessoryContainer.addSubview(formatPopup)
         panel.accessoryView = accessoryContainer
 
-        if let type = UTType(filenameExtension: selected.choice.extensionName) {
+        if let type = UTType(filenameExtension: selected.extensionName) {
             panel.allowedContentTypes = [type]
         }
 
@@ -83,29 +69,16 @@ enum TrackSavePanel {
 }
 
 /// Target-action handler for the format popup in the track save panel. On a
-/// format change it swaps the filename extension and content type, and
-/// re-suggests the stem from the newly selected preset's pattern — but only when
-/// the user hasn't edited the stem away from the last suggestion. Each choice
-/// carries its pre-rendered stem (`runModal` runs inside a main-actor task, so
-/// no other main-actor work runs until it returns), so the suggestion is always
-/// present.
+/// format change it swaps the filename extension and content type; the stem,
+/// suggested or typed, stays as it is.
 @MainActor
 class SaveFormatDelegate: NSObject {
     weak var panel: NSSavePanel?
-    let saveChoices: [TrackSaveChoice]
-    /// The stem the panel currently shows as an unedited suggestion. When the
-    /// visible stem still equals this, the user hasn't typed over it, so a
-    /// format change is free to replace it with the new preset's suggestion.
-    var lastSuggestion: String
+    let choices: [SaveFormatChoice]
 
-    init(
-        panel: NSSavePanel,
-        saveChoices: [TrackSaveChoice],
-        lastSuggestion: String
-    ) {
+    init(panel: NSSavePanel, choices: [SaveFormatChoice]) {
         self.panel = panel
-        self.saveChoices = saveChoices
-        self.lastSuggestion = lastSuggestion
+        self.choices = choices
     }
 
     @objc
@@ -114,23 +87,15 @@ class SaveFormatDelegate: NSObject {
             return
         }
         let presetId = SaveFormatPopup.selectedPresetId(of: sender)
-        guard
-            let selected = saveChoices.first(where: {
-                $0.choice.presetId == presetId
-            })
+        guard let selected = choices.first(where: { $0.presetId == presetId })
         else {
             preconditionFailure("the popup offers only the panel's choices")
         }
-        let currentStem =
-            (panel.nameFieldStringValue as NSString).deletingPathExtension
-        var stem = currentStem
-        if currentStem == lastSuggestion {
-            stem = selected.suggestedStem
-            lastSuggestion = selected.suggestedStem
-        }
+        let stem = (panel.nameFieldStringValue as NSString)
+            .deletingPathExtension
 
-        panel.nameFieldStringValue = "\(stem).\(selected.choice.extensionName)"
-        if let type = UTType(filenameExtension: selected.choice.extensionName) {
+        panel.nameFieldStringValue = "\(stem).\(selected.extensionName)"
+        if let type = UTType(filenameExtension: selected.extensionName) {
             panel.allowedContentTypes = [type]
         }
     }

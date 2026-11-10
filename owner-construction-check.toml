@@ -1283,7 +1283,7 @@ tables = ["sync_start_failure"]
 name = "preferences"
 owner = "Store"
 homes = ["bae-preferences/src/row.rs", "bae-preferences/src/row.sql"]
-tables = ["preferences", "save_preset", "save_preset_filename_token"]
+tables = ["preferences", "save_preset", "save_filename_token"]
 
 [[database.domains]]
 name = "playback queue"

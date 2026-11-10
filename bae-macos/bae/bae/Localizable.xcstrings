@@ -47103,90 +47103,91 @@
         }
       }
     },
-    "File naming" : {
+    "File names" : {
+      "comment" : "Formats settings: header of the section holding the one filename pattern",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تسمية الملف"
+            "value" : "أسماء الملفات"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Именуване на файла"
+            "value" : "Имена на файлове"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pojmenování souboru"
+            "value" : "Názvy souborů"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Navngivning af filer"
+            "value" : "Filnavne"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "File naming"
+            "value" : "File names"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dateibenennung"
+            "value" : "Dateinamen"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ονομασία αρχείων"
+            "value" : "Ονόματα αρχείων"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nombre del archivo"
+            "value" : "Nombres de archivo"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tiedostojen nimeäminen"
+            "value" : "Tiedostonimet"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nom du fichier"
+            "value" : "Noms de fichier"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "שם הקובץ"
+            "value" : "שמות קבצים"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Imenovanje datoteke"
+            "value" : "Nazivi datoteka"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fájlok elnevezése"
+            "value" : "Fájlnevek"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nome del file"
+            "value" : "Nomi dei file"
           }
         },
         "ja" : {
@@ -47198,31 +47199,31 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "파일 이름 지정"
+            "value" : "파일 이름"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filnavngiving"
+            "value" : "Filnavn"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bestandsnaamgeving"
+            "value" : "Bestandsnamen"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nazewnictwo plików"
+            "value" : "Nazwy plików"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nome do arquivo"
+            "value" : "Nomes de arquivo"
           }
         },
         "pt-PT" : {
@@ -47234,43 +47235,216 @@
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Denumirea fișierelor"
+            "value" : "Numele fișierelor"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pomenovanie súborov"
+            "value" : "Názvy súborov"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filnamngivning"
+            "value" : "Filnamn"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dosya adlandırma"
+            "value" : "Dosya adları"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Найменування файлу"
+            "value" : "Назви файлів"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "文件命名"
+            "value" : "文件名"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "檔案命名"
+            "value" : "檔案名稱"
+          }
+        }
+      }
+    },
+    "How Save as… names each track's file, in every format." : {
+      "comment" : "Formats settings: caption under the File names section",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "كيف يسمّي \"حفظ باسم…\" ملف كل مقطع، في كل صيغة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как \"Запазване като…\" именува файла на всяка песен, във всеки формат."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jak „Uložit jako…“ pojmenuje soubor každé stopy, v každém formátu."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hvordan Gem som… navngiver hvert spors fil, i alle formater."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How Save as… names each track's file, in every format."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie „Speichern unter …“ die Datei jedes Tracks benennt, in jedem Format."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Πώς το Αποθήκευση ως… ονομάζει το αρχείο κάθε κομματιού, σε κάθε μορφή."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo «Guardar como…» nombra el archivo de cada pista, en todos los formatos."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Miten Tallenna nimellä… nimeää jokaisen raidan tiedoston, kaikissa muodoissa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La façon dont « Enregistrer sous… » nomme le fichier de chaque piste, dans tous les formats."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כיצד \"שמור בשם…\" נותן שם לקובץ של כל רצועה, בכל פורמט."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kako \"Spremi kao…\" imenuje datoteku svake pjesme, u svakom formatu."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Így nevezi el a Mentés másként… az egyes számok fájlját, minden formátumban."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come \"Salva con nome…\" assegna il nome al file di ogni brano, in ogni formato."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「別名で保存…」が各トラックのファイルにつける名前。すべての形式で共通です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"다른 이름으로 저장…\"이 각 트랙의 파일 이름을 짓는 방식이며, 모든 형식에 적용됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hvordan Lagre som… navngir hvert spors fil, i alle formater."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoe \"Bewaar als…\" het bestand van elk nummer een naam geeft, in elk formaat."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jak „Zapisz jako…” nazywa plik każdej ścieżki, w każdym formacie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como \"Salvar como…\" nomeia o arquivo de cada faixa, em todos os formatos."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como Guardar como… dá nome ao ficheiro de cada faixa, em todos os formatos."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cum denumește Salvează ca… fișierul fiecărei piese, în orice format."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ako ponuka Uložiť ako… pomenuje súbor každej skladby, v každom formáte."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hur Spara som… namnger varje spårs fil, i alla format."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"Farklı kaydet…\" her parçanın dosyasını nasıl adlandırır, her biçimde."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Як \"Зберегти як…\" називає файл кожного треку, в кожному форматі."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"存储为…\"如何为每个曲目的文件命名，适用于所有格式。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「另存為…」如何為每個曲目的檔案命名，適用於所有格式。"
           }
         }
       }

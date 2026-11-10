@@ -486,6 +486,7 @@ impl AppServices {
     }
 
     delegate_async!(manager, set_save_presets => set_save_presets(presets: Vec<bae_preferences::SavePreset>) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, set_save_filename_tokens => set_save_filename_tokens(tokens: Vec<bae_preferences::SaveFilenameToken>) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
     pub async fn rename_library(
@@ -635,7 +636,7 @@ impl AppServices {
     #[cfg(desktop)]
     delegate_async!(manager, save_track => save_track(track_id: &str, output_path: &std::path::Path, preset_id: &str) -> Result<(), bae_library::LibraryError>);
     #[cfg(desktop)]
-    delegate_async!(manager, save_track_suggested_name => save_track_suggested_name(track_id: &str, preset_id: &str) -> Result<String, bae_library::LibraryError>);
+    delegate_async!(manager, save_track_suggested_name => save_track_suggested_name(track_id: &str) -> Result<String, bae_library::LibraryError>);
     #[cfg(desktop)]
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &bae_import::ReleaseUserEdit) -> Result<(), bae_library::LibraryError>);
     delegate_view!(search_library => search_library(query: &bae_views::LibrarySearchQuery) -> bae_views::album_detail::SearchResults);

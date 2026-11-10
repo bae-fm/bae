@@ -14,7 +14,6 @@ use super::{
 use bae_store::{DbError, Store};
 use coven::{BulkSqlContext, CovenWrite, SqlRead};
 use rusqlite::{params, Params, Row};
-use std::collections::HashMap;
 use std::num::NonZeroU32;
 
 /// The preferences' part of the library's schema.
@@ -75,6 +74,11 @@ pub fn carry_preferences(sql: &BulkSqlContext<'_>, carried: &Preferences) -> rus
 
 fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
     let save_presets = save_presets_on(sql)?;
+    let save_filename_tokens =
+        sql.query("SELECT token FROM save_filename_token ORDER BY position", [], |row| {
+            let token: String = row.get("token")?;
+            filename_token(&token).ok_or_else(|| invalid(row, "token", token))
+        })?;
     sql.query_row("SELECT * FROM preferences", [], |row| {
         let flag = |column: &str| row.get::<_, bool>(column);
         let concurrency = |column: &str| {
@@ -98,6 +102,7 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
                 other => return Err(invalid(row, "replay_gain_mode", other)),
             },
             save_presets,
+            save_filename_tokens,
             default_track_save_preset: row.get("default_track_save_preset")?,
             default_release_save_preset: row.get("default_release_save_preset")?,
             pause_between_sides: flag("pause_between_sides")?,
@@ -144,21 +149,6 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
 }
 
 fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
-    let tokens = sql.query(
-        "SELECT preset_id, token FROM save_preset_filename_token ORDER BY preset_id, position",
-        [],
-        |row| {
-            let token: String = row.get("token")?;
-            Ok((
-                row.get::<_, String>("preset_id")?,
-                filename_token(&token).ok_or_else(|| invalid(row, "token", token))?,
-            ))
-        },
-    )?;
-    let mut tokens_by_preset: HashMap<String, Vec<SaveFilenameToken>> = HashMap::new();
-    for (preset, token) in tokens {
-        tokens_by_preset.entry(preset).or_default().push(token);
-    }
     sql.query("SELECT * FROM save_preset ORDER BY position", [], |row| {
         let id: String = row.get("id")?;
         let codec: String = row.get("codec")?;
@@ -173,7 +163,6 @@ fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
         let bitrate_kbps = || row.get::<_, u32>("bitrate_kbps");
         let pregap: String = row.get("pregap_placement")?;
         Ok(SavePreset {
-            filename_tokens: tokens_by_preset.remove(&id).unwrap_or_default(),
             name: row.get("name")?,
             codec: match codec.as_str() {
                 "flac" => SaveCodec::Flac { bit_depth: bit_depth()? },
@@ -201,8 +190,9 @@ fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
     })
 }
 
-/// Write what `edited` changed of `stored`: the row's columns, and the
-/// presets whole when any of them changed.
+/// Write what `edited` changed of `stored`: the row's columns, the
+/// presets whole when any of them changed, and the filename pattern whole
+/// when it changed.
 fn write_preferences_on(
     sql: &impl Execute,
     stored: &Preferences,
@@ -248,19 +238,22 @@ fn write_preferences_on(
                     preset.embed_cover,
                 ],
             )?;
-            for (position, token) in preset.filename_tokens.iter().enumerate() {
-                sql.execute(
-                    "INSERT INTO save_preset_filename_token (preset_id, position, token) \
-                     VALUES (?, ?, ?)",
-                    params![preset.id, position as i64, filename_token_column(*token)],
-                )?;
-            }
+        }
+    }
+    if edited.save_filename_tokens != stored.save_filename_tokens {
+        sql.execute("DELETE FROM save_filename_token", [])?;
+        for (position, token) in edited.save_filename_tokens.iter().enumerate() {
+            sql.execute(
+                "INSERT INTO save_filename_token (position, token) VALUES (?, ?)",
+                params![position as i64, filename_token_column(*token)],
+            )?;
         }
     }
     let Preferences {
         discogs,
         replay_gain_mode,
         save_presets: _,
+        save_filename_tokens: _,
         default_track_save_preset,
         default_release_save_preset,
         pause_between_sides,

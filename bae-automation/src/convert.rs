@@ -107,7 +107,7 @@ pub(super) fn automation_output_snapshot(
             };
             let kind = match op.payload.kind {
                 OutputKind::Export => AutomationOutputKind::Export,
-                OutputKind::Save { preset } => {
+                OutputKind::Save { preset, .. } => {
                     AutomationOutputKind::Save { preset_name: preset.name }
                 }
             };

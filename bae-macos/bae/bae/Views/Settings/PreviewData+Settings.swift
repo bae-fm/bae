@@ -3,15 +3,15 @@
     import Foundation
 
     // Preview fixtures for the settings flows — the save-format presets and
-    // their filename tokens, plus the Library people (this device's person as
+    // the filename pattern, plus the Library people (this device's person as
     // admin plus one removable member), a `Sync` whose reads serve preview
     // values, and a connected config store. Generic placeholder identities
     // throughout.
     extension PreviewData {
         // MARK: - Formats
 
-        /// Default single-track export filename pattern, for seeding preview
-        /// configs (mirrors bae-library's `default_save_filename_tokens`).
+        /// The filename pattern a new library starts with, for seeding
+        /// preview configs (mirrors bae-preferences' `default_save_filename_tokens`).
         static let exportFilenameTokens: [BridgeSaveFilenameToken] = [
             .trackNumber, .title,
         ]
@@ -20,7 +20,6 @@
                 id: "flac",
                 name: "FLAC",
                 codec: .flac(bitDepth: .bits24),
-                filenameTokens: exportFilenameTokens,
                 pregapPlacement: .appendToPreviousExceptHtoa,
                 appliesToTrack: true,
                 appliesToRelease: true,
@@ -30,7 +29,6 @@
                 id: "mp3",
                 name: "MP3",
                 codec: .mp3(bitrateKbps: 320),
-                filenameTokens: exportFilenameTokens,
                 pregapPlacement: .appendToPreviousExceptHtoa,
                 appliesToTrack: true,
                 appliesToRelease: true,
