@@ -7,3 +7,5 @@
 `bae-word.svg` is "bae" in Fredoka SemiBold, turned into a drawing. It's white here; `Logo` uses it as a mask, so it takes the text colour around it.
 
 The Mac app's asset catalog (`bae-macos/bae/bae/Assets.xcassets`) symlinks `icon-source.svg` and `bae-word.svg`, so each has one copy to edit.
+
+`sheep-parts/` holds the sheep cut into the parts `ImportSheep` moves, one drawing each, all in the logo's own box so they stack in place. `split-sheep.py` (one level up) writes them from `icon-source.svg`; `split-sheep.py --check` fails when they are out of date, so a change to the sheep is followed by running it. The Mac app's asset catalog links each part.

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 584 545" width="584" height="545">
+<defs>
+<path id="earR-shape" d="M464.9 319.6C438.6 322.8 409.1 310.7 394.9 287.9C390.8 281.3 380 253.3 390.3 248.9C394.5 247.1 417.2 259.8 423.7 261.8C438.4 266.3 453.7 268.1 468.8 264.9C474.9 263.5 491 255 495.7 257C502.7 260 503.8 272.8 503.9 279.2C504.1 300.8 485.6 317 464.9 319.6Z" />
+<clipPath id="in-earR">
+<use xlink:href="#earR-shape" />
+</clipPath>
+</defs>
+<g stroke="#40183d" stroke-linejoin="round" stroke-linecap="round">
+<g>
+<use xlink:href="#earR-shape" fill="#f6d9d2" stroke="none" />
+<path clip-path="url(#in-earR)" fill="#fffcf4" stroke="none" d="M404.9 269.4C443.5 277.9 452.3 285.5 493.4 274.7C516.2 309.2 407.9 322.4 404.9 269.4ZM488 303C496.2 292.5 498.7 283.8 497.1 270.5C509.6 283.3 499.9 294.8 488 303Z" />
+<use xlink:href="#earR-shape" fill="none" stroke-width="12.3" />
+</g>
+</g>
+</svg>

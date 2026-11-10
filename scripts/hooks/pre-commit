@@ -112,6 +112,10 @@ run_check "source file layout" scripts/check-source-file-size.py || {
     exit 1
 }
 
+run_check "sheep parts" design/system/split-sheep.py --check || {
+    exit 1
+}
+
 run_check "restricted-path Rust visibility" scripts/check-rust-visibility.sh || {
     echo "Move the item under its owner and use private or pub(super) access"
     exit 1

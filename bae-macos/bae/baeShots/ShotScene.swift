@@ -228,6 +228,7 @@ struct ShotScene {
         + peopleScenes
         + sheetFooterScenes
         + restoreCodeScenes + noticeScenes + welcomeScenes
+        + [importSheepMoments]
 }
 
 extension ShotScene {

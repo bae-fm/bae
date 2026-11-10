@@ -243,6 +243,17 @@ logoGlowOuter = "#0A9B6CF6"
 logoPoolCentre = "#29F7A8C4"
 logoPoolMiddle = "#0F9B6CF6"
 logoWordEdge = "#59FFFFFF"
+# The fills made-up releases are drawn in on the Import screen's sheep, in
+# every mode the same (design/system/tokens.json `accent-blue-fill` and the
+# rest of its tones; they are not the accents the person chooses between).
+releaseFillBlue = "#8CAAFE"
+releaseFillOrchid = "#D28BFA"
+releaseFillPink = "#FF7BB8"
+releaseFillCoral = "#FE8768"
+releaseFillGold = "#DFA206"
+releaseFillLime = "#99BF2C"
+releaseFillMint = "#01CC96"
+releaseFillSky = "#0DC3DF"
 hairline = "#1A000000"
 # A text field's edge, softer than hairline (design/system/tokens.json `field-edge`).
 fieldEdge = "#14000000"
@@ -292,6 +303,17 @@ logoGlowOuter = "#0A9B6CF6"
 logoPoolCentre = "#29F7A8C4"
 logoPoolMiddle = "#0F9B6CF6"
 logoWordEdge = "#59FFFFFF"
+# The fills made-up releases are drawn in on the Import screen's sheep, in
+# every mode the same (design/system/tokens.json `accent-blue-fill` and the
+# rest of its tones; they are not the accents the person chooses between).
+releaseFillBlue = "#8CAAFE"
+releaseFillOrchid = "#D28BFA"
+releaseFillPink = "#FF7BB8"
+releaseFillCoral = "#FE8768"
+releaseFillGold = "#DFA206"
+releaseFillLime = "#99BF2C"
+releaseFillMint = "#01CC96"
+releaseFillSky = "#0DC3DF"
 hairline = "#1AFFFFFF"
 fieldEdge = "#00FFFFFF"
 hairlineStrong = "#2EFFFFFF"

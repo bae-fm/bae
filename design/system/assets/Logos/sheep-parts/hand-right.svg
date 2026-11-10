@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 584 545" width="584" height="545">
+<defs>
+<path id="handR-shape" d="M327.4 443.8C307.1 446.3 284.8 438.3 274 420.1C260 396.4 281.8 373.3 304.7 368.6C322.8 364.8 342.5 369.3 353.4 385.2C369.2 408.1 355.3 440.3 327.4 443.8Z" />
+<clipPath id="in-handR">
+<use xlink:href="#handR-shape" />
+</clipPath>
+</defs>
+<g stroke="#40183d" stroke-linejoin="round" stroke-linecap="round">
+<g>
+<use xlink:href="#handR-shape" fill="#f6d9d2" stroke="none" />
+<path clip-path="url(#in-handR)" fill="#fffcf4" stroke="none" d="M354.1 407.7C348.1 366.6 298.7 364.4 277.4 395.2C284 346.8 375.7 372.7 354.1 407.7ZM322.7 423.6C285 427 263.7 381.1 310.8 374.8C352.9 369.2 366.1 419.7 322.7 423.6Z" />
+<use xlink:href="#handR-shape" fill="none" stroke-width="12.9" />
+</g>
+</g>
+</svg>
