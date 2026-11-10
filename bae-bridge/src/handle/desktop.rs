@@ -90,12 +90,14 @@ impl AppHandle {
 forward! {
     #[cfg(feature = "cast")]
     async this => {
-        /// Cast playback to the device with `device_id`.
+        /// Cast playback to the device with `device_id`. A cast called off
+        /// while it connects, by stopping casting, turning it off or another
+        /// cast, ends as a cancellation, which no surface shows.
         fn cast_to(device_id: String) -> () {
-            this.cast
-                .cast_to(&device_id)
-                .await
-                .map_err(|error| BridgeError::categorized(error.category(), error))
+            this.cast.cast_to(&device_id).await.map_err(|error| match error {
+                bae_cast::CastError::CalledOff => BridgeError::Cancelled,
+                error => BridgeError::categorized(error.category(), error),
+            })
         }
     }
 }

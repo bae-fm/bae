@@ -140,6 +140,10 @@ pub enum CastError {
     /// Whether casting is on couldn't be read.
     #[error("couldn't read whether casting is on: {0}")]
     Setting(bae_store::DbError),
+    /// Casting stopped, or was turned off, or another cast started, while
+    /// this one connected. Playback stayed where it was.
+    #[error("the cast was called off before it started")]
+    CalledOff,
 }
 
 impl CastError {
@@ -159,7 +163,8 @@ impl CastError {
             | Self::DeviceNotFound
             | Self::Connect(_)
             | Self::Serving(_)
-            | Self::Internal(_) => C::Internal,
+            | Self::Internal(_)
+            | Self::CalledOff => C::Internal,
         }
     }
 }
@@ -313,6 +318,12 @@ pub struct CastController {
     /// stopped nor turned off since. Changed under the discovery lock; a
     /// renderer a host reports is taken only while it holds.
     browsing: AtomicBool,
+    /// How many casts and stops have been asked for. A cast is known by the
+    /// count its ask made, and moves playback only while the count is still
+    /// that: stopping casting, turning it off, or another cast counts past it
+    /// and so calls it off. Playback is told of a cast or a stop under this
+    /// channel's lock, so it hears them in the order they were asked.
+    asked: tokio::sync::watch::Sender<u64>,
     /// The ephemeral server, once a cast has started one.
     server: Arc<Mutex<Option<EphemeralServer>>>,
     /// Where that server listens.
@@ -365,6 +376,7 @@ impl CastController {
             browsing_asked: Mutex::new(HashSet::new()),
             browsing_decision: tokio::sync::Mutex::new(()),
             browsing: AtomicBool::new(false),
+            asked: tokio::sync::watch::Sender::new(0),
             server: Arc::new(Mutex::new(None)),
             serving,
             ids,
@@ -631,8 +643,43 @@ impl CastController {
     /// Play to the device named by `device_id`: build its control channel from
     /// the device's connection (Cast or UPnP), ensure the ephemeral server is
     /// serving, and hand the playback service the channel plus the media source
-    /// the device fetches each track through.
+    /// the device fetches each track through. Calls off the cast asked for
+    /// before it; stopping casting, turning it off, or a newer cast calls this
+    /// one off while it connects, and it ends with [`CastError::CalledOff`]
+    /// without moving playback.
     pub async fn cast_to(&self, device_id: &str) -> Result<(), CastError> {
+        let mut asked = self.asked.subscribe();
+        let mut number = 0;
+        self.asked.send_modify(|count| {
+            *count += 1;
+            number = *count;
+        });
+        tokio::select! {
+            biased;
+            _ = asked.wait_for(|count| *count != number) => Err(CastError::CalledOff),
+            started = self.connect_and_hand_over(device_id, number) => started,
+        }
+    }
+
+    /// Move playback with `hand_over` while cast `number` is still the last
+    /// thing asked for.
+    fn hand_over(&self, number: u64, hand_over: impl FnOnce()) -> Result<(), CastError> {
+        let mut handed = false;
+        self.asked.send_if_modified(|count| {
+            if *count == number {
+                hand_over();
+                handed = true;
+            }
+            false
+        });
+        if handed {
+            Ok(())
+        } else {
+            Err(CastError::CalledOff)
+        }
+    }
+
+    async fn connect_and_hand_over(&self, device_id: &str, number: u64) -> Result<(), CastError> {
         if !self.enabled().await? {
             return Err(CastError::Disabled);
         }
@@ -647,18 +694,23 @@ impl CastController {
         if let RendererConnection::AirPlay { addr, port, capabilities } = &device.connection {
             let sink =
                 build_airplay_sink(&self.ids, &self.diagnostics, *addr, *port, capabilities)?;
-            self.services.playback_play_on_airplay(sink, device.remote());
-            return Ok(());
+            return self.hand_over(number, || {
+                self.services.playback_play_on_airplay(sink, device.remote());
+            });
         }
 
-        self.start_fetch_renderer(device).await
+        self.start_fetch_renderer(device, number).await
     }
 
     /// Build the control channel for a device, and name its flavor, which
     /// decides what it is served. Cast connects over the network (run off the runtime so it
     /// never stalls a runtime thread); UPnP has no handshake — each SOAP action
     /// is its own request.
-    async fn start_fetch_renderer(&self, device: RendererDevice) -> Result<(), CastError> {
+    async fn start_fetch_renderer(
+        &self,
+        device: RendererDevice,
+        number: u64,
+    ) -> Result<(), CastError> {
         let (channel, flavor): (Box<dyn RendererChannel>, RendererFlavor) = match &device.connection
         {
             RendererConnection::Cast { addr, port } => {
@@ -698,18 +750,24 @@ impl CastController {
             )
         };
 
-        self.services.playback_play_on(
-            channel,
-            device.remote(),
-            RendererMediaSource::new(stream_provider, cover_provider, flavor),
-        );
-        Ok(())
+        self.hand_over(number, || {
+            self.services.playback_play_on(
+                channel,
+                device.remote(),
+                RendererMediaSource::new(stream_provider, cover_provider, flavor),
+            );
+        })
     }
 
-    /// Stop casting: tell the playback service, which ends the session and
-    /// announces the return to local; the status follower then stops the server.
+    /// Stop casting: call off a cast still connecting, and tell the playback
+    /// service, which ends the session and announces the return to local; the
+    /// status follower then stops the server. Under the lock a cast moves
+    /// playback under, so no cast asked for before the stop lands after it.
     pub fn stop_casting(&self) {
-        self.services.playback_stop_remote();
+        self.asked.send_modify(|count| {
+            *count += 1;
+            self.services.playback_stop_remote();
+        });
     }
 
     async fn ensure_server(&self) -> Result<(), CastError> {

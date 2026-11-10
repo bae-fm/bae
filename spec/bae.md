@@ -4071,7 +4071,10 @@ merges every source's list and writes it whole, in one write per change, in
 the order the changes came. No discovery outlives the process that ran it, so
 the table is emptied as the library opens. Once the person
 picks a receiver, the picker or the page names it while bae connects, until
-the cast starts or fails.
+the cast starts or fails. Stopping casting, turning it off, or picking another
+receiver while one connects calls that connect off: it moves nothing, and
+nothing says it failed. A connect to a Chromecast already under way runs to
+its end and is closed, which leaves the receiver as an ended session does.
 
 **The Casting page.** While casting is on, the page lists each receiver found,
 with its name and kind: Chromecast, AirPlay or UPnP. They are the picker's

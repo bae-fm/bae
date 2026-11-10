@@ -1,3 +1,8 @@
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use bae_util::audio_container::AudioContainer;
 use bae_util::test_channels::HANG_GUARD;
@@ -252,6 +257,114 @@ fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
     // loopback port refuses, rather than stopping at the gate.
     let cast = runtime.block_on(controller.cast_to("cast-2"));
     assert!(matches!(cast, Err(CastError::Connect(_))), "{cast:?}");
+}
+
+/// A Chromecast on loopback that takes the connection and never answers it,
+/// so a cast to it stays connecting until the test lets go of it.
+struct SilentReceiver {
+    port: u16,
+    taken: std::sync::mpsc::Receiver<std::net::TcpStream>,
+}
+
+impl SilentReceiver {
+    fn listen() -> Self {
+        let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).expect("bind a loopback port");
+        let port = listener.local_addr().expect("read the bound port").port();
+        let (took, taken) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let (connection, _) =
+                listener.accept().expect("the receiver takes the cast's connection");
+            took.send(connection).expect("the test waits for the cast to connect");
+        });
+        Self { port, taken }
+    }
+
+    /// Wait until a cast is connecting to it, and hold that connection.
+    fn connecting(&self) -> std::net::TcpStream {
+        self.taken.recv_timeout(HANG_GUARD).expect("the cast connects to the receiver")
+    }
+}
+
+/// Casting on, the picker open, and a silent Chromecast `cast-1` listed.
+fn controller_with_silent_receiver(
+) -> (tokio::runtime::Runtime, Arc<CastController>, AppServices, tempfile::TempDir, SilentReceiver)
+{
+    let (runtime, controller, services, tmp) = test_controller(RendererDiscovery::reported());
+    set_casting(&runtime, &controller, &services, true);
+    start_discovery(&runtime, &controller);
+    let receiver = SilentReceiver::listen();
+    controller.renderer_found(reported_cast_service("Kitchen", "cast-1", receiver.port));
+    (runtime, controller, services, tmp, receiver)
+}
+
+/// Cast to `device_id` on the runtime, for the test to call off meanwhile.
+fn cast_in_background(
+    runtime: &tokio::runtime::Runtime,
+    controller: &Arc<CastController>,
+    device_id: &'static str,
+) -> tokio::task::JoinHandle<Result<(), CastError>> {
+    let controller = controller.clone();
+    runtime.spawn(async move { controller.cast_to(device_id).await })
+}
+
+/// What the cast `call` ended with, once the receiver it was connecting to
+/// lets go: a connect still waiting on the receiver fails then.
+fn ended_after_letting_go(
+    runtime: &tokio::runtime::Runtime,
+    call: tokio::task::JoinHandle<Result<(), CastError>>,
+    connection: std::net::TcpStream,
+) -> Result<(), CastError> {
+    drop(connection);
+    runtime
+        .block_on(async { tokio::time::timeout(HANG_GUARD, call).await })
+        .expect("the cast ends")
+        .expect("the cast's task runs to its end")
+}
+
+/// Stopping casting while a cast connects calls that cast off: it can no
+/// longer move playback, and its caller hears it was called off, not a
+/// failure.
+#[test]
+fn stopping_casting_calls_off_a_cast_still_connecting() {
+    let (runtime, controller, _services, _tmp, receiver) = controller_with_silent_receiver();
+    let call = cast_in_background(&runtime, &controller, "cast-1");
+    let connection = receiver.connecting();
+
+    controller.stop_casting();
+
+    let cast = ended_after_letting_go(&runtime, call, connection);
+    assert!(matches!(cast, Err(CastError::CalledOff)), "{cast:?}");
+}
+
+/// Turning casting off while a cast connects calls that cast off, the way it
+/// ends a session already playing.
+#[test]
+fn turning_casting_off_calls_off_a_cast_still_connecting() {
+    let (runtime, controller, services, _tmp, receiver) = controller_with_silent_receiver();
+    let call = cast_in_background(&runtime, &controller, "cast-1");
+    let connection = receiver.connecting();
+
+    set_casting(&runtime, &controller, &services, false);
+
+    let cast = ended_after_letting_go(&runtime, call, connection);
+    assert!(matches!(cast, Err(CastError::CalledOff)), "{cast:?}");
+}
+
+/// A second cast started while the first connects calls the first off: only
+/// the receiver picked last can take playback.
+#[test]
+fn a_newer_cast_calls_off_the_one_still_connecting() {
+    let (runtime, controller, _services, _tmp, receiver) = controller_with_silent_receiver();
+    let refusing = refusing_loopback_port();
+    controller.renderer_found(reported_cast_service("Study", "cast-2", refusing));
+    let first = cast_in_background(&runtime, &controller, "cast-1");
+    let connection = receiver.connecting();
+
+    let second = runtime.block_on(controller.cast_to("cast-2"));
+    assert!(matches!(second, Err(CastError::Connect(_))), "{second:?}");
+
+    let first = ended_after_letting_go(&runtime, first, connection);
+    assert!(matches!(first, Err(CastError::CalledOff)), "{first:?}");
 }
 
 /// The picker reads the devices from the library's `cast_device` table: a
