@@ -65,7 +65,7 @@ extension ShotScene {
     private static func coverPicker() -> ShotStage {
         let images = PreviewData.artImageStore()
         return ShotStage(
-            CoverPickerPreviewScene(images: images),
+            CoverPickerPreviewScene().environment(images),
             images: images
         )
     }

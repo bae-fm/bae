@@ -12,7 +12,9 @@
     /// reproduces the shell the panes are transparent over.
     extension View {
         func importPreviewEnvironment() -> some View {
-            importPreviewEnvironment(images: PreviewData.artImageStore())
+            self
+                .environment(PreviewData.artImageStore())
+                .importPreviewStores()
         }
 
         /// [`importPreviewEnvironment()`] with its images from `images`, for
@@ -20,6 +22,14 @@
         func importPreviewEnvironment(images: ImageStore) -> some View {
             self
                 .environment(images)
+                .importPreviewStores()
+        }
+
+        /// Every store of [`importPreviewEnvironment()`] but its images. The
+        /// images are injected where the modifier names them, so the
+        /// environment audit can read their type off the call it sees.
+        private func importPreviewStores() -> some View {
+            self
                 .environment(UiStore())
                 .environment(ImportSelection())
                 .environment(OutboxStore(uploadsPaused: false))

@@ -3,7 +3,8 @@
     import SwiftUI
 
     /// The production gallery over decoded fixture artwork, shared by Xcode
-    /// previews and the screenshot gallery.
+    /// previews and the screenshot gallery. Its images come from the
+    /// `ImageStore` its environment holds.
     struct CoverPickerPreviewScene: View {
         private static let remoteItems = [
             remote(
@@ -32,8 +33,6 @@
             ),
         ]
 
-        /// Where the gallery's images come from.
-        let images: ImageStore
         @State
         private var lightboxLoad = LightboxImageLoad()
 
@@ -49,7 +48,6 @@
                     onDone: {}
                 )
             }
-            .environment(images)
             .background(Theme.background)
         }
 
@@ -150,12 +148,14 @@
     }
 
     #Preview("Cover gallery") {
-        CoverPickerPreviewScene(images: PreviewData.artImageStore())
+        CoverPickerPreviewScene()
+            .environment(PreviewData.artImageStore())
             .frame(width: 1_148, height: 868)
     }
 
     #Preview("Cover gallery — short window") {
-        CoverPickerPreviewScene(images: PreviewData.artImageStore())
+        CoverPickerPreviewScene()
+            .environment(PreviewData.artImageStore())
             .frame(width: 800, height: 520)
     }
 
