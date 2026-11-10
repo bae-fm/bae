@@ -92,10 +92,12 @@ struct FieldChrome: ViewModifier {
         }
     }
 
+    /// The field's edge: the accent while focused; at rest none in Dark, where
+    /// the fill already sets a boxed field apart, and a soft line in Light.
     private var ring: Color {
         switch style {
         case .boxed:
-            focused ? Theme.accent : Theme.hairline
+            focused ? Theme.accent : Theme.fieldEdge
         case .inline:
             focused ? Theme.accent : .clear
         }
