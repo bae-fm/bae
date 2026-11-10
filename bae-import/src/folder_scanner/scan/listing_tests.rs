@@ -33,7 +33,7 @@ fn a_file_whose_name_is_not_utf8_is_listed_under_its_escaped_name() {
     assert_eq!(entry.role, FileRole::Audio);
     assert_eq!(entry.file.relative_path, r"Caf\xE9.flac");
     assert_eq!(entry.file.file_name, r"Caf\xE9.flac");
-    assert_eq!(entry.file.path, track);
+    assert_eq!(entry.file.version.path, track);
 }
 
 /// A name spelled `Caf\xE9.flac` and a Latin-1 `Café.flac` show the same, and
@@ -86,7 +86,7 @@ fn a_folder_whose_name_is_not_utf8_is_listed_under_its_escaped_name() {
     let [entry] = candidate.files.files.as_slice() else {
         panic!("one file: {:?}", candidate.files.files);
     };
-    assert_eq!(entry.file.path, album.join("01.flac"));
+    assert_eq!(entry.file.version.path, album.join("01.flac"));
     assert_eq!(entry.file.relative_path, "01.flac");
 }
 
