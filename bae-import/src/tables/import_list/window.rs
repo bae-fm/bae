@@ -32,7 +32,7 @@ use crate::{CandidateKey, CoverSelection, FolderReleaseDecisionKey, ImportedRele
 use bae_catalogs::records::{LookupRef, ReleaseRecord};
 use bae_identify::PressingLink;
 use bae_records::records::files::cover_version_sql;
-use bae_records::records::queued_uploads::release_uploads_on;
+use bae_records::records::queued_uploads::release_upload_progress_on;
 use bae_records::records::read::get_releases_records_on;
 use bae_records::UploadProgress;
 use std::collections::HashMap;
@@ -373,7 +373,7 @@ fn invalid_item(
 /// beside them: how each release's upload stands and the catalogs its records
 /// name, each read once for all the window's imported releases.
 struct ImportedReads {
-    uploads: HashMap<String, bae_records::DbReleaseUpload>,
+    uploads: HashMap<String, UploadProgress>,
     records: HashMap<String, Vec<bae_catalogs::records::ReleaseRecord>>,
 }
 
@@ -390,7 +390,7 @@ impl ImportedReads {
             return Ok(Self { uploads: HashMap::new(), records: HashMap::new() });
         }
         Ok(Self {
-            uploads: release_uploads_on(sql, &release_ids)?,
+            uploads: release_upload_progress_on(sql, &release_ids)?,
             records: get_releases_records_on(sql, &release_ids)?,
         })
     }
@@ -415,7 +415,7 @@ fn candidate_item(
         .imported
         .as_ref()
         .and_then(|imported| imported_reads.uploads.get(&imported.release_id))
-        .map(UploadProgress::of_release);
+        .cloned();
     let shown = match release.imported.as_ref() {
         // A release this device imported reads the library release: its
         // cover, and the catalogs its records name.

@@ -2,6 +2,7 @@
 //! coven's `coven_uploads` beside them.
 
 use super::*;
+use crate::UploadProgress;
 use bae_store::UPLOADS_PAUSED;
 
 /// How many of the release `?1`'s files wait in this device's upload queue.
@@ -28,18 +29,34 @@ pub const RELEASES_SENDING: &str = "SELECT f.release_id, COUNT(*) AS files \
      JOIN release_files AS f ON f.file = sending.file \
      GROUP BY f.release_id";
 
+/// The counts of a release's upload, beside `release_storage storage` joined
+/// to [`RELEASES_SENDING`] as `sending`: how many of its files are queued,
+/// how many of those only wait and how many are being sent, and how many are
+/// stored. [`release_upload_progress_in_row`] and [`release_upload_in_row`]
+/// map them.
+macro_rules! release_upload_count_columns {
+    () => {
+        "storage.queued_count AS queued_count, \
+         storage.queued_count - COALESCE(sending.files, 0) AS waiting_files, \
+         COALESCE(sending.files, 0) AS sending_files, \
+         storage.file_count - storage.queued_count AS stored_files"
+    };
+}
+
+/// [`release_upload_count_columns`] alone, for a read that shows only how
+/// many of a release's files wait and how many are being sent.
+pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
+
 /// The columns a release's upload reads beside `release_storage storage`
 /// joined to [`RELEASES_SENDING`] as `sending`, which
-/// [`release_upload_in_row`] maps: how many of its files are queued, how
-/// many of those only wait and how many are being sent, and how many are
-/// stored; and the pending records of the release's moves, its failed move's
-/// among them, with its originals' paths and names, which name the original
-/// a move waits for or failed on. How far the files being sent have got is
-/// the release's transfer.
-pub const RELEASE_UPLOAD_COLUMNS: &str = "storage.queued_count AS queued_count, \
-     storage.queued_count - COALESCE(sending.files, 0) AS waiting_files, \
-     COALESCE(sending.files, 0) AS sending_files, \
-     storage.file_count - storage.queued_count AS stored_files, \
+/// [`release_upload_in_row`] maps: its counts
+/// ([`RELEASE_UPLOAD_COUNT_COLUMNS`]), and the pending records of the
+/// release's moves, its failed move's among them, with its originals' paths
+/// and names, which name the original a move waits for or failed on. How far
+/// the files being sent have got is the release's transfer.
+pub const RELEASE_UPLOAD_COLUMNS: &str = concat!(
+    release_upload_count_columns!(),
+    ", \
      CASE WHEN storage.queued_count > 0 OR storage.move_failed = 1 THEN \
          (SELECT json_group_array(json(CAST(pending.record AS TEXT))) \
           FROM coven_pending AS pending \
@@ -56,7 +73,8 @@ pub const RELEASE_UPLOAD_COLUMNS: &str = "storage.queued_count AS queued_count, 
               'name', f.original_filename)) \
           FROM release_files AS f \
           JOIN coven_user_files AS original ON original.file = f.file \
-          WHERE f.release_id = storage.release_id) END AS upload_original_names";
+          WHERE f.release_id = storage.release_id) END AS upload_original_names"
+);
 
 /// The columns the upload queue's hold reads: whether uploads are paused, how
 /// many files are being sent, whether coven says the network is usable (NULL
@@ -81,23 +99,38 @@ pub fn upload_queue_wait_in_row(row: &Row<'_>) -> rusqlite::Result<Option<Upload
     ))
 }
 
-/// The release's upload as [`RELEASE_UPLOAD_COLUMNS`] read it; `None` when
-/// none of its files waits. A count below zero, or past a `u32`, is a
-/// column-conversion error.
-pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbReleaseUpload>> {
+/// How many of a release's files wait, are being sent and are stored, as
+/// [`RELEASE_UPLOAD_COUNT_COLUMNS`] read them; `None` when none of its files
+/// is queued. A count below zero, or past a `u32`, is a column-conversion
+/// error.
+fn upload_counts_in_row(row: &Row<'_>) -> rusqlite::Result<Option<(u32, u32, u32)>> {
     let queued: i64 = row.get("queued_count")?;
     if queued == 0 {
         return Ok(None);
     }
-    let sending = bae_store::read::count_column(row, "sending_files")?;
+    Ok(Some((
+        bae_store::read::count_column(row, "waiting_files")?,
+        bae_store::read::count_column(row, "sending_files")?,
+        bae_store::read::count_column(row, "stored_files")?,
+    )))
+}
+
+/// The release's upload progress as [`RELEASE_UPLOAD_COUNT_COLUMNS`] read
+/// it; `None` when none of its files waits.
+pub fn release_upload_progress_in_row(row: &Row<'_>) -> rusqlite::Result<Option<UploadProgress>> {
+    Ok(upload_counts_in_row(row)?
+        .map(|(waiting, sending, _)| UploadProgress { queued: waiting, uploading: sending }))
+}
+
+/// The release's upload as [`RELEASE_UPLOAD_COLUMNS`] read it; `None` when
+/// none of its files waits.
+pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbReleaseUpload>> {
+    let Some((waiting, sending, stored)) = upload_counts_in_row(row)? else {
+        return Ok(None);
+    };
     let missing =
         if sending > 0 { None } else { original_in_row(row, coven::FileSourceFailure::Missing)? };
-    Ok(Some(DbReleaseUpload {
-        waiting: bae_store::read::count_column(row, "waiting_files")?,
-        sending,
-        stored: bae_store::read::count_column(row, "stored_files")?,
-        missing,
-    }))
+    Ok(Some(DbReleaseUpload { waiting, sending, stored, missing }))
 }
 
 /// The name of the release file whose original changed and failed the
@@ -172,20 +205,38 @@ pub fn release_uploads_on(
     sql: &SqlReadContext<'_>,
     release_ids: &[String],
 ) -> Result<HashMap<String, DbReleaseUpload>, DbError> {
-    let uploads = sql.query(
+    release_rows_on(sql, RELEASE_UPLOAD_COLUMNS, release_ids, release_upload_in_row)
+}
+
+/// How many files of each of `release_ids` wait and are being sent, in one
+/// statement that reads neither the pending records nor the originals. A
+/// release none of whose files waits has no entry.
+pub fn release_upload_progress_on(
+    sql: &SqlReadContext<'_>,
+    release_ids: &[String],
+) -> Result<HashMap<String, UploadProgress>, DbError> {
+    release_rows_on(sql, RELEASE_UPLOAD_COUNT_COLUMNS, release_ids, release_upload_progress_in_row)
+}
+
+/// The releases among `release_ids` whose `columns` map to a value, each by
+/// its id.
+fn release_rows_on<T>(
+    sql: &SqlReadContext<'_>,
+    columns: &str,
+    release_ids: &[String],
+    map: fn(&Row<'_>) -> rusqlite::Result<Option<T>>,
+) -> Result<HashMap<String, T>, DbError> {
+    let rows = sql.query(
         &format!(
-            "SELECT storage.release_id AS release_id, {RELEASE_UPLOAD_COLUMNS} \
+            "SELECT storage.release_id AS release_id, {columns} \
              FROM release_storage storage \
              LEFT JOIN ({RELEASES_SENDING}) sending ON sending.release_id = storage.release_id \
              WHERE storage.release_id IN (SELECT value FROM json_each(?1))"
         ),
         [serde_json::json!(release_ids).to_string()],
-        |row| Ok((row.get::<_, String>("release_id")?, release_upload_in_row(row)?)),
+        |row| Ok((row.get::<_, String>("release_id")?, map(row)?)),
     )?;
-    Ok(uploads
-        .into_iter()
-        .filter_map(|(release_id, upload)| upload.map(|upload| (release_id, upload)))
-        .collect())
+    Ok(rows.into_iter().filter_map(|(id, value)| value.map(|value| (id, value))).collect())
 }
 
 /// Each file this process is sending now and, when it is one of a release's
