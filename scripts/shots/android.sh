@@ -106,6 +106,8 @@ Transfers:transfers
 TransfersWifiOnly:transfers-wifi-only
 Welcome:welcome
 WelcomeLibraries:welcome-libraries
+WelcomeLibraryDetails:welcome-library-details
+WelcomeLibraryDetailsUnsent:welcome-library-details-unsent
 WelcomeLight:welcome-light
 EOF
 )

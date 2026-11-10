@@ -163,6 +163,11 @@
     <string name="library_delete_confirm_body">This library isn\'t synced, so it will be deleted for good. Your audio files stay in their folders.</string>
     <string name="library_delete">Delete</string>
     <string name="library_not_synced">Not synced</string>
+    <string name="library_details_menu">Details…</string>
+    <string name="library_remove_menu">Remove…</string>
+    <string name="library_delete_menu">Delete…</string>
+    <string name="library_last_synced">Last synced</string>
+    <string name="library_unsent_changes">Unsent changes</string>
     <string name="removal_uncounted_body">This library can\'t be opened, so any changes on this device that weren\'t sent are lost. Its copy on this device is deleted; if the library is kept in storage, it stays there.</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>

@@ -136,6 +136,11 @@
     <string name="library_delete_confirm_body">Această bibliotecă nu este sincronizată, așa că va fi ștearsă definitiv. Fișierele tale audio rămân în dosarele lor.</string>
     <string name="library_delete">Șterge</string>
     <string name="library_not_synced">Nesincronizată</string>
+    <string name="library_details_menu">Detalii…</string>
+    <string name="library_remove_menu">Elimină…</string>
+    <string name="library_delete_menu">Șterge…</string>
+    <string name="library_last_synced">Ultima sincronizare</string>
+    <string name="library_unsent_changes">Modificări netrimise</string>
     <string name="removal_uncounted_body">Această bibliotecă nu poate fi deschisă, așa că modificările de pe acest dispozitiv care nu au fost trimise se pierd. Copia ei de pe acest dispozitiv este ștearsă; dacă biblioteca este păstrată în stocare, rămâne acolo.</string>
     <string name="settings_provider">Furnizor</string>
     <string name="settings_account">Cont</string>

@@ -132,6 +132,11 @@
     <string name="library_delete_confirm_body">Tätä kirjastoa ei ole synkronoitu, joten se poistetaan pysyvästi. Äänitiedostosi pysyvät kansioissaan.</string>
     <string name="library_delete">Poista</string>
     <string name="library_not_synced">Ei synkronoitu</string>
+    <string name="library_details_menu">Tiedot…</string>
+    <string name="library_remove_menu">Poista…</string>
+    <string name="library_delete_menu">Poista…</string>
+    <string name="library_last_synced">Viimeksi synkronoitu</string>
+    <string name="library_unsent_changes">Lähettämättömät muutokset</string>
     <string name="removal_uncounted_body">Tätä kirjastoa ei voi avata, joten kaikki tämän laitteen muutokset, joita ei ole lähetetty, menetetään. Sen kopio poistetaan tältä laitteelta; jos kirjasto on tallennustilassa, se säilyy siellä.</string>
     <string name="settings_provider">Palveluntarjoaja</string>
     <string name="settings_account">Tili</string>

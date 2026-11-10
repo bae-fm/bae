@@ -125,6 +125,11 @@
     <string name="library_delete_confirm_body">이 라이브러리는 동기화되지 않았으므로 영구적으로 삭제됩니다. 오디오 파일은 폴더에 그대로 남습니다.</string>
     <string name="library_delete">삭제</string>
     <string name="library_not_synced">동기화되지 않음</string>
+    <string name="library_details_menu">세부 정보…</string>
+    <string name="library_remove_menu">제거…</string>
+    <string name="library_delete_menu">삭제…</string>
+    <string name="library_last_synced">마지막 동기화</string>
+    <string name="library_unsent_changes">보내지 않은 변경 사항</string>
     <string name="removal_uncounted_body">이 라이브러리를 열 수 없으므로 이 기기에서 전송되지 않은 변경 사항은 모두 사라집니다. 이 기기의 사본은 삭제되며, 라이브러리가 스토리지에 있다면 그대로 남습니다.</string>
     <string name="settings_provider">제공자</string>
     <string name="settings_account">계정</string>

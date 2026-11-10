@@ -125,6 +125,11 @@
     <string name="library_delete_confirm_body">このライブラリは同期されていないため、完全に削除されます。オーディオファイルはそれぞれのフォルダに残ります。</string>
     <string name="library_delete">削除</string>
     <string name="library_not_synced">未同期</string>
+    <string name="library_details_menu">詳細…</string>
+    <string name="library_remove_menu">削除…</string>
+    <string name="library_delete_menu">削除…</string>
+    <string name="library_last_synced">最終同期</string>
+    <string name="library_unsent_changes">未送信の変更</string>
     <string name="removal_uncounted_body">このライブラリは開けないため、このデバイス上で送信されていない変更はすべて失われます。このデバイス上のコピーは削除されます。ライブラリがストレージにある場合は、そのまま残ります。</string>
     <string name="settings_provider">プロバイダ</string>
     <string name="settings_account">アカウント</string>

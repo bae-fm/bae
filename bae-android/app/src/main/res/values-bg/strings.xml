@@ -128,6 +128,11 @@
     <string name="library_delete_confirm_body">Тази библиотека не е синхронизирана, затова ще бъде изтрита завинаги. Аудиофайловете ви остават в папките си.</string>
     <string name="library_delete">Изтриване</string>
     <string name="library_not_synced">Не е синхронизирана</string>
+    <string name="library_details_menu">Подробности…</string>
+    <string name="library_remove_menu">Премахване…</string>
+    <string name="library_delete_menu">Изтриване…</string>
+    <string name="library_last_synced">Последно синхронизиране</string>
+    <string name="library_unsent_changes">Неизпратени промени</string>
     <string name="removal_uncounted_body">Тази библиотека не може да бъде отворена, затова всички промени на това устройство, които не са изпратени, се губят. Копието ѝ на това устройство се изтрива; ако библиотеката се пази в хранилище, тя остава там.</string>
     <string name="settings_provider">Доставчик</string>
     <string name="settings_account">Акаунт</string>

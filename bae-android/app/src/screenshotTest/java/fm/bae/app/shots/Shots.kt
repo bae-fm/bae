@@ -49,6 +49,8 @@ import fm.bae.app.ui.library.ErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.library.LibraryHeaderMenu
 import fm.bae.app.ui.library.SceneGrid
+import fm.bae.app.ui.onboarding.LibraryDetailsRows
+import fm.bae.app.ui.onboarding.StandingRead
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.playback.CastDeviceRows
@@ -73,10 +75,15 @@ import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDownloadState
+import uniffi.bae_bridge.BridgeDropboxLocation
+import uniffi.bae_bridge.BridgeFolderLabel
+import uniffi.bae_bridge.BridgeLibraryStanding
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 import uniffi.bae_bridge.BridgeRemoteDevice
 import uniffi.bae_bridge.BridgeRendererKind
+import uniffi.bae_bridge.BridgeStandingState
+import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncFix
 import uniffi.bae_bridge.BridgeSyncShown
@@ -90,7 +97,8 @@ import java.time.Instant
 // composition from the production UI (defined in main next to its @Preview) in
 // the app chrome — never a capture-only re-layout. Rendered at a current phone
 // size, with additional light and tinted appearance captures. Function name ⇒ scene id:
-//   Welcome ⇒ welcome, WelcomeLibraries ⇒ welcome-libraries, LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒
+//   Welcome ⇒ welcome, WelcomeLibraries ⇒ welcome-libraries, WelcomeLibraryDetails ⇒ welcome-library-details,
+//   WelcomeLibraryDetailsUnsent ⇒ welcome-library-details-unsent, LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒
 //   library-grid-scrolled, LibraryGrouped ⇒ library-grouped, LibraryGroupedPinned ⇒
 //   library-grouped-pinned, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
 //   library-view-menu, AlbumDetail ⇒ album-detail, CastPicker ⇒ cast-picker, CastingSettingsFound ⇒
@@ -113,6 +121,45 @@ fun Welcome() {
 @Composable
 fun WelcomeLibraries() {
     WelcomeLibrariesScene()
+}
+
+/** A library's details sheet, over a Dropbox library that synced two hours ago. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun WelcomeLibraryDetails() {
+    LibraryDetailsScene(
+        BridgeStandingState.Sync(syncShown(BridgeSyncStatusWord.SYNCED, "core.sync.synced", BridgeSyncTone.SUCCESS)),
+    )
+}
+
+/** A library's details sheet, over a library holding changes it hasn't uploaded. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun WelcomeLibraryDetailsUnsent() {
+    LibraryDetailsScene(BridgeStandingState.UnsentChanges)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LibraryDetailsScene(state: BridgeStandingState) {
+    BaeTheme {
+        Surface(color = BottomSheetDefaults.ContainerColor) {
+            TitledSheetContent("Home music") {
+                LibraryDetailsRows(
+                    storage =
+                        BridgeStorageLocation.Dropbox(
+                            location = BridgeDropboxLocation.AppFolder,
+                            accountLabel = "mara.quill@example.com",
+                            folderLabel = BridgeFolderLabel(name = "Music", webUrl = "https://www.dropbox.com/home/Music"),
+                        ),
+                    standing =
+                        StandingRead.Loaded(
+                            BridgeLibraryStanding(state, Instant.now().minusSeconds(TWO_HOURS_SECONDS)),
+                        ),
+                )
+            }
+        }
+    }
 }
 
 /** The library home at the top of the list: the full heading. */

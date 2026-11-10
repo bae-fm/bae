@@ -128,6 +128,11 @@
     <string name="library_delete_confirm_body">Deze bibliotheek is niet gesynchroniseerd en wordt daarom definitief verwijderd. Je audiobestanden blijven in hun mappen.</string>
     <string name="library_delete">Verwijderen</string>
     <string name="library_not_synced">Niet gesynchroniseerd</string>
+    <string name="library_details_menu">Details…</string>
+    <string name="library_remove_menu">Verwijderen…</string>
+    <string name="library_delete_menu">Verwijderen…</string>
+    <string name="library_last_synced">Laatst gesynchroniseerd</string>
+    <string name="library_unsent_changes">Niet-verzonden wijzigingen</string>
     <string name="removal_uncounted_body">Deze bibliotheek kan niet worden geopend, dus wijzigingen op dit apparaat die niet zijn verzonden, gaan verloren. De kopie op dit apparaat wordt verwijderd; staat de bibliotheek in de opslag, dan blijft die daar.</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>

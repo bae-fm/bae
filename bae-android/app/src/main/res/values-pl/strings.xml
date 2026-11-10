@@ -134,6 +134,11 @@
     <string name="library_delete_confirm_body">Ta biblioteka nie jest zsynchronizowana, więc zostanie usunięta na stałe. Twoje pliki audio zostaną w swoich folderach.</string>
     <string name="library_delete">Usuń</string>
     <string name="library_not_synced">Niezsynchronizowana</string>
+    <string name="library_details_menu">Szczegóły…</string>
+    <string name="library_remove_menu">Usuń…</string>
+    <string name="library_delete_menu">Usuń…</string>
+    <string name="library_last_synced">Ostatnia synchronizacja</string>
+    <string name="library_unsent_changes">Niewysłane zmiany</string>
     <string name="removal_uncounted_body">Nie można otworzyć tej biblioteki, więc wszystkie niewysłane zmiany na tym urządzeniu zostaną utracone. Jej kopia na tym urządzeniu zostanie usunięta; jeśli biblioteka jest w magazynie, tam pozostanie.</string>
     <string name="settings_provider">Dostawca</string>
     <string name="settings_account">Konto</string>

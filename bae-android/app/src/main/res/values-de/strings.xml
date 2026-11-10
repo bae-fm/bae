@@ -128,6 +128,11 @@
     <string name="library_delete_confirm_body">Diese Bibliothek ist nicht synchronisiert und wird daher endgültig gelöscht. Deine Audiodateien bleiben in ihren Ordnern.</string>
     <string name="library_delete">Löschen</string>
     <string name="library_not_synced">Nicht synchronisiert</string>
+    <string name="library_details_menu">Details…</string>
+    <string name="library_remove_menu">Entfernen…</string>
+    <string name="library_delete_menu">Löschen…</string>
+    <string name="library_last_synced">Zuletzt synchronisiert</string>
+    <string name="library_unsent_changes">Nicht gesendete Änderungen</string>
     <string name="removal_uncounted_body">Diese Bibliothek lässt sich nicht öffnen, daher gehen alle nicht gesendeten Änderungen auf diesem Gerät verloren. Ihre Kopie auf diesem Gerät wird gelöscht; liegt die Bibliothek im Speicher, bleibt sie dort.</string>
     <string name="settings_provider">Anbieter</string>
     <string name="settings_account">Konto</string>

@@ -10,6 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -23,7 +25,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 
 /**
  * Groups related [CardRow]s on a screen: one surface with rounded corners,
- * the rows divided by hairlines. A child that isn't a [CardRow] takes
+ * dividing the rows it holds by hairlines. A child that isn't a [CardRow] takes
  * [cardRowDivider] to join the division.
  */
 @Composable
@@ -44,13 +46,17 @@ internal fun RowCard(
                     val placeable = measurable.measure(constraints)
                     layout(placeable.width, placeable.height - hairline) { placeable.place(0, -hairline) }
                 },
-        content = content,
-    )
+    ) {
+        CompositionLocalProvider(LocalInRowCard provides true) { content() }
+    }
 }
 
-/** The hairline on a row's top edge, between it and the row above it in a [RowCard]. */
+private val LocalInRowCard = staticCompositionLocalOf { false }
+
+/** The hairline on a row's top edge, between it and the row above it in a [RowCard]; none outside one. */
 @Composable
 internal fun Modifier.cardRowDivider(): Modifier {
+    if (!LocalInRowCard.current) return this
     val color = MaterialTheme.colorScheme.outlineVariant
     return drawBehind { drawLine(color, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = HAIRLINE.toPx()) }
 }

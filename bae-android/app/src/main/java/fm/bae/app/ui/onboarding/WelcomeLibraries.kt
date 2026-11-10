@@ -13,12 +13,14 @@ import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeClosingStep
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryRemoval
+import uniffi.bae_bridge.BridgeLibraryStanding
 import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeUnsentWork
@@ -37,6 +39,28 @@ internal sealed interface WelcomeLibrariesList {
         val error: DisplayError,
     ) : WelcomeLibrariesList
 }
+
+/** How a library stands with its storage, as the details sheet last read it. */
+internal sealed interface StandingRead {
+    data object Loading : StandingRead
+
+    data class Loaded(
+        val standing: BridgeLibraryStanding,
+    ) : StandingRead
+
+    data class Failed(
+        val error: DisplayError,
+    ) : StandingRead
+}
+
+/**
+ * The library whose details the person asked for, with how it stands with its storage: [standing] is null for a
+ * library that never synced, which has nothing to read.
+ */
+internal data class LibraryDetails(
+    val library: BridgeLibrary,
+    val standing: StandingRead?,
+)
 
 /** A library the person is asked to remove, with what removing it loses. */
 internal data class PendingRemoval(
@@ -89,6 +113,12 @@ internal fun interface RemovalSteps {
 internal class WelcomeLibrariesCore(
     val listLibraries: suspend () -> List<BridgeLibrary>,
     /**
+     * How the library stands with its storage. The library the host has open
+     * answers from its live sync status; any other is read as it last stood,
+     * without opening it.
+     */
+    val libraryStanding: suspend (String) -> BridgeLibraryStanding,
+    /**
      * What removing the library would lose. Counting opens it; the open's
      * steps go to the callback.
      */
@@ -106,6 +136,7 @@ internal class WelcomeLibrariesCore(
             bugs: BugReports,
         ) = WelcomeLibrariesCore(
             listLibraries = { host.listLibraries() },
+            libraryStanding = { host.libraryStanding(it) },
             unsentBeforeRemoval = { libraryId, onOpening ->
                 LibraryOpenProgress(host, scope, bugs).use { progress ->
                     onOpening(progress.steps)
@@ -131,8 +162,8 @@ internal class WelcomeLibrariesCore(
 }
 
 /**
- * The libraries on this device, listed on the welcome, each with Remove, or
- * Delete for one that was never synced. None is open on the welcome: a library
+ * The libraries on this device, listed on the welcome, each with Details, and
+ * Remove, or Delete for one that was never synced. None is open on the welcome: a library
  * that opens is opened to count what removing it loses and again to leave its
  * store, and one that can't open is removed without opening. A removal that
  * left the store but not this device's files for it goes to the screen that
@@ -158,6 +189,12 @@ internal class WelcomeLibraries(
     var failed by mutableStateOf<FailedRemoval?>(null)
         private set
 
+    /** The library whose details show in a sheet. */
+    var details by mutableStateOf<LibraryDetails?>(null)
+        private set
+
+    private var standingRead: Job? = null
+
     /** Read the libraries on this device. */
     suspend fun load() {
         list =
@@ -176,6 +213,46 @@ internal class WelcomeLibraries(
                 logger.error("listing the libraries failed", e)
                 WelcomeLibrariesList.Failed(shown)
             }
+    }
+
+    /**
+     * Show [library]'s details, reading how it stands with its storage as the
+     * sheet opens. A failed read shows in the sheet; a library that never
+     * synced has nothing to read.
+     */
+    fun showDetails(library: BridgeLibrary) {
+        val storage = (library.state as? BridgeLibraryState.Openable)?.storage
+        if (storage == null) {
+            details = LibraryDetails(library, standing = null)
+            return
+        }
+        details = LibraryDetails(library, StandingRead.Loading)
+        standingRead =
+            scope.launch {
+                val read =
+                    try {
+                        StandingRead.Loaded(core.libraryStanding(library.id))
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: BridgeException) {
+                        logger.error("reading how ${library.id} stands failed", e)
+                        // Nothing to show means core reported a cancellation, so there is nothing to put in the sheet.
+                        val shown = errorDisplay(e)
+                        if (shown == null) {
+                            details = null
+                            return@launch
+                        }
+                        StandingRead.Failed(shown)
+                    }
+                details = LibraryDetails(library, read)
+            }
+    }
+
+    /** Close the details sheet, abandoning a read it still waits on. */
+    fun closeDetails() {
+        standingRead?.cancel()
+        standingRead = null
+        details = null
     }
 
     /**

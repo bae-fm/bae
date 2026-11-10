@@ -125,6 +125,11 @@
     <string name="library_delete_confirm_body">此資料庫未同步，因此會被永久刪除。你的音訊檔案會保留在原資料夾中。</string>
     <string name="library_delete">刪除</string>
     <string name="library_not_synced">未同步</string>
+    <string name="library_details_menu">詳細資訊…</string>
+    <string name="library_remove_menu">移除…</string>
+    <string name="library_delete_menu">刪除…</string>
+    <string name="library_last_synced">上次同步</string>
+    <string name="library_unsent_changes">尚未傳送的變更</string>
     <string name="removal_uncounted_body">此資料庫無法開啟，因此此裝置上尚未傳送的變更都會遺失。此裝置上的副本將被刪除；如果該資料庫保存在儲存空間中，它會留在那裡。</string>
     <string name="settings_provider">提供者</string>
     <string name="settings_account">帳號</string>

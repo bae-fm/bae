@@ -140,6 +140,11 @@
     <string name="library_delete_confirm_body">Táto knižnica nie je synchronizovaná, preto sa natrvalo odstráni. Tvoje zvukové súbory zostanú vo svojich priečinkoch.</string>
     <string name="library_delete">Odstrániť</string>
     <string name="library_not_synced">Nesynchronizovaná</string>
+    <string name="library_details_menu">Podrobnosti…</string>
+    <string name="library_remove_menu">Odstrániť…</string>
+    <string name="library_delete_menu">Odstrániť…</string>
+    <string name="library_last_synced">Posledná synchronizácia</string>
+    <string name="library_unsent_changes">Neodoslané zmeny</string>
     <string name="removal_uncounted_body">Túto knižnicu nemožno otvoriť, takže všetky zmeny na tomto zariadení, ktoré neboli odoslané, sa stratia. Jej kópia na tomto zariadení sa vymaže; ak je knižnica uložená v úložisku, zostane tam.</string>
     <string name="settings_provider">Poskytovateľ</string>
     <string name="settings_account">Účet</string>

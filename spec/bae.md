@@ -2577,9 +2577,12 @@ A new phone's first screen is bae's sheep and name over **Scan code** and
 **Enter code**, with no other words: the code says what it is for. An invite
 joins someone's library, and the person's own restore code adds this device to
 theirs. An Android phone that holds libraries lists them above the two buttons
-under **Your libraries**, each opening on a tap and ending in **Remove**, or in
-**Delete** for one that was never synced (§6.4), and one that has restore codes
-saved on it lists them below those (below). A Mac lists its libraries the same
+under **Your libraries**, each opening on a tap, with a ⋮ menu holding
+**Details…** for a library that opens, and **Remove…**, or **Delete…** for one
+that was never synced (§6.4). **Details…** shows, in a sheet, the library's sync
+status as this phone last knew it (as on a Mac, below), when it last synced, and
+its provider, account and folder. One that has restore codes saved on it lists
+them below those (below). A Mac lists its libraries the same
 way under **Your libraries**: a click on one opens it, and its ⋯ button, or a
 right click, holds **Remove…**, or **Delete…** for one never synced. A
 library that can't be read, or whose reset, restore or removal stopped
@@ -3491,7 +3494,7 @@ fail, saying the laptop left the library and its files are still on it.
   opened to count what it hasn't sent and again to leave its store, its row
   showing each step in place of its storage line, and a library that can't open
   is removed without opening, as on a Mac. A removal that fails says why on the
-  row, with *Retry* in place of *Remove*; one that left the store but not this
+  row, with *Retry* in place of its ⋮ menu; one that left the store but not this
   device's files goes on to the screen that finishes deleting them.
 - **Unsent edits.** Dan's laptop still holds edits it hasn't sent. Before
   removing, bae asks coven what this device hasn't sent, and the confirmation

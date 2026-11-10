@@ -40,8 +40,9 @@ internal fun StorageSection(location: BridgeStorageLocation) {
     }
 }
 
+/** The rows of [StorageSection]'s card, which the welcome's library details sheet shows too. */
 @Composable
-private fun StorageRows(location: BridgeStorageLocation) {
+internal fun StorageRows(location: BridgeStorageLocation) {
     CardRow(
         title = stringResource(R.string.settings_provider),
         subtitle = cloudProviderLabel(storageProvider(location)),

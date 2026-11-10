@@ -131,6 +131,11 @@
     <string name="library_delete_confirm_body">Questa libreria non è sincronizzata, quindi verrà eliminata per sempre. I tuoi file audio restano nelle loro cartelle.</string>
     <string name="library_delete">Elimina</string>
     <string name="library_not_synced">Non sincronizzata</string>
+    <string name="library_details_menu">Dettagli…</string>
+    <string name="library_remove_menu">Rimuovi…</string>
+    <string name="library_delete_menu">Elimina…</string>
+    <string name="library_last_synced">Ultima sincronizzazione</string>
+    <string name="library_unsent_changes">Modifiche non inviate</string>
     <string name="removal_uncounted_body">Questa libreria non può essere aperta, quindi le modifiche su questo dispositivo non inviate vanno perse. La sua copia su questo dispositivo viene eliminata; se la libreria è nello spazio di archiviazione, resta lì.</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>

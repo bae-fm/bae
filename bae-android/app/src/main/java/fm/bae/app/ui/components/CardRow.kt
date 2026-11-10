@@ -29,11 +29,12 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
 /**
- * One row of a [RowCard]: the [title] with an optional [subtitle] under it,
+ * One row of a list, in a [RowCard] or a sheet: the [title] with an optional [subtitle] under it,
  * whose [tone] colours it and puts a dot before it, and [trailing] content at
  * the far end. [action] makes the row itself the action ("Add device", last in
  * its card), with [leadingIcon] before it when it adds to the list; [selected]
- * tints the row for the one choice made. A row with an [onClick] opens or
+ * tints the row for the one choice made. In a [RowCard] a hairline divides the
+ * row from the one above it. A row with an [onClick] opens or
  * changes something, which [onClickLabel] names for screen readers.
  */
 @Composable

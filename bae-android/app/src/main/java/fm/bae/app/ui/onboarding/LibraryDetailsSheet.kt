@@ -1,0 +1,92 @@
+package fm.bae.app.ui.onboarding
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import fm.bae.app.R
+import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.TitledSheet
+import fm.bae.app.ui.components.WaitingIndicator
+import fm.bae.app.ui.settings.StorageRows
+import fm.bae.app.ui.settings.statusTone
+import fm.bae.app.ui.settings.syncLastSyncedText
+import fm.bae.app.ui.settings.syncStatusText
+import uniffi.bae_bridge.BridgeLibraryState
+import uniffi.bae_bridge.BridgeStandingState
+import uniffi.bae_bridge.BridgeStorageLocation
+
+/**
+ * A library on the welcome in a sheet titled by its name: how it stands with
+ * its storage, when it last synced, and where it is stored.
+ */
+@Composable
+internal fun LibraryDetailsSheet(
+    details: LibraryDetails,
+    onDismiss: () -> Unit,
+) {
+    TitledSheet(title = details.library.name, onDismiss = onDismiss) {
+        LibraryDetailsRows((details.library.state as? BridgeLibraryState.Openable)?.storage, details.standing)
+    }
+}
+
+/**
+ * The details' rows. A library with no [storage] never synced and has nothing
+ * more to show. Otherwise its Status and when it last synced come from
+ * [standing], as sync's state is worded on the Sync page or as unsent changes,
+ * with the storage's rows after them. A failed read shows its error in place of
+ * those two rows.
+ */
+@Composable
+internal fun LibraryDetailsRows(
+    storage: BridgeStorageLocation?,
+    standing: StandingRead?,
+) {
+    if (storage == null) {
+        CardRow(title = stringResource(R.string.sync_status), subtitle = stringResource(R.string.library_not_synced))
+        return
+    }
+    val context = LocalContext.current
+    val read = checkNotNull(standing) { "a library with storage has its standing read" }
+    when (read) {
+        StandingRead.Loading -> {
+            WaitingIndicator(modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group))
+        }
+
+        is StandingRead.Failed -> {
+            ErrorNotice(read.error, modifier = Modifier.padding(horizontal = ThemeSpace.edge))
+        }
+
+        is StandingRead.Loaded -> {
+            val loaded = read.standing
+            when (val state = loaded.state) {
+                BridgeStandingState.UnsentChanges -> {
+                    CardRow(
+                        title = stringResource(R.string.sync_status),
+                        subtitle = stringResource(R.string.library_unsent_changes),
+                        tone = StatusTone.WARNING,
+                    )
+                }
+
+                is BridgeStandingState.Sync -> {
+                    CardRow(
+                        title = stringResource(R.string.sync_status),
+                        subtitle = syncStatusText(context, state.shown),
+                        tone = state.shown.tone.statusTone(),
+                    )
+                }
+            }
+            loaded.lastSynced?.let { moment ->
+                CardRow(
+                    title = stringResource(R.string.library_last_synced),
+                    subtitle = syncLastSyncedText(moment).toString(),
+                )
+            }
+        }
+    }
+    StorageRows(storage)
+}

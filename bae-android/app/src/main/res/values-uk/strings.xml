@@ -134,6 +134,11 @@
     <string name="library_delete_confirm_body">Цю бібліотеку не синхронізовано, тому її буде видалено назавжди. Ваші аудіофайли залишаться у своїх теках.</string>
     <string name="library_delete">Видалити</string>
     <string name="library_not_synced">Не синхронізовано</string>
+    <string name="library_details_menu">Подробиці…</string>
+    <string name="library_remove_menu">Видалити…</string>
+    <string name="library_delete_menu">Видалити…</string>
+    <string name="library_last_synced">Остання синхронізація</string>
+    <string name="library_unsent_changes">Невідправлені зміни</string>
     <string name="removal_uncounted_body">Цю бібліотеку не вдається відкрити, тому всі не надіслані зміни на цьому пристрої буде втрачено. Її копію на цьому пристрої буде видалено; якщо бібліотека зберігається у сховищі, вона там і залишиться.</string>
     <string name="settings_provider">Постачальник</string>
     <string name="settings_account">Обліковий запис</string>

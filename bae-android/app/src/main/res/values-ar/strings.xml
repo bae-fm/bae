@@ -140,6 +140,11 @@
     <string name="library_delete_confirm_body">هذه المكتبة غير متزامنة، لذا ستُحذف نهائيًا. تبقى ملفاتك الصوتية في مجلداتها.</string>
     <string name="library_delete">حذف</string>
     <string name="library_not_synced">غير متزامنة</string>
+    <string name="library_details_menu">التفاصيل…</string>
+    <string name="library_remove_menu">إزالة…</string>
+    <string name="library_delete_menu">حذف…</string>
+    <string name="library_last_synced">آخر مزامنة</string>
+    <string name="library_unsent_changes">تغييرات غير مرسلة</string>
     <string name="removal_uncounted_body">لا يمكن فتح هذه المكتبة، لذا تُفقد أي تغييرات على هذا الجهاز لم تُرسل. تُحذف نسختها على هذا الجهاز؛ وإن كانت المكتبة محفوظة في التخزين فهي تبقى هناك.</string>
     <string name="settings_provider">المزوّد</string>
     <string name="settings_account">الحساب</string>

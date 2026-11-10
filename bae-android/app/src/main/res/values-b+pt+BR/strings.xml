@@ -131,6 +131,11 @@
     <string name="library_delete_confirm_body">Esta biblioteca não está sincronizada, então será excluída para sempre. Seus arquivos de áudio continuam nas pastas deles.</string>
     <string name="library_delete">Excluir</string>
     <string name="library_not_synced">Não sincronizada</string>
+    <string name="library_details_menu">Detalhes…</string>
+    <string name="library_remove_menu">Remover…</string>
+    <string name="library_delete_menu">Excluir…</string>
+    <string name="library_last_synced">Última sincronização</string>
+    <string name="library_unsent_changes">Alterações não enviadas</string>
     <string name="removal_uncounted_body">Esta biblioteca não pode ser aberta, então as alterações deste dispositivo que não foram enviadas são perdidas. A cópia dela neste dispositivo é excluída; se a biblioteca é mantida no armazenamento, ela continua lá.</string>
     <string name="settings_provider">Provedor</string>
     <string name="settings_account">Conta</string>
