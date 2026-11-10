@@ -70,7 +70,7 @@ struct FindOnlineAutomaticSection: View {
                     Text("No source to search")
                         .foregroundStyle(.secondary)
                     Button("Open settings", action: onOpenSettings)
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(PrimaryButtonStyle())
                         .controlSize(.small)
                 }
             }
@@ -103,7 +103,7 @@ struct FindOnlineAutomaticSection: View {
                     .multilineTextAlignment(.center)
                     .textSelection(.enabled)
                 Button("Retry", action: onRetryFailed)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .controlSize(.small)
             }
         case .identifying, .groups, .nothingFound, .awaitingCatalog,

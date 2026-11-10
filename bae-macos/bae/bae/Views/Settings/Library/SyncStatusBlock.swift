@@ -96,7 +96,7 @@ struct SyncFixButton: View {
 
     var body: some View {
         Button(title, action: run)
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(reconnection.isRunning)
             .sheet(isPresented: $askingForKey) {
                 if let location {
