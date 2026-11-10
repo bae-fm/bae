@@ -28593,6 +28593,179 @@
         }
       }
     },
+    "Approve if their screen shows this code:" : {
+      "comment" : "Join request sheet: asks the admin to approve when the requester's screen shows the same code.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "وافق إذا كانت شاشتهم تعرض هذا الرمز:"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Одобрете, ако екранът им показва този код:"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schvalte, pokud jejich obrazovka zobrazuje tento kód:"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Godkend, hvis deres skærm viser denne kode:"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Genehmige, wenn ihr Bildschirm diesen Code zeigt:"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Εγκρίνετε αν η οθόνη τους δείχνει αυτόν τον κωδικό:"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approve if their screen shows this code:"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprueba si su pantalla muestra este código:"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hyväksy, jos heidän näytöllään näkyy tämä koodi:"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approuvez si leur écran affiche ce code :"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אשר אם המסך שלהם מציג את הקוד הזה:"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odobrite ako njihov zaslon prikazuje ovaj kôd:"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hagyd jóvá, ha a képernyőjükön ez a kód látható:"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approva se il loro schermo mostra questo codice:"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相手の画面にこのコードが表示されている場合は承認してください："
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "상대방 화면에 이 코드가 표시되면 승인하세요:"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Godkjenn hvis skjermen deres viser denne koden:"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keur goed als hun scherm deze code toont:"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zatwierdź, jeśli na ich ekranie widać ten kod:"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprove se a tela deles mostrar este código:"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprove se o ecrã deles mostrar este código:"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprobă dacă ecranul lor arată acest cod:"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schváľte, ak ich obrazovka zobrazuje tento kód:"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Godkänn om deras skärm visar den här koden:"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ekranlarında bu kod görünüyorsa onaylayın:"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Схваліть, якщо на їхньому екрані показано цей код:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如果对方的屏幕显示此代码，请批准："
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如果對方的螢幕顯示此代碼，請核准："
+          }
+        }
+      }
+    },
     "Are you sure you want to delete this release? This cannot be undone." : {
       "comment" : "Album detail: delete-release confirmation message",
       "localizations" : {

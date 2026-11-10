@@ -170,6 +170,7 @@
     <string name="members_remove_confirm_title">Eltávolítod ezt az eszközt?</string>
     <string name="members_remove_confirm_body">%1$s elveszíti a hozzáférést ehhez a könyvtárhoz.</string>
     <string name="join_request_approve">Jóváhagyás</string>
+    <string name="join_request_match">Hagyd jóvá, ha a képernyőjükön ez a kód látható:</string>
     <string name="join_request_confirmation">Megerősítő szám</string>
     <string name="onboarding_add_device">Eszköz hozzáadása</string>
     <string name="onboarding_tagline">A zenéd mindenhol</string>

@@ -170,6 +170,7 @@
     <string name="members_remove_confirm_title">Ta bort den här enheten?</string>
     <string name="members_remove_confirm_body">%1$s förlorar åtkomsten till det här biblioteket.</string>
     <string name="join_request_approve">Godkänn</string>
+    <string name="join_request_match">Godkänn om deras skärm visar den här koden:</string>
     <string name="join_request_confirmation">Bekräftelsenummer</string>
     <string name="onboarding_add_device">Lägg till enhet</string>
     <string name="onboarding_tagline">Din musik, överallt</string>

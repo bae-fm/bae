@@ -171,6 +171,7 @@
     <string name="members_remove_confirm_title">Remover este dispositivo?</string>
     <string name="members_remove_confirm_body">%1$s perde o acesso a esta biblioteca.</string>
     <string name="join_request_approve">Aprovar</string>
+    <string name="join_request_match">Aprove se o ecrã deles mostrar este código:</string>
     <string name="join_request_confirmation">Número de confirmação</string>
     <string name="onboarding_add_device">Adicionar dispositivo</string>
     <string name="onboarding_tagline">A sua música, em todo o lado</string>

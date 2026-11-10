@@ -182,6 +182,7 @@
     <string name="members_remove_confirm_title">إزالة هذا الجهاز؟</string>
     <string name="members_remove_confirm_body">سيفقد %1$s الوصول إلى هذه المكتبة.</string>
     <string name="join_request_approve">موافقة</string>
+    <string name="join_request_match">وافق إذا كانت شاشتهم تعرض هذا الرمز:</string>
     <string name="join_request_confirmation">رقم التأكيد</string>
     <string name="onboarding_add_device">إضافة جهاز</string>
     <string name="onboarding_tagline">موسيقاك في كل مكان</string>

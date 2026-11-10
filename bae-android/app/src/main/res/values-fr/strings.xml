@@ -170,6 +170,7 @@
     <string name="members_remove_confirm_title">Supprimer cet appareil ?</string>
     <string name="members_remove_confirm_body">%1$s perd l’accès à cette bibliothèque.</string>
     <string name="join_request_approve">Approuver</string>
+    <string name="join_request_match">Approuvez si leur écran affiche ce code :</string>
     <string name="join_request_confirmation">Numéro de confirmation</string>
     <string name="onboarding_add_device">Ajouter un appareil</string>
     <string name="onboarding_tagline">Votre musique, partout</string>

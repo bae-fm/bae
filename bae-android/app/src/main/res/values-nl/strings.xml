@@ -166,6 +166,7 @@
     <string name="members_remove_confirm_title">Dit apparaat verwijderen?</string>
     <string name="members_remove_confirm_body">%1$s verliest de toegang tot deze bibliotheek.</string>
     <string name="join_request_approve">Goedkeuren</string>
+    <string name="join_request_match">Keur goed als hun scherm deze code toont:</string>
     <string name="join_request_confirmation">Bevestigingsnummer</string>
     <string name="onboarding_add_device">Apparaat toevoegen</string>
     <string name="onboarding_tagline">Je muziek, overal</string>

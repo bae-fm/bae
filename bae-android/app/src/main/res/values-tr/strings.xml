@@ -166,6 +166,7 @@
     <string name="members_remove_confirm_title">Bu cihaz kaldırılsın mı?</string>
     <string name="members_remove_confirm_body">%1$s bu kitaplığa erişimini kaybeder.</string>
     <string name="join_request_approve">Onayla</string>
+    <string name="join_request_match">Ekranlarında bu kod görünüyorsa onaylayın:</string>
     <string name="join_request_confirmation">Onay numarası</string>
     <string name="onboarding_add_device">Cihaz ekle</string>
     <string name="onboarding_tagline">Müziğiniz, her yerde</string>

@@ -2764,11 +2764,12 @@ Dan taps **Scan code** and scans Ana's screen, or Ana sends him the code and
 he taps **Enter code** and pastes it. His waiting screen shows until when it
 waits, which is when the invite expires, his confirmation number, a countdown
 to the next check in whole seconds, rounded up so it never reads 0 before the
-check, and **Check now**. When his request arrives, Ana's laptop shows a
-dialog with Dan's name, the same number, **Approve** and **Decline**. Ana
-compares it with Dan's screen, or asks him for his number, and approves if it
-matches. Every invite waits for her approval: someone who saw the code could
-use it before Dan, and only the number shows whose request it is.
+check, and **Check now**. When his request arrives, Ana's laptop shows a dialog
+with Dan's name, asks her to approve if his screen shows this code, and shows
+the same number under it, with **Approve** and **Decline**. Ana compares it with
+Dan's screen, or asks him for his number, and approves if it matches. Every
+invite waits for her approval: someone who saw the code could use it before Dan,
+and only the number shows whose request it is.
 
 Once his phone has opened the library and loaded his admission, it asks
 for his `people` row with that name (§5.4). Everyone's devices show Dan by

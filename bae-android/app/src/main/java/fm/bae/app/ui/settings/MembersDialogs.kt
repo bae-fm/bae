@@ -17,10 +17,10 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
-import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.LabeledValueRow
+import fm.bae.app.ui.components.MatchCode
+import fm.bae.app.ui.components.NeutralTextButton
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeDeviceCutOff
@@ -335,28 +335,36 @@ private fun JoinRequestDialog(
 ) {
     val request = invite.requestToDecide ?: return
     val info = remember(request) { request.info() }
+    JoinRequestDialogContent(
+        title = invite.invitee ?: info.deviceName,
+        confirmation = info.confirmation,
+        onApprove = { model.perform("approve a join request") { session.appHandle.approveJoinRequest(request) } },
+        onDecline = { model.perform("decline a join request") { session.appHandle.declineJoinRequest(request) } },
+        onClose = onClose,
+    )
+}
+
+/** The dialog for a request to join: Decline in the text colour, Approve the one coloured button. */
+@Composable
+internal fun JoinRequestDialogContent(
+    title: String,
+    confirmation: String,
+    onApprove: () -> Unit,
+    onDecline: () -> Unit,
+    onClose: () -> Unit,
+) {
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text(invite.invitee ?: info.deviceName) },
+        title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                Text(stringResource(R.string.join_request_confirmation), style = ThemeText.detail.style)
-                Text(info.confirmation, style = ThemeText.title.style)
+            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
+                Text(stringResource(R.string.join_request_match))
+                MatchCode(confirmation)
             }
         },
-        confirmButton = {
-            TextButton(
-                onClick = { model.perform("approve a join request") { session.appHandle.approveJoinRequest(request) } },
-            ) {
-                Text(stringResource(R.string.join_request_approve))
-            }
-        },
+        confirmButton = { TextButton(onClick = onApprove) { Text(stringResource(R.string.join_request_approve)) } },
         dismissButton = {
-            DestructiveTextButton(
-                onClick = { model.perform("decline a join request") { session.appHandle.declineJoinRequest(request) } },
-            ) {
-                Text(stringResource(R.string.join_request_decline))
-            }
+            NeutralTextButton(onClick = onDecline) { Text(stringResource(R.string.join_request_decline)) }
         },
     )
 }

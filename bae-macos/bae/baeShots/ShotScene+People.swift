@@ -5,8 +5,8 @@ import SwiftUI
 
 extension ShotScene {
     /// People and devices: the first page for an admin and for a member, a
-    /// person's page, this person's devices, and the sheet that renames this
-    /// person.
+    /// person's page, this person's devices, the sheet that renames this
+    /// person, and the sheet that asks to approve a join request.
     static let peopleScenes: [ShotScene] = [
         people("people-and-devices-admin", asAdmin: true),
         people("people-and-devices-member", asAdmin: false),
@@ -17,6 +17,22 @@ extension ShotScene {
         ),
         people("people-and-devices-yours", asAdmin: true, subpage: .devices),
         people("people-and-devices-rename", asAdmin: true, renaming: true),
+        ShotScene(
+            id: "people-and-devices-request",
+            size: CGSize(width: 400, height: 190)
+        ) {
+            ShotStage(
+                JoinRequestSheet(
+                    title: "Dan",
+                    confirmation: "412 778",
+                    busy: false,
+                    error: nil,
+                    onApprove: {},
+                    onDecline: {},
+                    onClose: {}
+                )
+            )
+        },
     ]
 
     /// The preview people's other person.

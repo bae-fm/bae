@@ -166,6 +166,7 @@
     <string name="members_remove_confirm_title">Dieses Gerät entfernen?</string>
     <string name="members_remove_confirm_body">%1$s verliert den Zugriff auf diese Bibliothek.</string>
     <string name="join_request_approve">Genehmigen</string>
+    <string name="join_request_match">Genehmige, wenn ihr Bildschirm diesen Code zeigt:</string>
     <string name="join_request_confirmation">Bestätigungsnummer</string>
     <string name="onboarding_add_device">Gerät hinzufügen</string>
     <string name="onboarding_tagline">Deine Musik, überall</string>

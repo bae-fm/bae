@@ -81,6 +81,7 @@ import fm.bae.app.ui.playback.PlayerSceneState
 import fm.bae.app.ui.settings.AppearanceSection
 import fm.bae.app.ui.settings.CastingPage
 import fm.bae.app.ui.settings.FolderChoiceScene
+import fm.bae.app.ui.settings.JoinRequestDialogContent
 import fm.bae.app.ui.settings.LibrarySettingsContent
 import fm.bae.app.ui.settings.PeoplePage
 import fm.bae.app.ui.settings.PeopleScene
@@ -268,6 +269,21 @@ fun S3KeyDialogScene() {
 @Composable
 fun RemoveLibraryFailed() {
     DialogScene { RemovalFailedText(sceneLibrary, DisplayError("Couldn’t reach the cloud.")) }
+}
+
+/** A request to join: the code to match under the line asking to approve, Decline in the text colour. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun JoinRequestDialogScene() {
+    BaeTheme {
+        JoinRequestDialogContent(
+            title = "Dan",
+            confirmation = "412 778",
+            onApprove = {},
+            onDecline = {},
+            onClose = {},
+        )
+    }
 }
 
 private val sceneLibrary =

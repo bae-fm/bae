@@ -168,9 +168,12 @@ struct PeopleAndDevicesPage: View {
                 }
             )
         ) {
-            if let invite = requestShown {
+            if let invite = requestShown,
+                let request = invite.requestToDecide
+            {
                 JoinRequestSheet(
-                    invite: invite,
+                    title: invite.invitee ?? "",
+                    confirmation: request.info().confirmation,
                     busy: task != nil,
                     error: actionError,
                     onApprove: { approve(invite) },
@@ -839,11 +842,12 @@ private struct InviteRow: View {
     }
 }
 
-/// An invite's request: the person's name and the number their device
-/// shows, to compare before approving. Closing it keeps the request; the
+/// A join request: the person's name, and the number their device shows,
+/// which Approve is for when it matches. Closing it keeps the request; the
 /// invite's row opens it again.
-private struct JoinRequestSheet: View {
-    let invite: BridgeInvite
+struct JoinRequestSheet: View {
+    let title: String
+    let confirmation: String
     let busy: Bool
     let error: DisplayError?
     let onApprove: () -> Void
@@ -851,17 +855,12 @@ private struct JoinRequestSheet: View {
     let onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: ThemeSpace.group) {
-            Text(verbatim: invite.invitee ?? "")
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
+            Text(verbatim: title)
                 .themeText(.heading)
-            if let info = invite.requestToDecide?.info() {
-                Text("Confirmation number")
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                Text(verbatim: info.confirmation)
-                    .themeText(.title)
-                    .textSelection(.enabled)
-            }
+            Text("Approve if their screen shows this code:")
+                .themeText(.body)
+            MacMatchCode(code: confirmation)
             if let error {
                 Notice(error: error)
             }
@@ -871,7 +870,7 @@ private struct JoinRequestSheet: View {
                         .keyboardShortcut(.cancelAction)
                 },
                 trailing: {
-                    Button("Decline", role: .destructive, action: onDecline)
+                    Button("Decline", action: onDecline)
                         .disabled(busy)
                     Button("Approve", action: onApprove)
                         .buttonStyle(PrimaryButtonStyle())
@@ -880,7 +879,7 @@ private struct JoinRequestSheet: View {
             )
         }
         .padding()
-        .frame(width: 320)
+        .frame(width: 400)
     }
 }
 

@@ -82,6 +82,7 @@ FolderChoiceOneDrive:folder-choice-onedrive
 FullPlayerAllHere:full-player-all-here
 FullPlayerPlayingWithAGap:full-player-playing-with-a-gap
 FullPlayerWaitingOnStorage:full-player-waiting-on-storage
+JoinRequestDialogScene:join-request-dialog
 LibraryGrid:library-grid
 LibraryGridLight:library-grid-light
 LibraryGridScrolled:library-grid-scrolled
