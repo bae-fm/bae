@@ -506,7 +506,7 @@ async fn a_found_verdict_names_what_holds_its_pick_back() {
     findings_of(&mut ruled_out).medium_conflict = Some(bae_identify::MediumConflict::CdRip);
     assert_eq!(
         lib.moved(lib.concluded("Album", ruled_out)).await,
-        now(&lib, found("Album").needs_you("medium_mismatch"))
+        now(&lib, found("Album").needs_you("not_found"))
     );
     assert_eq!(
         lib.moved(lib.concluded("Album", found_verdict(11, [(fits.clone(), 0)]))).await,

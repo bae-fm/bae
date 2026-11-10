@@ -1352,8 +1352,11 @@ form says the artwork is still being read under the fields its text
 suggests to.
 
 When the run doesn't pick, the pane says why: nothing found, several
-pressings, a record that couldn't be read, a tracklist that couldn't be
-checked, or a medium the folder rules out. The person then:
+pressings, a record that couldn't be read, or a tracklist that couldn't be
+checked. A folder whose files rule out every release found (§3.3) counts as
+not found: its row waits on the person as Not found, and the pane still lists
+the ruled-out releases among the excluded ones, where they can be expanded and
+picked. The person then:
 
 - **picks** one of the offered pressings;
 - **searches** by artist and album, catalog number or barcode, with each

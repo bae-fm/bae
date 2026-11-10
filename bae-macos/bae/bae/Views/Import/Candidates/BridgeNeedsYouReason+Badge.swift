@@ -10,8 +10,6 @@ extension BridgeNeedsYouReason {
             String(localized: "\(Int(count)) matches")
         case .noTracklist:
             String(localized: "No tracklist")
-        case .mediumMismatch:
-            String(localized: "Medium mismatch")
         case .notFound:
             String(localized: "Not found")
         case .nothingToLookUp:
@@ -34,26 +32,6 @@ extension BridgeNeedsYouReason {
                 localized:
                     "The catalog doesn't list this release's tracks, so we couldn't check it fits."
             )
-        case .mediumMismatch(.cdRip, releases: 1):
-            String(
-                localized:
-                    "Your files look like a CD rip, but the release found isn't a CD."
-            )
-        case .mediumMismatch(.cdRip, _):
-            String(
-                localized:
-                    "Your files look like a CD rip, but the releases found aren't CDs."
-            )
-        case .mediumMismatch(.notCdAudio, releases: 1):
-            String(
-                localized:
-                    "Your files have a sample rate no CD has, but the release found is a CD."
-            )
-        case .mediumMismatch(.notCdAudio, _):
-            String(
-                localized:
-                    "Your files have a sample rate no CD has, but the releases found are CDs."
-            )
         case .notFound:
             String(localized: "No catalog has this.")
         case .nothingToLookUp:
@@ -70,7 +48,7 @@ extension BridgeNeedsYouReason {
     /// keeping the folder's own draft is worded: none of these, or keep mine.
     var offeredReleases: Bool {
         switch self {
-        case .matches, .noTracklist, .mediumMismatch:
+        case .matches, .noTracklist:
             true
         case .notFound, .nothingToLookUp:
             false

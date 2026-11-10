@@ -34,7 +34,6 @@
 //! with its text.
 
 use bae_catalogs::InternalFailure;
-use bae_identify::MediumConflict;
 
 /// One state a Found row is in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -73,10 +72,8 @@ pub enum NeedsYouReason {
     /// The one release found lists no tracks, so whether it fits the folder
     /// was never checked.
     NoTracklist,
-    /// The folder's own files rule out every release found, of which there
-    /// are `releases`.
-    MediumMismatch { folder: MediumConflict, releases: u32 },
-    /// No catalog has the folder.
+    /// No catalog has the folder, or the folder's own files rule out every
+    /// release found.
     NotFound,
     /// The folder has nothing to look it up by.
     NothingToLookUp,

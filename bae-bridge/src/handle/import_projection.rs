@@ -300,17 +300,9 @@ mirror_enum! {
     variants: {
         Matches { count },
         NoTracklist,
-        MediumMismatch { folder: (crate::types::BridgeMediumMismatch), releases },
         NotFound,
         NothingToLookUp,
     },
-}
-
-mirror_enum! {
-    crate::types::BridgeMediumMismatch = bae_identify::MediumConflict,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: { CdRip, NotCdAudio },
 }
 
 impl crate::types::BridgeCandidateLiveState {

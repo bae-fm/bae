@@ -33,7 +33,6 @@ struct NeedsYouReasonTests {
         let reasons: [BridgeNeedsYouReason] = [
             .matches(count: 3),
             .noTracklist,
-            .mediumMismatch(folder: .cdRip, releases: 2),
             .notFound,
             .nothingToLookUp,
         ]
@@ -55,26 +54,6 @@ struct NeedsYouReasonTests {
         )
     }
 
-    @Test("a medium that rules out one release reads in the singular")
-    func mediumSentenceFollowsTheCount() {
-        let one = BridgeNeedsYouReason.mediumMismatch(
-            folder: .cdRip,
-            releases: 1
-        )
-        let two = BridgeNeedsYouReason.mediumMismatch(
-            folder: .cdRip,
-            releases: 2
-        )
-        #expect(one.sentence != two.sentence)
-        #expect(
-            BridgeNeedsYouReason.mediumMismatch(
-                folder: .notCdAudio,
-                releases: 2
-            )
-            .sentence != two.sentence
-        )
-    }
-
     /// Keeping the folder's own draft reads "None of these" where the page
     /// offered releases, and "Keep my info" where it offered none.
     @Test("only a page that offered releases says none of these")
@@ -82,7 +61,6 @@ struct NeedsYouReasonTests {
         let offered: [BridgeNeedsYouReason] = [
             .matches(count: 2),
             .noTracklist,
-            .mediumMismatch(folder: .notCdAudio, releases: 1),
         ]
         for reason in offered {
             #expect(reason.offeredReleases, "\(reason)")

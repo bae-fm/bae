@@ -294,23 +294,23 @@ fn release_rows(
                 display_path: row.get(2)?,
                 summary,
                 listed: ListedColumns::read(row, 6)?,
-                name: row.get(17)?,
-                content_hash: row.get(18)?,
-                current: row.get(19)?,
-                imported: match row.get::<_, Option<String>>(20)? {
+                name: row.get(16)?,
+                content_hash: row.get(17)?,
+                current: row.get(18)?,
+                imported: match row.get::<_, Option<String>>(19)? {
                     Some(release_id) => {
-                        Some(ImportedRelease { release_id, album_id: row.get(21)? })
+                        Some(ImportedRelease { release_id, album_id: row.get(20)? })
                     }
                     None => None,
                 },
                 library_cover: row.get("library_cover")?,
                 drafted: row.get("drafted")?,
-                block: (row.get(22)?, row.get(23)?, row.get(24)?),
+                block: (row.get(21)?, row.get(22)?, row.get(23)?),
                 failure: match failed {
                     true => Some(failure_reason_from_row(row)?),
                     false => None,
                 },
-                facts: RuntimeFactColumns::read(row, 27)?,
+                facts: RuntimeFactColumns::read(row, 26)?,
                 selected: row.get("selected")?,
                 metadata_provenance: None,
                 release_link: None,

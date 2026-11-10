@@ -30,13 +30,10 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
         ELSE pending_state END) VIRTUAL,
     -- Why a release that needs the person does.
     needs_you_reason    TEXT CHECK (needs_you_reason IN (
-        'matches', 'no_tracklist', 'medium_mismatch', 'not_found', 'nothing_to_look_up')),
+        'matches', 'no_tracklist', 'not_found', 'nothing_to_look_up')),
     -- How many pressings its lookup found, for a release that needs the
-    -- person because it can't tell them apart or because the folder rules
-    -- them all out.
+    -- person because it can't tell them apart.
     reason_pressings    INTEGER CHECK (reason_pressings >= 0),
-    -- What the folder's own files rule the pressings out as, for the latter.
-    reason_medium       TEXT CHECK (reason_medium IN ('cd_rip', 'not_cd_audio')),
     -- How bae broke on its own side, for a release in error.
     error_detail        TEXT,
     -- For a release at a watched folder's top level: whether another release
@@ -110,9 +107,7 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     CHECK (item <> 'invalid' OR tab = 'skipped'),
     CHECK ((tab = 'pending' AND item <> 'group') = (pending_state IS NOT NULL)),
     CHECK ((pending_state IS 'needs_you') = (needs_you_reason IS NOT NULL)),
-    CHECK (COALESCE(needs_you_reason IN ('matches', 'medium_mismatch'), 0)
-           = (reason_pressings IS NOT NULL)),
-    CHECK ((needs_you_reason IS 'medium_mismatch') = (reason_medium IS NOT NULL)),
+    CHECK ((needs_you_reason IS 'matches') = (reason_pressings IS NOT NULL)),
     CHECK ((pending_state IS 'error') = (error_detail IS NOT NULL)),
     CHECK (holds_nested = 0 OR (item <> 'group' AND instr(folder, X'2F') = 0)),
     CHECK (item <> 'group' OR tab = 'pending'),
@@ -239,9 +234,7 @@ WHERE c.kind <> 'tentative'
 -- placement's own (`group_folder`).
 CREATE VIEW IF NOT EXISTS import_list_entry AS
 SELECT watched_folder_path, item, key, root_position, tab, pending_state, needs_you_reason,
-       CASE WHEN needs_you_reason IN ('matches', 'medium_mismatch') THEN pressings
-            END AS reason_pressings,
-       CASE WHEN needs_you_reason = 'medium_mismatch' THEN medium_conflict END AS reason_medium,
+       CASE WHEN needs_you_reason = 'matches' THEN pressings END AS reason_pressings,
        -- A run's answer bae could not store says how it broke; otherwise the
        -- stored verdict does.
        CASE WHEN pending_state = 'error' THEN
@@ -307,7 +300,7 @@ FROM (
                     WHEN declined = 'nothing_found' THEN 'not_found'
                     WHEN declined = 'several' THEN 'matches'
                     WHEN declined = 'source_tracks_unknown' THEN 'no_tracklist'
-                    WHEN declined = 'medium_disagrees' THEN 'medium_mismatch' END AS stored_reason,
+                    WHEN declined = 'medium_disagrees' THEN 'not_found' END AS stored_reason,
                -- The time the release was written, read off its RFC 3339
                -- text: whole seconds through its offset, and the
                -- milliseconds of its fraction, truncated.
@@ -357,7 +350,6 @@ FROM (
                            WHERE l.content_hash = s.content_hash) AS linked,
                    v.kind AS verdict_kind,
                    v.kept_own_draft,
-                   v.medium_conflict,
                    v.error_detail AS verdict_error,
                    -- How many pressings the releases agreement kept make.
                    (SELECT COUNT(DISTINCT m.pressing) FROM import_candidate_match AS m
@@ -477,10 +469,10 @@ CREATE TRIGGER IF NOT EXISTS import_list_replace_release INSTEAD OF INSERT ON im
 BEGIN
     INSERT INTO import_list_placement
         (watched_folder_path, item, key, root_position, tab, pending_state, needs_you_reason,
-         reason_pressings, reason_medium, error_detail, own_date, folder, has_summary,
+         reason_pressings, error_detail, own_date, folder, has_summary,
          shown_title, shown_artists, actionable, import_failed, draft_valid, lookup, separable)
     SELECT watched_folder_path, item, key, root_position, tab, pending_state, needs_you_reason,
-           reason_pressings, reason_medium, error_detail, own_date, folder, has_summary,
+           reason_pressings, error_detail, own_date, folder, has_summary,
            shown_title, shown_artists, actionable, import_failed, draft_valid, lookup, separable
     FROM import_list_entry WHERE key = NEW.key
     ON CONFLICT (watched_folder_path, item, key) DO UPDATE SET
@@ -489,7 +481,6 @@ BEGIN
         pending_state = excluded.pending_state,
         needs_you_reason = excluded.needs_you_reason,
         reason_pressings = excluded.reason_pressings,
-        reason_medium = excluded.reason_medium,
         error_detail = excluded.error_detail,
         own_date = excluded.own_date,
         folder = excluded.folder,
@@ -503,7 +494,7 @@ BEGIN
         separable = excluded.separable
     WHERE (import_list_placement.root_position, import_list_placement.tab,
            import_list_placement.pending_state, import_list_placement.needs_you_reason,
-           import_list_placement.reason_pressings, import_list_placement.reason_medium,
+           import_list_placement.reason_pressings,
            import_list_placement.error_detail, import_list_placement.own_date,
            import_list_placement.folder, import_list_placement.has_summary,
            import_list_placement.shown_title, import_list_placement.shown_artists,
@@ -511,7 +502,7 @@ BEGIN
            import_list_placement.draft_valid, import_list_placement.lookup,
            import_list_placement.separable)
         IS NOT (excluded.root_position, excluded.tab, excluded.pending_state,
-                excluded.needs_you_reason, excluded.reason_pressings, excluded.reason_medium,
+                excluded.needs_you_reason, excluded.reason_pressings,
                 excluded.error_detail, excluded.own_date, excluded.folder,
                 excluded.has_summary, excluded.shown_title, excluded.shown_artists,
                 excluded.actionable, excluded.import_failed, excluded.draft_valid,

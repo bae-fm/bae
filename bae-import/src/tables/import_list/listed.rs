@@ -10,7 +10,6 @@ use crate::{
     TriagePlacement, TriageTab,
 };
 use bae_catalogs::InternalFailure;
-use bae_identify::MediumConflict;
 
 /// The placement columns a release's command basis is read from, over the
 /// alias `p`, in the order [`BasisColumns::read`] reads them.
@@ -26,7 +25,7 @@ pub(super) const BASIS_COLUMNS: &str = basis_columns!();
 /// [`ListedColumns::read`] reads.
 pub(super) const LISTED_COLUMNS: &str = concat!(
     basis_columns!(),
-    ", p.pending_state, p.needs_you_reason, p.reason_pressings, p.reason_medium, ",
+    ", p.pending_state, p.needs_you_reason, p.reason_pressings, ",
     "p.error_detail"
 );
 
@@ -95,7 +94,6 @@ pub(super) struct ListedColumns {
     pending_state: Option<String>,
     needs_you_reason: Option<String>,
     reason_pressings: Option<i64>,
-    reason_medium: Option<String>,
     error_detail: Option<String>,
 }
 
@@ -108,8 +106,7 @@ impl ListedColumns {
             pending_state: row.get(state)?,
             needs_you_reason: row.get(state + 1)?,
             reason_pressings: row.get(state + 2)?,
-            reason_medium: row.get(state + 3)?,
-            error_detail: row.get(state + 4)?,
+            error_detail: row.get(state + 3)?,
         })
     }
 
@@ -147,20 +144,6 @@ impl ListedColumns {
                     reason: match self.needs_you_reason.as_deref() {
                         Some("matches") => NeedsYouReason::Matches { count: pressings()? },
                         Some("no_tracklist") => NeedsYouReason::NoTracklist,
-                        Some("medium_mismatch") => NeedsYouReason::MediumMismatch {
-                            folder: match self.reason_medium.as_deref() {
-                                Some("cd_rip") => MediumConflict::CdRip,
-                                Some("not_cd_audio") => MediumConflict::NotCdAudio,
-                                Some(other) => {
-                                    return Err(DbError::unreadable(
-                                        "import_list_placement.reason_medium",
-                                        other,
-                                    ))
-                                }
-                                None => return Err(broken("names no medium")),
-                            },
-                            releases: pressings()?,
-                        },
                         Some("not_found") => NeedsYouReason::NotFound,
                         Some("nothing_to_look_up") => NeedsYouReason::NothingToLookUp,
                         Some(other) => {

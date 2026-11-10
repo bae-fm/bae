@@ -9,12 +9,6 @@ fn every_standing() -> Vec<PendingStanding> {
         PendingStanding::Identifying,
         PendingStanding::NeedsYou { reason: NeedsYouReason::Matches { count: 3 } },
         PendingStanding::NeedsYou { reason: NeedsYouReason::NoTracklist },
-        PendingStanding::NeedsYou {
-            reason: NeedsYouReason::MediumMismatch {
-                folder: MediumConflict::NotCdAudio,
-                releases: 2,
-            },
-        },
         PendingStanding::NeedsYou { reason: NeedsYouReason::NotFound },
         PendingStanding::NeedsYou { reason: NeedsYouReason::NothingToLookUp },
         PendingStanding::Identified,

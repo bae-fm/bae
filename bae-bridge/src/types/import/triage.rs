@@ -319,24 +319,11 @@ pub enum BridgeNeedsYouReason {
     Matches { count: u32 },
     /// The one release found lists no tracks.
     NoTracklist,
-    /// The folder's own files rule out every release found, of which there
-    /// are `releases`.
-    MediumMismatch { folder: BridgeMediumMismatch, releases: u32 },
-    /// No catalog has the folder.
+    /// No catalog has the folder, or the folder's own files rule out every
+    /// release found.
     NotFound,
     /// The folder has nothing to look it up by.
     NothingToLookUp,
-}
-
-/// What the folder's own files prove against the releases found. Mirrors
-/// `bae_identify::MediumConflict`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
-pub enum BridgeMediumMismatch {
-    /// The folder is a CD rip, and no release could be a CD.
-    CdRip,
-    /// The folder's audio is at a rate no CD plays at, and every release is
-    /// a CD.
-    NotCdAudio,
 }
 
 /// The one badge a Found row waiting on the person wears: what it says, and

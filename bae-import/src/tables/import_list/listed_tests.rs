@@ -273,10 +273,7 @@ async fn each_row_reads_back_in_the_standing_its_tables_put_it_in() {
     let needs_you = |reason| Some(PendingStanding::NeedsYou { reason });
     assert_eq!(standing("Several"), needs_you(NeedsYouReason::Matches { count: 3 }));
     assert_eq!(standing("No Tracklist"), needs_you(NeedsYouReason::NoTracklist));
-    assert_eq!(
-        standing("Medium"),
-        needs_you(NeedsYouReason::MediumMismatch { folder: MediumConflict::CdRip, releases: 2 })
-    );
+    assert_eq!(standing("Medium"), needs_you(NeedsYouReason::NotFound));
     assert_eq!(standing("Not Found"), needs_you(NeedsYouReason::NotFound));
     assert_eq!(standing("Nothing Found"), needs_you(NeedsYouReason::NotFound));
     assert_eq!(standing("Manual"), needs_you(NeedsYouReason::NothingToLookUp));
