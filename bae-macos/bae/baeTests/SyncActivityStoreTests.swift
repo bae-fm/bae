@@ -28,7 +28,8 @@ struct SyncActivityStoreTests {
             attention: [],
             syncing: false,
             uploads: nil,
-            downloads: nil,
+            pins: nil,
+            makingLocal: nil,
             retryOffered: false
         )
     }

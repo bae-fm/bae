@@ -254,8 +254,8 @@ async fn a_storage_row_counts_the_file_being_sent() {
     drain.await.unwrap().unwrap();
 }
 
-/// The sync activity counts the file being sent as its send starts, while
-/// nothing joins or leaves the queue, and drops it as the send ends.
+/// The sync activity spins as a file's send starts, while nothing joins or
+/// leaves the queue, and its release's line goes once the send ends.
 #[tokio::test]
 async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     let (test, temp_dir) = setup_test_manager().await;
@@ -272,8 +272,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     assert_eq!(
         crate::followed::value_matching(&mut activity, |_| true).await.uploads,
         Some(bae_views::UploadQueueActivity {
-            sending: 0,
-            waiting: 1,
+            batch: bae_views::TransferBatch { done: 0, total: 1 },
             wait: Some(bae_records::UploadQueueWait::Paused),
         }),
         "the helper queues the file with uploads paused"
@@ -291,13 +290,14 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
-    let sending = loop {
-        let next = crate::followed::value_matching(&mut activity, |_| true).await;
-        if let Some(uploads) = next.uploads.filter(|uploads| uploads.sending > 0) {
-            break uploads;
-        }
-    };
-    assert_eq!(sending, bae_views::UploadQueueActivity { sending: 1, waiting: 0, wait: None });
+    let sending = crate::followed::value_matching(&mut activity, |next| next.moving).await;
+    assert_eq!(
+        sending.uploads,
+        Some(bae_views::UploadQueueActivity {
+            batch: bae_views::TransferBatch { done: 0, total: 1 },
+            wait: None
+        })
+    );
     created.await.unwrap();
     resume.send(()).unwrap();
     while crate::followed::value_matching(&mut activity, |_| true).await.uploads.is_some() {}

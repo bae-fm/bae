@@ -11,9 +11,7 @@ import fm.bae.app.data.LibraryClosingSteps
 import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.data.LibrarySetupProgress
 import fm.bae.app.data.LibrarySetupStatus
-import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
-import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
@@ -885,11 +883,7 @@ object AppSessionHolder {
                 SyncActivityStore(
                     retryNowAction = { messages.startRetrySync(handle::retryNow) },
                 ),
-            transfers =
-                LibraryTransferStores(
-                    downloads = DownloadStore(initialDownloads, initialUnmeteredOnly),
-                    outbox = OutboxStore(),
-                ),
+            downloads = DownloadStore(initialDownloads, initialUnmeteredOnly),
             cast = CastStore(),
         )
 }

@@ -180,25 +180,6 @@ pub(crate) fn outbox_transfer_feeds(
     BridgeOutboxFeeds::Streams { releases, total }
 }
 
-/// The stream [`AppHandle::feed_upload_total_transfer`](crate::AppHandle::feed_upload_total_transfer) hands out.
-pub(crate) fn upload_total_transfer(
-    runtime: OperationRuntime,
-    run: impl RunFeed,
-) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| {
-        let mut total = services.watch_outbox_total_transfer();
-        async move {
-            while let Some(transfer) = total.next().await {
-                match transfer.map(upload_total) {
-                    Ok(Some(total)) => writer.set_only(total),
-                    Ok(None) => writer.remove_only(),
-                    Err(error) => writer.fail(BridgeError::database_query(error)),
-                }
-            }
-        }
-    })
-}
-
 /// The stream [`AppHandle::feed_upload_file_shares`](crate::AppHandle::feed_upload_file_shares) hands out.
 pub(crate) fn upload_file_shares(
     runtime: OperationRuntime,

@@ -321,7 +321,6 @@ task_types = [
     "KeyedValueStream",
     # One subscriber's watch on the outbox's transfers.
     "OutboxTransfersWatch",
-    "OutboxTotalTransferWatch",
     # One editor's session on one release, and the bridge's object the app
     # holds over it.
     "ReleaseEdit",
@@ -1483,6 +1482,7 @@ homes = [
 tables = [
     "release_queues",
     "download_queue",
+    "download_batch",
     "output_queue",
     "release_queue_versions",
 ]
@@ -1492,7 +1492,7 @@ name = "library views"
 owner = "LibraryViews"
 homes = ["bae-views/src/"]
 tables = [
-    "upload_queue_count",
+    "upload_batch",
     "composer_work",
     "composer_release",
     "composer_unlinked_credit",

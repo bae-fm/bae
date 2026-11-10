@@ -4,9 +4,7 @@ import android.os.Looper
 import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
-import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
-import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
@@ -40,11 +38,7 @@ internal fun openTestLibrary(
                 config = ConfigStore(BridgeFixtures.config()),
                 syncStatus = syncStatus,
                 syncActivity = syncActivity,
-                transfers =
-                    LibraryTransferStores(
-                        downloads = DownloadStore(BridgeFixtures.downloadCounts(), initialUnmeteredOnly = false),
-                        outbox = OutboxStore(),
-                    ),
+                downloads = DownloadStore(BridgeFixtures.downloadCounts(), initialUnmeteredOnly = false),
                 cast = CastStore(),
             ),
         runtime =

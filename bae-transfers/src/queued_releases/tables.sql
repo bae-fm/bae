@@ -53,6 +53,48 @@ BEGIN
     UPDATE release_queue_versions SET version = version + 1 WHERE source = 'download_queue';
 END;
 
+-- The releases the download queue has held of each kind since that kind last
+-- had none waiting or downloading: what the Activity panel's Pinning and
+-- Making local lines count. Only membership: whether a release is done is read
+-- from release_storage. Never synced.
+CREATE TABLE IF NOT EXISTS download_batch (
+    release_id TEXT NOT NULL,
+    kind       TEXT NOT NULL CHECK (kind IN ('pin', 'make_local')),
+    PRIMARY KEY (release_id, kind)
+) STRICT, WITHOUT ROWID;
+
+-- An entry waiting or downloading is in its kind's batch: queued, retried, put
+-- back by a pause, started, or queued again as the other kind in its place.
+CREATE TRIGGER IF NOT EXISTS download_batch_queued AFTER INSERT ON download_queue
+WHEN NEW.state IN ('queued', 'active') AND NOT EXISTS (
+    SELECT 1 FROM download_batch WHERE release_id = NEW.release_id AND kind = NEW.kind)
+BEGIN
+    INSERT INTO download_batch (release_id, kind) VALUES (NEW.release_id, NEW.kind);
+END;
+
+CREATE TRIGGER IF NOT EXISTS download_batch_requeued AFTER UPDATE OF state, kind ON download_queue
+WHEN NEW.state IN ('queued', 'active') AND NOT EXISTS (
+    SELECT 1 FROM download_batch WHERE release_id = NEW.release_id AND kind = NEW.kind)
+BEGIN
+    INSERT INTO download_batch (release_id, kind) VALUES (NEW.release_id, NEW.kind);
+END;
+
+-- A kind's batch ends once none of its entries waits or downloads: its last
+-- one finished, was cancelled, failed, or was queued again as the other kind.
+-- The releases that left before then stay in the batch.
+CREATE TRIGGER IF NOT EXISTS download_batch_left AFTER DELETE ON download_queue
+BEGIN
+    DELETE FROM download_batch WHERE kind = OLD.kind AND NOT EXISTS (
+        SELECT 1 FROM download_queue WHERE kind = OLD.kind AND state IN ('queued', 'active'));
+END;
+
+CREATE TRIGGER IF NOT EXISTS download_batch_stopped AFTER UPDATE OF state, kind ON download_queue
+WHEN NEW.state = 'failed' OR NEW.kind <> OLD.kind
+BEGIN
+    DELETE FROM download_batch WHERE kind = OLD.kind AND NOT EXISTS (
+        SELECT 1 FROM download_queue WHERE kind = OLD.kind AND state IN ('queued', 'active'));
+END;
+
 -- A release queued to export or save into a folder, as `download_queue` holds
 -- a download. How far it has got is not here either.
 CREATE TABLE IF NOT EXISTS output_queue (

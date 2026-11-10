@@ -87,7 +87,6 @@ internal fun LibraryBrowser(
                 syncActivity = {
                     SyncActivityButton(
                         store = session.syncActivityStore,
-                        uploadTransfer = session.outboxStore.totalProgress,
                         onOpenSettings = onSyncStatus,
                         onOpenDownloads = onDownloads,
                     )

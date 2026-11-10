@@ -84,24 +84,11 @@ private struct SyncActivityGlyph: View {
     }
 
     #Preview("Sync activity list") {
-        let outbox = OutboxStore(
-            uploadsPaused: false,
-            filesBeingSent: .uploadTotal(
-                holding: BridgeUploadTransfer(
-                    bar: BridgeUploadBar(
-                        bytesDone: 3_200_000,
-                        bytesTotal: 8_400_000
-                    ),
-                    throughputBps: 0
-                )
-            )
-        )
-        return Form {
+        Form {
             SyncActivityList(onOpenSettings: {})
         }
         .formStyle(.grouped)
         .frame(width: 360, height: 480)
         .environment(SyncActivityStore.preview())
-        .environment(outbox)
     }
 #endif

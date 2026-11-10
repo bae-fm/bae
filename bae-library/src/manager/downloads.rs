@@ -123,3 +123,7 @@ impl LibraryManager {
 #[cfg(test)]
 #[path = "downloads_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "downloads_batch_tests.rs"]
+mod batch_tests;

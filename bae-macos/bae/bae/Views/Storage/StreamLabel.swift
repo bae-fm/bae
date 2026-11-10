@@ -123,7 +123,7 @@ final class StreamLabelNSView: NSTextField {
     private func showRate(_ rate: UInt64?) {
         stringValue =
             rate.flatMap {
-                $0 > 0 ? QueueSummary.throughputText(bytesPerSecond: $0) : nil
+                $0 > 0 ? TransferThroughput.text(bytesPerSecond: $0) : nil
             } ?? ""
     }
 }
@@ -184,7 +184,7 @@ struct StreamLabel: NSViewRepresentable {
         let widest =
             switch stream {
             case .uploadRate, .pinRate:
-                QueueSummary.throughputText(bytesPerSecond: 999_900_000)
+                TransferThroughput.text(bytesPerSecond: 999_900_000)
             case .uploadBytes:
                 BridgeUploadBar(
                     bytesDone: 999_900_000_000,

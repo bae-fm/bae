@@ -607,7 +607,7 @@
             BridgeStorageQueues(
                 uploads: uploads.isEmpty
                     ? nil : BridgeUploadQueueRun(wait: nil),
-                pins: downloads.isEmpty
+                downloads: downloads.isEmpty
                     ? nil
                     : BridgeReleaseQueueRun(
                         wait: nil,

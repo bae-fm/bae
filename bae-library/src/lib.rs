@@ -50,8 +50,8 @@ pub use local_lifecycle::{
 };
 pub use manager::*;
 pub use outbox_watch::{
-    OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfers, OutboxTransfersWatch,
-    ReleaseUploadTransfer, UploadTransfer,
+    OutboxTransferChange, OutboxTransfers, OutboxTransfersWatch, ReleaseUploadTransfer,
+    UploadTransfer,
 };
 pub use queue_upcoming::{subscribe_queue_upcoming, LiveQueueUpcoming, QueueUpcomingSnapshot};
 pub use saved_restore_codes::{saved_restore_codes, SavedRestoreCodesError};

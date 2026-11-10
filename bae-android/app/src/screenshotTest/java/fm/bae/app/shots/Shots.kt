@@ -374,7 +374,6 @@ fun SyncActivityNeedingAttention() {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             SyncActivityList(
                 activity = PreviewData.syncActivity(needsAttention = true),
-                uploadTransfer = PreviewData.uploadTransferSource(),
                 error = null,
                 onOpenSettings = {},
                 onOpenDownloads = {},

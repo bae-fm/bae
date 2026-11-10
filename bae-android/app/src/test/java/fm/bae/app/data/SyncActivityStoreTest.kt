@@ -30,7 +30,8 @@ class SyncActivityStoreTest {
             attention = emptyList(),
             syncing = false,
             uploads = null,
-            downloads = null,
+            pins = null,
+            makingLocal = null,
             retryOffered = false,
         )
 }

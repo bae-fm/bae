@@ -212,46 +212,6 @@ impl OutboxTransfersWatch {
     }
 }
 
-/// The files being sent together, for a reader that draws only that: as it
-/// stands first, then each time it moves. A release's transfer moving while
-/// the total holds wakes nothing here.
-pub struct OutboxTotalTransferWatch {
-    transfers: SendingTransfers,
-    /// What the reader was last told; `None` before the first read.
-    told: Option<UploadTransfer>,
-}
-
-impl OutboxTotalTransferWatch {
-    pub(crate) fn of(
-        sending: coven::LiveQuery<DbSendingUploads, bae_store::DbError>,
-        watch: coven::TransferWatch,
-        clock: coven::ClockRef,
-    ) -> Self {
-        Self { transfers: SendingTransfers::of(sending, watch, clock), told: None }
-    }
-
-    /// The total on the first read, then the next total that differs. A
-    /// failed read is handed on, and the next read that succeeds tells the
-    /// total whether or not it moved. `None` once the query has ended with
-    /// its store.
-    pub async fn next(&mut self) -> Option<Result<UploadTransfer, bae_store::DbError>> {
-        loop {
-            let total = match self.transfers.next().await? {
-                Ok(next) => next.total,
-                Err(error) => {
-                    self.told = None;
-                    return Some(Err(error));
-                }
-            };
-            if self.told == Some(total) {
-                continue;
-            }
-            self.told = Some(total);
-            return Some(Ok(total));
-        }
-    }
-}
-
 /// What a reader told `told` must hear to hold `next`.
 fn changes_between(told: &OutboxTransfers, next: &OutboxTransfers) -> Vec<OutboxTransferChange> {
     let mut changes: Vec<OutboxTransferChange> =

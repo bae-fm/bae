@@ -20,7 +20,6 @@ import uniffi.bae_bridge.BridgeSetupProgress
 import uniffi.bae_bridge.BridgeStorageSetupProgress
 import uniffi.bae_bridge.BridgeTrackBuffered
 import uniffi.bae_bridge.BridgeTrackPosition
-import uniffi.bae_bridge.BridgeUploadTransfer
 import uniffi.bae_bridge.KeyedValueStream
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
@@ -110,12 +109,6 @@ class LatestStream<V : Any> private constructor(
         @VisibleForTesting
         fun <V : Any> written(): LatestStream<V> = LatestStream(emptyMap()) { null }
 
-        /** The files being sent together, while any is; a preview's holds [value] and nothing feeds it. */
-        fun uploadTotal(value: BridgeUploadTransfer? = null): LatestStream<BridgeUploadTransfer> =
-            LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
-                (it as? BridgeFastValue.UploadTotal)?.transfer
-            }
-
         /** Each downloading release's bytes and rate, by release id; a preview's holds [values], fed by nothing. */
         fun downloads(values: Map<String, BridgeDownloadTransferProgress>? = null) =
             LatestStream(values) { (it as? BridgeFastValue.Download)?.progress }
@@ -181,16 +174,8 @@ private const val ONLY_KEY = ""
 /** The value of a stream that holds one, for the View that draws it. */
 val <V : Any> LatestStream<V>.only: LatestSource<V> get() = source(ONLY_KEY)
 
-// Each feed is pulled in the scope it is handed, the one it lives in. Only
-// the upload total's feed has failed reads; any other stream's failed read is
-// a bug, which its caller reports through `reportBug`.
-
-/** Fill from core, telling [onError] on the main thread each failed read. */
-fun LatestStream<BridgeUploadTransfer>.feed(
-    appHandle: AppHandleInterface,
-    scope: CoroutineScope,
-    onError: (BridgeException) -> Unit,
-): LatestFeed = fed(scope, onError, appHandle::feedUploadTotalTransfer)
+// Each feed is pulled in the scope it is handed, the one it lives in. A
+// stream's failed read is a bug, which its caller reports through `reportBug`.
 
 /** Fill from core. */
 @JvmName("feedDownloadTransfers")

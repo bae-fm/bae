@@ -1,39 +1,46 @@
 //! Everything sync is doing on this device, as the activity indicator and
-//! its list show it.
+//! the Activity panel show it.
 
 /// Everything sync is doing on this device, for the activity indicator in
-/// the title bar and the list it opens. Mirrors `bae_views::SyncActivity`.
+/// the title bar and the Activity panel it opens. Mirrors
+/// `bae_views::SyncActivity`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSyncActivity {
     /// Bytes are moving: the indicator spins. A pass alone doesn't count.
     pub moving: bool,
     /// Something needs the person: the indicator shows a warning, and the
-    /// list leads with it.
+    /// panel leads with it.
     pub needs_attention: bool,
     /// The sync failure the status line shows, such as being offline.
     pub failure: Option<super::BridgeError>,
     /// The pending records that need the person.
     pub attention: Vec<super::BridgePendingRecord>,
     /// coven's sync state is syncing: a pass is moving, or a file is being
-    /// sent or downloaded.
+    /// sent or downloaded. The panel's Syncing changes line shows while it is.
     pub syncing: bool,
+    /// The Uploading line, while its batch holds a release.
     pub uploads: Option<BridgeUploadQueueActivity>,
-    pub downloads: Option<BridgeDownloadQueueActivity>,
-    /// The list offers Retry now: a retry would run a pass, and a failure
+    /// The Pinning line, while its batch holds a release.
+    pub pins: Option<BridgeDownloadQueueActivity>,
+    /// The Making local line, while its batch holds a release; never on a
+    /// phone, which makes nothing local.
+    pub making_local: Option<BridgeDownloadQueueActivity>,
+    /// The panel offers Retry now: a retry would run a pass, and a failure
     /// that pass can clear holds work back.
     pub retry_offered: bool,
 }
 
 impl BridgeSyncActivity {
     pub(crate) fn from_core(activity: bae_views::SyncActivity) -> Self {
-        let moving = activity.moving();
         let needs_attention = activity.needs_attention();
         let bae_views::SyncActivity {
             failure,
             attention,
             syncing,
+            moving,
             uploads,
-            downloads,
+            pins,
+            making_local,
             retry_offered,
         } = activity;
         Self {
@@ -43,52 +50,60 @@ impl BridgeSyncActivity {
             attention: attention.into_iter().map(super::BridgePendingRecord::from_core).collect(),
             syncing,
             uploads: uploads.map(BridgeUploadQueueActivity::from_core),
-            downloads: downloads.map(BridgeDownloadQueueActivity::from_core),
+            pins: pins.map(BridgeDownloadQueueActivity::from_core),
+            making_local: making_local.map(BridgeDownloadQueueActivity::from_core),
             retry_offered,
         }
     }
 }
 
-/// The files in this device's upload queue. The bytes the ones being sent
-/// have moved are the upload total's `KeyedValueStream`.
+/// The releases a transfer line's batch holds, and how many of them are
+/// done: the line's count, "1 of 3 releases". Mirrors
+/// `bae_views::TransferBatch`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeTransferBatch {
+    pub done: u32,
+    pub total: u32,
+}
+
+mirror_struct! {
+    BridgeTransferBatch = bae_views::TransferBatch,
+    from_core: fn,
+    fields: { done, total },
+}
+
+/// The Uploading line: the releases with files queued to upload since none
+/// had any. Mirrors `bae_views::UploadQueueActivity`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadQueueActivity {
-    /// The list's line: the counts sending and waiting, a zero dropped.
-    pub summary_parts: Vec<super::BridgeCountLabel>,
-    /// What holds the queue back.
+    pub batch: BridgeTransferBatch,
+    /// What holds the upload queue back, shown in place of the count.
     pub wait: Option<super::BridgeUploadQueueWait>,
 }
 
 impl BridgeUploadQueueActivity {
     fn from_core(uploads: bae_views::UploadQueueActivity) -> Self {
         Self {
-            summary_parts: uploads
-                .summary_parts()
-                .into_iter()
-                .map(super::BridgeCountLabel::from_core)
-                .collect(),
+            batch: BridgeTransferBatch::from_core(uploads.batch),
             wait: uploads.wait.map(super::BridgeUploadQueueWait::from_core),
         }
     }
 }
 
-/// The releases in the download queue, pinned or made local.
+/// The Pinning or the Making local line: the releases queued as that kind
+/// since none of it waited or downloaded. Mirrors
+/// `bae_views::DownloadQueueActivity`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeDownloadQueueActivity {
-    /// The list's line: the counts pinning and waiting, a zero dropped.
-    pub summary_parts: Vec<super::BridgeCountLabel>,
-    /// What holds the queue back.
+    pub batch: BridgeTransferBatch,
+    /// What holds the download queue back, shown in place of the count.
     pub wait: Option<super::BridgeQueueWait>,
 }
 
 impl BridgeDownloadQueueActivity {
     fn from_core(downloads: bae_views::DownloadQueueActivity) -> Self {
         Self {
-            summary_parts: downloads
-                .summary_parts()
-                .into_iter()
-                .map(super::BridgeCountLabel::from_core)
-                .collect(),
+            batch: BridgeTransferBatch::from_core(downloads.batch),
             wait: downloads.wait.map(super::BridgeQueueWait::from_core),
         }
     }

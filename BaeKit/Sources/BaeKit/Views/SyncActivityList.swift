@@ -79,67 +79,50 @@
         }
     }
 
-    /// A pass running, the upload queue and the download queue: one row each
-    /// while the queue holds work, with what holds the queue back in the place
-    /// of the bytes.
+    /// A pass running, then the Uploading, Pinning and Making local lines,
+    /// each while its batch holds a release, counting its releases done or
+    /// showing what holds its queue back in the count's place.
     private struct TransferRows: View {
         let activity: BridgeSyncActivity
 
         var body: some View {
             if activity.syncing {
-                Label(
-                    localizedCoreString("core.activity.syncing"),
-                    systemImage: "arrow.triangle.2.circlepath"
-                )
+                Text(localizedCoreString("core.activity.syncing"))
             }
             if let uploads = activity.uploads {
-                Label {
-                    UploadsLine(
-                        title: QueueSummary.line(uploads.summaryParts),
-                        hold: uploads.wait?.text
-                    )
-                } icon: {
-                    Image(systemName: "arrow.up.circle")
-                }
+                TransferLine(
+                    title: localizedCoreString("core.activity.uploading"),
+                    count: uploads.wait?.text ?? uploads.batch.text
+                )
             }
-            if let downloads = activity.downloads {
-                Label {
-                    VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                        Text(QueueSummary.line(downloads.summaryParts))
-                        if let hold = downloads.wait?.text {
-                            Text(hold)
-                                .themeText(.detail)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } icon: {
-                    Image(systemName: "arrow.down.circle")
-                }
+            if let pins = activity.pins {
+                TransferLine(
+                    title: localizedCoreString("core.activity.pinning"),
+                    count: pins.wait?.text ?? pins.batch.text
+                )
+            }
+            if let makingLocal = activity.makingLocal {
+                TransferLine(
+                    title: localizedCoreString("core.activity.making_local"),
+                    count: makingLocal.wait?.text ?? makingLocal.batch.text
+                )
             }
         }
     }
 
-    /// The uploads' line, and under it what holds the queue back, or the
-    /// bytes the files being sent have moved together, which a native label
-    /// reads from the latest total each frame while files are being sent.
-    private struct UploadsLine: View {
+    /// One transfer line: its words, and at the end how many of its releases
+    /// are done, or what holds its queue back.
+    private struct TransferLine: View {
         let title: String
-        let hold: String?
-
-        @Environment(OutboxStore.self)
-        private var outboxStore
+        let count: String
 
         var body: some View {
-            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+            HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
                 Text(title)
-                if let hold {
-                    Text(hold)
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
-                }
-                else {
-                    UploadTotalBytesText(total: outboxStore.totalProgress)
-                }
+                Spacer(minLength: 0)
+                Text(count)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
         }
     }

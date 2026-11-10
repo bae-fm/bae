@@ -242,10 +242,10 @@ async fn a_queued_pin_shows_queued_and_a_failed_one_its_error() {
     // The queue's hold is the queue's, and shows on no release; the pause
     // reads before the network.
     test.installation.lose_network();
-    let pins_wait = || async { listed_queues(manager).await.pins.unwrap().wait };
-    assert_eq!(pins_wait().await, Some(bae_transfers::QueueWait::Paused));
+    let downloads_wait = || async { listed_queues(manager).await.downloads.unwrap().wait };
+    assert_eq!(downloads_wait().await, Some(bae_transfers::QueueWait::Paused));
     manager.set_downloads_paused(false).await.unwrap();
-    assert_eq!(pins_wait().await, Some(bae_transfers::QueueWait::Offline));
+    assert_eq!(downloads_wait().await, Some(bae_transfers::QueueWait::Offline));
     assert_eq!(statuses().await[1], waiting());
 }
 
@@ -385,7 +385,7 @@ async fn download_bytes_send_no_new_sync_activity() {
         )
     };
     let mut activity = views(test.library.manager()).subscribe_sync_activity();
-    assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.downloads, None);
+    assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.pins, None);
 
     // The manager's own worker leaves the entry to this test.
     manager.set_downloads_paused(true).await.unwrap();
@@ -405,13 +405,11 @@ async fn download_bytes_send_no_new_sync_activity() {
         .await
         .unwrap());
     assert_eq!(
-        crate::followed::value_matching(&mut activity, |next| next
-            .downloads
-            .as_ref()
-            .is_some_and(|downloads| downloads.active == 1))
-        .await
-        .downloads,
-        Some(bae_views::DownloadQueueActivity { active: 1, queued: 0, wait: None })
+        crate::followed::value_matching(&mut activity, |next| next.moving).await.pins,
+        Some(bae_views::DownloadQueueActivity {
+            batch: bae_views::TransferBatch { done: 0, total: 1 },
+            wait: None
+        })
     );
 
     let next = activity.next();
@@ -425,7 +423,7 @@ async fn download_bytes_send_no_new_sync_activity() {
         assert!(polled.is_pending(), "{bytes_done} bytes sent an activity");
     }
     manager.cancel_download(&release_id).await.unwrap();
-    assert_eq!(next.await.unwrap().unwrap().downloads, None);
+    assert_eq!(next.await.unwrap().unwrap().pins, None);
     pending.abort();
 }
 
@@ -659,7 +657,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
     connect_test_cloud(&test).await;
     let pinning =
         uploaded_release(manager, &temp_dir.path().join("pin"), "Album Title", false).await;
-    let idle = StorageQueues { uploads: None, pins: None, outputs: None };
+    let idle = StorageQueues { uploads: None, downloads: None, outputs: None };
     assert_eq!(listed_queues(manager).await, idle);
 
     manager.store.set_uploads_paused(true).await.unwrap();
@@ -677,7 +675,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         listed_queues(manager).await,
         StorageQueues {
             uploads: uploads.clone(),
-            pins: Some(ReleaseQueueRun {
+            downloads: Some(ReleaseQueueRun {
                 wait: Some(bae_transfers::QueueWait::Paused),
                 active: None
             }),
@@ -695,7 +693,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         listed_queues(manager).await,
         StorageQueues {
             uploads: uploads.clone(),
-            pins: Some(ReleaseQueueRun { wait: None, active: Some(pinning.clone()) }),
+            downloads: Some(ReleaseQueueRun { wait: None, active: Some(pinning.clone()) }),
             outputs: outputs.clone(),
         }
     );
@@ -705,7 +703,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         .unwrap());
     assert_eq!(
         listed_queues(manager).await,
-        StorageQueues { uploads, pins: None, outputs },
+        StorageQueues { uploads, downloads: None, outputs },
         "a failed pin is no work"
     );
 }

@@ -417,15 +417,6 @@ impl LibraryManager {
         )
     }
 
-    /// The files being sent together, told each time they move.
-    pub fn watch_outbox_total_transfer(&self) -> crate::OutboxTotalTransferWatch {
-        crate::OutboxTotalTransferWatch::of(
-            self.records.subscribe_sending_uploads(),
-            self.store.subscribe_upload_transfers(),
-            self.clock.clone(),
-        )
-    }
-
     /// How far each file being sent has got, by file, told as each one
     /// moves.
     pub fn watch_upload_file_transfers(&self) -> crate::FileTransfersWatch {

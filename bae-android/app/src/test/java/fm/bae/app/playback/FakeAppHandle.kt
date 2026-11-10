@@ -183,8 +183,6 @@ internal open class FakeAppHandle(
 
     override fun feedOutboxTransfers(): BridgeOutboxFeeds = BridgeOutboxFeeds.Streams(FakeKeyedValueStream(), FakeKeyedValueStream())
 
-    override fun feedUploadTotalTransfer(): KeyedValueStream = FakeKeyedValueStream()
-
     override fun feedUploadFileShares(): KeyedValueStream = FakeKeyedValueStream()
 
     override fun feedPinFileShares(): KeyedValueStream = FakeKeyedValueStream()

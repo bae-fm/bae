@@ -1,22 +1,44 @@
--- How many files wait in this device's upload queue, for the sync activity:
--- one row, kept by the triggers below in the write that changes coven's
--- `coven_upload_queue`, so the activity reads one row, not the queue.
-CREATE TABLE IF NOT EXISTS upload_queue_count (
-    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
-    queued INTEGER NOT NULL CHECK (queued >= 0)
-) STRICT;
+-- The releases with files queued to upload since none had any: what the
+-- Activity panel's Uploading line counts. Only membership: whether a release
+-- is done is read from release_storage. Kept by the triggers below in the
+-- write that changes a release's queued files. Never synced.
+CREATE TABLE IF NOT EXISTS upload_batch (
+    release_id TEXT PRIMARY KEY
+) STRICT, WITHOUT ROWID;
 
-INSERT OR IGNORE INTO upload_queue_count (singleton, queued) VALUES (1, 0);
-
--- A file joining or leaving the queue moves the count by one, as the rows of
--- `coven_upload_queue` do: staging the file for the cloud, its move switching
--- it, its upload retiring, or the row no longer naming it.
-CREATE TRIGGER IF NOT EXISTS upload_queue_count_queued AFTER INSERT ON coven_upload_queue
+-- A release with a file queued to upload is in the batch: a file staged for
+-- the cloud, or a release's storage row rewritten with files queued.
+CREATE TRIGGER IF NOT EXISTS upload_batch_queued AFTER INSERT ON release_storage
+WHEN NEW.queued_count > 0
+    AND NOT EXISTS (SELECT 1 FROM upload_batch WHERE release_id = NEW.release_id)
 BEGIN
-    UPDATE upload_queue_count SET queued = queued + 1;
+    INSERT INTO upload_batch (release_id) VALUES (NEW.release_id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS upload_queue_count_unqueued AFTER DELETE ON coven_upload_queue
+CREATE TRIGGER IF NOT EXISTS upload_batch_requeued AFTER UPDATE OF queued_count ON release_storage
+WHEN NEW.queued_count > 0
+    AND NOT EXISTS (SELECT 1 FROM upload_batch WHERE release_id = NEW.release_id)
 BEGIN
-    UPDATE upload_queue_count SET queued = queued - 1;
+    INSERT INTO upload_batch (release_id) VALUES (NEW.release_id);
+END;
+
+-- The batch ends once none of its releases has a file queued: the last file
+-- stored or no longer queued, or the last release with files queued removed
+-- from the library. The releases that finished or left before then stay in
+-- the batch.
+CREATE TRIGGER IF NOT EXISTS upload_batch_unqueued AFTER UPDATE OF queued_count ON release_storage
+WHEN NEW.queued_count = 0
+BEGIN
+    DELETE FROM upload_batch WHERE NOT EXISTS (
+        SELECT 1 FROM upload_batch AS batch
+        JOIN release_storage AS storage ON storage.release_id = batch.release_id
+        WHERE storage.queued_count > 0);
+END;
+
+CREATE TRIGGER IF NOT EXISTS upload_batch_removed AFTER DELETE ON release_storage
+BEGIN
+    DELETE FROM upload_batch WHERE NOT EXISTS (
+        SELECT 1 FROM upload_batch AS batch
+        JOIN release_storage AS storage ON storage.release_id = batch.release_id
+        WHERE storage.queued_count > 0);
 END;

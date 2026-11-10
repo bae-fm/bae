@@ -175,13 +175,12 @@ struct SyncActivitySubscriptionTests {
             syncing: false,
             uploads: sending.map {
                 BridgeUploadQueueActivity(
-                    summaryParts: [
-                        BridgeCountLabel(key: "core.queue.uploading", count: $0)
-                    ],
+                    batch: BridgeTransferBatch(done: 0, total: $0),
                     wait: nil
                 )
             },
-            downloads: nil,
+            pins: nil,
+            makingLocal: nil,
             retryOffered: false
         )
     }

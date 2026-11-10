@@ -1,8 +1,5 @@
 use super::*;
 
-/// The summary parts read active-then-failed-then-queued, drop any zero, and
-/// take the active verb the caller names — so every queue line shares this
-/// one decision and differs only in that verb.
 /// A release transfer's summary keeps its order and leaves out every
 /// count that is zero, so a release with nothing being sent reads only
 /// what waits and what is done.
@@ -25,18 +22,17 @@ fn a_transfer_summary_leaves_out_zero_counts() {
     );
 }
 
+/// The summary parts read active-then-failed-then-queued, drop any zero, and
+/// take the active verb the caller names — so every queue line shares this
+/// one decision and differs only in that verb.
 #[test]
 fn summary_parts_order_drop_and_active_verb() {
     let progress = ReleaseQueueProgress { queued: 3, active: 2, failed: 0 };
-    #[cfg(desktop)]
-    let (active, queued) = ("core.queue.downloading", "core.queue.queued_to_download");
-    #[cfg(not(desktop))]
-    let (active, queued) = ("core.queue.pinning", "core.queue.queued_to_pin");
     assert_eq!(
         progress.download_summary_parts(),
         vec![
-            CountLabel { key: active.to_string(), count: 2 },
-            CountLabel { key: queued.to_string(), count: 3 },
+            CountLabel { key: "core.queue.pinning".to_string(), count: 2 },
+            CountLabel { key: "core.queue.queued_to_pin".to_string(), count: 3 },
         ],
         "failed is zero and drops; the active verb is the caller's"
     );

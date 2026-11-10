@@ -18,8 +18,6 @@ const DIRECT_KEYS: &[&str] = &[
     "core.queue.failed",
     "core.queue.queued_to_upload",
     "core.queue.queued_to_pin",
-    "core.queue.downloading",
-    "core.queue.queued_to_download",
     "core.queue.stored",
     "core.queue.pinning",
     "core.queue.waiting",
@@ -41,11 +39,15 @@ const DIRECT_KEYS: &[&str] = &[
     "core.access_key.unused_invite",
     "core.invite.cancel_confirm.title",
     "core.invite.cancel_confirm.keep",
-    // The sync activity list.
+    // The Activity panel.
     "core.activity.title",
     "core.activity.attention",
     "core.activity.open_settings",
     "core.activity.syncing",
+    "core.activity.uploading",
+    "core.activity.pinning",
+    "core.activity.making_local",
+    "core.activity.releases_done",
     "core.activity.idle",
     "core.activity.retry_now",
     // The cast picker words a lost device's end with its name.

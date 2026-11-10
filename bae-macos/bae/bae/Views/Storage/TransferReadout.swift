@@ -141,7 +141,7 @@ final class TransferReadoutNSView: NSView {
     /// A zero or unknown rate shows nothing rather than a stalled speed.
     private static func rateText(_ rate: UInt64?) -> String? {
         rate.flatMap {
-            $0 > 0 ? QueueSummary.throughputText(bytesPerSecond: $0) : nil
+            $0 > 0 ? TransferThroughput.text(bytesPerSecond: $0) : nil
         }
     }
 

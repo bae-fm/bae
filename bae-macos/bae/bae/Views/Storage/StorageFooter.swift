@@ -33,13 +33,13 @@ struct StorageFooter: View {
                     StorageUploadRate()
                 }
             }
-            if let pins = queues?.pins {
+            if let downloads = queues?.downloads {
                 StorageQueueControl(
                     queue: .pins,
-                    paused: pins.wait == .paused,
-                    hold: pins.wait?.text
+                    paused: downloads.wait == .paused,
+                    hold: downloads.wait?.text
                 ) {
-                    if let active = pins.active {
+                    if let active = downloads.active {
                         StoragePinRate(releaseId: active)
                     }
                 }
@@ -216,7 +216,10 @@ private struct StorageOutputPercent: View {
             totalSize: 857_000_000,
             queues: BridgeStorageQueues(
                 uploads: BridgeUploadQueueRun(wait: nil),
-                pins: BridgeReleaseQueueRun(wait: nil, active: "rel-row-5"),
+                downloads: BridgeReleaseQueueRun(
+                    wait: nil,
+                    active: "rel-row-5"
+                ),
                 outputs: BridgeReleaseQueueRun(wait: .paused, active: nil)
             )
         )

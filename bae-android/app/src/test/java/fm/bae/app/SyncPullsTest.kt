@@ -15,13 +15,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
+import uniffi.bae_bridge.BridgeTransferBatch
 import uniffi.bae_bridge.BridgeUploadQueueActivity
 
 /** An open library pulls its sync status and activity into the stores its screens read, each value as it comes. */
@@ -68,7 +68,7 @@ class SyncPullsTest {
         session.wireUp(scope)
         assertEquals(null, store.activity.value)
 
-        val uploading = activity(BridgeUploadQueueActivity(listOf(BridgeCountLabel("core.queue.uploading", 2u)), wait = null))
+        val uploading = activity(BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 2u), wait = null))
         handle.syncActivity.deliver(uploading)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(uploading, store.activity.value)
@@ -90,7 +90,8 @@ class SyncPullsTest {
             attention = emptyList(),
             syncing = false,
             uploads = uploads,
-            downloads = null,
+            pins = null,
+            makingLocal = null,
             retryOffered = false,
         )
 

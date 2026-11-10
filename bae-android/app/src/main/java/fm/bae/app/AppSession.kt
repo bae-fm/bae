@@ -12,7 +12,6 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.OpenLibraryStores
-import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.PlaybackFailureNotices
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
@@ -91,8 +90,7 @@ class OpenLibrary internal constructor(
     val configStore: ConfigStore get() = stores.config
     val syncStatusStore: SyncStatusStore get() = stores.syncStatus
     val syncActivityStore: SyncActivityStore get() = stores.syncActivity
-    val downloadStore: DownloadStore get() = stores.transfers.downloads
-    val outboxStore: OutboxStore get() = stores.transfers.outbox
+    val downloadStore: DownloadStore get() = stores.downloads
     val castStore: CastStore get() = stores.cast
 
     /** The snackbar messages of this library's screens: failed actions with Retry, and failures with no screen. */
@@ -194,26 +192,21 @@ class OpenLibrary internal constructor(
             ScreenSubscription(
                 appHandle.subscribeDownloadCounts().let { pulled(it::next, it::cancel) },
                 scope,
-                onValue = stores.transfers.downloads::setCounts,
-                onError = { error -> subscriptionFailed("downloads", error)?.let(stores.transfers.downloads::fail) },
+                onValue = stores.downloads::setCounts,
+                onError = { error -> subscriptionFailed("downloads", error)?.let(stores.downloads::fail) },
             )
         streamFeeds +=
-            stores.transfers.downloads.releaseProgress
+            stores.downloads.releaseProgress
                 .feed(appHandle, scope) { bugs.report("read the download transfers", it) }
         screenSubscriptions +=
             ScreenSubscription(
                 appHandle.subscribeUnmeteredOnly().let { pulled(it::next, it::cancel) },
                 scope,
-                onValue = stores.transfers.downloads::setUnmeteredOnly,
+                onValue = stores.downloads::setUnmeteredOnly,
                 onError = { error ->
-                    subscriptionFailed("Wi-Fi only", error)?.let(stores.transfers.downloads::failUnmeteredOnly)
+                    subscriptionFailed("Wi-Fi only", error)?.let(stores.downloads::failUnmeteredOnly)
                 },
             )
-        // Nothing on Android draws one file's or release's upload, so only the total crosses.
-        streamFeeds +=
-            stores.transfers.outbox.filesBeingSent.feed(appHandle, scope) { error ->
-                subscriptionFailed("upload transfer", error)
-            }
     }
 
     /** The queue as the player and its screens show it. */

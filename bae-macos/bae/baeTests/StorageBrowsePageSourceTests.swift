@@ -85,7 +85,7 @@ private func snapshot(
         totalSize: 7,
         selected: selected,
         selectionActions: selectionActions,
-        queues: BridgeStorageQueues(uploads: nil, pins: nil, outputs: nil)
+        queues: BridgeStorageQueues(uploads: nil, downloads: nil, outputs: nil)
     )
 }
 

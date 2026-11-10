@@ -54,7 +54,7 @@ class LatestFeedTest {
     @Test
     fun aPulledFailureReachesOnErrorAndThePullsGoOn() =
         runTest(main) {
-            val stream = LatestStream.uploadTotal()
+            val stream = LatestStream.downloads()
             val pulls = PulledKeys()
             val errors = mutableListOf<BridgeException>()
             var told = 0

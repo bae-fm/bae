@@ -4,11 +4,6 @@ class OpenLibraryStores(
     val config: ConfigStore,
     val syncStatus: SyncStatusStore,
     val syncActivity: SyncActivityStore,
-    val transfers: LibraryTransferStores,
-    val cast: CastStore,
-)
-
-class LibraryTransferStores(
     val downloads: DownloadStore,
-    val outbox: OutboxStore,
+    val cast: CastStore,
 )

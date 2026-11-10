@@ -54,8 +54,8 @@ public final class SyncActivityStore {
 
 #if DEBUG
     extension SyncActivityStore {
-        /// A library mid-sync for previews: a few files uploading and a
-        /// record that needs signing in again.
+        /// A library mid-sync for previews: releases uploading and pinning,
+        /// and a record that needs signing in again.
         public static func preview(
             needsAttention: Bool = true
         ) -> SyncActivityStore {
@@ -76,16 +76,17 @@ public final class SyncActivityStore {
                 attention: needsAttention ? [previewSignIn] : [],
                 syncing: true,
                 uploads: BridgeUploadQueueActivity(
-                    summaryParts: [
-                        BridgeCountLabel(key: "core.queue.uploading", count: 2),
-                        BridgeCountLabel(
-                            key: "core.queue.queued_to_upload",
-                            count: 10
-                        ),
-                    ],
+                    batch: BridgeTransferBatch(done: 1, total: 2),
                     wait: nil
                 ),
-                downloads: nil,
+                pins: BridgeDownloadQueueActivity(
+                    batch: BridgeTransferBatch(done: 1, total: 3),
+                    wait: nil
+                ),
+                makingLocal: BridgeDownloadQueueActivity(
+                    batch: BridgeTransferBatch(done: 0, total: 1),
+                    wait: nil
+                ),
                 retryOffered: false
             )
         }

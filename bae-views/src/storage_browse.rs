@@ -28,13 +28,13 @@ pub struct StorageBrowseSnapshot {
 }
 
 /// The transfer queues holding files waiting or on the move, each with what
-/// holds it back: this device's uploads, its pins (downloads to keep releases
-/// here), and its exports and saves. A queue holding no work, or only failed
+/// holds it back: this device's uploads, its downloads (pins and
+/// make-locals, which share one queue), and its exports and saves. A queue holding no work, or only failed
 /// entries, is absent.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageQueues {
     pub uploads: Option<UploadQueueRun>,
-    pub pins: Option<ReleaseQueueRun>,
+    pub downloads: Option<ReleaseQueueRun>,
     pub outputs: Option<ReleaseQueueRun>,
 }
 

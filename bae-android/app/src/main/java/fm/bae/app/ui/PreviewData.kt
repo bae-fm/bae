@@ -2,9 +2,7 @@ package fm.bae.app.ui
 
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.playback.SidePausePrompt
-import fm.bae.fastvalues.LatestSource
 import fm.bae.fastvalues.LatestStream
-import fm.bae.fastvalues.only
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -18,6 +16,7 @@ import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadKind
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
+import uniffi.bae_bridge.BridgeDownloadQueueActivity
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeDurationClock
@@ -61,9 +60,8 @@ import uniffi.bae_bridge.BridgeTrack
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeTrackSide
-import uniffi.bae_bridge.BridgeUploadBar
+import uniffi.bae_bridge.BridgeTransferBatch
 import uniffi.bae_bridge.BridgeUploadQueueActivity
-import uniffi.bae_bridge.BridgeUploadTransfer
 import uniffi.bae_bridge.BridgeWorkSummary
 
 /** A member's signing and sealing public keys are each 32 bytes. */
@@ -283,7 +281,7 @@ object PreviewData {
             state = state,
         )
 
-    /** A library mid-sync: files uploading and, when [needsAttention], a record
+    /** A library mid-sync: releases uploading and pinning and, when [needsAttention], a record
      *  that needs signing in. */
     fun syncActivity(needsAttention: Boolean): BridgeSyncActivity =
         BridgeSyncActivity(
@@ -304,28 +302,11 @@ object PreviewData {
                     emptyList()
                 },
             syncing = true,
-            uploads =
-                BridgeUploadQueueActivity(
-                    summaryParts =
-                        listOf(
-                            BridgeCountLabel(key = "core.queue.uploading", count = 2u),
-                            BridgeCountLabel(key = "core.queue.queued_to_upload", count = 10u),
-                        ),
-                    wait = null,
-                ),
-            downloads = null,
+            uploads = BridgeUploadQueueActivity(batch = BridgeTransferBatch(done = 1u, total = 2u), wait = null),
+            pins = BridgeDownloadQueueActivity(batch = BridgeTransferBatch(done = 1u, total = 3u), wait = null),
+            makingLocal = null,
             retryOffered = false,
         )
-
-    /** The upload queue's transfer while [syncActivity]'s files are sent. */
-    fun uploadTransfer(): BridgeUploadTransfer =
-        BridgeUploadTransfer(
-            bar = BridgeUploadBar(bytesDone = 3_200_000uL, bytesTotal = 8_400_000uL),
-            throughputBps = 0uL,
-        )
-
-    /** The files being sent together, as the sync activity's upload line reads them. */
-    fun uploadTransferSource(): LatestSource<BridgeUploadTransfer> = LatestStream.uploadTotal(uploadTransfer()).only
 
     fun downloadCounts(
         queued: UInt = 1u,

@@ -26,14 +26,6 @@ impl AppHandle {
         crate::screens::outbox_transfer_feeds(self.runtime.clone(), self.run_feed())
     }
 
-    /// Write the files being sent together into a stream's one key, `""`,
-    /// while any file is being sent; with none, the stream holds nothing. A
-    /// failed read empties the stream and is pulled as an error; the next
-    /// read fills it again.
-    pub fn feed_upload_total_transfer(&self) -> Arc<KeyedValueStream> {
-        crate::screens::upload_total_transfer(self.runtime.clone(), self.run_feed())
-    }
-
     /// Write the share of each file being sent its object has moved into
     /// a stream by file id.
     pub fn feed_upload_file_shares(&self) -> Arc<KeyedValueStream> {

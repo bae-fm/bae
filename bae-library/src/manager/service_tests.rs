@@ -632,57 +632,6 @@ async fn the_transfers_name_only_the_files_being_sent() {
     .expect("every file sent, nothing has a transfer");
 }
 
-/// The total's watch tells the files being sent together as they stand
-/// first, and then only as they change.
-#[tokio::test]
-async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
-    let (test, temp_dir) = setup_test_manager().await;
-    let manager = test.library.manager();
-    let home = connect_test_cloud(&test).await;
-    insert_release_with_queued_uploads(
-        manager,
-        &temp_dir.path().join("sending"),
-        "Album Title",
-        &[("a.flac", b"bytes-a")],
-    )
-    .await;
-    let mut total = manager.watch_outbox_total_transfer();
-    let idle = crate::UploadTransfer { bar: None, throughput_bps: 0 };
-    assert_eq!(total.next().await.unwrap().unwrap(), idle);
-
-    let (started, created) = tokio::sync::oneshot::channel();
-    let (resume, resumed) = tokio::sync::oneshot::channel();
-    home.hold_next_creation(
-        coven::ObjectPrefix::files(manager.store.store_id_for_test()),
-        started,
-        resumed,
-    )
-    .await;
-    let drain = tokio::spawn({
-        let manager = test.library.manager().clone();
-        async move { manager.drain_uploads_for_test().await }
-    });
-    let sending = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, total.next())
-        .await
-        .expect("the file being sent moves the total")
-        .unwrap()
-        .unwrap();
-    assert!(sending.bar.is_some(), "{sending:?}");
-    created.await.unwrap();
-    resume.send(()).unwrap();
-    drain.await.unwrap().unwrap();
-    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        let mut told = sending;
-        while told != idle {
-            let next = total.next().await.unwrap().unwrap();
-            assert_ne!(next, told, "the total is told only as it changes");
-            told = next;
-        }
-    })
-    .await
-    .expect("the file sent leaves the total idle");
-}
-
 /// A release being sent reads its bytes against its whole size from the
 /// moment its send starts: its stored files count as done, and a file sent in
 /// one request counts its share as its object goes, before the provider

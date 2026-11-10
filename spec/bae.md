@@ -2038,7 +2038,7 @@ holds the files back but a file whose original is missing, from coven's
 the move go on; the release's storage band shows it as a warning that names the
 file. A pause, the network, a metered network or a retry's time holds the whole
 queue, so it shows once, where the queue shows, never on a release: in place of
-the queue's rate under the list, on the Activity panel's uploads line, and on
+the queue's rate under the list, on the Activity panel's Uploading line, and on
 the phones' Pinning screen. How far
 the bytes have got is not in any table: coven's upload watch tells, file by
 file, how much of each file's encrypted object has gone to the connection,
@@ -2129,8 +2129,8 @@ cancel. The queue takes no entry while the device has no
 usable network, as coven's network watch says, and goes on when it returns; a
 platform that cannot tell holds nothing back. What holds the queue back,
 Paused or Waiting for network, shows once where the queue shows: in place of
-its rate under the Storage manager's list, on the Activity panel's line for
-the queue and on the phones' Pinning screen, never on a release. A pin that fails stays in the queue with its error,
+its rate under the Storage manager's list, on the Activity panel's Pinning
+and Making local lines and on the phones' Pinning screen, never on a release. A pin that fails stays in the queue with its error,
 nothing of it pinned, and its row sorts first, reading Couldn't pin; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
@@ -3118,7 +3118,7 @@ every half minute, and the indicator would blink for nothing.
 
 Clicking it opens what sync is doing, a popover on macOS and a sheet on the
 phones, updating as it changes. What it shows is the sync status the Sync
-page reads (below), with the upload and download queues' counts read in the
+page reads (below), with what the upload and download queues hold read in the
 same read of the library's tables. Bytes moving change none of them, so they
 send it nothing. What needs the person comes first, under
 *Needs attention*: the failure's line and each pending record in plain words, with
@@ -3137,12 +3137,19 @@ once all its files are, and every bar is filled by the bytes of the batch done
 (for uploads, the bytes the providers confirmed), so a bar moves while a
 release's files transfer and its count waits. A batch is everything the
 queue has held since it was last empty, so a count only grows, and it starts
-over once the queue empties. A queue's hold (Paused, Waiting for network)
-stands in place of its count. On the desktop each queue's line ends in Pause,
-or Resume while that queue is paused; pinning and making local are one queue,
-as in Transfers settings, so their lines pause and resume together. Under the
-lines, *Open Storage Manager* opens the Storage manager. On the phones the
-Pinning line ends in Pause or Resume too, and opens the Pinning screen. With nothing to show it says everything is up to date. *Retry now* shows only while pressing
+over once the queue empties. Pinning and Making local share the download
+queue but each counts its own batch: the releases queued to pin, or to make
+local, since none of that kind waited or downloaded. Uploading counts the
+releases with files queued to upload; a cover or picture on its way counts in
+no line. A release that leaves its batch without finishing, cancelled, failed
+or removed from the library, stays in the count and never counts as done. A
+queue's hold (Paused, Waiting for network) stands in place of its count. On
+the desktop each queue's line ends in Pause, or Resume while that queue is
+paused; pinning and making local are one queue, as in Transfers settings, so
+their lines pause and resume together. Under the lines, *Open Storage Manager*
+opens the Storage manager. On the phones the Pinning line ends in Pause or
+Resume too, and opens the Pinning screen. With nothing to show it says
+everything is up to date. *Retry now* shows only while pressing
 it would run a pass and a failure that pass can clear holds work back. coven
 publishes what a retry made now would do, decided as it answers the retry
 ([coven api.md
@@ -4997,7 +5004,7 @@ What the library lists, bae-views' part, kept by its triggers:
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
 | `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned, requested to be kept here and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning (a download in the queue, or copies coven keeps here of a release not wholly pinned), local, pinned, in storage only |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
-| `upload_queue_count` | one row: how many files wait in this device's upload queue, which the sync activity reads in place of counting coven's `coven_upload_queue` |
+| `upload_batch` | release with files queued to upload since none had any, which the Activity panel's Uploading line counts; whether it is done is read from its `release_storage` row |
 | `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `artist_image` for the artists' pictures the album grid's sections carry, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
@@ -5165,6 +5172,7 @@ write commits, so the release and the row naming it land in either order.
 | `release_queues` | whether the pin queue and the export and save queue are paused |
 | `release_queue_versions` | queue table (`download_queue`, `output_queue`): how many writes have added, removed or moved its entries, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `download_queue` | release queued to pin or to make local, in the order queued: pin or make local, with a make-local's folder, a BLOB of coven's bytes for its path; and queued, downloading, or failed with its error (§4.3, §4.4) |
+| `download_batch` | release and kind the download queue has held since that kind last had none waiting or downloading, which the Activity panel's Pinning and Making local lines count (§6.4) |
 | `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |
 
 The download queue keeps its entries and its pause across restarts; the export

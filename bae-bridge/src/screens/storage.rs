@@ -32,12 +32,12 @@ pub struct BridgeStorageBrowseSnapshot {
 }
 
 /// The transfer queues holding files waiting or on the move, each with
-/// whether it is paused; the pin and output queues name the release they
-/// run. Mirrors `StorageQueues`.
+/// whether it is paused; the download queue (pins and make-locals) and the
+/// output queue name the release they run. Mirrors `StorageQueues`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeStorageQueues {
     pub uploads: Option<BridgeUploadQueueRun>,
-    pub pins: Option<BridgeReleaseQueueRun>,
+    pub downloads: Option<BridgeReleaseQueueRun>,
     pub outputs: Option<BridgeReleaseQueueRun>,
 }
 
@@ -67,7 +67,7 @@ impl BridgeStorageQueues {
             uploads: queues.uploads.map(|run| BridgeUploadQueueRun {
                 wait: run.wait.map(crate::types::BridgeUploadQueueWait::from_core),
             }),
-            pins: queues.pins.map(release),
+            downloads: queues.downloads.map(release),
             outputs: queues.outputs.map(release),
         }
     }

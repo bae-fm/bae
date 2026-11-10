@@ -1,8 +1,6 @@
 package fm.bae.app.ui.sync
 
 import android.content.Context
-import android.util.TypedValue
-import android.widget.TextView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,21 +29,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.DisplayError
 import fm.bae.app.coreString
-import fm.bae.app.countLabelsText
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.syncActivityVisible
 import fm.bae.app.displayError
-import fm.bae.app.formatFileSize
 import fm.bae.app.queueWaitText
-import fm.bae.app.requireDisplayableByteCount
+import fm.bae.app.releasesDoneText
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -58,23 +52,17 @@ import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.color
 import fm.bae.app.uploadQueueWaitText
-import fm.bae.fastvalues.FrameFollowing
-import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSyncActivity
-import uniffi.bae_bridge.BridgeUploadBar
-import uniffi.bae_bridge.BridgeUploadTransfer
 
 /**
  * Sync's place in the library's top bar: a small spinner while bytes move, a
  * warning symbol while something needs the person, nothing otherwise. Tapping
- * it opens what sync is doing in a sheet, whose upload line shows the bytes
- * the uploads have moved, read from [uploadTransfer] each display frame.
+ * it opens what sync is doing in a sheet.
  */
 @Composable
 internal fun SyncActivityButton(
     store: SyncActivityStore,
-    uploadTransfer: LatestSource<BridgeUploadTransfer>,
     onOpenSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
 ) {
@@ -102,7 +90,6 @@ internal fun SyncActivityButton(
     if (listShown) {
         SyncActivitySheet(
             store = store,
-            uploadTransfer = uploadTransfer,
             onDismiss = { listShown = false },
             onOpenSettings = {
                 listShown = false
@@ -120,7 +107,6 @@ internal fun SyncActivityButton(
 @Composable
 private fun SyncActivitySheet(
     store: SyncActivityStore,
-    uploadTransfer: LatestSource<BridgeUploadTransfer>,
     onDismiss: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
@@ -130,7 +116,6 @@ private fun SyncActivitySheet(
     ModalBottomSheet(onDismissRequest = onDismiss) {
         SyncActivityList(
             activity = activity,
-            uploadTransfer = uploadTransfer,
             error = error,
             onOpenSettings = onOpenSettings,
             onOpenDownloads = onOpenDownloads,
@@ -141,14 +126,11 @@ private fun SyncActivitySheet(
 
 /**
  * What sync is doing: what needs the person first, then what is moving, and
- * Retry now while core offers it, when a retry can clear a failure. The
- * uploads' line shows the bytes [uploadTransfer] says they have moved, which
- * change apart from [activity].
+ * Retry now while core offers it, when a retry can clear a failure.
  */
 @Composable
 internal fun SyncActivityList(
     activity: BridgeSyncActivity?,
-    uploadTransfer: LatestSource<BridgeUploadTransfer>,
     error: DisplayError?,
     onOpenSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
@@ -165,7 +147,7 @@ internal fun SyncActivityList(
         }
         if (activity != null) {
             attentionSection(context, activity, onOpenSettings)
-            transferRows(context, activity, uploadTransfer, onOpenDownloads)
+            transferRows(context, activity, onOpenDownloads)
             if (!activity.moving && !activity.needsAttention && !activity.syncing) {
                 item { SecondaryLine(context.coreString("core.activity.idle")) }
             }
@@ -217,7 +199,6 @@ private fun LazyListScope.attentionSection(
 private fun LazyListScope.transferRows(
     context: Context,
     activity: BridgeSyncActivity,
-    uploadTransfer: LatestSource<BridgeUploadTransfer>,
     onOpenDownloads: () -> Unit,
 ) {
     if (activity.syncing) {
@@ -226,82 +207,36 @@ private fun LazyListScope.transferRows(
     activity.uploads?.let { uploads ->
         item {
             TransferLine(
-                title = context.countLabelsText(uploads.summaryParts),
-                transfer = uploadTransfer,
-                hold = uploads.wait?.let(context::uploadQueueWaitText),
+                title = context.coreString("core.activity.uploading"),
+                count = uploads.wait?.let(context::uploadQueueWaitText) ?: context.releasesDoneText(uploads.batch),
             )
         }
     }
-    activity.downloads?.let { downloads ->
+    activity.pins?.let { pins ->
         item {
-            Column(
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenDownloads),
-                verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
-            ) {
-                Text(context.countLabelsText(downloads.summaryParts))
-                downloads.wait?.let { SecondaryLine(context.queueWaitText(it)) }
-            }
+            TransferLine(
+                title = context.coreString("core.activity.pinning"),
+                count = pins.wait?.let(context::queueWaitText) ?: context.releasesDoneText(pins.batch),
+                modifier = Modifier.clickable(onClick = onOpenDownloads),
+            )
         }
     }
 }
 
-/**
- * A transfer's line, and under it what holds the queue back ([hold]) or, with
- * nothing holding it, the bytes the files being sent have moved together,
- * which a View reads from [transfer]'s latest value each display frame while
- * files are being sent: moving bytes recompose nothing.
- */
+/** A transfer's line: its words, and at the end how many of its releases are done, or what holds its queue back. */
 @Composable
 private fun TransferLine(
     title: String,
-    transfer: LatestSource<BridgeUploadTransfer>,
-    hold: String?,
+    count: String,
+    modifier: Modifier = Modifier,
 ) {
-    val color = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
-    val size = ThemeText.detail.style.fontSize.value
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-        Text(title)
-        if (hold != null) {
-            SecondaryLine(hold)
-        } else {
-            AndroidView(
-                factory = { context -> TransferBytesView(context) },
-                update = { view ->
-                    view.setTextColor(color)
-                    view.setTextSize(TypedValue.COMPLEX_UNIT_SP, size)
-                    view.follow(transfer)
-                },
-                onRelease = { view -> view.stopFollowing() },
-            )
-        }
-    }
-}
-
-/** The bytes the files being sent have moved together, as "3 MB of 221.2 MB", gone while none counts any. */
-internal class TransferBytesView(
-    context: Context,
-) : TextView(context) {
-    private val following = FrameFollowing<BridgeUploadTransfer>(this) { show(it?.bar) }
-
-    fun follow(transfer: LatestSource<BridgeUploadTransfer>) = following.follow(transfer)
-
-    fun stopFollowing() = following.stop()
-
-    private fun show(bar: BridgeUploadBar?) {
-        val shown = bar?.takeIf { it.bytesTotal > 0uL }
-        visibility = if (shown == null) GONE else VISIBLE
-        val text =
-            shown
-                ?.let {
-                    context.coreString(
-                        "core.download.bytes_progress",
-                        mapOf(
-                            "done" to context.formatFileSize(it.bytesDone.requireDisplayableByteCount()),
-                            "total" to context.formatFileSize(it.bytesTotal.requireDisplayableByteCount()),
-                        ),
-                    )
-                }.orEmpty()
-        if (this.text.toString() != text) this.text = text
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = title, modifier = Modifier.weight(1f))
+        Text(text = count, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -332,7 +267,6 @@ private fun SyncActivityListPreview() {
     BaeTheme {
         SyncActivityList(
             activity = PreviewData.syncActivity(needsAttention = true),
-            uploadTransfer = PreviewData.uploadTransferSource(),
             error = null,
             onOpenSettings = {},
             onOpenDownloads = {},
@@ -348,7 +282,6 @@ private fun SyncActivityButtonPreview() {
     BaeTheme {
         SyncActivityButton(
             store = store,
-            uploadTransfer = PreviewData.uploadTransferSource(),
             onOpenSettings = {},
             onOpenDownloads = {},
         )

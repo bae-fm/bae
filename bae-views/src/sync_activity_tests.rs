@@ -2,12 +2,24 @@ use super::*;
 
 /// How coven's sync state names a cause: the state it shows.
 type Names = fn(coven::SyncCause) -> coven::SyncState;
-use bae_transfers::ReleaseQueueCounts;
-use bae_types::count_label::CountLabel;
+use bae_transfers::{QueueWait, ReleaseQueueProgress};
+
+fn batch(done: u32, total: u32) -> TransferBatch {
+    TransferBatch { done, total }
+}
 
 /// An empty, running upload queue.
 fn idle_uploads() -> UploadQueueCounts {
-    UploadQueueCounts { queued: 0, sending: 0, wait: None }
+    UploadQueueCounts { batch: batch(0, 0), sending: 0, wait: None }
+}
+
+/// An empty, running download queue.
+fn idle_downloads() -> DownloadQueueCounts {
+    DownloadQueueCounts {
+        pins: batch(0, 0),
+        making_local: batch(0, 0),
+        queue: ReleaseQueueCounts::default(),
+    }
 }
 
 fn status() -> SyncStatusSnapshot {
@@ -21,73 +33,106 @@ fn status() -> SyncStatusSnapshot {
     }
 }
 
-/// Nothing moving and nothing to fix: the indicator is absent.
+/// Nothing moving, no line and nothing to fix: the indicator is absent.
 #[test]
 fn a_settled_library_is_quiet() {
-    let activity = SyncActivity::new(&status(), &idle_uploads(), &ReleaseQueueCounts::default());
-    assert!(!activity.moving());
+    let activity = SyncActivity::new(&status(), &idle_uploads(), &idle_downloads());
+    assert!(!activity.moving);
     assert!(!activity.needs_attention());
+    assert_eq!((activity.uploads, activity.pins, activity.making_local), (None, None, None));
 }
 
 /// A pass that runs while nothing transfers doesn't spin the indicator; the
-/// list still says sync is running.
+/// panel still says sync is running.
 #[test]
 fn a_pass_alone_is_not_movement() {
     let mut syncing = status();
     syncing.coven.state = coven::SyncState::Syncing;
-    let activity = SyncActivity::new(&syncing, &idle_uploads(), &ReleaseQueueCounts::default());
+    let activity = SyncActivity::new(&syncing, &idle_uploads(), &idle_downloads());
     assert!(activity.syncing);
-    assert!(!activity.moving());
+    assert!(!activity.moving);
 }
 
-/// Files being sent move; a queue that only holds work shows its line and
-/// the hold, and does not spin the indicator.
+/// A file being sent moves bytes whether or not it belongs to a release: a
+/// cover being sent spins the indicator with no Uploading line, and a
+/// release's file does with its line.
 #[test]
-fn transfers_are_movement() {
-    let mut uploads = UploadQueueCounts { queued: 6, sending: 2, wait: None };
-    let uploading = SyncActivity::new(&status(), &uploads, &ReleaseQueueCounts::default());
-    assert!(uploading.moving());
-    assert_eq!(uploading.uploads, Some(UploadQueueActivity { sending: 2, waiting: 4, wait: None }));
-    uploads.sending = 0;
-    uploads.wait = Some(bae_records::UploadQueueWait::Paused);
-    let paused = SyncActivity::new(&status(), &uploads, &ReleaseQueueCounts::default());
-    assert!(!paused.moving());
+fn a_file_being_sent_moves_with_or_without_a_line() {
+    let cover = UploadQueueCounts { batch: batch(0, 0), sending: 1, wait: None };
+    let sending_cover = SyncActivity::new(&status(), &cover, &idle_downloads());
+    assert!(sending_cover.moving);
+    assert_eq!(sending_cover.uploads, None);
+
+    let release = UploadQueueCounts { batch: batch(1, 2), sending: 1, wait: None };
+    let sending_release = SyncActivity::new(&status(), &release, &idle_downloads());
+    assert!(sending_release.moving);
     assert_eq!(
-        paused.uploads,
+        sending_release.uploads,
+        Some(UploadQueueActivity { batch: batch(1, 2), wait: None })
+    );
+}
+
+/// Only an entry downloading moves bytes; a pin batch that only waits shows
+/// its line and leaves the indicator still.
+#[test]
+fn a_download_moves_only_while_an_entry_downloads() {
+    let mut downloads = DownloadQueueCounts { pins: batch(0, 2), ..idle_downloads() };
+    let waiting = SyncActivity::new(&status(), &idle_uploads(), &downloads);
+    assert!(!waiting.moving);
+    assert_eq!(waiting.pins, Some(DownloadQueueActivity { batch: batch(0, 2), wait: None }));
+    downloads.queue.total = ReleaseQueueProgress { queued: 1, active: 1, failed: 0 };
+    assert!(SyncActivity::new(&status(), &idle_uploads(), &downloads).moving);
+}
+
+/// Pins and make-locals share the download queue but are lines of their
+/// own, each from its own batch; a kind whose batch holds nothing has no
+/// line.
+#[test]
+fn pins_and_make_locals_are_lines_of_their_own() {
+    let downloads =
+        DownloadQueueCounts { pins: batch(0, 0), making_local: batch(2, 3), ..idle_downloads() };
+    let activity = SyncActivity::new(&status(), &idle_uploads(), &downloads);
+    assert_eq!(activity.pins, None);
+    assert_eq!(
+        activity.making_local,
+        Some(DownloadQueueActivity { batch: batch(2, 3), wait: None })
+    );
+}
+
+/// A held queue keeps its lines and their counts, and each line carries what
+/// holds it: a paused upload queue, and an offline download queue's hold on
+/// both its lines.
+#[test]
+fn a_held_line_keeps_its_count() {
+    let uploads = UploadQueueCounts {
+        batch: batch(1, 3),
+        sending: 0,
+        wait: Some(bae_records::UploadQueueWait::Paused),
+    };
+    let downloads = DownloadQueueCounts {
+        pins: batch(0, 2),
+        making_local: batch(1, 1),
+        queue: ReleaseQueueCounts {
+            total: ReleaseQueueProgress { queued: 2, active: 0, failed: 0 },
+            wait: Some(QueueWait::Offline),
+        },
+    };
+    let activity = SyncActivity::new(&status(), &uploads, &downloads);
+    assert!(!activity.moving);
+    assert_eq!(
+        activity.uploads,
         Some(UploadQueueActivity {
-            sending: 0,
-            waiting: 6,
+            batch: batch(1, 3),
             wait: Some(bae_records::UploadQueueWait::Paused)
-        }),
-        "a paused queue keeps its line, counts and hold"
+        })
     );
-}
-
-/// A pin queue shows while it holds work, with what holds it; only an active
-/// entry moves bytes.
-#[test]
-fn a_pin_queue_shows_while_it_holds_work() {
-    use bae_transfers::{QueueWait, ReleaseQueueProgress};
-    let held = ReleaseQueueCounts {
-        total: ReleaseQueueProgress { queued: 2, active: 0, failed: 0 },
-        wait: Some(QueueWait::Offline),
-    };
-    let activity = SyncActivity::new(&status(), &idle_uploads(), &held);
-    assert!(!activity.moving());
     assert_eq!(
-        activity.downloads,
-        Some(DownloadQueueActivity { active: 0, queued: 2, wait: Some(QueueWait::Offline) })
+        (activity.pins, activity.making_local),
+        (
+            Some(DownloadQueueActivity { batch: batch(0, 2), wait: Some(QueueWait::Offline) }),
+            Some(DownloadQueueActivity { batch: batch(1, 1), wait: Some(QueueWait::Offline) })
+        )
     );
-    let running = ReleaseQueueCounts {
-        total: ReleaseQueueProgress { queued: 0, active: 1, failed: 0 },
-        wait: None,
-    };
-    assert!(SyncActivity::new(&status(), &idle_uploads(), &running).moving());
-    let failed_only = ReleaseQueueCounts {
-        total: ReleaseQueueProgress { queued: 0, active: 0, failed: 1 },
-        wait: None,
-    };
-    assert_eq!(SyncActivity::new(&status(), &idle_uploads(), &failed_only).downloads, None);
 }
 
 /// A sync failure or a pending record that needs the person marks the
@@ -102,9 +147,7 @@ fn failures_and_pending_records_need_attention() {
         },
         coven::SyncState::Offline,
     );
-    let new = |status: &SyncStatusSnapshot| {
-        SyncActivity::new(status, &idle_uploads(), &ReleaseQueueCounts::default())
-    };
+    let new = |status: &SyncStatusSnapshot| activity(status);
     assert!(new(&failed).needs_attention());
     let mut waiting = status();
     waiting.pending = vec![PendingItem::before_open(coven::PendingRecord::new(
@@ -112,25 +155,6 @@ fn failures_and_pending_records_need_attention() {
         coven::PendingReason::NoStorage,
     ))];
     assert!(new(&waiting).needs_attention());
-}
-
-/// The list's lines name what is sending or downloading, then what waits,
-/// and drop a zero.
-#[test]
-fn transfer_lines_name_the_moving_count_first() {
-    let label = |key: &str, count| CountLabel { key: key.into(), count };
-    assert_eq!(
-        UploadQueueActivity { sending: 2, waiting: 4, wait: None }.summary_parts(),
-        vec![label("core.queue.uploading", 2), label("core.queue.queued_to_upload", 4)]
-    );
-    assert_eq!(
-        DownloadQueueActivity { active: 1, queued: 2, wait: None }.summary_parts(),
-        if cfg!(desktop) {
-            vec![label("core.queue.downloading", 1), label("core.queue.queued_to_download", 2)]
-        } else {
-            vec![label("core.queue.pinning", 1), label("core.queue.queued_to_pin", 2)]
-        }
-    );
 }
 
 /// The text coven keeps for an S3 failure the provider answered.
@@ -165,7 +189,7 @@ fn connection(failure: coven::StorageFailure) -> coven::PendingRecord {
 }
 
 fn activity(status: &SyncStatusSnapshot) -> SyncActivity {
-    SyncActivity::new(status, &idle_uploads(), &ReleaseQueueCounts::default())
+    SyncActivity::new(status, &idle_uploads(), &idle_downloads())
 }
 
 /// A pass that fails on the connection leaves coven's record of that
@@ -278,17 +302,147 @@ fn the_list_offers_retry_only_when_a_retry_runs_a_pass_that_can_clear_a_failure(
     assert!(!activity(&status()).retry_offered);
 }
 
-/// What the activity reads as queued, and what counting the queue gives.
-async fn queued_counts(store: &bae_store::Store) -> (u32, u32) {
-    store
-        .read(|sql| {
-            Ok::<_, bae_store::DbError>((
-                upload_queue_counts_on(&sql)?.queued,
-                sql.query_row("SELECT COUNT(*) FROM coven_upload_queue", [], |row| row.get(0))?,
-            ))
-        })
-        .await
-        .unwrap()
+/// The activity as one read of `store` finds it.
+async fn activity_now(store: &bae_store::Store) -> SyncActivity {
+    let mut activity = crate::LibraryViews::new(store.clone()).subscribe_sync_activity();
+    activity.next().await.expect("the query stays open").unwrap()
+}
+
+/// Run `test` on a library whose storage is set up and whose uploads are
+/// paused, with a folder for the originals its files are staged from. The
+/// store is closed before its runtime ends, as a store still syncing must be.
+fn run_on_library_with_storage(
+    test: impl AsyncFnOnce(&bae_store::Store, &std::path::Path) + Send + 'static,
+) {
+    bae_store::test_devices::on_device_runtime(async move || {
+        let dir = tempfile::TempDir::new().unwrap();
+        let sources = bae_store::TestSources::system();
+        let storage = std::sync::Arc::new(
+            coven::MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap(),
+        );
+        let installation = coven::Coven::in_memory(dir.path().to_path_buf());
+        let handle = bae_store::test_devices::create_first_store(
+            crate::TEST_SCHEMA,
+            &installation,
+            &sources,
+            storage,
+        )
+        .await;
+        let store = sources.store(handle);
+        store.set_uploads_paused(true).await.unwrap();
+        let originals = tempfile::TempDir::new().unwrap();
+        test(&store, originals.path()).await;
+        store.close().await.expect("close the store");
+    });
+}
+
+const FILE_EARLY: &str = "5b0c3f0e-2d7a-4c61-9a4e-1f2b3c4d5e61";
+const FILE_LATE: &str = "6c1d4a1f-3e8b-4d72-8b5f-2a3c4d5e6f72";
+
+/// The two releases of `storage_listing`, each with one file staged on this
+/// device only.
+async fn write_releases_with_files(store: &bae_store::Store, originals: &std::path::Path) {
+    use bae_records::test_fixtures::storage_listing::*;
+    write_library(&bae_records::test_fixtures::test_records(store)).await;
+    insert_file(store, originals, (FILE_EARLY, RELEASE_EARLY, "early.flac", 3)).await;
+    insert_file(store, originals, (FILE_LATE, RELEASE_LATE, "late.flac", 5)).await;
+}
+
+/// Move `release` to the cloud, queueing its files to upload.
+async fn queue_upload(store: &bae_store::Store, release: &str) {
+    let moved =
+        bae_transfers::storage_moves::move_releases_to_cloud(store, vec![release.into()], false)
+            .await
+            .unwrap();
+    assert_eq!(moved.moved, vec![(release.to_string(), 1)]);
+}
+
+/// The upload batch takes in each release as its first file is queued and
+/// keeps every one until none has a file queued: a release whose upload was
+/// cancelled, or that left the library, stays in the count while another
+/// still has files queued, never counting done, and the batch empties once
+/// the last release with files queued has none, cancelled or removed.
+#[test]
+fn the_upload_batch_holds_every_release_queued_until_none_is() {
+    use bae_records::test_fixtures::storage_listing::{RELEASE_EARLY, RELEASE_LATE};
+    run_on_library_with_storage(async |store, originals| {
+        let records = bae_records::test_fixtures::test_records(store);
+        write_releases_with_files(store, originals).await;
+        assert_eq!(activity_now(store).await.uploads, None, "nothing is queued to upload");
+
+        let batch_now = async || activity_now(store).await.uploads.map(|uploads| uploads.batch);
+        queue_upload(store, RELEASE_EARLY).await;
+        queue_upload(store, RELEASE_LATE).await;
+        assert_eq!(batch_now().await, Some(batch(0, 2)));
+
+        records.cancel_release_uploads(vec![RELEASE_EARLY.into()]).await.unwrap();
+        assert_eq!(
+            batch_now().await,
+            Some(batch(0, 2)),
+            "the cancelled release stays in the count while another has files queued"
+        );
+        records.cancel_release_uploads(vec![RELEASE_LATE.into()]).await.unwrap();
+        assert_eq!(batch_now().await, None, "no release has files queued");
+
+        queue_upload(store, RELEASE_EARLY).await;
+        assert_eq!(batch_now().await, Some(batch(0, 1)), "a new batch starts from zero");
+        queue_upload(store, RELEASE_LATE).await;
+        bae_records::test_fixtures::delete_release(&records, RELEASE_EARLY).await;
+        assert_eq!(
+            batch_now().await,
+            Some(batch(0, 2)),
+            "the removed release stays in the count while another has files queued"
+        );
+        bae_records::test_fixtures::delete_release(&records, RELEASE_LATE).await;
+        assert_eq!(batch_now().await, None, "the last release with files queued was removed");
+    });
+}
+
+/// The Uploading line counts releases, a release done once its files are
+/// stored: of two releases queued, the one whose file uploaded is done
+/// while the other's waits for its missing original. A picture queued
+/// alone belongs to no release and shows no line.
+#[test]
+fn uploading_counts_releases_and_no_cover() {
+    use bae_records::test_fixtures::storage_listing::{RELEASE_EARLY, RELEASE_LATE};
+    run_on_library_with_storage(async |store, originals| {
+        let records = bae_records::test_fixtures::test_records(store);
+        write_releases_with_files(store, originals).await;
+        queue_upload(store, RELEASE_EARLY).await;
+        queue_upload(store, RELEASE_LATE).await;
+        std::fs::remove_file(originals.join(FILE_LATE)).unwrap();
+
+        store.set_uploads_paused(false).await.unwrap();
+        store.retry_uploads_now().await.unwrap();
+        store.set_uploads_paused(true).await.unwrap();
+        assert_eq!(
+            activity_now(store).await.uploads.map(|uploads| uploads.batch),
+            Some(batch(1, 2))
+        );
+
+        records.cancel_release_uploads(vec![RELEASE_LATE.into()]).await.unwrap();
+        assert_eq!(activity_now(store).await.uploads, None);
+
+        // Sync stopped, the picture's upload stays in the queue.
+        bae_store::test_devices::stop_sync(store).await;
+        bae_records::test_fixtures::library::RecordsFixture::new()
+            .artist(bae_records::test_fixtures::ARTIST_A, "Artist Name A")
+            .write(&records)
+            .await;
+        write_image(&records, bae_records::test_fixtures::ARTIST_A).await;
+        let queued: i64 = store
+            .read(|sql| {
+                Ok::<_, bae_store::DbError>(sql.query_row(
+                    "SELECT COUNT(*) FROM coven_upload_queue",
+                    [],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
+            .unwrap();
+        assert_eq!(queued, 1, "the picture waits in the queue");
+        assert_eq!(activity_now(store).await.uploads, None);
+    });
 }
 
 /// An artist image, which stages one file for the cloud.
@@ -299,24 +453,4 @@ async fn write_image(records: &bae_records::Records, artist: &str) {
         content_type: bae_util::content_type::ContentType::Jpeg,
     };
     records.write_library_image(&image, artist.as_bytes()).await.unwrap();
-}
-
-/// The queued count follows files joining the queue and leaving it, and is
-/// what counting the queue gives: two files queue, and replacing one image
-/// queues its new file and drops the old.
-#[tokio::test]
-async fn the_queued_count_follows_the_queue() {
-    let (store, _tmp) = bae_store::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
-    let records = bae_records::test_fixtures::test_records(&store);
-    let artists = bae_records::test_fixtures::library::RecordsFixture::new()
-        .artist("a", "A")
-        .artist("b", "B");
-    artists.write(&records).await;
-    assert_eq!(queued_counts(&store).await, (0, 0));
-    write_image(&records, "a").await;
-    assert_eq!(queued_counts(&store).await, (1, 1));
-    write_image(&records, "b").await;
-    assert_eq!(queued_counts(&store).await, (2, 2));
-    write_image(&records, "a").await;
-    assert_eq!(queued_counts(&store).await, (2, 2));
 }

@@ -239,7 +239,7 @@ fn storage_queues_on(sql: &SqlReadContext<'_>) -> Result<crate::StorageQueues, D
     };
     Ok(crate::StorageQueues {
         uploads,
-        pins: release_queue("download_queue", "download", true)?,
+        downloads: release_queue("download_queue", "download", true)?,
         outputs: release_queue("output_queue", "output", false)?,
     })
 }
