@@ -50,20 +50,11 @@ pub enum BridgeSaveCodec {
     Aiff { bit_depth: BridgeSaveBitDepth },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSavePregapPlacement {
-    AppendToPreviousExceptHtoa,
-    AppendToPreviousIncludingHtoa,
-    Exclude,
-    SingleFileWithCue,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSavePreset {
     pub id: String,
     pub name: String,
     pub codec: BridgeSaveCodec,
-    pub pregap_placement: BridgeSavePregapPlacement,
     /// Whether saved files embed the release's cover art.
     pub embed_cover: bool,
 }

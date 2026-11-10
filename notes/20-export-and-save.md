@@ -78,20 +78,15 @@ copied.
   macOS/Windows.
 
 **Presets** (`SavePreset`) bundle the save options: codec + quality
-(FLAC/WAV/AIFF with bit depth, MP3/Opus with bitrate), filename tokens,
-pregap placement, cover embedding, and which levels the preset applies to
-(track, release).
+(FLAC/WAV/AIFF with the source's bit depth or 16 bits, MP3/AAC/Opus with a
+bitrate from the list the encoder writes), cover embedding, and which levels
+the preset applies to (track, release).
 
-**Release-level save** produces one of two shapes, chosen by the preset:
-
-- **File per track**: every track saved as its own file, names deduplicated
-  within the output folder. Pregap placement options decide where CUE pregap
-  audio goes (append to previous track, include or exclude the hidden
-  track-one pregap, or exclude pregaps entirely).
-- **Single file + CUE**: the whole release as one audio image plus a
-  generated CUE sheet (title, performer, catalog/barcode, date, per-track
-  index points computed from the sample windows). Release level only, and
-  only for codecs CUE can name (not Opus/Ogg).
+**Release-level save** writes one file per track, names deduplicated within
+the output folder, and every save cuts them by one rule: a track's gap goes at
+the end of the track before it, and the hidden audio before track 1 stays at
+the start of track 1. A release stored as one image with a CUE sheet is split
+at its track marks by the same rule.
 
 Destinations: a release-level save targets a directory chosen the same way
 as export's (folder dialog, last-used seed) and runs through the same serial
@@ -116,7 +111,7 @@ cancel.
 | tags | untouched | written from bae |
 | cover | as imported (a file among files) | optionally embedded |
 | filenames | original, verbatim | rendered from token pattern |
-| options | destination only | preset: format, quality, naming, pregaps, cover |
+| options | destination only | preset: format, quality, naming, cover |
 | metadata edits in bae | invisible | applied |
 
 "I want my rip back" is export. "I want files for my phone / another player /

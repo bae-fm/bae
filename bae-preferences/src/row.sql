@@ -62,9 +62,6 @@ CREATE TABLE IF NOT EXISTS save_preset (
     codec        TEXT NOT NULL CHECK (codec IN ('flac', 'mp3', 'aac', 'opus_ogg', 'wav', 'aiff')),
     bit_depth    TEXT CHECK (bit_depth IN ('same_as_source', 'bits_16')),
     bitrate_kbps INTEGER,
-    pregap_placement TEXT NOT NULL CHECK (pregap_placement IN (
-        'append_to_previous_except_htoa', 'append_to_previous_including_htoa', 'exclude',
-        'single_file_with_cue')),
     embed_cover        INTEGER NOT NULL CHECK (embed_cover IN (0, 1)),
     CHECK ((codec IN ('flac', 'wav', 'aiff')) = (bit_depth IS NOT NULL)),
     CHECK ((codec IN ('flac', 'wav', 'aiff')) = (bitrate_kbps IS NULL)),
@@ -72,9 +69,7 @@ CREATE TABLE IF NOT EXISTS save_preset (
     CHECK (codec <> 'mp3' OR bitrate_kbps IN (
         32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320)),
     CHECK (codec <> 'aac' OR bitrate_kbps IN (96, 128, 160, 192, 256, 320)),
-    CHECK (codec <> 'opus_ogg' OR bitrate_kbps IN (64, 96, 128, 160, 192, 256)),
-    -- One file with a CUE sheet is in a codec a sheet can index.
-    CHECK (pregap_placement <> 'single_file_with_cue' OR codec NOT IN ('aac', 'opus_ogg'))
+    CHECK (codec <> 'opus_ogg' OR bitrate_kbps IN (64, 96, 128, 160, 192, 256))
 ) STRICT;
 
 -- The filename pattern every save names its files by, whatever the format:
@@ -86,10 +81,10 @@ CREATE TABLE IF NOT EXISTS save_filename_token (
 ) STRICT;
 
 INSERT OR IGNORE INTO save_preset (
-    id, position, name, codec, bit_depth, bitrate_kbps, pregap_placement, embed_cover)
+    id, position, name, codec, bit_depth, bitrate_kbps, embed_cover)
 VALUES
-    ('flac', 0, 'FLAC', 'flac', 'same_as_source', NULL, 'append_to_previous_except_htoa', 1),
-    ('mp3', 1, 'MP3', 'mp3', NULL, 320, 'append_to_previous_except_htoa', 1);
+    ('flac', 0, 'FLAC', 'flac', 'same_as_source', NULL, 1),
+    ('mp3', 1, 'MP3', 'mp3', NULL, 320, 1);
 INSERT OR IGNORE INTO save_filename_token (position, token)
 VALUES (0, 'track_number'), (1, 'title');
 INSERT OR IGNORE INTO preferences (

@@ -366,7 +366,6 @@ mod conversion_roundtrip {
             codec: bae_preferences::SaveCodec::Flac {
                 bit_depth: bae_preferences::SaveBitDepth::SameAsSource,
             },
-            pregap_placement: bae_preferences::SavePregapPlacement::Exclude,
             embed_cover: false,
         };
         let bridge = BridgeSavePreset::from_core(&core);

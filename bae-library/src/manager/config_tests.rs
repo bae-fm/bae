@@ -94,11 +94,16 @@ async fn set_default_save_preset_rejects_unknown_and_takes_any_format() {
     );
 
     let mut presets = manager.save_presets().await.unwrap();
-    presets.push(single_file_image_preset());
+    presets.push(bae_preferences::SavePreset {
+        id: "wav-16".to_string(),
+        name: "WAV 16-bit".to_string(),
+        codec: bae_preferences::SaveCodec::Wav { bit_depth: bae_preferences::SaveBitDepth::Bits16 },
+        embed_cover: true,
+    });
     manager.set_save_presets(presets).await.unwrap();
 
-    manager.set_default_track_save_preset("flac-image".to_string()).await.unwrap();
-    manager.set_default_release_save_preset("flac-image".to_string()).await.unwrap();
+    manager.set_default_track_save_preset("wav-16".to_string()).await.unwrap();
+    manager.set_default_release_save_preset("wav-16".to_string()).await.unwrap();
 }
 
 #[tokio::test]

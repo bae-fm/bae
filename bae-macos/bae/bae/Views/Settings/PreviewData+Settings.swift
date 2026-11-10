@@ -20,14 +20,12 @@
                 id: "flac",
                 name: "FLAC",
                 codec: .flac(bitDepth: .sameAsSource),
-                pregapPlacement: .appendToPreviousExceptHtoa,
                 embedCover: true
             ),
             BridgeSavePreset(
                 id: "mp3",
                 name: "MP3",
                 codec: .mp3(bitrateKbps: 320),
-                pregapPlacement: .appendToPreviousExceptHtoa,
                 embedCover: true
             ),
         ]

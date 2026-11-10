@@ -459,13 +459,12 @@ task_types = [
     "BridgeCatalogApply",
     "AbortOnDrop",
     # A guard that stops one save or one setup call's work when its call is
-    # dropped, one saved image's track, and one pin's transfer.
+    # dropped, and one pin's transfer.
     "CancelSaveOnDrop",
     "CancelSetupOnDrop",
     # One standing call on an open library, which holds the library's session
     # open while the call runs, its close waiting for it.
     "RunningCall",
-    "ImageTrack",
     "ReleaseTransfer",
     "Running",
 ]

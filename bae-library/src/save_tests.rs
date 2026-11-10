@@ -75,66 +75,6 @@ fn empty_render_falls_back_to_title() {
     assert_eq!(render_save_filename(&[Year], &r), "Fallback Title");
 }
 
-#[test]
-fn release_image_cue_places_indexes_from_track_windows() {
-    let cue = render_cue_sheet(
-        "Album Title",
-        "Artist Name",
-        None,
-        None,
-        "Album.flac",
-        "WAVE",
-        44_100,
-        &[
-            CueTrack {
-                number: 1,
-                title: "Opening".to_string(),
-                performer: "Artist Name".to_string(),
-                index_00_sample_frame: Some(0),
-                index_01_sample_frame: 44_100 * 2,
-            },
-            CueTrack {
-                number: 2,
-                title: "Second".to_string(),
-                performer: "Artist Name".to_string(),
-                index_00_sample_frame: Some(44_100 * 10),
-                index_01_sample_frame: 44_100 * 12,
-            },
-        ],
-    );
-
-    assert!(cue.contains("FILE \"Album.flac\" WAVE"));
-    assert!(cue.contains("  TRACK 01 AUDIO\n"));
-    assert!(cue.contains("    INDEX 00 00:00:00\n"));
-    assert!(cue.contains("    INDEX 01 00:02:00\n"));
-    assert!(cue.contains("  TRACK 02 AUDIO\n"));
-    assert!(cue.contains("    INDEX 00 00:10:00\n"));
-    assert!(cue.contains("    INDEX 01 00:12:00\n"));
-}
-
-#[test]
-fn release_image_cue_writes_catalog_and_date() {
-    let cue = render_cue_sheet(
-        "Album Title",
-        "Artist Name",
-        Some("0123456789012"),
-        Some(2024),
-        "Album.flac",
-        "WAVE",
-        44_100,
-        &[CueTrack {
-            number: 1,
-            title: "Opening".to_string(),
-            performer: "Artist Name".to_string(),
-            index_00_sample_frame: None,
-            index_01_sample_frame: 0,
-        }],
-    );
-
-    assert!(cue.contains("CATALOG 0123456789012\n"));
-    assert!(cue.contains("REM DATE 2024\n"));
-}
-
 /// Encode a short FLAC and run the real `write_tags` over it with `cover`.
 /// Returns the temp dir — which has to outlive the read-back — and the
 /// tagged file's path.
@@ -277,27 +217,18 @@ fn a_read_that_panics_fails_the_save_as_unfinished() {
     let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, &bytes);
     buffer.panic_reads();
-    let (reply, _entry) = tokio::sync::oneshot::channel();
-    let track = ImageTrack {
-        index: 0,
-        track_id: "track-1".to_string(),
-        title: "Track Title".to_string(),
-        performer: "Artist Name".to_string(),
-        audio_pregap_samples: None,
-        decode: bae_track_audio::StreamDecodeParams::new(
-            vec![bae_track_audio::SegmentDecodeParams::new(
-                buffer,
-                bae_records::SegmentSpan::whole_file(),
-                0,
-            )],
-            true,
+    let decode = bae_track_audio::StreamDecodeParams::new(
+        vec![bae_track_audio::SegmentDecodeParams::new(
+            buffer,
+            bae_records::SegmentSpan::whole_file(),
             0,
-            0,
-        ),
-        reply,
-    };
+        )],
+        true,
+        0,
+        0,
+    );
     let dir = tempfile::TempDir::new().unwrap();
-    let file = std::fs::File::create(dir.path().join("image.flac")).unwrap();
+    let file = std::fs::File::create(dir.path().join("track.flac")).unwrap();
     let cancel = Arc::new(AtomicBool::new(false));
     let mut encoder = StreamingEncoder::seekable(
         EncodeFormat::Flac { bits_per_sample: 16 },
@@ -305,12 +236,15 @@ fn a_read_that_panics_fails_the_save_as_unfinished() {
         cancel.clone(),
     );
 
-    let result = encode_image_track(&track, &mut encoder, &mut 0, 44_100, 2, cancel);
+    // A track's save runs its decode into the encoder with `?`, which is this
+    // conversion.
+    let result: Result<(), SaveError> =
+        decode.run_to_sink(44_100, 2, &mut encoder, cancel).map_err(SaveError::from);
 
     match result {
         Err(SaveError::Unfinished(failed)) => assert!(failed.is_panic(), "{failed}"),
         Err(error) => panic!("a read that panicked leaves the save unfinished: {error}"),
-        Ok(_) => panic!("a read that panicked leaves the save unfinished, not encoded"),
+        Ok(()) => panic!("a read that panicked leaves the save unfinished, not encoded"),
     }
 }
 

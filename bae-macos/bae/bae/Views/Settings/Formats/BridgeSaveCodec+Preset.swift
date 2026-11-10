@@ -49,12 +49,6 @@ extension BridgeSaveCodec {
         }
     }
 
-    /// Whether this codec can write a release as one file with a CUE sheet,
-    /// as core reads it.
-    var supportsSingleFileCue: Bool {
-        bridgeSaveCodecSupportsSingleFileCue(codec: self)
-    }
-
     var label: String {
         switch self {
         case .flac, .wav, .aiff: format.label

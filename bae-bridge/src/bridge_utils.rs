@@ -3,8 +3,8 @@ use crate::types::BridgeOutputKind;
 use crate::types::{
     BridgeCastTranscodeFormat, BridgeConfig, BridgeDiscogsTokenStatus, BridgeImportStorage,
     BridgeLookupCatalog, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeSaveBitDepth,
-    BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset,
-    BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig,
+    BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePreset, BridgeSidePauseCountdown,
+    BridgeSourceAvailability, BridgeSubsonicConfig,
 };
 
 mirror_enum! {
@@ -81,18 +81,6 @@ impl BridgeSaveCodec {
 }
 
 mirror_enum! {
-    BridgeSavePregapPlacement = bae_preferences::SavePregapPlacement,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: {
-        AppendToPreviousExceptHtoa,
-        AppendToPreviousIncludingHtoa,
-        Exclude,
-        SingleFileWithCue,
-    },
-}
-
-mirror_enum! {
     BridgeSaveFilenameToken = bae_preferences::SaveFilenameToken,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
@@ -118,25 +106,18 @@ impl BridgeOutputKind {
 
 impl BridgeSavePreset {
     pub(crate) fn from_core(preset: &bae_preferences::SavePreset) -> Self {
-        let bae_preferences::SavePreset { id, name, codec, pregap_placement, embed_cover } = preset;
+        let bae_preferences::SavePreset { id, name, codec, embed_cover } = preset;
         BridgeSavePreset {
             id: id.clone(),
             name: name.clone(),
             codec: BridgeSaveCodec::from_core(codec),
-            pregap_placement: BridgeSavePregapPlacement::from_core(*pregap_placement),
             embed_cover: *embed_cover,
         }
     }
 
     pub(crate) fn into_core(self) -> bae_preferences::SavePreset {
-        let BridgeSavePreset { id, name, codec, pregap_placement, embed_cover } = self;
-        bae_preferences::SavePreset {
-            id,
-            name,
-            codec: codec.into_core(),
-            pregap_placement: pregap_placement.into_core(),
-            embed_cover,
-        }
+        let BridgeSavePreset { id, name, codec, embed_cover } = self;
+        bae_preferences::SavePreset { id, name, codec: codec.into_core(), embed_cover }
     }
 }
 

@@ -34,7 +34,6 @@ import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSaveBitDepth
 import uniffi.bae_bridge.BridgeSaveCodec
 import uniffi.bae_bridge.BridgeSaveFilenameToken
-import uniffi.bae_bridge.BridgeSavePregapPlacement
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSidePauseCountdown
@@ -288,8 +287,6 @@ object BridgeFixtures {
                         id = "flac",
                         name = "FLAC",
                         codec = BridgeSaveCodec.Flac(bitDepth = BridgeSaveBitDepth.SAME_AS_SOURCE),
-                        pregapPlacement =
-                            BridgeSavePregapPlacement.APPEND_TO_PREVIOUS_EXCEPT_HTOA,
                         embedCover = true,
                     ),
                 ),

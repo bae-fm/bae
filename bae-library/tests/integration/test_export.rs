@@ -4,9 +4,7 @@
 //! bytes are downloaded from storage and decrypted with the release's
 //! item key — the same verified read pin and unmanage use.
 
-use bae_preferences::{
-    SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
-};
+use bae_preferences::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePreset};
 use bae_transfers::OutputKind;
 use coven::MemoryStorage;
 use std::fs;
@@ -327,124 +325,6 @@ async fn export_release_from_cloud_only_release() {
     assert_eq!(written, original_bytes);
 }
 
-#[tokio::test]
-async fn export_release_single_file_with_cue_writes_image_and_cue() {
-    bae_util::test_logs::install();
-    let f = ExportFixture::new().await;
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    let first_bytes =
-        bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
-    let second_bytes =
-        bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "Track Two");
-    let release_id = import_unknown_local(&f, &album_dir).await;
-
-    let image_preset = SavePreset {
-        id: "flac-image".to_string(),
-        name: "FLAC image".to_string(),
-        codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
-        pregap_placement: SavePregapPlacement::SingleFileWithCue,
-        embed_cover: true,
-    };
-    let mut presets = f.library.manager().save_presets().await.unwrap();
-    presets.push(image_preset.clone());
-    f.library.manager().set_save_presets(presets).await.unwrap();
-
-    let target = f.temp_path().join("export-target");
-    fs::create_dir_all(&target).unwrap();
-    f.library
-        .manager()
-        .export_release(
-            &release_id,
-            &target,
-            OutputKind::Save { preset: image_preset, filename_tokens: default_tokens() },
-        )
-        .await
-        .expect("single-file CUE release save must succeed");
-
-    let subdir = fs::read_dir(&target)
-        .unwrap()
-        .next()
-        .expect("export wrote a release folder")
-        .unwrap()
-        .path();
-    assert!(subdir.join(".bae-output").exists());
-    let mut exported_files: Vec<_> = fs::read_dir(&subdir)
-        .unwrap()
-        .map(|entry| entry.unwrap().file_name().to_string_lossy().to_string())
-        .filter(|name| name != ".bae-output")
-        .collect();
-    exported_files.sort();
-    assert_eq!(exported_files, vec!["album.cue", "album.flac"]);
-
-    let cue = fs::read_to_string(subdir.join("album.cue")).unwrap();
-    assert!(cue.contains("FILE \"album.flac\" WAVE"));
-    assert!(cue.contains("  TRACK 01 AUDIO"));
-    assert!(cue.contains("  TRACK 02 AUDIO"));
-
-    let image_pcm = bae_audio::decode_audio(
-        bae_audio::test_samples::filled_sparse_buffer(
-            &fs::read(subdir.join("album.flac")).unwrap(),
-        ),
-        None,
-        None,
-    )
-    .unwrap();
-    let first_pcm = bae_audio::decode_audio(
-        bae_audio::test_samples::filled_sparse_buffer(&first_bytes),
-        None,
-        None,
-    )
-    .unwrap();
-    let second_pcm = bae_audio::decode_audio(
-        bae_audio::test_samples::filled_sparse_buffer(&second_bytes),
-        None,
-        None,
-    )
-    .unwrap();
-    assert_eq!(image_pcm.samples.len(), first_pcm.samples.len() + second_pcm.samples.len());
-}
-
-/// A release image takes its folder's name as the release's folder does,
-/// spaces and all: the save writes the image and its CUE sheet inside the
-/// folder under the one name.
-#[tokio::test]
-async fn a_release_image_is_named_as_its_folder_is() {
-    bae_util::test_logs::install();
-    let f = ExportFixture::new().await;
-    let album_dir = f.temp_path().join("album  two");
-    fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "Track Two");
-    let release_id = import_unknown_local(&f, &album_dir).await;
-
-    let image_preset = flac_save_preset("image", SavePregapPlacement::SingleFileWithCue);
-    let mut presets = f.library.manager().save_presets().await.unwrap();
-    presets.push(image_preset.clone());
-    f.library.manager().set_save_presets(presets).await.unwrap();
-
-    let target = f.temp_path().join("export-target");
-    fs::create_dir_all(&target).unwrap();
-    f.library
-        .manager()
-        .export_release(
-            &release_id,
-            &target,
-            OutputKind::Save { preset: image_preset, filename_tokens: default_tokens() },
-        )
-        .await
-        .expect("the release image saves");
-
-    let folder = target.join("album  two");
-    let mut written: Vec<_> = fs::read_dir(&folder)
-        .unwrap()
-        .map(|entry| entry.unwrap().file_name().to_string_lossy().to_string())
-        .filter(|name| name != ".bae-output")
-        .collect();
-    written.sort();
-    assert_eq!(written, vec!["album  two.cue", "album  two.flac"]);
-}
-
 /// `Track?.flac` and `Track？.flac` are two names, and coven writes both as
 /// `Track？.flac`: the export fails rather than write one file over the
 /// other, and leaves nothing behind. Windows refuses `?` in a name, so the
@@ -497,6 +377,78 @@ fn folds_case(dir: &Path) -> bool {
     folds
 }
 
+/// A release stored as one image with a CUE sheet saves as one file per track,
+/// cut at the sheet's marks by one rule: a track's gap goes at the end of the
+/// track before it, and hidden audio before track 1 stays at the start of
+/// track 1. The 30 second image has 2 seconds of hidden audio before track 1,
+/// and a 2 second gap before track 2.
+#[tokio::test]
+async fn a_cue_image_saves_one_file_per_track_with_each_gap_before_its_track() {
+    bae_util::test_logs::install();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    fs::copy(
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
+        album_dir.join("Test Album.flac"),
+    )
+    .unwrap();
+    fs::write(
+        album_dir.join("Test Album.cue"),
+        "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\nFILE \"Test Album.flac\" WAVE\n\
+         \x20 TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 00 00:00:00\n    INDEX 01 00:02:00\n\
+         \x20 TRACK 02 AUDIO\n    TITLE \"Track Two\"\n    INDEX 00 00:08:00\n    INDEX 01 00:10:00\n\
+         \x20 TRACK 03 AUDIO\n    TITLE \"Track Three\"\n    INDEX 01 00:20:00\n",
+    )
+    .unwrap();
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let flac = f
+        .library
+        .manager()
+        .save_presets()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|preset| preset.id == "flac")
+        .unwrap();
+
+    let target = f.temp_path().join("export-target");
+    fs::create_dir_all(&target).unwrap();
+    f.library
+        .manager()
+        .export_release(
+            &release_id,
+            &target,
+            OutputKind::Save { preset: flac, filename_tokens: default_tokens() },
+        )
+        .await
+        .expect("the release saves");
+
+    let folder = fs::read_dir(&target).unwrap().next().unwrap().unwrap().path();
+    let mut names: Vec<String> = fs::read_dir(&folder)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().to_string())
+        .filter(|name| name != ".bae-output")
+        .collect();
+    names.sort();
+    assert_eq!(names, vec!["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"]);
+
+    let seconds = |name: &str| {
+        let pcm = bae_audio::decode_audio(
+            bae_audio::test_samples::filled_sparse_buffer(&fs::read(folder.join(name)).unwrap()),
+            None,
+            None,
+        )
+        .unwrap();
+        pcm.samples.len() as f64 / f64::from(pcm.sample_rate * pcm.channels)
+    };
+    // Track 1 holds its 2 seconds of hidden audio, its own 6, and track 2's
+    // 2 second gap at the end; track 2 starts at its mark.
+    assert_eq!(seconds("01 Track One.flac"), 10.0);
+    assert_eq!(seconds("02 Track Two.flac"), 10.0);
+    assert_eq!(seconds("03 Track Three.flac"), 10.0);
+}
+
 /// Tracks titled `Track Title` and `track title` save as two names, which a
 /// drive that folds case holds as one: the release save fails rather than
 /// write one track over the other, and leaves nothing behind.
@@ -516,7 +468,7 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
     bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track Title");
     bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "track title");
     let release_id = import_unknown_local(&f, &album_dir).await;
-    let preset = flac_save_preset("titles", SavePregapPlacement::AppendToPreviousExceptHtoa);
+    let preset = flac_save_preset("titles");
     let mut presets = f.library.manager().save_presets().await.unwrap();
     presets.push(preset.clone());
     f.library.manager().set_save_presets(presets).await.unwrap();
@@ -575,13 +527,12 @@ fn default_tokens() -> Vec<SaveFilenameToken> {
     vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
 }
 
-/// A release save preset over `placement`, FLAC at the source depth.
-fn flac_save_preset(id: &str, placement: SavePregapPlacement) -> SavePreset {
+/// A release save preset of FLAC at 16 bits.
+fn flac_save_preset(id: &str) -> SavePreset {
     SavePreset {
         id: id.to_string(),
         name: id.to_string(),
         codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
-        pregap_placement: placement,
         embed_cover: false,
     }
 }
@@ -621,8 +572,7 @@ fn cores() -> usize {
 }
 
 /// Saving a release of a file per track opens each track's file only while
-/// that track is being saved: at most one per core for track files, and one
-/// at a time for an image the tracks stream into in order.
+/// that track is being saved: at most one per core.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
     bae_util::test_logs::install();
@@ -639,32 +589,17 @@ async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
     let release_id = import_unknown_local(&f, &album_dir).await;
     assert_eq!(f.library.records().get_tracks_for_release(&release_id).await.unwrap().len(), 24);
 
-    let per_track = peak_sources_open_saving(
-        &f,
-        &release_id,
-        &album_dir,
-        flac_save_preset("tracks", SavePregapPlacement::AppendToPreviousExceptHtoa),
-    )
-    .await;
+    let per_track =
+        peak_sources_open_saving(&f, &release_id, &album_dir, flac_save_preset("tracks")).await;
     assert!(
         per_track <= cores(),
         "{per_track} of 24 track files open at once over {} cores",
         cores()
     );
-
-    let image = peak_sources_open_saving(
-        &f,
-        &release_id,
-        &album_dir,
-        flac_save_preset("image", SavePregapPlacement::SingleFileWithCue),
-    )
-    .await;
-    assert!(image <= 1, "the image save reads one track file at a time, not {image}");
 }
 
 /// Saving a release whose tracks share one CUE image reads the image through
-/// one open file, whether its tracks are saved at once or streamed into one
-/// new image.
+/// one open file.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_save_reads_a_cue_image_through_one_open_file() {
     bae_util::test_logs::install();
@@ -691,12 +626,7 @@ async fn a_release_save_reads_a_cue_image_through_one_open_file() {
     let release_id = import_unknown_local(&f, &album_dir).await;
     assert_eq!(f.library.records().get_tracks_for_release(&release_id).await.unwrap().len(), 12);
 
-    for preset in [
-        flac_save_preset("tracks", SavePregapPlacement::AppendToPreviousExceptHtoa),
-        flac_save_preset("image", SavePregapPlacement::SingleFileWithCue),
-    ] {
-        let id = preset.id.clone();
-        let peak = peak_sources_open_saving(&f, &release_id, &album_dir, preset).await;
-        assert!(peak <= 1, "the {id} save reads the image as one open file, not {peak}");
-    }
+    let peak =
+        peak_sources_open_saving(&f, &release_id, &album_dir, flac_save_preset("tracks")).await;
+    assert!(peak <= 1, "the save reads the image as one open file, not {peak}");
 }

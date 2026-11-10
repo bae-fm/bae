@@ -191,25 +191,6 @@ impl SaveCodec {
             Self::Flac { .. } | Self::Wav { .. } | Self::Aiff { .. } => self,
         }
     }
-
-    pub fn supports_single_file_cue(&self) -> bool {
-        match self {
-            Self::Aac { .. } | Self::OpusOgg { .. } => false,
-            Self::Flac { .. } | Self::Mp3 { .. } | Self::Wav { .. } | Self::Aiff { .. } => true,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SavePregapPlacement {
-    AppendToPreviousExceptHtoa,
-    AppendToPreviousIncludingHtoa,
-    Exclude,
-    SingleFileWithCue,
-}
-
-fn default_export_pregap_placement() -> SavePregapPlacement {
-    SavePregapPlacement::AppendToPreviousExceptHtoa
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -217,7 +198,6 @@ pub struct SavePreset {
     pub id: String,
     pub name: String,
     pub codec: SaveCodec,
-    pub pregap_placement: SavePregapPlacement,
     /// Whether saved files embed the release's cover art. When false, the cover
     /// file is never read — no wasted download/decrypt for a preset that won't
     /// embed it.
@@ -226,16 +206,13 @@ pub struct SavePreset {
 
 impl SavePreset {
     /// The preset a person adds to their list: FLAC at its starting codec,
-    /// named for the format, pregaps appended
-    /// to the track before except the hidden first-track audio, embedding the
-    /// cover, under an id from `ids`.
+    /// named for the format, embedding the cover, under an id from `ids`.
     pub fn new_flac(ids: &dyn coven::IdSource) -> Self {
         let format = SaveFormat::Flac;
         SavePreset {
             id: ids.new_id().simple().to_string(),
             name: format.name().to_string(),
             codec: format.default_codec(),
-            pregap_placement: default_export_pregap_placement(),
             embed_cover: true,
         }
     }
@@ -247,14 +224,6 @@ impl SavePreset {
         if self.name.trim().is_empty() {
             return Err(PreferencesError::Invalid(format!(
                 "export preset {} has an empty name",
-                self.id
-            )));
-        }
-        if self.pregap_placement == SavePregapPlacement::SingleFileWithCue
-            && !self.codec.supports_single_file_cue()
-        {
-            return Err(PreferencesError::Invalid(format!(
-                "export preset {} uses single-file CUE with an unsupported codec",
                 self.id
             )));
         }
@@ -286,14 +255,12 @@ pub(super) fn default_save_presets() -> Vec<SavePreset> {
             id: "flac".to_string(),
             name: "FLAC".to_string(),
             codec: SaveFormat::Flac.default_codec(),
-            pregap_placement: default_export_pregap_placement(),
             embed_cover: true,
         },
         SavePreset {
             id: "mp3".to_string(),
             name: "MP3".to_string(),
             codec: SaveFormat::Mp3.default_codec(),
-            pregap_placement: default_export_pregap_placement(),
             embed_cover: true,
         },
     ]

@@ -8,8 +8,7 @@
 use super::{
     CastTranscodeFormat, DiscogsValidation, IdentificationPreferences, ImportStoragePreferences,
     LookupCatalogPreferences, McpConfig, Preferences, PreferencesError, ReplayGainMode,
-    SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
-    SidePauseCountdown, SubsonicConfig,
+    SaveBitDepth, SaveCodec, SaveFilenameToken, SavePreset, SidePauseCountdown, SubsonicConfig,
 };
 use bae_store::{DbError, Store};
 use coven::{BulkSqlContext, CovenWrite, SqlRead};
@@ -161,7 +160,6 @@ fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
             }
         };
         let bitrate_kbps = || row.get::<_, u32>("bitrate_kbps");
-        let pregap: String = row.get("pregap_placement")?;
         Ok(SavePreset {
             name: row.get("name")?,
             codec: match codec.as_str() {
@@ -172,15 +170,6 @@ fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
                 "aac" => SaveCodec::Aac { bitrate_kbps: bitrate_kbps()? },
                 "opus_ogg" => SaveCodec::OpusOgg { bitrate_kbps: bitrate_kbps()? },
                 _ => return Err(invalid(row, "codec", codec)),
-            },
-            pregap_placement: match pregap.as_str() {
-                "append_to_previous_except_htoa" => SavePregapPlacement::AppendToPreviousExceptHtoa,
-                "append_to_previous_including_htoa" => {
-                    SavePregapPlacement::AppendToPreviousIncludingHtoa
-                }
-                "exclude" => SavePregapPlacement::Exclude,
-                "single_file_with_cue" => SavePregapPlacement::SingleFileWithCue,
-                _ => return Err(invalid(row, "pregap_placement", pregap)),
             },
             embed_cover: row.get("embed_cover")?,
             id,
@@ -219,8 +208,8 @@ fn write_preferences_on(
             };
             sql.execute(
                 "INSERT INTO save_preset (id, position, name, codec, bit_depth, bitrate_kbps, \
-                     pregap_placement, embed_cover) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                     embed_cover) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?)",
                 params![
                     preset.id,
                     position as i64,
@@ -228,16 +217,6 @@ fn write_preferences_on(
                     codec,
                     bit_depth,
                     bitrate_kbps,
-                    match preset.pregap_placement {
-                        SavePregapPlacement::AppendToPreviousExceptHtoa => {
-                            "append_to_previous_except_htoa"
-                        }
-                        SavePregapPlacement::AppendToPreviousIncludingHtoa => {
-                            "append_to_previous_including_htoa"
-                        }
-                        SavePregapPlacement::Exclude => "exclude",
-                        SavePregapPlacement::SingleFileWithCue => "single_file_with_cue",
-                    },
                     preset.embed_cover,
                 ],
             )?;

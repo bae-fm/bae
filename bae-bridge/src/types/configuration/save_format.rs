@@ -64,12 +64,6 @@ pub fn bridge_save_codec_extension(codec: &BridgeSaveCodec) -> String {
     codec.clone().into_core().extension().to_string()
 }
 
-/// Whether `codec` can write a release as one file with a CUE sheet.
-#[uniffi::export]
-pub fn bridge_save_codec_supports_single_file_cue(codec: &BridgeSaveCodec) -> bool {
-    codec.clone().into_core().supports_single_file_cue()
-}
-
 /// The format `codec` saves as.
 #[uniffi::export]
 pub fn bridge_save_codec_format(codec: &BridgeSaveCodec) -> BridgeSaveFormat {

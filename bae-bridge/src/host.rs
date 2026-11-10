@@ -367,9 +367,8 @@ impl BridgeHost {
 
 #[uniffi::export]
 impl BridgeHost {
-    /// The preset a person adds to their list, as core makes it: FLAC, the
-    /// default filename pattern and pregap placement, both levels, the cover
-    /// embedded, under an id from the host's id source.
+    /// The preset a person adds to their list, as core makes it: FLAC, both
+    /// levels, the cover embedded, under an id from the host's id source.
     pub fn new_save_preset(&self) -> crate::types::BridgeSavePreset {
         crate::types::BridgeSavePreset::from_core(&bae_preferences::SavePreset::new_flac(
             self.ids.as_ref(),

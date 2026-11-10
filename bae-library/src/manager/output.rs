@@ -224,14 +224,8 @@ impl LibraryManager {
                     preset = preset.id.as_str(),
                     "Writing release output"
                 );
-                self.save_release_tracks_to_dir(
-                    &release,
-                    &folder,
-                    preset,
-                    &filename_tokens,
-                    staging.path(),
-                )
-                .await?;
+                self.save_release_tracks_to_dir(&release, preset, &filename_tokens, staging.path())
+                    .await?;
             }
         }
 

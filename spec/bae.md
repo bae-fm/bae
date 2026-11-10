@@ -2383,10 +2383,10 @@ Two ways put a release back on disk, from desktop:
   drive holds as one (`Track Title` and `track title` on a drive that folds
   case) fail the save rather than one track replacing the other; a single
   track's Save as replaces a file only when the person confirms it.
-  Every save writes one file per track. A stored pregap goes at the end of
-  the track before, and the hidden audio before track 1 stays at the start
-  of track 1; a release stored as one image with a CUE sheet is split at its
-  track marks. A track already in the format's codec at the depth it writes
+  Every save writes one file per track. A pregap, stored or generated, goes
+  at the end of the track before, and the hidden audio before track 1 stays
+  at the start of track 1; a release stored as one image with a CUE sheet is
+  split at its track marks. A track already in the format's codec at the depth it writes
   is copied without re-encoding, its tags, cover and name written fresh.
   Each file's track number is the track's number on its side, and its disc
   number the track's medium's position, written only for a release of several

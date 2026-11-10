@@ -50,22 +50,14 @@ fn switching_a_codec_to_a_format_crosses_as_core_does_it() {
     );
 }
 
-/// A codec's extension and whether it can write one file with a CUE sheet
-/// cross as core gives them.
+/// A codec's extension crosses as core gives it.
 #[test]
-fn each_codecs_facts_cross_as_core_gives_them() {
+fn each_codecs_extension_and_name_cross_as_core_gives_them() {
     for format in bridge_save_format_groups().into_iter().flatten() {
         let codec = bridge_save_format_default_codec(format);
         let core = codec.clone().into_core();
         assert_eq!(bridge_save_codec_extension(&codec), core.extension());
-        assert_eq!(
-            bridge_save_codec_supports_single_file_cue(&codec),
-            core.supports_single_file_cue()
-        );
         assert_eq!(bridge_save_format_name(format), format.into_core().name());
     }
     assert_eq!(bridge_save_codec_extension(&BridgeSaveCodec::Aac { bitrate_kbps: 256 }), "m4a");
-    assert!(!bridge_save_codec_supports_single_file_cue(&BridgeSaveCodec::OpusOgg {
-        bitrate_kbps: 192
-    }));
 }

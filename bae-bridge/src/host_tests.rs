@@ -153,14 +153,12 @@ fn another_call_under_way_crosses_as_that_call() {
 fn a_new_save_preset_is_cores_flac_preset_with_its_own_id() {
     use crate::types::{
         bridge_save_format_default_codec, bridge_save_format_name, BridgeSaveFormat,
-        BridgeSavePregapPlacement,
     };
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
     let preset = host.new_save_preset();
     assert_eq!(preset.name, bridge_save_format_name(BridgeSaveFormat::Flac));
     assert_eq!(preset.codec, bridge_save_format_default_codec(BridgeSaveFormat::Flac));
-    assert_eq!(preset.pregap_placement, BridgeSavePregapPlacement::AppendToPreviousExceptHtoa);
     assert!(preset.embed_cover);
     assert_ne!(preset.id, host.new_save_preset().id);
 }

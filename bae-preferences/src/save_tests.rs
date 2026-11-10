@@ -1,33 +1,11 @@
 use super::*;
 
 #[test]
-fn single_file_cue_preset_needs_a_codec_a_sheet_can_index() {
-    let preset = SavePreset {
-        id: "flac-image".to_string(),
-        name: "FLAC image".to_string(),
-        codec: SaveCodec::Flac { bit_depth: SaveBitDepth::SameAsSource },
-        pregap_placement: SavePregapPlacement::SingleFileWithCue,
-        embed_cover: true,
-    };
-    preset.validate().unwrap();
-
-    let opus_image = SavePreset {
-        id: "opus-image".to_string(),
-        name: "Opus image".to_string(),
-        codec: SaveCodec::OpusOgg { bitrate_kbps: 192 },
-        ..preset
-    };
-    let err = opus_image.validate().expect_err("single-file CUE requires a CUE-compatible codec");
-    assert!(err.to_string().contains("unsupported codec"));
-}
-
-#[test]
 fn a_lossy_format_saves_only_at_the_bitrates_its_encoder_writes() {
     let preset = |codec: SaveCodec| SavePreset {
         id: "preset".to_string(),
         name: "Preset".to_string(),
         codec,
-        pregap_placement: default_export_pregap_placement(),
         embed_cover: true,
     };
 
@@ -139,7 +117,6 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
             id: "preset".to_string(),
             name: "Preset".to_string(),
             codec,
-            pregap_placement: default_export_pregap_placement(),
             embed_cover: true,
         };
         preset(codec.clone()).validate().unwrap();
@@ -162,8 +139,6 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
 }
 
 /// Add format's preset: FLAC at its starting depth, named for the format,
-/// pregaps appended except the hidden first-track audio,
-/// with the cover, under an id of its own.
 #[test]
 fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
     let ids = coven::SequentialIds::new();
@@ -178,7 +153,6 @@ fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
             id: "new".to_string(),
             name: "FLAC".to_string(),
             codec: SaveCodec::Flac { bit_depth: SaveBitDepth::SameAsSource },
-            pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
             embed_cover: true,
         }
     );

@@ -62,14 +62,12 @@ async fn every_preference_reads_back_as_set() {
                 id: "wav".to_string(),
                 name: "WAV \"24-bit\" — 設定".to_string(),
                 codec: SaveCodec::Wav { bit_depth: SaveBitDepth::SameAsSource },
-                pregap_placement: SavePregapPlacement::Exclude,
                 embed_cover: false,
             },
             SavePreset {
-                id: "image".to_string(),
-                name: "Image".to_string(),
+                id: "sixteen".to_string(),
+                name: "FLAC 16-bit".to_string(),
                 codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
-                pregap_placement: SavePregapPlacement::SingleFileWithCue,
                 embed_cover: true,
             },
         ],
@@ -83,7 +81,7 @@ async fn every_preference_reads_back_as_set() {
             SaveFilenameToken::Title,
         ],
         default_track_save_preset: "wav".to_string(),
-        default_release_save_preset: "image".to_string(),
+        default_release_save_preset: "sixteen".to_string(),
         pause_between_sides: false,
         side_pause_countdown: SidePauseCountdown::Seconds30,
         max_concurrent_uploads: NonZeroU32::new(7).unwrap(),
@@ -150,14 +148,6 @@ async fn each_choice_of_each_setting_reads_back() {
         let stored = codec.clone();
         set(&db, move |prefs| prefs.save_presets[0].codec = stored).await;
         assert_eq!(preferences(&db).await.unwrap().save_presets[0].codec, codec);
-    }
-    for pregap in [
-        SavePregapPlacement::AppendToPreviousExceptHtoa,
-        SavePregapPlacement::AppendToPreviousIncludingHtoa,
-        SavePregapPlacement::Exclude,
-    ] {
-        set(&db, move |prefs| prefs.save_presets[1].pregap_placement = pregap).await;
-        assert_eq!(preferences(&db).await.unwrap().save_presets[1].pregap_placement, pregap);
     }
 }
 
@@ -247,13 +237,6 @@ async fn the_schema_refuses_preferences_no_setter_writes() {
             "an Opus bitrate above 256",
             Box::new(|prefs: &mut Preferences| {
                 prefs.save_presets[1].codec = SaveCodec::OpusOgg { bitrate_kbps: 320 };
-            }),
-        ),
-        (
-            "one file with a CUE sheet in a codec a sheet cannot index",
-            Box::new(|prefs: &mut Preferences| {
-                prefs.save_presets[1].codec = SaveCodec::OpusOgg { bitrate_kbps: 192 };
-                prefs.save_presets[1].pregap_placement = SavePregapPlacement::SingleFileWithCue;
             }),
         ),
     ] {

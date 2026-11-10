@@ -14,8 +14,6 @@ struct SavePresetEditor: View {
     /// disables Done instead.
     @State
     private var nameDraft = ""
-    @State
-    private var advancedExpanded = false
     @FocusState
     private var nameFocused: Bool
 
@@ -29,11 +27,6 @@ struct SavePresetEditor: View {
                 }
                 Section {
                     coverRow
-                }
-                FormDisclosure(isExpanded: $advancedExpanded) {
-                    pregapRow
-                } label: {
-                    Text("Advanced")
                 }
             }
             .formStyle(.grouped)
@@ -122,11 +115,6 @@ struct SavePresetEditor: View {
                     if preset.name == preset.codec.format.label {
                         changed.name = format.label
                     }
-                    if changed.pregapPlacement == .singleFileWithCue,
-                        !changed.codec.supportsSingleFileCue
-                    {
-                        changed.pregapPlacement = .appendToPreviousExceptHtoa
-                    }
                     update(changed)
                 }
             )
@@ -138,39 +126,6 @@ struct SavePresetEditor: View {
                 ForEach(Self.formatGroups[group], id: \.self) { format in
                     Text(format.label).tag(format)
                 }
-            }
-        }
-        .labelsHidden()
-    }
-
-    private var pregapRow: some View {
-        LabeledContent("Pregap") {
-            pregapPicker
-        }
-        .presetEditorRowInsets()
-    }
-
-    private var pregapPicker: some View {
-        Picker(
-            "Pregap",
-            selection: Binding(
-                get: { preset.pregapPlacement },
-                set: { placement in
-                    var changed = preset
-                    changed.pregapPlacement = placement
-                    update(changed)
-                }
-            )
-        ) {
-            Text("Append except HTOA")
-                .tag(BridgeSavePregapPlacement.appendToPreviousExceptHtoa)
-            Text("Append including HTOA")
-                .tag(BridgeSavePregapPlacement.appendToPreviousIncludingHtoa)
-            Text("Exclude")
-                .tag(BridgeSavePregapPlacement.exclude)
-            if preset.codec.supportsSingleFileCue {
-                Text("Single file + CUE")
-                    .tag(BridgeSavePregapPlacement.singleFileWithCue)
             }
         }
         .labelsHidden()

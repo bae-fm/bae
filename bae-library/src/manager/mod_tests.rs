@@ -875,20 +875,6 @@ pub(super) async fn add_track_audio_sources(
     files
 }
 
-/// A single-file CUE preset, which a track save must refuse.
-#[cfg(test)]
-pub(super) fn single_file_image_preset() -> bae_preferences::SavePreset {
-    bae_preferences::SavePreset {
-        id: "flac-image".to_string(),
-        name: "FLAC image".to_string(),
-        codec: bae_preferences::SaveCodec::Flac {
-            bit_depth: bae_preferences::SaveBitDepth::Bits16,
-        },
-        pregap_placement: bae_preferences::SavePregapPlacement::SingleFileWithCue,
-        embed_cover: true,
-    }
-}
-
 pub(super) fn sort_by_album_title_asc() -> bae_views::StorageSortCriterion {
     bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::AlbumTitle,

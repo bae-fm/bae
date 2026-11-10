@@ -106,14 +106,10 @@ impl LibraryManager {
         plans
             .into_iter()
             .flat_map(|plan| {
-                let next = match &plan.window {
-                    SaveWindow::TrackFile { next, .. } => next.as_ref(),
-                    SaveWindow::ImageTrack => None,
-                };
                 plan.audio_meta
                     .audio_files
                     .iter()
-                    .chain(next.into_iter().flat_map(|next| next.audio_files.iter()))
+                    .chain(plan.window.next.iter().flat_map(|next| next.audio_files.iter()))
             })
             .map(|file| (file.id.clone(), file.clone()))
             .collect()
@@ -142,9 +138,9 @@ impl LibraryManager {
     }
 
     /// Save one track to `output_path` under the preset named by `preset_id`
-    /// (must exist, and not write a release as one file). The source audio is decoded and
-    /// re-encoded to the preset's codec, tagged from bae's metadata, and cover
-    /// art embedded — always a constructed file, never a verbatim copy.
+    /// (must exist). The source audio is decoded and re-encoded to the
+    /// preset's codec, tagged from bae's metadata, and cover art embedded —
+    /// always a constructed file, never a verbatim copy.
     pub async fn save_track(
         &self,
         track_id: &str,
@@ -152,11 +148,6 @@ impl LibraryManager {
         preset_id: &str,
     ) -> Result<(), LibraryError> {
         let preset = self.save_preset_for(preset_id).await?;
-        if preset.pregap_placement == bae_preferences::SavePregapPlacement::SingleFileWithCue {
-            return Err(LibraryError::Save(format!(
-                "save preset {preset_id} writes a release as one file and cannot save a track"
-            )));
-        }
         let meta = TrackAudioMeta::resolve(&self.records, track_id).await?;
         let neighbors = self.records.track_neighbors(&meta.track.id).await?.ok_or_else(|| {
             LibraryError::Save(format!(
@@ -170,14 +161,7 @@ impl LibraryManager {
         };
         let cover = self.save_cover_image(&meta.release.id, preset.embed_cover).await?;
         let plan = self
-            .save_track_plan(
-                meta,
-                SaveWindow::TrackFile {
-                    next,
-                    placement: preset.pregap_placement,
-                    is_first_track: neighbors.is_first,
-                },
-            )
+            .save_track_plan(meta, SaveWindow { next, is_first_track: neighbors.is_first })
             .await?;
         let sources = Self::save_source_files([&plan]);
         SaveService::save_tracks(
@@ -194,12 +178,11 @@ impl LibraryManager {
         .map_err(|error| self.save_failed(error))
     }
 
-    /// Save `release`, written in the folder named `folder`, into
-    /// `staging_dir` under `preset`, each file named by `filename_tokens`.
+    /// Save `release` into `staging_dir` under `preset`, each file named by
+    /// `filename_tokens`.
     pub(super) async fn save_release_tracks_to_dir(
         &self,
         release: &DbRelease,
-        folder: &str,
         preset: bae_preferences::SavePreset,
         filename_tokens: &[bae_preferences::SaveFilenameToken],
         staging_dir: &std::path::Path,
@@ -207,34 +190,20 @@ impl LibraryManager {
         let release_id = release.id.as_str();
         let tracks = self.records.get_tracks_for_release(release_id).await?;
         let total = tracks.len();
-        if preset.pregap_placement == bae_preferences::SavePregapPlacement::SingleFileWithCue {
-            self.save_release_image_with_cue_to_dir(release, folder, preset, &tracks, staging_dir)
-                .await?;
-            self.set_output_progress(release_id, 100);
-            return Ok(());
-        }
         let cover = self.save_cover_image(release_id, preset.embed_cover).await?;
         let mut metas = Vec::with_capacity(tracks.len());
         for track in &tracks {
             metas.push(TrackAudioMeta::resolve(&self.records, &track.id).await?);
         }
-        // Each track's plan carries the track after it, whose audio pregap a
-        // placement may append to this one's file.
+        // Each track's plan carries the track after it, whose gap goes at the
+        // end of this one's file.
         let nexts: Vec<Option<TrackAudioMeta>> =
             metas.iter().skip(1).cloned().map(Some).chain(std::iter::once(None)).collect();
         let mut used_paths = std::collections::HashSet::new();
         let mut saves = Vec::with_capacity(tracks.len());
         for (index, (meta, next)) in metas.into_iter().zip(nexts).enumerate() {
-            let plan = self
-                .save_track_plan(
-                    meta,
-                    SaveWindow::TrackFile {
-                        next,
-                        placement: preset.pregap_placement,
-                        is_first_track: index == 0,
-                    },
-                )
-                .await?;
+            let plan =
+                self.save_track_plan(meta, SaveWindow { next, is_first_track: index == 0 }).await?;
             let stem = crate::save::render_save_filename(filename_tokens, &plan.resolved);
             let output_path =
                 unique_output_path(staging_dir, &stem, preset.codec.extension(), &mut used_paths);
@@ -282,58 +251,16 @@ impl LibraryManager {
             crate::save::SaveError::Unfinished(failed) => self.bug(failed).into(),
         }
     }
-
-    /// Save `release` as one image and its CUE sheet, which take the name of
-    /// `folder`, the folder holding them.
-    async fn save_release_image_with_cue_to_dir(
-        &self,
-        release: &DbRelease,
-        folder: &str,
-        preset: bae_preferences::SavePreset,
-        tracks: &[DbTrack],
-        staging_dir: &std::path::Path,
-    ) -> Result<(), LibraryError> {
-        let mut plans = Vec::with_capacity(tracks.len());
-        for track in tracks {
-            let meta = TrackAudioMeta::resolve(&self.records, &track.id).await?;
-            plans.push(self.save_track_plan(meta, SaveWindow::ImageTrack).await?);
-        }
-        let cover = self.save_cover_image(&release.id, preset.embed_cover).await?;
-        let output_audio_path =
-            staging_dir.join(crate::save::save_file_name(folder, preset.codec.extension()));
-        let output_cue_path = staging_dir.join(crate::save::save_file_name(folder, "cue"));
-
-        let sources = Self::save_source_files(&plans);
-        SaveService::save_release_image_with_cue(
-            plans,
-            cover,
-            &output_audio_path,
-            &output_cue_path,
-            media_catalog_number(&release.pressing.barcodes),
-            preset,
-            |file_id: &String| self.open_save_source(&sources[file_id]),
-            self.bugs(),
-        )
-        .await
-        .map_err(|error| self.save_failed(error))
-    }
 }
 
-/// Which of a track's stored audio a saved file carries.
-pub(crate) enum SaveWindow {
-    /// One track of a release image: every segment as stored (audio pregap
-    /// included), led by its generated pregap as silence so the image's CUE
-    /// indexes line up.
-    ImageTrack,
-    /// A standalone track file under `placement`: the CUE audio pregap can be
-    /// excluded, kept (HTOA on the first track), or relocated — the `next`
-    /// track's pregap segments appended here, with its generated pregap as
-    /// trailing silence.
-    TrackFile {
-        next: Option<TrackAudioMeta>,
-        placement: bae_preferences::SavePregapPlacement,
-        is_first_track: bool,
-    },
+/// Which of a track's stored audio its saved file carries. Every save writes
+/// one file per track by one rule: the track's gap goes at the end of the
+/// track before it (the `next` track's pregap segments appended here, with its
+/// generated pregap as trailing silence), and the hidden audio before track 1
+/// stays at the start of track 1.
+pub(crate) struct SaveWindow {
+    pub(crate) next: Option<TrackAudioMeta>,
+    pub(crate) is_first_track: bool,
 }
 
 /// The segments a saved track file decodes, in order, and the silence around
@@ -347,55 +274,33 @@ struct SaveSegments<'a> {
 impl SaveTrackPlan {
     fn segments(&self) -> SaveSegments<'_> {
         let meta = &self.audio_meta;
-        match &self.window {
-            SaveWindow::ImageTrack => SaveSegments {
-                segments: meta.audio_segments.iter().map(|entry| &entry.segment).collect(),
-                leading_silence_frames: pregap_frames(meta.audio_format.generated_pregap_samples),
-                trailing_silence_frames: 0,
-            },
-            SaveWindow::TrackFile { next, placement, is_first_track } => {
-                use bae_preferences::SavePregapPlacement;
+        let SaveWindow { next, is_first_track } = &self.window;
 
-                let own_audio_pregap = pregap_frames(meta.audio_format.pregap_samples);
-                let includes_htoa = *is_first_track
-                    && *placement == SavePregapPlacement::AppendToPreviousIncludingHtoa;
-                let include_own_pregap = includes_htoa || own_audio_pregap == 0;
-                let mut segments: Vec<_> = meta
-                    .audio_segments
-                    .iter()
-                    .map(|entry| &entry.segment)
-                    .filter(|segment| {
-                        include_own_pregap || segment.role == bae_records::DbAudioSegmentRole::Main
-                    })
-                    .collect();
-                let leading_silence_frames = if includes_htoa {
-                    pregap_frames(meta.audio_format.generated_pregap_samples)
-                } else {
-                    0
-                };
-                let mut trailing_silence_frames = 0;
-                if matches!(
-                    placement,
-                    SavePregapPlacement::AppendToPreviousExceptHtoa
-                        | SavePregapPlacement::AppendToPreviousIncludingHtoa
-                ) {
-                    if let Some(next) = next {
-                        if pregap_frames(next.audio_format.pregap_samples) > 0 {
-                            segments.extend(
-                                next.audio_segments.iter().map(|entry| &entry.segment).filter(
-                                    |segment| {
-                                        segment.role == bae_records::DbAudioSegmentRole::AudioPregap
-                                    },
-                                ),
-                            );
-                        }
-                        trailing_silence_frames =
-                            pregap_frames(next.audio_format.generated_pregap_samples);
-                    }
-                }
-                SaveSegments { segments, leading_silence_frames, trailing_silence_frames }
+        let own_audio_pregap = pregap_frames(meta.audio_format.pregap_samples);
+        let include_own_pregap = *is_first_track || own_audio_pregap == 0;
+        let mut segments: Vec<_> = meta
+            .audio_segments
+            .iter()
+            .map(|entry| &entry.segment)
+            .filter(|segment| {
+                include_own_pregap || segment.role == bae_records::DbAudioSegmentRole::Main
+            })
+            .collect();
+        let leading_silence_frames = if *is_first_track {
+            pregap_frames(meta.audio_format.generated_pregap_samples)
+        } else {
+            0
+        };
+        let mut trailing_silence_frames = 0;
+        if let Some(next) = next {
+            if pregap_frames(next.audio_format.pregap_samples) > 0 {
+                segments.extend(next.audio_segments.iter().map(|entry| &entry.segment).filter(
+                    |segment| segment.role == bae_records::DbAudioSegmentRole::AudioPregap,
+                ));
             }
+            trailing_silence_frames = pregap_frames(next.audio_format.generated_pregap_samples);
         }
+        SaveSegments { segments, leading_silence_frames, trailing_silence_frames }
     }
 
     /// The release files this track's saved audio reads, by id.
@@ -458,26 +363,6 @@ fn unique_output_path(
             return path;
         }
         index += 1;
-    }
-}
-
-/// The code a saved CUE sheet's `CATALOG` line states: the one product every
-/// barcode of the pressing names, in the one spelling codes are compared by
-/// (see [`bae_types::barcode::comparison_key`]). None where the pressing states
-/// none, or names two products — a sheet has room for one, and neither is the
-/// disc's more than the other.
-fn media_catalog_number(barcodes: &[String]) -> Option<String> {
-    let mut codes: Vec<String> = Vec::new();
-    for key in
-        barcodes.iter().filter_map(|barcode| bae_types::barcode::comparison_key(barcode).ok())
-    {
-        if !codes.contains(&key) {
-            codes.push(key);
-        }
-    }
-    match <[String; 1]>::try_from(codes) {
-        Ok([code]) => Some(code),
-        Err(_) => None,
     }
 }
 
