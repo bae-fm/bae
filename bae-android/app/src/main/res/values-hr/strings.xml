@@ -209,7 +209,7 @@
     <string name="shortcut_resume_long">Nastavi reprodukciju</string>
     <string name="shortcut_search_long">Pretraži fonoteku</string>
     <string name="cast">Emitiraj</string>
-    <string name="cast_casting_to">Emitiranje na %1$s</string>
+    <string name="cast_receiver_casting">Emitira se</string>
     <string name="cast_disconnect">Prekini vezu</string>
     <string name="cast_looking_for_devices">Traženje uređaja…</string>
     <string name="cast_connecting">Povezivanje s %1$s…</string>

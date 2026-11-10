@@ -28,15 +28,24 @@ internal fun ContentSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        Column(
-            modifier =
-                Modifier.padding(
-                    start = ThemeSpace.related,
-                    end = ThemeSpace.related,
-                    bottom = bottomInset + ThemeSpace.section,
-                ),
-            content = content,
-        )
+        ContentSheetBody(content)
     }
+}
+
+/**
+ * What a [ContentSheet] holds, with the sheet's insets. It is separate so a screenshot can draw it: a
+ * [ModalBottomSheet] opens a window the screenshot tests don't render.
+ */
+@Composable
+internal fun ContentSheetBody(content: @Composable ColumnScope.() -> Unit) {
+    val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    Column(
+        modifier =
+            Modifier.padding(
+                start = ThemeSpace.related,
+                end = ThemeSpace.related,
+                bottom = bottomInset + ThemeSpace.section,
+            ),
+        content = content,
+    )
 }

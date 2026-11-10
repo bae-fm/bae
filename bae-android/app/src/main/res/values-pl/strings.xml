@@ -215,7 +215,7 @@
     <string name="shortcut_resume_long">Wznów odtwarzanie</string>
     <string name="shortcut_search_long">Przeszukaj bibliotekę</string>
     <string name="cast">Przesyłaj</string>
-    <string name="cast_casting_to">Przesyłanie do %1$s</string>
+    <string name="cast_receiver_casting">Trwa przesyłanie</string>
     <string name="cast_disconnect">Rozłącz</string>
     <string name="cast_looking_for_devices">Wyszukiwanie urządzeń…</string>
     <string name="cast_connecting">Łączenie z %1$s…</string>

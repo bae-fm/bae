@@ -201,7 +201,7 @@
     <string name="shortcut_resume_long">Lejátszás folytatása</string>
     <string name="shortcut_search_long">Keresés a könyvtárban</string>
     <string name="cast">Átküldés</string>
-    <string name="cast_casting_to">Átküldés ide: %1$s</string>
+    <string name="cast_receiver_casting">Átküldés folyamatban</string>
     <string name="cast_disconnect">Leválasztás</string>
     <string name="cast_looking_for_devices">Eszközök keresése…</string>
     <string name="cast_connecting">Csatlakozás ehhez: %1$s…</string>

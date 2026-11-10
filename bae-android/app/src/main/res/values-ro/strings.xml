@@ -207,7 +207,7 @@
     <string name="shortcut_resume_long">Reia redarea</string>
     <string name="shortcut_search_long">Caută în bibliotecă</string>
     <string name="cast">Transmite</string>
-    <string name="cast_casting_to">Se transmite către %1$s</string>
+    <string name="cast_receiver_casting">Se transmite</string>
     <string name="cast_disconnect">Deconectează</string>
     <string name="cast_looking_for_devices">Se caută dispozitive…</string>
     <string name="cast_connecting">Se conectează la %1$s…</string>

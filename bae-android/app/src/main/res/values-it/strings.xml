@@ -208,7 +208,7 @@
     <string name="shortcut_resume_long">Riprendi la riproduzione</string>
     <string name="shortcut_search_long">Cerca nella libreria</string>
     <string name="cast">Trasmetti</string>
-    <string name="cast_casting_to">Trasmissione a %1$s</string>
+    <string name="cast_receiver_casting">In trasmissione</string>
     <string name="cast_disconnect">Disconnetti</string>
     <string name="cast_looking_for_devices">Ricerca dei dispositivi…</string>
     <string name="cast_connecting">Connessione a %1$s…</string>

@@ -197,7 +197,7 @@
     <string name="shortcut_resume_long">恢复播放</string>
     <string name="shortcut_search_long">搜索音乐库</string>
     <string name="cast">投放</string>
-    <string name="cast_casting_to">正在投放到 %1$s</string>
+    <string name="cast_receiver_casting">正在投放</string>
     <string name="cast_disconnect">断开连接</string>
     <string name="cast_looking_for_devices">正在查找设备…</string>
     <string name="cast_connecting">正在连接到 %1$s…</string>

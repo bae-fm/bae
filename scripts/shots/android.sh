@@ -71,6 +71,7 @@ AppearanceLightPlum:appearance-light-plum
 AppearanceLightSand:appearance-light-sand
 AppearanceLightSlate:appearance-light-slate
 CastPicker:cast-picker
+CastPickerLongNames:cast-picker-long-names
 CastingSettingsFound:settings-casting
 CastingSettingsLooking:settings-casting-looking
 DeleteAlbumDialogScene:delete-album-dialog

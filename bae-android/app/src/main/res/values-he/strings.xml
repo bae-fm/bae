@@ -209,7 +209,7 @@
     <string name="shortcut_resume_long">המשך השמעה</string>
     <string name="shortcut_search_long">חיפוש בספרייה</string>
     <string name="cast">שידור</string>
-    <string name="cast_casting_to">משדר אל %1$s</string>
+    <string name="cast_receiver_casting">משדר כעת</string>
     <string name="cast_disconnect">התנתק</string>
     <string name="cast_looking_for_devices">מחפש מכשירים…</string>
     <string name="cast_connecting">מתחבר אל %1$s…</string>

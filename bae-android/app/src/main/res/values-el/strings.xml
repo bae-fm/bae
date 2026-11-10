@@ -201,7 +201,7 @@
     <string name="shortcut_resume_long">Συνέχιση αναπαραγωγής</string>
     <string name="shortcut_search_long">Αναζήτηση στη βιβλιοθήκη</string>
     <string name="cast">Μετάδοση</string>
-    <string name="cast_casting_to">Μετάδοση σε %1$s</string>
+    <string name="cast_receiver_casting">Μεταδίδεται</string>
     <string name="cast_disconnect">Αποσύνδεση</string>
     <string name="cast_looking_for_devices">Αναζήτηση συσκευών…</string>
     <string name="cast_connecting">Σύνδεση με %1$s…</string>

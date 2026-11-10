@@ -208,7 +208,7 @@
     <string name="shortcut_resume_long">Reanudar la reproducción</string>
     <string name="shortcut_search_long">Buscar en la biblioteca</string>
     <string name="cast">Transmitir</string>
-    <string name="cast_casting_to">Transmitiendo a %1$s</string>
+    <string name="cast_receiver_casting">Transmitiendo</string>
     <string name="cast_disconnect">Desconectar</string>
     <string name="cast_looking_for_devices">Buscando dispositivos…</string>
     <string name="cast_connecting">Conectando con %1$s…</string>

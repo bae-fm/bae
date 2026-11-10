@@ -201,7 +201,7 @@
     <string name="shortcut_resume_long">Fortsett avspillingen</string>
     <string name="shortcut_search_long">Søk i biblioteket</string>
     <string name="cast">Cast</string>
-    <string name="cast_casting_to">Caster til %1$s</string>
+    <string name="cast_receiver_casting">Caster nå</string>
     <string name="cast_disconnect">Koble fra</string>
     <string name="cast_looking_for_devices">Ser etter enheter…</string>
     <string name="cast_connecting">Kobler til %1$s…</string>

@@ -213,7 +213,7 @@
     <string name="shortcut_resume_long">Pokračovať v prehrávaní</string>
     <string name="shortcut_search_long">Hľadať v knižnici</string>
     <string name="cast">Prenášať</string>
-    <string name="cast_casting_to">Prenáša sa do %1$s</string>
+    <string name="cast_receiver_casting">Prenáša sa</string>
     <string name="cast_disconnect">Odpojiť</string>
     <string name="cast_looking_for_devices">Hľadajú sa zariadenia…</string>
     <string name="cast_connecting">Pripája sa k %1$s…</string>

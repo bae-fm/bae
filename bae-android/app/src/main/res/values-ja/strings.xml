@@ -197,7 +197,7 @@
     <string name="shortcut_resume_long">再生を再開</string>
     <string name="shortcut_search_long">ライブラリを検索</string>
     <string name="cast">キャスト</string>
-    <string name="cast_casting_to">%1$s にキャスト中</string>
+    <string name="cast_receiver_casting">キャスト中</string>
     <string name="cast_disconnect">切断</string>
     <string name="cast_looking_for_devices">デバイスを探しています…</string>
     <string name="cast_connecting">%1$s に接続中…</string>

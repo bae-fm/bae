@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -48,6 +49,7 @@ import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.ContentSheetBody
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
@@ -71,7 +73,7 @@ import fm.bae.app.ui.onboarding.StandingRead
 import fm.bae.app.ui.onboarding.WelcomeActions
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeScene
-import fm.bae.app.ui.playback.CastDeviceRows
+import fm.bae.app.ui.playback.CastReceiverRows
 import fm.bae.app.ui.playback.FullPlayerScene
 import fm.bae.app.ui.playback.MiniPlayerScene
 import fm.bae.app.ui.playback.PlayerSceneState
@@ -108,7 +110,6 @@ import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
-import uniffi.bae_bridge.BridgeRemoteDevice
 import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeStandingState
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -178,11 +179,21 @@ fun WelcomeLibraryDetailsUnsent() {
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun WelcomeAddLibrary() {
+    TitledSheetShot(stringResource(R.string.welcome_add_library)) {
+        WelcomeActions(onScan = {}, onEnter = {})
+    }
+}
+
+/** A titled sheet's body on the sheet's surface: the sheet's own window isn't rendered by screenshot tests. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TitledSheetShot(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     BaeTheme {
         Surface(color = BottomSheetDefaults.ContainerColor) {
-            TitledSheetContent(stringResource(R.string.welcome_add_library)) {
-                WelcomeActions(onScan = {}, onEnter = {})
-            }
+            ContentSheetBody { TitledSheetContent(title, content) }
         }
     }
 }
@@ -190,23 +201,19 @@ fun WelcomeAddLibrary() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LibraryDetailsScene(state: BridgeStandingState) {
-    BaeTheme {
-        Surface(color = BottomSheetDefaults.ContainerColor) {
-            TitledSheetContent("Home music") {
-                LibraryDetailsRows(
-                    storage =
-                        BridgeStorageLocation.Dropbox(
-                            location = BridgeDropboxLocation.AppFolder,
-                            accountLabel = "mara.quill@example.com",
-                            folderLabel = BridgeFolderLabel(name = "Music", webUrl = "https://www.dropbox.com/home/Music"),
-                        ),
-                    standing =
-                        StandingRead.Loaded(
-                            BridgeLibraryStanding(state, Instant.now().minusSeconds(TWO_HOURS_SECONDS)),
-                        ),
-                )
-            }
-        }
+    TitledSheetShot("Home music") {
+        LibraryDetailsRows(
+            storage =
+                BridgeStorageLocation.Dropbox(
+                    location = BridgeDropboxLocation.AppFolder,
+                    accountLabel = "mara.quill@example.com",
+                    folderLabel = BridgeFolderLabel(name = "Music", webUrl = "https://www.dropbox.com/home/Music"),
+                ),
+            standing =
+                StandingRead.Loaded(
+                    BridgeLibraryStanding(state, Instant.now().minusSeconds(TWO_HOURS_SECONDS)),
+                ),
+        )
     }
 }
 
@@ -670,45 +677,49 @@ private fun LibrarySettingsScene(
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun CastingSettingsFound() {
-    CastingSettingsScene(
-        receivers =
-            listOf(
-                BridgeCastReceiver(id = "cast-den", name = "Den receiver", kind = BridgeRendererKind.DLNA, casting = false),
-                BridgeCastReceiver(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY, casting = false),
-                BridgeCastReceiver(id = "cast-living-room", name = "Living Room", kind = BridgeRendererKind.CAST, casting = false),
-            ),
-    )
+    CastingSettingsScene(receivers = castReceivers())
 }
 
-/** The cast picker's sheet body over the receivers found, casting to one of them, which core lists first. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun CastPicker() {
-    BaeTheme {
-        Surface(color = BottomSheetDefaults.ContainerColor) {
-            TitledSheetContent(stringResource(R.string.cast)) {
-                CastDeviceRows(
-                    receivers =
-                        listOf(
-                            BridgeCastReceiver(
-                                id = "cast-living-room",
-                                name = "Living Room",
-                                kind = BridgeRendererKind.CAST,
-                                casting = true,
-                            ),
-                            BridgeCastReceiver(id = "cast-den", name = "Den receiver", kind = BridgeRendererKind.DLNA, casting = false),
-                            BridgeCastReceiver(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY, casting = false),
-                        ),
-                    castingTo = BridgeRemoteDevice(id = "cast-living-room", name = "Living Room", kind = BridgeRendererKind.CAST),
-                    connectingName = null,
-                    onDisconnect = {},
-                    onCast = {},
-                )
-            }
-        }
+    CastPickerScene(castReceivers())
+}
+
+/** The cast picker over receivers whose names are longer than a row: two lines, then an ellipsis. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun CastPickerLongNames() {
+    CastPickerScene(
+        castReceivers(
+            casting = "Upstairs Living Room Sonos Arc Soundbar",
+            dlna = "Denon AVR-X3800H Home Theater Receiver (Basement)",
+        ),
+    )
+}
+
+@Composable
+private fun CastPickerScene(receivers: List<BridgeCastReceiver>) {
+    TitledSheetShot(stringResource(R.string.cast)) {
+        CastReceiverRows(
+            receivers = receivers,
+            connectingName = null,
+            onCast = {},
+            onDisconnect = {},
+            looking = stringResource(R.string.cast_looking_for_devices),
+        )
     }
 }
+
+/** Living Room cast to, listed first as core lists it, then the rest by name. */
+private fun castReceivers(
+    casting: String = "Living Room",
+    dlna: String = "Den receiver",
+) = listOf(
+    BridgeCastReceiver(id = "cast-living-room", name = casting, kind = BridgeRendererKind.CAST, casting = true),
+    BridgeCastReceiver(id = "cast-den", name = dlna, kind = BridgeRendererKind.DLNA, casting = false),
+    BridgeCastReceiver(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY, casting = false),
+)
 
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -724,8 +735,12 @@ private fun CastingSettingsScene(receivers: List<BridgeCastReceiver>) {
             CastingPage(
                 enabled = true,
                 receivers = receivers,
+                connectingName = null,
+                castFailure = null,
                 transcodeFormat = BridgeCastTranscodeFormat.MP3,
                 onBack = {},
+                onCast = {},
+                onDisconnect = {},
                 onEnabledChange = {},
                 onTranscodeFormatChange = {},
             )

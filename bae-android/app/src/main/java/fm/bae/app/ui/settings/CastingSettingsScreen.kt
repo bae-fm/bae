@@ -29,13 +29,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleStartEffect
+import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.playback.CastReceiverRows
+import fm.bae.app.ui.playback.rememberCastStart
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -80,6 +85,7 @@ internal fun CastingSettingsScreen(
     val config by session.configStore.config.collectAsState()
     val status by session.castStore.status.collectAsState()
     val receivers by session.castStore.receivers.collectAsState()
+    val start = rememberCastStart(session)
     var pendingDisconnect by remember { mutableStateOf<String?>(null) }
 
     fun setTranscodeFormat(format: BridgeCastTranscodeFormat) {
@@ -116,8 +122,12 @@ internal fun CastingSettingsScreen(
     CastingPage(
         enabled = config.castEnabled,
         receivers = receivers,
+        connectingName = start.connecting?.name,
+        castFailure = start.failure,
         transcodeFormat = config.castTranscodeFormat,
         onBack = onBack,
+        onCast = { receiver -> start.cast(receiver) {} },
+        onDisconnect = session.cast::stopCasting,
         onEnabledChange = {
             when (val action = castToggleAction(it, castingDeviceName(status))) {
                 is CastToggleAction.Apply -> setEnabled(action.enabled)
@@ -133,8 +143,12 @@ internal fun CastingSettingsScreen(
 internal fun CastingPage(
     enabled: Boolean,
     receivers: List<BridgeCastReceiver>,
+    connectingName: String?,
+    castFailure: DisplayError?,
     transcodeFormat: BridgeCastTranscodeFormat,
     onBack: () -> Unit,
+    onCast: (BridgeCastReceiver) -> Unit,
+    onDisconnect: () -> Unit,
     onEnabledChange: (Boolean) -> Unit,
     onTranscodeFormatChange: (BridgeCastTranscodeFormat) -> Unit,
 ) {
@@ -153,7 +167,16 @@ internal fun CastingPage(
                     text = stringResource(R.string.settings_casting_receivers),
                     modifier = Modifier.padding(horizontal = ThemeSpace.edge),
                 )
-                CastReceivers(receivers = receivers)
+                castFailure?.let { failure -> ErrorNotice(error = failure) }
+                RowCard {
+                    CastReceiverRows(
+                        receivers = receivers,
+                        connectingName = connectingName,
+                        onCast = onCast,
+                        onDisconnect = onDisconnect,
+                        looking = stringResource(R.string.settings_casting_looking),
+                    )
+                }
                 CastingCaption(stringResource(R.string.settings_casting_receivers_help))
                 CastingCard {
                     CastTranscodeFormatPicker(selected = transcodeFormat, onSelect = onTranscodeFormatChange)

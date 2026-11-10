@@ -197,7 +197,7 @@
     <string name="shortcut_resume_long">繼續播放</string>
     <string name="shortcut_search_long">搜尋資料庫</string>
     <string name="cast">投放</string>
-    <string name="cast_casting_to">正在投放到 %1$s</string>
+    <string name="cast_receiver_casting">正在投放</string>
     <string name="cast_disconnect">中斷連線</string>
     <string name="cast_looking_for_devices">正在尋找裝置…</string>
     <string name="cast_connecting">正在連線到 %1$s…</string>

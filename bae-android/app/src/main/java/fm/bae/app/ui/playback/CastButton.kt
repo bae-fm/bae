@@ -1,22 +1,12 @@
 package fm.bae.app.ui.playback
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.CastConnected
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Speaker
-import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -24,34 +14,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.data.castingDevice
-import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledSheet
-import fm.bae.app.ui.components.WaitingIndicator
-import fm.bae.app.ui.rememberScreenScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeBrowsingFor
-import uniffi.bae_bridge.BridgeCastReceiver
-import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeRemoteDevice
-import uniffi.bae_bridge.BridgeRendererKind
-
-private val logger = BaeLogger("bae.CastButton")
 
 /** The now-playing bar's cast control, absent when casting is turned off. */
 @Composable
@@ -73,7 +48,6 @@ fun CastButton(session: OpenLibrary) {
         }
         CastPickerSheet(
             session = session,
-            castingTo = castingTo,
             endedFailure = endedFailure,
             onDismiss = { pickerOpen = false },
         )
@@ -94,57 +68,29 @@ fun CastButton(session: OpenLibrary) {
 }
 
 /**
- * The device picker: the active-casting row when casting, or why the last
- * device stopped when its link was lost, then the discovered devices as they
- * answer, or a searching line while none have.
+ * The device picker: why the last device stopped when its link was lost, then the receivers as they
+ * answer, the one cast to first with Disconnect, or a searching line while none have.
  */
 @Composable
 private fun CastPickerSheet(
     session: OpenLibrary,
-    castingTo: BridgeRemoteDevice?,
     endedFailure: DisplayError?,
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val scope = rememberScreenScope()
-    var castJob by remember { mutableStateOf<Job?>(null) }
-    // The receiver a cast is connecting to, while it does.
-    var connecting by remember { mutableStateOf<BridgeCastReceiver?>(null) }
-    // A failed cast shows here: a snackbar would sit behind the open sheet.
-    var castFailure by remember { mutableStateOf<DisplayError?>(null) }
+    val start = rememberCastStart(session)
     val receivers by session.castStore.receivers.collectAsState()
 
-    DisposableEffect(Unit) {
-        onDispose { castJob?.cancel() }
-    }
-
     TitledSheet(title = stringResource(R.string.cast), onDismiss = onDismiss) {
-        PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
-        CastDeviceRows(
+        PickerFailures(endedFailure = endedFailure, castFailure = start.failure)
+        CastReceiverRows(
             receivers = receivers,
-            castingTo = castingTo,
-            connectingName = connecting?.name,
+            connectingName = start.connecting?.name,
+            onCast = { receiver -> start.cast(receiver) { onDismiss() } },
             onDisconnect = {
                 session.cast.stopCasting()
                 onDismiss()
             },
-            onCast = { receiver ->
-                castJob?.cancel()
-                castFailure = null
-                connecting = receiver
-                castJob =
-                    scope.launch {
-                        try {
-                            session.cast.castTo(receiver.id)
-                            connecting = null
-                            onDismiss()
-                        } catch (e: BridgeException) {
-                            logger.error("Failed to cast to ${receiver.id}", e)
-                            connecting = null
-                            castFailure = context.displayError(e)
-                        }
-                    }
-            },
+            looking = stringResource(R.string.cast_looking_for_devices),
         )
     }
 }
@@ -169,121 +115,3 @@ private fun PickerFailures(
         )
     }
 }
-
-/**
- * The casting row, if any, the receiver a cast is connecting to, then the
- * receivers, the one cast to first and checked.
- */
-@Composable
-internal fun CastDeviceRows(
-    receivers: List<BridgeCastReceiver>,
-    castingTo: BridgeRemoteDevice?,
-    connectingName: String?,
-    onDisconnect: () -> Unit,
-    onCast: (BridgeCastReceiver) -> Unit,
-) {
-    if (castingTo != null) {
-        CastingRow(deviceName = castingTo.name, onDisconnect = onDisconnect)
-    }
-    if (connectingName != null) {
-        WaitingRow(text = stringResource(R.string.cast_connecting, connectingName))
-    }
-    if (receivers.isEmpty()) {
-        LookingForDevicesRow()
-    } else {
-        receivers.forEach { receiver ->
-            ReceiverRow(
-                receiver = receiver,
-                onCast = { onCast(receiver) },
-            )
-        }
-    }
-}
-
-/** Discovery runs the whole time the picker is open, so an empty list is still looking. */
-@Composable
-private fun LookingForDevicesRow() {
-    WaitingRow(text = stringResource(R.string.cast_looking_for_devices))
-}
-
-/** A picker row for a wait: a spinner and what it waits on. */
-@Composable
-private fun WaitingRow(text: String) {
-    WaitingIndicator(
-        text = text,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
-    )
-}
-
-@Composable
-private fun CastingRow(
-    deviceName: String,
-    onDisconnect: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(start = ThemeSpace.edge, end = ThemeSpace.related, top = ThemeSpace.inline),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Filled.CastConnected,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(modifier = Modifier.width(ThemeSpace.group))
-        Text(
-            text = stringResource(R.string.cast_casting_to, deviceName),
-            style = ThemeText.rowTitle.style,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(onClick = onDisconnect) {
-            Text(stringResource(R.string.cast_disconnect))
-        }
-    }
-}
-
-@Composable
-private fun ReceiverRow(
-    receiver: BridgeCastReceiver,
-    onCast: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onCast)
-                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = deviceIcon(receiver.kind),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(modifier = Modifier.width(ThemeSpace.group))
-        Text(
-            text = receiver.name,
-            style = ThemeText.rowTitle.style,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
-        if (receiver.casting) {
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        }
-    }
-}
-
-/** The icon for a device row, by the kind of renderer it is. */
-private fun deviceIcon(kind: BridgeRendererKind): ImageVector =
-    when (kind) {
-        BridgeRendererKind.CAST -> Icons.Filled.Cast
-        BridgeRendererKind.AIR_PLAY -> Icons.Filled.Speaker
-        BridgeRendererKind.DLNA -> Icons.Filled.Tv
-    }
