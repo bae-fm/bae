@@ -10,7 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
@@ -46,9 +45,7 @@ class PlaybackTimelinePullsTest {
 
         assertEquals(42_000L, session.playback.contentPosition)
 
-        // Disposing waits on the main thread the player runs on, so it runs there and the looper is let go.
-        scope.launch { session.dispose(null) }
-        shadowOf(Looper.getMainLooper()).idle()
+        session.disposeOnMain(scope)
         scope.cancel()
     }
 
@@ -70,9 +67,7 @@ class PlaybackTimelinePullsTest {
         val shown = runBlocking { withTimeout(HANG_GUARD) { session.messages.messages.first() } }
         assertEquals(DisplayError("failed", "timeline read failed"), shown.error)
 
-        // Disposing waits on the main thread the player runs on, so it runs there and the looper is let go.
-        scope.launch { session.dispose(null) }
-        shadowOf(Looper.getMainLooper()).idle()
+        session.disposeOnMain(scope)
         scope.cancel()
     }
 }
