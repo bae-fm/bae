@@ -170,10 +170,13 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
             manager.library.manager().delete_release(&release.id).await.unwrap_err()
         };
         assert!(matches!(error, LibraryError::Database(_)), "{error}");
-        let handle = bae_store::configure_store(manager.installation.builder(), crate::SCHEMA)
-            .open(id, |_| ())
-            .await
-            .unwrap();
+        let handle = bae_store::configure_store(
+            manager.installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+            crate::SCHEMA,
+        )
+        .open(id, |_| ())
+        .await
+        .unwrap();
         let reopened =
             bae_store::test_devices::store_under(handle, manager.library.manager().clock.clone());
         assert_eq!(reopened.every_row_for_test().await.unwrap(), before);

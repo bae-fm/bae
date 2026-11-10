@@ -36,12 +36,15 @@ async fn manager_with_recording_transport_over_storage() -> (
     let installation = coven::Coven::in_memory(
         bae_app_dir::AppDir::under_home(home.path()).unwrap().coven_app_dir(),
     );
-    let handle = bae_store::configure_store(installation.builder(), crate::SCHEMA)
-        .clock(Arc::new(coven::SystemClock))
-        .storage_connector(storage.clone())
-        .create_store("Test Library")
-        .await
-        .unwrap();
+    let handle = bae_store::configure_store(
+        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        crate::SCHEMA,
+    )
+    .clock(Arc::new(coven::SystemClock))
+    .storage_connector(storage.clone())
+    .create_store("Test Library")
+    .await
+    .unwrap();
     let database = bae_store::test_devices::device_store(handle);
     let store = database.clone();
 

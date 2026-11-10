@@ -16,6 +16,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let clock: coven::ClockRef = Arc::new(FixedClock::new(fixed_now().into()));
     let handle = bae_store::configure_store(installation.builder(), crate::TEST_SCHEMA)
         .clock(clock.clone())
+        .id_source(bae_store::test_devices::ids_timed_by(&clock))
         .create_store("Test Library")
         .await
         .unwrap();
@@ -60,6 +61,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
 
     let handle = bae_store::configure_store(installation.builder(), crate::TEST_SCHEMA)
         .clock(clock.clone())
+        .id_source(bae_store::test_devices::ids_timed_by(&clock))
         .open(id, |_| ())
         .await
         .unwrap();

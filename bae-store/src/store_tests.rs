@@ -45,6 +45,7 @@ async fn a_call_that_panics_is_reported_once_by_the_store() {
     let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
     let handle = crate::configure_store(installation.builder(), Schema::new(&[]))
         .clock(clock.clone())
+        .id_source(crate::test_devices::ids_timed_by(&clock))
         .create_store("Test Library")
         .await
         .unwrap();

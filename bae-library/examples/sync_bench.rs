@@ -46,7 +46,7 @@ fn main() {
         .with_writer(std::io::stderr)
         .init();
     let started = Instant::now();
-    let ran = bench_library::run("Sync bench", tracks, async |library| {
+    let ran = bench_library::run("Sync bench", tracks, async |library, _clock, _ids| {
         eprintln!("created the library and set its storage up in {:?}", started.elapsed());
         let uploading = Instant::now();
         tokio::time::timeout(Duration::from_secs(seconds), bench_library::uploaded(library))

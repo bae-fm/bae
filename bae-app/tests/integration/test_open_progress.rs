@@ -31,7 +31,7 @@ fn opening_a_library_with_a_migration_to_run_reports_migrating_it() {
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::SequentialIds::new()),
-        installation.builder(),
+        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
         {
             let reported = reported.clone();
             move |progress| reported.lock().unwrap().push(progress)

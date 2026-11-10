@@ -52,13 +52,13 @@ fn main() {
         )
         .with_writer(std::io::stderr)
         .init();
-    let ran = bench_library::run("Restore bench", tracks, async |library| {
+    let ran = bench_library::run("Restore bench", tracks, async |library, clock, ids| {
         bench_library::uploaded(library).await?;
         let code = library
             .restore_code_for_transfer()
             .await
             .map_err(|error| format!("restore_code_for_transfer failed: {error}"))?;
-        restore_runs(library, &code, runs, downloads).await
+        restore_runs(library, clock, ids, &code, runs, downloads).await
     });
     if let Err(error) = ran {
         eprintln!("{error}");
@@ -75,9 +75,12 @@ fn number(value: Option<String>, flag: &str) -> usize {
 
 /// Restore `code` `runs` times, each on a new temporary device reading at
 /// `downloads` at a time when given, and remove each new device through
-/// `source`, the library's own device.
+/// `source`, the library's own device. Each reads the `clock` and `ids`
+/// the library runs on.
 async fn restore_runs(
     source: &coven::CovenHandle,
+    clock: &coven::ClockRef,
+    ids: &coven::IdSourceRef,
     code: &str,
     runs: usize,
     downloads: Option<std::num::NonZeroUsize>,
@@ -90,7 +93,7 @@ async fn restore_runs(
         let installation = coven::Coven::in_memory(new_app_dir.coven_app_dir());
         let (_cancelling, cancel) = tokio::sync::watch::channel(false);
         let started = Instant::now();
-        let builder = installation.builder();
+        let builder = installation.builder().clock(clock.clone()).id_source(ids.clone());
         let device_name = format!("Restore bench {run}");
         let on_status = |status| eprintln!("run {run}: {status:?} at {:?}", started.elapsed());
         let restored = match downloads {

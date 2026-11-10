@@ -12,6 +12,17 @@ use coven::Storage;
 use crate::Store;
 
 /// The S3 key the library's storage is reached with on every device.
+/// The app's time-ordered ids, timed by `clock`: what a test sets on a
+/// coven builder that has the clock set, as the app's composition does.
+pub fn ids_timed_by(clock: &coven::ClockRef) -> coven::IdSourceRef {
+    Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()))
+}
+
+/// [`ids_timed_by`] the system clock, which a builder reads when none is set.
+pub fn ordered_ids() -> coven::IdSourceRef {
+    ids_timed_by(&(Arc::new(coven::SystemClock) as coven::ClockRef))
+}
+
 fn owner_credentials() -> coven::S3Credentials {
     coven::S3Credentials {
         access_key_id: "owner-key".into(),
@@ -28,6 +39,7 @@ pub async fn create_first_store(
     storage: Arc<coven::MemoryStorage>,
 ) -> coven::CovenHandle {
     let handle = crate::configure_store(installation.builder(), schema)
+        .id_source(ordered_ids())
         .storage_connector(storage.clone())
         .create_store("Two Devices")
         .await
@@ -58,7 +70,9 @@ pub async fn restore_store(
     code: &str,
     name: &str,
 ) -> coven::CovenHandle {
-    let builder = crate::configure_store(installation.builder(), schema).storage_connector(storage);
+    let builder = crate::configure_store(installation.builder(), schema)
+        .id_source(ordered_ids())
+        .storage_connector(storage);
     let (_sender, cancel) = tokio::sync::watch::channel(false);
     coven::restore_from_code(builder, code, Some(owner_credentials()), name, |_| {}, &cancel)
         .await
@@ -76,6 +90,7 @@ pub async fn reopen_store(
 ) -> coven::CovenHandle {
     crate::configure_store(installation.builder(), schema)
         .migrations(migrations)
+        .id_source(ordered_ids())
         .storage_connector(storage)
         .open(store, |_| ())
         .await

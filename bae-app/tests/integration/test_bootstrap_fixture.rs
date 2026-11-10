@@ -32,7 +32,7 @@ fn library_with_fixture(
     let runtime = bae_library::test_libraries::multi_thread_runtime();
     let id = runtime.block_on(async {
         let handle = create_library(
-            installation.builder(),
+            installation.builder().id_source(bae_store::test_devices::ordered_ids()),
             bae_store::EnteredName::parse("Fixture Library").unwrap(),
             &bae_diagnostics::Diagnostics::noop(),
         )
@@ -53,7 +53,7 @@ fn open(
     fixture: std::path::PathBuf,
     installation: &coven::Coven,
 ) -> TestApp {
-    let builder = installation.builder();
+    let builder = installation.builder().id_source(bae_store::test_devices::ordered_ids());
     bootstrap_on_fixture(
         fixture,
         app_dir.clone(),
@@ -140,7 +140,7 @@ fn a_fixture_that_cannot_be_read_fails_the_open() {
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::SequentialIds::new()),
-        installation.builder(),
+        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
         |_| (),
         TestApp::start,
     );

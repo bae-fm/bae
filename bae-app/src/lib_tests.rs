@@ -7,11 +7,14 @@ async fn a_keychain_that_refused_right_now_is_not_a_config_failure() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
     installation.fail_next_keychain_operation();
-    let failure = bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
-        .create_store("Unavailable Keychain")
-        .await
-        .err()
-        .unwrap();
+    let failure = bae_store::configure_store(
+        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        bae_library::SCHEMA,
+    )
+    .create_store("Unavailable Keychain")
+    .await
+    .err()
+    .unwrap();
     let coven::StoreCreationError::Store(coven::CovenError::Key(key)) = failure else {
         panic!("unexpected failure: {failure}")
     };
@@ -26,11 +29,14 @@ async fn opening_with_a_locked_keychain_remains_retryable() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
     installation.fail_next_keychain_operation();
-    let failure = bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
-        .create_store("Keychain test")
-        .await
-        .err()
-        .unwrap();
+    let failure = bae_store::configure_store(
+        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        bae_library::SCHEMA,
+    )
+    .create_store("Keychain test")
+    .await
+    .err()
+    .unwrap();
     let coven::StoreCreationError::Store(error) = failure else {
         panic!("unexpected failure: {failure}")
     };
@@ -76,8 +82,11 @@ fn a_bootstrap_that_fails_after_the_library_starts_closes_it() {
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = runtime
         .block_on(
-            bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
-                .create_store("Failing Bootstrap"),
+            bae_store::configure_store(
+                installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+                bae_library::SCHEMA,
+            )
+            .create_store("Failing Bootstrap"),
         )
         .unwrap();
     let library_id = handle.store_id().to_string();

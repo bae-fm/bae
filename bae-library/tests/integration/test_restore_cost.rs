@@ -122,9 +122,11 @@ async fn restore_cost(library: Library) {
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let owner_dir = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(owner_dir.path()).unwrap();
+    let ids = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
     let installation = Coven::in_memory(app_dir.coven_app_dir());
     let handle = bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
         .clock(clock.clone())
+        .id_source(ids.clone())
         .storage_connector(storage.clone())
         .create_store("Library")
         .await
@@ -147,7 +149,7 @@ async fn restore_cost(library: Library) {
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
         clock.clone(),
-        Arc::new(coven::UuidIds),
+        ids,
         bae_diagnostics::Diagnostics::noop(),
     )
     .await;
@@ -197,6 +199,7 @@ async fn restore_cost(library: Library) {
         Coven::in_memory(device_app_dir.coven_app_dir())
             .builder()
             .clock(clock.clone())
+            .id_source(Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone())))
             .storage_connector(Arc::new(storage.for_device())),
         &code,
         None,

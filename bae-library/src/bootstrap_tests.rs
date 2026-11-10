@@ -1,7 +1,11 @@
 use super::*;
 use crate::{remove_unopenable_library, unsent_before_removal, UnfinishedRemoval};
 use bae_app_dir::AppDir;
+use bae_store::test_devices::ordered_ids;
 use coven::Storage as _;
+
+#[path = "bootstrap_tests/settings.rs"]
+mod settings;
 
 #[tokio::test]
 async fn creating_a_library_establishes_its_identity_without_marking_it_active() {
@@ -9,7 +13,7 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = create_library(
-        installation.builder(),
+        installation.builder().id_source(ordered_ids()),
         bae_store::EnteredName::parse("Created Library").unwrap(),
         &bae_diagnostics::Diagnostics::noop(),
     )
@@ -20,8 +24,10 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
     assert_eq!(handle.store_name().await.unwrap(), "Created Library");
     assert!(!app_dir.active_library_pointer().exists());
     handle.close().await.unwrap();
-    let reopened =
-        configure_store(installation.builder(), crate::SCHEMA).open(store, |_| ()).await.unwrap();
+    let reopened = configure_store(installation.builder().id_source(ordered_ids()), crate::SCHEMA)
+        .open(store, |_| ())
+        .await
+        .unwrap();
     assert_eq!(reopened.device_id(), device);
     assert_eq!(reopened.store_name().await.unwrap(), "Created Library");
     reopened.close().await.unwrap();
@@ -54,7 +60,7 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = create_library(
-        installation.builder(),
+        installation.builder().id_source(ordered_ids()),
         bae_store::EnteredName::parse("Cached Library").unwrap(),
         &bae_diagnostics::Diagnostics::noop(),
     )
@@ -78,7 +84,7 @@ async fn failed_creation_removes_the_partial_library() {
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     installation.fail_next_keychain_operation();
     let error = create_library(
-        installation.builder(),
+        installation.builder().id_source(ordered_ids()),
         bae_store::EnteredName::parse("Failed Library").unwrap(),
         &bae_diagnostics::Diagnostics::noop(),
     )
@@ -96,7 +102,7 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = create_library(
-        installation.builder(),
+        installation.builder().id_source(ordered_ids()),
         bae_store::EnteredName::parse("Local Library").unwrap(),
         &bae_diagnostics::Diagnostics::noop(),
     )
@@ -106,7 +112,7 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
     let device = handle.device_id();
     handle.close().await.unwrap();
     let reopened = reset_device(
-        installation.builder(),
+        installation.builder().id_source(ordered_ids()),
         store,
         "Replacement",
         |_| {},
@@ -126,7 +132,7 @@ async fn connected_library(
     storage: &std::sync::Arc<coven::MemoryStorage>,
     name: &str,
 ) -> (coven::StoreId, coven::DeviceId, String) {
-    let handle = configure_store(installation.builder(), crate::SCHEMA)
+    let handle = configure_store(installation.builder().id_source(ordered_ids()), crate::SCHEMA)
         .storage_connector(storage.clone())
         .create_store(name)
         .await
@@ -179,6 +185,7 @@ async fn keys_replaced_elsewhere(
         installation
             .another_device(phone_app_dir.coven_app_dir())
             .builder()
+            .id_source(ordered_ids())
             .storage_connector(std::sync::Arc::new(storage.for_device())),
         &stale_code,
         Some(owner_key()),
@@ -192,7 +199,7 @@ async fn keys_replaced_elsewhere(
     let current_code = phone.replace_member_keys().await.unwrap();
     phone.close().await.unwrap();
     // This copy learns of the replacement the way the app does, from sync.
-    let laptop = configure_store(installation.builder(), crate::SCHEMA)
+    let laptop = configure_store(installation.builder().id_source(ordered_ids()), crate::SCHEMA)
         .storage_connector(std::sync::Arc::new(storage.for_device()))
         .open(store, |_| ())
         .await
@@ -241,7 +248,8 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
     let replaced = keys_replaced_elsewhere(&installation, &storage).await;
     let (_, _, other_code) = connected_library(&installation, &other_storage, "Elsewhere").await;
     let laptop = std::sync::Arc::new(storage.for_device());
-    let builder = || installation.builder().storage_connector(laptop.clone());
+    let builder =
+        || installation.builder().id_source(ordered_ids()).storage_connector(laptop.clone());
     let (_sender, cancel) = watch::channel(false);
     let store = replaced.store;
     let restore = |code: String| {
@@ -310,8 +318,12 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &storage).await;
-    let builder =
-        || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
+    let builder = || {
+        installation
+            .builder()
+            .id_source(ordered_ids())
+            .storage_connector(std::sync::Arc::new(storage.for_device()))
+    };
     let (_sender, cancel) = watch::channel(false);
 
     let restored = restore_replacing_device(
@@ -401,8 +413,12 @@ async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &storage).await;
-    let builder =
-        || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
+    let builder = || {
+        installation
+            .builder()
+            .id_source(ordered_ids())
+            .storage_connector(std::sync::Arc::new(storage.for_device()))
+    };
     let (_sender, cancel) = watch::channel(false);
     let store = replaced.store;
     let restore = || {
@@ -484,8 +500,12 @@ async fn a_restore_stopped_after_its_record_finishes_without_the_code() {
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &storage).await;
-    let builder =
-        || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
+    let builder = || {
+        installation
+            .builder()
+            .id_source(ordered_ids())
+            .storage_connector(std::sync::Arc::new(storage.for_device()))
+    };
     let (_sender, cancel) = watch::channel(false);
     let store = replaced.store;
     stop_once_recorded(
@@ -540,8 +560,12 @@ async fn a_reset_stopped_after_its_record_finishes_from_what_coven_kept() {
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let (store, device, _) = connected_library(&installation, &storage, "Household").await;
-    let builder =
-        || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
+    let builder = || {
+        installation
+            .builder()
+            .id_source(ordered_ids())
+            .storage_connector(std::sync::Arc::new(storage.for_device()))
+    };
     stop_once_recorded(
         &installation,
         reset_device(
@@ -612,8 +636,12 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &storage).await;
-    let builder =
-        || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
+    let builder = || {
+        installation
+            .builder()
+            .id_source(ordered_ids())
+            .storage_connector(std::sync::Arc::new(storage.for_device()))
+    };
     let store = replaced.store;
     app_dir.save_active_library(store).unwrap();
     let (_sender, cancel) = watch::channel(false);
@@ -695,7 +723,12 @@ async fn a_restore_onto_a_new_device_stopped_after_its_record_finishes_without_t
     let (store, _, code) = connected_library(&installation, &storage, "Household").await;
     let phone_dir = tempfile::TempDir::new().unwrap();
     let phone = installation.another_device(AppDir::at(phone_dir.path()).unwrap().coven_app_dir());
-    let builder = || phone.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
+    let builder = || {
+        phone
+            .builder()
+            .id_source(ordered_ids())
+            .storage_connector(std::sync::Arc::new(storage.for_device()))
+    };
     let (_sender, cancel) = watch::channel(false);
     stop_once(
         restore_from_code(
@@ -752,6 +785,7 @@ async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
         installation
             .another_device(phone_app_dir.coven_app_dir())
             .builder()
+            .id_source(ordered_ids())
             .storage_connector(std::sync::Arc::new(storage.for_device())),
         &code,
         Some(owner_key()),
@@ -793,6 +827,7 @@ async fn a_restore_code_in_the_groups_it_is_shown_in_restores_the_library() {
         installation
             .another_device(phone_app_dir.coven_app_dir())
             .builder()
+            .id_source(ordered_ids())
             .storage_connector(std::sync::Arc::new(storage.for_device())),
         &shown,
         Some(owner_key()),
@@ -805,107 +840,6 @@ async fn a_restore_code_in_the_groups_it_is_shown_in_restores_the_library() {
     .unwrap();
     assert_eq!(phone.store_id(), store);
     phone.close().await.unwrap();
-}
-
-/// Change this device's settings in its closed copy of `store`: more
-/// uploads at once, album loudness and a renamed save preset, none of them
-/// a new library's.
-async fn change_settings(builder: coven::CovenBuilder, store: coven::StoreId) {
-    let handle = configure_store(builder, crate::SCHEMA).open(store, |_| ()).await.unwrap();
-    let database = bae_store::test_devices::store_under(
-        handle.clone(),
-        std::sync::Arc::new(coven::SystemClock),
-    );
-    bae_preferences::PreferencesRow::new(database.clone())
-        .edit(|preferences| {
-            preferences.max_concurrent_uploads = std::num::NonZeroU32::new(5).unwrap();
-            preferences.replay_gain_mode = bae_preferences::ReplayGainMode::Album;
-            preferences.save_presets[0].name = "Archive".into();
-            Ok(())
-        })
-        .await
-        .unwrap();
-    handle.close().await.unwrap();
-}
-
-/// The settings `handle`'s copy holds.
-async fn settings(handle: &coven::CovenHandle) -> bae_preferences::Preferences {
-    let database = bae_store::test_devices::store_under(
-        handle.clone(),
-        std::sync::Arc::new(coven::SystemClock),
-    );
-    bae_preferences::preferences(&database).await.unwrap()
-}
-
-/// Restoring over this device's copy keeps this device's settings: the copy
-/// put in its place holds the replaced copy's preferences and save presets.
-/// It reads the library's history under the transfer limits a library starts
-/// at, since the settings go into the new copy only once it has loaded.
-#[tokio::test]
-async fn a_restore_over_this_devices_copy_keeps_its_settings() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
-    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
-    let replaced = keys_replaced_elsewhere(&installation, &storage).await;
-    let builder =
-        || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
-    change_settings(builder(), replaced.store).await;
-    let before = {
-        let handle =
-            configure_store(builder(), crate::SCHEMA).open(replaced.store, |_| ()).await.unwrap();
-        let before = settings(&handle).await;
-        handle.close().await.unwrap();
-        before
-    };
-    assert_ne!(before, bae_preferences::Preferences::default());
-    let (_sender, cancel) = watch::channel(false);
-
-    let restored = restore_replacing_device(
-        builder,
-        replaced.store,
-        &replaced.current_code,
-        Some(owner_key()),
-        "Laptop",
-        |_| {},
-        |_| {},
-        &cancel,
-        std::sync::Arc::new(coven::SystemClock),
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .await
-    .unwrap();
-    assert_ne!(restored.device_id(), replaced.device);
-    assert_eq!(restored.transfer_limits(), bae_app_dir::default_transfer_limits());
-    assert_eq!(settings(&restored).await, before);
-    restored.close().await.unwrap();
-}
-
-/// Resetting this device's copy starts it at a new library's settings: a
-/// reset is the clean slate, and a bad setting may be part of what it
-/// clears.
-#[tokio::test]
-async fn a_reset_starts_at_a_new_librarys_settings() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
-    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
-    let (store, _, _) = connected_library(&installation, &storage, "Household").await;
-    let builder =
-        || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
-    change_settings(builder(), store).await;
-
-    let reset = reset_device(
-        builder(),
-        store,
-        "Replacement",
-        |_| {},
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .await
-    .unwrap();
-    assert_eq!(settings(&reset).await, bae_preferences::Preferences::default());
-    reset.close().await.unwrap();
 }
 
 /// Resetting a connected library loads it from storage again, and tells its
@@ -923,7 +857,10 @@ async fn a_reset_reports_loading_the_library_in_order_to_its_end() {
     let statuses = std::sync::Mutex::new(Vec::new());
 
     let reset = reset_device(
-        installation.builder().storage_connector(std::sync::Arc::new(storage.for_device())),
+        installation
+            .builder()
+            .id_source(ordered_ids())
+            .storage_connector(std::sync::Arc::new(storage.for_device())),
         store,
         "Replacement",
         |status| statuses.lock().unwrap().push(status),

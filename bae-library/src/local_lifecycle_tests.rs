@@ -51,11 +51,14 @@ impl Home {
         let storage = Arc::new(
             coven::MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap(),
         );
-        let handle = bae_store::configure_store(self.installation.builder(), crate::SCHEMA)
-            .storage_connector(storage.clone())
-            .create_store(name)
-            .await
-            .unwrap();
+        let handle = bae_store::configure_store(
+            self.installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+            crate::SCHEMA,
+        )
+        .storage_connector(storage.clone())
+        .create_store(name)
+        .await
+        .unwrap();
         self.storages.lock().unwrap().insert(handle.store_id(), storage);
         std::fs::create_dir_all(self.directory(handle.store_id()).join("cache")).unwrap();
         handle
@@ -552,7 +555,7 @@ async fn unsent_work_of_a_closed_library_leaves_it_closed() {
     drop(handle);
 
     let work = super::unsent_before_removal(
-        home.installation.builder(),
+        home.installation.builder().id_source(bae_store::test_devices::ordered_ids()),
         id,
         |_| (),
         std::sync::Arc::new(coven::SystemClock),
@@ -561,10 +564,13 @@ async fn unsent_work_of_a_closed_library_leaves_it_closed() {
     .await
     .unwrap();
     assert!(work.is_empty(), "{work:?}");
-    let reopened = bae_store::configure_store(home.installation.builder(), crate::SCHEMA)
-        .open(id, |_| ())
-        .await
-        .unwrap();
+    let reopened = bae_store::configure_store(
+        home.installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        crate::SCHEMA,
+    )
+    .open(id, |_| ())
+    .await
+    .unwrap();
     assert_eq!(reopened.store_name().await.unwrap(), "Library");
 }
 
@@ -598,7 +604,7 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
         "{listed:?}"
     );
     super::unsent_before_removal(
-        home.installation.builder(),
+        home.installation.builder().id_source(bae_store::test_devices::ordered_ids()),
         id,
         |_| (),
         std::sync::Arc::new(coven::SystemClock),
@@ -690,9 +696,12 @@ async fn a_removal_stopped_after_leaving_is_listed_and_finished() {
         ),
         "{listed:?}"
     );
-    let opened = bae_store::configure_store(home.installation.builder(), crate::SCHEMA)
-        .open(id, |_| ())
-        .await;
+    let opened = bae_store::configure_store(
+        home.installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        crate::SCHEMA,
+    )
+    .open(id, |_| ())
+    .await;
     assert!(
         matches!(
             opened,
@@ -707,7 +716,10 @@ async fn a_removal_stopped_after_leaving_is_listed_and_finished() {
     finish_deletion(
         &home.app_dir,
         &home.installation,
-        home.installation.builder().storage_connector(storage),
+        home.installation
+            .builder()
+            .id_source(bae_store::test_devices::ordered_ids())
+            .storage_connector(storage),
         &Diagnostics::noop(),
         id,
         &|step| steps.lock().unwrap().push(step),
@@ -737,10 +749,13 @@ async fn removing_a_signed_out_library_asks_for_the_sign_in() {
     home.point_at(id);
     handle.close().await.unwrap();
     home.installation.lose_storage_credentials(id).unwrap();
-    let reopened = bae_store::configure_store(home.installation.builder(), crate::SCHEMA)
-        .open(id, |_| ())
-        .await
-        .unwrap();
+    let reopened = bae_store::configure_store(
+        home.installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        crate::SCHEMA,
+    )
+    .open(id, |_| ())
+    .await
+    .unwrap();
     let error = home.remove(&reopened).await.expect_err("no credentials to publish the leaving");
     assert!(
         matches!(

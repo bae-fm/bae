@@ -57,6 +57,7 @@ pub(super) async fn setup_test_manager_with(
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let handle = bae_store::configure_store(installation.builder(), crate::SCHEMA)
         .clock(clock.clone())
+        .id_source(bae_store::test_devices::ids_timed_by(&clock))
         .storage_connector(storage.clone())
         .create_store("Test Library")
         .await

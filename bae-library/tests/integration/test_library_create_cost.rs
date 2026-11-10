@@ -36,7 +36,11 @@ async fn creating_a_library_costs() {
         let directory = tempfile::TempDir::new().unwrap();
         let app_dir = bae_app_dir::AppDir::under_home(directory.path()).unwrap();
         let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-        let builder = installation.builder();
+        let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
+        let builder = installation
+            .builder()
+            .clock(clock.clone())
+            .id_source(std::sync::Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock)));
         let name = bae_store::EnteredName::parse("Bench").unwrap();
         let started = Instant::now();
         let handle =

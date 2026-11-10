@@ -167,17 +167,22 @@ impl BenchLibrary {
 pub(crate) fn run(
     name: &str,
     tracks: usize,
-    body: impl AsyncFnOnce(&coven::CovenHandle) -> Result<(), String>,
+    body: impl AsyncFnOnce(
+        &coven::CovenHandle,
+        &coven::ClockRef,
+        &coven::IdSourceRef,
+    ) -> Result<(), String>,
 ) -> Result<(), String> {
     let storage = BenchStorage::from_environment()?;
-    let composition =
-        BenchComposition { clock: Arc::new(coven::SystemClock), ids: Arc::new(coven::UuidIds) };
+    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
+    let ids = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
+    let composition = BenchComposition { clock, ids };
     eprintln!("bench library in bucket {}", storage.bucket);
     let runtime = tokio::runtime::Runtime::new().map_err(|error| error.to_string())?;
     let ran = std::panic::catch_unwind(AssertUnwindSafe(|| {
         runtime.block_on(async {
             let library = BenchLibrary::create(&composition, &storage, name, tracks).await?;
-            let ran = body(&library.handle).await;
+            let ran = body(&library.handle, &composition.clock, &composition.ids).await;
             match (ran, library.close().await) {
                 (Ok(()), closed) => closed,
                 (Err(error), Ok(())) => Err(error),

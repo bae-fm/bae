@@ -15,7 +15,12 @@ async fn dropbox_library(
         coven::MemoryStorage::builder().provider(coven::CloudProvider::Dropbox).build().unwrap(),
     );
     let owner = bae_library::create_library(
-        sign_in.configure(installation_in(dir).builder().storage_connector(storage.clone())),
+        sign_in.configure(
+            installation_in(dir)
+                .builder()
+                .id_source(bae_store::test_devices::ordered_ids())
+                .storage_connector(storage.clone()),
+        ),
         bae_store::EnteredName::parse("Household").unwrap(),
         &bae_diagnostics::Diagnostics::noop(),
     )
@@ -66,7 +71,10 @@ fn a_stopped_restore_whose_sign_in_dropbox_refuses_signs_in_again_and_finishes()
         let laptop = installation_in(&laptop_dir);
         let builder = || {
             sign_in.configure(
-                laptop.builder().storage_connector(std::sync::Arc::new(storage.for_device())),
+                laptop
+                    .builder()
+                    .id_source(bae_store::test_devices::ordered_ids())
+                    .storage_connector(std::sync::Arc::new(storage.for_device())),
             )
         };
         let (_sender, cancel) = tokio::sync::watch::channel(false);

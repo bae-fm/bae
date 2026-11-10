@@ -20,14 +20,14 @@ impl Home {
     }
 
     fn builder(&self) -> coven::CovenBuilder {
-        self.installation.builder()
+        self.installation.builder().id_source(bae_store::test_devices::ordered_ids())
     }
 
     fn create(&self, name: &str) -> coven::StoreId {
         let runtime = bae_library::test_libraries::multi_thread_runtime();
         runtime.block_on(async {
             let handle = bae_library::create_library(
-                self.builder(),
+                self.builder().id_source(bae_store::test_devices::ordered_ids()),
                 bae_store::EnteredName::parse(name).unwrap(),
                 &bae_diagnostics::Diagnostics::noop(),
             )
@@ -51,7 +51,7 @@ impl Home {
             bae_diagnostics::Diagnostics::noop(),
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::SequentialIds::new()),
-            self.builder(),
+            self.builder().id_source(bae_store::test_devices::ordered_ids()),
             |_| (),
             TestApp::start,
         )
@@ -104,7 +104,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::SequentialIds::new()),
-        home.builder(),
+        home.builder().id_source(bae_store::test_devices::ordered_ids()),
         |_| (),
         TestApp::start,
     );
@@ -127,7 +127,7 @@ fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::SequentialIds::new()),
-        home.builder(),
+        home.builder().id_source(bae_store::test_devices::ordered_ids()),
         |_| (),
         |services, runtime| {
             runtime.block_on(services.close()).unwrap();
@@ -151,7 +151,7 @@ fn bootstrap_that_panics_while_composing_the_frontend_returns_an_error() {
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::SequentialIds::new()),
-        home.builder(),
+        home.builder().id_source(bae_store::test_devices::ordered_ids()),
         |_| (),
         |services, runtime| {
             runtime.block_on(services.close()).unwrap();
@@ -185,7 +185,9 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
     let runtime = bae_library::test_libraries::multi_thread_runtime();
     let id = runtime.block_on(async {
         let handle = bae_library::create_library(
-            home.builder().storage_connector(storage.clone()),
+            home.builder()
+                .id_source(bae_store::test_devices::ordered_ids())
+                .storage_connector(storage.clone()),
             bae_store::EnteredName::parse("Locked Library").unwrap(),
             &bae_diagnostics::Diagnostics::noop(),
         )
@@ -216,7 +218,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::SequentialIds::new()),
-        home.builder().storage_connector(storage),
+        home.builder().id_source(bae_store::test_devices::ordered_ids()).storage_connector(storage),
         |_| (),
         TestApp::start,
     )

@@ -31,6 +31,14 @@ use bae_sync_status::SyncStatus;
 use coven::{ClockRef, IdSourceRef};
 use std::sync::Arc;
 
+/// The real clock and the time-ordered ids it times, as the app's
+/// composition makes them once for a process.
+pub fn system_sources() -> (ClockRef, IdSourceRef) {
+    let clock: ClockRef = Arc::new(coven::SystemClock);
+    let ids = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
+    (clock, ids)
+}
+
 /// An open test library: its manager, and what the app would hand the
 /// library's services beside it. A test starts the services it needs over it,
 /// each over the same store, catalog sessions and image cache.
@@ -51,7 +59,8 @@ pub struct TestLibrary {
 }
 
 impl TestLibrary {
-    /// Open the library over `store` on the real clock and ids, asking
+    /// Open the library over `store` on the real clock and the app's
+    /// time-ordered ids, asking
     /// `providers`, which were built on `http`, reporting nowhere.
     pub async fn open(
         store: Store,
@@ -59,16 +68,8 @@ impl TestLibrary {
         providers: bae_catalogs::providers::Providers,
         http: bae_util::http::Http,
     ) -> Self {
-        Self::open_with(
-            store,
-            app_dir,
-            providers,
-            http,
-            Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidIds),
-            Diagnostics::noop(),
-        )
-        .await
+        let (clock, ids) = system_sources();
+        Self::open_with(store, app_dir, providers, http, clock, ids, Diagnostics::noop()).await
     }
 
     /// Open the library over `store` through the app's opening step, on
@@ -428,17 +429,23 @@ pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, t
     let tmp = tempfile::TempDir::new().unwrap();
     let app_dir = bae_app_dir::AppDir::under_home(tmp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+    let (clock, ids) = system_sources();
     let library = runtime.block_on(async {
         let handle = bae_store::configure_store(installation.builder(), crate::SCHEMA)
+            .clock(clock.clone())
+            .id_source(ids.clone())
             .create_store("Test Library")
             .await
             .expect("create fresh test store");
-        let store = bae_store::test_devices::store_under(handle, Arc::new(coven::SystemClock));
-        TestLibrary::open(
+        let store = bae_store::test_devices::store_under(handle, clock.clone());
+        TestLibrary::open_with(
             store,
             app_dir,
             bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),
+            clock,
+            ids,
+            Diagnostics::noop(),
         )
         .await
     });
