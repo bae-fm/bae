@@ -477,6 +477,10 @@ extension StorageTableView.Coordinator {
         return cell
     }
 
+    func tableView(_: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
+        BrowsedTableRowView(accent: appearance.accent)
+    }
+
     private func dequeueCell(
         _ tableView: NSTableView,
         column: StorageTableColumn
