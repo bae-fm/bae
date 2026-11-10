@@ -127,16 +127,6 @@ fn produced_keys() -> Vec<String> {
     // bridge_network_folder_watch_key — one key, no variants to walk.
     keys.push(bridge_network_folder_watch_key());
 
-    // bridge_file_evidence_key — each signal that can name a file words its
-    // own hover.
-    for signal in [BridgeEvidenceSignal::Barcode, BridgeEvidenceSignal::DiscId] {
-        keys.push(bridge_file_evidence_key(&BridgeFileEvidence {
-            signal,
-            value: "5099969394522".to_string(),
-            file_id: "Back.jpg".to_string(),
-        }));
-    }
-
     // bridge_sheet_binding_offer_key — an offered file needs no reason.
     for o in [
         BridgeSheetBindingOffer::Offered,

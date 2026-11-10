@@ -1603,9 +1603,10 @@ Ana clicks Import. bae:
    artist and label decisions it just resolved its credits and labels by,
    the album picked for it, and the draft with its source, its link and its
    cover, since the Done row and the imported folder's pane read the
-   library release (§3.2). The clues stay, since that pane marks the files
-   they were read off, and so do the file decisions, which lay its files
-   out. Every later command that would change the draft of a folder this
+   library release (§3.2). The clues stay, since the automation interface
+   lists them for the folder with the file each was read off (no screen shows
+   which file a clue came from), and so do the file decisions, which lay its
+   files out. Every later command that would change the draft of a folder this
    device imported is refused with the words an import of its files is. An
    import that fails deletes none of it, so a retry reads what the person
    and the run settled.

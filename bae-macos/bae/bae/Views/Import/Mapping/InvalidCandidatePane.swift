@@ -103,7 +103,6 @@ struct InvalidCandidatePane: View {
                 ImportMappingFileRow(
                     file: file,
                     previewingTarget: previewingTarget,
-                    evidence: [],
                     actions: mappingActions
                 )
                 .mappingRowChrome(

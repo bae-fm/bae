@@ -5,8 +5,6 @@ import SwiftUI
 /// itself.
 struct ImportMappingGallery: View {
     let images: [BridgeMappingImage]
-    /// Identifying signals extracted from the images, by source file.
-    var evidence: [BridgeFileEvidence] = []
     let onOpen: ([BridgeMappingImage], String) -> Void
 
     static let tileSize: CGFloat = 128
@@ -30,7 +28,6 @@ struct ImportMappingGallery: View {
                 ImportMappingGalleryTile(
                     image: image,
                     images: images,
-                    evidence: ImportEvidence.of(image.fileId, in: evidence),
                     onOpen: onOpen
                 )
             }
@@ -45,7 +42,6 @@ struct ImportMappingGalleryTile: View {
     let image: BridgeMappingImage
     /// Every gallery image, for the lightbox to page through.
     let images: [BridgeMappingImage]
-    let evidence: [BridgeFileEvidence]
     let onOpen: ([BridgeMappingImage], String) -> Void
 
     @State
@@ -71,17 +67,6 @@ struct ImportMappingGalleryTile: View {
                             lineWidth: hovering ? 2 : 0
                         )
                 }
-                .overlay(alignment: .bottomLeading) {
-                    HStack(spacing: ThemeSpace.inline) {
-                        ForEach(ImportEvidence.badges(evidence)) { badge in
-                            ImportEvidenceChip(
-                                signal: badge.signal,
-                                onImage: true
-                            )
-                        }
-                    }
-                    .padding(ThemeSpace.inline)
-                }
                 Text(image.name)
                     .themeText(.mono)
                     .foregroundStyle(.secondary)
@@ -94,6 +79,5 @@ struct ImportMappingGalleryTile: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .draggable(image.fileId)
-        .help(ImportEvidence.hoverText(evidence))
     }
 }

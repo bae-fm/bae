@@ -6,46 +6,6 @@ use super::{
     BridgeSourceAudioLayout, BridgeSourceAudioSummary, BridgeTrackSide,
 };
 
-/// One kind of identifying signal extracted from a candidate file. Mirrors
-/// `bae_import::FileEvidence`.
-///
-/// This is independent of which pressing is selected. The chip goes on the
-/// file: the gallery tile for an image barcodes were read from, or the table
-/// row for the log or cue a disc ID was computed from.
-#[cfg(desktop)]
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeFileEvidence {
-    pub signal: BridgeEvidenceSignal,
-    /// The extracted barcode digits or disc ID.
-    pub value: String,
-    /// The file's identity within the release (its relative path): the same id
-    /// `BridgeMappingImage` and `BridgeMappingFile` carry.
-    pub file_id: String,
-}
-
-/// A signal that can name the file it was read off. Mirrors
-/// `bae_import::EvidenceSignal`.
-#[cfg(desktop)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeEvidenceSignal {
-    /// A barcode read off one of the folder's images.
-    Barcode,
-    /// A disc ID computed from a rip log or a cue sheet.
-    DiscId,
-}
-
-/// The catalog key wording one piece of evidence, for the hover the file's
-/// tile or row carries. Each message takes the value as its one argument.
-#[cfg(desktop)]
-#[uniffi::export]
-pub fn bridge_file_evidence_key(evidence: &BridgeFileEvidence) -> String {
-    match evidence.signal {
-        BridgeEvidenceSignal::Barcode => "core.import.evidence.barcode_in_image",
-        BridgeEvidenceSignal::DiscId => "core.import.evidence.disc_id_from_file",
-    }
-    .to_string()
-}
-
 /// Mirror of `bae_import::ReleaseUserEdit` — a normalized, validated
 /// metadata edit ready to apply.
 ///

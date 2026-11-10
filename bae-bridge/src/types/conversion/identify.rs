@@ -117,18 +117,6 @@ impl BridgeFileVersion {
 }
 
 mirror_enum! {
-    BridgeEvidenceSignal = bae_import::EvidenceSignal,
-    from_core: fn,
-    variants: { Barcode, DiscId },
-}
-
-mirror_struct! {
-    BridgeFileEvidence = bae_import::FileEvidence,
-    from_core: pub(crate) fn,
-    fields: { signal: (BridgeEvidenceSignal), value, file_id },
-}
-
-mirror_enum! {
     BridgeNotAskedReason = bae_identify::NotAskedReason,
     from_core: fn,
     variants: { LeftOut, NoCatalog },
@@ -339,7 +327,7 @@ mirror_enum! {
 }
 
 /// Not a `mirror_struct`: only the text pools cross; what a surface needs from
-/// the rest reaches it through the run's ledger and the file evidence.
+/// the rest reaches it through the run's ledger.
 impl BridgeSignals {
     pub(crate) fn from_core(s: bae_identify::signals::Signals) -> Self {
         let bae_identify::signals::Signals {

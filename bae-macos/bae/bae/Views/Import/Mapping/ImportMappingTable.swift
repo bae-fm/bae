@@ -7,8 +7,6 @@ struct ImportMappingTable: View {
     let table: BridgeMappingTable
     /// The source window currently auditioning, if any — its row is accented.
     let previewingTarget: BridgePreviewTarget?
-    /// Extracted identifying signals by their source file.
-    var evidence: [BridgeFileEvidence] = []
     let actions: ImportMappingActions
     let editingCommands: EditingCommitCommands
 
@@ -134,7 +132,6 @@ struct ImportMappingTable: View {
     private func sheetCaptionRow(_ sheet: BridgeSheetGroup) -> some View {
         ImportSheetCaptionRow(
             sheet: sheet,
-            evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
             showsDiscMenu: true,
             actions: actions,
         )
@@ -146,7 +143,6 @@ struct ImportMappingTable: View {
             columns: columns,
             previewingTarget: previewingTarget,
             editingCommands: editingCommands,
-            evidence: evidenceFor(mapping),
             actions: actions,
             artistSearch: library.artistSearch,
         )
@@ -194,7 +190,6 @@ struct ImportMappingTable: View {
             ImportMappingFileRow(
                 file: file,
                 previewingTarget: previewingTarget,
-                evidence: ImportEvidence.of(file.fileId, in: evidence),
                 actions: actions,
             )
             .mappingRowChrome()
@@ -226,13 +221,6 @@ struct ImportMappingTable: View {
         .padding(.horizontal, ImportMappingColumns.rowPadding)
         .padding(.top, ThemeSpace.inline)
         .padding(.bottom, ThemeSpace.compact)
-    }
-
-    private func evidenceFor(_ mapping: BridgeTrackMapping)
-        -> [BridgeFileEvidence]
-    {
-        guard case .file(let file) = mapping.source else { return [] }
-        return ImportEvidence.of(file.fileId, in: evidence)
     }
 }
 

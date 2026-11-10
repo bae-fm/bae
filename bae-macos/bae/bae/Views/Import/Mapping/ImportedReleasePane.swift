@@ -98,7 +98,6 @@ struct ImportedReleasePane: View {
             FormSectionHeader(title: String(localized: "Images"), ruled: true)
             ImportMappingGallery(
                 images: folder.images,
-                evidence: candidate.fileEvidence,
                 onOpen: onOpenImages
             )
         }
@@ -248,7 +247,6 @@ struct ImportingCandidatePane: View {
                         )
                         ImportMappingGallery(
                             images: candidate.mapping.images,
-                            evidence: candidate.fileEvidence,
                             onOpen: onOpenImages
                         )
                     }

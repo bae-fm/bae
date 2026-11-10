@@ -27,7 +27,6 @@ struct ImportMappingTracksLayoutTests {
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
-                evidence: [],
                 actions: actions(recording: MappingTrackActionRecorder()),
                 artistSearch: { .fixed([], answers: FixedAnswers()) }
             )
@@ -83,7 +82,6 @@ struct ImportMappingTracksLayoutTests {
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
-                evidence: [],
                 actions: actions(recording: recorder),
                 artistSearch: { .fixed([], answers: FixedAnswers()) }
             )
@@ -185,7 +183,6 @@ struct ImportMappingTracksLayoutTests {
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
-                evidence: [],
                 actions: actions(recording: MappingTrackActionRecorder()),
                 artistSearch: { .fixed([], answers: FixedAnswers()) }
             )
@@ -236,7 +233,6 @@ extension ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             ImportSheetCaptionRow(
                 sheet: sheet(associated: associated),
-                evidence: [],
                 showsDiscMenu: true,
                 actions: actions(recording: MappingTrackActionRecorder())
             )
@@ -276,7 +272,6 @@ extension ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             ImportSheetCaptionRow(
                 sheet: sheet(associated: true),
-                evidence: [],
                 showsDiscMenu: false,
                 actions: actions(recording: MappingTrackActionRecorder())
             )
@@ -333,7 +328,6 @@ extension ImportMappingTracksLayoutTests {
             rootView: ImportMappingSourceCell(
                 source: sheetEntryMapping(number: 42, title: nil).source,
                 previewingTarget: nil,
-                evidence: [],
                 showsFileSize: true,
                 actions: actions(recording: MappingTrackActionRecorder())
             )
@@ -477,7 +471,6 @@ extension ImportMappingTracksLayoutTests {
                 columns: columns,
                 previewingTarget: previewingTarget,
                 editingCommands: EditingCommitCommands(),
-                evidence: [],
                 actions: actions(recording: recorder),
                 artistSearch: { .fixed([], answers: FixedAnswers()) }
             )
@@ -511,7 +504,6 @@ extension ImportMappingTracksLayoutTests {
             rootView: ImportMappingSourceCell(
                 source: source,
                 previewingTarget: previewing,
-                evidence: [],
                 showsFileSize: true,
                 actions: actions(recording: MappingTrackActionRecorder())
             )

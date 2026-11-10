@@ -10,9 +10,6 @@ struct ImportMappingTrackRow: View {
     let columns: ReleaseMetadataTrackColumns
     let previewingTarget: BridgePreviewTarget?
     let editingCommands: EditingCommitCommands
-    /// Identifying signals extracted from this row's file. Empty for every
-    /// other row.
-    var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions
     /// Opens the live artist search the track's artist field reads while
     /// open.
@@ -39,7 +36,6 @@ struct ImportMappingTrackRow: View {
         ImportMappingSourceCell(
             source: mapping.source,
             previewingTarget: previewingTarget,
-            evidence: evidence,
             showsFileSize: false,
             actions: actions,
         )

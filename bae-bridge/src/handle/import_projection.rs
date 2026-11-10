@@ -629,7 +629,8 @@ impl crate::types::BridgeImportCandidateDetail {
             placement,
             live,
             import_status,
-            file_evidence,
+            // Only the automation interface lists the file of each clue.
+            file_evidence: _,
             signals,
             stage,
         } = detail;
@@ -643,10 +644,6 @@ impl crate::types::BridgeImportCandidateDetail {
             placement: crate::types::BridgeCandidatePanePlacement::from_core(placement, rate),
             live: crate::types::BridgeCandidateLiveState::from_core(live),
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
-            file_evidence: file_evidence
-                .into_iter()
-                .map(crate::types::BridgeFileEvidence::from_core)
-                .collect(),
             signals: signals.map(crate::types::BridgeSignals::from_core),
             stage: crate::types::BridgeCandidateStage::from_core(stage),
         }

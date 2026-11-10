@@ -428,7 +428,6 @@ extension MappingFixtures {
                 badge: nil
             ),
             importStatus: nil,
-            fileEvidence: [],
             signals: nil,
             stage: .drafting(
                 draft: BridgeCandidateDraftPane(

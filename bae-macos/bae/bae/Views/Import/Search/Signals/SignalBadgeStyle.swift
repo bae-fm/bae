@@ -2,9 +2,8 @@ import BaeKit
 import SwiftUI
 
 /// Presentation strings for a signal, all derived from the pre-shaped fields
-/// core sends. Kept as a caseless namespace so the ledger's group labels, the
-/// evidence chips on a candidate's files, and the notes closing a result
-/// list word a signal the same way.
+/// core sends. Kept as a caseless namespace so the ledger's group labels and the
+/// notes closing a result list word a signal the same way.
 enum SignalBadgeStyle {
     /// One badge on a pressing row: what the candidate's own text agrees with
     /// about that release. The first three name the lookup that returned it,
@@ -19,7 +18,7 @@ enum SignalBadgeStyle {
         case notes
     }
 
-    /// The identifying signals, as a failure line, an evidence chip or the
+    /// The identifying signals, as a failure line or the
     /// run's lookup row name them.
     enum Signal {
         case discId
@@ -38,15 +37,6 @@ enum SignalBadgeStyle {
         case .year: String(localized: "Year")
         case .country: String(localized: "Country")
         case .notes: String(localized: "Notes")
-        }
-    }
-
-    static func icon(for kind: Signal) -> String {
-        switch kind {
-        case .discId: "opticaldiscdrive"
-        case .barcode: "barcode"
-        case .catalog: "tag"
-        case .isrc: "waveform"
         }
     }
 

@@ -126,8 +126,9 @@ fn record_import_origin_on(
 /// and label decisions this commit just resolved its credits and labels by,
 /// the library album picked for it, and its draft with its source, its cover
 /// and its link: the Done row and the imported folder's pane read the
-/// library release. The clues stay, since that pane marks the files they
-/// were read off, and so do the file decisions, which lay its files out. A
+/// library release. The clues stay, since the automation interface lists them
+/// with the file each was read off, and so do the file decisions, which lay
+/// its files out. A
 /// commit that does not land deletes none of it, so a retry finds the
 /// candidate as the failed attempt left it.
 fn delete_what_the_import_spent_on(

@@ -25,8 +25,7 @@ pub enum DiscIdSignal {
 }
 
 /// A disc ID and the file it was derived from — the rip log, or the sheet that
-/// carves the tracks. The file rides along so a surface can put the disc ID on
-/// the row for that file rather than beside the release.
+/// carves the tracks.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComputedDiscId {
     pub disc_id: String,

@@ -185,7 +185,6 @@ extension ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             ImportSheetCaptionRow(
                 sheet: sheet,
-                evidence: [],
                 showsDiscMenu: false,
                 actions: actions(recording: MappingTrackActionRecorder())
             )

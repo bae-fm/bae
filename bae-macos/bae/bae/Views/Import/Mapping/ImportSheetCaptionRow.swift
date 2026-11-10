@@ -5,8 +5,6 @@ import SwiftUI
 /// with no audio bound; bound references are changed from the summary's menu.
 struct ImportSheetCaptionRow: View {
     let sheet: BridgeSheetGroup
-    /// Identifying signals extracted from this sheet, such as a Disc ID.
-    var evidence: [BridgeFileEvidence]
     /// Whether this surface offers the CUE selection and disc control.
     let showsDiscMenu: Bool
     let actions: ImportMappingActions
@@ -86,11 +84,6 @@ struct ImportSheetCaptionRow: View {
                         }
                     }
                 }
-            }
-            ForEach(ImportEvidence.badges(evidence)) { badge in
-                ImportEvidenceChip(signal: badge.signal)
-                    .fixedSize()
-                    .help(ImportEvidence.hoverText(badge.evidence))
             }
             Spacer(minLength: 0)
         }

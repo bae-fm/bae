@@ -1,5 +1,6 @@
-//! Barcodes and disc IDs shown on the candidate files they were read off,
-//! whatever pressing is picked.
+//! Barcodes and disc IDs with the candidate files they were read off,
+//! whatever pressing is picked. Only the automation interface lists them; no
+//! screen marks a file with the clue read from it.
 
 use bae_identify::signals::{DiscIdSignal, Signals};
 
@@ -19,7 +20,7 @@ pub struct FileEvidence {
     pub signal: EvidenceSignal,
     /// The extracted barcode digits or disc ID.
     pub value: String,
-    /// The candidate-relative path used by the gallery tile and file row.
+    /// The candidate-relative path of the file.
     pub file_id: String,
 }
 

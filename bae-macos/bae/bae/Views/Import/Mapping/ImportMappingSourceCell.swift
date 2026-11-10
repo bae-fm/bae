@@ -8,8 +8,6 @@ struct ImportMappingSourceCell: View {
 
     let source: BridgeMappingSource
     let previewingTarget: BridgePreviewTarget?
-    /// Identifying signals extracted from this row's file.
-    var evidence: [BridgeFileEvidence]
     /// Files rows show the file size; track rows don't.
     let showsFileSize: Bool
     let actions: ImportMappingActions
@@ -50,11 +48,6 @@ struct ImportMappingSourceCell: View {
                     .themeText(.fine)
                     .foregroundStyle(Theme.warning)
                     .fixedSize()
-            }
-            ForEach(ImportEvidence.badges(evidence)) { badge in
-                ImportEvidenceChip(signal: badge.signal)
-                    .fixedSize()
-                    .help(ImportEvidence.hoverText(badge.evidence))
             }
             Spacer(minLength: 0)
         }

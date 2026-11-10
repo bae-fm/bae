@@ -220,10 +220,6 @@ pub struct BridgeImportCandidateDetail {
     /// Where the candidate's import stands for the pane: the one running now,
     /// or what the last one left in the tables.
     pub import_status: Option<BridgeCandidateImportStatus>,
-    /// Extracted identifying signals pinned to their source files. Independent
-    /// of the selected pressing; which lookups found a result is the run's
-    /// ledger's to say.
-    pub file_evidence: Vec<BridgeFileEvidence>,
     /// The signals identification settled on, or `None` before it has.
     pub signals: Option<BridgeSignals>,
     pub stage: BridgeCandidateStage,

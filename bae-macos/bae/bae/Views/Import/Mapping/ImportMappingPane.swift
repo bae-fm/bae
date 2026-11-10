@@ -74,7 +74,6 @@ struct ImportMappingPane: View {
                     ImportMappingTable(
                         table: mapping,
                         previewingTarget: previewingTarget,
-                        evidence: candidate.fileEvidence,
                         actions: mappingActions,
                         editingCommands: editingCommands,
                     )
@@ -98,7 +97,6 @@ struct ImportMappingPane: View {
             FormSectionHeader(title: String(localized: "Images"), ruled: true)
             ImportMappingGallery(
                 images: mapping.images,
-                evidence: candidate.fileEvidence,
                 onOpen: mappingActions.openImages
             )
         }

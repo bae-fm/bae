@@ -436,12 +436,6 @@ struct Candidate: Equatable, Identifiable {
         draft?.remoteCovers ?? []
     }
 
-    /// Identifying signals extracted from the candidate, each entry naming
-    /// the source file whose gallery tile or table row carries the chip.
-    var fileEvidence: [BridgeFileEvidence] {
-        detail?.fileEvidence ?? []
-    }
-
     /// The candidate's editable metadata draft.
     var edit: BridgeRawReleaseEdit? {
         draft?.metadataDraft
