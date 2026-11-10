@@ -4025,8 +4025,8 @@ kind, so it is listed while a new search hasn't found it again: one task
 merges every source's list and writes it whole, in one write per change, in
 the order the changes came. No discovery outlives the process that ran it, so
 the table is emptied as the library opens. Once the person
-picks a receiver, the picker names it while bae connects, until the cast
-starts or fails.
+picks a receiver, the picker or the page names it while bae connects, until
+the cast starts or fails.
 
 **The Casting page.** While casting is on, the page lists each receiver found,
 with its name and kind: Chromecast, AirPlay or UPnP. They are the picker's

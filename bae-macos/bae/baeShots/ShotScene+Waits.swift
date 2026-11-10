@@ -5,7 +5,7 @@ import SwiftUI
 
 extension ShotScene {
     /// Views in a wait that names itself in words: a catalog still
-    /// searching, a cast connecting, a Discogs key being checked, the
+    /// searching, a Discogs key being checked, the
     /// lightbox's image loading, the run's own pick being read, an import
     /// waiting its turn.
     static let waitScenes: [ShotScene] = [
@@ -26,29 +26,6 @@ extension ShotScene {
                 )
                 .importPreviewEnvironment(images: images),
                 images: images
-            )
-        },
-        ShotScene(
-            id: "cast-picker-connecting",
-            size: CGSize(width: 300, height: 160)
-        ) {
-            ShotStage(
-                CastPickerPopover(
-                    receivers: [
-                        BridgeCastReceiver(
-                            id: "speaker-1",
-                            name: "Kitchen",
-                            kind: .cast,
-                            casting: false
-                        )
-                    ],
-                    castingDevice: nil,
-                    endedFailure: nil,
-                    connectingName: "Kitchen",
-                    onCast: { _ in },
-                    onDisconnect: {}
-                )
-                .padding()
             )
         },
         ShotScene(

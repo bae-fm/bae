@@ -27,7 +27,6 @@ struct CastPickerTests {
                         casting: false
                     )
                 ],
-                castingDevice: nil,
                 endedFailure: nil,
                 connectingName: connectingName,
                 onCast: { _ in },

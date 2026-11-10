@@ -14,10 +14,7 @@ struct CastButton: View {
     @State
     private var showPicker = false
     @State
-    private var castTask: Task<Void, Never>?
-    /// The receiver a cast is connecting to, while it does.
-    @State
-    private var connecting: BridgeCastReceiver?
+    private var start = CastStart()
 
     var body: some View {
         let castingName = castStore.castingDeviceName
@@ -35,10 +32,16 @@ struct CastButton: View {
         .popover(isPresented: $showPicker, arrowEdge: .top) {
             CastPickerPopover(
                 receivers: castStore.receivers,
-                castingDevice: castStore.castingDevice,
                 endedFailure: castStore.endedFailure,
-                connectingName: connecting?.name,
-                onCast: castTo,
+                connectingName: start.connecting?.name,
+                onCast: { receiver in
+                    start.cast(
+                        to: receiver,
+                        with: cast,
+                        onStarted: { showPicker = false },
+                        onFailure: uiStore.showError
+                    )
+                },
                 onDisconnect: {
                     cast.stopCasting()
                     showPicker = false
@@ -61,28 +64,8 @@ struct CastButton: View {
         // The bar drops this control when casting turns off, taking an open
         // picker with it and leaving `showPicker` as it was.
         .onDisappear {
-            castTask?.cancel()
+            start.cancel()
             cast.stopDiscovery(.picker)
-        }
-    }
-
-    private func castTo(_ receiver: BridgeCastReceiver) {
-        castTask?.cancel()
-        let cast = cast
-        connecting = receiver
-        castTask = Task {
-            do {
-                try await cast.castTo(receiver.id)
-                connecting = nil
-                showPicker = false
-            }
-            catch is CancellationError {
-                return
-            }
-            catch {
-                connecting = nil
-                uiStore.showError(error)
-            }
         }
     }
 
@@ -91,14 +74,13 @@ struct CastButton: View {
     }
 }
 
-/// The device picker: the casting row while casting, or why the last device
-/// stopped when its link was lost, the device a cast is connecting to, then
-/// the receivers, the one cast to first and checked.
+/// The device picker: why the last device stopped when its link was lost, the
+/// receiver a cast is connecting to, then each receiver once, the one cast to
+/// first with Disconnect.
 struct CastPickerPopover: View {
     let receivers: [BridgeCastReceiver]
-    let castingDevice: BridgeRemoteDevice?
     let endedFailure: DisplayError?
-    /// The device a cast is connecting to, while it does.
+    /// The receiver a cast is connecting to, while it does.
     let connectingName: String?
     let onCast: (BridgeCastReceiver) -> Void
     let onDisconnect: () -> Void
@@ -106,23 +88,10 @@ struct CastPickerPopover: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             if let connectingName {
-                ProgressView {
-                    Text(
-                        "Connecting to \(connectingName)…",
-                        comment:
-                            "Cast picker, while bae connects to the device the person picked; the argument is its name."
-                    )
-                }
-                .controlSize(.small)
-                .themeText(.body)
-                .padding(.vertical, ThemeSpace.line)
+                CastConnectingLine(name: connectingName)
                 Divider()
             }
-            if let castingDevice {
-                castingRow(castingDevice.name)
-                Divider()
-            }
-            else if let endedFailure {
+            if let endedFailure {
                 Notice(error: endedFailure, tone: .warning)
                     .padding(.vertical, ThemeSpace.line)
                 Divider()
@@ -136,58 +105,15 @@ struct CastPickerPopover: View {
             }
             else {
                 ForEach(receivers, id: \.id) { receiver in
-                    receiverRow(receiver)
+                    CastReceiverRow(
+                        receiver: receiver,
+                        onCast: { onCast(receiver) },
+                        onDisconnect: onDisconnect
+                    )
                 }
             }
         }
         .padding(ThemeSpace.group)
         .frame(width: 260)
-    }
-
-    private func castingRow(_ name: String) -> some View {
-        HStack(spacing: ThemeSpace.inline) {
-            Image(systemName: "hifispeaker.fill")
-                .foregroundStyle(Theme.accent)
-            VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
-                Text("Casting to \(name)")
-                    .themeText(.strong)
-                    .lineLimit(1)
-            }
-            Spacer()
-            Button("Disconnect", action: onDisconnect)
-                .buttonStyle(.borderless)
-                .themeText(.body)
-        }
-        .padding(.vertical, ThemeSpace.line)
-    }
-
-    private func receiverRow(_ receiver: BridgeCastReceiver) -> some View {
-        Button(action: { onCast(receiver) }) {
-            HStack(spacing: ThemeSpace.inline) {
-                Image(systemName: deviceIcon(receiver.kind))
-                    .foregroundStyle(.secondary)
-                Text(receiver.name)
-                    .themeText(.rowTitle)
-                    .lineLimit(1)
-                Spacer()
-                if receiver.casting {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(Theme.accent)
-                }
-            }
-            .contentShape(Rectangle())
-            .padding(.vertical, ThemeSpace.inline)
-            .padding(.horizontal, ThemeSpace.inline)
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// The picker row's glyph for the device's protocol.
-    private func deviceIcon(_ kind: BridgeRendererKind) -> String {
-        switch kind {
-        case .cast: "hifispeaker"
-        case .dlna: "tv"
-        case .airPlay: "airplayaudio"
-        }
     }
 }

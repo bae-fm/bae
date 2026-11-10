@@ -26,29 +26,7 @@ extension ShotScene {
                     .environment(UiStore())
             )
         },
-        castingSettings(
-            "settings-casting",
-            receivers: [
-                BridgeCastReceiver(
-                    id: "cast-den",
-                    name: "Den receiver",
-                    kind: .dlna,
-                    casting: false
-                ),
-                BridgeCastReceiver(
-                    id: "cast-kitchen",
-                    name: "Kitchen",
-                    kind: .airPlay,
-                    casting: false
-                ),
-                BridgeCastReceiver(
-                    id: "cast-living-room",
-                    name: "Living Room",
-                    kind: .cast,
-                    casting: false
-                ),
-            ]
-        ),
+        castingSettings("settings-casting", receivers: castPickerReceivers()),
         castingSettings("settings-casting-looking", receivers: []),
         transfersSettings("settings-transfers", uploadsPaused: false),
         transfersSettings(

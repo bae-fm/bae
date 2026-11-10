@@ -4,4 +4,4 @@ A receiver, wherever bae lists them: the cast popover and Settings → Casting. 
 
 On Android the same row is `AndroidCastRow`.
 
-**In the code:** macOS: the rows of `CastButton`'s popover (`Views/Playback/NowPlaying/CastButton.swift`) and the Casting settings pane; one view for both.
+**In the code:** macOS: `CastReceiverRow` (`Views/Playback/NowPlaying/CastReceiverRow.swift`), in `CastButton`'s popover and the Casting settings tab.

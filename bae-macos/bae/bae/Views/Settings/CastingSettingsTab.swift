@@ -18,6 +18,8 @@ struct CastingSettingsTab: View {
     /// The device an unconfirmed "turn casting off" would disconnect from.
     @State
     private var pendingDisconnect: String?
+    @State
+    private var start = CastStart()
 
     var body: some View {
         Form {
@@ -32,7 +34,19 @@ struct CastingSettingsTab: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             if configStore.config.castEnabled {
-                CastReceiversSection(receivers: castStore.receivers)
+                CastReceiversSection(
+                    receivers: castStore.receivers,
+                    connectingName: start.connecting?.name,
+                    onCast: { receiver in
+                        start.cast(
+                            to: receiver,
+                            with: cast,
+                            onStarted: {},
+                            onFailure: uiStore.showError
+                        )
+                    },
+                    onDisconnect: cast.stopCasting
+                )
             }
             if CastTranscodeFormatPicker.isShown(for: configStore.config) {
                 Section {
@@ -57,7 +71,10 @@ struct CastingSettingsTab: View {
         // The page asks for as long as it is open: core browses for it only
         // while casting is on, and follows the setting from there.
         .onAppear { cast.startDiscovery(.settingsPage) }
-        .onDisappear { cast.stopDiscovery(.settingsPage) }
+        .onDisappear {
+            start.cancel()
+            cast.stopDiscovery(.settingsPage)
+        }
         .alert(
             "Turn off casting?",
             isPresented: confirmingDisconnect,
@@ -108,22 +125,31 @@ struct CastingSettingsTab: View {
     }
 }
 
-/// The receivers bae has found, each with the kind it is, or a spinner until
-/// the first one answers. Browsing has no end while the page is open, so an
-/// empty list is still looking.
+/// The receivers bae has found, one row each, the one cast to first, or a
+/// spinner until the first one answers. Browsing has no end while the page is
+/// open, so an empty list is still looking.
 private struct CastReceiversSection: View {
     let receivers: [BridgeCastReceiver]
+    /// The receiver a cast is connecting to, while it does.
+    let connectingName: String?
+    let onCast: (BridgeCastReceiver) -> Void
+    let onDisconnect: () -> Void
 
     var body: some View {
         Section {
+            if let connectingName {
+                CastConnectingLine(name: connectingName)
+            }
             if receivers.isEmpty {
                 WaitingIndicator("Looking for receivers…")
             }
             else {
                 ForEach(receivers, id: \.id) { receiver in
-                    LabeledContent(receiver.name) {
-                        Text(verbatim: kindName(receiver.kind))
-                    }
+                    CastReceiverRow(
+                        receiver: receiver,
+                        onCast: { onCast(receiver) },
+                        onDisconnect: onDisconnect
+                    )
                 }
             }
         } header: {
@@ -133,15 +159,6 @@ private struct CastReceiversSection: View {
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    /// A kind by its product's name, the same in every language.
-    private func kindName(_ kind: BridgeRendererKind) -> String {
-        switch kind {
-        case .cast: "Chromecast"
-        case .airPlay: "AirPlay"
-        case .dlna: "UPnP"
         }
     }
 }
