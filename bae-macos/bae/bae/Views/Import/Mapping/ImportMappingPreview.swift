@@ -43,6 +43,7 @@
             storageCloud: Binding<Bool>,
             storagePinned: Binding<Bool>,
             previewingTarget: BridgePreviewTarget? = nil,
+            libraryStatus: BridgeLibraryStatus? = nil,
             runtime: BridgeCandidateRuntimeSnapshot? = nil
         ) -> some View {
             let store = ImportStore()
@@ -51,7 +52,7 @@
                 candidate: candidate,
                 previewingTarget: previewingTarget,
                 isApplyingMetadata: false,
-                libraryStatus: nil,
+                libraryStatus: libraryStatus,
                 hasCoverOptions: true,
                 coverContent: nil,
                 editActions: ReleaseFieldWriter { _, _ in },

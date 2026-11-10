@@ -24,6 +24,7 @@ struct ShotScene {
     static let all: [ShotScene] =
         [
             importMetadataDraft,
+            importMetadataDraftInLibrary,
             importSearchResults,
             ShotScene(id: "appearance", size: CGSize(width: 650, height: 400)) {
                 ShotStage(AppearanceSettingsTab())
@@ -232,20 +233,35 @@ struct ShotScene {
 }
 
 extension ShotScene {
-    private static let importMetadataDraft = ShotScene(
+    private static let importMetadataDraft = importMappingPane(
         id: "import-metadata-draft",
-        size: CGSize(width: 800, height: 700)
-    ) {
-        let images = PreviewData.artImageStore()
-        return ShotStage(
-            ImportMappingPreview.make(
-                candidate: PreviewData.mappingCandidate,
-                storageCloud: .constant(true),
-                storagePinned: .constant(true)
+        libraryStatus: nil
+    )
+
+    /// The mapping pane of a release already in the library: the notice sits
+    /// between the folder line and the identify card.
+    private static let importMetadataDraftInLibrary = importMappingPane(
+        id: "import-metadata-draft-in-library",
+        libraryStatus: ImportConfirmationBanners.previewLibraryStatus
+    )
+
+    private static func importMappingPane(
+        id: String,
+        libraryStatus: BridgeLibraryStatus?
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 800, height: 700)) {
+            let images = PreviewData.artImageStore()
+            return ShotStage(
+                ImportMappingPreview.make(
+                    candidate: PreviewData.mappingCandidate,
+                    storageCloud: .constant(true),
+                    storagePinned: .constant(true),
+                    libraryStatus: libraryStatus
+                )
+                .importPreviewEnvironment(images: images),
+                images: images
             )
-            .importPreviewEnvironment(images: images),
-            images: images
-        )
+        }
     }
 
     private static let importSearchResults = ShotScene(

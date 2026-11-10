@@ -58,8 +58,8 @@ struct ImportMappingPane: View {
                         onNavigateToPlacement(candidate.key)
                     }
                 )
-                metadataSourceSection
                 banners
+                metadataSourceSection
                 if let detail = candidate.detail, let draft = candidate.draft {
                     DraftAlbumRow(
                         album: draft.album,
