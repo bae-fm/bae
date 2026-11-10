@@ -251,6 +251,7 @@
     <string name="save">Spara</string>
     <string name="onboarding_scan_code">Skanna en kod</string>
     <string name="onboarding_enter_code">Ange en kod</string>
+    <string name="welcome_add_library">Lägg till bibliotek</string>
     <string name="onboarding_enter_code_instructions">Ange din återställningskod, eller en inbjudan till ett bibliotek.</string>
     <string name="onboarding_code_placeholder">Återställningskod eller inbjudan</string>
     <string name="continue_action">Fortsätt</string>

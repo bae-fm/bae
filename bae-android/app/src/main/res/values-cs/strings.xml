@@ -265,6 +265,7 @@
     <string name="save">Uložit</string>
     <string name="onboarding_scan_code">Naskenovat kód</string>
     <string name="onboarding_enter_code">Zadat kód</string>
+    <string name="welcome_add_library">Přidat knihovnu</string>
     <string name="onboarding_enter_code_instructions">Zadejte svůj kód pro obnovení, nebo pozvánku do knihovny.</string>
     <string name="onboarding_code_placeholder">Kód pro obnovení nebo pozvánka</string>
     <string name="continue_action">Pokračovat</string>

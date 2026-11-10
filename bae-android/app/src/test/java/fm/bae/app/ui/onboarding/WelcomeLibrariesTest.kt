@@ -3,6 +3,7 @@ package fm.bae.app.ui.onboarding
 import android.app.Application
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
@@ -117,7 +118,36 @@ class WelcomeLibrariesTest {
         compose.setContent {
             val scope = rememberCoroutineScope()
             val model = remember { fake.model(scope) }
-            BaeTheme { WelcomeLibrariesSection(model, onOpen = { fake.calls += "open ${it.id}" }) }
+            BaeTheme {
+                WelcomeLibrariesSection(model, onOpen = { fake.calls += "open ${it.id}" }, onAdd = { fake.calls += "add" })
+            }
+        }
+    }
+
+    /** The whole welcome over [fake]'s libraries, as onboarding shows it. */
+    private fun showWelcome(fake: FakeLibraries) {
+        compose.setContent {
+            val context = LocalContext.current
+            val scope = rememberCoroutineScope()
+            val flow =
+                remember {
+                    OnboardingFlow(
+                        scope,
+                        context,
+                        OnboardingCore(NoJoinsHost(), ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
+                        null,
+                        null,
+                    ) {}
+                }
+            val model = remember { fake.model(scope) }
+            BaeTheme {
+                OnboardingSteps(
+                    flow,
+                    WelcomeLibrariesView(listed = fake.libraries.isNotEmpty()) { onAdd ->
+                        WelcomeLibrariesSection(model, onOpen = {}, onAdd = onAdd)
+                    },
+                )
+            }
         }
     }
 
@@ -144,6 +174,28 @@ class WelcomeLibrariesTest {
         compose.onNodeWithText("Local Library").assertIsDisplayed()
         compose.onNodeWithText("Not synced").assertIsDisplayed()
         compose.onAllNodesWithContentDescription("More").assertCountEquals(2)
+    }
+
+    @Test
+    fun addLibraryIsTheListsLastRow() {
+        val fake = FakeLibraries(listOf(synced, neverSynced))
+        showLibraries(fake)
+
+        compose.onNodeWithText("Add library").assertIsDisplayed()
+        compose.onNodeWithText("Add library").performClick()
+
+        assertEquals(listOf("list", "add"), fake.calls)
+    }
+
+    @Test
+    fun addLibraryOpensTheSheetWithScanAndEnterCode() {
+        showWelcome(FakeLibraries(listOf(synced)))
+
+        compose.onNodeWithText("Scan code").assertDoesNotExist()
+        compose.onNodeWithText("Add library").performClick()
+
+        compose.onNodeWithText("Scan code").assertIsDisplayed()
+        compose.onNodeWithText("Enter code").assertIsDisplayed()
     }
 
     @Test

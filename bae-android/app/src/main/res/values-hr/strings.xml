@@ -259,6 +259,7 @@
     <string name="save">Spremi</string>
     <string name="onboarding_scan_code">Skeniraj kod</string>
     <string name="onboarding_enter_code">Unesi kod</string>
+    <string name="welcome_add_library">Dodaj fonoteku</string>
     <string name="onboarding_enter_code_instructions">Unesite svoj kod za vraćanje ili pozivnicu u fonoteku.</string>
     <string name="onboarding_code_placeholder">Kod za vraćanje ili pozivnica</string>
     <string name="continue_action">Nastavi</string>

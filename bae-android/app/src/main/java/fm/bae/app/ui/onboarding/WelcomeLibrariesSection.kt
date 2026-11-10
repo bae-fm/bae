@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -59,6 +60,7 @@ internal class WelcomeLibrariesCallbacks(
     val onOpen: (BridgeLibrary) -> Unit,
     val onDetails: (BridgeLibrary) -> Unit,
     val onRemove: (BridgeLibrary) -> Unit,
+    val onAdd: () -> Unit,
     val onRetry: (FailedRemoval, BridgeLibrary) -> Unit,
 )
 
@@ -66,12 +68,14 @@ internal class WelcomeLibrariesCallbacks(
  * The welcome's list of this device's libraries, read each time the welcome
  * shows. Tapping a library opens it; its ⋮ menu shows its details in a sheet
  * or removes it, Remove, or Delete for one that was never synced, asking first.
- * Nothing shows while the list loads or when the device holds no library.
+ * The list ends in Add library. Nothing shows while the list loads or when the
+ * device holds no library.
  */
 @Composable
 internal fun WelcomeLibrariesSection(
     libraries: WelcomeLibraries,
     onOpen: (BridgeLibrary) -> Unit,
+    onAdd: () -> Unit,
 ) {
     LaunchedEffect(libraries) { libraries.load() }
     WelcomeLibrariesContent(
@@ -83,6 +87,7 @@ internal fun WelcomeLibrariesSection(
                 onOpen = onOpen,
                 onDetails = libraries::showDetails,
                 onRemove = libraries::askToRemove,
+                onAdd = onAdd,
                 onRetry = libraries::retry,
             ),
     )
@@ -134,6 +139,12 @@ private fun WelcomeLibrariesContent(
                             callbacks = callbacks,
                         )
                     }
+                    CardRow(
+                        title = stringResource(R.string.welcome_add_library),
+                        action = true,
+                        leadingIcon = Icons.Filled.Add,
+                        onClick = callbacks.onAdd.takeIf { running == null },
+                    )
                 }
             }
         }
@@ -271,11 +282,14 @@ private fun RunningLibraryRow(
  */
 @Composable
 internal fun WelcomeLibrariesScene() {
-    WelcomeScene(libraries = WelcomeLibrariesView(listed = true) { WelcomeLibrariesPreviewContent(failed = null) })
+    WelcomeScene(libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesPreviewContent(onAdd) })
 }
 
 @Composable
-private fun WelcomeLibrariesPreviewContent(failed: FailedRemoval?) {
+private fun WelcomeLibrariesPreviewContent(
+    onAdd: () -> Unit,
+    failed: FailedRemoval? = null,
+) {
     val dropbox =
         BridgeLibraryState.Openable(
             storage =
@@ -295,7 +309,14 @@ private fun WelcomeLibrariesPreviewContent(failed: FailedRemoval?) {
             ),
         running = null,
         failed = failed,
-        callbacks = WelcomeLibrariesCallbacks(onOpen = {}, onDetails = {}, onRemove = {}, onRetry = { _, _ -> }),
+        callbacks =
+            WelcomeLibrariesCallbacks(
+                onOpen = {},
+                onDetails = {},
+                onRemove = {},
+                onAdd = onAdd,
+                onRetry = { _, _ -> },
+            ),
     )
 }
 
@@ -305,6 +326,7 @@ private fun WelcomeLibrariesPreview() {
     BaeTheme {
         Column(modifier = Modifier.padding(ThemeSpace.page)) {
             WelcomeLibrariesPreviewContent(
+                onAdd = {},
                 failed = FailedRemoval("lib-1", DisplayError("Couldn’t reach your storage."), confirmed = null),
             )
         }

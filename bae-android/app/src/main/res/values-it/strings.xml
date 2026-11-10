@@ -258,6 +258,7 @@
     <string name="save">Salva</string>
     <string name="onboarding_scan_code">Scansiona un codice</string>
     <string name="onboarding_enter_code">Inserisci un codice</string>
+    <string name="welcome_add_library">Aggiungi libreria</string>
     <string name="onboarding_enter_code_instructions">Inserisci il tuo codice di ripristino, oppure un invito a una libreria.</string>
     <string name="onboarding_code_placeholder">Codice di ripristino o invito</string>
     <string name="continue_action">Continua</string>

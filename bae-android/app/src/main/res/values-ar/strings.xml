@@ -277,6 +277,7 @@
     <string name="save">حفظ</string>
     <string name="onboarding_scan_code">مسح رمز</string>
     <string name="onboarding_enter_code">إدخال رمز</string>
+    <string name="welcome_add_library">إضافة مكتبة</string>
     <string name="onboarding_enter_code_instructions">أدخل رمز الاستعادة الخاص بك، أو دعوة إلى مكتبة.</string>
     <string name="onboarding_code_placeholder">رمز الاستعادة أو الدعوة</string>
     <string name="continue_action">متابعة</string>

@@ -42,6 +42,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Logo
 import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.components.TitledSheet
 
 private const val TAG = "bae.CodeScreen"
 private val logger = BaeLogger(TAG)
@@ -171,8 +172,8 @@ private fun CodeScreenContent(
             callbacks = callbacks,
             error = error,
             savedCodes = savedCodes,
-        ) {
-            libraries?.content?.invoke()
+        ) { onAdd ->
+            libraries?.content?.invoke(onAdd)
         }
     }
     if (showCodeDialog) {
@@ -208,10 +209,11 @@ private fun CodeButtons(callbacks: CodeScreenCallbacks) {
 
 /**
  * A new device's welcome: bae's sheep and name floating over "Your music,
- * everywhere", then [libraries], the saved restore codes and the actions. With
- * libraries [listed] the logo is at the top over the list; with none it is
- * centered in the space above the actions, which sit at the foot. Scrolled when
- * it doesn't fit, such as on a phone held sideways.
+ * everywhere", then [libraries] and the saved restore codes. With libraries
+ * [listed] the logo is at the top over the list, whose last row, Add library,
+ * opens a sheet with the actions; with none the logo is centered in the space
+ * above the actions, which sit at the foot. Scrolled when it doesn't fit, such
+ * as on a phone held sideways.
  */
 @Composable
 private fun WelcomeColumn(
@@ -219,51 +221,89 @@ private fun WelcomeColumn(
     callbacks: CodeScreenCallbacks,
     error: DisplayError?,
     savedCodes: @Composable () -> Unit,
-    libraries: @Composable () -> Unit,
+    libraries: @Composable (onAdd: () -> Unit) -> Unit,
 ) {
     if (listed) {
+        ListedWelcome(callbacks, error, savedCodes, libraries)
+    } else {
+        EmptyWelcome(callbacks, error, savedCodes) { libraries {} }
+    }
+}
+
+/** The welcome over a list of libraries, whose Add library row raises the sheet of actions. */
+@Composable
+private fun ListedWelcome(
+    callbacks: CodeScreenCallbacks,
+    error: DisplayError?,
+    savedCodes: @Composable () -> Unit,
+    libraries: @Composable (onAdd: () -> Unit) -> Unit,
+) {
+    var adding by remember { mutableStateOf(false) }
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(top = ThemeSpace.section, bottom = LIST_BOTTOM_PADDING),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Logo(size = LIST_LOGO_SIZE, bob = true, glow = true)
+        Tagline(modifier = Modifier.padding(LIST_TAGLINE_PADDING))
+        Column(
+            modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            libraries { adding = true }
+            savedCodes()
+            error?.let { ErrorNotice(it) }
+        }
+    }
+    if (adding) {
+        TitledSheet(title = stringResource(R.string.welcome_add_library), onDismiss = { adding = false }) {
+            WelcomeActions(
+                onScan = {
+                    adding = false
+                    callbacks.onScan()
+                },
+                onEnter = {
+                    adding = false
+                    callbacks.onShowCodeDialog()
+                },
+            )
+        }
+    }
+}
+
+/** The welcome with no list: the logo centered over the space the actions leave, which sit at the foot. */
+@Composable
+private fun EmptyWelcome(
+    callbacks: CodeScreenCallbacks,
+    error: DisplayError?,
+    savedCodes: @Composable () -> Unit,
+    libraries: @Composable () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier =
                 Modifier
-                    .fillMaxSize()
+                    .weight(1f)
+                    .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(top = ThemeSpace.section, bottom = LIST_BOTTOM_PADDING),
+                    .padding(horizontal = ThemeSpace.page),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Logo(size = LIST_LOGO_SIZE, bob = true, glow = true)
-            Tagline(modifier = Modifier.padding(LIST_TAGLINE_PADDING))
+            Logo(size = EMPTY_LOGO_SIZE, bob = true, glow = true)
+            Tagline(modifier = Modifier.padding(top = TAGLINE_TOP))
             libraries()
             savedCodes()
-            CodeButtons(callbacks)
             error?.let {
                 Spacer(modifier = Modifier.height(ThemeSpace.related))
                 ErrorNotice(it)
             }
         }
-    } else {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = ThemeSpace.page),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Logo(size = EMPTY_LOGO_SIZE, bob = true, glow = true)
-                Tagline(modifier = Modifier.padding(top = TAGLINE_TOP))
-                libraries()
-                savedCodes()
-                error?.let {
-                    Spacer(modifier = Modifier.height(ThemeSpace.related))
-                    ErrorNotice(it)
-                }
-            }
-            WelcomeActions(onScan = callbacks.onScan, onEnter = callbacks.onShowCodeDialog)
-            Spacer(modifier = Modifier.height(ThemeSpace.section))
-        }
+        WelcomeActions(onScan = callbacks.onScan, onEnter = callbacks.onShowCodeDialog)
+        Spacer(modifier = Modifier.height(ThemeSpace.section))
     }
 }
 

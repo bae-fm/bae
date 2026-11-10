@@ -251,6 +251,7 @@
     <string name="save">Gem</string>
     <string name="onboarding_scan_code">Scan en kode</string>
     <string name="onboarding_enter_code">Indtast en kode</string>
+    <string name="welcome_add_library">Tilføj bibliotek</string>
     <string name="onboarding_enter_code_instructions">Indtast din gendannelseskode eller en invitation til et bibliotek.</string>
     <string name="onboarding_code_placeholder">Gendannelseskode eller invitation</string>
     <string name="continue_action">Fortsæt</string>

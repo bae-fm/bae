@@ -144,20 +144,21 @@ internal fun OnboardingScreen(
         libraries =
             libraries?.let { model ->
                 val listed = (model.list as? WelcomeLibrariesList.Loaded)?.libraries?.isNotEmpty() == true
-                WelcomeLibrariesView(listed = listed) {
-                    WelcomeLibrariesSection(model) { actions?.onOpen?.invoke(it) }
+                WelcomeLibrariesView(listed = listed) { onAdd ->
+                    WelcomeLibrariesSection(model, onOpen = { actions?.onOpen?.invoke(it) }, onAdd = onAdd)
                 }
             },
     )
 }
 
 /**
- * The list of this device's libraries the welcome shows, drawn by [content],
- * and whether it [listed] any: the welcome's layout depends on it.
+ * The list of this device's libraries the welcome shows, drawn by [content]
+ * with what Add library does, and whether it [listed] any: the welcome's layout
+ * depends on it.
  */
 internal class WelcomeLibrariesView(
     val listed: Boolean,
-    val content: @Composable () -> Unit,
+    val content: @Composable (onAdd: () -> Unit) -> Unit,
 )
 
 /**

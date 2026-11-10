@@ -105,6 +105,7 @@ SyncStatusWaiting:sync-status-waiting
 Transfers:transfers
 TransfersWifiOnly:transfers-wifi-only
 Welcome:welcome
+WelcomeAddLibrary:welcome-add-library
 WelcomeLibraries:welcome-libraries
 WelcomeLibraryDetails:welcome-library-details
 WelcomeLibraryDetailsUnsent:welcome-library-details-unsent

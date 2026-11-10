@@ -263,6 +263,7 @@
     <string name="save">Uložiť</string>
     <string name="onboarding_scan_code">Naskenovať kód</string>
     <string name="onboarding_enter_code">Zadať kód</string>
+    <string name="welcome_add_library">Pridať knižnicu</string>
     <string name="onboarding_enter_code_instructions">Zadaj svoj kód na obnovenie alebo pozvánku do knižnice.</string>
     <string name="onboarding_code_placeholder">Kód na obnovenie alebo pozvánka</string>
     <string name="continue_action">Pokračovať</string>

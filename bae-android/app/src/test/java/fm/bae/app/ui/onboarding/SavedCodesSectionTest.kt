@@ -61,14 +61,14 @@ class SavedCodesSectionTest {
             .onNodeWithText("Saved in a format bae can’t read · $UNREADABLE_LIBRARY")
             .performScrollTo()
             .assertIsDisplayed()
-        compose.onNodeWithText("Scan a code").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Scan code").assertIsDisplayed()
     }
 
     @Test
     fun aPhoneWithNoSavedCodesShowsOnlyScanAndEnter() {
         showWelcome(SavedCodesHost(emptyList()))
 
-        compose.onNodeWithText("Scan a code").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Scan code").assertIsDisplayed()
         compose.onNodeWithText("SAVED ON THIS DEVICE").assertDoesNotExist()
     }
 

@@ -247,6 +247,7 @@
     <string name="save">保存</string>
     <string name="onboarding_scan_code">コードをスキャン</string>
     <string name="onboarding_enter_code">コードを入力</string>
+    <string name="welcome_add_library">ライブラリを追加</string>
     <string name="onboarding_enter_code_instructions">復元コード、またはライブラリへの招待を入力してください。</string>
     <string name="onboarding_code_placeholder">復元コードまたは招待</string>
     <string name="continue_action">続ける</string>

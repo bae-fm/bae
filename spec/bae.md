@@ -2601,8 +2601,9 @@ A new phone's first screen shows bae's sheep and name over "Your music,
 everywhere", with **Scan code** and **Enter code** at its foot: the code says
 what it is for. An invite
 joins someone's library, and the person's own restore code adds this device to
-theirs. An Android phone that holds libraries lists them above the two buttons
-under **Your libraries**, each opening on a tap, with a ⋮ menu holding
+theirs. An Android phone that holds libraries lists them under **Your libraries**,
+ending in **Add library**, which opens a sheet with **Scan code** and **Enter
+code** in place of the buttons, each library opening on a tap, with a ⋮ menu holding
 **Details…** for a library that opens, and **Remove…**, or **Delete…** for one
 that was never synced (§6.4). **Details…** shows, in a sheet, the library's sync
 status as this phone last knew it (as on a Mac, below), when it last synced, and

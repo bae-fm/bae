@@ -253,6 +253,7 @@
     <string name="save">Запазване</string>
     <string name="onboarding_scan_code">Сканиране на код</string>
     <string name="onboarding_enter_code">Въвеждане на код</string>
+    <string name="welcome_add_library">Добавяне на библиотека</string>
     <string name="onboarding_enter_code_instructions">Въведете своя код за възстановяване или покана за библиотека.</string>
     <string name="onboarding_code_placeholder">Код за възстановяване или покана</string>
     <string name="continue_action">Продължаване</string>

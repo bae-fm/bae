@@ -50,8 +50,8 @@ class OnboardingStepsTest {
     fun aNewDeviceOpensOnScanningOrEnteringACode() {
         showOnboarding()
 
-        compose.onNodeWithText("Scan a code").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Enter a code").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Scan code").assertIsDisplayed()
+        compose.onNodeWithText("Enter code").assertIsDisplayed()
         compose.onNodeWithText("Back").assertDoesNotExist()
     }
 
@@ -59,7 +59,7 @@ class OnboardingStepsTest {
     fun enterACodeOpensTheFieldToTypeIt() {
         showOnboarding()
 
-        compose.onNodeWithText("Enter a code").performScrollTo().performClick()
+        compose.onNodeWithText("Enter code").performClick()
 
         compose.onNodeWithText("Restore code or invite").assertIsDisplayed()
     }
@@ -78,7 +78,7 @@ class OnboardingStepsTest {
         )
 
         compose.onNodeWithText("Restore this library").assertIsDisplayed()
-        compose.onNodeWithText("Scan a code").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Scan code").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Back").performScrollTo().performClick()
 
         assertTrue(left)

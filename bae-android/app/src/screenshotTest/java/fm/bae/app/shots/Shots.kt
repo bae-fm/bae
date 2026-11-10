@@ -51,6 +51,7 @@ import fm.bae.app.ui.library.LibraryHeaderMenu
 import fm.bae.app.ui.library.SceneGrid
 import fm.bae.app.ui.onboarding.LibraryDetailsRows
 import fm.bae.app.ui.onboarding.StandingRead
+import fm.bae.app.ui.onboarding.WelcomeActions
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.playback.CastDeviceRows
@@ -98,8 +99,8 @@ import java.time.Instant
 // the app chrome — never a capture-only re-layout. Rendered at a current phone
 // size, with additional light and tinted appearance captures. Function name ⇒ scene id:
 //   Welcome ⇒ welcome, WelcomeLibraries ⇒ welcome-libraries, WelcomeLibraryDetails ⇒ welcome-library-details,
-//   WelcomeLibraryDetailsUnsent ⇒ welcome-library-details-unsent, LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒
-//   library-grid-scrolled, LibraryGrouped ⇒ library-grouped, LibraryGroupedPinned ⇒
+//   WelcomeLibraryDetailsUnsent ⇒ welcome-library-details-unsent, WelcomeAddLibrary ⇒ welcome-add-library,
+//   LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒ library-grid-scrolled, LibraryGrouped ⇒ library-grouped, LibraryGroupedPinned ⇒
 //   library-grouped-pinned, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
 //   library-view-menu, AlbumDetail ⇒ album-detail, CastPicker ⇒ cast-picker, CastingSettingsFound ⇒
 //   settings-casting, CastingSettingsLooking ⇒ settings-casting-looking, LibrarySettings ⇒ settings-library,
@@ -137,6 +138,20 @@ fun WelcomeLibraryDetails() {
 @Composable
 fun WelcomeLibraryDetailsUnsent() {
     LibraryDetailsScene(BridgeStandingState.UnsentChanges)
+}
+
+/** The Add library sheet over the welcome's list: Scan code and Enter code. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun WelcomeAddLibrary() {
+    BaeTheme {
+        Surface(color = BottomSheetDefaults.ContainerColor) {
+            TitledSheetContent(stringResource(R.string.welcome_add_library)) {
+                WelcomeActions(onScan = {}, onEnter = {})
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -258,6 +258,7 @@
     <string name="save">Guardar</string>
     <string name="onboarding_scan_code">Escanear un código</string>
     <string name="onboarding_enter_code">Introducir un código</string>
+    <string name="welcome_add_library">Añadir biblioteca</string>
     <string name="onboarding_enter_code_instructions">Introduce tu código de restauración o una invitación a una biblioteca.</string>
     <string name="onboarding_code_placeholder">Código de restauración o invitación</string>
     <string name="continue_action">Continuar</string>

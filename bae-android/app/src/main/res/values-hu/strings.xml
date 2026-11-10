@@ -251,6 +251,7 @@
     <string name="save">Mentés</string>
     <string name="onboarding_scan_code">Kód beolvasása</string>
     <string name="onboarding_enter_code">Kód megadása</string>
+    <string name="welcome_add_library">Könyvtár hozzáadása</string>
     <string name="onboarding_enter_code_instructions">Add meg a visszaállítási kódodat, vagy egy könyvtárba szóló meghívót.</string>
     <string name="onboarding_code_placeholder">Helyreállítási kód vagy meghívó</string>
     <string name="continue_action">Tovább</string>

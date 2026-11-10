@@ -247,6 +247,7 @@
     <string name="save">儲存</string>
     <string name="onboarding_scan_code">掃描代碼</string>
     <string name="onboarding_enter_code">輸入代碼</string>
+    <string name="welcome_add_library">新增資料庫</string>
     <string name="onboarding_enter_code_instructions">輸入你的還原碼，或加入某個資料庫的邀請。</string>
     <string name="onboarding_code_placeholder">還原碼或邀請</string>
     <string name="continue_action">繼續</string>

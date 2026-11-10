@@ -259,6 +259,7 @@
     <string name="save">שמירה</string>
     <string name="onboarding_scan_code">סריקת קוד</string>
     <string name="onboarding_enter_code">הזנת קוד</string>
+    <string name="welcome_add_library">הוסף ספרייה</string>
     <string name="onboarding_enter_code_instructions">הזן את קוד השחזור שלך, או הזמנה לספרייה.</string>
     <string name="onboarding_code_placeholder">קוד שחזור או הזמנה</string>
     <string name="continue_action">המשך</string>

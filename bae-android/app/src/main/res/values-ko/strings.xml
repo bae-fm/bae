@@ -247,6 +247,7 @@
     <string name="save">저장</string>
     <string name="onboarding_scan_code">코드 스캔</string>
     <string name="onboarding_enter_code">코드 입력</string>
+    <string name="welcome_add_library">라이브러리 추가</string>
     <string name="onboarding_enter_code_instructions">내 복원 코드나 라이브러리 초대를 입력하세요.</string>
     <string name="onboarding_code_placeholder">복원 코드 또는 초대</string>
     <string name="continue_action">계속</string>
