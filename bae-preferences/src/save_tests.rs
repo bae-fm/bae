@@ -5,7 +5,7 @@ fn single_file_cue_preset_needs_a_codec_a_sheet_can_index() {
     let preset = SavePreset {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
-        codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
+        codec: SaveCodec::Flac { bit_depth: SaveBitDepth::SameAsSource },
         pregap_placement: SavePregapPlacement::SingleFileWithCue,
         embed_cover: true,
     };
@@ -22,23 +22,110 @@ fn single_file_cue_preset_needs_a_codec_a_sheet_can_index() {
 }
 
 #[test]
-fn aac_bitrate_is_validated_against_its_bounds() {
-    let preset = |bitrate_kbps: u32| SavePreset {
-        id: "aac".to_string(),
-        name: "AAC".to_string(),
-        codec: SaveCodec::Aac { bitrate_kbps },
+fn a_lossy_format_saves_only_at_the_bitrates_its_encoder_writes() {
+    let preset = |codec: SaveCodec| SavePreset {
+        id: "preset".to_string(),
+        name: "Preset".to_string(),
+        codec,
         pregap_placement: default_export_pregap_placement(),
         embed_cover: true,
     };
 
-    preset(32).validate().unwrap();
-    preset(256).validate().unwrap();
-    preset(512).validate().unwrap();
+    preset(SaveCodec::Aac { bitrate_kbps: 96 }).validate().unwrap();
+    preset(SaveCodec::Aac { bitrate_kbps: 320 }).validate().unwrap();
+    // Between two listed rates the encoder rounds; the format refuses instead.
+    let err = preset(SaveCodec::Aac { bitrate_kbps: 100 })
+        .validate()
+        .expect_err("a bitrate between two listed rates must be rejected");
+    assert!(err.to_string().contains("unsupported AAC bitrate"));
+    let err = preset(SaveCodec::Aac { bitrate_kbps: 64 }).validate().expect_err("AAC starts at 96");
+    assert!(err.to_string().contains("unsupported AAC bitrate"));
+    preset(SaveCodec::OpusOgg { bitrate_kbps: 64 }).validate().unwrap();
+    preset(SaveCodec::OpusOgg { bitrate_kbps: 256 }).validate().unwrap();
+    preset(SaveCodec::OpusOgg { bitrate_kbps: 320 }).validate().expect_err("Opus ends at 256");
+    preset(SaveCodec::Mp3 { bitrate_kbps: 40 }).validate().unwrap();
+    preset(SaveCodec::Mp3 { bitrate_kbps: 100 }).validate().expect_err("MP3 has no 100");
+}
 
-    let err = preset(31).validate().expect_err("a bitrate below the minimum must be rejected");
-    assert!(err.to_string().contains("unsupported AAC bitrate"));
-    let err = preset(513).validate().expect_err("a bitrate above the maximum must be rejected");
-    assert!(err.to_string().contains("unsupported AAC bitrate"));
+#[test]
+fn each_lossy_format_lists_the_bitrates_its_encoder_writes() {
+    assert_eq!(
+        SaveFormat::Mp3.bitrates_kbps(),
+        Some(&[32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320][..])
+    );
+    assert_eq!(SaveFormat::Aac.bitrates_kbps(), Some(&[96, 128, 160, 192, 256, 320][..]));
+    assert_eq!(SaveFormat::OpusOgg.bitrates_kbps(), Some(&[64, 96, 128, 160, 192, 256][..]));
+    for lossless in [SaveFormat::Flac, SaveFormat::Wav, SaveFormat::Aiff] {
+        assert_eq!(lossless.bitrates_kbps(), None);
+    }
+}
+
+#[test]
+fn formats_are_offered_lossless_first_then_lossy() {
+    assert_eq!(
+        SaveFormat::ALL,
+        [
+            SaveFormat::Flac,
+            SaveFormat::Wav,
+            SaveFormat::Aiff,
+            SaveFormat::Mp3,
+            SaveFormat::Aac,
+            SaveFormat::OpusOgg,
+        ]
+    );
+    assert_eq!(
+        SaveFormat::groups(),
+        vec![
+            vec![SaveFormat::Flac, SaveFormat::Wav, SaveFormat::Aiff],
+            vec![SaveFormat::Mp3, SaveFormat::Aac, SaveFormat::OpusOgg],
+        ]
+    );
+}
+
+/// A lossless format starts at the source's depth; 16 bits is the other
+/// choice. A source with no depth of its own (lossy audio) writes 16 bits,
+/// the depth a decoder hands out for it.
+#[test]
+fn a_bit_depth_resolves_against_the_source_track() {
+    use std::num::NonZeroU32;
+    let depth = |bits| NonZeroU32::new(bits);
+    assert_eq!(SaveBitDepth::SameAsSource.bits(depth(24)), 24);
+    assert_eq!(SaveBitDepth::SameAsSource.bits(depth(16)), 16);
+    assert_eq!(SaveBitDepth::SameAsSource.bits(depth(32)), 32);
+    assert_eq!(SaveBitDepth::SameAsSource.bits(None), 16);
+    assert_eq!(SaveBitDepth::Bits16.bits(depth(24)), 16);
+    assert_eq!(SaveBitDepth::Bits16.bits(None), 16);
+}
+
+/// Switching a format carries the setting that still applies: the bit depth
+/// across lossless formats, the bitrate across lossy ones (to the nearest the
+/// new format writes); crossing between the two starts the new format's codec.
+#[test]
+fn switching_format_carries_the_setting_that_still_applies() {
+    assert_eq!(
+        SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 }.switched_to(SaveFormat::Aiff),
+        SaveCodec::Aiff { bit_depth: SaveBitDepth::Bits16 }
+    );
+    assert_eq!(
+        SaveCodec::Aac { bitrate_kbps: 320 }.switched_to(SaveFormat::Mp3),
+        SaveCodec::Mp3 { bitrate_kbps: 320 }
+    );
+    assert_eq!(
+        SaveCodec::Mp3 { bitrate_kbps: 40 }.switched_to(SaveFormat::Aac),
+        SaveCodec::Aac { bitrate_kbps: 96 }
+    );
+    assert_eq!(
+        SaveCodec::Mp3 { bitrate_kbps: 320 }.switched_to(SaveFormat::OpusOgg),
+        SaveCodec::OpusOgg { bitrate_kbps: 256 }
+    );
+    assert_eq!(
+        SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 }.switched_to(SaveFormat::Aac),
+        SaveCodec::Aac { bitrate_kbps: 256 }
+    );
+    assert_eq!(
+        SaveCodec::OpusOgg { bitrate_kbps: 96 }.switched_to(SaveFormat::Wav),
+        SaveCodec::Wav { bit_depth: SaveBitDepth::SameAsSource }
+    );
 }
 
 /// A preset switched to any format starts at a codec of that format that
@@ -65,10 +152,11 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
                     panic!("{format:?} is lossless and has no bitrates")
                 }
             };
-            preset(at(*accepted.start())).validate().unwrap();
-            preset(at(*accepted.end())).validate().unwrap();
-            preset(at(accepted.start() - 1)).validate().expect_err("below the range");
-            preset(at(accepted.end() + 1)).validate().expect_err("above the range");
+            for bitrate_kbps in accepted {
+                preset(at(*bitrate_kbps)).validate().unwrap();
+            }
+            preset(at(accepted[0] - 1)).validate().expect_err("below the list");
+            preset(at(accepted[accepted.len() - 1] + 1)).validate().expect_err("above the list");
         }
     }
 }
@@ -89,7 +177,7 @@ fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
         SavePreset {
             id: "new".to_string(),
             name: "FLAC".to_string(),
-            codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
+            codec: SaveCodec::Flac { bit_depth: SaveBitDepth::SameAsSource },
             pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
             embed_cover: true,
         }

@@ -15,7 +15,6 @@ use bae_audio::sparse_buffer::BufferStop;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::{StreamEncodeFormat, StreamingEncoder};
 use bae_diagnostics::Diagnostics;
-use bae_preferences::SaveFormat;
 use bae_records::LibraryImageType;
 use bae_records::{ResolvedTrackAudio, ResolvedTrackAudioSegment};
 use bae_util::task_failure::caught_sync;
@@ -284,6 +283,12 @@ async fn stream_encoded(
     Ok(builder.body(Body::from_stream(ReceiverStream::new(rx))).expect("transcode response builds"))
 }
 
+/// The bitrates, in kbps, a transcoded MP3 stream is asked for: a client's
+/// maximum is brought into this range.
+const MP3_STREAM_KBPS: std::ops::RangeInclusive<u32> = 32..=320;
+/// The same for an Opus stream.
+const OPUS_STREAM_KBPS: std::ops::RangeInclusive<u32> = 32..=512;
+
 /// The transcode for the requested format and bitrate. `wav` is the track's
 /// stream uncompressed, at its stored depth (what a Cast device set to
 /// lossless conversion asks for); an unknown or absent format defaults to MP3
@@ -296,10 +301,12 @@ fn transcode_format(
     let bitrate = max_bitrate.filter(|&b| b > 0).unwrap_or(128) as u32;
     match requested_format {
         Some("wav") => wav_stream_format(audio),
-        Some("opus") | Some("ogg") => {
-            StreamEncodeFormat::OpusOgg { bitrate_kbps: SaveFormat::clamp_aac_opus_kbps(bitrate) }
-        }
-        _ => StreamEncodeFormat::Mp3 { bitrate_kbps: SaveFormat::clamp_mp3_kbps(bitrate) },
+        Some("opus") | Some("ogg") => StreamEncodeFormat::OpusOgg {
+            bitrate_kbps: bitrate.clamp(*OPUS_STREAM_KBPS.start(), *OPUS_STREAM_KBPS.end()),
+        },
+        _ => StreamEncodeFormat::Mp3 {
+            bitrate_kbps: bitrate.clamp(*MP3_STREAM_KBPS.start(), *MP3_STREAM_KBPS.end()),
+        },
     }
 }
 

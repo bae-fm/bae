@@ -38,8 +38,8 @@ async fn a_new_library_starts_at_the_defaults() {
     assert_eq!(prefs.max_concurrent_uploads.get(), bae_app_dir::DEFAULT_CONCURRENT_TRANSFERS);
     assert_eq!(
         prefs.save_presets[0].codec,
-        SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
-        "the default FLAC preset writes 24-bit"
+        SaveCodec::Flac { bit_depth: SaveBitDepth::SameAsSource },
+        "the default FLAC preset writes the source's depth"
     );
     assert_eq!(
         prefs.save_filename_tokens,
@@ -61,7 +61,7 @@ async fn every_preference_reads_back_as_set() {
             SavePreset {
                 id: "wav".to_string(),
                 name: "WAV \"24-bit\" — 設定".to_string(),
-                codec: SaveCodec::Wav { bit_depth: SaveBitDepth::Bits24 },
+                codec: SaveCodec::Wav { bit_depth: SaveBitDepth::SameAsSource },
                 pregap_placement: SavePregapPlacement::Exclude,
                 embed_cover: false,
             },
@@ -144,8 +144,8 @@ async fn each_choice_of_each_setting_reads_back() {
         SaveCodec::Mp3 { bitrate_kbps: 192 },
         SaveCodec::Aac { bitrate_kbps: 256 },
         SaveCodec::OpusOgg { bitrate_kbps: 128 },
-        SaveCodec::Wav { bit_depth: SaveBitDepth::Bits24 },
-        SaveCodec::Aiff { bit_depth: SaveBitDepth::Bits32 },
+        SaveCodec::Wav { bit_depth: SaveBitDepth::SameAsSource },
+        SaveCodec::Aiff { bit_depth: SaveBitDepth::Bits16 },
     ] {
         let stored = codec.clone();
         set(&db, move |prefs| prefs.save_presets[0].codec = stored).await;
@@ -229,6 +229,24 @@ async fn the_schema_refuses_preferences_no_setter_writes() {
             "an MP3 bitrate past 320",
             Box::new(|prefs: &mut Preferences| {
                 prefs.save_presets[1].codec = SaveCodec::Mp3 { bitrate_kbps: 384 };
+            }),
+        ),
+        (
+            "an MP3 bitrate between two the encoder writes",
+            Box::new(|prefs: &mut Preferences| {
+                prefs.save_presets[1].codec = SaveCodec::Mp3 { bitrate_kbps: 100 };
+            }),
+        ),
+        (
+            "an AAC bitrate below 96",
+            Box::new(|prefs: &mut Preferences| {
+                prefs.save_presets[1].codec = SaveCodec::Aac { bitrate_kbps: 64 };
+            }),
+        ),
+        (
+            "an Opus bitrate above 256",
+            Box::new(|prefs: &mut Preferences| {
+                prefs.save_presets[1].codec = SaveCodec::OpusOgg { bitrate_kbps: 320 };
             }),
         ),
         (

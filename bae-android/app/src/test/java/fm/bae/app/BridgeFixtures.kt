@@ -287,7 +287,7 @@ object BridgeFixtures {
                     BridgeSavePreset(
                         id = "flac",
                         name = "FLAC",
-                        codec = BridgeSaveCodec.Flac(bitDepth = BridgeSaveBitDepth.BITS24),
+                        codec = BridgeSaveCodec.Flac(bitDepth = BridgeSaveBitDepth.SAME_AS_SOURCE),
                         pregapPlacement =
                             BridgeSavePregapPlacement.APPEND_TO_PREVIOUS_EXCEPT_HTOA,
                         embedCover = true,

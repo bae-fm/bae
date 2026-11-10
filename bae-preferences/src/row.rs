@@ -153,11 +153,11 @@ fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
         let id: String = row.get("id")?;
         let codec: String = row.get("codec")?;
         let bit_depth = || -> rusqlite::Result<SaveBitDepth> {
-            match row.get::<_, u32>("bit_depth")? {
-                16 => Ok(SaveBitDepth::Bits16),
-                24 => Ok(SaveBitDepth::Bits24),
-                32 => Ok(SaveBitDepth::Bits32),
-                other => Err(invalid(row, "bit_depth", other)),
+            let stored: String = row.get("bit_depth")?;
+            match stored.as_str() {
+                "same_as_source" => Ok(SaveBitDepth::SameAsSource),
+                "bits_16" => Ok(SaveBitDepth::Bits16),
+                _ => Err(invalid(row, "bit_depth", stored)),
             }
         };
         let bitrate_kbps = || row.get::<_, u32>("bitrate_kbps");
@@ -188,6 +188,13 @@ fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
     })
 }
 
+fn bit_depth_column(bit_depth: SaveBitDepth) -> &'static str {
+    match bit_depth {
+        SaveBitDepth::SameAsSource => "same_as_source",
+        SaveBitDepth::Bits16 => "bits_16",
+    }
+}
+
 /// Write what `edited` changed of `stored`: the row's columns, the
 /// presets whole when any of them changed, and the filename pattern whole
 /// when it changed.
@@ -203,9 +210,9 @@ fn write_preferences_on(
         sql.execute("DELETE FROM save_preset", [])?;
         for (position, preset) in edited.save_presets.iter().enumerate() {
             let (codec, bit_depth, bitrate_kbps) = match preset.codec {
-                SaveCodec::Flac { bit_depth } => ("flac", Some(bit_depth.bits()), None),
-                SaveCodec::Wav { bit_depth } => ("wav", Some(bit_depth.bits()), None),
-                SaveCodec::Aiff { bit_depth } => ("aiff", Some(bit_depth.bits()), None),
+                SaveCodec::Flac { bit_depth } => ("flac", Some(bit_depth_column(bit_depth)), None),
+                SaveCodec::Wav { bit_depth } => ("wav", Some(bit_depth_column(bit_depth)), None),
+                SaveCodec::Aiff { bit_depth } => ("aiff", Some(bit_depth_column(bit_depth)), None),
                 SaveCodec::Mp3 { bitrate_kbps } => ("mp3", None, Some(bitrate_kbps)),
                 SaveCodec::Aac { bitrate_kbps } => ("aac", None, Some(bitrate_kbps)),
                 SaveCodec::OpusOgg { bitrate_kbps } => ("opus_ogg", None, Some(bitrate_kbps)),

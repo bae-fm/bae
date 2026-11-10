@@ -1,22 +1,18 @@
 use super::*;
 
-/// The formats cross in core's order, each with the codec it starts at and,
-/// when lossy, the bitrates core's preset check accepts.
+/// The formats cross in core's groups and order, each with the codec it
+/// starts at and, when lossy, the bitrates core's preset check accepts.
 #[test]
 fn each_format_crosses_with_cores_default_and_bitrates() {
-    let formats = bridge_save_formats();
+    let groups = bridge_save_format_groups();
     assert_eq!(
-        formats,
+        groups,
         vec![
-            BridgeSaveFormat::Flac,
-            BridgeSaveFormat::Mp3,
-            BridgeSaveFormat::Aac,
-            BridgeSaveFormat::OpusOgg,
-            BridgeSaveFormat::Wav,
-            BridgeSaveFormat::Aiff,
+            vec![BridgeSaveFormat::Flac, BridgeSaveFormat::Wav, BridgeSaveFormat::Aiff],
+            vec![BridgeSaveFormat::Mp3, BridgeSaveFormat::Aac, BridgeSaveFormat::OpusOgg],
         ]
     );
-    for format in formats {
+    for format in groups.into_iter().flatten() {
         let codec = bridge_save_format_default_codec(format);
         assert_eq!(bridge_save_codec_format(&codec), format);
     }
@@ -26,20 +22,39 @@ fn each_format_crosses_with_cores_default_and_bitrates() {
     );
     assert_eq!(
         bridge_save_format_bitrates_kbps(BridgeSaveFormat::Mp3),
-        Some(BridgeKbpsRange { min: 32, max: 320 })
+        Some(vec![32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320])
     );
     assert_eq!(
         bridge_save_format_bitrates_kbps(BridgeSaveFormat::OpusOgg),
-        Some(BridgeKbpsRange { min: 32, max: 512 })
+        Some(vec![64, 96, 128, 160, 192, 256])
     );
     assert_eq!(bridge_save_format_bitrates_kbps(BridgeSaveFormat::Flac), None);
+}
+
+/// Switching format crosses as core carries the setting over.
+#[test]
+fn switching_a_codec_to_a_format_crosses_as_core_does_it() {
+    assert_eq!(
+        bridge_save_codec_switched_to(
+            &BridgeSaveCodec::Flac { bit_depth: BridgeSaveBitDepth::Bits16 },
+            BridgeSaveFormat::Aiff
+        ),
+        BridgeSaveCodec::Aiff { bit_depth: BridgeSaveBitDepth::Bits16 }
+    );
+    assert_eq!(
+        bridge_save_codec_switched_to(
+            &BridgeSaveCodec::Mp3 { bitrate_kbps: 40 },
+            BridgeSaveFormat::Aac
+        ),
+        BridgeSaveCodec::Aac { bitrate_kbps: 96 }
+    );
 }
 
 /// A codec's extension and whether it can write one file with a CUE sheet
 /// cross as core gives them.
 #[test]
 fn each_codecs_facts_cross_as_core_gives_them() {
-    for format in bridge_save_formats() {
+    for format in bridge_save_format_groups().into_iter().flatten() {
         let codec = bridge_save_format_default_codec(format);
         let core = codec.clone().into_core();
         assert_eq!(bridge_save_codec_extension(&codec), core.extension());

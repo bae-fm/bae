@@ -364,7 +364,7 @@ mod conversion_roundtrip {
             id: "preset-1".to_string(),
             name: "Preset One".to_string(),
             codec: bae_preferences::SaveCodec::Flac {
-                bit_depth: bae_preferences::SaveBitDepth::Bits24,
+                bit_depth: bae_preferences::SaveBitDepth::SameAsSource,
             },
             pregap_placement: bae_preferences::SavePregapPlacement::Exclude,
             embed_cover: false,

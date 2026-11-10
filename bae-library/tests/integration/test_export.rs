@@ -135,6 +135,69 @@ async fn export_track_from_cloud_only_release() {
     assert_eq!(exported_pcm.samples, original_pcm.samples);
 }
 
+/// The bit depth a saved file's header states.
+fn saved_bit_depth(path: &Path) -> u8 {
+    use lofty::file::AudioFile;
+    lofty::read_from_path(path)
+        .expect("the saved file reads")
+        .properties()
+        .bit_depth()
+        .expect("a lossless file states its depth")
+}
+
+/// A lossless format set to the source's depth writes each track at the depth
+/// it was stored at, a 16-bit CD rip at 16 and a 24-bit file at 24; set to
+/// 16-bit it writes 16 for both.
+#[tokio::test]
+async fn a_lossless_format_writes_the_depth_of_the_track_it_saves() {
+    bae_util::test_logs::install();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    let silence_24_bit = vec![0u8; 44_100 * 2 * 3];
+    fs::write(
+        album_dir.join("02.wav"),
+        bae_audio::test_samples::wav_with_fmt(1, 24, 2, 44_100, &silence_24_bit),
+    )
+    .unwrap();
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
+    assert_eq!(tracks.len(), 2);
+    let manager = f.library.manager();
+
+    let mut presets = manager.save_presets().await.unwrap();
+    let same_as_source = presets.iter().find(|preset| preset.id == "flac").unwrap().clone();
+    assert_eq!(same_as_source.codec, SaveCodec::Flac { bit_depth: SaveBitDepth::SameAsSource });
+    let sixteen = SavePreset {
+        id: "sixteen".to_string(),
+        name: "16-bit".to_string(),
+        codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
+        ..same_as_source.clone()
+    };
+    presets.push(sixteen.clone());
+    manager.set_save_presets(presets).await.unwrap();
+
+    let depths = |preset: &SavePreset| {
+        let (f, tracks, preset) = (&f, &tracks, preset.id.clone());
+        async move {
+            let mut depths = Vec::new();
+            for (index, track) in tracks.iter().enumerate() {
+                let out = f.temp_path().join(format!("{preset}-{index}.flac"));
+                f.library
+                    .manager()
+                    .save_track(&track.id, &out, &preset)
+                    .await
+                    .expect("the track saves");
+                depths.push(saved_bit_depth(&out));
+            }
+            depths
+        }
+    };
+    assert_eq!(depths(&same_as_source).await, vec![16, 24]);
+    assert_eq!(depths(&sixteen).await, vec![16, 16]);
+}
+
 /// The one filename pattern names every file a save writes, whatever the
 /// format: a single track's suggested name and each file of a release save in
 /// FLAC and in MP3 come from it, and setting the pattern changes all of them.

@@ -19,18 +19,15 @@ mirror_enum! {
     variants: { Flac, Mp3, Aac, OpusOgg, Wav, Aiff },
 }
 
-/// The bitrates a lossy format saves at, in kbps, both ends included.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeKbpsRange {
-    pub min: u32,
-    pub max: u32,
-}
-
 /// Every format a preset can save as, in the order a format picker offers
-/// them.
+/// them, in the groups it sets apart: the lossless formats, then the lossy
+/// ones.
 #[uniffi::export]
-pub fn bridge_save_formats() -> Vec<BridgeSaveFormat> {
-    bae_preferences::SaveFormat::ALL.into_iter().map(BridgeSaveFormat::from_core).collect()
+pub fn bridge_save_format_groups() -> Vec<Vec<BridgeSaveFormat>> {
+    bae_preferences::SaveFormat::groups()
+        .into_iter()
+        .map(|group| group.into_iter().map(BridgeSaveFormat::from_core).collect())
+        .collect()
 }
 
 /// The codec a preset of `format` starts at.
@@ -39,14 +36,20 @@ pub fn bridge_save_format_default_codec(format: BridgeSaveFormat) -> BridgeSaveC
     BridgeSaveCodec::from_core(&format.into_core().default_codec())
 }
 
-/// The bitrates a lossy `format` saves at; `None` for a lossless one, which
-/// has a bit depth instead.
+/// The bitrates a lossy `format` saves at, lowest first; `None` for a
+/// lossless one, which has a bit depth instead.
 #[uniffi::export]
-pub fn bridge_save_format_bitrates_kbps(format: BridgeSaveFormat) -> Option<BridgeKbpsRange> {
-    format
-        .into_core()
-        .bitrates_kbps()
-        .map(|range| BridgeKbpsRange { min: *range.start(), max: *range.end() })
+pub fn bridge_save_format_bitrates_kbps(format: BridgeSaveFormat) -> Option<Vec<u32>> {
+    format.into_core().bitrates_kbps().map(<[u32]>::to_vec)
+}
+
+/// `codec` carried over to `format`, keeping the setting that still applies.
+#[uniffi::export]
+pub fn bridge_save_codec_switched_to(
+    codec: &BridgeSaveCodec,
+    format: BridgeSaveFormat,
+) -> BridgeSaveCodec {
+    BridgeSaveCodec::from_core(&codec.clone().into_core().switched_to(format.into_core()))
 }
 
 /// The name of `format`, a proper noun shown as-is in every locale.

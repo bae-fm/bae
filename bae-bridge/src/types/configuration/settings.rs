@@ -22,9 +22,8 @@ pub struct BridgeSortCriterion {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSaveBitDepth {
+    SameAsSource,
     Bits16,
-    Bits24,
-    Bits32,
 }
 
 /// One piece of an export filename pattern — an ordered token list; rendering

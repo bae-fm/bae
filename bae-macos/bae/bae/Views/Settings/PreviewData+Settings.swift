@@ -19,7 +19,7 @@
             BridgeSavePreset(
                 id: "flac",
                 name: "FLAC",
-                codec: .flac(bitDepth: .bits24),
+                codec: .flac(bitDepth: .sameAsSource),
                 pregapPlacement: .appendToPreviousExceptHtoa,
                 embedCover: true
             ),

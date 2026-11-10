@@ -2360,9 +2360,13 @@ Two ways put a release back on disk, from desktop:
 - **Save** converts: one track, or a whole release, for a car or a phone
   (FLAC to MP3, say); an exact copy is an export. It writes new files in a
   *format* the person keeps in Settings → Save as: a name, a codec, and the
-  codec's bit depth or bitrate. A lossless format writes the source's depth,
-  or 16 bits for players that can't take more; a lossy one writes its
-  bitrate. A new format is named after its codec, with the first free number
+  codec's bit depth or bitrate. A lossless format writes the source's depth
+  (16 bits for a lossy source, which has none of its own), or 16 bits for
+  players that can't take more; a lossy one writes one of the bitrates its
+  encoder writes: MP3's fourteen constant rates from 32 to 320 kbps, AAC's 96,
+  128, 160, 192, 256 and 320, Opus's 64, 96, 128, 160, 192 and 256. The
+  formats are offered FLAC, WAV and AIFF, then MP3, AAC and Opus. A new
+  format is named after its codec, with the first free number
   when that name is taken ("FLAC", "FLAC (2)"); names are unique, and two
   formats may write the same thing. Save as… offers every format, for a track
   and for a release, starting with the one last used; its Format menu ends in

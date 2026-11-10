@@ -1,8 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The bit-depth row for lossless presets, in the editor's Advanced group.
-/// Every lossless preset writes one of the three depths it lists.
+/// The bit-depth row for lossless presets: the source's depth, or 16-bit.
 struct PresetBitDepthRow: View {
     let preset: BridgeSavePreset
     let bitDepth: BridgeSaveBitDepth
@@ -21,9 +20,10 @@ struct PresetBitDepthRow: View {
                     }
                 )
             ) {
-                Text("16-bit").tag(BridgeSaveBitDepth.bits16)
-                Text("24-bit").tag(BridgeSaveBitDepth.bits24)
-                Text("32-bit").tag(BridgeSaveBitDepth.bits32)
+                Text(BridgeSaveBitDepth.sameAsSource.label)
+                    .tag(BridgeSaveBitDepth.sameAsSource)
+                Text(BridgeSaveBitDepth.bits16.label)
+                    .tag(BridgeSaveBitDepth.bits16)
             }
             .labelsHidden()
         }
@@ -36,7 +36,7 @@ struct PresetBitDepthRow: View {
         Form {
             PresetBitDepthRow(
                 preset: PreviewData.savePresets[0],
-                bitDepth: .bits24,
+                bitDepth: .sameAsSource,
                 update: { _ in },
             )
         }

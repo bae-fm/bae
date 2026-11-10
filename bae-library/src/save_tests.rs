@@ -313,3 +313,24 @@ fn a_read_that_panics_fails_the_save_as_unfinished() {
         Ok(_) => panic!("a read that panicked leaves the save unfinished, not encoded"),
     }
 }
+
+/// A lossless codec set to the source's depth encodes at the depth of the
+/// track it saves; set to 16-bit it encodes 16 whatever the track holds.
+#[test]
+fn a_lossless_codec_encodes_at_the_depth_it_resolves_to() {
+    use bae_audio::EncodeFormat;
+    use bae_preferences::{SaveBitDepth, SaveCodec};
+    let source = NonZeroU32::new(24);
+    assert!(matches!(
+        encode_format(&SaveCodec::Flac { bit_depth: SaveBitDepth::SameAsSource }, source),
+        EncodeFormat::Flac { bits_per_sample: 24 }
+    ));
+    assert!(matches!(
+        encode_format(&SaveCodec::Wav { bit_depth: SaveBitDepth::Bits16 }, source),
+        EncodeFormat::PcmWav { bits_per_sample: 16 }
+    ));
+    assert!(matches!(
+        encode_format(&SaveCodec::Aiff { bit_depth: SaveBitDepth::SameAsSource }, None),
+        EncodeFormat::PcmAiff { bits_per_sample: 16 }
+    ));
+}

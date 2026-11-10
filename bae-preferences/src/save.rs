@@ -1,5 +1,5 @@
 use super::PreferencesError;
-use std::ops::RangeInclusive;
+use std::num::NonZeroU32;
 
 use serde::{Deserialize, Serialize};
 
@@ -25,21 +25,22 @@ pub(super) fn default_save_filename_tokens() -> Vec<SaveFilenameToken> {
     vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
 }
 
-/// The bit depth a lossless save format writes. Always one of these three, so
-/// a saved file's depth never depends on what the source happens to state.
+/// The bit depth a lossless save format writes: the depth of the track being
+/// saved, or 16 bits for players that can't take more.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SaveBitDepth {
+    SameAsSource,
     Bits16,
-    Bits24,
-    Bits32,
 }
 
 impl SaveBitDepth {
-    pub fn bits(self) -> u32 {
+    /// The bits per sample a file is written at, for a source track stored at
+    /// `source`. A source with no depth of its own is lossy audio, which a
+    /// decoder hands out at 16 bits.
+    pub fn bits(self, source: Option<NonZeroU32>) -> u32 {
         match self {
+            Self::SameAsSource => source.map_or(16, NonZeroU32::get),
             Self::Bits16 => 16,
-            Self::Bits24 => 24,
-            Self::Bits32 => 32,
         }
     }
 }
@@ -67,45 +68,43 @@ pub enum SaveFormat {
 }
 
 impl SaveFormat {
-    /// Every format, in the order a format picker offers them.
+    /// Every format, in the order a format picker offers them: the lossless
+    /// formats, then the lossy ones.
     pub const ALL: [SaveFormat; 6] =
-        [Self::Flac, Self::Mp3, Self::Aac, Self::OpusOgg, Self::Wav, Self::Aiff];
+        [Self::Flac, Self::Wav, Self::Aiff, Self::Mp3, Self::Aac, Self::OpusOgg];
+
+    /// [`Self::ALL`] in its runs of lossless and of lossy formats, which a
+    /// picker sets apart.
+    pub fn groups() -> Vec<Vec<SaveFormat>> {
+        Self::ALL
+            .chunk_by(|a, b| a.bitrates_kbps().is_some() == b.bitrates_kbps().is_some())
+            .map(<[SaveFormat]>::to_vec)
+            .collect()
+    }
 
     /// The codec a preset of this format starts at.
     pub fn default_codec(self) -> SaveCodec {
         match self {
-            Self::Flac => SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
+            Self::Flac => SaveCodec::Flac { bit_depth: SaveBitDepth::SameAsSource },
             Self::Mp3 => SaveCodec::Mp3 { bitrate_kbps: 320 },
             Self::Aac => SaveCodec::Aac { bitrate_kbps: 256 },
             Self::OpusOgg => SaveCodec::OpusOgg { bitrate_kbps: 192 },
-            Self::Wav => SaveCodec::Wav { bit_depth: SaveBitDepth::Bits24 },
-            Self::Aiff => SaveCodec::Aiff { bit_depth: SaveBitDepth::Bits24 },
+            Self::Wav => SaveCodec::Wav { bit_depth: SaveBitDepth::SameAsSource },
+            Self::Aiff => SaveCodec::Aiff { bit_depth: SaveBitDepth::SameAsSource },
         }
     }
 
-    /// The bitrates a lossy format saves at, in kbps; `None` for a lossless
-    /// one, which has a bit depth instead.
-    pub fn bitrates_kbps(self) -> Option<RangeInclusive<u32>> {
+    /// The bitrates a lossy format saves at, in kbps, lowest first: the ones
+    /// its encoder writes. `None` for a lossless format, which has a bit depth
+    /// instead.
+    pub fn bitrates_kbps(self) -> Option<&'static [u32]> {
         match self {
-            Self::Mp3 => Some(Self::MP3_BITRATES_KBPS),
-            Self::Aac | Self::OpusOgg => Some(Self::AAC_OPUS_BITRATES_KBPS),
+            // libmp3lame's constant bitrates; anything between is rounded.
+            Self::Mp3 => Some(&[32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320]),
+            Self::Aac => Some(&[96, 128, 160, 192, 256, 320]),
+            Self::OpusOgg => Some(&[64, 96, 128, 160, 192, 256]),
             Self::Flac | Self::Wav | Self::Aiff => None,
         }
-    }
-
-    /// The bitrates MP3 saves and streams at, in kbps.
-    pub const MP3_BITRATES_KBPS: RangeInclusive<u32> = 32..=320;
-    /// The bitrates AAC and Opus save and stream at, in kbps.
-    pub const AAC_OPUS_BITRATES_KBPS: RangeInclusive<u32> = 32..=512;
-
-    /// `kbps` brought into the MP3 range.
-    pub fn clamp_mp3_kbps(kbps: u32) -> u32 {
-        kbps.clamp(*Self::MP3_BITRATES_KBPS.start(), *Self::MP3_BITRATES_KBPS.end())
-    }
-
-    /// `kbps` brought into the AAC and Opus range.
-    pub fn clamp_aac_opus_kbps(kbps: u32) -> u32 {
-        kbps.clamp(*Self::AAC_OPUS_BITRATES_KBPS.start(), *Self::AAC_OPUS_BITRATES_KBPS.end())
     }
 
     /// The format's name, a proper noun shown as-is in every locale; a new
@@ -142,6 +141,54 @@ impl SaveCodec {
             Self::OpusOgg { .. } => "ogg",
             Self::Wav { .. } => "wav",
             Self::Aiff { .. } => "aiff",
+        }
+    }
+
+    /// This codec's setting under `format`: the bit depth carries across
+    /// lossless formats, the bitrate across lossy ones (to the nearest the new
+    /// format writes, the lower of two equally near); a switch between
+    /// lossless and lossy starts the new format's own codec.
+    pub fn switched_to(&self, format: SaveFormat) -> SaveCodec {
+        let start = format.default_codec();
+        match (self, &start) {
+            (
+                Self::Flac { bit_depth } | Self::Wav { bit_depth } | Self::Aiff { bit_depth },
+                SaveCodec::Flac { .. } | SaveCodec::Wav { .. } | SaveCodec::Aiff { .. },
+            ) => start.with_bit_depth(*bit_depth),
+            (
+                Self::Mp3 { bitrate_kbps }
+                | Self::Aac { bitrate_kbps }
+                | Self::OpusOgg { bitrate_kbps },
+                SaveCodec::Mp3 { .. } | SaveCodec::Aac { .. } | SaveCodec::OpusOgg { .. },
+            ) => {
+                let accepted = format.bitrates_kbps().expect("a lossy format lists bitrates");
+                let nearest = *accepted
+                    .iter()
+                    .min_by_key(|accepted| accepted.abs_diff(*bitrate_kbps))
+                    .expect("a lossy format lists at least one bitrate");
+                start.with_bitrate_kbps(nearest)
+            }
+            _ => start,
+        }
+    }
+
+    /// This lossless codec at `bit_depth`; a lossy codec has none to set.
+    fn with_bit_depth(self, bit_depth: SaveBitDepth) -> SaveCodec {
+        match self {
+            Self::Flac { .. } => Self::Flac { bit_depth },
+            Self::Wav { .. } => Self::Wav { bit_depth },
+            Self::Aiff { .. } => Self::Aiff { bit_depth },
+            Self::Mp3 { .. } | Self::Aac { .. } | Self::OpusOgg { .. } => self,
+        }
+    }
+
+    /// This lossy codec at `bitrate_kbps`; a lossless codec has none to set.
+    fn with_bitrate_kbps(self, bitrate_kbps: u32) -> SaveCodec {
+        match self {
+            Self::Mp3 { .. } => Self::Mp3 { bitrate_kbps },
+            Self::Aac { .. } => Self::Aac { bitrate_kbps },
+            Self::OpusOgg { .. } => Self::OpusOgg { bitrate_kbps },
+            Self::Flac { .. } | Self::Wav { .. } | Self::Aiff { .. } => self,
         }
     }
 
@@ -216,7 +263,7 @@ impl SavePreset {
         | SaveCodec::OpusOgg { bitrate_kbps } = self.codec
         {
             let format = self.codec.format();
-            let accepted = format.bitrates_kbps().expect("a lossy format has a bitrate range");
+            let accepted = format.bitrates_kbps().expect("a lossy format lists its bitrates");
             if !accepted.contains(&bitrate_kbps) {
                 return Err(PreferencesError::Invalid(format!(
                     "export preset {} has unsupported {} bitrate {}",

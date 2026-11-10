@@ -10,12 +10,10 @@ struct SavePresetEditor: View {
     @Environment(\.dismiss)
     private var dismiss
 
-    /// The free-form fields, committed on submit or focus loss; an invalid
-    /// draft disables Done instead.
+    /// The name field, committed on submit or focus loss; an empty draft
+    /// disables Done instead.
     @State
     private var nameDraft = ""
-    @State
-    private var bitrateDraft = ""
     @State
     private var advancedExpanded = false
     @FocusState
@@ -27,25 +25,12 @@ struct SavePresetEditor: View {
                 Section {
                     nameRow
                     formatRow
-                    if preset.codec.bitrateKbps != nil {
-                        PresetBitrateRow(
-                            preset: preset,
-                            bitrateDraft: $bitrateDraft,
-                            update: update
-                        )
-                    }
+                    qualityRow
                 }
                 Section {
                     coverRow
                 }
                 FormDisclosure(isExpanded: $advancedExpanded) {
-                    if let bitDepth = preset.codec.bitDepth {
-                        PresetBitDepthRow(
-                            preset: preset,
-                            bitDepth: bitDepth,
-                            update: update
-                        )
-                    }
                     pregapRow
                 } label: {
                     Text("Advanced")
@@ -56,7 +41,7 @@ struct SavePresetEditor: View {
                 Button("Done") { dismiss() }
                     .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
-                    .disabled(!nameValid || !bitrateValid)
+                    .disabled(!nameValid)
             }
             .padding([.horizontal, .bottom], ThemeSpace.edge)
         }
@@ -64,27 +49,35 @@ struct SavePresetEditor: View {
         .task(id: preset.name) {
             nameDraft = preset.name
         }
-        .task(id: preset.codec.bitrateKbps) {
-            if let bitrateKbps = preset.codec.bitrateKbps {
-                bitrateDraft = String(bitrateKbps)
-            }
-        }
     }
 
     private var nameValid: Bool {
         !nameDraft.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    /// The bitrate draft parses and lands in the codec's supported range;
-    /// lossless codecs carry no bitrate to validate.
-    private var bitrateValid: Bool {
-        guard
+    /// The format's one quality setting: a bit depth for a lossless codec, a
+    /// bitrate from the format's list for a lossy one.
+    @ViewBuilder
+    private var qualityRow: some View {
+        if let bitDepth = preset.codec.bitDepth {
+            PresetBitDepthRow(
+                preset: preset,
+                bitDepth: bitDepth,
+                update: update
+            )
+        }
+        else if let bitrate = preset.codec.bitrateKbps,
             let accepted = bridgeSaveFormatBitratesKbps(
                 format: preset.codec.format
             )
-        else { return true }
-        guard let value = UInt32(bitrateDraft) else { return false }
-        return (accepted.min...accepted.max).contains(value)
+        {
+            PresetBitrateRow(
+                preset: preset,
+                bitrate: bitrate,
+                accepted: accepted,
+                update: update
+            )
+        }
     }
 
     private var nameRow: some View {
@@ -106,8 +99,8 @@ struct SavePresetEditor: View {
         .presetEditorRowInsets()
     }
 
-    /// The formats the picker offers, in core's order.
-    private static let formats = bridgeSaveFormats()
+    /// The formats the picker offers, in core's order and groups.
+    private static let formatGroups = bridgeSaveFormatGroups()
 
     private var formatRow: some View {
         LabeledContent("Format") {
@@ -138,8 +131,13 @@ struct SavePresetEditor: View {
                 }
             )
         ) {
-            ForEach(Self.formats, id: \.self) { format in
-                Text(format.label).tag(format)
+            ForEach(Self.formatGroups.indices, id: \.self) { group in
+                if group > 0 {
+                    Divider()
+                }
+                ForEach(Self.formatGroups[group], id: \.self) { format in
+                    Text(format.label).tag(format)
+                }
             }
         }
         .labelsHidden()

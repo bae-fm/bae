@@ -5,7 +5,7 @@ use bae_track_audio::track_sources::{run_tracks_over_sources, SourceStream};
 use bae_util::task_failure::{Bug, TaskFailed};
 use coven::task::{blocking_completing, BugSinkRef};
 use std::collections::HashMap;
-use std::num::NonZeroUsize;
+use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -297,7 +297,7 @@ impl SaveService {
             })?
             .to_string();
 
-        let format = encode_format(&preset.codec);
+        let format = encode_format(&preset.codec, plans[0].audio_meta.audio_format.bits_per_sample);
         let tag_type = codec_tag_type(&preset.codec);
         let tags = crate::manager::SaveTags {
             title: release_title.clone(),
@@ -452,7 +452,7 @@ impl SaveService {
         let cancel = Arc::new(AtomicBool::new(false));
         let _cancel_guard = CancelSaveOnDrop(Arc::clone(&cancel));
 
-        let format = encode_format(&codec);
+        let format = encode_format(&codec, plan.audio_meta.audio_format.bits_per_sample);
         let tag_type = codec_tag_type(&codec);
         let sample_rate = plan.audio_meta.audio_format.sample_rate.get();
         let channels = plan.audio_meta.audio_format.channels.get();
@@ -567,19 +567,27 @@ fn encode_image_track(
     })
 }
 
-/// The encoder format for a save codec.
-fn encode_format(codec: &bae_preferences::SaveCodec) -> EncodeFormat {
+/// The encoder format for a save codec, for a track stored at `source_depth`
+/// (see [`bae_preferences::SaveBitDepth::bits`]).
+fn encode_format(
+    codec: &bae_preferences::SaveCodec,
+    source_depth: Option<NonZeroU32>,
+) -> EncodeFormat {
     use bae_preferences::SaveCodec;
     match codec {
-        SaveCodec::Flac { bit_depth } => EncodeFormat::Flac { bits_per_sample: bit_depth.bits() },
+        SaveCodec::Flac { bit_depth } => {
+            EncodeFormat::Flac { bits_per_sample: bit_depth.bits(source_depth) }
+        }
         SaveCodec::Mp3 { bitrate_kbps } => EncodeFormat::Mp3 { bitrate_kbps: *bitrate_kbps },
         SaveCodec::Aac { bitrate_kbps } => EncodeFormat::Aac { bitrate_kbps: *bitrate_kbps },
         SaveCodec::OpusOgg { bitrate_kbps } => {
             EncodeFormat::OpusOgg { bitrate_kbps: *bitrate_kbps }
         }
-        SaveCodec::Wav { bit_depth } => EncodeFormat::PcmWav { bits_per_sample: bit_depth.bits() },
+        SaveCodec::Wav { bit_depth } => {
+            EncodeFormat::PcmWav { bits_per_sample: bit_depth.bits(source_depth) }
+        }
         SaveCodec::Aiff { bit_depth } => {
-            EncodeFormat::PcmAiff { bits_per_sample: bit_depth.bits() }
+            EncodeFormat::PcmAiff { bits_per_sample: bit_depth.bits(source_depth) }
         }
     }
 }

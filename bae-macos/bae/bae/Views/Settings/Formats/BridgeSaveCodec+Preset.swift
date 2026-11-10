@@ -5,23 +5,9 @@ extension BridgeSaveCodec {
     /// The format this codec saves as, as core reads it.
     var format: BridgeSaveFormat { bridgeSaveCodecFormat(codec: self) }
 
-    /// Switch format, carrying the setting that still applies: bit depth
-    /// across lossless formats, bitrate across lossy ones (clamped into the
-    /// bitrates the target saves at). A switch between lossless and lossy
-    /// takes the target's starting codec, all as core gives them.
+    /// This codec under another format, as core carries its setting over.
     func switched(to format: BridgeSaveFormat) -> BridgeSaveCodec {
-        let start = bridgeSaveFormatDefaultCodec(format: format)
-        if let bitDepth, start.bitDepth != nil {
-            return start.with(bitDepth: bitDepth)
-        }
-        if let bitrateKbps,
-            let accepted = bridgeSaveFormatBitratesKbps(format: format)
-        {
-            return start.with(
-                bitrateKbps: min(max(bitrateKbps, accepted.min), accepted.max)
-            )
-        }
-        return start
+        bridgeSaveCodecSwitchedTo(codec: self, format: format)
     }
 
     /// The lossless family's bit depth; nil for lossy codecs.
