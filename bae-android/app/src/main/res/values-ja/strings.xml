@@ -244,7 +244,6 @@
     <string name="finish_restore_title">このライブラリの復元を完了</string>
     <string name="finish_reset">このデバイスのリセットを完了</string>
     <string name="finish_removal">このライブラリの削除を完了</string>
-    <string name="profile_required_title">このライブラリへの参加を完了するには、名前を入力してください。</string>
     <string name="save">保存</string>
     <string name="onboarding_scan_code">コードをスキャン</string>
     <string name="onboarding_enter_code">コードを入力</string>

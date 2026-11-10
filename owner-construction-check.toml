@@ -199,8 +199,11 @@ non_owner_types = [
     "DecodeFailureReport",
     "PreparedAudioSegment",
     "PlaybackPreparedTrack",
-    # What opening a library hands the app.
+    # What opening a library hands the app, and what a join hands the
+    # bridge: the joined library's handle, with what failed once it was
+    # published.
     "BridgeBootstrapResult",
+    "JoinedLibrary",
     # What the outbox feed hands the app: the two streams it writes.
     "BridgeOutboxFeeds",
     # What a call was passed to follow it, if the app shows the call: the
@@ -1019,7 +1022,6 @@ OpenCalls = "LibrarySessions"
     "JoinControl::new",
     "join_with_invite",
     "resume_join",
-    "with_profile",
 ]
 "bae-library/src/manager/service.rs" = [
     "BackgroundTasks::new",

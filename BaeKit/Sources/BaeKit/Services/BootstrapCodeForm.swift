@@ -367,8 +367,7 @@ extension BootstrapCodeForm {
         switch result {
         case .opened(let library):
             onLibraryReady(library, nil)
-        case .published(let library, let warning),
-            .profileRequired(let library, let warning):
+        case .published(let library, let warning):
             onLibraryReady(library, warning)
         case .declined:
             error = DisplayError(

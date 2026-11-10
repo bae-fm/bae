@@ -43,8 +43,7 @@ extension BridgeHost {
         switch result {
         case .opened(let library):
             return (library, nil)
-        case .published(let library, let warning),
-            .profileRequired(let library, let warning):
+        case .published(let library, let warning):
             return (library, warning)
         case .savedCodeRemoved, .declined, .joinRequestSent, .callUnderWay:
             preconditionFailure(

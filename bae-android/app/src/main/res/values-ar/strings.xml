@@ -274,7 +274,6 @@
     <string name="finish_restore_title">إنهاء استعادة هذه المكتبة</string>
     <string name="finish_reset">إنهاء إعادة تعيين هذا الجهاز</string>
     <string name="finish_removal">إنهاء إزالة هذه المكتبة</string>
-    <string name="profile_required_title">أدخل اسمك لإكمال الانضمام إلى هذه المكتبة.</string>
     <string name="save">حفظ</string>
     <string name="onboarding_scan_code">مسح رمز</string>
     <string name="onboarding_enter_code">إدخال رمز</string>

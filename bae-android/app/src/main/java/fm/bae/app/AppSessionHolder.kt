@@ -223,17 +223,6 @@ sealed interface AppScreen {
     ) : Recovery
 
     /**
-     * Joining made this device a member, but writing the person's profile
-     * failed. The library stays open on this device's membership; the person
-     * gives their name again. [error] is why, none when core says the failure
-     * has nothing to show.
-     */
-    data class ProfileRequired(
-        val session: OpenLibrary,
-        val error: DisplayError?,
-    ) : AppScreen
-
-    /**
      * A library left its store, but this device's files for it remain, from
      * this run or an earlier one; finishing deletes them. [error] is why the
      * last attempt stopped, none when core says it has nothing to show.
@@ -483,9 +472,8 @@ object AppSessionHolder {
      * Open what a restore, a join or a device reset produced, on the handle it
      * carries: the store is already open, so it is never reopened by id. A
      * failure after the store was published opens it all the same and shows
-     * the failure; a join whose profile couldn't be written opens it and asks
-     * for the person's name again. An open that was cancelled shows nothing
-     * and stays on the library already open, or onboarding when none is.
+     * the failure. An open that was cancelled shows nothing and stays on the
+     * library already open, or onboarding when none is.
      */
     suspend fun openBootstrapped(
         context: Context,
@@ -497,8 +485,6 @@ object AppSessionHolder {
                 is BridgeBootstrapResult.Opened -> result.library to null
 
                 is BridgeBootstrapResult.Published -> result.library to result.error
-
-                is BridgeBootstrapResult.ProfileRequired -> result.library to result.error
 
                 BridgeBootstrapResult.Declined,
                 BridgeBootstrapResult.JoinRequestSent,
@@ -526,19 +512,8 @@ object AppSessionHolder {
                 return
             }
         refreshLibraries(app.host, context)
-        val shown = failure?.let(context::displayError)
-        onScreen(
-            when {
-                result is BridgeBootstrapResult.ProfileRequired -> {
-                    AppScreen.ProfileRequired(session, shown)
-                }
-
-                else -> {
-                    session.messages.show(shown)
-                    AppScreen.LibraryOpen(session)
-                }
-            },
-        )
+        session.messages.show(failure?.let(context::displayError))
+        onScreen(AppScreen.LibraryOpen(session))
     }
 
     private suspend fun openPrepared(

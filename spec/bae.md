@@ -2443,12 +2443,23 @@ history setting.
   keys, or re-inviting someone who lost every device, keeps the same id
   ([coven §13.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#133-losing-everything)).
 - **Ratings, history and playlists point at the person**, not the member.
-- **The joining person's own device asks for their `people` row** as part of
-  joining, with the name the admin typed in the invite, so every member has a
-  profile once their circle is made (below). They can rename themselves later. Someone
+- **The joining person's own device asks for their `people` row** with the
+  name the admin typed in the invite, so every member has a profile once
+  their circle is made (below). They can rename themselves later. Only the
+  invite holds that name on the joining device, and coven keeps it with the
+  library the join publishes, on that device only, until bae acknowledges it
+  ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)).
+  Every open of the library reads it: once the library knows the person, at
+  once or when sync has loaded that far, one write asks for the profile and
+  acknowledges the name, so the two commit or roll back together. A join
+  that finishes in one go, one whose first load failed and one bae quit
+  during all take this one path, at the library's open after the join or at
+  any later open. A person who made their profile, or asked for one, in
+  Settings meanwhile gets only the acknowledgment. A write that fails is
+  reported and leaves the name kept, and the next open asks again. Someone
   re-invited after losing every device keeps their row, since their
-  `MemberId` is the same. If the write fails, the person has joined anyway,
-  and Settings offers to create the profile again.
+  `MemberId` is the same: that invite carries no name, and coven keeps
+  none.
 - **The person who made the library** becomes a member when it gets a cloud
   home. Until then there is no member to credit. Settings then asks for their
   name and creates their profile.
@@ -2683,8 +2694,9 @@ compares it with Dan's screen, or asks him for his number, and approves if it
 matches. Every invite waits for her approval: someone who saw the code could
 use it before Dan, and only the number shows whose request it is.
 
-His phone then writes his `people` row with that name while it joins.
-Everyone's devices show Dan by name.
+Once his phone has opened the library and loaded his admission, it asks
+for his `people` row with that name (§5.4). Everyone's devices show Dan by
+name.
 
 **Once Ana approves.** As soon as Dan's phone finds her approval, the library
 is on his phone and the join is over: coven keeps his keys and publishes the
@@ -2697,8 +2709,9 @@ It is no failed join, and the first screen lists no join under way for it: it
 is a library that can't reach its storage, which its sync state shows, which
 sync retries, and which Dan removes as he removes any library. A load that
 bae quitting stops leaves the same library, whose sync loads the rest once it
-opens. A load that stopped before it knew Dan asks for no profile; Settings
-offers to create it once sync has loaded that far (§5.4).
+opens. A load that stopped before it knew Dan leaves his name with coven, and the
+library asks for his profile under it once sync has loaded that far, at
+that open or a later one (§5.4).
 
 **Open invites.** Until it ends, each invite Ana's laptop made is a row in
 People: the person's name, marked invited, with when it expires. The rows
@@ -4175,7 +4188,7 @@ library is registered there by id.
 | `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this device's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, keeping this device's settings, which a restore failing before its record leaves as it was; called again, finishes a restore that stopped after its record (§6.4) |
 | `resume_replacement` | finishes this device's reset or restore of a library that stopped after its record, from what coven kept: no code, and no sign-in unless the provider refuses the kept one; told which call the listing names, so a restore's finishing can be cancelled and a reset's can't (§6.4) |
-| `join_with_invite` | joins a library from an invite and writes the person's profile with the name the invite carries; once approved, returns the library open even when its first load failed, with that failure (§5.6) |
+| `join_with_invite` | joins a library from an invite, whose name for the person coven keeps with the library for its open to ask for their profile under (§5.4); once approved, returns the library open even when its first load failed, with that failure (§5.6) |
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
 | `unfinished_restores`, `resume_restore` | list the restores onto this device that stopped after they recorded themselves, and finish one after bae restarts, without the code, signing in only when coven has no sign-in it can use; a cancel before the device registered takes the restore back (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after its record (§6.4) |

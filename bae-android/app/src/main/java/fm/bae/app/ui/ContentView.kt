@@ -188,16 +188,6 @@ private fun AppScreenRouter(
             RecoveryScreen(current, oauthProvidersError, onScreen)
         }
 
-        is AppScreen.ProfileRequired -> {
-            SessionScreen(current.session) {
-                ProfileRequiredScreen(
-                    session = current.session,
-                    failure = current.error,
-                    onCreated = { onScreen(AppScreen.LibraryOpen(current.session)) },
-                )
-            }
-        }
-
         is AppScreen.RemovalIncomplete -> {
             RemovalIncompleteScreen(
                 error = current.error,

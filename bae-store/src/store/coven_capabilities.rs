@@ -34,6 +34,14 @@ impl Store {
         self.inner.handle.subscribe_store_name()
     }
 
+    /// The person's name the invite carried, which coven keeps on this
+    /// device with a library a join published until a write acknowledges it
+    /// (`CovenWrite::acknowledge_joined_invitee`); none for any other
+    /// library, and once acknowledged.
+    pub async fn joined_invitee(&self) -> Result<Option<String>, DbError> {
+        self.reported(self.inner.handle.joined_invitee().await).map_err(DbError::from)
+    }
+
     /// Delete the store, discarding what this device hasn't uploaded; the
     /// person confirmed that loss from [`Self::unsent_before_removal`].
     pub async fn delete_store(&self) -> Result<(), coven::StoreDeletionError> {

@@ -248,7 +248,6 @@
     <string name="finish_restore_title">Fuldfør gendannelsen af dette bibliotek</string>
     <string name="finish_reset">Fuldfør nulstillingen af denne enhed</string>
     <string name="finish_removal">Fuldfør fjernelsen af dette bibliotek</string>
-    <string name="profile_required_title">Skriv dit navn for at gøre tilmeldingen til dette bibliotek færdig.</string>
     <string name="save">Gem</string>
     <string name="onboarding_scan_code">Scan en kode</string>
     <string name="onboarding_enter_code">Indtast en kode</string>

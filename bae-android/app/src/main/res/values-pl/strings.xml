@@ -262,7 +262,6 @@
     <string name="finish_restore_title">Dokończ przywracanie tej biblioteki</string>
     <string name="finish_reset">Dokończ resetowanie tego urządzenia</string>
     <string name="finish_removal">Dokończ usuwanie tej biblioteki</string>
-    <string name="profile_required_title">Wpisz swoje imię, aby dokończyć dołączanie do tej biblioteki.</string>
     <string name="save">Zapisz</string>
     <string name="onboarding_scan_code">Zeskanuj kod</string>
     <string name="onboarding_enter_code">Wpisz kod</string>

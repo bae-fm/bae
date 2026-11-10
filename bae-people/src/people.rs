@@ -181,6 +181,23 @@ impl bae_util::task_failure::ReportedBug for ProfileRequestError {
     }
 }
 
+/// A bug the store carried back, which the store reported as it returned;
+/// a refusal of the profile holds none.
+impl bae_util::task_failure::ReportedBug for ProfileError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Database(error) => error.reported_bug(),
+            Self::NotRegistered
+            | Self::Missing
+            | Self::EmptyName
+            | Self::AlreadyExists
+            | Self::InvalidPrivateCircle
+            | Self::CirclePending(_)
+            | Self::Sync(_) => None,
+        }
+    }
+}
+
 impl From<coven::CovenError> for ProfileError {
     fn from(error: coven::CovenError) -> Self {
         Self::Database(error.into())

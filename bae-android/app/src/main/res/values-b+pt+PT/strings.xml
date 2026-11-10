@@ -249,7 +249,6 @@
     <string name="finish_restore_title">Concluir o restauro desta biblioteca</string>
     <string name="finish_reset">Concluir a reposição deste dispositivo</string>
     <string name="finish_removal">Concluir a remoção desta biblioteca</string>
-    <string name="profile_required_title">Introduza o seu nome para concluir a adesão a esta biblioteca.</string>
     <string name="save">Guardar</string>
     <string name="onboarding_scan_code">Ler um código</string>
     <string name="onboarding_enter_code">Introduzir um código</string>

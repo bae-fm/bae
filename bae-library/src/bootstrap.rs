@@ -13,8 +13,6 @@ use tokio::sync::watch;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreFromCodeError {
-    #[error(transparent)]
-    Profile(#[from] bae_people::people::ProfileError),
     #[error("restore cancelled")]
     Cancelled,
     #[error("restore failed: {0}")]
@@ -30,7 +28,6 @@ impl RestoreFromCodeError {
     /// credentials, or the keyring, or retry once the cloud is reachable.
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
-            Self::Profile(error) => error.category(),
             Self::Cancelled => bae_diagnostics::UiErrorCategory::Internal,
             Self::Restore(error) => bae_diagnostics::bootstrap_category(error),
             Self::SettingsUnread(error) => error.category(),
@@ -131,27 +128,18 @@ pub async fn restore_from_saved_code(
     .map_err(|error| reported_restore_error(diagnostics, error))
 }
 
-/// A join that let this device in: the library's open handle, and what came
-/// of the join beside it.
-pub type JoinedLibrary = (coven::CovenHandle, JoinOutcome);
-
-/// What came of a join that let this device in, beside the library it opened.
-pub struct JoinOutcome {
-    /// The profile the join asked for with the invite's name. The membership
-    /// is established even if asking failed: retain the handle and ask
-    /// again; do not join as another identity. `None` when the join asked
-    /// for none: for an invite that replaced an existing member's keys, whose
-    /// person keeps the row they already have, and for a library that
-    /// hasn't loaded far enough to know this device's person, whose profile
-    /// Settings offers once it has (§5.4). An asked-for profile is written
-    /// once sync has made the person's private circle.
-    pub profile: Option<Result<(), bae_people::people::ProfileError>>,
-    /// What failed once coven had published the library: its first load
-    /// (lost storage access among the causes), or keeping the published
-    /// library. The library is open all the same, and its sync goes on from
-    /// where the load stopped; its sync state shows a load that can't reach
-    /// storage (§5.6).
-    pub published_failure: Option<Box<coven::BootstrapError>>,
+/// A join that let this device in: the library's open handle, and what
+/// failed once coven published it, if anything. The person's profile is
+/// asked for when the library opens, under the name coven keeps from the
+/// invite (§5.4).
+pub enum JoinedLibrary {
+    /// The library loaded.
+    Loaded(coven::CovenHandle),
+    /// The library is open, and `failure` failed once coven had published
+    /// it: its first load (lost storage access among the causes), or
+    /// keeping the published library. Its sync goes on from where the load
+    /// stopped; its sync state shows a load that can't reach storage (§5.6).
+    Published { handle: coven::CovenHandle, failure: Box<coven::BootstrapError> },
 }
 
 /// The app's hold on a running join: cancel it before its request is sent, or
@@ -191,8 +179,9 @@ pub fn join_cancellable(status: &coven::BootstrapStatus) -> bool {
     matches!(status, coven::BootstrapStatus::Opening(_) | coven::BootstrapStatus::Connecting)
 }
 
-/// Join a library from an invite. The person's profile takes the name the
-/// admin typed in the invite (§5.4). Dropping the call before the join finds
+/// Join a library from an invite. Coven keeps the name the admin typed in
+/// the invite with the library, which the library's open asks for the
+/// person's profile under (§5.4). Dropping the call before the join finds
 /// its approval keeps the join for `resume_join`; once it has, coven
 /// publishes the library, which then loads, and the call returns it open
 /// even when its load failed. An invite that has ended by `clock`, with no
@@ -234,7 +223,7 @@ pub async fn join_with_invite(
         &control.join,
     ))
     .await;
-    admitted(joined, invite.invitee.as_deref(), clock, diagnostics).await
+    admitted(joined, diagnostics)
 }
 
 /// The joins this device has under way, each as its saved invite reads.
@@ -254,7 +243,6 @@ pub async fn unfinished_joins(
 pub async fn resume_join(
     builder: impl Fn() -> coven::CovenBuilder,
     join: &coven::InviteInfo,
-    clock: coven::ClockRef,
     on_status: impl Fn(coven::BootstrapStatus),
     control: &JoinControl,
     diagnostics: &bae_diagnostics::Diagnostics,
@@ -277,7 +265,7 @@ pub async fn resume_join(
         }
         resumed => resumed,
     };
-    admitted(joined, join.invitee.as_deref(), clock, diagnostics).await
+    admitted(joined, diagnostics)
 }
 
 /// The restores of a library onto this device that stopped after they
@@ -334,66 +322,25 @@ fn invite_info(code: &str) -> Result<coven::InviteInfo, RestoreFromCodeError> {
     }
 }
 
-/// What a join call came to, once coven answered it: the library it let this
-/// device into, with the profile asked for under the invite's name, or none
-/// when the invite ended without letting it in. A library coven published
-/// is the join's however its first load went: coven lists it as no join,
-/// and its sync goes on with the load (§5.6).
-async fn admitted(
+/// What a join call came to, once coven answered it: the library it let
+/// this device into, or none when the invite ended without letting it in. A
+/// library coven published is the join's however its first load went: coven
+/// lists it as no join, and its sync goes on with the load (§5.6).
+fn admitted(
     joined: Result<Option<coven::CovenHandle>, coven::BootstrapError>,
-    invitee: Option<&str>,
-    clock: coven::ClockRef,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
-    let (handle, published_failure) =
-        match joined.map_err(|error| coven::task::reported(diagnostics, error)) {
-            Ok(None) => return Ok(None),
-            Ok(Some(handle)) => (handle, None),
-            Err(coven::BootstrapError::Published { handle, source }) => {
-                tracing::warn!(
-                    "the joined library is published and open, after a failure: {}",
-                    bae_util::error_text::CauseChain(&*source)
-                );
-                (handle, Some(source))
-            }
-            Err(error) => return Err(restore_error(error)),
-        };
-    let profile =
-        match (with_profile(&handle, invitee, clock, diagnostics).await, &published_failure) {
-            // A load that stopped before it applied this device's admission
-            // knows no person to make a profile for; Settings offers one once
-            // sync has loaded that far (§5.4).
-            (Some(Err(bae_people::people::ProfileError::NotRegistered)), Some(_)) => {
-                tracing::info!(
-                    "the joined library hasn't loaded this device's person: no profile asked"
-                );
-                None
-            }
-            (profile, _) => profile,
-        };
-    Ok(Some((handle, JoinOutcome { profile, published_failure })))
-}
-
-/// Ask for the joined person's profile with the invite's name; an invite
-/// that replaced an existing member's keys names nobody, and asks for
-/// nothing.
-async fn with_profile(
-    handle: &coven::CovenHandle,
-    invitee: Option<&str>,
-    clock: coven::ClockRef,
-    diagnostics: &bae_diagnostics::Diagnostics,
-) -> Option<Result<(), bae_people::people::ProfileError>> {
-    match invitee {
-        Some(name) => Some(
-            bae_people::People::new(bae_store::Store::new(
-                handle.clone(),
-                clock,
-                diagnostics.bug_sink(),
-            ))
-            .create_profile(name)
-            .await,
-        ),
-        None => None,
+    match joined.map_err(|error| coven::task::reported(diagnostics, error)) {
+        Ok(None) => Ok(None),
+        Ok(Some(handle)) => Ok(Some(JoinedLibrary::Loaded(handle))),
+        Err(coven::BootstrapError::Published { handle, source }) => {
+            tracing::warn!(
+                "the joined library is published and open, after a failure: {}",
+                bae_util::error_text::CauseChain(&*source)
+            );
+            Ok(Some(JoinedLibrary::Published { handle, failure: source }))
+        }
+        Err(error) => Err(restore_error(error)),
     }
 }
 

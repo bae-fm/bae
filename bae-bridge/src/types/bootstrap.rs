@@ -365,10 +365,6 @@ pub enum BridgeBootstrapResult {
         library: Arc<crate::OpenedLibrary>,
         error: BridgeError,
     },
-    ProfileRequired {
-        library: Arc<crate::OpenedLibrary>,
-        error: BridgeError,
-    },
     SavedCodeRemoved,
     /// The invite ended without letting this device in: declined or
     /// cancelled, expired, or the device that made it gone for good, which
@@ -388,32 +384,26 @@ impl BridgeBootstrapResult {
     pub(crate) fn opened(handle: coven::CovenHandle, host: Arc<crate::BridgeHost>) -> Self {
         Self::Opened { library: Arc::new(crate::OpenedLibrary::new(handle, host)) }
     }
-    /// A join's outcome: the library with its profile written, or kept for a
-    /// replacement; the library without a profile to retry; the library
-    /// with what failed once it was published; or the invite ended without
-    /// letting this device in. A profile to retry is the one the person acts
-    /// on; a failure beside it core logged.
+    /// A join's outcome: the library, with what failed once it was
+    /// published, or the invite ended without letting this device in.
     pub(crate) fn joined(
         result: Result<Option<bae_library::JoinedLibrary>, bae_library::RestoreFromCodeError>,
         host: Arc<crate::BridgeHost>,
     ) -> Result<Self, BridgeError> {
-        let (handle, bae_library::JoinOutcome { profile, published_failure }) = match result {
-            Ok(Some(joined)) => joined,
-            Ok(None) => return Ok(Self::Declined),
-            Err(error) => return Self::failure(error, host),
-        };
-        let library = Arc::new(crate::OpenedLibrary::new(handle, host));
-        Ok(match (profile, published_failure) {
-            (Some(Err(error)), _) => Self::ProfileRequired { library, error: error.into() },
-            (None | Some(Ok(())), Some(failure)) => Self::Published {
-                library,
-                error: BridgeError::categorized(
-                    bae_diagnostics::bootstrap_category(&failure),
-                    failure,
-                ),
-            },
-            (None | Some(Ok(())), None) => Self::Opened { library },
-        })
+        match result {
+            Ok(Some(bae_library::JoinedLibrary::Loaded(handle))) => Ok(Self::opened(handle, host)),
+            Ok(Some(bae_library::JoinedLibrary::Published { handle, failure })) => {
+                Ok(Self::Published {
+                    library: Arc::new(crate::OpenedLibrary::new(handle, host)),
+                    error: BridgeError::categorized(
+                        bae_diagnostics::bootstrap_category(&failure),
+                        failure,
+                    ),
+                })
+            }
+            Ok(None) => Ok(Self::Declined),
+            Err(error) => Self::failure(error, host),
+        }
     }
     pub(crate) fn failure(
         error: bae_library::RestoreFromCodeError,

@@ -1,7 +1,7 @@
 use super::dropbox_sign_in::DropboxSignIn;
 use super::test_joined_library::loaded;
 use bae_library::test_libraries::{
-    connect_storage, made_profile, made_profile_on, requested_profile_on, storage_library,
+    connect_storage, made_profile, made_profile_on, requested_profile, storage_library,
 };
 use bae_people::people::{ProfileError, Sharing};
 
@@ -195,8 +195,18 @@ impl Household {
         &self,
         dir: &std::path::Path,
     ) -> bae_library::test_libraries::TestLibrary {
+        self.library(self.owner.clone(), dir).await
+    }
+
+    /// A library over `handle`, a store of the household on one of its
+    /// devices, in `dir`, opened as the app opens one.
+    pub(super) async fn library(
+        &self,
+        handle: coven::CovenHandle,
+        dir: &std::path::Path,
+    ) -> bae_library::test_libraries::TestLibrary {
         bae_library::test_libraries::test_library_from_handle(
-            self.owner.clone(),
+            handle,
             dir,
             bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),
@@ -247,19 +257,17 @@ impl Household {
     }
 }
 
-/// The profile a join asked for, written once the joined device has synced
-/// the person's private circle.
+/// The library a join let `guest` into, opened as the app opens one in
+/// `dir`, and the profile its open asked for under the invite's name,
+/// written once the joined device has synced the person's private circle.
 async fn joined_profile(
-    guest: &coven::CovenHandle,
+    guest: coven::CovenHandle,
     household: &Household,
-    requested: Option<Result<(), ProfileError>>,
-) -> bae_people::people::PersonProfile {
-    requested.expect("a new person's profile").unwrap();
-    let people = bae_people::People::new(bae_store::test_devices::store_under(
-        guest.clone(),
-        household.sources.clock().clone(),
-    ));
-    requested_profile_on(guest, &people).await
+    dir: &std::path::Path,
+) -> (bae_library::test_libraries::TestLibrary, bae_people::people::PersonProfile) {
+    let library = household.library(guest, dir).await;
+    let profile = requested_profile(library.manager(), library.people()).await;
+    (library, profile)
 }
 
 /// An invite the owner's sync has granted: the code to join with, and the
@@ -327,8 +335,9 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
     owner.close().await.unwrap();
 }
 
-/// Rowan's profile takes the name Robin typed in the invite; it is Rowan's
-/// own row, which Rowan can't use to edit Robin's (§5.4).
+/// The joined library's open asks for Rowan's profile under the name Robin
+/// typed in the invite; it is Rowan's own row, which Rowan can't use to edit
+/// Robin's (§5.4).
 #[test]
 fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
     on_app_runtime(async {
@@ -343,8 +352,10 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         })
         .await
         .unwrap();
-        let (guest, profile) = loaded(joined.unwrap().unwrap());
-        let profile = joined_profile(&guest, &household, profile).await;
+        let guest = loaded(joined.unwrap().unwrap());
+        let library_dir = tempfile::tempdir().unwrap();
+        let (library, profile) =
+            joined_profile(guest.clone(), &household, library_dir.path()).await;
         let owner_profile = household.robin.clone();
         assert_eq!(profile.name, "Rowan");
         assert_ne!(profile.id, owner_profile.id);
@@ -363,14 +374,14 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
             matches!(error, coven::CovenError::Database(coven::DbError::NotOwner { .. })),
             "{error:?}"
         );
-        guest.close().await.unwrap();
+        library.manager().close().await.unwrap();
         household.owner.close().await.unwrap();
     });
 }
 
 /// Rowan loses every device and is invited again under the same member id.
-/// The invite names nobody, so joining writes no profile: Rowan keeps the row
-/// they had (§5.4).
+/// The invite names nobody, so coven keeps no name for the library's open to
+/// ask for a profile under: Rowan keeps the row they had (§5.4).
 #[test]
 fn a_replacement_invite_writes_no_profile() {
     on_app_runtime(async {
@@ -385,15 +396,15 @@ fn a_replacement_invite_writes_no_profile() {
         })
         .await
         .unwrap();
-        let (lost, profile) = loaded(joined.unwrap().unwrap());
-        let rowan = joined_profile(&lost, &household, profile).await;
+        let lost = loaded(joined.unwrap().unwrap());
+        let lost_dir = tempfile::tempdir().unwrap();
+        let (lost_library, rowan) = joined_profile(lost.clone(), &household, lost_dir.path()).await;
         // Rowan's profile reaches storage before the device is lost.
-        lost.start_sync().await.unwrap();
         assert!(matches!(
             lost.retry_now().await.unwrap().await,
             coven::RetryOutcome::Synced { .. }
         ));
-        lost.close().await.unwrap();
+        lost_library.manager().close().await.unwrap();
         let again = household
             .invite(
                 coven::InviteTarget::ReplaceMemberKeys { member: invite.member },
@@ -416,8 +427,8 @@ fn a_replacement_invite_writes_no_profile() {
         })
         .await
         .unwrap();
-        let (replacement, profile) = loaded(joined.unwrap().unwrap());
-        assert!(profile.is_none());
+        let replacement = loaded(joined.unwrap().unwrap());
+        assert_eq!(replacement.joined_invitee().await.unwrap(), None);
         let people = bae_people::People::new(bae_store::test_devices::store_under(
             replacement.clone(),
             household.sources.clock().clone(),
@@ -546,7 +557,6 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         let resuming = bae_library::resume_join(
             || household.device(&guest),
             join,
-            household.sources.clock().clone(),
             |_| {},
             &control,
             &NO_DIAGNOSTICS,
@@ -556,9 +566,11 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         })
         .await
         .unwrap();
-        let (guest, profile) = loaded(joined.unwrap().unwrap());
-        assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
-        guest.close().await.unwrap();
+        let guest = loaded(joined.unwrap().unwrap());
+        let library_dir = tempfile::tempdir().unwrap();
+        let (library, profile) = joined_profile(guest, &household, library_dir.path()).await;
+        assert_eq!(profile.name, "Rowan");
+        library.manager().close().await.unwrap();
         household.owner.close().await.unwrap();
     });
 }
@@ -699,7 +711,6 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
         let resuming = bae_library::resume_join(
             || sign_in.configure(household.device(&guest)),
             &join,
-            household.sources.clock().clone(),
             |_| {},
             &control,
             &NO_DIAGNOSTICS,
@@ -709,10 +720,12 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
         })
         .await
         .unwrap();
-        let (guest, profile) = loaded(joined.unwrap().unwrap());
+        let guest = loaded(joined.unwrap().unwrap());
         assert_eq!(sign_in.presented(), presented);
-        assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
-        guest.close().await.unwrap();
+        let library_dir = tempfile::tempdir().unwrap();
+        let (library, profile) = joined_profile(guest, &household, library_dir.path()).await;
+        assert_eq!(profile.name, "Rowan");
+        library.manager().close().await.unwrap();
         household.owner.close().await.unwrap();
     });
 }
@@ -735,7 +748,6 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
         let resuming = bae_library::resume_join(
             || sign_in.configure(household.device(&guest)),
             &join,
-            household.sources.clock().clone(),
             |_| {},
             &control,
             &NO_DIAGNOSTICS,
@@ -745,10 +757,12 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
         })
         .await
         .unwrap();
-        let (guest, profile) = loaded(joined.unwrap().unwrap());
+        let guest = loaded(joined.unwrap().unwrap());
         assert_eq!(sign_in.presented(), presented + 1);
-        assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
-        guest.close().await.unwrap();
+        let library_dir = tempfile::tempdir().unwrap();
+        let (library, profile) = joined_profile(guest, &household, library_dir.path()).await;
+        assert_eq!(profile.name, "Rowan");
+        library.manager().close().await.unwrap();
         household.owner.close().await.unwrap();
     });
 }
@@ -843,9 +857,11 @@ fn a_join_whose_request_was_sent_goes_on_after_its_invite_ends() {
         })
         .await
         .unwrap();
-        let (guest, profile) = loaded(joined.unwrap().expect("the sent request is approved"));
-        assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
-        guest.close().await.unwrap();
+        let guest = loaded(joined.unwrap().expect("the sent request is approved"));
+        let library_dir = tempfile::tempdir().unwrap();
+        let (library, profile) = joined_profile(guest, &household, library_dir.path()).await;
+        assert_eq!(profile.name, "Rowan");
+        library.manager().close().await.unwrap();
         household.owner.close().await.unwrap();
     });
 }

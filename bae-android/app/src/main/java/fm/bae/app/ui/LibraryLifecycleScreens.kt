@@ -22,29 +22,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.AppSessionHolder
-import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
-import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ScreenFailure
 import fm.bae.app.coreString
-import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.PersonNameField
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.components.TitledErrorNotice
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.bridgeErrorCategoryKey
-
-private val logger = BaeLogger("bae.LibraryLifecycleScreens")
 
 /**
  * The warning a device reset carries, before the person confirms it: edits on
@@ -144,45 +136,6 @@ internal fun DeletionUnfinishedScreen(
         error?.let { ScreenFailureNotice(it) }
         PrimaryButton(onClick = onFinish) { Text(stringResource(R.string.finish_removal)) }
         TextButton(onClick = onLeave) { Text(stringResource(R.string.cancel)) }
-    }
-}
-
-/** Joining made this device a member but its profile wasn't written; the person names themselves again. */
-@Composable
-internal fun ProfileRequiredScreen(
-    session: OpenLibrary,
-    failure: DisplayError?,
-    onCreated: () -> Unit,
-) {
-    val scope = rememberScreenScope()
-    var name by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<DisplayError?>(failure) }
-    var saving by remember { mutableStateOf(false) }
-    LifecycleMessage(stringResource(R.string.profile_required_title)) {
-        PersonNameField(name) { name = it }
-        error?.let { ErrorNotice(it) }
-        PrimaryButton(
-            onClick = {
-                saving = true
-                scope.launch {
-                    var created = false
-                    performBridgeAction(
-                        logger = logger,
-                        operation = "create the person's profile",
-                        errors = session.errors,
-                        showError = { error = it },
-                    ) {
-                        session.appHandle.createProfile(name.trim())
-                        created = true
-                    }
-                    saving = false
-                    if (created) onCreated()
-                }
-            },
-            enabled = name.isNotBlank() && !saving,
-        ) {
-            Text(stringResource(R.string.save))
-        }
     }
 }
 

@@ -87,7 +87,28 @@ impl LibraryManager {
         };
         manager.start_queue_workers().expect("a manager being opened has not closed");
         manager.start_profile_requests().expect("a manager being opened has not closed");
+        manager.start_joined_profile().expect("a manager being opened has not closed");
         Ok(manager)
+    }
+
+    /// Ask for the profile of the person a join let in, under the name their
+    /// invite carried, once the library knows them (§5.4): every open of a
+    /// library a join published does, until a write has asked. A failed read
+    /// or write is reported; the name stays kept, and the next open asks
+    /// again.
+    fn start_joined_profile(&self) -> Result<(), LibraryError> {
+        let manager = self.clone();
+        self.spawn_supervised_task(
+            "joined profile worker",
+            async move {
+                if let Err(error) = manager.people.ask_for_joined_profile().await {
+                    manager
+                        .diagnostics
+                        .report_failure("ask for the joined person's profile", &error);
+                }
+            },
+            |_| {},
+        )
     }
 
     /// Follow this person's profile request while the library is open, and

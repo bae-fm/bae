@@ -110,30 +110,62 @@ impl People {
                         }
                     }
                 }
-                let circle_name = format!("bae-person:{member}");
-                let matching =
-                    sql.query(PRIVATE_CIRCLE_SQL, params![circle_name, member], |row| {
-                        Ok((row.get::<_, coven::CircleId>(0)?, row.get::<_, bool>(1)?))
-                    })?;
-                match matching.as_slice() {
-                    [] => {
-                        let (circle, operation) = sql.create_circle(&circle_name)?;
-                        insert_profile_request(sql, operation, circle, &name)?;
-                    }
-                    [(circle, true)] => {
-                        insert_profile(sql, &new_profile(member, name, *circle))?;
-                    }
-                    _ => return Ok(ProfileWrite::InvalidPrivateCircle),
-                }
-                Ok(ProfileWrite::Written)
+                ask_for_profile(sql, member, name)
             })
             .await
             .map_err(profile_write_error)?;
-        match made {
-            ProfileWrite::Written => Ok(()),
-            ProfileWrite::Pending(operation) => Err(ProfileError::CirclePending(operation)),
-            ProfileWrite::InvalidPrivateCircle => Err(ProfileError::InvalidPrivateCircle),
+        made.into_result()
+    }
+
+    /// Ask for the profile of the person a join let in, under the name their
+    /// invite carried, which coven keeps with the library the join published
+    /// until a write acknowledges it (§5.4). Once the library knows the
+    /// person, at once or when sync has loaded that far, one write asks for
+    /// the profile as [`Self::create_profile`] does and acknowledges the
+    /// name; a person who already has a profile, or a request for one,
+    /// gets only the acknowledgment. With no name kept there is nothing to
+    /// ask for. A failed write leaves the name kept, and the library's next
+    /// open asks again.
+    pub async fn ask_for_joined_profile(&self) -> Result<(), ProfileError> {
+        let Some(name) = self.inner.store.joined_invitee().await? else {
+            return Ok(());
+        };
+        let name = bae_store::EnteredName::parse(&name)?.into_string();
+        let member = self.known_member().await?;
+        let _creation = self.inner.profile_creation.lock().await;
+        let _registration = self.inner.history_registration.lock().await;
+        let made = self
+            .inner
+            .store
+            .call(move |sql| {
+                let profile =
+                    sql.query_row(&profile_sql(), [member.to_string()], profile_row).optional()?;
+                let made = match (profile, profile_request_on(sql)?) {
+                    (None, None) => ask_for_profile(sql, member, name)?,
+                    // The person made their profile, or asked for one, in
+                    // Settings since the join.
+                    _ => ProfileWrite::Written,
+                };
+                if let ProfileWrite::Written = made {
+                    sql.acknowledge_joined_invitee()?;
+                }
+                Ok(made)
+            })
+            .await
+            .map_err(profile_write_error)?;
+        made.into_result()
+    }
+
+    /// The member using this device, once the library knows them: at once
+    /// when their registration has applied, or when sync applies it.
+    async fn known_member(&self) -> Result<coven::MemberId, DbError> {
+        let mut own = self.inner.store.subscribe(|sql| Ok(people_on(&sql, &own_person_sql())?));
+        while let Some(own) = own.next().await {
+            if let Some(person) = own?.pop() {
+                return Ok(person.membership.id);
+            }
         }
+        Err(DbError::from(coven::CovenError::Database(coven::DbError::StoreClosed)))
     }
 
     /// Create the profile this device's person asked for once coven has
@@ -311,6 +343,42 @@ enum ProfileWrite {
     Written,
     Pending(coven::OperationId),
     InvalidPrivateCircle,
+}
+
+impl ProfileWrite {
+    fn into_result(self) -> Result<(), ProfileError> {
+        match self {
+            Self::Written => Ok(()),
+            Self::Pending(operation) => Err(ProfileError::CirclePending(operation)),
+            Self::InvalidPrivateCircle => Err(ProfileError::InvalidPrivateCircle),
+        }
+    }
+}
+
+/// Ask for `member`'s profile named `name` in `sql`, a write: journal their
+/// private circle and record the request, or, with that circle already
+/// made, write the profile. Two circles of their name, or one holding
+/// someone else, are no private circle to take, and nothing is written.
+fn ask_for_profile(
+    sql: &CovenWrite<'_>,
+    member: coven::MemberId,
+    name: String,
+) -> Result<ProfileWrite, DbError> {
+    let circle_name = format!("bae-person:{member}");
+    let matching = sql.query(PRIVATE_CIRCLE_SQL, params![circle_name, member], |row| {
+        Ok((row.get::<_, coven::CircleId>(0)?, row.get::<_, bool>(1)?))
+    })?;
+    match matching.as_slice() {
+        [] => {
+            let (circle, operation) = sql.create_circle(&circle_name)?;
+            insert_profile_request(sql, operation, circle, &name)?;
+        }
+        [(circle, true)] => {
+            insert_profile(sql, &new_profile(member, name, *circle))?;
+        }
+        _ => return Ok(ProfileWrite::InvalidPrivateCircle),
+    }
+    Ok(ProfileWrite::Written)
 }
 
 /// A new profile, private until the person shares their history.

@@ -256,7 +256,8 @@ impl BridgeHost {
             })
             .await
     }
-    /// Join a library from an invite. The profile takes the invite's name.
+    /// Join a library from an invite; the library's open asks for the
+    /// person's profile under the invite's name.
     /// Dropping the call, as leaving the screen does, keeps the join for
     /// `resume_join` until it finds its approval; only `control.cancel()`
     /// cancels, and only before the request may have been sent. Once
@@ -327,7 +328,6 @@ impl BridgeHost {
                 let joined = bae_library::resume_join(
                     || self.library_builder(),
                     &join.join,
-                    self.clock.clone(),
                     |status| {
                         let cancellable = bae_library::join_cancellable(&status);
                         steps.bootstrap(status, cancellable)
