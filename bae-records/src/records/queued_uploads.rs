@@ -43,7 +43,7 @@ macro_rules! release_upload_count_columns {
     };
 }
 
-/// [`release_upload_count_columns`] alone, for a read that shows only how
+/// `release_upload_count_columns!` alone, for a read that shows only how
 /// many of a release's files wait and how many are being sent.
 pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
 
