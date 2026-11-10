@@ -1,6 +1,13 @@
 import Foundation
 import Observation
 
+/// A transfer line of the Activity panel, by the key its bar is under.
+public enum ActivityLine: String, Sendable {
+    case uploads
+    case pins
+    case makingLocal = "making_local"
+}
+
 /// Everything sync is doing on this device, as core reports it: the title
 /// bar's button and the panel it opens read it here.
 @MainActor
@@ -9,9 +16,21 @@ public final class SyncActivityStore {
     public private(set) var activity: BridgeSyncActivity?
     /// Why the activity couldn't be read, until it is read again.
     public private(set) var error: DisplayError?
+    /// The share of each transfer line's batch bytes done, by line.
+    public nonisolated let bars: LatestStream<Double>
 
-    public init(activity: BridgeSyncActivity? = nil) {
+    public init(
+        activity: BridgeSyncActivity? = nil,
+        bars: LatestStream<Double> = .activityBars()
+    ) {
         self.activity = activity
+        self.bars = bars
+    }
+
+    /// The latest share of a transfer line's batch bytes done, for the native
+    /// bar that reads it each display frame.
+    public nonisolated func bar(_ line: ActivityLine) -> LatestSource<Double> {
+        bars.source(for: line.rawValue)
     }
 
     public func apply(_ activity: BridgeSyncActivity) {

@@ -46,6 +46,9 @@ struct MainWindowRoot: View {
             openSettingsWindow: OpenSettingsWindowAction {
                 appDelegate.showSettingsWindow(nil)
             },
+            openStorageManager: OpenStorageManagerAction {
+                appDelegate.showStorageManager(nil)
+            },
             searchFocusRequests: searchFocusRequests
         )
     }
@@ -259,10 +262,12 @@ extension View {
     /// services: the shell's Settings window and View ▸ Search.
     fileprivate func mainWindowEnvironment(
         openSettingsWindow: OpenSettingsWindowAction,
+        openStorageManager: OpenStorageManagerAction,
         searchFocusRequests: PassthroughSubject<Void, Never>
     ) -> some View {
         self
             .environment(\.openSettingsWindow, openSettingsWindow)
+            .environment(\.openStorageManager, openStorageManager)
             .environment(\.searchFocusRequests, searchFocusRequests)
     }
 }
@@ -281,6 +286,11 @@ extension View {
                 openSettingsWindow: OpenSettingsWindowAction {
                     mainWindowPreviewLogger.info(
                         "Settings asked for in a preview"
+                    )
+                },
+                openStorageManager: OpenStorageManagerAction {
+                    mainWindowPreviewLogger.info(
+                        "The Storage Manager asked for in a preview"
                     )
                 },
                 searchFocusRequests: PassthroughSubject()

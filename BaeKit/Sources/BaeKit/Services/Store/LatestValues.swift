@@ -40,7 +40,7 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
         let stands: @Sendable (Value) -> Bool
     }
 
-    fileprivate let activity = KeyActivity()
+    let activity = KeyActivity()
     private let read: @Sendable (BridgeFastValue) -> Value?
     private let backing: OSAllocatedUnfairLock<Backing>
     private let holds = OSAllocatedUnfairLock<[Data: Hold]>(
@@ -78,7 +78,7 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
 
     /// The key's latest value: one the app holds in front of it while it
     /// stands, else the key's own.
-    fileprivate func latest(for key: Data) -> Value? {
+    func latest(for key: Data) -> Value? {
         let own = own(for: key)
         return holds.withLock { holds in
             guard let hold = holds[key] else { return own }
@@ -121,7 +121,7 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
     /// Whether the key's own feed holds a value that is changing: a key at
     /// rest is read when a pull names it, not each frame. A preview's values
     /// stand still, and count as changing so a view reads them as before.
-    fileprivate func moving(for key: Data) -> Bool {
+    func moving(for key: Data) -> Bool {
         switch backing.withLockUnchecked({ $0 }) {
         case .unfed:
             return false
@@ -331,6 +331,31 @@ extension LatestStream where Value == Double {
         }
     }
 
+    /// The share of each Activity line's batch bytes done, by the line's key
+    /// (`ActivityLine`), while the line's batch holds a release; a preview's
+    /// holds `values` and nothing feeds it.
+    public static func activityBars(holding values: [String: Value] = [:])
+        -> LatestStream
+    {
+        LatestStream(holding: keyed(values)) {
+            if case .batchShare(let fraction) = $0 {
+                fraction
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    /// Fill with the Activity lines' batches, telling `onError` each failed
+    /// read.
+    public func feedBars(
+        from appHandle: AppHandle,
+        onError: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> LatestFeed {
+        fed(onFailedRead: onError) { appHandle.feedActivityBars() }
+    }
+
     /// Fill with the files being sent.
     public func feedUploads(from appHandle: AppHandle) -> LatestFeed {
         fed { appHandle.feedUploadFileShares() }
@@ -339,6 +364,14 @@ extension LatestStream where Value == Double {
     /// Fill with the files being downloaded to keep whole.
     public func feedPins(from appHandle: AppHandle) -> LatestFeed {
         fed { appHandle.feedPinFileShares() }
+    }
+}
+
+extension SyncActivityStore {
+    /// Fill the transfer lines' bars, showing a failed read as the panel's
+    /// failure to read sync's state.
+    public nonisolated func feedBars(from appHandle: AppHandle) -> LatestFeed {
+        bars.feedBars(from: appHandle) { [self] error in fail(error) }
     }
 }
 
@@ -784,21 +817,21 @@ extension LatestStream where Value == BridgePreviewPosition {
 /// One key of a fast stream, which a view hands to the native view that
 /// draws it. Only `FrameFollowing` reads its value.
 public struct LatestSource<Value: Sendable & Equatable>: Sendable {
-    fileprivate let stream: LatestStream<Value>
-    fileprivate let key: Data
+    let stream: LatestStream<Value>
+    let key: Data
 
-    fileprivate var latest: Value? { stream.latest(for: key) }
+    var latest: Value? { stream.latest(for: key) }
 
     /// Whether the key holds a value that is changing, which a view reads
     /// each frame; a key at rest is read when a pull names it.
-    fileprivate var moving: Bool { stream.moving(for: key) }
+    var moving: Bool { stream.moving(for: key) }
 
     /// Whether the key holds a value now, which says whether a line drawing
     /// it shows anything, never what.
     public var holdsValue: Bool { latest != nil }
 
     /// Whether `other` names the same key of the same stream.
-    fileprivate func isSame(as other: Self) -> Bool {
+    func isSame(as other: Self) -> Bool {
         stream === other.stream && key == other.key
     }
 }
@@ -813,7 +846,7 @@ extension LatestSource: Equatable {
 /// Which keys started or stopped holding a value or moving, or changed a
 /// value at rest, told to the native views watching each on the main actor.
 /// A value moving tells nothing.
-private final class KeyActivity: Sendable {
+final class KeyActivity: Sendable {
     struct Watch: Hashable, Sendable {
         let key: Data
         let id: Int
@@ -869,107 +902,3 @@ private final class KeyActivity: Sendable {
         }
     }
 }
-
-#if os(macOS)
-    /// A native view's reading of one key of a fast stream on the display's
-    /// own clock: while the key is moving, the view's display link reads the
-    /// key's latest value each frame and shows it if it changed; while the
-    /// key is at rest or holds nothing, nothing runs, and the view shows the
-    /// key's value once on each pull that names the key. Values arriving faster than frames are never
-    /// all shown; the screen shows the latest one each frame.
-    @MainActor
-    public final class FrameFollowing<Value: Sendable & Equatable> {
-        private weak var view: NSView?
-        private let show: (Value?) -> Void
-        private var source: LatestSource<Value>?
-        private var watch: KeyActivity.Watch?
-        private var link: CADisplayLink?
-        private lazy var ticker = FrameTicker { [weak self] in
-            self?.frame()
-        }
-        /// What was last shown; `.none` until something is.
-        private var shown: Value??
-
-        /// Follow on `view`'s display, showing each new value with `show`.
-        public init(view: NSView, show: @escaping (Value?) -> Void) {
-            self.view = view
-            self.show = show
-        }
-
-        /// Read `source` from now on; a source for the key already read
-        /// changes nothing.
-        public func follow(_ source: LatestSource<Value>) {
-            if let current = self.source, current.isSame(as: source) { return }
-            stop()
-            self.source = source
-            watch = source.stream.activity.watch(source.key) { [weak self] in
-                self?.activityChanged()
-            }
-            activityChanged()
-        }
-
-        public func stop() {
-            if let source, let watch {
-                source.stream.activity.stopWatching(watch)
-            }
-            link?.invalidate()
-            link = nil
-            source = nil
-            watch = nil
-            shown = .none
-        }
-
-        /// Start reading each frame as the key starts moving, and stop as it
-        /// rests or goes idle, showing what it holds either way.
-        private func activityChanged() {
-            showLatest()
-            let active = source?.moving ?? false
-            if active, link == nil, let view {
-                let link = view.displayLink(
-                    target: ticker,
-                    selector: #selector(FrameTicker.frame(_:))
-                )
-                link.add(to: .main, forMode: .common)
-                self.link = link
-            }
-            else if !active {
-                link?.invalidate()
-                link = nil
-            }
-        }
-
-        /// One display frame, as the display link runs it: show the key's
-        /// latest value if it changed. A view runs one itself to show at once
-        /// what it just did to the key, such as a seek; a test's hosted
-        /// window is past every display, where no link runs, so the test
-        /// runs its frames itself.
-        public func frame() {
-            showLatest()
-        }
-
-        /// Show the key's latest value if it changed, and answer it.
-        @discardableResult
-        private func showLatest() -> Value? {
-            let latest = source?.latest
-            if case .some(let value) = shown, value == latest { return latest }
-            shown = .some(latest)
-            show(latest)
-            return latest
-        }
-    }
-
-    /// The display link's target, which a generic class can't be.
-    private final class FrameTicker: NSObject {
-        private let tick: @MainActor () -> Void
-
-        init(tick: @escaping @MainActor () -> Void) {
-            self.tick = tick
-        }
-
-        @MainActor
-        @objc
-        func frame(_: CADisplayLink) {
-            tick()
-        }
-    }
-#endif

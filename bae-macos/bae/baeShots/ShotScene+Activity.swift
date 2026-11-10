@@ -67,6 +67,38 @@ extension ShotScene {
             )
             return ShotStage(ActivityPanelShot(store: store, app: []))
         },
+        // Every line moving: SyncMacMoving.
+        ShotScene(
+            id: "activity-transfers",
+            size: CGSize(width: 360, height: 480)
+        ) {
+            let store = SyncActivityStore(
+                activity: ActivityShot.transfers(),
+                bars: .activityBars(
+                    holding: [
+                        "uploads": 0.43, "pins": 0.3, "making_local": 0.2,
+                    ]
+                )
+            )
+            return ShotStage(ActivityPanelShot(store: store, app: []))
+        },
+        // Uploads paused and downloads waiting for network, each in the
+        // count's place: SyncMacPaused.
+        ShotScene(
+            id: "activity-transfers-held",
+            size: CGSize(width: 360, height: 480)
+        ) {
+            let store = SyncActivityStore(
+                activity: ActivityShot.transfers(
+                    uploadsWait: .paused,
+                    downloadsWait: .offline
+                ),
+                bars: .activityBars(
+                    holding: ["uploads": 0.3, "pins": 0, "making_local": 0]
+                )
+            )
+            return ShotStage(ActivityPanelShot(store: store, app: []))
+        },
     ]
 }
 
@@ -92,6 +124,34 @@ private enum ActivityShot {
             retryOffered: false
         )
     }
+
+    /// Syncing, and an upload, a pin and a make-local, each in the middle
+    /// of its batch.
+    static func transfers(
+        uploadsWait: BridgeUploadQueueWait? = nil,
+        downloadsWait: BridgeQueueWait? = nil
+    ) -> BridgeSyncActivity {
+        BridgeSyncActivity(
+            moving: uploadsWait == nil,
+            needsAttention: false,
+            failure: nil,
+            attention: [],
+            syncing: true,
+            uploads: BridgeUploadQueueActivity(
+                batch: BridgeTransferBatch(done: 1, total: 2),
+                wait: uploadsWait
+            ),
+            pins: BridgeDownloadQueueActivity(
+                batch: BridgeTransferBatch(done: 1, total: 3),
+                wait: downloadsWait
+            ),
+            makingLocal: BridgeDownloadQueueActivity(
+                batch: BridgeTransferBatch(done: 0, total: 1),
+                wait: downloadsWait
+            ),
+            retryOffered: false
+        )
+    }
 }
 
 /// The popover's form as the Activity button shows it.
@@ -112,10 +172,15 @@ private struct ActivityPanelShot: View {
                 ),
                 app: app,
                 dismissed: $dismissed,
-                onOpenSettings: {}
+                onOpenSettings: {},
+                onOpenStorageManager: {}
             )
         }
         .formStyle(.grouped)
         .environment(store)
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(UiStore())
     }
 }

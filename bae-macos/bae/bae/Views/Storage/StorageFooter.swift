@@ -35,7 +35,7 @@ struct StorageFooter: View {
             }
             if let downloads = queues?.downloads {
                 StorageQueueControl(
-                    queue: .pins,
+                    queue: .downloads,
                     paused: downloads.wait == .paused,
                     hold: downloads.wait?.text
                 ) {
@@ -64,13 +64,6 @@ struct StorageFooter: View {
     }
 }
 
-/// The footer's three queues.
-private enum StorageQueueKind {
-    case uploads
-    case pins
-    case outputs
-}
-
 /// One running queue in the footer: its glyph, how fast it goes, or how far
 /// for exports, which count percent rather than bytes, or in the rate's place
 /// what holds the queue back, and the button that pauses it, or resumes it
@@ -82,14 +75,6 @@ private struct StorageQueueControl<Progress: View>: View {
     let hold: String?
     @ViewBuilder
     let progress: () -> Progress
-    @Environment(Sync.self)
-    private var sync
-    @Environment(Downloads.self)
-    private var downloads
-    @Environment(Outputs.self)
-    private var outputs
-    @Environment(UiStore.self)
-    private var uiStore
 
     var body: some View {
         HStack(spacing: ThemeSpace.compact) {
@@ -104,13 +89,8 @@ private struct StorageQueueControl<Progress: View>: View {
                         .monospacedDigit()
                 }
             }
-            Button(action: setPaused) {
-                Image(systemName: paused ? "play.fill" : "pause.fill")
-                    .themeIcon(.badge)
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel(pauseLabel)
-            .help(pauseLabel)
+            QueuePauseButton(queue: queue, paused: paused)
+                .buttonStyle(.borderless)
         }
         // A narrow table keeps each queue's rate whole on one line; the
         // release count and total give way instead.
@@ -124,41 +104,13 @@ private struct StorageQueueControl<Progress: View>: View {
             Image(systemName: "arrow.up")
                 .foregroundStyle(StorageTransferKind.upload.color)
                 .accessibilityLabel(Text("Uploads"))
-        case .pins:
+        case .downloads:
             Image(systemName: "arrow.down")
                 .foregroundStyle(StorageTransferKind.pin.color)
-                .accessibilityLabel(Text("Pinning"))
+                .accessibilityLabel(Text("Downloads"))
         case .outputs:
             Image(systemName: "square.and.arrow.up")
                 .accessibilityLabel(Text("Exports"))
-        }
-    }
-
-    private var pauseLabel: Text {
-        switch (queue, paused) {
-        case (.uploads, false): Text("Pause uploads")
-        case (.uploads, true): Text("Resume uploads")
-        case (.pins, false): Text("Pause downloads")
-        case (.pins, true): Text("Resume downloads")
-        case (.outputs, false): Text("Pause exports")
-        case (.outputs, true): Text("Resume exports")
-        }
-    }
-
-    /// Pause the whole queue, or resume it while paused, surfacing a
-    /// failure in the Storage Manager window.
-    private func setPaused() {
-        let paused = !paused
-        let queue = queue
-        Task {
-            do {
-                switch queue {
-                case .uploads: try await sync.setSyncPaused(paused)
-                case .pins: try await downloads.setDownloadsPaused(paused)
-                case .outputs: try await outputs.setOutputsPaused(paused)
-                }
-            }
-            catch { uiStore.showError(error) }
         }
     }
 }

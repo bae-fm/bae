@@ -11,6 +11,8 @@ struct ActivityButton: View {
     private var settingsNavigation
     @Environment(\.openSettingsWindow)
     private var openSettings
+    @Environment(\.openStorageManager)
+    private var openStorageManager
     @Environment(\.launchProblems)
     private var launchProblems
     @Environment(\.libraryLoadError)
@@ -63,7 +65,11 @@ struct ActivityButton: View {
                             problems: problems,
                             app: app,
                             dismissed: $dismissed,
-                            onOpenSettings: openSyncSettings
+                            onOpenSettings: openSyncSettings,
+                            onOpenStorageManager: {
+                                listShown = false
+                                openStorageManager()
+                            }
                         )
                     }
                     .formStyle(.grouped)
@@ -138,6 +144,10 @@ private struct ActivityGlyph: View {
     #Preview("Activity panel: launch and load problems") {
         ActivityListPreview()
             .environment(SyncActivityStore.preview())
+            .environment(Sync.stub())
+            .environment(Downloads.stub())
+            .environment(Outputs.stub())
+            .environment(UiStore())
     }
 
     /// The panel with the sign-in settings problem and a library that failed
@@ -166,7 +176,8 @@ private struct ActivityGlyph: View {
                     ),
                     app: app,
                     dismissed: $dismissed,
-                    onOpenSettings: {}
+                    onOpenSettings: {},
+                    onOpenStorageManager: {}
                 )
             }
             .formStyle(.grouped)

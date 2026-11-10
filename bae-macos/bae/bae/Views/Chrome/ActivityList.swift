@@ -14,6 +14,8 @@ struct ActivityList: View {
     /// Opens the sync settings, where each record that needs the person
     /// offers its action.
     let onOpenSettings: () -> Void
+    /// Opens the Storage Manager, where each transfer is listed.
+    let onOpenStorageManager: () -> Void
 
     @Environment(SyncActivityStore.self)
     private var store
@@ -42,9 +44,18 @@ struct ActivityList: View {
             }
         }
         if let activity, showsTransfers {
-            Section {
+            Section("Transfers") {
                 TransferRows(activity: activity)
                     .listRowInsets(Self.rowInsets)
+            }
+            if activity.hasTransferLine {
+                Section {
+                    Button(
+                        String(localized: "Open storage manager"),
+                        action: onOpenStorageManager
+                    )
+                    .listRowInsets(Self.rowInsets)
+                }
             }
         }
         if !problems.needsAttention, !showsTransfers {
@@ -65,8 +76,7 @@ struct ActivityList: View {
     )
 
     private static func showsTransfers(_ activity: BridgeSyncActivity) -> Bool {
-        activity.syncing || activity.uploads != nil || activity.pins != nil
-            || activity.makingLocal != nil
+        activity.syncing || activity.hasTransferLine
     }
 
     @ViewBuilder
@@ -118,50 +128,108 @@ struct ActivityList: View {
     }
 }
 
+extension BridgeSyncActivity {
+    /// A queue's line shows: its batch holds a release.
+    fileprivate var hasTransferLine: Bool {
+        uploads != nil || pins != nil || makingLocal != nil
+    }
+}
+
 /// A pass running, then the Uploading, Pinning and Making local lines, each
 /// while its batch holds a release, counting its releases done or showing
-/// what holds its queue back in the count's place.
+/// what holds its queue back in the count's place, with a bar of its batch's
+/// bytes. Each queue's line ends in the button that pauses it.
 private struct TransferRows: View {
     let activity: BridgeSyncActivity
+    @Environment(SyncActivityStore.self)
+    private var store
 
     var body: some View {
         if activity.syncing {
-            Text(localizedCoreString("core.activity.syncing"))
+            TransferLine(
+                title: localizedCoreString("core.activity.syncing"),
+                count: nil,
+                queue: nil,
+                bar: nil
+            )
         }
         if let uploads = activity.uploads {
             TransferLine(
                 title: localizedCoreString("core.activity.uploading"),
-                count: uploads.wait?.text ?? uploads.batch.text
+                count: uploads.wait?.text ?? uploads.batch.text,
+                queue: .init(.uploads, paused: uploads.wait == .paused),
+                bar: store.bar(.uploads)
             )
         }
         if let pins = activity.pins {
             TransferLine(
                 title: localizedCoreString("core.activity.pinning"),
-                count: pins.wait?.text ?? pins.batch.text
+                count: pins.wait?.text ?? pins.batch.text,
+                queue: .init(.downloads, paused: pins.wait == .paused),
+                bar: store.bar(.pins)
             )
         }
         if let makingLocal = activity.makingLocal {
             TransferLine(
                 title: localizedCoreString("core.activity.making_local"),
-                count: makingLocal.wait?.text ?? makingLocal.batch.text
+                count: makingLocal.wait?.text ?? makingLocal.batch.text,
+                queue: .init(.downloads, paused: makingLocal.wait == .paused),
+                bar: store.bar(.makingLocal)
             )
         }
     }
 }
 
-/// One transfer line: its words, and at the end how many of its releases are
-/// done, or what holds its queue back.
+/// One transfer line: its words, at the end how many of its releases are
+/// done or what holds its queue back, then the button that pauses its queue,
+/// and under them a bar of its batch's bytes; a line with no bar of bytes
+/// shows the moving bar.
 private struct TransferLine: View {
+    /// A queue a line pauses, and whether it is paused now.
+    struct Queue {
+        let kind: StorageQueueKind
+        let paused: Bool
+
+        init(_ kind: StorageQueueKind, paused: Bool) {
+            self.kind = kind
+            self.paused = paused
+        }
+    }
+
     let title: String
-    let count: String
+    let count: String?
+    let queue: Queue?
+    let bar: LatestSource<Double>?
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
-            Text(title)
-            Spacer(minLength: 0)
-            Text(count)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            HStack(
+                alignment: .firstTextBaseline,
+                spacing: ThemeSpace.related
+            ) {
+                Text(title)
+                Spacer(minLength: 0)
+                if let count {
+                    Text(count)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                if let queue {
+                    QueuePauseButton(queue: queue.kind, paused: queue.paused)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+            }
+            if let bar {
+                ShareBar(share: bar)
+            }
+            else {
+                ProgressView()
+                    .progressViewStyle(.linear)
+                    .controlSize(.small)
+            }
         }
+        .padding(.top, ThemeSpace.group)
+        .padding(.bottom, ThemeSpace.group + ThemeSpace.inline)
     }
 }
