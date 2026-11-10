@@ -1,4 +1,4 @@
-package fm.bae.app.ui.settings
+package fm.bae.app.ui.components
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,9 +19,9 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
-/** A settings page's bar: its [title], and the way back. */
+/** A screen's bar: its [title], and the way back. */
 @Composable
-internal fun SettingsTopBar(
+internal fun ScreenTopBar(
     title: String,
     onBack: () -> Unit,
 ) {

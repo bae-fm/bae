@@ -33,6 +33,7 @@ import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.RadioRow
 import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.downloads.setDownloadConcurrency
 
 /**
@@ -70,7 +71,7 @@ internal fun TransfersContent(
     onSelectConcurrency: (UInt) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        SettingsTopBar(title = stringResource(R.string.settings_transfers), onBack = onBack)
+        ScreenTopBar(title = stringResource(R.string.settings_transfers), onBack = onBack)
         Column(
             modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),

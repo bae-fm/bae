@@ -38,6 +38,7 @@ import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.playback.CastReceiverRows
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -150,7 +151,7 @@ internal fun CastingPage(
     onTranscodeFormatChange: (BridgeCastTranscodeFormat) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        SettingsTopBar(title = stringResource(R.string.settings_casting), onBack = onBack)
+        ScreenTopBar(title = stringResource(R.string.settings_casting), onBack = onBack)
         Column(
             modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),

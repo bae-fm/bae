@@ -28,6 +28,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.library.LibraryDestination
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -74,7 +75,7 @@ internal fun SettingsScreen(
 
     val open = page
     Column(modifier = Modifier.fillMaxSize()) {
-        SettingsTopBar(
+        ScreenTopBar(
             title = stringResource(open?.title ?: R.string.settings),
             onBack = if (open == null) onBack else ({ page = null }),
         )

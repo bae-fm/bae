@@ -39,6 +39,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.retryAction
@@ -251,7 +252,7 @@ fun MembersScreen(
     BackHandler(enabled = page != PeoplePage.People, onBack = goBack)
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SettingsTopBar(title = pageTitle(page, read), onBack = goBack)
+        ScreenTopBar(title = pageTitle(page, read), onBack = goBack)
         model.error?.let { shown ->
             ErrorNotice(
                 error = shown,

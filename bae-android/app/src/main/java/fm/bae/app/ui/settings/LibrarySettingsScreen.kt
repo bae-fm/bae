@@ -29,6 +29,7 @@ import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
@@ -101,7 +102,7 @@ internal fun LibrarySettingsContent(
     aboveRows: @Composable ColumnScope.() -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        SettingsTopBar(title = stringResource(R.string.settings_library), onBack = onBack)
+        ScreenTopBar(title = stringResource(R.string.settings_library), onBack = onBack)
         Column(
             modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
@@ -199,7 +200,7 @@ internal fun RestoreCodeScreen(
     LaunchedEffect(model) { model.loadStorage() }
     val location = (model.storage as? Storage.At)?.location
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        SettingsTopBar(title = stringResource(R.string.restore_code_title), onBack = onBack)
+        ScreenTopBar(title = stringResource(R.string.restore_code_title), onBack = onBack)
         // The code is made once the library's storage is read, which prints on its page.
         location?.let {
             RestoreCodeSection(

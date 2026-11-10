@@ -49,6 +49,7 @@ import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
@@ -292,7 +293,7 @@ internal fun SyncScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SettingsTopBar(title = stringResource(R.string.settings_sync), onBack = onBack)
+        ScreenTopBar(title = stringResource(R.string.settings_sync), onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(ThemeSpace.edge),

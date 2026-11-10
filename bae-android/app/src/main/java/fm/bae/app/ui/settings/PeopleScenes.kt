@@ -13,6 +13,7 @@ import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.components.ScreenTopBar
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgePerson
@@ -55,7 +56,7 @@ internal fun PeopleScene(
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(modifier = Modifier.fillMaxSize()) {
-                SettingsTopBar(
+                ScreenTopBar(
                     title =
                         when (page) {
                             PeoplePage.People -> {
