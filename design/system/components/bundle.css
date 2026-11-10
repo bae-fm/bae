@@ -33,6 +33,8 @@
 .bae-notice.bae-notice-quiet { background: none; border-radius: 0; }
 .bae-m-notice-box.bae-notice-quiet { padding: 10px 0; }
 .bae-a-notice-box.bae-notice-quiet { padding: 10px 0; }
+/* flush: a quiet notice placed by its container, which spaces it (a warning in an alert or dialog), so it adds no padding of its own. */
+.bae-notice.bae-notice-flush { padding: 0; }
 /* On a tint, greys and grey fills are the primary text made see-through, so they take the tint's colour. */
 /* macOS draws secondary text in the system's own colour (mac-text-secondary); every Mac window, and a Mac board or preview outside one (bae-mac), takes it in place of text-secondary. */
 .bae-m-window, .bae-mac { --text-secondary: var(--mac-text-secondary); }
@@ -52,10 +54,9 @@
 .bae-a-notice-below { align-self: flex-start; display: flex; align-items: center; margin: 0 0 -8px -12px; }
 .bae-a-notice-buttons { flex: none; display: flex; align-items: center; margin: -10px -12px -10px 0; }
 .bae-a-notice-dismiss { flex: none; margin: -14px -14px -14px -8px; }
-/* A toned notice has its own fill (solid in dark, where a see-through tint reads grey or brown); its text, accent and, in dark, its glyph are on-notice. */
+/* A toned notice has its own fill (in dark, the neutral one); its text and accent are on-notice and notice-accent, and its glyph keeps its tone. */
 .bae-notice.bae-tone-info:not(.bae-notice-quiet), .bae-notice.bae-tone-success:not(.bae-notice-quiet), .bae-notice.bae-tone-warning:not(.bae-notice-quiet), .bae-notice.bae-tone-danger:not(.bae-notice-quiet) { color: var(--on-notice); --text-primary: var(--on-notice); --accent: var(--notice-accent); }
-.bae-notice:not(.bae-tone-neutral):not(.bae-notice-quiet) .bae-notice-icon .bae-status-glyph { color: var(--on-notice); }
-[data-theme="light"] .bae-notice .bae-notice-icon .bae-status-glyph:not(.bae-status-glyph-muted) { color: var(--bae-tone-icon); }
+.bae-notice .bae-notice-icon .bae-status-glyph:not(.bae-status-glyph-muted) { color: var(--bae-tone-icon, var(--bae-tone)); }
 
 /* ---- macOS ---- */
 
@@ -79,7 +80,7 @@
 .bae-m-main { flex: 1; min-width: 0; padding: 18px 20px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; }
 .bae-m-heading { display: flex; align-items: center; gap: var(--space-related); margin: 0 0 12px; }
 .bae-m-heading h1 { margin: 0; font: 600 15px var(--font-sans); }
-.bae-m-back { width: var(--size-control); height: var(--size-control); border-radius: 999px; border: 0; background: var(--tile); display: flex; align-items: center; justify-content: center; padding: 0; fill: var(--text-primary); }
+.bae-m-back { width: var(--size-control); height: var(--size-control); border-radius: 999px; border: 0; background: var(--control); display: flex; align-items: center; justify-content: center; padding: 0; fill: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
 
 .bae-m-section { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
 .bae-m-heading + .bae-m-section { margin-top: 4px; }
@@ -96,7 +97,8 @@
 .bae-m-box-empty { min-height: 108px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
 
 .bae-m-row { display: flex; align-items: center; gap: var(--space-group); min-height: var(--size-row); padding: 10px var(--space-group); box-sizing: border-box; color: var(--text-primary); font: 400 13px var(--font-sans); }
-.bae-m-row-selected { background: var(--accent-tint); }
+/* selected: the one choice in a picker (a folder in the set-up sheet), solid as the Settings sidebar's chosen pane. A list you browse marks its selected row with the tint instead. */
+.bae-m-row-selected { background: var(--accent-selection); color: var(--on-fill); --text-primary: var(--on-fill); --text-secondary: var(--on-fill-secondary); --text-tertiary: var(--on-fill-secondary); }
 .bae-m-fieldrow { align-items: flex-start; padding-top: 6px; padding-bottom: 6px; }
 .bae-m-fieldrow-label { flex: none; padding-top: 8px; }
 .bae-m-fieldrow-content { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: var(--space-related); }
@@ -119,14 +121,15 @@
 .bae-m-btn { height: var(--size-control); padding: 0 12px; border: 0; border-radius: 5px; font: 400 13px/var(--size-control) var(--font-sans); white-space: nowrap; cursor: pointer; }
 .bae-m-btn-small { height: 20px; padding: 0 var(--space-related); border-radius: 4px; font-size: 11px; line-height: 20px; }
 .bae-m-btn-large { height: 28px; padding: 0 14px; border-radius: 999px; line-height: 28px; }
-.bae-m-btn-secondary { background: var(--tile); color: var(--text-primary); }
-.bae-m-btn-primary { background: var(--accent-fill); color: var(--on-accent-fill); }
+.bae-m-btn-secondary { background: var(--control); color: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
+.bae-m-btn-primary { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-btn-borderless { padding: 0 var(--space-inline); background: none; color: var(--text-primary); }
 /* muted: the label in secondary text, for buttons under quiet words (a failed view's centred notice). */
 .bae-m-btn.bae-m-btn-muted { color: var(--text-secondary); }
 .bae-m-btn-destructive { color: var(--danger); }
 .bae-m-btn-icon { width: var(--size-control); height: var(--size-control); padding: 0; background: none; color: var(--text-secondary); border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; vertical-align: -3px; }
 .bae-m-btn:hover:not(:disabled) { box-shadow: inset 0 0 0 100px var(--hover); }
+.bae-m-btn-secondary:hover:not(:disabled) { box-shadow: inset 0 0 0 100px var(--hover), 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
 .bae-m-btn:active:not(:disabled) { box-shadow: inset 0 0 0 100px var(--pressed); }
 .bae-m-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .bae-m-btn:disabled { opacity: var(--opacity-off); cursor: default; }
@@ -147,7 +150,7 @@
 .bae-m-radio-dot-on { border: 0; background: var(--accent-fill); position: relative; }
 .bae-m-radio-dot-on::after { content: ''; position: absolute; left: 4.5px; top: 4.5px; width: 5px; height: 5px; border-radius: 3px; background: var(--on-accent-fill); }
 
-.bae-m-popupbutton { height: 24px; padding: 0 var(--space-related) 0 12px; border: 0; border-radius: 999px; background: var(--tile); color: var(--text-primary); font: 400 13px var(--font-sans); display: inline-flex; align-items: center; justify-content: space-between; gap: var(--space-related); box-sizing: border-box; cursor: pointer; }
+.bae-m-popupbutton { height: 24px; padding: 0 var(--space-related) 0 12px; border: 0; border-radius: 999px; background: var(--control); color: var(--text-primary); font: 400 13px var(--font-sans); display: inline-flex; align-items: center; justify-content: space-between; gap: var(--space-related); box-sizing: border-box; cursor: pointer; box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
 .bae-m-popupbutton-mark { flex: none; color: var(--text-secondary); }
 .bae-m-segmented { display: inline-flex; height: 28px; box-sizing: border-box; padding: 3px; border-radius: 999px; background: var(--tile); }
 .bae-m-segment { display: flex; align-items: center; padding: 0 14px; border-radius: 999px; font: 400 13px var(--font-sans); color: var(--text-primary); cursor: pointer; }
@@ -181,6 +184,14 @@
 .bae-a-topbar { flex: none; display: flex; align-items: center; gap: var(--space-inline); height: 64px; box-sizing: border-box; padding: 0 var(--space-inline); background: var(--background); }
 .bae-a-topbar h1 { margin: 0; padding-left: 12px; font: 400 22px/28px var(--font-android); }
 .bae-a-topbar .bae-a-iconbtn + h1 { padding-left: 0; }
+.bae-a-screen-above { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
+.bae-a-keyboard { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 10px 4px 0; background: var(--surface); }
+.bae-a-keys-row { display: flex; gap: 6px; }
+.bae-a-key { flex: 1; height: 46px; border-radius: 6px; background: var(--tile); color: var(--text-primary); font: 400 21px/46px var(--font-android); text-align: center; }
+.bae-a-key-mod { background: var(--elevated); font-size: 16px; }
+.bae-a-key-enter { background: var(--accent-fill); color: var(--on-accent-fill); }
+.bae-a-keyboard-gesture { height: 28px; display: flex; align-items: center; justify-content: center; }
+.bae-a-keyboard-gesture::before { content: ""; width: 108px; height: 4px; border-radius: 2px; background: var(--text-secondary); }
 .bae-a-main { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 .bae-a-section { margin: 0; padding: var(--space-section) var(--space-page) var(--space-related); font: 500 14px/20px var(--font-android); color: var(--accent); }
@@ -210,9 +221,13 @@
 .bae-a-btn-large { height: 48px; border-radius: 24px; font-size: 15px; }
 .bae-a-btn-filled { background: var(--accent-fill); color: var(--on-accent-fill); }
 .bae-a-btn-filled.bae-a-btn-destructive { background: var(--danger); color: var(--background); }
+/* tonal: Material's filled tonal button, a raised fill with the screen's text: an action that stands alone (a failed view's Retry, Check now), where an outline reads as the lesser of two. */
+.bae-a-btn-tonal { background: var(--tile); color: var(--text-primary); }
 .bae-a-btn-outlined { background: none; color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-secondary); }
 .bae-a-btn-text { height: auto; padding: 10px 12px; background: none; color: var(--accent); border-radius: 20px; }
 .bae-a-btn-text.bae-a-btn-destructive, .bae-a-btn-outlined.bae-a-btn-destructive { color: var(--danger); }
+/* neutral: a text button in the screen's own text colour, for Cancel beside a destructive action, so the accent and danger never sit side by side. */
+.bae-a-btn-text.bae-a-btn-neutral { color: var(--text-primary); }
 .bae-a-btn-align-text { align-self: flex-start; margin-left: -12px; }
 .bae-a-btn-align-field { align-self: flex-start; margin-left: calc(var(--space-edge) - 12px); }
 .bae-a-btn:disabled { opacity: var(--opacity-off); cursor: default; }
@@ -344,8 +359,8 @@
 .bae-m-iconbtn-small { width: 20px; height: 20px; }
 .bae-m-iconbtn:hover { color: var(--text-primary); background: var(--hover); }
 /* boxed: a filled box at rest, the push button's fill, so it reads as a button among text. */
-.bae-m-iconbtn-boxed { background: var(--tile); color: var(--text-primary); }
-.bae-m-iconbtn-boxed:hover { background: color-mix(in srgb, var(--tile) 85%, var(--text-primary)); }
+.bae-m-iconbtn-boxed { background: var(--control); color: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
+.bae-m-iconbtn-boxed:hover { background: color-mix(in srgb, var(--control) 85%, var(--text-primary)); }
 .bae-m-iconbtn-on { color: var(--accent); background: var(--accent-tint); }
 .bae-m-iconbtn-faint { color: var(--text-tertiary); }
 .bae-m-sync-warn { color: var(--warning-icon); }
@@ -648,7 +663,7 @@
 .bae-m-table-tr { border-radius: 5px; }
 .bae-m-table-alt { background: var(--hover); }
 .bae-m-table-row { height: 28px; border-radius: 5px; }
-.bae-m-table-selected { background: var(--accent-selection); color: var(--on-fill); }
+.bae-m-table-selected { background: var(--accent-tint); }
 .bae-m-table-td { padding: 0 4px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; }
 .bae-m-table-empty { position: absolute; inset: 28px 0 0; display: flex; align-items: center; justify-content: center; }
 .bae-m-relcell { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -665,8 +680,7 @@
 .bae-m-readout-line { display: flex; justify-content: space-between; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-bar { height: 4px; border-radius: 2px; background: var(--hairline); overflow: hidden; }
 .bae-m-filerow { padding: 8px 16px; font: 400 13px var(--font-sans); }
-.bae-m-filerow-selected { background: var(--accent-selection); color: var(--on-fill); }
-.bae-m-filerow-selected .bae-muted { color: var(--on-fill-secondary); }
+.bae-m-filerow-selected { background: var(--accent-tint); }
 .bae-m-filedet { margin-top: auto; background: var(--elevated); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--hairline); }
 .bae-m-filedet-head { display: flex; justify-content: space-between; gap: 8px; font: 600 15px var(--font-sans); }
 .bae-m-filedet-grid { display: grid; grid-template-columns: 84px 1fr; gap: 6px 12px; font: 400 11.5px var(--font-sans); }
@@ -719,7 +733,7 @@
 .bae-m-switch-off { opacity: 0.45; }
 
 /* Formats pane: button-style toggles, the token field */
-.bae-m-togglebtn { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 5px; background: var(--tile); font: 400 11.5px var(--font-sans); }
+.bae-m-togglebtn { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 5px; background: var(--control); font: 400 11.5px var(--font-sans); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
 .bae-m-togglebtn-on { background: var(--accent-fill); color: var(--on-accent-fill); }
 .bae-m-togglebtn-off { opacity: 0.45; }
 .bae-m-tokenfield { min-height: 24px; padding: 6px; border-radius: 7px; background: var(--field); box-shadow: inset 0 0 0 1px var(--hairline-strong); display: flex; gap: 6px; flex-wrap: wrap; }
@@ -735,10 +749,15 @@
 .bae-notice-centered .bae-notice-body { flex: none; }
 .bae-notice-centered .bae-m-notice, .bae-notice-centered .bae-a-notice { align-items: center; gap: var(--space-group); }
 /* The centred title line carries the title's type, so the glyph in front of it scales with it (1.19 times, centred on the line). */
-.bae-m-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 15px/20px var(--font-sans); color: var(--text-secondary); }
-.bae-a-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 16px/24px var(--font-android); color: var(--text-secondary); }
+.bae-m-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 15px/20px var(--font-sans); color: var(--text-primary); }
+.bae-a-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 16px/24px var(--font-android); color: var(--text-primary); }
+/* Under a subtitle the centred title is the line to read: primary text, the subtitle, glyph and buttons staying grey. A title alone stays grey. */
+.bae-notice-centered .bae-notice-title-strong { color: var(--text-primary); }
 .bae-notice-centered-row { display: flex; align-items: center; gap: var(--space-group); }
 .bae-notice-centered-title { display: flex; align-items: flex-start; gap: var(--space-compact); }
+.bae-notice-centered-sub { color: var(--text-secondary); }
+.bae-m-notice-box .bae-notice-centered-sub { font: 400 13px/18px var(--font-sans); }
+.bae-a-notice-box .bae-notice-centered-sub { font: 400 14px/20px var(--font-android); }
 /* muted: a status glyph in the message's own grey, saying only that something went wrong (a failed view's centred notice). */
 .bae-status-glyph.bae-status-glyph-muted { color: var(--text-secondary); }
 /* stage: on the lightbox's dark stage, in the stage's text colours, sized to its words. */
@@ -751,6 +770,11 @@
 .bae-accent-bg { background: var(--accent); height: 100%; border-radius: 2px; }
 .bae-m-card { background: var(--surface); border-radius: var(--radius-card); box-shadow: 0 0 0 1px var(--hairline); }
 .bae-m-eyebrowtxt { font: 600 11px var(--font-sans); color: var(--text-secondary); }
+.bae-m-ifiles { display: flex; flex-direction: column; gap: var(--space-related); }
+.bae-m-iimages { display: flex; gap: var(--space-related); }
+.bae-m-ifile { display: flex; align-items: center; gap: var(--space-group); padding: var(--space-related) var(--space-line); border-top: 1px solid var(--hairline); }
+.bae-m-ifile:first-child { border-top: 0; }
+.bae-m-ifile-size { flex: none; margin-left: auto; font-size: 11px; }
 .bae-m-formhead { font: 600 11.5px var(--font-sans); color: var(--text-secondary); padding-bottom: 4px; border-bottom: 1px solid var(--hairline); }
 .bae-m-isb { width: 420px; flex: none; height: 100%; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--hairline); font: 400 13px var(--font-sans); }
 .bae-m-isb-tabs { display: flex; gap: 4px; padding: 8px; }
@@ -765,15 +789,14 @@
 .bae-m-irow { position: relative; display: flex; align-items: center; gap: 8px; padding: 6px 12px; }
 .bae-m-irow-grouped { padding-left: 30px; }
 .bae-m-irow-rail { position: absolute; left: 16px; top: 0; bottom: 0; width: 1px; background: var(--hairline); }
-.bae-m-irow-selected { background: var(--accent-selection); color: var(--on-fill); }
-.bae-m-irow-selected .bae-muted, .bae-m-irow-selected .bae-m-irow-sub, .bae-m-irow-selected .bae-m-irow-step { color: var(--on-fill-secondary); }
+.bae-m-irow-selected { background: var(--accent-tint); }
 .bae-m-irow-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .bae-m-irow-t { display: flex; align-items: center; gap: 4px; font: 500 13px var(--font-sans); min-width: 0; }
 .bae-m-irow-folder { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .bae-m-irow-sub { font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-irow-step { display: flex; flex-direction: column; gap: 3px; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-ifl { display: flex; align-items: center; gap: 8px; }
-.bae-m-ipane { flex: 1; min-width: 0; height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: 24px; padding: 24px 24px 32px; box-sizing: border-box; font: 400 13px var(--font-sans); }
+.bae-m-ipane { flex: 1; min-width: 0; height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-group); padding: 24px 24px 32px; box-sizing: border-box; font: 400 13px var(--font-sans); }
 .bae-m-isplit { display: flex; height: 100%; }
 .bae-m-idraft { display: flex; flex-direction: column; gap: 12px; padding: 16px 24px; }
 .bae-m-idraft-actions { display: flex; align-items: center; gap: 8px; }
@@ -784,6 +807,8 @@
 .bae-m-idraft-grid { display: grid; grid-template-columns: 64px 1fr; gap: 6px 12px; font: 400 13px var(--font-sans); }
 .bae-m-idraft-grid > .bae-muted { text-align: right; font-size: 11.5px; }
 .bae-m-idraft-records { display: flex; gap: 10px; align-items: center; padding-top: 8px; border-top: 1px solid var(--hairline); }
+/* The link-out arrow is larger than the text beside it; held to the text's line height, it never makes the line taller. */
+.bae-linkout { display: inline-flex; align-items: center; height: 1lh; }
 .bae-m-reclink { display: inline-flex; align-items: center; gap: 3px; font: 600 10.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-itable { display: flex; flex-direction: column; font: 400 13px var(--font-sans); }
 .bae-m-itable-row { display: grid; grid-template-columns: minmax(180px, 1.2fr) 52px 1fr 1fr 88px; gap: 10px; align-items: center; }
@@ -846,8 +871,7 @@
 /* ==== part: explore ==== */.bae-stars { display: inline-flex; align-items: center; gap: 2px; }
 .bae-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; background: var(--accent-tint-strong); color: var(--accent); font-weight: 600; font-family: var(--font-sans); }
 .bae-m-lrow { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; font: 400 13px var(--font-sans); }
-.bae-m-lrow-selected { background: var(--accent-selection); color: var(--on-fill); }
-.bae-m-lrow-selected .bae-muted { color: var(--on-fill-secondary); }
+.bae-m-lrow-selected { background: var(--accent-tint); }
 .bae-a-lrow { display: flex; align-items: center; gap: 12px; padding: 8px 16px; font-family: var(--font-android); }
 .bae-a-lrow-selected { background: var(--accent-tint); }
 .bae-m-chips { display: inline-flex; align-items: center; gap: var(--space-inline); }
@@ -878,8 +902,6 @@
 .bae-errdis-panel:has(.bae-a-iconbtn) { min-height: 40px; box-sizing: border-box; padding-right: 44px; }
 .bae-errdis-panel .bae-a-iconbtn svg { width: 16px; height: 16px; }
 .bae-errdis-panel .bae-a-iconbtn { color: var(--text-secondary); }
-/* On a toned notice's solid dark fill, the panel is lighter than the fill, so its text stays readable. */
-.bae-notice:not(.bae-tone-neutral):not(.bae-notice-quiet) .bae-errdis-panel { background: color-mix(in srgb, white 40%, transparent); }
 [data-theme="light"] .bae-notice:not(.bae-tone-neutral):not(.bae-notice-quiet) .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
 
 /* ImportSheep: the parts' pivots in the drawing's units, what starts hidden, and the still pose. The motion itself is in src/36-import-sheep.js. */

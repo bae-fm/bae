@@ -74,7 +74,7 @@
   function NoticeBox(tone, icon, body, look) {
     var quiet = look.quiet;
     var glyph = look.centered ? null : noticeGlyph(tone, icon, look);
-    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, look.platform, glyph && 'bae-notice-with-icon', quiet && 'bae-notice-quiet', look.centered && 'bae-notice-centered', look.stage && 'bae-notice-stage') }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, body) : body);
+    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, look.platform, glyph && 'bae-notice-with-icon', quiet && 'bae-notice-quiet', look.flush && 'bae-notice-flush', look.centered && 'bae-notice-centered', look.stage && 'bae-notice-stage') }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, body) : body);
   }
   // The notice's words: a title (bold only under a subtitle), the subtitle saying what to do, or the caller's own children.
   function noticeWords(props) {

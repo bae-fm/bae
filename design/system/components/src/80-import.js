@@ -26,7 +26,7 @@
       : props.state === 'identifyQueued' || props.state === 'importQueued' ? h('span', { className: 'bae-muted', title: props.state === 'importQueued' ? 'Waiting to import' : 'Waiting to be identified' }, h(Sym, { name: 'clock', size: 12 }))
       : props.state === 'identifying' ? h(MacSpinner, { size: 12 }) : null;
     var line1 = props.folder ? h('div', { className: 'bae-m-irow-folder' }, h(Sym, { name: 'folder', size: 13, className: 'bae-muted' }), h('span', { className: 'bae-mono bae-ellipsis', style: { fontSize: 12 } }, props.folder))
-      : h('div', { className: 'bae-m-irow-t' }, h('span', { className: cx('bae-ellipsis', !props.title && 'bae-muted') }, props.title || 'Album title'), h('span', { style: { opacity: props.record ? 1 : 0 } }, h(Sym, { name: 'makeLocal', size: 10, className: 'bae-muted' })));
+      : h('div', { className: 'bae-m-irow-t' }, h('span', { className: cx('bae-ellipsis', !props.title && 'bae-muted') }, props.title || 'Album title'), h('span', { className: 'bae-linkout', style: { opacity: props.record ? 1 : 0 } }, h(Sym, { name: 'external', size: 13, className: 'bae-muted' })));
     var line2 = props.state === 'importing' ? h('div', { className: 'bae-m-irow-step' }, h('span', null, props.step || 'Reading files...'), h('div', { className: 'bae-m-bar', style: { height: 3 } }, h('div', { className: 'bae-accent-bg', style: { width: (Number(props.progress || 0.4) * 100) + '%' } })))
       : props.state === 'uploading' ? h('div', { className: 'bae-m-irow-step' }, h('span', null, 'Uploading'), h('div', { className: 'bae-m-bar', style: { height: 3 } }, h('div', { className: 'bae-activity-bg', style: { width: (Number(props.progress || 0.4) * 100) + '%' } })))
       : props.error ? h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.error)
@@ -59,15 +59,25 @@
           h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.audio || 'FLAC · 16-bit · 44.1 kHz · 10 files'))),
       h('div', { className: 'bae-m-formhead' }, 'Release'),
       h('div', { className: 'bae-m-idraft-grid' }, rows.map(function (r, i) { return [h('span', { key: 'l' + i, className: 'bae-muted' }, r[0]), h('span', { key: 'v' + i, className: r[1] === '—' ? 'bae-m-tertiary' : null }, r[1])]; })),
-      props.records ? h('div', { className: 'bae-m-idraft-records' }, list(props.records).map(function (s) { return h('span', { key: s, className: 'bae-m-reclink' }, s, h(Sym, { name: 'makeLocal', size: 9 })); }), h('span', { style: { flex: 1 } }), h('span', { className: 'bae-accent' }, 'Unlink')) : null);
+      props.records ? h('div', { className: 'bae-m-idraft-records' }, list(props.records).map(function (s) { return h('span', { key: s, className: 'bae-m-reclink' }, s, h('span', { className: 'bae-linkout' }, h(Sym, { name: 'external', size: 12 }))); }), h('span', { style: { flex: 1 } }), h('span', { className: 'bae-accent' }, 'Unlink')) : null);
   }
   // The mapping table: Source | Track | Title | Artist | Length, a side's eyebrow, CUE captions and rows.
+  // The folder's images under the release: a ruled Images heading, then each image at 128pt (`images`: artwork titles, comma-separated).
+  function MacImportImages(props) {
+    return h('div', { className: 'bae-m-ifiles' }, h('div', { className: 'bae-m-formhead' }, 'Images'),
+      h('div', { className: 'bae-m-iimages' }, list(props.images).map(function (t) { return h(Artwork, { key: t, title: t, size: 128, radius: 6 }); })));
+  }
+  // The release's files that are no track (a rip log, a cover image): a ruled Files heading, then one line per file, its name in mono and its size at the right (`files`: "name|size", comma-separated).
+  function MacReleaseFiles(props) {
+    return h('div', { className: 'bae-m-ifiles' }, h('div', { className: 'bae-m-formhead' }, 'Files'),
+      h('div', null, list(props.files).map(function (f) { var p = f.split('|'); return h('div', { key: p[0], className: 'bae-m-ifile' }, h('span', { className: 'bae-mono bae-ellipsis' }, p[0]), h('span', { className: 'bae-m-tertiary bae-m-ifile-size' }, p[1] || '')); })));
+  }
   function MacImportTable(props) {
     return h('div', { className: 'bae-m-itable' }, h('div', { className: 'bae-m-itable-row bae-m-itable-head' }, ['Source', 'Track', 'Title', 'Artist', 'Length'].map(function (t) { return h('span', { key: t, className: 'bae-m-eyebrowtxt' }, t); })), props.children);
   }
   function MacImportTrackRow(props) {
     return h('div', { className: cx('bae-m-itable-row', 'bae-m-itable-track', props.playing && 'bae-m-itable-playing') },
-      h('span', { className: 'bae-m-isrc' }, h('span', { className: props.playing ? 'bae-accent' : 'bae-muted' }, h(Sym, { name: props.playing ? 'pause' : 'play', size: 10 })), h('span', { className: props.entry ? 'bae-ellipsis' : 'bae-mono bae-ellipsis' }, props.file), props.evidence ? h(StatusChip, { tone: 'accent' }, props.evidence) : null),
+      h('span', { className: 'bae-m-isrc' }, h('span', { className: props.playing ? 'bae-accent' : 'bae-muted' }, h(Sym, { name: props.playing ? 'pause' : 'play', size: 10 })), h('span', { className: props.entry ? 'bae-ellipsis' : 'bae-mono bae-ellipsis' }, props.file)),
       h('span', { className: 'bae-num' }, props.position),
       h('span', { className: cx('bae-ellipsis', !props.title && 'bae-m-tertiary') }, props.title || 'Untitled'),
       h('span', { className: cx('bae-ellipsis', props.inherited && 'bae-m-tertiary') }, props.artist || 'Album artist'),
@@ -101,7 +111,7 @@
   }
   function MacReleaseCard(props) {
     return h('div', { className: 'bae-m-rcard' },
-      h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 44, radius: 6 }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), list(props.sources || 'Discogs,MusicBrainz').map(function (s) { return h('span', { key: s, className: 'bae-m-reclink' }, s, h(Sym, { name: 'makeLocal', size: 9 })); })),
+      h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 44, radius: 6 }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), list(props.sources || 'Discogs,MusicBrainz').map(function (s) { return h('span', { key: s, className: 'bae-m-reclink' }, s, h('span', { className: 'bae-linkout' }, h(Sym, { name: 'external', size: 12 }))); })),
       h('div', { className: 'bae-m-rcard-rows' }, props.children));
   }
   function MacPressingRow(props) {

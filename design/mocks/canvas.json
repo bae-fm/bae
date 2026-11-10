@@ -123,7 +123,7 @@
    "y": 15812
   },
   "AlbMacEditor.dc.html": {
-   "h": 1000,
+   "h": 1120,
    "page": "home",
    "title": "macOS: Edit…",
    "w": 1200,
@@ -653,7 +653,7 @@
   "ImpMacBanners.dc.html": {
    "h": 900,
    "page": "import",
-   "title": "macOS: already in the library, and an artist conflict",
+   "title": "macOS: already in the library",
    "w": 1400,
    "x": 4440,
    "y": 1620
@@ -691,7 +691,7 @@
    "y": 1620
   },
   "ImpMacDone.dc.html": {
-   "h": 900,
+   "h": 1300,
    "page": "import",
    "title": "macOS: Imported, uploading",
    "w": 1400,
@@ -699,7 +699,7 @@
    "y": 3000
   },
   "ImpMacDraft.dc.html": {
-   "h": 900,
+   "h": 1260,
    "page": "import",
    "title": "macOS: a release identified, ready to import",
    "w": 1400,
@@ -2559,13 +2559,13 @@
    "page": "welcome",
    "title": "macOS: reset failed",
    "w": 900,
-   "x": 1960,
+   "x": 2940,
    "y": 12192
   },
   "ResetMacOffered.dc.html": {
    "h": 600,
    "page": "welcome",
-   "title": "macOS: Reset this device?",
+   "title": "macOS: Reset offered",
    "w": 900,
    "x": 0,
    "y": 12192
@@ -2575,7 +2575,7 @@
    "page": "welcome",
    "title": "macOS: finish resetting",
    "w": 900,
-   "x": 2940,
+   "x": 3920,
    "y": 12192
   },
   "ResetMacWorking.dc.html": {
@@ -2583,7 +2583,7 @@
    "page": "welcome",
    "title": "macOS: resetting",
    "w": 900,
-   "x": 980,
+   "x": 1960,
    "y": 12192
   },
   "RestoreCode.dc.html": {
@@ -3458,6 +3458,14 @@
    "w": 412,
    "x": 2060,
    "y": 3760
+  },
+  "ResetMacDialog.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Reset this device: confirm",
+   "w": 900,
+   "x": 980,
+   "y": 12192
   }
  },
  "createdOnFiles": {
@@ -3468,7 +3476,7 @@
   {
    "title": "bae",
    "namespace": "bae",
-   "artifact": "https://claude.ai/artifact/Y6uUYPzJuqVmmjZPT4kdZA",
+   "artifact": "https://claude.ai/artifact/SdtZaYwqSiNuWzC8vQjnEF",
    "version": "1794021705-ea3f",
    "copiedAt": "2026-11-07T03:22:02Z"
   }
@@ -3670,7 +3678,7 @@
   "code-casting": {
    "page": "settings",
    "size": 24,
-   "text": "What the code needs for these boards:\n- While casting is on, the Casting page lists the receivers bae finds (name, and Chromecast, AirPlay or UPnP), from the same device-local table the picker reads, and browses only while the page is open, as the picker does. spec/bae.md §7 “Finding receivers” says devices are searched for only while the picker is open; it changes to the picker or this page. Today the page has no list (CastingSettingsTab.swift, SettingsCastSection.kt). bae change.\n- Until the first receiver answers, the list shows a spinner and “Looking for receivers…” (MacSpinner, AndroidSpinner); it fills in as receivers answer, with no end state, since browsing runs while the page is open. Under it: “Receivers show up here while this page is open.”\n- Convert to shows while casting is on, as today (CastTranscodeFormatPicker).\n- Turning casting off while a cast plays asks “Turn off casting?” / “This will stop casting to <device>.” as today; not drawn.\n- Android: the switch's explanation is a caption under the card, not the row's second line, which cut it off.",
+   "text": "What the code needs for these boards:\n- While casting is on, the Casting page lists the receivers bae finds with the picker’s own rows (tap to cast; the one being cast to says Casting with Disconnect), from the same device-local table the picker reads, and browses only while the page is open, as the picker does. spec/bae.md §7 “Finding receivers” says devices are searched for only while the picker is open; it changes to the picker or this page. Today the page has no list (CastingSettingsTab.swift, SettingsCastSection.kt). bae change.\n- Until the first receiver answers, the list shows a spinner and “Looking for receivers…” (MacSpinner, AndroidSpinner); it fills in as receivers answer, with no end state, since browsing runs while the page is open.\n- Convert to shows while casting is on, as today (CastTranscodeFormatPicker).\n- Turning casting off while a cast plays asks “Turn off casting?” / “This will stop casting to <device>.” as today; not drawn.\n- Android: the switch's explanation is a caption under the card, not the row's second line, which cut it off.",
    "w": 420,
    "x": 3786,
    "y": 5444
@@ -4370,7 +4378,7 @@
    "text": "Resetting this device: macOS",
    "kind": "title1",
    "w": 240,
-   "maxW": 4420
+   "maxW": 4820
   },
   "row-search-android": {
    "kind": "title1",
@@ -4853,6 +4861,30 @@
    "x": 6400,
    "y": 2520,
    "text": "How a transfer line counts (macOS and Android):\n- The count is releases done of the batch: “1 of 3 releases”. A release counts as done once all its files are.\n- The bar is bytes, not releases: the bytes done of the whole batch’s bytes. It moves while a release’s files transfer, even while the count stays put.\n- Uploads count the bytes the provider confirmed (coven’s upload progress); pins and make-locals count the bytes downloaded and verified.\n- A batch is everything the queue has held since it was last empty, so both the count’s total and the bar’s total only grow, and start over once the queue empties.\n- Syncing changes has no count, so its bar moves."
+  },
+  "code-release-files": {
+   "page": "import",
+   "size": 24,
+   "text": "What the code needs: one Files view.\n- A release's files that are no track (a rip log, a cover image) show the same way in three places: a Found folder's pane, an imported release's pane, and the album's Edit Release sheet. One view draws them in all three (the design system's MacReleaseFiles): a ruled Files heading, a line per file with its size, a document opening on click.\n- Today these are three separate views: Found draws file rows inside its track table (ImportMappingTable), Imported has its own list (ImportedReleasePane.filesSection), and Edit Release lists no files. Replace all three with the one view; don't add a fourth.\n- Queued as #512.",
+   "w": 460,
+   "x": 4440,
+   "y": 4340
+  },
+  "code-release-files-edit": {
+   "page": "home",
+   "size": 24,
+   "text": "What the code needs: one Files view.\n- A release's files that are no track (a rip log, a cover image) show the same way in three places: a Found folder's pane, an imported release's pane, and the album's Edit Release sheet. One view draws them in all three (the design system's MacReleaseFiles): a ruled Files heading, a line per file with its size, a document opening on click.\n- Today these are three separate views: Found draws file rows inside its track table (ImportMappingTable), Imported has its own list (ImportedReleasePane.filesSection), and Edit Release lists no files. Replace all three with the one view; don't add a fourth.\n- Queued as #512.",
+   "w": 460,
+   "x": -560,
+   "y": 15812
+  },
+  "code-no-evidence-labels": {
+   "page": "import",
+   "size": 24,
+   "w": 460,
+   "x": 7400,
+   "y": 1620,
+   "text": "What the code needs: REMOVE the clue labels. Not optional.\n- No file, track or image in the import says which clue was read from it: no \"Disc ID\" label on the rip log or a CUE sheet's row, no \"Barcode\" label on an image. Remove them everywhere they show: the Found pane's track and file rows, the images gallery, the imported pane.\n- macOS: ImportEvidenceChip and every use (ImportMappingSourceCell, ImportMappingGallery, ImportSheetCaptionRow, ImportMappingTrackRow, ImportedReleasePane), their tests and strings; the bridge's file evidence goes when nothing reads it. Android the same.\n- Queued as #513."
   }
  },
  "order": [
@@ -5269,6 +5301,7 @@
   "ResetAndroidWorking.dc.html",
   "ResetAndroidUnfinished.dc.html",
   "ResetMacOffered.dc.html",
+  "ResetMacDialog.dc.html",
   "ResetMacWorking.dc.html",
   "ResetMacFailed.dc.html",
   "ResetMacUnfinished.dc.html",

@@ -5,7 +5,7 @@ bae's screens as they should work, drawn on a claude.ai Design canvas. Each
 holds the notes beside them. Blue monospace text inside a board is a note, not
 part of the design; yellow notes beside a row name what the code needs.
 
-The canvas is published at https://claude.ai/artifact/QnpqqBKAW7t9MTPGDhkUwQ.
+The canvas is published at https://claude.ai/artifact/9geFwGqEzevbvbh22NqZzJ.
 These files are its source: an edit made on the published page is copied back
 here and committed before the canvas is published again.
 

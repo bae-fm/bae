@@ -13,6 +13,8 @@
     return h('div', { className: 'bae-m-scrim' },
       h('div', { role: 'alertdialog', 'aria-label': props.title, className: 'bae-m-alert' },
         h('div', { className: 'bae-m-alert-title' }, props.title),
+        // `warning`: what the choice costs, as a quiet notice between the title and the message ("Unsent changes will be lost").
+        props.warning ? h(MacNotice, { quiet: true, flush: true, tone: 'warning', title: props.warning }) : null,
         props.message ? h('div', { className: 'bae-m-alert-message' }, props.message) : null,
         props.details ? h(MacErrorDetails, { details: props.details }) : null,
         h('div', { className: 'bae-m-alert-buttons' }, props.children)));
@@ -162,11 +164,13 @@
 
   function Progress(prefix) {
     return function (props) {
-      var known = typeof props.value === 'number';
+      // A board passes value as text ("0.45"), so a number in any form is a known amount; no value is a wait of no known length, a moving bar.
+      var value = props.value == null || props.value === '' ? NaN : Number(props.value);
+      var known = !isNaN(value);
       return h('div', { className: prefix + '-progress' },
         props.label ? h('div', null, props.label) : null,
-        h('div', { className: 'bae-progress-track', role: 'progressbar', 'aria-valuenow': known ? Math.round(props.value * 100) : undefined },
-          h('div', { className: cx('bae-progress-fill', !known && 'bae-progress-moving'), style: known ? { width: (props.value * 100) + '%' } : null })));
+        h('div', { className: 'bae-progress-track', role: 'progressbar', 'aria-valuenow': known ? Math.round(value * 100) : undefined },
+          h('div', { className: cx('bae-progress-fill', !known && 'bae-progress-moving'), style: known ? { width: (value * 100) + '%' } : null })));
     };
   }
   function Spinner(prefix, size) {

@@ -2613,8 +2613,8 @@ device. A saved code, in iCloud Keychain or on an Android phone, and a restore
 over this device's copy (§6.4), say **Restore**. A scanned code starts at once, as an invite does, with
 no screen to confirm it: the person scanned it to add this device, so the
 running restore shows next. Only an S3 code without the key stops first, to ask
-for it. A typed restore code shows where its library is stored and waits for
-**Add**. A code that doesn't read says so on the code screen, and a restore
+for it, in a few words ("Enter your credentials for the S3 bucket.") over the
+access key's two fields. A typed restore code waits for **Add**. A code that doesn't read says so on the code screen, and a restore
 that fails shows its error beside **Add**, to try again.
 
 **A restore that stops partway.** Just before coven adds the new device to the

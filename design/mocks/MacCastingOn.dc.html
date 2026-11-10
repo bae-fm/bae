@@ -30,14 +30,13 @@ body{margin:0}
       <x-import component-from-global-scope="Bae.MacSwitch" on="{{ true }}" label="Enable casting"></x-import>
     </x-import>
   </x-import>
-  <x-import component-from-global-scope="Bae.MacNote">Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices.</x-import>
+  <x-import component-from-global-scope="Bae.MacNote">Scan for Cast, AirPlay, and UPnP receivers on your network.</x-import>
   <x-import component-from-global-scope="Bae.MacSection" title="Receivers on your network">
     <x-import component-from-global-scope="Bae.MacBox">
       <x-import component-from-global-scope="Bae.MacCastRow" name="Living Room" kind="cast" active="{{ true }}"></x-import>
       <x-import component-from-global-scope="Bae.MacCastRow" name="Kitchen" kind="airplay"></x-import>
       <x-import component-from-global-scope="Bae.MacCastRow" name="Den receiver" kind="upnp"></x-import>
     </x-import>
-    <x-import component-from-global-scope="Bae.MacNote">Receivers show up here while this page is open.</x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacSection">
     <x-import component-from-global-scope="Bae.MacBox">
@@ -45,7 +44,7 @@ body{margin:0}
         <x-import component-from-global-scope="Bae.MacPopUpButton" value="MP3"></x-import>
       </x-import>
     </x-import>
-    <x-import component-from-global-scope="Bae.MacNote">Tracks a Cast or UPnP device can’t play directly, such as tracks from a single file + CUE, are converted while they play. WAV is lossless but takes several times the data of MP3. UPnP devices always get MP3, since they aren’t required to play WAV.</x-import>
+    <x-import component-from-global-scope="Bae.MacNote">For tracks a receiver can’t play as they are. WAV keeps full quality but can cut out on weak Wi‑Fi; MP3 holds up better.</x-import>
   </x-import>
 </x-import>
 </x-dc>

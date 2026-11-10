@@ -21,7 +21,7 @@
     globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
     sync: 'M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4',
     moveToCloud: 'M12 4v12M7 11l5 5 5-5M5 20h14',
-    makeLocal: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
+    external: 'M7 17L17 7M9 7h8v8',
     export: 'M12 15V3M7 8l5-5 5 5M5 12v8h14v-8',
     saveAs: 'M12 3v12M7 10l5 5 5-5M5 12v8h14v-8',
     grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
@@ -154,8 +154,11 @@
     var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless', muted: centered }, props.secondary) : null;
     var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-m-notice-dismiss' }, h(MacIconButton, { icon: 'close', size: 14, faint: true, label: 'Dismiss' })) : null;
     if (centered) {
-      var title = h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true }), h('div', null, noticeWords(props)));
-      return NoticeBox(tone, props.icon, h('div', { className: 'bae-m-notice' }, title, primary || secondary ? h('div', { className: 'bae-notice-centered-row' }, secondary, primary) : null), { platform: 'bae-m-notice-box', quiet: props.quiet, centered: true, stage: props.stage });
+      // The glyph sits beside the title only; a subtitle is its own smaller, grey line under them, so the two lines read as a heading and what to do.
+      var title = h(React.Fragment, null,
+        h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true }), h('div', { className: cx('bae-notice-title', props.subtitle && 'bae-notice-title-strong') }, props.title), props.children),
+        props.subtitle ? h('div', { className: 'bae-notice-centered-sub' }, props.subtitle) : null);
+      return NoticeBox(tone, props.icon, h('div', { className: 'bae-m-notice' }, title, primary || secondary ? h('div', { className: 'bae-notice-centered-row' }, secondary, primary) : null), { platform: 'bae-m-notice-box', quiet: props.quiet, flush: props.flush, centered: true, stage: props.stage });
     }
     // The buttons sit on the text's line at the right, secondary first; `buttons: 'below'` puts them on a line of their own under the text.
     var below = props.buttons === 'below';
@@ -166,7 +169,7 @@
     var body = h('div', { className: 'bae-m-notice' }, top, below ? buttons : null);
     // The glyph sits in the row piece's leading column, so a notice among rows shares their text edge.
     var glyph = noticeGlyph(tone, props.icon, { quiet: props.quiet });
-    return NoticeBox(tone, false, glyph ? h(MacItem, { lead: glyph }, body) : body, { platform: 'bae-m-notice-box', quiet: props.quiet, centered: false, stage: props.stage });
+    return NoticeBox(tone, false, glyph ? h(MacItem, { lead: glyph }, body) : body, { platform: 'bae-m-notice-box', quiet: props.quiet, flush: props.flush, centered: false, stage: props.stage });
   }
 
   // A popover hanging from a title-bar button, its arrow pointing up at it.
@@ -217,12 +220,15 @@
   function AndroidNotice(props) {
     var tone = props.tone || 'neutral';
     var centered = props.layout === 'centered';
-    var primary = props.action ? h(AndroidButton, { key: 'p', kind: centered ? 'outlined' : 'text' }, props.action) : null;
+    var primary = props.action ? h(AndroidButton, { key: 'p', kind: centered ? 'tonal' : 'text' }, props.action) : null;
     var secondary = props.secondary ? h(AndroidButton, { key: 's', kind: 'text' }, props.secondary) : null;
     var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-a-notice-dismiss' }, h(AndroidIconButton, { icon: 'close', size: 20, label: 'Dismiss', className: 'bae-a-icon-muted' })) : null;
     if (centered) {
-      var title = h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true }), h('div', null, noticeWords(props)));
-      return NoticeBox(tone, props.icon, h('div', { className: 'bae-a-notice' }, title, primary || secondary ? h('div', { className: 'bae-notice-centered-row' }, secondary, primary) : null), { platform: 'bae-a-notice-box', quiet: props.quiet, centered: true, stage: props.stage });
+      // The glyph sits beside the title only; a subtitle is its own smaller, grey line under them, so the two lines read as a heading and what to do.
+      var title = h(React.Fragment, null,
+        h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true }), h('div', { className: cx('bae-notice-title', props.subtitle && 'bae-notice-title-strong') }, props.title), props.children),
+        props.subtitle ? h('div', { className: 'bae-notice-centered-sub' }, props.subtitle) : null);
+      return NoticeBox(tone, props.icon, h('div', { className: 'bae-a-notice' }, title, primary || secondary ? h('div', { className: 'bae-notice-centered-row' }, secondary, primary) : null), { platform: 'bae-a-notice-box', quiet: props.quiet, flush: props.flush, centered: true, stage: props.stage });
     }
     // As on Mac: the buttons sit on the text's line at the right; `buttons: 'below'` puts them under the text.
     var below = props.buttons === 'below';
@@ -231,7 +237,7 @@
     // One top row, aligned to the title's line: the words, inline buttons, the ×; `below` buttons are a second row.
     var top = h('div', { className: 'bae-a-notice-top' }, words, below ? null : buttons, dismiss);
     var body = h('div', { className: 'bae-a-notice' }, top, below ? buttons : null);
-    return NoticeBox(tone, props.icon, body, { platform: 'bae-a-notice-box', quiet: props.quiet, centered: false, stage: props.stage });
+    return NoticeBox(tone, props.icon, body, { platform: 'bae-a-notice-box', quiet: props.quiet, flush: props.flush, centered: false, stage: props.stage });
   }
 
   // The Activity sheet (SyncActivity.kt's, grown to hold every problem): the title, Needs Attention with the caller's notices (children), bae couldn't read sync's status (no button), and sync's own with Open Sync Settings; nothing retries in place; then the transfers (the downloads line opens Downloads), or up to date.

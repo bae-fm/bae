@@ -18,7 +18,7 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidScreen"><div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px;box-sizing:border-box;text-align:center;font:400 14px/20px var(--font-android)"><x-import component-from-global-scope="Bae.AndroidSpinner" label="Resetting this device…"></x-import><div style="width:340px"><x-import component-from-global-scope="Bae.AndroidProgress" label="Downloading the library…" value="0.5"></x-import></div></div></x-import>
+<x-import component-from-global-scope="Bae.AndroidScreen"><div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-group);padding:var(--space-page);box-sizing:border-box;text-align:center;font:400 14px/20px var(--font-android)"><div style="width:340px"><x-import component-from-global-scope="Bae.AndroidProgress" label="Downloading the library…" value="0.5"></x-import></div></div></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

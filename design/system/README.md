@@ -55,6 +55,7 @@ The text styles are macOS points. iOS follows Dynamic Type, and the Android comp
   - **A sidebar heading** folds a group of destinations in a macOS sidebar, its chevron showing only under the pointer. It is navigation, not content. bae has no sectioned sidebar yet.
 - A disclosure's chevron on macOS points right closed and down open, leading inside its row (`MacDisclosure`).
 - A notice never shows the error itself. When there is an error behind it, its Details button opens an alert (`MacAlert` with `details`) or dialog (`AndroidDialog` holding `AndroidErrorDetails`) with the explanation and the causes, one a line, with Copy. In the Activity panel, clicking (tapping) the problem opens it instead.
+- Inside an alert or dialog a notice is always `quiet` (no fill, the glyph in its tone): a filled box in a dialog stands out from everything else in it. "Unsent changes will be lost" in the removal confirmation.
 - An error in part of a screen is its box; a Retry that belongs to it is the box's action, at its right, level with the message.
 - A view that failed whole is a notice in the centred layout, quiet, a small grey outline glyph before the message, then Details and Retry on one row under it, Retry last. Details opens the causes in a popup, as every notice's does.
 

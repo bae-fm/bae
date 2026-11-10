@@ -18,7 +18,7 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidScreen"><div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px;box-sizing:border-box;text-align:center;font:400 14px/20px var(--font-android)"><div>Resetting this device for this library did not finish.</div><x-import component-from-global-scope="Bae.AndroidButton">Finish resetting this device</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="text">Cancel</x-import></div></x-import>
+<x-import component-from-global-scope="Bae.AndroidScreen"><div style="height:100%;display:flex;flex-direction:column"><x-import component-from-global-scope="Bae.AndroidNotice" tone="warning" layout="centered" quiet="{{ true }}" title="Resetting this device didn’t finish." action="Finish resetting"></x-import></div></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

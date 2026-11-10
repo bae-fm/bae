@@ -1,11 +1,31 @@
   // ---- Android ----
 
   function AndroidScreen(props) {
-    return h('div', { className: 'bae-a-screen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
-      props.title ? h('header', { className: 'bae-a-topbar' },
+    var top = [
+      props.title ? h('header', { key: 'top', className: 'bae-a-topbar' },
         props.back ? h(AndroidIconButton, { icon: 'back', label: 'Back' }) : null,
         h('h1', null, props.title)) : null,
-      h('main', { className: 'bae-a-main' }, props.children));
+      h('main', { key: 'main', className: 'bae-a-main' }, props.children)];
+    // keyboard: a field has focus, so the keyboard is up and the screen, a dialog over it included, fits in the space above it.
+    return h('div', { className: 'bae-a-screen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
+      props.keyboard ? h(React.Fragment, null, h('div', { className: 'bae-a-screen-above' }, top), h(AndroidKeyboard)) : top);
+  }
+
+  // The on-screen keyboard, drawn plainly: three rows of letters, the bottom row with the space bar, and the gesture bar under it.
+  function AndroidKeyboard() {
+    function key(label, kind, grow) {
+      return h('span', { key: label, className: cx('bae-a-key', kind && 'bae-a-key-' + kind), style: grow ? { flex: grow } : null }, label);
+    }
+    function row(keys, inset) {
+      return h('div', { className: 'bae-a-keys-row', style: inset ? { padding: '0 ' + inset + 'px' } : null }, keys);
+    }
+    var letters = function (s) { return s.split('').map(function (c) { return key(c); }); };
+    return h('div', { className: 'bae-a-keyboard', 'aria-hidden': true },
+      row(letters('qwertyuiop')),
+      row(letters('asdfghjkl'), 18),
+      row([key('\u21e7', 'mod', 1.5)].concat(letters('zxcvbnm'), [key('\u232b', 'mod', 1.5)])),
+      row([key('?123', 'mod', 1.5), key(',', 'mod'), key('', null, 5), key('.', 'mod'), key('\u21b5', 'enter', 1.5)]),
+      h('div', { className: 'bae-a-keyboard-gesture' }));
   }
 
   function AndroidSection(props) {
@@ -38,7 +58,7 @@
   function AndroidButton(props) {
     var kind = props.kind || 'filled';
     return h('button', { type: 'button', disabled: !!props.off, onClick: props.onClick,
-      className: cx('bae-a-btn', 'bae-a-btn-' + kind, props.large && 'bae-a-btn-large', props.destructive && 'bae-a-btn-destructive', props.alignTo && 'bae-a-btn-align-' + props.alignTo) },
+      className: cx('bae-a-btn', 'bae-a-btn-' + kind, props.large && 'bae-a-btn-large', props.destructive && 'bae-a-btn-destructive', props.neutral && 'bae-a-btn-neutral', props.alignTo && 'bae-a-btn-align-' + props.alignTo) },
       props.children != null ? props.children : props.label);
   }
 

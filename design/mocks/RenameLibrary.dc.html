@@ -27,7 +27,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 .card{margin:0 16px;border-radius:16px;background:var(--surface);overflow:hidden}.card:first-child{margin-top:16px}:not(h2)+.card{margin-top:8px}.card>*+*{border-top:1px solid var(--hairline)}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidScreen" title="Library" back="{{yes}}">
+<x-import component-from-global-scope="Bae.AndroidScreen" keyboard="{{ true }}" title="Library" back="{{yes}}">
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Name" subtitle="Library Name" icon="edit"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Synced" tone="success"></x-import>

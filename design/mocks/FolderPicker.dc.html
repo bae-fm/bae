@@ -23,7 +23,7 @@ body{margin:0;background:var(--elevated)}
 <sc-if value="{{naming}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacFieldRow" align-text="{{yes}}"><x-import component-from-global-scope="Bae.MacTextField" label="Folder name" label-hidden="{{yes}}" value="bae" state="focused"></x-import><x-import component-from-global-scope="Bae.MacButton">Create</x-import></x-import></sc-if>
 </x-import>
 <sc-if value="{{notEmpty}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacNotice" tone="danger" title="{{notEmptyText}}"></x-import></sc-if>
-<sc-if value="{{showShareNote}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacNote">A shared folder is required to invite people to the library.</x-import></sc-if>
+
 <x-import component-from-global-scope="Bae.MacSheetFooter" split="{{yes}}">
 <x-import component-from-global-scope="Bae.MacButton" off="{{naming}}">New folder…</x-import>
 <x-import component-from-global-scope="Bae.MacButton">Cancel</x-import>
@@ -50,7 +50,6 @@ class Component extends DCLogic {
       naming: state === 'naming',
       notEmpty: state === 'notEmpty',
       notEmptyText: `“${names[1]}” isn’t empty. Choose an empty folder, or make a new one.`,
-      showShareNote: dropbox,
       setUpOff: state === 'naming' || state === 'notEmpty' || state === 'empty'
     };
   }

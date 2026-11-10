@@ -32,7 +32,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
   <x-import component-from-global-scope="Bae.AndroidDialog" title="Remove “Home music” from this device?" width="340">
     The library will remain in the cloud and on your other devices.
     <x-import component-from-global-scope="Bae.AndroidDialogActions">
-      <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Cancel</x-import>
+      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{ true }}">Cancel</x-import>
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
     </x-import>
   </x-import>

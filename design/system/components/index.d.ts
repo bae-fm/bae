@@ -11,7 +11,7 @@ export interface MacWindowProps { width?: number; height?: number; children?: Re
 export declare function MacWindow(props: MacWindowProps): React.ReactElement;
 
 /** A macOS alert: title, message, and its buttons stacked full width as children. */
-export interface MacAlertProps { title: string; message?: string; details?: string; children?: React.ReactNode }
+export interface MacAlertProps { title: string; warning?: string; message?: string; details?: string; children?: React.ReactNode }
 export declare function MacAlert(props: MacAlertProps): React.ReactElement;
 
 /** A segmented control; options is comma-separated, selected names the chosen one. */
@@ -92,7 +92,7 @@ export declare function MacNote(props: MacNoteProps): React.ReactElement;
 // ---- Android ----
 
 /** A screen: the top bar with Back and the title, then the content. Without title, no top bar. A dialog inside covers the whole screen. */
-export interface AndroidScreenProps { title?: string; back?: boolean; width?: number; height?: number; children?: React.ReactNode }
+export interface AndroidScreenProps { title?: string; back?: boolean; keyboard?: boolean; width?: number; height?: number; children?: React.ReactNode }
 export declare function AndroidScreen(props: AndroidScreenProps): React.ReactElement;
 
 /** A label in capitals over the card that follows. */
@@ -108,7 +108,13 @@ export interface AndroidRowProps { title: string; tag?: string; subtitle?: strin
 export declare function AndroidRow(props: AndroidRowProps): React.ReactElement;
 
 /** kind: filled for the action a screen is for, outlined beside it, text in dialogs and rows. large is the full-width size on the welcome screen. */
-export interface AndroidButtonProps { kind?: 'filled' | 'outlined' | 'text'; label?: string; large?: boolean; alignTo?: 'text' | 'field'; destructive?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+export interface MacImportImagesProps { images?: string }
+export declare function MacImportImages(props: MacImportImagesProps): React.ReactElement;
+export interface MacReleaseFilesProps { files?: string }
+export declare function MacReleaseFiles(props: MacReleaseFilesProps): React.ReactElement;
+export interface AndroidKeyboardProps {}
+export declare function AndroidKeyboard(props: AndroidKeyboardProps): React.ReactElement;
+export interface AndroidButtonProps { kind?: 'filled' | 'tonal' | 'outlined' | 'text'; label?: string; large?: boolean; alignTo?: 'text' | 'field'; destructive?: boolean; neutral?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function AndroidButton(props: AndroidButtonProps): React.ReactElement;
 
 /** A 48 dp glyph button: a Material Symbol by name (back, close, more, search, …). label is its accessible name. */
@@ -309,7 +315,7 @@ export declare function MacImportRow(props: { title?: string; artist?: string; f
 export declare function MacImportFolderLine(props: { tab?: string; folder: string }): React.ReactElement;
 export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; cover?: string; fields?: string; records?: string; check?: string; cloud?: boolean; retry?: boolean; blank?: boolean; editor?: boolean; changed?: boolean }): React.ReactElement;
 export declare function MacImportTable(props: { children?: React.ReactNode }): React.ReactElement;
-export declare function MacImportTrackRow(props: { file: string; entry?: boolean; evidence?: string; position?: string; title?: string; artist?: string; inherited?: boolean; length?: string; mismatch?: boolean; playing?: boolean }): React.ReactElement;
+export declare function MacImportTrackRow(props: { file: string; entry?: boolean; position?: string; title?: string; artist?: string; inherited?: boolean; length?: string; mismatch?: boolean; playing?: boolean }): React.ReactElement;
 export declare function MacImportSheetCaption(props: { disc?: string; sheet: string; bound?: string; unbound?: boolean }): React.ReactElement;
 export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; discogsBar?: boolean; autoStatus?: 'working' | 'failed'; dimmed?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacIdentifierBand(props: { chips: string }): React.ReactElement;
