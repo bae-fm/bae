@@ -9,7 +9,7 @@ private let logger = Logger.bae("WelcomeChooseView")
 /// someone's library or adds this Mac to one of the person's own.
 struct WelcomeChooseView: View {
     /// A failed library open or dev reset, shown as a callout under the
-    /// subtitle, titled by the step that failed.
+    /// tagline, titled by the step that failed.
     let loadError: LoadError?
     /// What launch found wrong, shown above `loadError` and never replaced by
     /// it.
@@ -129,11 +129,16 @@ struct WelcomeChooseView: View {
     private var content: some View {
         VStack(spacing: ThemeSpace.page) {
             Spacer()
-            Text(verbatim: "bae")
-                .themeText(.wordmark)
-            Text("Get started with your music library.")
-                .themeText(.heading)
-                .foregroundStyle(.secondary)
+            VStack(
+                spacing: showsFirstRunActions
+                    ? ThemeSpace.group : ThemeSpace.related + ThemeSpace.line
+            ) {
+                WelcomeLogo(size: showsFirstRunActions ? 120 : 72)
+                Text("Your music, everywhere")
+                    .themeText(.heading)
+                    .fontWeight(.regular)
+                    .foregroundStyle(.secondary)
+            }
             LaunchProblemNotices(launchProblems)
                 .frame(maxWidth: WelcomeLayout.columnWidth)
             if let loadError {

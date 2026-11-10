@@ -233,6 +233,16 @@ pinning = "#4553B5"
 # The word under the sheep on Welcome: the outline's plum, which reads on the
 # light background (design/system/tokens.json `logo-word`).
 logoWord = "#40183D"
+# The glow behind the sheep on Welcome, the pool of light under it, and the
+# word's edge. The same in both modes; design/system/components/bundle.css
+# draws them as .bae-logo-glow, .bae-logo-pool and .bae-word-lift.
+logoGlowCentre = "#52F7A8C4"
+logoGlowInner = "#38C98ADD"
+logoGlowMiddle = "#1F9B6CF6"
+logoGlowOuter = "#0A9B6CF6"
+logoPoolCentre = "#29F7A8C4"
+logoPoolMiddle = "#0F9B6CF6"
+logoWordEdge = "#59FFFFFF"
 hairline = "#1A000000"
 hairlineStrong = "#2E000000"
 hover = "#0F000000"
@@ -270,6 +280,16 @@ activity = "#80CCCE"
 pinning = "#A9B8FF"
 # The word under the sheep on Welcome: the wool's cream.
 logoWord = "#FFFCF4"
+# The glow behind the sheep on Welcome, the pool of light under it, and the
+# word's edge. The same in both modes; design/system/components/bundle.css
+# draws them as .bae-logo-glow, .bae-logo-pool and .bae-word-lift.
+logoGlowCentre = "#52F7A8C4"
+logoGlowInner = "#38C98ADD"
+logoGlowMiddle = "#1F9B6CF6"
+logoGlowOuter = "#0A9B6CF6"
+logoPoolCentre = "#29F7A8C4"
+logoPoolMiddle = "#0F9B6CF6"
+logoWordEdge = "#59FFFFFF"
 hairline = "#1AFFFFFF"
 hairlineStrong = "#2EFFFFFF"
 hover = "#0FFFFFFF"

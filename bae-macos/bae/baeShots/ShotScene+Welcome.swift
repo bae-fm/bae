@@ -4,9 +4,9 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The welcome's list of this Mac's libraries, its first screen on a Mac
-    /// that holds no library and no saved restore code, and a library's
-    /// details.
+    /// The welcome's list of this Mac's libraries, its window over a Mac that
+    /// holds libraries and over one that holds none and no saved restore
+    /// code, and a library's details.
     static let welcomeScenes: [ShotScene] = [
         ShotScene(
             id: "welcome-libraries",
@@ -16,6 +16,15 @@ extension ShotScene {
         },
         ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
             let reads = CountedReads()
+            return ShotStage(
+                PreviewScenes.welcome(
+                    initialMode: .choose,
+                    setup: reads.setup
+                )
+            ) { reads.answered == 2 }
+        },
+        ShotScene(id: "welcome-populated", size: WelcomeWindow.size) {
+            let reads = CountedReads(libraries: PreviewData.welcomeLibraries)
             return ShotStage(
                 PreviewScenes.welcome(
                     initialMode: .choose,
@@ -55,13 +64,19 @@ private struct UnservedReadError: Error {}
 @Observable
 private final class CountedReads {
     private(set) var answered = 0
+    /// The libraries on this Mac the listing answers.
+    let libraries: [BridgeLibrary]
+
+    init(libraries: [BridgeLibrary] = []) {
+        self.libraries = libraries
+    }
 
     var setup: LibrarySetup {
         let base = LibrarySetup.stub()
         return LibrarySetup(
             listLibraries: { [self] in
                 await answer()
-                return []
+                return libraries
             },
             libraryStanding: { _ in throw UnservedReadError() },
             createLibrary: { _ in throw UnservedReadError() },

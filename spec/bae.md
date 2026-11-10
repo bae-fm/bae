@@ -2590,7 +2590,7 @@ this Mac last knew it (**Synced**, or **Unsent changes** while it holds some it
 never uploaded), when it last synced, and its provider, account and folder. A
 library that is open shows its live sync status; any other is read as it last
 stood, without opening it. A Mac's first screen
-offers the same two under **Create new library**, and its File menu offers
+shows the sheep and the name over "Your music, everywhere", and offers the same two under **Create new library**, and its File menu offers
 them as **Scan Code…** and **Enter Code…**; they open one code screen, where
 the code decides the same way. Once it lists libraries, the three are the
 items of **Add library…** under the list. A restore code's screens call that adding this

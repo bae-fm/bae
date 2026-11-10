@@ -50039,175 +50039,175 @@
         }
       }
     },
-    "Get started with your music library." : {
-      "comment" : "Welcome screen subtitle",
+    "Your music, everywhere" : {
+      "comment" : "Welcome screen tagline under the logo",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ابدأ مع مكتبتك الموسيقية."
+            "value" : "موسيقاك في كل مكان"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Започнете с вашата музикална библиотека."
+            "value" : "Вашата музика, навсякъде"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Začněte se svou hudební knihovnou."
+            "value" : "Vaše hudba, všude"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kom i gang med dit musikbibliotek."
+            "value" : "Din musik, overalt"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Get started with your music library."
+            "value" : "Your music, everywhere"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Leg mit deiner Musikbibliothek los."
+            "value" : "Deine Musik, überall"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ξεκινήστε με τη μουσική σας βιβλιοθήκη."
+            "value" : "Η μουσική σας, παντού"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Empieza con tu biblioteca de música."
+            "value" : "Tu música, en todas partes"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aloita musiikkikirjastostasi."
+            "value" : "Musiikkisi kaikkialla"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Commencez avec votre bibliothèque musicale."
+            "value" : "Votre musique, partout"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "התחל עם ספריית המוזיקה שלך."
+            "value" : "המוזיקה שלך, בכל מקום"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Započnite sa svojom glazbenom fonotekom."
+            "value" : "Vaša glazba, posvuda"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vágj bele a zenei könyvtáradba."
+            "value" : "A zenéd mindenhol"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inizia con la tua libreria musicale."
+            "value" : "La tua musica, ovunque"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音楽ライブラリを始めましょう。"
+            "value" : "あなたの音楽を、どこでも"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "음악 라이브러리를 시작하세요."
+            "value" : "내 음악, 어디서나"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kom i gang med musikkbiblioteket ditt."
+            "value" : "Musikken din, overalt"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aan de slag met je muziekbibliotheek."
+            "value" : "Je muziek, overal"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zacznij korzystać z biblioteki muzycznej."
+            "value" : "Twoja muzyka, wszędzie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comece a usar sua biblioteca de músicas."
+            "value" : "Sua música, em qualquer lugar"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comece com a sua biblioteca musical."
+            "value" : "A sua música, em todo o lado"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Începe cu biblioteca ta muzicală."
+            "value" : "Muzica ta, oriunde"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Začni so svojou hudobnou knižnicou."
+            "value" : "Tvoja hudba, všade"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kom igång med ditt musikbibliotek."
+            "value" : "Din musik, överallt"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Müzik kitaplığınızla başlayın."
+            "value" : "Müziğiniz, her yerde"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Почніть роботу зі своєю музичною бібліотекою."
+            "value" : "Ваша музика, будь-де"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "开始使用你的音乐库。"
+            "value" : "你的音乐，随处可听"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開始使用你的音樂資料庫。"
+            "value" : "你的音樂，隨處可聽"
           }
         }
       }

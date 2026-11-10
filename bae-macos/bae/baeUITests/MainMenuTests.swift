@@ -50,7 +50,7 @@ final class MainMenuTests: XCTestCase {
 
         XCTAssertEqual(app.state, .runningForeground)
         XCTAssertTrue(
-            app.staticTexts["Get started with your music library."]
+            app.staticTexts["Your music, everywhere"]
                 .waitForExistence(timeout: 20)
         )
         XCTAssertEqual(primaryWindow.frame.width, 900, accuracy: 2)
