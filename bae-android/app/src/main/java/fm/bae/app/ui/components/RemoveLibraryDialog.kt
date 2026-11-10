@@ -59,9 +59,12 @@ internal fun RemoveLibraryDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    val words = removalWords(library, loss)
+    BaeAlertDialog(
         onDismissRequest = onDismiss,
-        text = { RemoveLibraryText(library, loss) },
+        title = words.title,
+        message = words.lead,
+        content = words.rest,
         confirmButton = {
             DestructiveTextButton(onClick = onConfirm) {
                 Text(
@@ -91,6 +94,25 @@ internal fun RemoveLibraryText(
     library: BridgeLibrary,
     loss: RemovalLoss,
 ) {
+    val words = removalWords(library, loss)
+    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
+        DialogHead(words.title, words.lead)
+        words.rest?.invoke()
+    }
+}
+
+/** The confirmation's title, the sentence set under it, and whatever follows. */
+private class RemovalWords(
+    val title: String,
+    val lead: String?,
+    val rest: @Composable (() -> Unit)?,
+)
+
+@Composable
+private fun removalWords(
+    library: BridgeLibrary,
+    loss: RemovalLoss,
+): RemovalWords {
     val ending = LibraryEnding.of(library.state)
     val title =
         stringResource(
@@ -108,24 +130,29 @@ internal fun RemoveLibraryText(
             },
         )
     val bodyColor = MaterialTheme.colorScheme.onSurfaceVariant
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
-        Text(text = title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
-        when (loss) {
-            RemovalLoss.Uncounted -> {
-                Text(stringResource(R.string.removal_uncounted_body))
-            }
-
-            is RemovalLoss.Counted -> {
-                if (loss.holdsUnsent) {
-                    TitledErrorNotice(
-                        title = stringResource(R.string.library_unsent_changes_lost),
-                        advice = null,
-                        error = null,
-                        tone = StatusTone.WARNING,
-                        look = NoticeLook.QUIET,
-                    )
-                }
+    return when (loss) {
+        RemovalLoss.Uncounted -> {
+            RemovalWords(title, stringResource(R.string.removal_uncounted_body)) {
                 Text(message, color = bodyColor)
+            }
+        }
+
+        is RemovalLoss.Counted -> {
+            if (loss.holdsUnsent) {
+                RemovalWords(title, null) {
+                    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
+                        TitledErrorNotice(
+                            title = stringResource(R.string.library_unsent_changes_lost),
+                            advice = null,
+                            error = null,
+                            tone = StatusTone.WARNING,
+                            look = NoticeLook.QUIET,
+                        )
+                        Text(message, color = bodyColor)
+                    }
+                }
+            } else {
+                RemovalWords(title, message, null)
             }
         }
     }

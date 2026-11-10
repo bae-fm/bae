@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -28,6 +27,7 @@ import fm.bae.app.R
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NeutralTextButton
@@ -133,10 +133,10 @@ internal fun DeleteAlbumDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.delete_album_confirm_title)) },
-        text = { Text(stringResource(R.string.delete_album_confirm_body)) },
+        title = stringResource(R.string.delete_album_confirm_title),
+        message = stringResource(R.string.delete_album_confirm_body),
         confirmButton = {
             DestructiveTextButton(onClick = onConfirm) {
                 Text(stringResource(R.string.delete_album_confirm))

@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +32,7 @@ import fm.bae.app.ScreenFailure
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
@@ -62,10 +62,10 @@ internal fun DeviceResetDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.reset_device_confirm_title)) },
-        text = { Text(LocalContext.current.coreString(reset.warningKey())) },
+        title = stringResource(R.string.reset_device_confirm_title),
+        message = LocalContext.current.coreString(reset.warningKey()),
         confirmButton = {
             DestructiveTextButton(onClick = onConfirm) { Text(stringResource(R.string.reset_device_confirm)) }
         },

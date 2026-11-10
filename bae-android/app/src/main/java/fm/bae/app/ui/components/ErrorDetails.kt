@@ -1,14 +1,10 @@
 package fm.bae.app.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
-import fm.bae.app.ui.appearance.ThemeSpace
 
 /**
  * What a notice's Details button opens: a [title], an optional [message], the
@@ -56,15 +52,11 @@ fun ErrorDetailsDialog(
     details: ErrorDetails,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(details.title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
-                details.message?.let { Text(it) }
-                CausesPanel(text = details.causes, copyText = details.copyText)
-            }
-        },
+        title = details.title,
+        message = details.message,
+        content = { CausesPanel(text = details.causes, copyText = details.copyText) },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.ok)) } },
     )
 }

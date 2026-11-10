@@ -1,9 +1,6 @@
 package fm.bae.app.ui.onboarding
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -13,7 +10,8 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.BaeAlertDialog
+import fm.bae.app.ui.components.DialogHead
 import fm.bae.app.ui.components.NeutralTextButton
 import uniffi.bae_bridge.BridgeLibrary
 
@@ -30,16 +28,18 @@ internal fun RemovalFailedDialog(
     onCancel: () -> Unit,
 ) {
     if (error.offersRetry) {
-        AlertDialog(
+        BaeAlertDialog(
             onDismissRequest = onCancel,
-            text = { RemovalFailedText(library, error) },
+            title = stringResource(R.string.library_remove_failed_title, library.name),
+            message = error.line,
             confirmButton = { TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) } },
             dismissButton = { NeutralTextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) } },
         )
     } else {
-        AlertDialog(
+        BaeAlertDialog(
             onDismissRequest = onCancel,
-            text = { RemovalFailedText(library, error) },
+            title = stringResource(R.string.library_remove_failed_title, library.name),
+            message = error.line,
             confirmButton = { TextButton(onClick = onCancel) { Text(stringResource(android.R.string.ok)) } },
         )
     }
@@ -55,14 +55,7 @@ internal fun RemovalFailedText(
     library: BridgeLibrary,
     error: DisplayError,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
-        Text(
-            text = stringResource(R.string.library_remove_failed_title, library.name),
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(error.line, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+    DialogHead(stringResource(R.string.library_remove_failed_title, library.name), error.line)
 }
 
 @Preview(showBackground = true)

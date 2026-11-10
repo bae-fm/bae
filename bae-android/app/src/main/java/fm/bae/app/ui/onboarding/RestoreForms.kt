@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,6 +25,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.NeutralTextButton
@@ -119,12 +119,12 @@ internal fun S3KeyDialog(
     onRestore: (BridgeS3Credentials) -> Unit,
     onBack: () -> Unit,
 ) {
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onBack,
-        title = { Text(stringResource(R.string.onboarding_s3_key_title)) },
-        text = {
+        title = stringResource(R.string.onboarding_s3_key_title),
+        message = stringResource(R.string.onboarding_s3_key_prompt),
+        content = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
-                Text(stringResource(R.string.onboarding_s3_key_prompt))
                 S3KeyFields(
                     accessKeyId = keys.accessKeyId,
                     secretAccessKey = keys.secretAccessKey,

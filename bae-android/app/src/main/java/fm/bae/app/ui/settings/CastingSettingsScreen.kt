@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +34,7 @@ import fm.bae.app.data.castingDeviceName
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.RowCard
@@ -268,10 +268,10 @@ private fun CastDisconnectDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.cast_turn_off_title)) },
-        text = { Text(stringResource(R.string.cast_turn_off_message, device)) },
+        title = stringResource(R.string.cast_turn_off_title),
+        message = stringResource(R.string.cast_turn_off_message, device),
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(stringResource(R.string.cast_turn_off_confirm))

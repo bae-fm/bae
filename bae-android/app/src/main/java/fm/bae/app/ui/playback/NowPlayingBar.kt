@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -38,6 +37,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusTone
@@ -170,19 +170,16 @@ fun SidePauseAlert(
             if (!keepPausing) onTurnOffPauseBetweenSides()
             if (play) onPlay() else onClose()
         }
-        AlertDialog(
+        BaeAlertDialog(
             onDismissRequest = { answer(false) },
-            title = {
-                Text(
-                    context.coreString(
-                        wording.titleKey,
-                        mapOf("label" to prompt.sideLabel),
-                    ),
-                )
-            },
-            text = {
+            title =
+                context.coreString(
+                    wording.titleKey,
+                    mapOf("label" to prompt.sideLabel),
+                ),
+            message = context.coreString("core.playback.pause.message"),
+            content = {
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                    Text(context.coreString("core.playback.pause.message"))
                     prompt.countdown?.let { countdown ->
                         SidePauseCountdownLine(
                             messageKey = wording.countdownKey,

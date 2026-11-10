@@ -1,8 +1,5 @@
 package fm.bae.app.ui.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -14,7 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.S3KeyFields
 import uniffi.bae_bridge.BridgeSaveSyncConfig
@@ -33,19 +30,17 @@ internal fun S3KeyDialog(
     val context = LocalContext.current
     var accessKeyId by remember { mutableStateOf("") }
     var secretAccessKey by remember { mutableStateOf("") }
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(context.coreString("core.pending.action.sign_in")) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                Text(stringResource(R.string.onboarding_s3_key_explanation))
-                S3KeyFields(
-                    accessKeyId = accessKeyId,
-                    secretAccessKey = secretAccessKey,
-                    onAccessKeyIdChange = { accessKeyId = it.trim() },
-                    onSecretAccessKeyChange = { secretAccessKey = it.trim() },
-                )
-            }
+        title = context.coreString("core.pending.action.sign_in"),
+        message = stringResource(R.string.onboarding_s3_key_explanation),
+        content = {
+            S3KeyFields(
+                accessKeyId = accessKeyId,
+                secretAccessKey = secretAccessKey,
+                onAccessKeyIdChange = { accessKeyId = it.trim() },
+                onSecretAccessKeyChange = { secretAccessKey = it.trim() },
+            )
         },
         confirmButton = {
             TextButton(

@@ -1,12 +1,7 @@
 package fm.bae.app.ui.onboarding
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -17,8 +12,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.NeutralTextButton
 
 /** The fixed wording of a [PasteCodeDialog], distinct per code it accepts. */
@@ -37,28 +32,21 @@ fun PasteCodeDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text.title) },
-        text = {
-            Column {
-                Text(
-                    text = text.instructions,
-                    style = ThemeText.body.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(ThemeSpace.group))
-                OutlinedTextField(
-                    value = pasteInput,
-                    onValueChange = onInputChange,
-                    placeholder = { Text(text.placeholder) },
-                    modifier = Modifier.fillMaxWidth(),
-                    textStyle = ThemeText.mono.style,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
-                    singleLine = false,
-                    maxLines = 3,
-                )
-            }
+        title = text.title,
+        message = text.instructions,
+        content = {
+            OutlinedTextField(
+                value = pasteInput,
+                onValueChange = onInputChange,
+                placeholder = { Text(text.placeholder) },
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = ThemeText.mono.style,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
+                singleLine = false,
+                maxLines = 3,
+            )
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(pasteInput.trim()) }, enabled = pasteInput.trim().isNotEmpty()) {

@@ -18,6 +18,7 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.cloudProviderLabel
+import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.MatchCode
@@ -198,22 +199,16 @@ private fun CutOffRetryDialog(
     onDismiss: () -> Unit,
 ) {
     val notGone = reason == BridgeDeviceCutOff.DEVICE_NOT_GONE
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                stringResource(
-                    if (notGone) R.string.device_cut_off_not_gone_title else R.string.device_cut_off_running_title,
-                ),
-            )
-        },
-        text = {
-            Text(
-                stringResource(
-                    if (notGone) R.string.device_cut_off_not_gone_body else R.string.device_cut_off_running_body,
-                ),
-            )
-        },
+        title =
+            stringResource(
+                if (notGone) R.string.device_cut_off_not_gone_title else R.string.device_cut_off_running_title,
+            ),
+        message =
+            stringResource(
+                if (notGone) R.string.device_cut_off_not_gone_body else R.string.device_cut_off_running_body,
+            ),
         confirmButton = { TextButton(onClick = onTryAgain) { Text(stringResource(R.string.retry)) } },
         dismissButton = {
             NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.device_cut_off_not_yet)) }
@@ -263,17 +258,14 @@ private fun RemovalConfirmDialog(
         }
     // Removing a person ends their S3 key's use; bae keeps no record of it.
     val forgottenKey = ((removal as? PendingRemoval.Person)?.member?.access as? BridgeMemberAccess.S3AccessKey)
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                Text(body)
-                forgottenKey?.let { key ->
-                    Text(context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId)))
-                }
-            }
-        },
+        title = title,
+        message = body,
+        content =
+            forgottenKey?.let { key ->
+                { Text(context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId))) }
+            },
         confirmButton = {
             DestructiveTextButton(onClick = onConfirm) { Text(stringResource(R.string.members_remove)) }
         },
@@ -354,15 +346,11 @@ internal fun JoinRequestDialogContent(
     onDecline: () -> Unit,
     onClose: () -> Unit,
 ) {
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onClose,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
-                Text(stringResource(R.string.join_request_match))
-                MatchCode(confirmation)
-            }
-        },
+        title = title,
+        message = stringResource(R.string.join_request_match),
+        content = { MatchCode(confirmation) },
         confirmButton = { TextButton(onClick = onApprove) { Text(stringResource(R.string.join_request_approve)) } },
         dismissButton = {
             NeutralTextButton(onClick = onDecline) { Text(stringResource(R.string.join_request_decline)) }

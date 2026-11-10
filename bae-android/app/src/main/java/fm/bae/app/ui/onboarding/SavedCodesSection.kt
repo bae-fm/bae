@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +19,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.ErrorNotice
@@ -185,10 +185,10 @@ private fun DeleteSavedCodeDialog(
                 stringResource(R.string.onboarding_saved_code_delete_body_unusable)
             }
         }
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.onboarding_saved_code_delete_title)) },
-        text = { Text(body) },
+        title = stringResource(R.string.onboarding_saved_code_delete_title),
+        message = body,
         confirmButton = {
             DestructiveTextButton(onClick = onConfirm) {
                 Text(stringResource(R.string.onboarding_saved_code_delete))

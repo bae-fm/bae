@@ -30,6 +30,7 @@ import fm.bae.app.currentLocale
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
@@ -108,10 +109,10 @@ private fun CancelInviteConfirmDialog(
         (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
             context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId))
         }
-    AlertDialog(
+    BaeAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(context.coreString("core.invite.cancel_confirm.title")) },
-        text = forgetLine?.let { line -> { Text(line) } },
+        title = context.coreString("core.invite.cancel_confirm.title"),
+        message = forgetLine,
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(stringResource(R.string.invite_cancel)) }
         },
