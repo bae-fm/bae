@@ -2712,17 +2712,28 @@ stood, without opening it, and one that is closing once its close has ended.
 A library stops counting as open as its close begins, even while the app
 still holds it. A Mac's first screen
 shows the sheep and the name over "Your music, everywhere", and offers the same two under **Create new library**, and its File menu offers
-them as **Scan Code…** and **Enter Code…**; they open one code screen, where
-the code decides the same way. Once it lists libraries, the three are the
-items of **Add library…** under the list. A restore code's screens call that adding this
-device: the button is **Add**, and the running restore says it is adding this
-device. A saved code, in iCloud Keychain or on an Android phone, and a restore
-over this device's copy (§6.4), say **Restore**. A scanned code starts at once, as an invite does, with
-no screen to confirm it: the person scanned it to add this device, so the
-running restore shows next. Only an S3 code without the key stops first, to ask
-for it, in a few words ("Enter your credentials for the S3 bucket.") over the
-access key's two fields. A typed restore code waits for **Add**. A code that doesn't read says so on the code screen, and a restore
-that fails shows its error beside **Add**, to try again.
+them as **Scan Code…** and **Enter Code…**; the code decides the same way.
+Once it lists libraries, the three are the items of **Add library…** under the
+list. On a Mac, **Enter Code…** opens a sheet over the first screen, titled
+**Enter code**, with one field for a restore code or an invite, **Cancel**, and
+**Continue**, off until the field holds something; **Scan Code…** opens the
+scanner. A scanned code starts at once, as an invite does, with no sheet to
+confirm it, and a typed code starts when the person chooses **Continue**: the
+person scanned or entered it to add this device, or to join. Only an S3 code
+without the key stops first, to ask for it on a second sheet, **S3 key**, in a
+few words ("Enter your credentials for the S3 bucket.") over the access key's
+two fields, with **Back** to the code and **Add**. The running restore takes the
+window in place of the sheet, with its step, a bar and **Cancel**, and a running
+join takes it with its wait for approval. A code that doesn't read, and a
+restore or join that fails, says so on the sheet, to try again; a join
+under way, whose code bae kept, offers **Join** there to resume it. On Android the
+code screen calls a restore code's action adding this device: the button is
+**Add**, and a typed restore code waits for it. A saved code, in iCloud Keychain
+or on an Android phone, and a restore over this device's copy (§6.4), say
+**Restore**. A scanned code on Android starts at once, as an invite does, and
+only an S3 code without the key stops first, to ask for it over the access
+key's two fields. A code that doesn't read says so on the code screen, and a
+restore that fails shows its error beside **Add**, to try again.
 
 **A restore that stops partway.** Just before coven adds the new device to the
 library, the restore records itself on the device: the code, the device's name,
@@ -2735,7 +2746,7 @@ and finishes it from what coven kept, with no code. Only when coven has no
 sign-in it can use, because the provider refused the kept one or it is gone,
 does bae show the sign-in again. A join under way goes on first, and the restore
 the next time the first screen shows after it. A finishing that fails shows its
-error on the code screen, where the person's restore code finishes the restore
+error on the Enter code sheet, where the person's restore code finishes the restore
 too. A restore whose person's keys another of their devices replaced since ends,
 and says that the current restore code restores the library. Cancel stops it as
 it stops any restore: until the device was added, coven takes the restore back

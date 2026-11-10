@@ -80,12 +80,98 @@ extension ShotScene {
                 )
             )
         },
+        ShotScene(
+            id: "welcome-enter-code",
+            size: CGSize(width: 400, height: 190)
+        ) {
+            ShotStage(
+                EnterCodeSheet(form: enterCodeForm(), onCancel: {})
+                    .windowBackground()
+            )
+        },
+        ShotScene(
+            id: "welcome-enter-code-typed",
+            size: CGSize(width: 400, height: 190)
+        ) {
+            let form = enterCodeForm()
+            form.codeInput = PreviewData.restoreCode
+            return ShotStage(
+                EnterCodeSheet(form: form, onCancel: {})
+                    .windowBackground()
+            )
+        },
+        ShotScene(id: "welcome-s3-key", size: CGSize(width: 440, height: 210)) {
+            let form = enterCodeForm(reading: .restore(metadata: s3Metadata))
+            form.acceptCode(PreviewData.restoreCode)
+            form.accessKey = "AKIA4EXAMPLE"
+            return ShotStage(RestoreS3KeySheet(form: form).windowBackground())
+        },
+        ShotScene(id: "welcome-code-running", size: WelcomeWindow.size) {
+            ShotStage(
+                WelcomeWindowChrome {
+                    CodeRunningView(
+                        openSteps: nil,
+                        steps:
+                            LatestStream.bootstrapSteps(
+                                holding: .loading(
+                                    progress: BridgeLoadProgress(
+                                        step: .streamingLibrary,
+                                        done: 3,
+                                        total: 10
+                                    )
+                                )
+                            )
+                            .only,
+                        status: .loading,
+                        onCancel: {}
+                    )
+                }
+            )
+        },
         detailsScene("welcome-library-details", PreviewData.standingSynced),
         detailsScene(
             "welcome-library-details-unsent",
             PreviewData.standingUnsent
         ),
     ]
+
+    /// The Enter code sheet's state: the code is read as `info` when the
+    /// person chooses Continue, and nothing it starts reaches a library.
+    private static func enterCodeForm(
+        reading info: BridgeCodeInfo? = nil
+    ) -> BootstrapCodeForm {
+        BootstrapCodeForm(
+            entry: .code,
+            decodeCode: { _ in
+                guard let info else { throw UnservedReadError() }
+                return info
+            },
+            makeBootstrap: {
+                LibraryBootstrap(
+                    host: BaeHost.preview(),
+                    deviceName: "Preview Device"
+                )
+            },
+            unfinishedJoins: { [] },
+            unfinishedRestores: { [] },
+            onLibraryReady: { _, _ in }
+        )
+    }
+
+    /// A restore code for an S3 library whose key the code doesn't hold.
+    private static let s3Metadata = BridgeCodeMetadata(
+        libraryId: "library-preview",
+        memberId: "member-preview",
+        provider: .s3,
+        location: .s3(
+            bucket: "music-library",
+            region: "us-east-1",
+            endpoint: nil,
+            profile: nil
+        ),
+        oauthAccess: nil,
+        carriesS3Key: false
+    )
 
     /// The confirmation `library` asks before it is removed, counted as
     /// `loss`.

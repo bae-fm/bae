@@ -152,7 +152,7 @@ struct BootstrapCodeFormTests {
     func scannedCodeStartsTheAdd() async {
         let form = form(reading: Self.restoreCode(carriesS3Key: true))
 
-        form.acceptScan(Self.code)
+        form.acceptCode(Self.code)
 
         #expect(form.isRunning)
         var codes = host.restoredCodes.makeAsyncIterator()
@@ -163,11 +163,22 @@ struct BootstrapCodeFormTests {
     func scannedCodeWithoutKeyWaits() {
         let form = form(reading: Self.restoreCode(carriesS3Key: false))
 
-        form.acceptScan(Self.code)
+        form.acceptCode(Self.code)
 
         #expect(!form.isRunning)
         #expect(form.attempt?.needsS3Key == true)
         #expect(!form.ready)
+    }
+
+    @Test("going back from the S3 key forgets the reading and keeps the code")
+    func clearingTheReadingKeepsTheCode() {
+        let form = form(reading: Self.restoreCode(carriesS3Key: false))
+        form.acceptCode(Self.code)
+
+        form.clearReading()
+
+        #expect(form.attempt == nil)
+        #expect(form.codeInput == Self.code)
     }
 
     @Test("the code entry joins an invite")
@@ -250,7 +261,7 @@ struct BootstrapCodeFormTests {
             unfinishedRestores: [restore]
         )
 
-        form.acceptScan(Self.code)
+        form.acceptCode(Self.code)
 
         var resumed = host.resumedRestores.makeAsyncIterator()
         #expect(await resumed.next() == ObjectIdentifier(restore))

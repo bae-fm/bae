@@ -4,11 +4,10 @@ import os.log
 
 private let logger = Logger.bae("WelcomeView")
 
-/// First-run and add-a-library entry point. A thin switcher over the flows —
-/// choose, and restore or join by code — each its own view with its own
-/// state. Because the switch branches are distinct view types, SwiftUI gives
-/// each flow fresh `@State` every time it appears, so nothing leaks between
-/// flows.
+/// First-run and add-a-library entry point. A thin switcher over the flows:
+/// choose, the code sheets over it, and restore from a saved code, each with
+/// its own state. A flow's `@State` starts fresh every time it appears, since
+/// every flow is entered from the chooser, so nothing leaks between flows.
 struct WelcomeView: View {
     /// A created, restored or joined library's open store, with the error a
     /// partly finished restore or join reported.
@@ -31,14 +30,14 @@ struct WelcomeView: View {
         case choose
         /// Restore from a code coven saved in iCloud Keychain.
         case restoreSaved(BridgeSavedRestoreCode)
-        /// The code screen for a code the person types, pastes or scans, the
-        /// scanner open as it appears when `scanning`.
+        /// The Enter code sheet for a code the person types or pastes, or the
+        /// scanner for one they scan, open as it appears when `scanning`.
         case code(scanning: Bool)
         /// A join this device had under way when bae stopped, continued on
         /// its waiting screen.
         case resume(BridgeUnfinishedJoin)
         /// A restore onto this device that stopped after it recorded itself,
-        /// finished on the code screen.
+        /// finished at once; if that fails, the Enter code sheet says why.
         case resumeRestore(BridgeUnfinishedRestore)
     }
 
@@ -79,49 +78,53 @@ struct WelcomeView: View {
     var body: some View {
         switch mode {
         case .choose:
-            VStack(spacing: 0) {
-                if let resumeError {
-                    Notice(error: resumeError)
-                        .padding()
-                }
-                WelcomeChooseView(
-                    loadError: loadError,
-                    launchProblems: launchProblems,
-                    canDeleteActiveLibrary: canDeleteActiveLibrary,
-                    onLibraryReady: onLibraryReady,
-                    onOpenLibrary: onOpenLibrary,
-                    onFinishReplacement: onFinishReplacement,
-                    onRestoreSaved: { mode = .restoreSaved($0) },
-                    onScanCode: { mode = .code(scanning: true) },
-                    onEnterCode: { mode = .code(scanning: false) }
-                )
-            }
-            .task { await resumeUnfinished() }
+            chooser
+                .task { await resumeUnfinished() }
         case .restoreSaved(let saved):
             BootstrapCodeView(
                 form: codeForm(.restoreSaved(saved)),
-                scanning: false,
                 onBack: { mode = .choose }
             )
         case .code(let scanning):
-            BootstrapCodeView(
-                form: codeForm(.code),
-                scanning: scanning,
-                onBack: { mode = .choose }
-            )
+            codeScreen(.code, scanning: scanning)
         case .resume(let join):
-            BootstrapCodeView(
-                form: codeForm(.resume(join)),
-                scanning: false,
-                onBack: { mode = .choose }
-            )
+            codeScreen(.resume(join))
         case .resumeRestore(let restore):
-            BootstrapCodeView(
-                form: codeForm(.resumeRestore(restore)),
-                scanning: false,
-                onBack: { mode = .choose }
+            codeScreen(.resumeRestore(restore))
+        }
+    }
+
+    private var chooser: some View {
+        VStack(spacing: 0) {
+            if let resumeError {
+                Notice(error: resumeError)
+                    .padding()
+            }
+            WelcomeChooseView(
+                loadError: loadError,
+                launchProblems: launchProblems,
+                canDeleteActiveLibrary: canDeleteActiveLibrary,
+                onLibraryReady: onLibraryReady,
+                onOpenLibrary: onOpenLibrary,
+                onFinishReplacement: onFinishReplacement,
+                onRestoreSaved: { mode = .restoreSaved($0) },
+                onScanCode: { mode = .code(scanning: true) },
+                onEnterCode: { mode = .code(scanning: false) }
             )
         }
+    }
+
+    /// The code sheets over the chooser, for the flow `entry` opens.
+    private func codeScreen(
+        _ entry: BootstrapCodeForm.Entry,
+        scanning: Bool = false
+    ) -> some View {
+        CodeEntryScreen(
+            form: codeForm(entry),
+            scanning: scanning,
+            onClose: { mode = .choose },
+            background: { chooser }
+        )
     }
 
     /// Go on with what this device has under way, one at a time: a join's

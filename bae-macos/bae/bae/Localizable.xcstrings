@@ -33094,179 +33094,6 @@
         }
       }
     },
-    "Choose another library, or restore it with “Add device”." : {
-      "comment" : "Welcome screen callout guidance after a library fails to open. The quoted label is the Add device button on the same screen.",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "اختر مكتبة أخرى، أو استعدها باستخدام «إضافة جهاز»."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изберете друга библиотека или я възстановете чрез „Добавяне на устройство“."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vyberte jinou knihovnu, nebo ji obnovte pomocí „Přidat zařízení“."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vælg et andet bibliotek, eller gendan det med »Tilføj enhed«."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wähle eine andere Bibliothek oder stelle sie mit „Gerät hinzufügen“ wieder her."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Επιλέξτε άλλη βιβλιοθήκη ή επαναφέρετέ τη με το «Προσθήκη συσκευής»."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose another library, or restore it with “Add device”."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elige otra biblioteca o restáurala con “Añadir dispositivo”."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Valitse toinen kirjasto tai palauta se valitsemalla ”Lisää laite”."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisissez une autre bibliothèque ou restaurez-la avec « Ajouter un appareil »."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "בחר ספרייה אחרת או שחזר אותה באמצעות “הוספת מכשיר”."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Odaberite drugu fonoteku ili je vratite pomoću „Dodaj uređaj”."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Válassz másik könyvtárat, vagy állítsd vissza az „Eszköz hozzáadása” lehetőséggel."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scegli un'altra libreria o ripristinala con “Aggiungi dispositivo”."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "別のライブラリを選択するか、「デバイスを追加」で復元してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "다른 라이브러리를 선택하거나 ‘기기 추가’로 복원하세요."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Velg et annet bibliotek, eller gjenopprett det med «Legg til enhet»."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kies een andere bibliotheek of herstel deze met ‘Apparaat toevoegen’."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wybierz inną bibliotekę lub przywróć ją za pomocą „Dodaj urządzenie”."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha outra biblioteca ou restaure-a com “Adicionar dispositivo”."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha outra biblioteca ou restaure-a com «Adicionar dispositivo»."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alege altă bibliotecă sau restaureaz-o cu „Adaugă dispozitiv”."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vyber inú knižnicu alebo ju obnov pomocou „Pridať zariadenie“."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Välj ett annat bibliotek eller återställ det med ”Lägg till enhet”."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Başka bir kitaplık seçin veya “Cihaz ekle” ile geri yükleyin."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Виберіть іншу бібліотеку або відновіть її через «Додати пристрій»."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "请选择另一个库，或通过“添加设备”恢复它。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "請選擇另一個資料庫，或透過「新增裝置」還原它。"
-          }
-        }
-      }
-    },
     "Clear" : {
       "comment" : "Queue panel: clear the queue",
       "localizations" : {
@@ -53503,179 +53330,6 @@
         }
       }
     },
-    "Join library" : {
-      "comment" : "First screen on a new device: the choice, and the title of its screen, to join someone's library with an invite.",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "الانضمام إلى مكتبة"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Присъединяване към библиотека"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Připojit se ke knihovně"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deltag i et bibliotek"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliothek beitreten"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Συμμετοχή σε βιβλιοθήκη"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Join library"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unirse a una biblioteca"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Liity kirjastoon"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rejoindre une bibliothèque"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הצטרפות לספרייה"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pridruži se fonoteci"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Csatlakozás könyvtárhoz"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unisciti a una libreria"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ライブラリに参加"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "라이브러리 참여"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bli med i et bibliotek"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deelnemen aan bibliotheek"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dołącz do biblioteki"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entrar em uma biblioteca"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aderir a uma biblioteca"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alătură-te unei biblioteci"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pripojiť sa ku knižnici"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gå med i ett bibliotek"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplığa katıl"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Приєднатися до бібліотеки"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "加入库"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "加入資料庫"
-          }
-        }
-      }
-    },
     "Keep as separate releases" : {
       "localizations" : {
         "ar" : {
@@ -72758,179 +72412,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "還原"
-          }
-        }
-      }
-    },
-    "Add device" : {
-      "comment" : "First screen on a new device: the choice, and the title of its screen, to add this device to the person's own library with the code Add Device… shows on another of their devices.",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "إضافة جهاز"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Добавяне на устройство"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Přidat zařízení"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tilføj enhed"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gerät hinzufügen"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Προσθήκη συσκευής"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add device"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Añadir dispositivo"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lisää laite"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajouter un appareil"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הוספת מכשיר"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dodaj uređaj"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eszköz hozzáadása"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aggiungi dispositivo"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "デバイスを追加"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "기기 추가"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Legg til enhet"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apparaat toevoegen"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dodaj urządzenie"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adicionar dispositivo"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adicionar dispositivo"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adaugă dispozitiv"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pridať zariadenie"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lägg till enhet"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cihaz ekle"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Додати пристрій"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "添加设备"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新增裝置"
           }
         }
       }
@@ -105054,345 +104535,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "掃描代碼"
-          }
-        }
-      }
-    },
-    "Scan or paste the invitation an admin of the library sent you." : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "امسح الدعوة التي أرسلها إليك أحد مسؤولي المكتبة أو الصقها."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сканирайте или поставете поканата, която ви изпрати администратор на библиотеката."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Naskenujte nebo vložte pozvánku, kterou vám poslal správce knihovny."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scan eller indsæt invitationen, som en administrator af biblioteket sendte dig."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scanne die Einladung, die dir ein Admin der Bibliothek geschickt hat, oder füge sie ein."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Σαρώστε ή επικολλήστε την πρόσκληση που σας έστειλε ένας διαχειριστής της βιβλιοθήκης."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escanea o pega la invitación que te envió un administrador de la biblioteca."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skannaa tai liitä kutsu, jonka kirjaston ylläpitäjä lähetti sinulle."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scannez ou collez l’invitation qu’un administrateur de la bibliothèque vous a envoyée."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "סרוק או הדבק את ההזמנה שמנהל הספרייה שלח לך."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skenirajte ili zalijepite pozivnicu koju vam je poslao administrator fonoteke."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Olvasd be vagy illeszd be a meghívót, amelyet a könyvtár egyik adminisztrátora küldött."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scansiona o incolla l’invito che ti ha inviato un amministratore della libreria."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ライブラリの管理者から届いた招待をスキャンするか貼り付けてください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "라이브러리 관리자가 보낸 초대를 스캔하거나 붙여넣으세요."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skann eller lim inn invitasjonen en administrator av biblioteket sendte deg."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scan of plak de uitnodiging die een beheerder van de bibliotheek je stuurde."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zeskanuj lub wklej zaproszenie, które wysłał Ci administrator biblioteki."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escaneie ou cole o convite que um administrador da biblioteca enviou para você."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Digitalize ou cole o convite que um administrador da biblioteca lhe enviou."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scanează sau lipește invitația trimisă de un administrator al bibliotecii."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Naskenujte alebo vložte pozvánku, ktorú vám poslal správca knižnice."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skanna eller klistra in inbjudan som en administratör för biblioteket skickade till dig."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplığın bir yöneticisinin gönderdiği daveti tarayın veya yapıştırın."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Скануйте або вставте запрошення, яке надіслав вам адміністратор бібліотеки."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "扫描或粘贴库管理员发给你的邀请。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "掃描或貼上資料庫管理員傳給你的邀請。"
-          }
-        }
-      }
-    },
-    "On one of your devices, choose Add… under Your devices, then scan or paste the code it shows. If you've lost every device, use your restore code." : {
-      "comment" : "Add device screen: explanation under the code field. Add… under Your devices, in People and devices settings, is the button on another of the person's devices that shows the code.",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "على أحد أجهزتك، اختر «إضافة…» ضمن «أجهزتك»، ثم امسح الرمز الذي يظهر أو الصقه. إذا فقدت كل أجهزتك، فاستخدم رمز الاستعادة."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "На някое от устройствата си изберете „Добавяне…“ под „Вашите устройства“, след което сканирайте или поставете показания код. Ако сте загубили всичките си устройства, използвайте кода си за възстановяване."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na některém ze svých zařízení zvolte „Přidat…“ v části „Vaše zařízení“ a pak naskenujte nebo vložte zobrazený kód. Pokud jste přišli o všechna zařízení, použijte svůj kód pro obnovení."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vælg »Tilføj…« under »Dine enheder« på en af dine enheder, og scan eller indsæt derefter koden, den viser. Hvis du har mistet alle dine enheder, så brug din gendannelseskode."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wähle auf einem deiner Geräte „Hinzufügen …“ unter „Deine Geräte“ und scanne dann den angezeigten Code oder füge ihn ein. Wenn du alle Geräte verloren hast, verwende deinen Wiederherstellungscode."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Σε μία από τις συσκευές σας επιλέξτε «Προσθήκη…» στις «Οι συσκευές σας» και μετά σαρώστε ή επικολλήστε τον κωδικό που εμφανίζεται. Αν χάσατε όλες τις συσκευές σας, χρησιμοποιήστε τον κωδικό επαναφοράς σας."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "On one of your devices, choose Add… under Your devices, then scan or paste the code it shows. If you've lost every device, use your restore code."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En uno de tus dispositivos, elige “Añadir…” en “Tus dispositivos” y luego escanea o pega el código que muestre. Si has perdido todos tus dispositivos, usa tu código de restauración."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Valitse jossakin laitteessasi ”Lisää…” kohdassa ”Laitteesi” ja skannaa tai liitä sitten näkyviin tuleva koodi. Jos olet menettänyt kaikki laitteesi, käytä palautuskoodiasi."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sur l’un de vos appareils, choisissez « Ajouter… » sous « Vos appareils », puis scannez ou collez le code affiché. Si vous avez perdu tous vos appareils, utilisez votre code de restauration."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "באחד המכשירים שלך, בחר “הוספה…” תחת “המכשירים שלך”, ואז סרוק או הדבק את הקוד שמוצג. אם איבדת את כל המכשירים, השתמש בקוד השחזור שלך."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na jednom od svojih uređaja odaberite „Dodaj…” u odjeljku „Vaši uređaji”, zatim skenirajte ili zalijepite prikazani kod. Ako ste izgubili sve uređaje, upotrijebite svoj kod za vraćanje."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Az egyik eszközödön válaszd az „Eszközeid” alatti „Hozzáadás…” lehetőséget, majd olvasd be vagy illeszd be a megjelenő kódot. Ha minden eszközödet elvesztetted, használd a visszaállítási kódodat."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Su uno dei tuoi dispositivi scegli “Aggiungi…” sotto “I tuoi dispositivi”, poi scansiona o incolla il codice mostrato. Se hai perso tutti i dispositivi, usa il tuo codice di ripristino."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "いずれかのデバイスで「あなたのデバイス」の「追加…」を選び、表示されるコードをスキャンするか貼り付けてください。すべてのデバイスを失った場合は、復元コードを使用してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "내 기기 중 하나에서 ‘내 기기’ 아래 ‘추가…’를 선택한 다음, 표시되는 코드를 스캔하거나 붙여넣으세요. 모든 기기를 잃어버렸다면 복원 코드를 사용하세요."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Velg «Legg til…» under «Enhetene dine» på en av enhetene dine, og skann eller lim inn koden som vises. Har du mistet alle enhetene dine, bruker du gjenopprettingskoden din."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kies op een van je apparaten ‘Toevoegen…’ onder ‘Je apparaten’ en scan of plak daarna de getoonde code. Ben je al je apparaten kwijt, gebruik dan je herstelcode."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na jednym ze swoich urządzeń wybierz „Dodaj…” w sekcji „Twoje urządzenia”, a potem zeskanuj lub wklej wyświetlony kod. Jeśli nie masz już żadnego urządzenia, użyj swojego kodu przywracania."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Em um dos seus dispositivos, escolha “Adicionar…” em “Seus dispositivos” e depois escaneie ou cole o código mostrado. Se você perdeu todos os seus dispositivos, use seu código de restauração."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Num dos seus dispositivos, escolha «Adicionar…» em «Os seus dispositivos» e depois digitalize ou cole o código mostrado. Se perdeu todos os seus dispositivos, use o seu código de restauração."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pe unul dintre dispozitivele tale, alege „Adaugă…” sub „Dispozitivele tale”, apoi scanează sau lipește codul afișat. Dacă ai pierdut toate dispozitivele, folosește codul tău de restaurare."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na niektorom zo svojich zariadení vyberte „Pridať…“ v časti „Vaše zariadenia“ a potom naskenujte alebo vložte zobrazený kód. Ak ste prišli o všetky zariadenia, použite svoj kód na obnovenie."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Välj ”Lägg till…” under ”Dina enheter” på en av dina enheter och skanna eller klistra sedan in koden som visas. Om du har förlorat alla dina enheter använder du din återställningskod."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cihazlarınızdan birinde “Cihazlarınız” altında “Ekle…” seçeneğini seçin, ardından görünen kodu tarayın veya yapıştırın. Tüm cihazlarınızı kaybettiyseniz geri yükleme kodunuzu kullanın."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "На одному з ваших пристроїв виберіть «Додати…» у розділі «Ваші пристрої», а потім відскануйте або вставте код, що з’явиться. Якщо ви втратили всі пристрої, скористайтеся своїм кодом відновлення."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在你的某台设备上，选择“你的设备”下的“添加…”，然后扫描或粘贴显示的代码。如果你丢失了所有设备，请使用你的恢复码。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在你的某部裝置上，選擇「你的裝置」下的「新增…」，然後掃描或貼上顯示的代碼。如果你遺失了所有裝置，請使用你的還原碼。"
           }
         }
       }
@@ -150394,6 +149536,702 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "匯入後同時上傳至雲端的檔案數，以及同時下載的檔案數。下載包括釘選和設為本機，共用此限制和「暫停下載」。"
+          }
+        }
+      }
+    },
+    "S3 key" : {
+      "comment" : "Enter code, S3 key sheet: its title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مفتاح S3"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 ключ"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klíč S3"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3-nøgle"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3-Schlüssel"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Κλειδί S3"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 key"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave de S3"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3-avain"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clé S3"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מפתח S3"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 ključ"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3-kulcs"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chiave S3"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 キー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 키"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3-nøkkel"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3-sleutel"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klucz S3"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chave do S3"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chave S3"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cheie S3"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kľúč S3"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3-nyckel"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 anahtarı"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ S3"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 密钥"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 金鑰"
+          }
+        }
+      }
+    },
+    "Enter your credentials for the S3 bucket." : {
+      "comment" : "Enter code, S3 key sheet: the line under its title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أدخل بيانات اعتماد حاوية S3."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Въведете данните за достъп до S3 bucket."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zadejte přihlašovací údaje k bucketu S3."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indtast legitimationsoplysningerne til S3-bucketen."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib die Zugangsdaten für den S3-Bucket ein."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Εισαγάγετε τα διαπιστευτήρια για το bucket S3."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter your credentials for the S3 bucket."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Introduce las credenciales del bucket de S3."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Syötä S3-säilön tunnistetiedot."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisissez vos identifiants pour le bucket S3."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הזן את פרטי הגישה לדלי S3."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unesite vjerodajnice za S3 bucket."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add meg az S3-tároló hitelesítő adatait."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inserisci le credenziali per il bucket S3."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 バケットの認証情報を入力してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 버킷의 자격 증명을 입력하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skriv inn legitimasjonen for S3-bøtten."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voer de inloggegevens voor de S3-bucket in."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wpisz dane uwierzytelniające do zasobnika S3."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digite as credenciais do bucket S3."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Introduza as credenciais do bucket S3."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Introdu datele de autentificare pentru bucketul S3."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zadaj prihlasovacie údaje pre bucket S3."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ange inloggningsuppgifterna för S3-bucketen."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 kovası için kimlik bilgilerinizi girin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Введіть облікові дані для S3-бакета."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请输入 S3 存储桶的凭据。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請輸入 S3 儲存貯體的憑證。"
+          }
+        }
+      }
+    },
+    "Restore code or invite" : {
+      "comment" : "Enter code sheet: the empty field's placeholder.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "رمز الاستعادة أو الدعوة"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код за възстановяване или покана"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kód pro obnovení nebo pozvánka"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gendannelseskode eller invitation"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederherstellungscode oder Einladung"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Κωδικός επαναφοράς ή πρόσκληση"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore code or invite"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código de restauración o invitación"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Palautuskoodi tai kutsu"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code de restauration ou invitation"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קוד שחזור או הזמנה"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kod za vraćanje ili pozivnica"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Helyreállítási kód vagy meghívó"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codice di ripristino o invito"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "復元コードまたは招待"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "복원 코드 또는 초대"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprettingskode eller invitasjon"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herstelcode of uitnodiging"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kod przywracania lub zaproszenie"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código de restauração ou convite"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código de restauração ou convite"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cod de restaurare sau invitație"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kód na obnovenie alebo pozvánka"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Återställningskod eller inbjudan"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geri yükleme kodu veya davet"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код відновлення або запрошення"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复码或邀请"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "還原碼或邀請"
+          }
+        }
+      }
+    },
+    "Choose another library, or restore it with “Enter code”." : {
+      "comment" : "Welcome screen callout guidance after a library fails to open. The quoted label is the Enter code button on the same screen.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اختر مكتبة أخرى، أو استعدها باستخدام «إدخال رمز»."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изберете друга библиотека или я възстановете чрез „Въвеждане на код“."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vyberte jinou knihovnu, nebo ji obnovte pomocí „Zadat kód“."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vælg et andet bibliotek, eller gendan det med »Indtast en kode«."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle eine andere Bibliothek oder stelle sie mit „Code eingeben“ wieder her."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Επιλέξτε άλλη βιβλιοθήκη ή επαναφέρετέ τη με το «Εισαγωγή κωδικού»."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose another library, or restore it with “Enter code”."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige otra biblioteca o restáurala con “Introducir un código”."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valitse toinen kirjasto tai palauta se valitsemalla ”Syötä koodi”."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez une autre bibliothèque ou restaurez-la avec « Saisir un code »."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בחר ספרייה אחרת או שחזר אותה באמצעות “הזנת קוד”."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odaberite drugu fonoteku ili je vratite pomoću „Unesi kod”."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Válassz másik könyvtárat, vagy állítsd vissza az „Kód megadása” lehetőséggel."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli un'altra libreria o ripristinala con “Inserisci un codice”."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別のライブラリを選択するか、「コードを入力」で復元してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 라이브러리를 선택하거나 ‘코드 입력’로 복원하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velg et annet bibliotek, eller gjenopprett det med «Skriv inn en kode»."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kies een andere bibliotheek of herstel deze met ‘Code invoeren’."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wybierz inną bibliotekę lub przywróć ją za pomocą „Wpisz kod”."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha outra biblioteca ou restaure-a com “Digitar um código”."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha outra biblioteca ou restaure-a com «Introduzir um código»."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alege altă bibliotecă sau restaureaz-o cu „Introdu un cod”."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vyber inú knižnicu alebo ju obnov pomocou „Zadať kód“."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Välj ett annat bibliotek eller återställ det med ”Ange en kod”."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Başka bir kitaplık seçin veya “Kod gir” ile geri yükleyin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виберіть іншу бібліотеку або відновіть її через «Ввести код»."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请选择另一个库，或通过“输入代码”恢复它。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請選擇另一個資料庫，或透過「輸入代碼」還原它。"
           }
         }
       }

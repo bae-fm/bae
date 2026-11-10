@@ -1,45 +1,48 @@
 import BaeKit
 import SwiftUI
 
-/// Restores a library from a restore code, or joins one by an invitation. The
-/// code is typed, pasted or scanned, or is one coven saved in iCloud Keychain;
-/// what it decodes to decides which. An invite joins as soon as it reads, and
-/// a scanned code starts as soon as it holds all it needs; a typed restore code
-/// waits for Add. coven runs any provider sign-in in the browser. A join waiting for approval
-/// shows its own screen, which has no cancel once its request may have been
-/// sent.
+/// Restores a library over this device's copy, or from a code saved in iCloud
+/// Keychain. The code is typed, pasted or scanned, or is the saved one; it
+/// waits for Restore. coven runs any provider sign-in in the browser.
 struct BootstrapCodeView: View {
     let onBack: () -> Void
 
     @State
     private var form: BootstrapCodeForm
     @State
-    private var showScanner: Bool
+    private var showScanner = false
+    private let screen: Screen
 
-    /// `scanning` opens the scanner as the screen appears.
-    init(
-        form: BootstrapCodeForm,
-        scanning: Bool,
-        onBack: @escaping () -> Void
-    ) {
+    /// What the screen says for each entry it is made for.
+    private enum Screen {
+        case restoreSaved
+        case restoreOver
+        case finishRestore
+
+        init(_ entry: BootstrapCodeForm.Entry) {
+            switch entry {
+            case .restoreSaved: self = .restoreSaved
+            case .restoreOver: self = .restoreOver
+            case .finishRestore: self = .finishRestore
+            case .code, .resume, .resumeRestore:
+                preconditionFailure(
+                    "the code sheets show this entry, not this screen"
+                )
+            }
+        }
+    }
+
+    init(form: BootstrapCodeForm, onBack: @escaping () -> Void) {
         _form = State(initialValue: form)
-        _showScanner = State(initialValue: scanning)
+        screen = Screen(form.entry)
         self.onBack = onBack
     }
 
     var body: some View {
-        Group {
-            if form.isRunning, let invite = form.attempt?.invite {
-                JoinWaitingView(form: form, invite: invite)
-            }
-            else {
-                codeForm
-            }
-        }
-        .onAppear { form.begin() }
-        // Leaving stops a restore; a join's call is dropped and the join
-        // resumes at bae's next start.
-        .onDisappear { form.leave() }
+        codeForm
+            .onAppear { form.begin() }
+            // Leaving stops a restore.
+            .onDisappear { form.leave() }
     }
 
     private var codeForm: some View {
@@ -103,7 +106,7 @@ struct BootstrapCodeView: View {
         .sheet(isPresented: $showScanner) {
             CodeScannerSheet(
                 onScan: { code in
-                    form.acceptScan(code)
+                    form.acceptCode(code)
                     showScanner = false
                 },
                 onDismiss: { showScanner = false }
@@ -112,30 +115,17 @@ struct BootstrapCodeView: View {
     }
 
     private var title: LocalizedStringKey {
-        switch form.entry {
+        switch screen {
         case .restoreSaved: "Restore from iCloud Keychain"
-        case .code: "Enter code"
-        case .resumeRestore: "Add device"
-        case .resume: "Join library"
         case .restoreOver: "Restore this library"
         case .finishRestore: "Finish restoring this library"
         }
     }
 
     private var subtitle: Text {
-        switch form.entry {
+        switch screen {
         case .restoreSaved:
             Text("Restore with the code saved in iCloud Keychain.")
-        case .code:
-            Text("Enter your restore code, or an invite to a library.")
-        case .resumeRestore:
-            Text(
-                "On one of your devices, choose Add… under Your devices, then scan or paste the code it shows. If you've lost every device, use your restore code."
-            )
-        case .resume:
-            Text(
-                "Scan or paste the invitation an admin of the library sent you."
-            )
         case .restoreOver:
             Text(localizedCoreString("core.sync.restore_device.warning"))
         case .finishRestore:
@@ -146,15 +136,10 @@ struct BootstrapCodeView: View {
         }
     }
 
-    /// A join joins. A code entered on a new device adds this device to the
-    /// person's own library, whichever choice took it; a code saved in iCloud
-    /// Keychain, or one restoring over this device's copy, restores.
     private var primaryTitle: LocalizedStringKey {
-        switch (form.attempt, form.entry) {
-        case (.some(.join), _), (.some(.resume), _), (_, .resume): "Join"
-        case (_, .code), (_, .resumeRestore): "Add"
-        case (_, .restoreSaved), (_, .restoreOver): "Restore"
-        case (_, .finishRestore): "Finish restoring"
+        switch screen {
+        case .restoreSaved, .restoreOver: "Restore"
+        case .finishRestore: "Finish restoring"
         }
     }
 
@@ -236,70 +221,15 @@ private struct AttemptDetailsSection: View {
     }
 }
 
-/// A join running: the library's name, what it waits on, and, while it waits
-/// for approval, until when it waits and its confirmation number
-/// with when it checks next and Check now. Cancel shows only until the
-/// request may have been sent.
-private struct JoinWaitingView: View {
-    let form: BootstrapCodeForm
-    let invite: BridgeInviteInfo
-
-    var body: some View {
-        VStack(spacing: ThemeSpace.group) {
-            Spacer()
-            Text(verbatim: invite.libraryName)
-                .themeText(.title)
-            if case .waitingForApproval = form.status {
-                Text(
-                    "Waiting for approval until \(invite.expiresAt.formatted(date: .abbreviated, time: .shortened))"
-                )
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-            }
-            if let status = form.status {
-                StepProgressLine(steps: form.steps) {
-                    BootstrapStatusView(status: status)
-                }
-            }
-            if let error = form.error {
-                Notice(error: error)
-            }
-            HStack(spacing: ThemeSpace.group) {
-                if form.cancellable {
-                    Button("Cancel") { form.cancel() }
-                        .buttonStyle(.bordered)
-                }
-                if case .waitingForApproval(_, let nextCheck) = form.status {
-                    Button("Check now") { form.checkNow() }
-                        .buttonStyle(PrimaryButtonStyle())
-                        .disabled(!nextCheck.endsOnCheckNow)
-                }
-            }
-            Spacer()
-        }
-        .padding(.horizontal)
-    }
-}
-
-extension BridgeNextCheck {
-    /// Whether Check now ends this wait: the join's own backoff, but neither a
-    /// check already running nor a provider's cooldown.
-    fileprivate var endsOnCheckNow: Bool {
-        if case .at = self { return true }
-        return false
-    }
-}
-
 #if DEBUG
-    #Preview("Enter code") {
+    #Preview("Restore over") {
         WelcomeWindowChrome {
             BootstrapCodeView(
                 form: LibrarySetup.stub()
                     .bootstrapForm(
-                        entry: .code,
+                        entry: .restoreOver(libraryId: "library-preview"),
                         onLibraryReady: { _, _ in }
                     ),
-                scanning: false,
                 onBack: {}
             )
         }

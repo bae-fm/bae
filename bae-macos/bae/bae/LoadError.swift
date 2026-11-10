@@ -55,7 +55,7 @@ struct LoadError: Equatable {
             case .libraryOpen:
                 String(
                     localized:
-                        "Choose another library, or restore it with “Add device”."
+                        "Choose another library, or restore it with “Enter code”."
                 )
             case .resetOffered:
                 nil

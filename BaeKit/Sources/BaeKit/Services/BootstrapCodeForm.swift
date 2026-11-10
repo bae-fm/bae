@@ -145,7 +145,8 @@ public final class BootstrapCodeForm {
 
     public var attempt: BootstrapAttempt? {
         if let saved { return .restoreSaved(saved) }
-        if case .resume(let join) = entry {
+        // The join under way, until the person enters a code of their own.
+        if case .resume(let join) = entry, decoded == nil {
             return .resume(join, invite: join.info())
         }
         guard case .success(let info) = decoded else { return nil }
@@ -183,13 +184,21 @@ public final class BootstrapCodeForm {
         return true
     }
 
-    /// Fill the code from a scanned QR code and start at once: the person
-    /// scanned it to add this device. A code from the person's own device
-    /// holds their S3 key; an S3 code without it waits for the key.
-    public func acceptScan(_ text: String) {
+    /// Take `text`, a scanned QR code or a code the person chose Continue on,
+    /// and go on at once: an invite joins, and a restore starts, unless it
+    /// is an S3 code without the key, which waits for the key. A code from
+    /// the person's own device holds their S3 key.
+    public func acceptCode(_ text: String) {
         codeInput = text.trimmingCharacters(in: .whitespacesAndNewlines)
         decodeCode()
         if ready { start() }
+    }
+
+    /// Forget what the entered code read as: the text changed, or the person
+    /// went back from the S3 key to the code.
+    public func clearReading() {
+        decoded = nil
+        error = nil
     }
 
     /// Read what the entered code is. Called whenever the code changes.
