@@ -192,7 +192,7 @@ struct ReleasePressingFieldsGrid: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            FormSectionHeader(title: String(localized: "Release"), ruled: true)
+            FormSectionHeader(title: String(localized: "Release"))
             Grid(
                 alignment: .leadingFirstTextBaseline,
                 horizontalSpacing: Self.labelGap

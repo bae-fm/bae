@@ -18,7 +18,7 @@ struct ReleaseFilesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            FormSectionHeader(title: String(localized: "Files"), ruled: true)
+            FormSectionHeader(title: String(localized: "Files"))
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.rowId) {
                     index,

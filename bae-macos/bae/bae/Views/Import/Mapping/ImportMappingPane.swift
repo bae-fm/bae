@@ -94,7 +94,7 @@ struct ImportMappingPane: View {
     /// Tracks heading the table draws beneath them.
     private var imagesSection: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            FormSectionHeader(title: String(localized: "Images"), ruled: true)
+            FormSectionHeader(title: String(localized: "Images"))
             ImportMappingGallery(
                 images: mapping.images,
                 onOpen: mappingActions.openImages

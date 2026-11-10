@@ -79,7 +79,7 @@ struct ReleaseMetadataEditorContent: View {
 
     private var trackTable: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            FormSectionHeader(title: String(localized: "Tracks"), ruled: true)
+            FormSectionHeader(title: String(localized: "Tracks"))
             ScrollView(.horizontal) {
                 VStack(spacing: 0) {
                     if session.trackSides.isEmpty {

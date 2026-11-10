@@ -98,7 +98,7 @@ struct ImportedReleasePane: View {
 
     private var imagesSection: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            FormSectionHeader(title: String(localized: "Images"), ruled: true)
+            FormSectionHeader(title: String(localized: "Images"))
             ImportMappingGallery(
                 images: folder.images,
                 onOpen: onOpenImages
@@ -180,10 +180,7 @@ struct ImportingCandidatePane: View {
                 }
                 if !candidate.mapping.images.isEmpty {
                     VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                        FormSectionHeader(
-                            title: String(localized: "Images"),
-                            ruled: true
-                        )
+                        FormSectionHeader(title: String(localized: "Images"))
                         ImportMappingGallery(
                             images: candidate.mapping.images,
                             onOpen: onOpenImages
