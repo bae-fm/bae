@@ -88,8 +88,8 @@ async fn a_catalog_credit_links_by_name_and_gives_the_artist_its_id() {
     assert_eq!(resolved.ids, ["library-artist"], "the artist keeps its id");
     assert!(resolved.inserts.is_empty());
     assert_eq!(resolved.external_id_updates.len(), 1);
-    let (id, filled) = &resolved.external_id_updates[0];
-    assert_eq!(id, "library-artist");
+    let filled = &resolved.external_id_updates[0];
+    assert_eq!(filled.id, "library-artist");
     assert_eq!(filled.discogs_artist_id.as_deref(), Some("discogs-1"));
 }
 
@@ -216,7 +216,7 @@ async fn two_artists_holding_the_credits_two_ids_leave_the_musicbrainz_one() {
     assert!(resolved.inserts.is_empty());
     assert!(resolved.merges.is_empty());
     assert!(
-        resolved.external_id_updates.iter().all(|(_, artist)| artist.discogs_artist_id.is_none()),
+        resolved.external_id_updates.iter().all(|artist| artist.discogs_artist_id.is_none()),
         "the disagreeing Discogs id goes nowhere: {:?}",
         resolved.external_id_updates
     );
@@ -237,7 +237,7 @@ async fn a_musicbrainz_artist_holding_another_discogs_id_is_the_credit() {
     assert!(resolved
         .external_id_updates
         .iter()
-        .all(|(_, artist)| artist.discogs_artist_id.as_deref() != Some("discogs-1")));
+        .all(|artist| artist.discogs_artist_id.as_deref() != Some("discogs-1")));
 }
 
 /// A credit whose Discogs id names an artist holding another MusicBrainz id
@@ -352,7 +352,7 @@ async fn discogs_various_artists_is_the_musicbrainz_one_holding_another_discogs_
         resolved
             .external_id_updates
             .iter()
-            .all(|(_, artist)| artist.discogs_artist_id.as_deref() != Some(various.discogs)),
+            .all(|artist| artist.discogs_artist_id.as_deref() != Some(various.discogs)),
         "{:?}",
         resolved.external_id_updates
     );
@@ -395,7 +395,7 @@ async fn a_catalog_id_two_library_artists_hold_merges_them() {
         .map(|merge| (merge.absorbed.id.as_str(), merge.survivor.as_str()))
         .collect();
     assert_eq!(merged, [("second", "first")]);
-    let (_, survivor) = &resolved.external_id_updates[0];
+    let survivor = &resolved.external_id_updates[0];
     assert_eq!(survivor.musicbrainz_artist_id.as_deref(), Some("mb-2"));
 }
 

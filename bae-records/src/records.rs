@@ -31,6 +31,7 @@ mod artist;
 pub mod artist_credit_names;
 use artist_credit_names::settle_credit_name;
 pub mod artist_resolution;
+mod catalog_match;
 pub mod label_resolution;
 #[cfg(any(test, feature = "test-utils"))]
 pub use artist_resolution::resolved_in_an_empty_library;

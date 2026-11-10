@@ -49,14 +49,3 @@ pub struct ResolvedCredit {
     pub credit: ArtistCredit,
     pub resolution: CreditResolution,
 }
-
-/// Whether every catalog id both artists carry agrees. An absent id makes no
-/// claim; two present ids of one catalog must be equal.
-pub fn artist_source_ids_are_compatible(
-    artist: &DbArtist,
-    discogs_artist_id: Option<&str>,
-    musicbrainz_artist_id: Option<&str>,
-) -> bool {
-    source_ids_are_compatible(artist.discogs_artist_id.as_deref(), discogs_artist_id)
-        && source_ids_are_compatible(artist.musicbrainz_artist_id.as_deref(), musicbrainz_artist_id)
-}

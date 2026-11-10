@@ -34,6 +34,7 @@
 //! artist a catalog names takes the id [`crate::identity::artist_id`]
 //! derives from that catalog entry.
 
+use super::catalog_match::*;
 use super::*;
 
 /// Why a write's credits cannot be written as the library stands. Nothing of
@@ -134,9 +135,9 @@ pub struct ResolvedArtists {
     pub ids: Vec<String>,
     /// New artists to insert, each with its final id.
     pub inserts: Vec<DbArtist>,
-    /// `(artist_id, artist)` — an existing artist whose empty catalog ids and
-    /// sort name this write fills in.
-    pub external_id_updates: Vec<(String, DbArtist)>,
+    /// Existing artists whose empty catalog ids and sort names this write
+    /// fills in, as it leaves them.
+    pub external_id_updates: Vec<DbArtist>,
     /// Library artists holding one catalog id, each merged into the artist
     /// with the smallest id.
     pub merges: Vec<ArtistIdMerge>,
@@ -161,10 +162,10 @@ impl ResolvedArtists {
         for artist in &self.inserts {
             insert_artist_row(tx, artist)?;
         }
-        for (artist_id, artist) in &self.external_id_updates {
+        for artist in &self.external_id_updates {
             update_artist_external_ids_row(
                 tx,
-                artist_id,
+                &artist.id,
                 artist.discogs_artist_id.as_deref(),
                 artist.musicbrainz_artist_id.as_deref(),
                 artist.sort_name.as_deref(),
@@ -230,7 +231,7 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
 ) -> Result<ResolvedArtists, IdentityWriteError> {
     let mut ids = Vec::with_capacity(credits.len());
     let mut inserts: Vec<DbArtist> = Vec::new();
-    let mut external_id_updates: Vec<(String, DbArtist)> = Vec::new();
+    let mut external_id_updates: Vec<DbArtist> = Vec::new();
     let mut merges: Vec<ArtistIdMerge> = Vec::new();
 
     for credit in credits {
@@ -245,19 +246,19 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
         let so_far = WriteSoFar { inserts: &inserts, staged: &external_id_updates };
         let (credit, matched) = settled_catalog_match_on(sql, credit, so_far)?;
         let resolved_id = match matched {
-            Some(CatalogArtist { artist, folded }) => {
-                let id = match artist {
+            Some(CatalogFound { holder, folded }) => {
+                let id = match holder {
                     Holder::Library(held) => {
-                        let id = held.artist.id.clone();
+                        let id = held.row.id.clone();
                         for absorbed in held.absorbed {
                             merge_into(&mut merges, &mut ids, &id, absorbed, credit.created_at);
                         }
-                        let mut linked = held.artist;
+                        let mut linked = held.row;
                         if let Some(folded) = &folded {
-                            fill_missing(&mut linked, folded);
+                            linked.fill_missing(folded);
                         }
-                        fill_missing(&mut linked, &credit);
-                        stage_artist_update(&mut external_id_updates, id.clone(), linked);
+                        linked.fill_missing(&credit);
+                        stage_artist_update(&mut external_id_updates, linked);
                         id
                     }
                     Holder::New(pending) => {
@@ -266,9 +267,9 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
                             .find(|new| new.id == pending.id)
                             .expect("the catalog step names an artist this write makes");
                         if let Some(folded) = &folded {
-                            fill_missing(new, folded);
+                            new.fill_missing(folded);
                         }
-                        fill_missing(new, &credit);
+                        new.fill_missing(&credit);
                         pending.id
                     }
                 };
@@ -335,10 +336,10 @@ pub fn resolve_credit_on<Q: coven::SqlRead>(
     let committed = WriteSoFar { inserts: &[], staged: &[] };
     let (row, matched) = settled_catalog_match_on(sql, &row, committed)?;
     Ok(match matched {
-        Some(CatalogArtist { artist: Holder::Library(held), .. }) => {
-            CreditResolution::Library { artist: held.artist.into() }
+        Some(CatalogFound { holder: Holder::Library(held), .. }) => {
+            CreditResolution::Library { artist: held.row.into() }
         }
-        Some(CatalogArtist { artist: Holder::New(_), .. }) => {
+        Some(CatalogFound { holder: Holder::New(_), .. }) => {
             unreachable!("a read of the committed library sees no artist a write makes")
         }
         None => {
@@ -386,7 +387,7 @@ fn resolve_by_name_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &DbArtist,
     inserts: &mut Vec<DbArtist>,
-    external_id_updates: &mut Vec<(String, DbArtist)>,
+    external_id_updates: &mut Vec<DbArtist>,
     merges: &[ArtistIdMerge],
 ) -> Result<String, DbError> {
     let pending: Vec<usize> = inserts
@@ -394,12 +395,12 @@ fn resolve_by_name_on<Q: coven::SqlRead>(
         .enumerate()
         .filter(|(_, pending)| {
             bae_types::text_match::same_artist_name(&pending.name, &credit.name)
-                && ids_agree(pending, credit)
+                && ids_agree(*pending, credit)
         })
         .map(|(index, _)| index)
         .collect();
     if let [only] = pending.as_slice() {
-        fill_missing(&mut inserts[*only], credit);
+        inserts[*only].fill_missing(credit);
         return Ok(inserts[*only].id.clone());
     }
     if pending.is_empty() {
@@ -408,9 +409,9 @@ fn resolve_by_name_on<Q: coven::SqlRead>(
         named.retain(|artist| !merges.iter().any(|merge| merge.absorbed.id == artist.id));
         if let [only] = named.as_slice() {
             let mut linked = only.clone();
-            fill_missing(&mut linked, credit);
+            linked.fill_missing(credit);
             let id = linked.id.clone();
-            stage_artist_update(external_id_updates, id.clone(), linked);
+            stage_artist_update(external_id_updates, linked);
             return Ok(id);
         }
     }
@@ -459,135 +460,6 @@ pub fn relink_track_artists(
     relink(links, artist_ids, "track artist", |link| &mut link.artist_id)
 }
 
-/// What this write has decided before the credit it resolves now: the new
-/// artists it makes, and the library artists whose ids it fills in. The
-/// catalog-id step sees the library as these leave it.
-#[derive(Clone, Copy)]
-struct WriteSoFar<'a> {
-    inserts: &'a [DbArtist],
-    staged: &'a [(String, DbArtist)],
-}
-
-/// What the catalog-id step says about one credit.
-enum CatalogMatch {
-    /// The credit carries no id an artist holds.
-    Unmatched,
-    /// The artist its ids name.
-    Artist(CatalogArtist),
-    /// Its two ids disagree: they name two artists that are not one, or the
-    /// artist one names holds another id of the other catalog.
-    Disagrees,
-}
-
-/// The artist a credit's ids name, and a new artist of this write that the
-/// credit says is that one too.
-struct CatalogArtist {
-    artist: Holder,
-    /// A new artist this write makes holding the credit's other id. It is not
-    /// in the library yet, and no id it holds contradicts the credit or
-    /// `artist`, so the credit makes it `artist`: it takes the place of every
-    /// credit this write already resolved to it, and gives `artist` its ids.
-    folded: Option<DbArtist>,
-}
-
-/// The artist one catalog id names, as this write leaves the library.
-enum Holder {
-    /// A library artist.
-    Library(HeldArtist),
-    /// A new artist this write makes.
-    New(DbArtist),
-}
-
-impl Holder {
-    fn artist(&self) -> &DbArtist {
-        match self {
-            Self::Library(held) => &held.artist,
-            Self::New(artist) => artist,
-        }
-    }
-}
-
-/// The library artist a catalog id names, and the other library artists
-/// holding it, which the write merges into it.
-struct HeldArtist {
-    artist: DbArtist,
-    absorbed: Vec<DbArtist>,
-}
-
-/// The catalog-id step: the artist the credit's Discogs and MusicBrainz ids
-/// name, as this write so far leaves the library.
-fn catalog_match_on<Q: coven::SqlRead>(
-    sql: &Q,
-    credit: &DbArtist,
-    so_far: WriteSoFar<'_>,
-) -> Result<CatalogMatch, DbError> {
-    let by_discogs =
-        holder_on(sql, CatalogColumn::Discogs, credit.discogs_artist_id.as_deref(), so_far)?;
-    let by_musicbrainz = holder_on(
-        sql,
-        CatalogColumn::MusicBrainz,
-        credit.musicbrainz_artist_id.as_deref(),
-        so_far,
-    )?;
-    let agrees = |holder: &Holder| ids_agree(holder.artist(), credit);
-    Ok(match (by_discogs, by_musicbrainz) {
-        (None, None) => CatalogMatch::Unmatched,
-        (Some(one), None) | (None, Some(one)) => match agrees(&one) {
-            true => CatalogMatch::Artist(CatalogArtist { artist: one, folded: None }),
-            false => CatalogMatch::Disagrees,
-        },
-        (Some(Holder::Library(discogs)), Some(Holder::Library(musicbrainz)))
-            if discogs.artist.id == musicbrainz.artist.id =>
-        {
-            let mut absorbed = discogs.absorbed;
-            absorbed.extend(musicbrainz.absorbed);
-            let artist = Holder::Library(HeldArtist { artist: musicbrainz.artist, absorbed });
-            match agrees(&artist) {
-                true => CatalogMatch::Artist(CatalogArtist { artist, folded: None }),
-                false => CatalogMatch::Disagrees,
-            }
-        }
-        (Some(Holder::New(discogs)), Some(Holder::New(musicbrainz)))
-            if discogs.id == musicbrainz.id =>
-        {
-            let artist = Holder::New(musicbrainz);
-            match agrees(&artist) {
-                true => CatalogMatch::Artist(CatalogArtist { artist, folded: None }),
-                false => CatalogMatch::Disagrees,
-            }
-        }
-        // Two artists, one of them a new artist of this write's: it folds
-        // into the other where nothing either holds contradicts the credit or
-        // the other. Two library artists stay two.
-        (Some(Holder::New(new)), Some(artist)) | (Some(artist), Some(Holder::New(new)))
-            if agrees(&artist) && ids_agree(&new, credit) && ids_agree(&new, artist.artist()) =>
-        {
-            CatalogMatch::Artist(CatalogArtist { artist, folded: Some(new) })
-        }
-        (Some(_), Some(_)) => CatalogMatch::Disagrees,
-    })
-}
-
-/// The artist holding the catalog id `id` of `column`, as this write so far
-/// leaves the library: a new artist it makes, else the library artist
-/// [`exact_artist`] names. No id is held by both, since a new artist is made
-/// only of ids no artist holds.
-fn holder_on<Q: coven::SqlRead>(
-    sql: &Q,
-    column: CatalogColumn,
-    id: Option<&str>,
-    so_far: WriteSoFar<'_>,
-) -> Result<Option<Holder>, DbError> {
-    let Some(id) = id else {
-        return Ok(None);
-    };
-    if let Some(new) = so_far.inserts.iter().find(|new| column.of(new) == Some(id)) {
-        return Ok(Some(Holder::New(new.clone())));
-    }
-    let stored = artists_by_catalog_id_on(sql, column, id)?;
-    Ok(exact_artist(id, stored, so_far.staged, column).map(Holder::Library))
-}
-
 /// The credit with the other catalog's Various Artists id beside the one it
 /// names Various Artists by: MusicBrainz' and Discogs' Various Artists
 /// entries are one artist. None for any other credit.
@@ -608,17 +480,14 @@ fn with_both_various_artists_ids(credit: &DbArtist) -> Option<DbArtist> {
     }
 }
 
-/// The credit as the catalog-id step settles it, and the artist its ids name.
-/// A credit naming Various Artists by one catalog's id, which no artist
-/// holds, goes by both catalogs' Various Artists ids. Where its two ids
-/// disagree, the MusicBrainz id decides: the Discogs id is dropped from the
-/// credit, which then goes by its MusicBrainz id alone, and nothing is given
-/// the Discogs id.
+/// The credit as the catalog-id step settles it ([`settled_on`]), and the
+/// artist its ids name. A credit naming Various Artists by one catalog's id,
+/// which no artist holds, goes by both catalogs' Various Artists ids.
 fn settled_catalog_match_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &DbArtist,
-    so_far: WriteSoFar<'_>,
-) -> Result<(DbArtist, Option<CatalogArtist>), DbError> {
+    so_far: WriteSoFar<'_, DbArtist>,
+) -> Result<(DbArtist, Option<CatalogFound<DbArtist>>), DbError> {
     let (credit, matched) = match catalog_match_on(sql, credit, so_far)? {
         CatalogMatch::Unmatched => match with_both_various_artists_ids(credit) {
             Some(both) => match catalog_match_on(sql, &both, so_far)? {
@@ -629,20 +498,7 @@ fn settled_catalog_match_on<Q: coven::SqlRead>(
         },
         matched => (credit.clone(), matched),
     };
-    match matched {
-        CatalogMatch::Unmatched => Ok((credit, None)),
-        CatalogMatch::Artist(found) => Ok((credit, Some(found))),
-        CatalogMatch::Disagrees => {
-            let settled = DbArtist { discogs_artist_id: None, ..credit };
-            match catalog_match_on(sql, &settled, so_far)? {
-                CatalogMatch::Unmatched => Ok((settled, None)),
-                CatalogMatch::Artist(found) => Ok((settled, Some(found))),
-                CatalogMatch::Disagrees => {
-                    unreachable!("a credit carrying one catalog id agrees with what it names")
-                }
-            }
-        }
-    }
+    settled_on(sql, credit, matched, so_far)
 }
 
 /// Every shown library artist whose folded name is the credit's and whose
@@ -652,7 +508,7 @@ fn settled_catalog_match_on<Q: coven::SqlRead>(
 pub(super) fn name_matches_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &DbArtist,
-    staged: &[(String, DbArtist)],
+    staged: &[DbArtist],
 ) -> Result<Vec<DbArtist>, DbError> {
     let key = bae_types::text_match::artist_name_key(&credit.name);
     if key.is_empty() {
@@ -675,61 +531,71 @@ pub(super) fn name_matches_on<Q: coven::SqlRead>(
     Ok(named
         .into_iter()
         .map(|artist| {
-            staged
-                .iter()
-                .find(|(id, _)| *id == artist.id)
-                .map(|(_, staged)| staged.clone())
-                .unwrap_or(artist)
+            staged.iter().find(|staged| staged.id == artist.id).cloned().unwrap_or(artist)
         })
         .filter(|artist| ids_agree(artist, credit))
         .collect())
 }
 
-#[derive(Clone, Copy)]
-enum CatalogColumn {
-    Discogs,
-    MusicBrainz,
-}
-
-impl CatalogColumn {
-    /// The id of this catalog `artist` holds.
-    fn of(self, artist: &DbArtist) -> Option<&str> {
-        match self {
-            Self::Discogs => artist.discogs_artist_id.as_deref(),
-            Self::MusicBrainz => artist.musicbrainz_artist_id.as_deref(),
+impl CatalogIds for DbArtist {
+    fn catalog_id(&self, column: CatalogColumn) -> Option<&str> {
+        match column {
+            CatalogColumn::Discogs => self.discogs_artist_id.as_deref(),
+            CatalogColumn::MusicBrainz => self.musicbrainz_artist_id.as_deref(),
         }
     }
 }
 
-/// Every artist whose `column` holds `catalog_id`, or whose row the catalog
-/// id names (its column may have been filled in or edited since), followed
-/// through any merge to the artist it shows as. More than one is a library
-/// holding one catalog entry on several artists.
-fn artists_by_catalog_id_on<Q: coven::SqlRead>(
-    sql: &Q,
-    column: CatalogColumn,
-    catalog_id: &str,
-) -> Result<Vec<DbArtist>, DbError> {
-    let (column, identity) = match column {
-        CatalogColumn::Discogs => {
-            ("discogs_artist_id", crate::identity::artist_id(None, Some(catalog_id)))
+impl CatalogRow for DbArtist {
+    fn row_id(&self) -> &str {
+        &self.id
+    }
+
+    /// Take each catalog id and the sort name this artist lacks from `other`.
+    fn fill_missing(&mut self, other: &Self) {
+        if self.discogs_artist_id.is_none() {
+            self.discogs_artist_id.clone_from(&other.discogs_artist_id);
         }
-        CatalogColumn::MusicBrainz => {
-            ("musicbrainz_artist_id", crate::identity::artist_id(Some(catalog_id), None))
+        if self.musicbrainz_artist_id.is_none() {
+            self.musicbrainz_artist_id.clone_from(&other.musicbrainz_artist_id);
         }
-    };
-    sql.query(
-        &format!(
-            "SELECT a.* FROM artists a WHERE a.id IN ( \
-                 SELECT {} FROM artists named \
-                 WHERE named.{column} = ?1 OR named.id = ?2) \
-             ORDER BY a.id",
-            shown_artist_id("named.id")
-        ),
-        params![catalog_id, identity],
-        row_to_artist,
-    )
-    .map_err(DbError::from)
+        if self.sort_name.is_none() {
+            self.sort_name.clone_from(&other.sort_name);
+        }
+    }
+
+    fn holding_on<Q: coven::SqlRead>(
+        sql: &Q,
+        column: CatalogColumn,
+        catalog_id: &str,
+    ) -> Result<Vec<Self>, DbError> {
+        let (column, identity) = match column {
+            CatalogColumn::Discogs => {
+                ("discogs_artist_id", crate::identity::artist_id(None, Some(catalog_id)))
+            }
+            CatalogColumn::MusicBrainz => {
+                ("musicbrainz_artist_id", crate::identity::artist_id(Some(catalog_id), None))
+            }
+        };
+        sql.query(
+            &format!(
+                "SELECT a.* FROM artists a WHERE a.id IN ( \
+                     SELECT {} FROM artists named \
+                     WHERE named.{column} = ?1 OR named.id = ?2) \
+                 ORDER BY a.id",
+                shown_artist_id("named.id")
+            ),
+            params![catalog_id, identity],
+            row_to_artist,
+        )
+        .map_err(DbError::from)
+    }
+}
+
+impl CatalogCredit for DbArtist {
+    fn by_musicbrainz_alone(&self) -> Self {
+        Self { discogs_artist_id: None, ..self.clone() }
+    }
 }
 
 fn artist_by_id_on<Q: coven::SqlRead>(
@@ -739,37 +605,6 @@ fn artist_by_id_on<Q: coven::SqlRead>(
     sql.query_row("SELECT * FROM artists WHERE id = ?", params![artist_id], row_to_artist)
         .optional()
         .map_err(DbError::from)
-}
-
-/// The one library artist a credit's `column` id `source_id` names, as this
-/// write's own fills (`staged_updates`) leave it: of the artists the library
-/// holds it on (`stored`) and those this write is giving it, the smallest id.
-/// One id is one artist, so the others are merged into it, and it takes the
-/// ids and sort name it lacks from them. None is no match.
-fn exact_artist(
-    source_id: &str,
-    stored: Vec<DbArtist>,
-    staged_updates: &[(String, DbArtist)],
-    column: CatalogColumn,
-) -> Option<HeldArtist> {
-    let staged = |id: &str| {
-        staged_updates.iter().find(|(staged_id, _)| staged_id == id).map(|(_, artist)| artist)
-    };
-    let mut named: Vec<DbArtist> =
-        stored.into_iter().map(|artist| staged(&artist.id).cloned().unwrap_or(artist)).collect();
-    for (id, artist) in staged_updates {
-        if column.of(artist) == Some(source_id) && !named.iter().any(|named| named.id == *id) {
-            named.push(artist.clone());
-        }
-    }
-    named.sort_by(|a, b| a.id.cmp(&b.id));
-    let mut named = named.into_iter();
-    let mut artist = named.next()?;
-    let absorbed: Vec<DbArtist> = named.collect();
-    for other in &absorbed {
-        fill_missing(&mut artist, other);
-    }
-    Some(HeldArtist { artist, absorbed })
 }
 
 /// Record that `absorbed` is merged into `survivor`, once, and name the
@@ -789,17 +624,10 @@ fn merge_into(
     }
 }
 
-fn stage_artist_update(
-    staged_updates: &mut Vec<(String, DbArtist)>,
-    artist_id: String,
-    artist: DbArtist,
-) {
-    if let Some((_, staged)) =
-        staged_updates.iter_mut().find(|(staged_id, _)| *staged_id == artist_id)
-    {
-        *staged = artist;
-    } else {
-        staged_updates.push((artist_id, artist));
+fn stage_artist_update(staged_updates: &mut Vec<DbArtist>, artist: DbArtist) {
+    match staged_updates.iter_mut().find(|staged| staged.id == artist.id) {
+        Some(staged) => *staged = artist,
+        None => staged_updates.push(artist),
     }
 }
 
@@ -817,28 +645,6 @@ fn remove_pending_artists(
             resolved_id.push_str(survivor_id);
         }
     }
-}
-
-/// Give `target` each catalog id and the sort name it lacks from `other`.
-fn fill_missing(target: &mut DbArtist, other: &DbArtist) {
-    if target.discogs_artist_id.is_none() {
-        target.discogs_artist_id.clone_from(&other.discogs_artist_id);
-    }
-    if target.musicbrainz_artist_id.is_none() {
-        target.musicbrainz_artist_id.clone_from(&other.musicbrainz_artist_id);
-    }
-    if target.sort_name.is_none() {
-        target.sort_name.clone_from(&other.sort_name);
-    }
-}
-
-/// Whether no catalog id the two carry contradicts the other's.
-fn ids_agree(existing: &DbArtist, incoming: &DbArtist) -> bool {
-    crate::artist_source_ids_are_compatible(
-        existing,
-        incoming.discogs_artist_id.as_deref(),
-        incoming.musicbrainz_artist_id.as_deref(),
-    )
 }
 
 #[cfg(test)]
