@@ -118,14 +118,6 @@ impl Library {
         crate::CandidateKey::folder(&self.path(display_path))
     }
 
-    /// The folder `relative` below the watched folder.
-    pub(crate) fn folder(&self, relative: &std::path::Path) -> std::path::PathBuf {
-        crate::tables::watched_path::folder_below(
-            &self.root,
-            &crate::RelativeFolder::of(relative).unwrap(),
-        )
-    }
-
     /// The release the scan reads at the folder `relative` below the watched
     /// folder: one audio file, named for the folder so that each folder's
     /// files hash apart.

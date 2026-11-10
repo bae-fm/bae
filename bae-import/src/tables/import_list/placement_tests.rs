@@ -131,7 +131,11 @@ impl Library {
     /// its path.
     #[cfg(unix)]
     pub(crate) fn release_at(&self, relative: &std::path::Path) -> Item {
-        (self.root_text(), "candidate", coven::path_text(&self.folder(relative)))
+        let folder = crate::tables::watched_path::folder_below(
+            &self.root,
+            &crate::RelativeFolder::of(relative).unwrap(),
+        );
+        (self.root_text(), "candidate", coven::path_text(&folder))
     }
 
     /// The release the grouping `grouping:{id}` reads.
