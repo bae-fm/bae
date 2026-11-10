@@ -131,6 +131,24 @@ impl Library {
             == Some(bae_import::IdentificationInFlight::Queued)
     }
 
+    /// Wait until the queue holds `key` waiting for a slot, through its live
+    /// runtime read: a rerun is asked for without waiting on the queue, which
+    /// takes it after the call returns.
+    async fn until_queued(&self, key: &CandidateKey) {
+        let runtime = self.import.subscribe_candidate_runtime(key);
+        tokio::time::timeout(HANG_GUARD, async {
+            while runtime
+                .next()
+                .await
+                .unwrap()
+                .and_then(|runtime| runtime.identification_in_flight())
+                != Some(bae_import::IdentificationInFlight::Queued)
+            {}
+        })
+        .await
+        .expect("the queue takes the request");
+    }
+
     /// Whether identification stored a verdict for `key`.
     async fn identified(&self, key: &CandidateKey) -> bool {
         bae_import::tables::ImportTables::new(self.db.clone())
@@ -236,7 +254,8 @@ async fn the_candidate_the_pane_shows_runs_ahead_of_waiting_requests() {
     }
     library.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
     let (first_waiting, shown) = (&keys[MAX_IN_FLIGHT], &keys[MAX_IN_FLIGHT + 1]);
-    assert!(library.is_queued(first_waiting).await && library.is_queued(shown).await);
+    library.until_queued(first_waiting).await;
+    library.until_queued(shown).await;
 
     // The pane shows a running candidate first, then moves to the waiting
     // one. The read tells the queue before it delivers each.
