@@ -76,6 +76,7 @@ impl ImportServiceHandle {
         V: Send + 'static,
         E: From<bae_util::task_failure::TaskFailed> + Send + 'static,
     {
+        let write = bae_util::task_failure::caught("a candidate write", write);
         bae_util::task_failure::joined("a candidate write", self.runtime_handle.spawn(write))
             .await
             .map_err(|failed| self.services.diagnostics.bug(failed))?

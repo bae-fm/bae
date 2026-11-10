@@ -2,9 +2,9 @@
 //!
 //! Four shapes, decided by who waits on the work:
 //!
-//! - Work a caller awaits joins through `bae_util::task_failure` (`joined`,
-//!   `caught`), and the caller hands the failure to [`Diagnostics::bug`]
-//!   before turning it into its own error.
+//! - Work a caller awaits runs under `bae_util::task_failure::caught`, and
+//!   the caller hands the failure to [`Diagnostics::panicked`] before turning
+//!   it into its own error.
 //! - Work on the blocking pool runs under [`Diagnostics::blocking`], to its
 //!   end even when its caller stops waiting: a panic is reported to a caller
 //!   still waiting as the first shape's is, and to the crash reporter once
@@ -15,7 +15,11 @@
 //! - A lock whose guarded state spans operations is taken with
 //!   [`lock_or_crash`]: a panic that poisoned it left that state not known to
 //!   be valid.
+//!
+//! A panic's report names where in the code it began, which coven's catch
+//! records with the panic (`Bug::location`).
 
+use std::fmt;
 use std::future::Future;
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -28,7 +32,7 @@ use super::Diagnostics;
 /// reporter as core's own do.
 impl coven::task::BugSink for Diagnostics {
     fn report(&self, bug: &Bug) {
-        self.report_bug(bug.operation, bug);
+        self.report_panic(bug.operation, bug);
     }
 }
 
@@ -99,8 +103,13 @@ impl Diagnostics {
     /// own error type: what `caught` and `caught_sync` fail with, and the
     /// panics in coven's errors.
     pub fn panicked(&self, bug: Bug) -> Bug {
-        self.report_bug(bug.operation, &bug);
+        self.report_panic(bug.operation, &bug);
         bug
+    }
+
+    /// Report `bug` as `operation`'s, naming where in the code it began.
+    fn report_panic(&self, operation: &str, bug: &Bug) {
+        self.report_bug(operation, &Located(bug));
     }
 
     /// Run `task` on `runtime` with nobody awaiting it. On a panic, report it
@@ -153,7 +162,20 @@ impl Diagnostics {
         let operation = bug.operation;
         let bug = self.panicked(bug);
         if let Err(again) = caught_sync(operation, || on_panic(bug)) {
-            self.report_bug("end the work a panic stopped", &again);
+            self.report_panic("end the work a panic stopped", &again);
+        }
+    }
+}
+
+/// A bug as its report tells it: its text, then where in the code it began,
+/// when a catch saw it begin.
+struct Located<'a>(&'a Bug);
+
+impl fmt::Display for Located<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0.location {
+            Some(location) => write!(f, "{} (at {location})", self.0),
+            None => write!(f, "{}", self.0),
         }
     }
 }

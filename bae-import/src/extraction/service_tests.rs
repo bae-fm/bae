@@ -528,7 +528,7 @@ async fn a_fast_pass_that_panics_says_why_there_is_no_pass_and_is_reported() {
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let fast_pass =
         run_fast_pass_blocking(&diagnostics, || -> Result<FastPass, crate::ImportError> {
-            panic!("fast-pass blocking task panicked")
+            bae_diagnostics::test_panic::panics("fast-pass blocking task panicked")
         })
         .await;
 
@@ -536,7 +536,13 @@ async fn a_fast_pass_that_panics_says_why_there_is_no_pass_and_is_reported() {
         panic!("a fast pass that panics fails, not swallowed");
     };
     assert_eq!(detail, "read a folder's signals panicked: fast-pass blocking task panicked");
-    assert_eq!(bugs.reports(), vec![("read a folder's signals".to_string(), detail)]);
+    assert_eq!(
+        bugs.reports(),
+        vec![bae_diagnostics::test_panic::report(
+            "read a folder's signals",
+            "fast-pass blocking task panicked"
+        )]
+    );
 }
 
 /// An extraction that cannot gather its inputs does not go silent: it says so

@@ -368,7 +368,9 @@ async fn a_read_that_panics_is_reported_and_measures_nothing() {
     let TrackOutcome::ReadPanicked(bug) = outcome else {
         panic!("the track is a read that panicked");
     };
-    assert_eq!(reports.reports(), vec![(bug.operation.to_string(), bug.to_string())]);
+    let at = bug.location.clone().expect("the read's panic names where it began");
+    assert_eq!(at.file, "bae-audio/src/sparse_buffer.rs");
+    assert_eq!(reports.reports(), vec![(bug.operation.to_string(), format!("{bug} (at {at})"))]);
 }
 
 /// A track whose audio format has no segments is skipped (nothing to

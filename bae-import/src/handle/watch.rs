@@ -117,14 +117,21 @@ impl ImportServiceHandle {
         let mut reads = tokio::task::JoinSet::new();
         for folder in self.watched_folders().await? {
             let this = self.clone();
-            reads.spawn(async move { this.refresh_watched_folder(folder.path).await });
+            reads.spawn(bae_util::task_failure::caught("read a watched folder", async move {
+                this.refresh_watched_folder(folder.path).await
+            }));
         }
         while let Some(read) = reads.join_next().await {
-            read.map_err(|error| {
+            // Each read catches its own panic, so its join fails only as its
+            // runtime ends it.
+            let read = read.map_err(|error| {
                 self.services.diagnostics.bug(bae_util::task_failure::TaskFailed::of_join(
                     "read a watched folder",
                     error,
                 ))
+            })?;
+            read.map_err(|bug| {
+                self.services.diagnostics.bug(bae_util::task_failure::TaskFailed::Panicked(bug))
             })??;
         }
         Ok(self.folder_scan_progress().await?.statuses)

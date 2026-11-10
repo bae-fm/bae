@@ -160,7 +160,7 @@ fn an_unfinished_replacement_names_the_call_that_finishes_it() {
 /// does the store failing on an earlier bug.
 #[test]
 fn an_open_that_failed_on_a_bug_shows_as_one() {
-    let bug = || coven::task::Bug { operation: "open a store", message: "boom".into() };
+    let bug = || coven::task::Bug::new("open a store", "boom");
     for error in [coven::DbError::Bug(bug()), coven::DbError::StoreFailed(bug())] {
         assert!(matches!(
             super::classify_open_error(bae_store::DbError::from(error)),

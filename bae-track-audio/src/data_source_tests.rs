@@ -683,7 +683,7 @@ async fn a_fetch_failing_after_teardown_reports_nothing() {
 }
 
 async fn fill_that_panics() -> Result<(), FillFailure> {
-    panic!("window index out of range")
+    bae_diagnostics::test_panic::panics("window index out of range")
 }
 
 /// A fill that panics fails its buffer, so a reader stops on the failure
@@ -715,9 +715,9 @@ async fn a_fill_that_panics_fails_its_buffer_and_is_reported() {
     assert!(matches!(buffer.new_reader().read(&mut [0u8; 1]), Err(BufferStop::Failed(_))));
     assert_eq!(
         bugs.reports(),
-        vec![(
-            "fill a playback buffer".to_string(),
-            "fill a playback buffer panicked: window index out of range".to_string()
+        vec![bae_diagnostics::test_panic::report(
+            "fill a playback buffer",
+            "window index out of range"
         )]
     );
 }

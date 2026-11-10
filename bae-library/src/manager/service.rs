@@ -288,7 +288,9 @@ impl LibraryManager {
                 &self.runtime_handle,
             )
         };
-        joined(name, task).await.map_err(|failed| self.bug(failed))?
+        // The task catches its work's panic and reports it, so its join fails
+        // only as its runtime ends it.
+        task.await.map_err(|error| self.bug(TaskFailed::of_join(name, error)))?
     }
 
     /// Close the library: stop the sync loop, end every background task the

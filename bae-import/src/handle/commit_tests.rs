@@ -302,7 +302,7 @@ async fn a_write_that_panics_fails_its_caller_and_is_reported() {
     let result: Result<(), ImportError> = handle
         .committed(async {
             if true {
-                panic!("the write's bookkeeping broke");
+                bae_diagnostics::test_panic::panics("the write's bookkeeping broke");
             }
             Ok(())
         })
@@ -312,5 +312,11 @@ async fn a_write_that_panics_fails_its_caller_and_is_reported() {
         panic!("a panicked write fails as internal, got {result:?}");
     };
     assert_eq!(detail, "a candidate write panicked: the write's bookkeeping broke");
-    assert_eq!(bugs.reports(), vec![("a candidate write".to_string(), detail)]);
+    assert_eq!(
+        bugs.reports(),
+        vec![bae_diagnostics::test_panic::report(
+            "a candidate write",
+            "the write's bookkeeping broke"
+        )]
+    );
 }

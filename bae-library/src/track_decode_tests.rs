@@ -47,5 +47,7 @@ fn a_track_decode_whose_read_panics_reports_it() {
     let error = result.expect_err("a read that panicked fails the decode");
     let reported = reports.reports();
     assert_eq!(reported.len(), 1, "{reported:?}");
-    assert_eq!(reported[0].1, error, "the decode fails with what was reported");
+    let (text, at) = reported[0].1.rsplit_once(" (at ").expect("the report names a place");
+    assert_eq!(text, error, "the decode fails with what was reported");
+    assert!(at.starts_with("bae-audio/src/sparse_buffer.rs:"), "{at}");
 }

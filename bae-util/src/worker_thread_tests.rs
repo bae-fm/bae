@@ -15,8 +15,25 @@ impl BugSink for SentBugs {
     }
 }
 
+/// The line of the `panic!` in [`panic_queue_gone`].
+const PANIC_LINE: u32 = line!() + 4;
+
+/// A worker's body that panics, on line [`PANIC_LINE`] at column 5.
+fn panic_queue_gone() {
+    panic!("the queue is gone")
+}
+
+/// The bug a worker's body gives once it panics in [`panic_queue_gone`].
 fn queue_gone() -> Bug {
-    Bug { operation: "test worker", message: "the queue is gone".to_string() }
+    Bug {
+        operation: "test worker",
+        message: "the queue is gone".to_string(),
+        location: Some(coven::task::SourceLocation {
+            file: file!().to_string(),
+            line: PANIC_LINE,
+            column: 5,
+        }),
+    }
 }
 
 /// A panic in a worker's body reaches the bug sink as it happens, on its
@@ -26,7 +43,7 @@ fn queue_gone() -> Bug {
 fn a_panic_in_the_body_is_reported_as_it_happens() {
     let (heard, bugs) = channel();
     let worker = WorkerThread::<()>::spawn("test worker", Arc::new(SentBugs(heard)), |_, _| {
-        panic!("the queue is gone")
+        panic_queue_gone()
     });
     // The worker is let go unjoined: only its thread can still report.
     drop(worker);
@@ -39,7 +56,7 @@ fn a_panic_in_the_body_is_reported_as_it_happens() {
 fn the_join_does_not_report_the_panic_again() {
     let (heard, bugs) = channel();
     let worker = WorkerThread::<()>::spawn("test worker", Arc::new(SentBugs(heard)), |_, _| {
-        panic!("the queue is gone")
+        panic_queue_gone()
     });
     assert_eq!(bugs.recv().ok(), Some(queue_gone()));
     worker.stop_and_join(|_| {});
@@ -53,7 +70,7 @@ fn the_join_does_not_report_the_panic_again() {
 fn a_send_after_a_panic_comes_back_with_the_bug() {
     let (heard, bugs) = channel();
     let worker = WorkerThread::<u32>::spawn("test worker", Arc::new(SentBugs(heard)), |_, _| {
-        panic!("the queue is gone")
+        panic_queue_gone()
     });
     assert_eq!(bugs.recv().ok(), Some(queue_gone()));
 
@@ -69,7 +86,7 @@ fn a_send_after_a_panic_comes_back_with_the_bug() {
 async fn the_end_is_heard_by_whoever_waits_for_it() {
     let (heard, _bugs) = channel();
     let panicked = WorkerThread::<()>::spawn("test worker", Arc::new(SentBugs(heard)), |_, _| {
-        panic!("the queue is gone")
+        panic_queue_gone()
     });
     let (heard, _bugs) = channel();
     let returned = WorkerThread::<()>::spawn("test worker", Arc::new(SentBugs(heard)), |_, _| {});

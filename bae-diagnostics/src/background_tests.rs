@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use super::*;
+use crate::test_panic;
 use crate::RecordingBugReporter;
 
 fn reporting() -> (Diagnostics, Arc<RecordingBugReporter>) {
@@ -12,11 +13,18 @@ fn reporting() -> (Diagnostics, Arc<RecordingBugReporter>) {
 #[test]
 fn bug_reports_a_panic_and_hands_it_back() {
     let (diagnostics, reports) = reporting();
-    let failed = TaskFailed::Panicked(Bug {
-        operation: "resize the cover",
-        message: "zero width".to_string(),
-    });
+    let failed = TaskFailed::Panicked(test_panic::bug("resize the cover", "zero width"));
     assert_eq!(diagnostics.bug(failed.clone()), failed);
+    assert_eq!(reports.reports(), vec![test_panic::report("resize the cover", "zero width")]);
+}
+
+/// A bug that can't say where it began, such as a panic that reached a join
+/// uncaught, is reported with its text alone.
+#[test]
+fn a_bug_with_no_place_is_reported_by_its_text() {
+    let (diagnostics, reports) = reporting();
+    let bug = Bug { operation: "resize the cover", message: "zero width".into(), location: None };
+    assert_eq!(diagnostics.panicked(bug.clone()), bug);
     assert_eq!(
         reports.reports(),
         vec![("resize the cover".to_string(), "resize the cover panicked: zero width".to_string())]
@@ -46,7 +54,7 @@ async fn blocking_reports_a_panic_its_caller_stopped_waiting_for() {
     let mut work = Box::pin(diagnostics.blocking("resize the cover", move || {
         started_tx.send(()).expect("the test waits for the start");
         wait.recv().expect("the test lets the work go on");
-        panic!("zero width");
+        test_panic::panics("zero width")
     }));
     tokio::select! {
         _ = &mut work => panic!("the work waits for the test"),
@@ -58,10 +66,7 @@ async fn blocking_reports_a_panic_its_caller_stopped_waiting_for() {
     let report = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, reports.next())
         .await
         .expect("the panic is reported");
-    assert_eq!(
-        report,
-        ("resize the cover".to_string(), "resize the cover panicked: zero width".to_string())
-    );
+    assert_eq!(report, test_panic::report("resize the cover", "zero width"));
 }
 
 /// Work started with nobody waiting runs to its end, and its panic reaches the
@@ -70,14 +75,11 @@ async fn blocking_reports_a_panic_its_caller_stopped_waiting_for() {
 async fn blocking_unawaited_reports_a_panic_nobody_waits_for() {
     let reports = Arc::new(crate::HeardBugReports::new());
     let diagnostics = Diagnostics::noop().reporting_bugs_to(reports.clone());
-    diagnostics.blocking_unawaited("write a body", || panic!("short write"));
+    diagnostics.blocking_unawaited("write a body", || test_panic::panics("short write"));
     let report = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, reports.next())
         .await
         .expect("the panic is reported");
-    assert_eq!(
-        report,
-        ("write a body".to_string(), "write a body panicked: short write".to_string())
-    );
+    assert_eq!(report, test_panic::report("write a body", "short write"));
 }
 
 #[tokio::test]
@@ -89,7 +91,7 @@ async fn spawn_reported_reports_a_panic_and_lets_its_owner_end_the_work() {
         "follow the queue",
         async {
             tokio::task::yield_now().await;
-            panic!("queue index out of range");
+            test_panic::panics("queue index out of range")
         },
         move |failed| {
             ended_tx.send(failed).unwrap();
@@ -98,14 +100,11 @@ async fn spawn_reported_reports_a_panic_and_lets_its_owner_end_the_work() {
     task.ended().await;
     assert_eq!(
         ended_rx.await.expect("on_panic ran"),
-        Bug { operation: "follow the queue", message: "queue index out of range".to_string() }
+        test_panic::bug("follow the queue", "queue index out of range")
     );
     assert_eq!(
         reports.reports(),
-        vec![(
-            "follow the queue".to_string(),
-            "follow the queue panicked: queue index out of range".to_string()
-        )]
+        vec![test_panic::report("follow the queue", "queue index out of range")]
     );
 }
 
@@ -146,7 +145,7 @@ fn spawn_thread_reported_reports_a_panic_and_calls_on_panic_on_that_thread() {
     let thread = diagnostics
         .spawn_thread_reported(
             "bae-decoder",
-            || panic!("packet larger than the frame"),
+            || test_panic::panics("packet larger than the frame"),
             move |failed| {
                 let thread = std::thread::current().name().map(str::to_string);
                 ended_tx.send((failed, thread)).unwrap();
@@ -155,12 +154,12 @@ fn spawn_thread_reported_reports_a_panic_and_calls_on_panic_on_that_thread() {
         .expect("spawn the thread");
     thread.join();
     let (failed, thread_name) = ended_rx.recv().expect("on_panic ran");
-    assert_eq!(
-        failed,
-        Bug { operation: "bae-decoder", message: "packet larger than the frame".to_string() }
-    );
+    assert_eq!(failed, test_panic::bug("bae-decoder", "packet larger than the frame"));
     assert_eq!(thread_name.as_deref(), Some("bae-decoder"));
-    assert_eq!(reports.reports().len(), 1);
+    assert_eq!(
+        reports.reports(),
+        vec![test_panic::report("bae-decoder", "packet larger than the frame")]
+    );
 }
 
 #[test]

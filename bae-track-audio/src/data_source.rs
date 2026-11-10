@@ -8,7 +8,7 @@ use crate::storage_wait::{FetchProgress, StorageWaitWatch, StorageWaits};
 use crate::TrackReadError;
 use bae_audio::sparse_buffer::{SharedSparseBuffer, SourceReadError};
 use bae_diagnostics::Diagnostics;
-use bae_util::task_failure::{caught, joined};
+use bae_util::task_failure::{caught, joined, Bug};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
@@ -170,7 +170,8 @@ pub trait AudioDataReader: Send + 'static {
 /// the buffer is stopped or dropped; dropping this detaches it.
 #[derive(Debug)]
 pub struct FillTask {
-    task: tokio::task::JoinHandle<()>,
+    /// The fill, under a catch of a panic in reporting how it failed.
+    task: tokio::task::JoinHandle<Result<(), Bug>>,
     diagnostics: Diagnostics,
 }
 
@@ -211,7 +212,7 @@ fn spawn_fill(
         clippy::disallowed_methods,
         reason = "the fill catches and reports its own panic and fails the buffer with on_error, which Diagnostics::spawn_reported's on_panic could not share with the task"
     )]
-    let task = tokio::spawn(async move {
+    let task = tokio::spawn(caught("report a buffer fill's failure", async move {
         let error = match caught("fill a playback buffer", fill).await {
             Ok(Ok(())) => return,
             Ok(Err(FillFailure::Read(error))) => return report_fill_failure(on_error, error),
@@ -222,7 +223,7 @@ fn spawn_fill(
             Some(buffer) => fail_audio_read(on_error, &buffer, error),
             None => debug!("ignoring read failure on a dropped buffer: {error}"),
         }
-    });
+    }));
     FillTask { task, diagnostics }
 }
 

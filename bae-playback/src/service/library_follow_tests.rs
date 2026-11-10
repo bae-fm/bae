@@ -112,7 +112,7 @@ async fn a_failed_read_is_reported_as_a_bug() {
 fn a_store_failed_on_an_earlier_bug_is_not_reported_again() {
     let reporter = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(reporter.clone());
-    let bug = coven::task::Bug { operation: "authorize a statement", message: "boom".into() };
+    let bug = coven::task::Bug::new("authorize a statement", "boom");
 
     failed_read(
         &diagnostics,
@@ -139,7 +139,7 @@ fn a_store_failed_on_an_earlier_bug_is_not_reported_again() {
 fn a_run_that_panicked_is_reported_as_its_bug() {
     let reporter = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(reporter.clone());
-    let bug = coven::task::Bug { operation: "live query", message: "a run broke".into() };
+    let bug = bae_diagnostics::test_panic::bug("live query", "a run broke");
 
     failed_read(
         &diagnostics,
@@ -151,6 +151,6 @@ fn a_run_that_panicked_is_reported_as_its_bug() {
 
     assert_eq!(
         reporter.reports(),
-        vec![("live query".to_string(), "live query panicked: a run broke".to_string())]
+        vec![bae_diagnostics::test_panic::report("live query", "a run broke")]
     );
 }

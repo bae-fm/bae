@@ -124,16 +124,19 @@ impl LibraryManager {
                     let release_id = op.release_id.clone();
                     let worker = self.clone();
                     let manager = self.clone();
-                    let task = self.runtime_handle.spawn(async move {
+                    let task = self.runtime_handle.spawn(caught("export a release", async move {
                         worker.export_release_to_dir(&op.release_id, op.payload).await?;
                         // The files are in place: the export ends its entry.
                         Ok(worker.store.call(move |sql| entry.finish_on(sql)).await?)
-                    });
+                    }));
                     let abort = task.abort_handle();
                     async move {
                         let outcome = async move {
                             match task.await {
-                                Ok(result) => result,
+                                Ok(Ok(result)) => result,
+                                // A panic fails the entry as any failure does, and is
+                                // reported as the bug it is.
+                                Ok(Err(bug)) => Err(manager.panicked(bug).into()),
                                 // Aborted by a cancel, which also removed the entry — the
                                 // driver's `contains` check is what reads that as a cancel.
                                 Err(join_error) if join_error.is_cancelled() => {
@@ -141,8 +144,8 @@ impl LibraryManager {
                                         "export of {release_id} was cancelled"
                                     )))
                                 }
-                                // A panic fails the entry as any failure does, and is
-                                // reported as the bug it is.
+                                // The work catches its own panic, so this is its runtime
+                                // ending it.
                                 Err(join_error) => Err(manager
                                     .bug(TaskFailed::of_join("export a release", join_error))
                                     .into()),

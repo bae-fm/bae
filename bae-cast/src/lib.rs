@@ -524,18 +524,21 @@ impl CastController {
         });
     }
 
-    /// Start `task` on the runtime in the controller's set. Tasks that ended
-    /// since the last start are reaped here, a panic in one reported.
+    /// Start `task` on the runtime in the controller's set. A panic in it is
+    /// caught and reported inside it, as it happens. Tasks that ended since
+    /// the last start are reaped here.
     fn start_task(&self, task: impl std::future::Future<Output = ()> + Send + 'static) {
         let mut tasks = lock_or_crash(&self.diagnostics, "the casting tasks", &self.tasks);
-        while let Some(ended) = tasks.try_join_next() {
-            if let Err(error) = ended {
-                if error.is_panic() {
-                    self.diagnostics.bug(TaskFailed::of_join("a casting task", error));
+        while tasks.try_join_next().is_some() {}
+        let diagnostics = self.diagnostics.clone();
+        tasks.spawn_on(
+            async move {
+                if let Err(bug) = caught("a casting task", task).await {
+                    diagnostics.panicked(bug);
                 }
-            }
-        }
-        tasks.spawn_on(task, &self.runtime);
+            },
+            &self.runtime,
+        );
     }
 
     /// Act on the device sources. A panic while they were held may have left

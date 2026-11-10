@@ -196,11 +196,14 @@ impl<M> WorkerThread<M> {
 }
 
 /// Wait for the worker `name`'s thread to exit, and the bug its panic was if
-/// one escaped the thread's own catch.
+/// one escaped the thread's own catch. No catch saw such a panic begin, so
+/// its bug names no place in the code.
 fn joined_thread(name: &'static str, thread: std::thread::JoinHandle<()>) -> Result<(), Bug> {
-    thread
-        .join()
-        .map_err(|payload| Bug { operation: name, message: panic_message(payload.as_ref()) })
+    thread.join().map_err(|payload| Bug {
+        operation: name,
+        message: panic_message(payload.as_ref()),
+        location: None,
+    })
 }
 
 #[cfg(test)]

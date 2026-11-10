@@ -25,6 +25,8 @@
 mod background;
 mod error_category;
 mod telemetry;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod test_panic;
 mod ui_error;
 
 pub use background::{lock_or_crash, ReportedTask, ReportedThread};

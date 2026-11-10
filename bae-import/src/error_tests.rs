@@ -58,10 +58,7 @@ async fn a_failed_remote_image_fetch_shows_as_whose_failure_it_is() {
         RemoteImageError::Unusable { detail: "Downloaded file is not a valid image".to_string() };
     assert_eq!(category(unusable), UiErrorCategory::ImportData);
     let unfinished = RemoteImageError::CacheTask(bae_util::task_failure::TaskFailed::Panicked(
-        bae_util::task_failure::Bug {
-            operation: "read the remote image cache",
-            message: "the cache task fails".to_string(),
-        },
+        bae_util::task_failure::Bug::new("read the remote image cache", "the cache task fails"),
     ));
     assert_eq!(category(unfinished), UiErrorCategory::Internal);
 }

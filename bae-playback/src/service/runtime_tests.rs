@@ -4,7 +4,6 @@ use crate::audio_output::{
 };
 use crate::service::tests::*;
 use bae_audio::track_stream::create_track_stream_pair;
-use bae_util::task_failure::Bug;
 use bae_util::test_channels::HANG_GUARD;
 
 #[tokio::test]
@@ -361,7 +360,7 @@ impl crate::audio_output::AudioOutput for EndPanicsOutput {
 
     fn playback_ended(&mut self) {
         if !std::mem::replace(&mut self.panicked, true) {
-            panic!("the output's end failed")
+            bae_diagnostics::test_panic::panics("the output's end failed")
         }
     }
 }
@@ -399,10 +398,7 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     assert!(saw_error, "the person is told playback stopped");
     assert_eq!(
         bugs.reports(),
-        vec![(
-            "serve playback".to_string(),
-            "serve playback panicked: the output's end failed".to_string()
-        )]
+        vec![bae_diagnostics::test_panic::report("serve playback", "the output's end failed")]
     );
 }
 
@@ -592,7 +588,7 @@ impl crate::audio_output::AudioOutputDevice for ScriptedDevice {
         self.openings.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let opening = self.script.lock().unwrap().pop_front();
         match opening.expect("an opening the test scripted") {
-            Opening::Panics => panic!("the device would not open"),
+            Opening::Panics => bae_diagnostics::test_panic::panics("the device would not open"),
             Opening::Fails => Err(AudioError::DeviceUnavailable),
             Opening::Opens => Ok(Box::new(crate::audio_output::FailingAudioOutput)),
         }
@@ -668,10 +664,8 @@ async fn the_press_after_a_panic_ended_the_service_reaches_a_fresh_one() {
     script.allow(2);
 
     let heard = heard_until_stopped(&mut progress).await;
-    let bug = Bug {
-        operation: "playback service thread",
-        message: "the device would not open".to_string(),
-    };
+    let bug =
+        bae_diagnostics::test_panic::bug("playback service thread", "the device would not open");
     assert!(
         matches!(
             heard.as_slice(),
@@ -687,9 +681,9 @@ async fn the_press_after_a_panic_ended_the_service_reaches_a_fresh_one() {
     assert_eq!(failures_heard(&mut progress), Vec::new());
     assert_eq!(
         bugs.reports(),
-        vec![(
-            "playback service thread".to_string(),
-            "playback service thread panicked: the device would not open".to_string()
+        vec![bae_diagnostics::test_panic::report(
+            "playback service thread",
+            "the device would not open"
         )]
     );
 }

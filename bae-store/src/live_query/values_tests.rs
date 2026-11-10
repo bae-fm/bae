@@ -11,7 +11,7 @@ impl LiveSource<u8> for Answers {
 }
 
 fn bug(message: &str) -> coven::task::Bug {
-    coven::task::Bug { operation: "live query", message: message.into() }
+    coven::task::Bug::new("live query", message)
 }
 
 /// A run that panicked is reported once as the pull hears it; the store

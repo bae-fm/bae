@@ -434,16 +434,17 @@ fn a_bug_coven_reports_reaches_the_crash_reporter() {
     let sink: coven::task::BugSinkRef =
         Arc::new(Diagnostics::noop().reporting_bugs_to(reporter.clone()));
 
-    sink.report(&coven::task::Bug {
-        operation: "upload a file",
-        message: "the queue broke its order".to_string(),
-    });
+    sink.report(&coven::task::Bug::new("upload a file", "the queue broke its order"));
+    let found_on = line!() - 1;
 
     assert_eq!(
         reporter.reports(),
         [(
             "upload a file".to_string(),
-            "upload a file panicked: the queue broke its order".to_string()
+            format!(
+                "upload a file panicked: the queue broke its order (at {}:{found_on}:18)",
+                file!()
+            )
         )]
     );
 }
@@ -455,7 +456,7 @@ fn a_bug_coven_reports_reaches_the_crash_reporter() {
 fn a_failure_holding_a_reported_bug_is_not_reported_again() {
     let reporter = Arc::new(RecordingBugReporter::default());
     let diagnostics = Diagnostics::noop().reporting_bugs_to(reporter.clone());
-    let bug = || coven::task::Bug { operation: "write", message: "boom".to_string() };
+    let bug = || coven::task::Bug::new("write", "boom");
 
     diagnostics.report_failure("write the queue", &coven::DbError::Bug(bug()));
     diagnostics.report_failure("write the queue", &coven::DbError::StoreFailed(bug()));
@@ -470,7 +471,7 @@ fn a_failure_holding_a_reported_bug_is_not_reported_again() {
 /// failed with, is shown as a bug; any other as the database's.
 #[test]
 fn a_database_failure_holding_a_bug_shows_as_one() {
-    let bug = || coven::task::Bug { operation: "write", message: "boom".to_string() };
+    let bug = || coven::task::Bug::new("write", "boom");
     assert_eq!(database_category(&coven::DbError::Bug(bug())), UiErrorCategory::Internal);
     assert_eq!(database_category(&coven::DbError::StoreFailed(bug())), UiErrorCategory::Internal);
     assert_eq!(database_category(&coven::DbError::StatementFailed), UiErrorCategory::Database);

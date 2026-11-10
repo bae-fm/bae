@@ -540,7 +540,7 @@ fn a_database_fault_is_not_prefixed_twice() {
 /// arrived, or an earlier one the store failed with, shows as a bug.
 #[test]
 fn a_database_failure_holding_a_bug_shows_as_one() {
-    let bug = || coven::task::Bug { operation: "live query", message: "boom".into() };
+    let bug = || coven::task::Bug::new("live query", "boom");
     for error in [coven::DbError::Bug(bug()), coven::DbError::StoreFailed(bug())] {
         let BridgeError::Diagnostic { category, .. } =
             BridgeError::database_query(coven::CovenError::Database(error))

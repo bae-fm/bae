@@ -4978,7 +4978,12 @@ each device and hands playback the channel or sink.
   A panic in work core runs apart from whoever asked for it — on a blocking
   thread, as a task or a thread of its own — is such a bug: it is reported,
   and what the work served ends with it, the operation that asked failing
-  with "Something went wrong", never left waiting. Core starts such tasks and
+  with "Something went wrong", never left waiting. Its report names where in
+  the code the panic began, as file, line and column, which coven's catch
+  records as it catches the panic; work core runs apart catches its own
+  panic for that reason, so the place travels back with it. A panic no catch
+  saw begin, one that escaped every catch to a join, is reported without
+  it. Core starts such tasks and
   threads through the spawners that report a panic; clippy refuses a bare
   `tokio::spawn` or `std::thread::spawn` outside them, bar the few that catch
   and report their own panic. A service's own thread

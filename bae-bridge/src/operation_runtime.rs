@@ -1,22 +1,28 @@
 use std::future::Future;
 
 use bae_diagnostics::Diagnostics;
-use bae_util::task_failure::{joined, TaskFailed};
+use bae_util::task_failure::{caught, joined, Bug, TaskFailed};
 use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
 
 use crate::types::BridgeError;
 
-/// Schedule an operation builder on its owning runtime. The outer async block
-/// is constructed on the caller, but `build` is not invoked until a runtime
-/// worker polls it.
-pub(crate) fn spawn<T, Build, Fut>(runtime: &Handle, build: Build) -> JoinHandle<T>
+/// Schedule an operation builder, named `operation`, on its owning runtime.
+/// The outer async block is constructed on the caller, but `build` is not
+/// invoked until a runtime worker polls it. The operation runs under a catch
+/// of its panic, so the join hands the panic back as a `Bug` naming where it
+/// began (`joined`).
+pub(crate) fn spawn<T, Build, Fut>(
+    runtime: &Handle,
+    operation: &'static str,
+    build: Build,
+) -> JoinHandle<Result<T, Bug>>
 where
     T: Send + 'static,
     Build: FnOnce() -> Fut + Send + 'static,
     Fut: Future<Output = T> + Send + 'static,
 {
-    runtime.spawn(async move { build().await })
+    runtime.spawn(caught(operation, async move { build().await }))
 }
 
 /// The runtime the bridge's operations run on, and where a panic in one is
@@ -47,7 +53,7 @@ impl OperationRuntime {
         Build: FnOnce() -> Fut + Send + 'static,
         Fut: Future<Output = Result<T, BridgeError>> + Send + 'static,
     {
-        let task = spawn(&self.runtime, build);
+        let task = spawn(&self.runtime, operation, build);
         let _abort = AbortOnDrop(task.abort_handle());
         joined(operation, task).await.map_err(|failed| self.failed(failed))?
     }
@@ -73,9 +79,9 @@ impl OperationRuntime {
     {
         let (result_tx, result_rx) = tokio::sync::oneshot::channel();
         let operations = self.clone();
-        drop(spawn(&self.runtime, move || async move {
+        drop(spawn(&self.runtime, operation, move || async move {
             let _owner = owner;
-            let result = joined(operation, spawn(&operations.runtime, build))
+            let result = joined(operation, spawn(&operations.runtime, operation, build))
                 .await
                 .map_err(|failed| operations.failed(failed))
                 .and_then(std::convert::identity);

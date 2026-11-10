@@ -739,10 +739,7 @@ async fn an_automatic_start_after_the_worker_panicked_fails_with_its_bug() {
     let key = crate::CandidateKey::folder(&dir);
     fixture.identify_ready(&dir, "mb-panicked", "rg-panicked").await;
     assert!(fixture.import.worker.send(crate::service::ImportWorkerMessage::Panic).is_ok());
-    let bug = coven::task::Bug {
-        operation: "import worker thread",
-        message: "the import worker broke".to_string(),
-    };
+    let bug = bae_diagnostics::test_panic::bug("import worker thread", "the import worker broke");
     assert_eq!(
         fixture.import.worker.ended().await,
         bae_util::worker_thread::WorkerEnd::Panicked(bug.clone())
@@ -758,9 +755,9 @@ async fn an_automatic_start_after_the_worker_panicked_fails_with_its_bug() {
     assert!(fixture.import_failure(&dir).await.is_some(), "the failed start is recorded");
     assert_eq!(
         fixture.bugs.reports(),
-        vec![(
-            "import worker thread".to_string(),
-            "import worker thread panicked: the import worker broke".to_string()
+        vec![bae_diagnostics::test_panic::report(
+            "import worker thread",
+            "the import worker broke"
         )]
     );
     assert!(

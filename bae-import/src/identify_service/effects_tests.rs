@@ -668,7 +668,7 @@ async fn a_lookup_that_panics_ends_its_run_as_broken() {
         &event_tx,
         async {
             tokio::task::yield_now().await;
-            panic!("the lookup broke");
+            bae_diagnostics::test_panic::panics("the lookup broke");
         },
     );
 
@@ -682,10 +682,7 @@ async fn a_lookup_that_panics_ends_its_run_as_broken() {
     assert_eq!(failure.detail, "run an identify lookup panicked: the lookup broke");
     assert_eq!(
         bugs.reports(),
-        vec![(
-            "run an identify lookup".to_string(),
-            "run an identify lookup panicked: the lookup broke".to_string()
-        )]
+        vec![bae_diagnostics::test_panic::report("run an identify lookup", "the lookup broke")]
     );
 }
 

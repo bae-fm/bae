@@ -324,7 +324,7 @@ impl AppHandle {
             let starting = services.clone();
             let started = runtime.block_on(bae_util::task_failure::joined(
                 "start the desktop services",
-                crate::operation_runtime::spawn(runtime.handle(), {
+                crate::operation_runtime::spawn(runtime.handle(), "start the desktop services", {
                     let diagnostics = diagnostics.clone();
                     move || {
                         bae_desktop::DesktopServices::start(starting, runtime_handle, diagnostics)

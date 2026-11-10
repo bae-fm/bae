@@ -8,7 +8,7 @@ use super::answer_or_report;
 
 /// A tool call whose work broke its own guarantee.
 async fn panicking_tool_call() -> Result<CallToolResponse, ErrorData> {
-    panic!("the tool broke its guarantee")
+    bae_diagnostics::test_panic::panics("the tool broke its guarantee")
 }
 
 /// rmcp runs a tool call on a task nothing joins, so its panic is reported
@@ -25,9 +25,9 @@ async fn a_tool_call_that_panics_is_reported_and_answered_with_an_internal_error
     assert_eq!(error.code, ErrorCode::INTERNAL_ERROR);
     assert_eq!(
         bugs.reports(),
-        [(
-            "answer an MCP tool call".to_string(),
-            "answer an MCP tool call panicked: the tool broke its guarantee".to_string()
+        [bae_diagnostics::test_panic::report(
+            "answer an MCP tool call",
+            "the tool broke its guarantee"
         )]
     );
 }

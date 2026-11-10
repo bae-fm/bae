@@ -144,7 +144,7 @@ fn audio_thread_reporting(
 struct PanickingSource;
 impl PcmSource for PanickingSource {
     fn next_frames(&mut self, _out: &mut [i16]) -> usize {
-        panic!("ring index out of range")
+        bae_diagnostics::test_panic::panics("ring index out of range")
     }
 }
 
@@ -176,9 +176,9 @@ fn a_sender_that_panics_fails_the_stream_and_is_reported() {
     );
     assert_eq!(
         bugs.reports(),
-        vec![(
-            "airplay audio sender".to_string(),
-            "airplay audio sender panicked: ring index out of range".to_string()
+        vec![bae_diagnostics::test_panic::report(
+            "airplay audio sender",
+            "ring index out of range"
         )]
     );
 }

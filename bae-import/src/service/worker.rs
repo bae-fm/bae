@@ -129,7 +129,9 @@ impl ImportService {
                         }
                         ImportWorkerMessage::Shutdown => break,
                         #[cfg(test)]
-                        ImportWorkerMessage::Panic => panic!("the import worker broke"),
+                        ImportWorkerMessage::Panic => {
+                            bae_diagnostics::test_panic::panics("the import worker broke")
+                        }
                     }
                 }
             });

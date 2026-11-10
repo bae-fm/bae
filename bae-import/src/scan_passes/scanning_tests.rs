@@ -23,7 +23,9 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
     let error = cancel_and_join_folder_walk(
         &cancellation,
         &mut item_rx,
-        start_folder_walk(&diagnostics, || panic!("folder walk panic")),
+        start_folder_walk(&diagnostics, || {
+            bae_diagnostics::test_panic::panics("folder walk panic")
+        }),
         &diagnostics,
     )
     .await
@@ -36,10 +38,7 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
     );
     assert_eq!(
         bugs.reports(),
-        vec![(
-            "walk a watched folder".to_string(),
-            "walk a watched folder panicked: folder walk panic".to_string()
-        )]
+        vec![bae_diagnostics::test_panic::report("walk a watched folder", "folder walk panic")]
     );
 }
 
@@ -54,10 +53,10 @@ async fn a_walk_its_pass_stopped_waiting_for_reports_its_threads_panic() {
     let (go, wait) = std::sync::mpsc::channel::<()>();
     let walk = start_folder_walk(&diagnostics, move || {
         wait.recv().expect("the test lets the walk end");
-        Err(crate::folder_scanner::FolderScanError::Panicked(bae_util::task_failure::Bug {
-            operation: "read folders' dates",
-            message: "a folder vanished mid-read".to_string(),
-        }))
+        Err(crate::folder_scanner::FolderScanError::Panicked(bae_diagnostics::test_panic::bug(
+            "read folders' dates",
+            "a folder vanished mid-read",
+        )))
     });
     // The pass stops waiting; the walk runs on, and reports.
     drop(walk);
@@ -66,10 +65,7 @@ async fn a_walk_its_pass_stopped_waiting_for_reports_its_threads_panic() {
         tokio::time::timeout(HANG_GUARD, reports.next()).await.expect("the panic is reported");
     assert_eq!(
         report,
-        (
-            "read folders' dates".to_string(),
-            "read folders' dates panicked: a folder vanished mid-read".to_string()
-        )
+        bae_diagnostics::test_panic::report("read folders' dates", "a folder vanished mid-read")
     );
 }
 
@@ -90,7 +86,7 @@ impl crate::folder_scanner::DirectoryReader for ListingThatPanicsOnce {
         if directory.components().count() == 1
             && !self.panicked.swap(true, std::sync::atomic::Ordering::SeqCst)
         {
-            panic!("the listing broke");
+            bae_diagnostics::test_panic::panics("the listing broke");
         }
         crate::folder_scanner::OsDirectoryReader.read(root, directory, cancellation)
     }
@@ -190,9 +186,9 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
     assert!(error.contains("the listing broke"), "{error}");
     assert_eq!(
         bugs.reports(),
-        vec![(
-            "walk a folder under a watched root".to_string(),
-            "walk a folder under a watched root panicked: the listing broke".to_string()
+        vec![bae_diagnostics::test_panic::report(
+            "walk a folder under a watched root",
+            "the listing broke"
         )]
     );
 
@@ -609,7 +605,7 @@ fn a_refused_scan_write_is_a_bug_unless_the_disk_or_the_store_failed() {
     let damaged = std::sync::Arc::new(coven::DbError::DamagedDatabase);
     assert!(!refusal_is_a_bug(&coven(coven::DbError::StatisticsFailed(damaged))));
     // An earlier bug that failed the store's handle, reported as it happened.
-    let bug = coven::task::Bug { operation: "authorize a statement", message: "boom".into() };
+    let bug = coven::task::Bug::new("authorize a statement", "boom");
     assert!(!refusal_is_a_bug(&coven(coven::DbError::StoreFailed(bug))));
     assert!(!refusal_is_a_bug(&coven(coven::DbError::DamagedDatabase)));
     assert!(refusal_is_a_bug(&sqlite(rusqlite::ffi::SQLITE_CONSTRAINT_TRIGGER)));

@@ -699,7 +699,7 @@ pub(super) fn setup_failure_classes_retain_the_actionable_category() {
             keyring_core::Error::BadStoreFormat("errSecMissingEntitlement".into()).into(),
         )
     };
-    let bug = || coven::task::Bug { operation: "test", message: "boom".into() };
+    let bug = || coven::task::Bug::new("test", "boom");
     let cases: Vec<(LibraryError, C)> = vec![
         (coven::StorageError::from(F::Authentication).into(), C::Storage(F::Authentication)),
         (coven::StorageError::from(F::ContainerNotFound).into(), C::Storage(F::ContainerNotFound)),

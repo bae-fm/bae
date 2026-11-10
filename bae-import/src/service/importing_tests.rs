@@ -126,7 +126,7 @@ struct IdsThatPanicOnce {
 impl coven::IdSource for IdsThatPanicOnce {
     fn new_id(&self) -> uuid::Uuid {
         if !self.panicked.swap(true, std::sync::atomic::Ordering::SeqCst) {
-            panic!("the id source broke");
+            bae_diagnostics::test_panic::panics("the id source broke");
         }
         coven::IdSource::new_id(&coven::UuidIds)
     }
@@ -169,7 +169,7 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
     );
     assert_eq!(
         bugs.reports(),
-        vec![("an import".to_string(), "an import panicked: the id source broke".to_string())]
+        vec![bae_diagnostics::test_panic::report("an import", "the id source broke")]
     );
 
     test.service.queue_import_for_test(&candidate_key, "import-again").await;
