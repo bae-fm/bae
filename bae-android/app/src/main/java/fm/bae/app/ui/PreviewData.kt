@@ -306,7 +306,6 @@ object PreviewData {
             uploads = BridgeUploadQueueActivity(batch = BridgeTransferBatch(done = 1u, total = 2u), wait = null),
             pins = BridgeDownloadQueueActivity(batch = BridgeTransferBatch(done = 1u, total = 3u), wait = null),
             makingLocal = null,
-            retryOffered = false,
         )
 
     fun downloadCounts(

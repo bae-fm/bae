@@ -77,8 +77,7 @@ public final class SyncActivityStore {
                 makingLocal: BridgeDownloadQueueActivity(
                     batch: BridgeTransferBatch(done: 0, total: 1),
                     wait: nil
-                ),
-                retryOffered: false
+                )
             )
         }
 

@@ -28,9 +28,6 @@ pub struct BridgeSyncActivity {
     /// The Making local line, while its batch holds a release; never on a
     /// phone, which makes nothing local.
     pub making_local: Option<BridgeDownloadQueueActivity>,
-    /// The panel offers Retry now: a retry would run a pass, and a failure
-    /// that pass can clear holds work back.
-    pub retry_offered: bool,
 }
 
 impl BridgeSyncActivity {
@@ -45,7 +42,6 @@ impl BridgeSyncActivity {
             uploads,
             pins,
             making_local,
-            retry_offered,
         } = activity;
         Self {
             moving,
@@ -57,7 +53,6 @@ impl BridgeSyncActivity {
             uploads: uploads.map(BridgeUploadQueueActivity::from_core),
             pins: pins.map(BridgeDownloadQueueActivity::from_core),
             making_local: making_local.map(BridgeDownloadQueueActivity::from_core),
-            retry_offered,
         }
     }
 }

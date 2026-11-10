@@ -86,6 +86,5 @@ class ActivityProblemsTest {
             uploads = null,
             pins = null,
             makingLocal = null,
-            retryOffered = false,
         )
 }

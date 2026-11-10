@@ -3269,23 +3269,7 @@ their lines pause and resume together. Under the lines, *Open Storage Manager*
 opens the Storage manager. On the phones the Pinning line ends in Pause or
 Resume too, and opens the Pinning screen. With nothing to show it says
 everything is up to date. The panel doesn't offer *Retry now*: the Sync page's
-fix does, and it shows only while pressing
-it would run a pass and a failure that pass can clear holds work back. coven
-publishes what a retry made now would do, decided as it answers the retry
-([coven api.md
-E5](https://github.com/bae-fm/coven/blob/main/spec/api.md#e5-storage-and-sync)):
-run a pass, or be answered at once because sync isn't running, a failure only
-the person can clear holds every pass (signing in again, an update, a reset),
-or the provider asked every request to wait. Retry now shows only while it
-would run a pass, and comes back on its own when such a wait ends. The failure
-is the pass's own, such as storage unreachable or answering with a server
-error, or with the pass not failing, a pending record's that coven retries by
-itself after a wait: an upload a server error refused, or a local disk failure.
-A blocked slot and coven's own failed operation count as their records do. A
-failure only an update, a reset or nothing clears, such as a removed device,
-never shows it, nor does a record waiting on another device's work; a record
-waiting on the person offers its own action. It retries everything at once, as
-pulling to refresh does.
+fix does.
 
 **The Sync page.** Sync has a page of its own, off the Library page. Its top
 is one block: *Status* with the state in words, then the state's cause and its

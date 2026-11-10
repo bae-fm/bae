@@ -35,9 +35,6 @@ pub struct SyncActivity {
     /// The Making local line, while its batch holds a release. A phone
     /// makes nothing local, so it never has one.
     pub making_local: Option<DownloadQueueActivity>,
-    /// Retry now is offered: a retry would run a pass, and a failure that
-    /// pass can clear holds work back (`SyncStatusSnapshot::retry_offered`).
-    pub retry_offered: bool,
 }
 
 /// The releases a transfer line's batch holds, and how many of them are
@@ -121,7 +118,6 @@ impl SyncActivity {
                 .map(|batch| UploadQueueActivity { batch, wait: uploads.wait.clone() }),
             pins: download_line(downloads.pins),
             making_local: download_line(downloads.making_local),
-            retry_offered: status.retry_offered(),
         }
     }
 

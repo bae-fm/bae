@@ -52,9 +52,7 @@ forward! { sync this => {
 
 forward! { async this => {
     /// The person asked to retry everything now: pulling to refresh, or
-    /// Retry now in the sync activity list, which the list shows only while
-    /// `BridgeSyncActivity::retry_offered` says it runs a pass that can clear
-    /// a failure.
+    /// Retry now on the Sync page and the status line.
     /// Ends every ordinary backoff, answered or not, and runs a pass;
     /// provider cooldowns and failures that need the person's action hold. Automatic triggers call `trigger_sync`.
     /// Returns when the first pass after the request ends, with what came of

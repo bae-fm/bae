@@ -93,7 +93,6 @@ class SyncPullsTest {
             uploads = uploads,
             pins = null,
             makingLocal = null,
-            retryOffered = false,
         )
 
     private fun status(

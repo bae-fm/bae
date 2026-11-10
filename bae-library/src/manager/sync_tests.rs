@@ -447,10 +447,9 @@ async fn a_start_whose_pass_ends_as_the_last_did_ends_the_failed_start() {
     manager.library.manager().close().await.unwrap();
 }
 
-// Retry now as the activity list offers it, against coven's own retry: each
-// failure it is offered for runs a pass when retried; each failure only the
-// person can clear, and a provider's cooldown, offers none, since coven would
-// answer the retry at once and run no pass.
+// Retry now against coven's own retry effect: each failure coven retries runs
+// a pass when retried; each failure only the person can clear, and a
+// provider's cooldown, runs none, since coven answers the retry at once.
 
 /// A syncing library on a clock that never moves, so no backoff ends by
 /// itself: a pass after a failed one runs only because a retry ended its
@@ -504,12 +503,11 @@ async fn fail_a_pass(
     failed
 }
 
-/// Each failure coven retries by itself offers Retry now, and retrying runs
-/// a pass at once, which syncs: storage unreachable, a server error,
-/// throttling without a cooldown, a conflict, an expired upload session. A
+/// Each failure coven retries by itself is retried by a pass at once, which
+/// syncs: storage unreachable, a server error, throttling without a cooldown, a conflict, an expired upload session. A
 /// missing object fails no pass here: the pass reads it as absent.
 #[tokio::test]
-async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
+async fn each_retried_failure_is_cleared_by_a_pass_that_syncs() {
     use coven::StorageFailure as F;
     for (failure, response) in [
         (F::Network, None),
@@ -522,7 +520,6 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
         let (manager, _temp_dir, _clock) = library_on_a_stopped_clock().await;
         let failed = fail_a_pass(&manager, next_request_fails(failure, response), |_| true).await;
         assert_eq!(failed.retry_effect, coven::RetryEffect::Pass);
-        assert!(failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.coven);
         let requests = manager.storage.request_trace().len();
         let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             manager.library.manager().retry_now().await.unwrap().await
@@ -541,11 +538,11 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
     }
 }
 
-/// Each failure only the person can clear, or that never retries, offers no
-/// Retry now: coven holds every pass for it, and a retry would answer with
-/// the failure at once, sending nothing to storage.
+/// Each failure only the person can clear, or that never retries, holds every
+/// pass: a retry answers with the failure at once, sending nothing to
+/// storage.
 #[tokio::test]
-async fn each_failure_the_person_clears_offers_no_retry() {
+async fn each_failure_the_person_clears_holds_every_pass() {
     use coven::StorageFailure as F;
     for (failure, response) in [
         (F::Authentication, Some(401)),
@@ -562,7 +559,6 @@ async fn each_failure_the_person_clears_offers_no_retry() {
         })
         .await;
         assert_eq!(failed.retry_effect, coven::RetryEffect::Failed);
-        assert!(!failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.coven);
         let requests = manager.storage.request_trace().len();
         let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             manager.library.manager().retry_now().await.unwrap().await
@@ -582,11 +578,11 @@ async fn each_failure_the_person_clears_offers_no_retry() {
     }
 }
 
-/// A 429 asking every request to wait ten minutes offers no Retry now while
-/// the wait lasts: a retry would only say when it ends. Once it ends Retry
-/// Now is offered again, and retrying runs a pass that syncs.
+/// A 429 asking every request to wait ten minutes holds every pass while the
+/// wait lasts: a retry only says when it ends. Once it ends a retry runs a
+/// pass that syncs.
 #[tokio::test]
-async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
+async fn a_provider_cooldown_holds_every_pass_until_it_ends() {
     let (manager, _temp_dir, clock) = library_on_a_stopped_clock().await;
     let cooling = fail_a_pass(
         &manager,
@@ -599,7 +595,6 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     .await;
     let ends = std::time::UNIX_EPOCH + std::time::Duration::from_secs(600);
     assert_eq!(cooling.retry_effect, coven::RetryEffect::CoolingDown { until: ends });
-    assert!(!cooling.retry_offered(), "{:?}", cooling.coven);
     let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         manager.library.manager().retry_now().await.unwrap().await
     })
@@ -618,7 +613,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
         matches!(value.shown_pass(), Some(coven::LastPass::Offline { .. }))
     })
     .await;
-    assert!(offline.retry_offered(), "{:?}", offline.retry_effect);
+    assert_eq!(offline.retry_effect, coven::RetryEffect::Pass);
     manager.storage.set_faults(coven::Faults::none()).await;
     let requests = manager.storage.request_trace().len();
     let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
@@ -632,10 +627,9 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
 }
 
 /// An upload a server error refused waits on coven's backoff, which a
-/// stopped clock never ends, and offers Retry now; retrying ends the wait,
-/// and the file uploads.
+/// stopped clock never ends; retrying ends the wait, and the file uploads.
 #[tokio::test]
-async fn a_refused_upload_offers_retry_and_retrying_uploads_it() {
+async fn retrying_a_refused_upload_uploads_it() {
     let (manager, temp_dir, _clock) = library_on_a_stopped_clock().await;
     manager.library.manager().store.set_uploads_paused(true).await.unwrap();
     let release = insert_release_with_queued_uploads(
@@ -656,11 +650,10 @@ async fn a_refused_upload_offers_retry_and_retrying_uploads_it() {
         .await;
     manager.library.manager().store.set_uploads_paused(false).await.unwrap();
 
-    let refused = status_until(&manager, |value| {
+    status_until(&manager, |value| {
         value.pending.iter().any(|item| cause_text(item).is_some_and(|text| text.contains("500")))
     })
     .await;
-    assert!(refused.retry_offered(), "{:?} {:?}", refused.retry_effect, refused.pending);
     let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         manager.library.manager().retry_now().await.unwrap().await
     })
@@ -671,8 +664,7 @@ async fn a_refused_upload_offers_retry_and_retrying_uploads_it() {
         rows.files.iter().all(|file| file.file.stored)
     })
     .await;
-    let settled = status_until(&manager, |value| value.pending.is_empty()).await;
-    assert!(!settled.retry_offered(), "nothing is left to retry: {:?}", settled.pending);
+    status_until(&manager, |value| value.pending.is_empty()).await;
     manager.library.manager().close().await.unwrap();
 }
 

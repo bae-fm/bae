@@ -3,7 +3,7 @@
 //! what a retry would do and why the last start failed, and the actions
 //! each pending record offers.
 
-use crate::pending_item::{PendingItem, PendingSubjectName, PendingWait};
+use crate::pending_item::{PendingItem, PendingSubjectName};
 use bae_diagnostics::UiError;
 use bae_store::{DbError, Store};
 use coven::SqlReadContext;
@@ -370,45 +370,6 @@ impl SyncStatusSnapshot {
     /// start, and signing in to the recorded storage again is the way back.
     pub fn reconnect_offered(&self) -> bool {
         self.error.is_some() && self.storage_set_up() && !self.running()
-    }
-
-    /// Whether the activity list offers Retry now: pressing it runs a pass,
-    /// and a failure that pass can clear holds work back.
-    ///
-    /// Whether a pass runs is coven's answer (`retry_effect`), decided as it
-    /// answers the retry: no pass runs while sync is stopped, while a
-    /// failure only the person can clear holds every pass (new credentials,
-    /// an update, a reset), or during a provider's cooldown. Whether there
-    /// is anything for the pass to retry is the failure's own:
-    /// `failure_a_retry_clears`.
-    pub fn retry_offered(&self) -> bool {
-        self.retry_effect == coven::RetryEffect::Pass && self.failure_a_retry_clears()
-    }
-
-    /// Whether a failure a retry can clear holds work back: the pass's own,
-    /// which the next pass retries, or with no pass failing, a pending
-    /// record's that coven retries by itself after a wait, such as an upload
-    /// a server error refused. A blocked slot and coven's own failed
-    /// operation retry as their records do. A failure only an update, a
-    /// reset or nothing clears never does, nor a record waiting on other
-    /// work, such as another device's upload.
-    fn failure_a_retry_clears(&self) -> bool {
-        use coven::{LastPass as S, StatusFailure as F};
-        let retries =
-            |record: &coven::PendingRecord| PendingWait::of(record, None).retries_by_itself();
-        match self.shown_pass() {
-            Some(S::Offline { .. } | S::Failed { failure: F::Storage(_) | F::Other, .. }) => true,
-            Some(S::Blocked { slot, reason, .. }) => retries(&coven::PendingRecord::new(
-                coven::PendingSubject::Slot(*slot),
-                reason.clone(),
-            )),
-            Some(S::Failed { failure: F::Operation(record), .. }) => retries(record),
-            Some(S::Failed {
-                failure: F::UpdateRequired(_) | F::Removed | F::NotAdmitted | F::DeviceIdInUse(_),
-                ..
-            }) => false,
-            Some(S::Synced) | None => self.pending.iter().any(|item| item.wait.retries_by_itself()),
-        }
     }
 
     /// The failure to log as this status follows `last`: one coven doesn't

@@ -140,8 +140,7 @@ private enum ActivityShot {
                 wait: nil
             ),
             pins: nil,
-            makingLocal: nil,
-            retryOffered: false
+            makingLocal: nil
         )
     }
 
@@ -170,8 +169,7 @@ private enum ActivityShot {
             makingLocal: BridgeDownloadQueueActivity(
                 batch: BridgeTransferBatch(done: 0, total: 1),
                 wait: downloadsWait
-            ),
-            retryOffered: false
+            )
         )
     }
 }

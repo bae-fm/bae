@@ -181,8 +181,7 @@ struct SyncActivitySubscriptionTests {
                 )
             },
             pins: nil,
-            makingLocal: nil,
-            retryOffered: false
+            makingLocal: nil
         )
     }
 }
