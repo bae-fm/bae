@@ -18,12 +18,17 @@ struct MainWindowRoot: View {
             if let appService = appDelegate.appService {
                 appService.installEnvironment(
                     libraryModals(
-                        MainWindowChrome(
-                            launchProblems: appDelegate.launchProblems,
-                            loadError: appDelegate.loadError
-                        ) {
+                        MainWindowChrome {
                             detailContent
                         }
+                        .environment(
+                            \.launchProblems,
+                            appDelegate.launchProblems
+                        )
+                        .environment(
+                            \.libraryLoadError,
+                            appDelegate.loadError
+                        )
                     )
                 )
             }

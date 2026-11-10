@@ -338,7 +338,6 @@ private struct RestoreCodeSettingsPage: View {
             )
         )
         .environment(fixture.membership)
-        .environment(SyncActivityStore.preview(needsAttention: false))
         .environment(UiStore())
         .environment(fixture.libraryName)
     }
@@ -376,7 +375,6 @@ private struct RestoreCodeSettingsPage: View {
                 )
             )
         )
-        .environment(SyncActivityStore.preview(needsAttention: false))
         .environment(UiStore())
     }
 

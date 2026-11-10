@@ -1,10 +1,11 @@
 import BaeKit
+import SwiftUI
 
 /// Why a step the app runs to open, reset, close or remove a library
 /// failed, and which step it was. Launch's own problems are `LaunchProblems`,
 /// kept apart so neither replaces the other. Each step titles the failure by what failed and says
 /// what the person can do next, wherever the failure shows: the welcome
-/// screen, the shell's bottom line, or the reset screen.
+/// screen, the Activity panel, or the reset screen.
 struct LoadError: Equatable {
     enum Step: Equatable {
         /// Opening a library.
@@ -85,9 +86,26 @@ struct LoadError: Equatable {
         self.error = error
     }
 
+    /// The failure as the Activity panel lists it.
+    var problem: AppProblem {
+        AppProblem(
+            id: .libraryLoad,
+            title: step.title,
+            advice: step.advice,
+            error: error
+        )
+    }
+
     /// Fails when core says the error has nothing to show: a cancellation.
     init?(_ step: Step, _ error: any Error) {
         guard let error = DisplayError(error) else { return nil }
         self.init(step, error)
     }
+}
+
+extension EnvironmentValues {
+    /// The failure of the last step that opened, closed or removed a library
+    /// while another stays open, for the Activity panel to list.
+    @Entry
+    var libraryLoadError: LoadError?
 }

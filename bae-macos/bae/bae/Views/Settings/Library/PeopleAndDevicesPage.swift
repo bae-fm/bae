@@ -40,8 +40,6 @@ struct PeopleAndDevicesPage: View {
     private var store
     @Environment(Sync.self)
     private var sync
-    @Environment(SyncActivityStore.self)
-    private var syncActivity
 
     enum Subpage: Equatable {
         case people
@@ -374,7 +372,12 @@ extension PeopleAndDevicesPage {
                 InviteRow(
                     invite: invite,
                     onOpen: { open(invite) },
-                    onRefresh: { Task { await syncActivity.retryNow() } }
+                    onRefresh: {
+                        run {
+                            actionError = try await sync.nudges.retryNow()
+                                .failure
+                        }
+                    }
                 )
             }
             if store.selfIsAdmin {
@@ -888,7 +891,6 @@ private struct JoinRequestSheet: View {
             .environment(
                 PreviewData.previewSync(storage: PreviewData.previewStorage)
             )
-            .environment(SyncActivityStore.preview(needsAttention: false))
             .environment(
                 PreviewData.connectedConfigStore(
                     storage: PreviewData.previewStorage

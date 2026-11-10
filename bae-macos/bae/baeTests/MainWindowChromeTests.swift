@@ -101,7 +101,7 @@ private struct MeasuredContentHarness: View {
     let sizings: ContentSizings
 
     var body: some View {
-        MainWindowChrome(loadError: nil) {
+        MainWindowChrome {
             RecordingLayout(sizings: sizings) {
                 Text(verbatim: shown.text)
             }

@@ -80,8 +80,6 @@ struct SyncFixButton: View {
 
     @Environment(Sync.self)
     private var sync
-    @Environment(SyncActivityStore.self)
-    private var activity
     @Environment(\.openURL)
     private var openURL
     #if BAE_OAUTH_PROVIDERS || BAE_CLOUDKIT
@@ -148,7 +146,9 @@ struct SyncFixButton: View {
         case .resumeUploads:
             attempt { try await sync.setSyncPaused(false) }
         case .retryNow:
-            Task { await activity.retryNow() }
+            attempt {
+                error = try await sync.nudges.retryNow().failure
+            }
         case .reconnect:
             attempt { try await sync.reconnectSync() }
         case .checkForUpdates:

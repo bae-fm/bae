@@ -27,6 +27,28 @@
         }
     }
 
+    /// How a notice shows its details. The default opens the alert; a panel
+    /// that must close before the alert runs modally sets its own.
+    public struct ShowErrorDetailsAction {
+        private let handler: @MainActor (ErrorDetails) -> Void
+
+        public init(_ handler: @escaping @MainActor (ErrorDetails) -> Void) {
+            self.handler = handler
+        }
+
+        @MainActor
+        public func callAsFunction(_ details: ErrorDetails) {
+            handler(details)
+        }
+    }
+
+    extension EnvironmentValues {
+        @Entry
+        public var showErrorDetails = ShowErrorDetailsAction {
+            ErrorDetailsAlert.show($0)
+        }
+    }
+
     /// The inset panel of an error's causes, one a line and ending in the fault,
     /// with Copy details in its corner, shown under the pointer or keyboard
     /// focus.

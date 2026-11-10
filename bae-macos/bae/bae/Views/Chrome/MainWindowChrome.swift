@@ -44,12 +44,9 @@ enum WelcomeWindow {
     static let size = CGSize(width: 900, height: 600)
 }
 
-/// The main window's chrome around the shell: its size limits, the themed
-/// background, and the bottom notices for what launch found wrong and for a
-/// library load error, each its own.
+/// The main window's chrome around the shell: its size limits and the
+/// themed background.
 struct MainWindowChrome<Content: View>: View {
-    var launchProblems = LaunchProblems.none
-    let loadError: LoadError?
     @ViewBuilder
     let content: Content
 
@@ -58,13 +55,6 @@ struct MainWindowChrome<Content: View>: View {
             content
         }
         .windowBackground()
-        .overlay(alignment: .bottom) {
-            VStack(spacing: ThemeSpace.related) {
-                LaunchProblemNotices(launchProblems)
-                LoadErrorLine(loadError: loadError)
-            }
-            .padding()
-        }
     }
 }
 
@@ -124,22 +114,6 @@ struct WelcomeWindowChrome<Content: View>: View {
     }
 }
 
-/// The bottom-of-window notice reporting a load-time failure under the
-/// shell: a failed library switch, close or removal.
-private struct LoadErrorLine: View {
-    let loadError: LoadError?
-
-    var body: some View {
-        if let loadError {
-            Notice(
-                title: loadError.step.title,
-                advice: loadError.step.advice,
-                error: loadError.error
-            )
-        }
-    }
-}
-
 #if DEBUG
     // MARK: - Previews
 
@@ -154,15 +128,7 @@ private struct LoadErrorLine: View {
     }
 
     #Preview("Main window") {
-        MainWindowChrome(loadError: nil) {
-            ChromeSampleContent()
-        }
-    }
-
-    #Preview("Main window — load error") {
-        MainWindowChrome(
-            loadError: LoadError(.shutdown, PreviewData.displayErrorWithDetail)
-        ) {
+        MainWindowChrome {
             ChromeSampleContent()
         }
     }

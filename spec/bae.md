@@ -210,8 +210,8 @@ language.
 composers. The view's name heads the page, and its menu switches views. At the
 top of the list the heading is full size; as the list scrolls it shrinks into a
 slim bar pinned above it, and a scroll that stops part way leaves it at the
-nearer size. On Android, the heading's end holds Search, the sync activity
-indicator (§6.4) and ⋮, whose menu gives the view's sort under *Sort by* (the
+nearer size. On Android, the heading's end holds Search, the Activity
+button (§6.4) and ⋮, whose menu gives the view's sort under *Sort by* (the
 fields, the direction, and for albums *Group by artist*), then *Shuffle
 library* and *Settings*. A card's title or artists, or a row's name, too long
 for its one line ends in "…". On Android the grid grouped by artist opens each
@@ -3144,23 +3144,33 @@ survives, and of two edits to one column the later wins
 Sync runs in the background. A library opens and plays from its own copy
 whether or not storage is reachable.
 
-**The activity indicator.** Sync takes one small control in the window's
+**The Activity button.** Sync takes one small control in the window's
 title bar on macOS and in the library's top bar on Android, never a
 bar across the content. While bytes move it is a spinner: files this device
-is sending, or offline copies downloading. While something needs the person, a sync failure or a pending record,
-it shows a small warning symbol, beside the spinner when both hold. While a
+is sending, or offline copies downloading. While a problem the person hasn't dismissed, or a pending record, is
+listed in the Activity panel, it shows a small warning symbol, beside the
+spinner when both hold. While a
 queue is held (paused, or waiting for network) and nothing moves, it is a
 pause symbol, so the hold stays in reach: the popover's line for that queue
 says Paused or Waiting for network. With none of these it is absent. A pass alone doesn't spin it: an idle library runs one
-every half minute, and the indicator would blink for nothing.
+every half minute, and the button would blink for nothing.
 
-Clicking it opens what sync is doing, a popover on macOS and a sheet on the
-phones, updating as it changes. What it shows is the sync status the Sync
-page reads (below), with what the upload and download queues hold read in the
-same read of the library's tables. Bytes moving change none of them, so they
-send it nothing. What needs the person comes first, under
-*Needs attention*: the failure's line and each pending record in plain words, with
-*Open sync settings*, where each record offers its action. A failure a pending record shows has no line of its own: a pass that
+Clicking it opens the Activity panel, a popover on macOS and a sheet on the
+phones, updating as it changes. What it shows of sync is the sync status the
+Sync page reads (below), with what the upload and download queues hold read in
+the same read of the library's tables. Bytes moving change none of them, so
+they send it nothing. What needs the person comes first, under *Needs
+attention*, one row each, a line between rows: the app's own problems (the
+sign-in settings it can't read; on macOS a library that failed to open while
+another stays open), titled by what failed; a failure to read sync's state;
+sync's failure, with *Open sync settings*, which closes the panel and opens the
+Sync page; then each pending record in plain words, with *Open sync settings*,
+where each record offers its action. Nothing in the panel retries. A row shows
+no error: clicking it closes the panel and opens the alert with the causes
+(§9.7). Each problem has an × that takes it out of the panel, without fixing
+it: it still shows where it is fixed, and a problem that leaves the list and
+comes back shows again. While a library is open these problems show only
+there. A failure a pending record shows has no line of its own: a pass that
 storage refused or couldn't reach leaves the connection's record, a blocked
 slot and a failed operation of coven's own have theirs, and the failure again
 beside its record would read as a second problem. Then one row per
@@ -3192,7 +3202,8 @@ paused; pinning and making local are one queue, as in Transfers settings, so
 their lines pause and resume together. Under the lines, *Open Storage Manager*
 opens the Storage manager. On the phones the Pinning line ends in Pause or
 Resume too, and opens the Pinning screen. With nothing to show it says
-everything is up to date. *Retry now* shows only while pressing
+everything is up to date. The panel doesn't offer *Retry now*: the Sync page's
+fix does, and it shows only while pressing
 it would run a pass and a failure that pass can clear holds work back. coven
 publishes what a retry made now would do, decided as it answers the retry
 ([coven api.md
@@ -3286,7 +3297,7 @@ its pending records, the provider of the recorded location, and why this
 device last failed to start sync. Each value's read of the tables is made
 after the sync state it carries arrived, so the rows are never older than the
 state: a start's failure that the start or setup after it ended never shows
-beside the state that ended it. The activity list (above) lists each thing
+beside the state that ended it. The Activity panel (above) lists each thing
 coven is waiting on, one of its pending
 records
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
@@ -3345,7 +3356,7 @@ album or track is marked as on its way. No device waits for another's upload,
 and a read of a file that fails leaves nothing pending, so no pending record
 is about another device's upload.
 
-Ben's laptop has two records in its activity list: Dropbox wants him to sign in again, and
+Ben's laptop has two records in its Activity panel: Dropbox wants him to sign in again, and
 a file of his vinyl rip moved before it uploaded. The list offers *Sign in* for
 the first: core signs in with the access the library's folder needs, then
 connects that location again under this device's name. On a library in an S3
@@ -3474,9 +3485,9 @@ its control says so in core's words for that transfer.
   is the pass's failure, such as being offline; the provider asking every
   request to wait, with the date and time it ends, after which sync goes on by
   itself; or that sync isn't running. A pass held by such a wait, or by a
-  failure only the person can clear, answers at once. *Retry now* in the
-  activity list waits for the same answer and shows a retry that didn't sync
-  the same way on Android, and in the list on macOS.
+  failure only the person can clear, answers at once. The Sync
+  page's *Retry now* and People's refresh wait for the same answer and show a
+  retry that didn't sync where they are on macOS, as a snackbar on Android.
 - **A newer schema.** Data written by a newer app needs an update;
   reconnecting can't fix it.
 - **Pausing** stops uploads of release files and keeps their place, across
@@ -4556,7 +4567,9 @@ when coven's work for it panicked.
 What launch finds wrong without stopping the app is kept apart from those
 failures for the whole run: sign-in settings bae can't read. It shows beside
 whatever opens or fails later, so a library that opens doesn't hide it and a
-later failure doesn't replace it. A keychain that won't open stops the launch:
+later failure doesn't replace it. On macOS, while a library is open, it shows
+in the Activity panel (§6.4) and nowhere else in the window; on the welcome it
+shows in the welcome's content. A keychain that won't open stops the launch:
 the host opens it as it starts, and listing, opening and removing libraries
 all go through it. On Apple's platforms only a wrong keychain service name,
 bae's own bug, keeps it from opening; on Linux it is the desktop's secret
@@ -4798,7 +4811,7 @@ bindings export none of their symbols.
 | bae-store | the library's store over coven, with no table: the `Store` every read, write and live query runs through, the coven calls bae makes on a library (storage setup, sync, keys, files, pins, uploads, invites, restore codes), the schema's shape (each crate's parts, run in crate order as one migration) and the SQL functions and collation the parts declare, list windows, the cancellable live queries a surface pulls values from and the live reads over them, whose request moves in place and says whether a read that finished after it was replaced still answers (a window's rows do; another id's detail does not), and the names a person enters |
 | bae-records | the library's records and where each release's files are: artists, albums, releases, tracks, works and labels with their files, the rules that resolve credits and labels and merge identities, the row writers an import and an edit call inside their own writes, and release storage, with the `Records` owner over them |
 | bae-people | the library's members and each person's own data: who is in the library and on which devices, the admin changes this device asked for, profiles, plays, ratings and playlists, with the `Membership` and `People` owners |
-| bae-sync-status | the sync status as the Sync page and the activity list show it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do, why this device's last start failed and where its storage setup stands, with the `SyncStatus` owner |
+| bae-sync-status | the sync status as the Sync page and the Activity panel show it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do, why this device's last start failed and where its storage setup stands, with the `SyncStatus` owner |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the tasks and threads whose panics are reported, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through, which reports a panic in its own disk work; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |

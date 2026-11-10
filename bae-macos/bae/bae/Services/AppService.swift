@@ -79,9 +79,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         )
         let syncStatusStore = SyncStatusStore()
         let membershipStore = MembershipStore(handle: appHandle)
-        let syncActivityStore = SyncActivityStore(
-            retryNow: { try await appHandle.retryNow() }
-        )
+        let syncActivityStore = SyncActivityStore()
         let downloadStore = DownloadStore()
         let castStore = CastStore()
         let outboxStore = OutboxStore(uploadsPaused: seed.uploadsPaused)

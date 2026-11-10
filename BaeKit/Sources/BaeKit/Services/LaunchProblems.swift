@@ -10,6 +10,23 @@ public struct LaunchProblems: Equatable, Sendable {
 
     public static let none = LaunchProblems(signInSettings: nil)
 
+    /// Each problem, as the Activity panel and the welcome list it.
+    public var problems: [AppProblem] {
+        guard let signInSettings else { return [] }
+        return [
+            AppProblem(
+                id: .signInSettings,
+                title: localizedCoreString(
+                    "ui.load_error.sign_in_settings.title"
+                ),
+                advice: localizedCoreString(
+                    "ui.load_error.sign_in_settings.advice"
+                ),
+                error: signInSettings
+            )
+        ]
+    }
+
     public init(signInSettings: DisplayError?) {
         self.signInSettings = signInSettings
     }
@@ -25,15 +42,11 @@ public struct LaunchProblemNotices: View {
     }
 
     public var body: some View {
-        if let error = problems.signInSettings {
+        ForEach(problems.problems) { problem in
             Notice(
-                title: localizedCoreString(
-                    "ui.load_error.sign_in_settings.title"
-                ),
-                advice: localizedCoreString(
-                    "ui.load_error.sign_in_settings.advice"
-                ),
-                error: error
+                title: problem.title,
+                advice: problem.advice,
+                error: problem.error
             )
         }
     }

@@ -52,6 +52,24 @@ public struct ErrorAction {
     }
 }
 
+/// Where a paragraph notice's buttons go.
+public enum NoticeButtons {
+    /// On the title's line at the right, the words wrapping beside them.
+    case inline
+    /// On a line of their own under the words, in line with them: for a long
+    /// button in a narrow place. The × stays on the title's line.
+    case below
+}
+
+/// What opens a notice's details.
+public enum NoticeDetailsOpening {
+    /// A Details button among the notice's buttons.
+    case button
+    /// A click on the notice's row; it has no Details button. For a list of
+    /// problems, where each row is the whole way in.
+    case row
+}
+
 /// A user-facing error as a notice: the tone's glyph, then either the error's
 /// line or a title the caller words with what to do under it, and buttons. The
 /// notice never shows the error itself: when there is a detail, its Details
@@ -67,7 +85,13 @@ public struct Notice: View {
     private let tone: StatusTone
     private let look: NoticeLook
     private let action: ErrorAction?
+    private let buttons: NoticeButtons
+    private let detailsOpening: NoticeDetailsOpening
     private let onDismiss: (() -> Void)?
+    #if canImport(AppKit)
+        @Environment(\.showErrorDetails)
+        private var showErrorDetails
+    #endif
 
     /// A notice showing the error's line; its Details, when the error has a
     /// detail, opens the line as the title over the causes.
@@ -76,12 +100,16 @@ public struct Notice: View {
         tone: StatusTone = .danger,
         look: NoticeLook = .filled,
         action: ErrorAction? = nil,
+        buttons: NoticeButtons = .inline,
+        detailsOpening: NoticeDetailsOpening = .button,
         onDismiss: (() -> Void)? = nil
     ) {
         self.heading = .line(error)
         self.tone = tone
         self.look = look
         self.action = action
+        self.buttons = buttons
+        self.detailsOpening = detailsOpening
         self.onDismiss = onDismiss
     }
 
@@ -96,12 +124,16 @@ public struct Notice: View {
         tone: StatusTone = .danger,
         look: NoticeLook = .filled,
         action: ErrorAction? = nil,
+        buttons: NoticeButtons = .inline,
+        detailsOpening: NoticeDetailsOpening = .button,
         onDismiss: (() -> Void)? = nil
     ) {
         self.heading = .titled(title, advice: advice, error: error)
         self.tone = tone
         self.look = look
         self.action = action
+        self.buttons = buttons
+        self.detailsOpening = detailsOpening
         self.onDismiss = onDismiss
     }
 
@@ -115,6 +147,10 @@ public struct Notice: View {
     }
 
     private var row: some View {
+        rowOpeningDetails(rowContent)
+    }
+
+    private var rowContent: some View {
         Group {
             if tone.symbol != nil {
                 RowItem {
@@ -132,15 +168,27 @@ public struct Notice: View {
         .notice(tone, look: look)
     }
 
-    /// The words, wrapping, with the buttons at the right on the title's line.
+    /// The words, wrapping, with the buttons at the right on the title's line,
+    /// or under the words when the notice puts them `below`.
     private var titleLine: some View {
         HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.group) {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 words
+                if buttons == .below, hasChoiceButtons {
+                    choiceButtons.padding(.top, ThemeSpace.inline)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if details != nil || action != nil || onDismiss != nil {
-                buttons
+            if (buttons == .inline && hasChoiceButtons) || onDismiss != nil {
+                HStack(spacing: ThemeSpace.related) {
+                    if buttons == .inline {
+                        choiceButtons
+                    }
+                    if let onDismiss {
+                        dismissButton(onDismiss)
+                    }
+                }
+                .fixedSize()
             }
         }
     }
@@ -167,21 +215,48 @@ public struct Notice: View {
         }
     }
 
-    private var buttons: some View {
+    private var hasChoiceButtons: Bool {
+        (details != nil && detailsOpening == .button) || action != nil
+    }
+
+    /// Details, when it is a button, then the action.
+    private var choiceButtons: some View {
         HStack(spacing: ThemeSpace.related) {
-            if let details {
+            if let details, detailsOpening == .button {
                 detailsButton(details)
             }
             if let action {
                 actionButton(action)
             }
-            if let onDismiss {
-                dismissButton(onDismiss)
-            }
         }
         .fixedSize()
     }
 
+    /// A click anywhere on the row opens the details, for a notice whose
+    /// details open from its row; the buttons inside it keep their own clicks.
+    @ViewBuilder
+    private func rowOpeningDetails(_ content: some View) -> some View {
+        #if canImport(AppKit)
+            if detailsOpening == .row, let details {
+                content
+                    .contentShape(Rectangle())
+                    .onTapGesture { showErrorDetails(details) }
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityAction(named: Text("Details")) {
+                        showErrorDetails(details)
+                    }
+            }
+            else {
+                content
+            }
+        #else
+            content
+        #endif
+    }
+}
+
+/// The notice's buttons, its centred layout and its details.
+extension Notice {
     /// Takes the notice away without fixing what it reports.
     private func dismissButton(_ onDismiss: @escaping () -> Void) -> some View {
         Button(action: onDismiss) {
@@ -254,7 +329,7 @@ public struct Notice: View {
     private func detailsButton(_ details: ErrorDetails) -> some View {
         #if canImport(AppKit)
             colouredButton(
-                Button("Details") { ErrorDetailsAlert.show(details) }
+                Button("Details") { showErrorDetails(details) }
                     .buttonStyle(.borderless)
             )
         #endif

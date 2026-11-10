@@ -45,7 +45,6 @@ extension ShotScene {
                 .environment(
                     PreviewData.previewSync(storage: PreviewData.previewStorage)
                 )
-                .environment(SyncActivityStore.preview(needsAttention: false))
                 .environment(
                     PreviewData.connectedConfigStore(
                         storage: PreviewData.previewStorage

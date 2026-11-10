@@ -115,7 +115,7 @@ final class CommonSubscriptions {
     }
 
     /// What sync is doing and what it waits on, for the status line and the
-    /// activity indicator.
+    /// Activity panel.
     private func startSync() {
         syncStatus = ScreenSubscription(
             appHandle.subscribeSyncStatus(),

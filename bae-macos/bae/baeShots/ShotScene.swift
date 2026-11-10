@@ -228,7 +228,7 @@ struct ShotScene {
         + folderPickerScenes
         + peopleScenes
         + sheetFooterScenes
-        + restoreCodeScenes + noticeScenes + welcomeScenes
+        + restoreCodeScenes + noticeScenes + welcomeScenes + activityScenes
 }
 
 extension ShotScene {

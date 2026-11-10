@@ -2,23 +2,16 @@ import Foundation
 import Observation
 
 /// Everything sync is doing on this device, as core reports it: the title
-/// bar's indicator and the list it opens read it here.
+/// bar's button and the panel it opens read it here.
 @MainActor
 @Observable
 public final class SyncActivityStore {
     public private(set) var activity: BridgeSyncActivity?
-    /// The last failure to read the activity, or to act from its list.
+    /// Why the activity couldn't be read, until it is read again.
     public private(set) var error: DisplayError?
-    private let retryNowAction:
-        @Sendable () async throws -> BridgeSyncRetryOutcome
 
-    public init(
-        activity: BridgeSyncActivity? = nil,
-        retryNow:
-            @escaping @Sendable () async throws -> BridgeSyncRetryOutcome
-    ) {
+    public init(activity: BridgeSyncActivity? = nil) {
         self.activity = activity
-        retryNowAction = retryNow
     }
 
     public func apply(_ activity: BridgeSyncActivity) {
@@ -28,27 +21,6 @@ public final class SyncActivityStore {
 
     public func fail(_ error: any Error) {
         self.error = DisplayError(error)
-    }
-
-    /// The indicator shows while bytes move or something needs the person,
-    /// and is absent otherwise.
-    public var visible: Bool {
-        guard let activity else { return error != nil }
-        return activity.moving || activity.needsAttention || error != nil
-    }
-
-    /// The person's retry: every ordinary wait ends and sync runs now.
-    /// Returns once the first pass after it ends; a retry that didn't sync
-    /// shows its reason in the list.
-    public func retryNow() async {
-        do {
-            if let failure = try await retryNowAction().failure {
-                error = failure
-            }
-        }
-        catch {
-            fail(error)
-        }
     }
 }
 
@@ -60,8 +32,7 @@ public final class SyncActivityStore {
             needsAttention: Bool = true
         ) -> SyncActivityStore {
             SyncActivityStore(
-                activity: .preview(needsAttention: needsAttention),
-                retryNow: { .synced }
+                activity: .preview(needsAttention: needsAttention)
             )
         }
     }

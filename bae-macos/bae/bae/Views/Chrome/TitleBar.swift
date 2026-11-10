@@ -57,7 +57,7 @@ struct TitleBar: View {
                     onSearchFieldFrame(frame)
                 }
 
-                SyncActivityButton()
+                ActivityButton()
 
                 Button(action: { openSettings() }) {
                     Image(systemName: "gearshape")
