@@ -61,8 +61,8 @@
         }
 
         /// A preview ConfigStore with the given library-width, side-pause,
-        /// casting, identification, and Discogs settings — the previews that
-        /// vary them build their own;
+        /// casting, MCP server, identification, and Discogs settings — the
+        /// previews that vary them build their own;
         /// everything else creates the default through `configStore()` above.
         /// A configured Discogs key is the ordinary library, so the token
         /// stands validated unless a preview asks for the other case.
@@ -76,6 +76,7 @@
             libraryFullWidth: Bool,
             pauseBetweenSides: Bool = false,
             castEnabled: Bool = false,
+            mcpEnabled: Bool = false,
             identifyAutomatically: Bool = true,
             discogsUsable: Bool = true,
             musicBrainz: BridgeSourceAvailability = .on,
@@ -117,7 +118,7 @@
                         defaultReleaseSavePreset: "flac",
                         castEnabled: castEnabled,
                         castTranscodeFormat: .mp3,
-                        mcp: BridgeMcpConfig(enabled: false, port: 47777),
+                        mcp: BridgeMcpConfig(enabled: mcpEnabled, port: 47777),
                         subsonic: BridgeSubsonicConfig(
                             enabled: false,
                             port: 4533,

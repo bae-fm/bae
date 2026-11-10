@@ -1,4 +1,5 @@
 import BaeKit
+import Observation
 import SwiftUI
 
 @testable import bae
@@ -62,6 +63,7 @@ extension ShotScene {
             storage: nil,
             shown: .previewNotSynced
         ),
+        automationFailed,
         syncPage("sync-status-synced", .previewSynced),
         syncPage("sync-status-waiting", .previewWaiting),
         syncPage("sync-status-offline", .previewOffline),
@@ -72,6 +74,43 @@ extension ShotScene {
         ),
         syncPage("sync-status-failed", .previewFailed),
     ]
+
+    /// The Automation pane whose MCP server could not start: Status reads
+    /// Not running, with the notice and its Details under it, once the pane
+    /// has asked for the status.
+    private static let automationFailed = ShotScene(
+        id: "settings-automation-failed",
+        size: CGSize(width: 690, height: 420)
+    ) {
+        let statusRead = StatusRead()
+        return ShotStage(
+            AutomationSettingsContent(
+                automation: Automation(
+                    setMcpServerConfig: { _, _ in },
+                    getMcpServerStatus: {
+                        await statusRead.markDone()
+                        return .error(
+                            error: .bindFailed(
+                                detail:
+                                    "Address already in use (os error 48)"
+                            )
+                        )
+                    },
+                    getMcpToken: { "token" },
+                    generateMcpToken: { "replacement-token" },
+                    setMcpToken: { _ in }
+                ),
+                configStore: PreviewData.makeConfigStore(
+                    libraryFullWidth: false,
+                    mcpEnabled: true
+                ),
+                copyToPasteboard: { _ in }
+            )
+            .environment(UiStore())
+        ) {
+            statusRead.done
+        }
+    }
 
     /// The Casting tab with casting on and `receivers` found.
     private static func castingSettings(
@@ -152,4 +191,14 @@ extension LibrarySettingsTabPreviewFixture {
     fileprivate var answered: Bool {
         libraryName.name != nil && membership.members != nil
     }
+}
+
+/// Whether the Automation pane has asked for the server's status. Observable,
+/// as a scene's readiness is read under observation tracking.
+@MainActor
+@Observable
+private final class StatusRead {
+    private(set) var done = false
+
+    func markDone() { done = true }
 }

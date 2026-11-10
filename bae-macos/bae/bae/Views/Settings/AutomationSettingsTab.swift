@@ -79,6 +79,16 @@ struct AutomationSettingsContent: View {
                     }
                 }
                 statusRow
+                if case .error(let error) = status {
+                    Notice(
+                        title: error.mcpSummary,
+                        advice: nil,
+                        error: DisplayError(
+                            line: error.mcpSummary,
+                            detail: error.detail
+                        )
+                    )
+                }
                 switch message {
                 case .feedback(let text):
                     Text(text)
@@ -125,14 +135,9 @@ struct AutomationSettingsContent: View {
                 case .running(let url):
                     Text(url)
                         .textSelection(.enabled)
-                case .error(let error):
-                    VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                        ErrorText(error.mcpSummary)
-                        Text(error.detail)
-                            .themeText(.mono)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    }
+                case .error:
+                    Text("Not running")
+                        .foregroundStyle(.secondary)
                 }
                 Button("Refresh", action: refreshStatus)
                     .disabled(isWorking)
