@@ -119,7 +119,7 @@ private val StatusTone.iconColor: Color
         }
 
 /**
- * The tone's glyph in the tone's glyph colour, or the tertiary text colour when [muted]; nothing for
+ * The tone's glyph in the tone's glyph colour, or the secondary text colour when [muted]; nothing for
  * a tone without one. On a filled notice's own fill in dark mode, where the fill is the tone's colour
  * solid, it is `onNotice`.
  */
@@ -147,7 +147,7 @@ private fun glyphTint(
     muted: Boolean,
 ): Color =
     when {
-        muted -> BaeTheme.colors.textTertiary
+        muted -> MaterialTheme.colorScheme.onSurfaceVariant
         LocalOnNoticeFill.current && BaeTheme.isDark -> BaeTheme.colors.onNotice
         else -> tone.iconColor
     }

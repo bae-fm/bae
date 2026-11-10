@@ -286,11 +286,21 @@ public struct Notice: View {
     }
 
     /// A button in the notice's text: on a toned notice's own fill, its accent
-    /// there; anywhere else the screen's text.
+    /// there; in a failed view's centred notice, the grey of the words beside
+    /// it (the stage's secondary text on a stage); anywhere else the screen's
+    /// text.
     @ViewBuilder
     private func colouredButton(_ button: some View) -> some View {
         if look == .filled && tone.hasNoticeFill {
             button.modifier(NoticeAccent())
+        }
+        else if look == .centered {
+            button.foregroundStyle(.secondary).tint(.secondary)
+        }
+        else if look == .centeredOnStage {
+            button
+                .foregroundStyle(Theme.onFillSecondary)
+                .tint(Theme.onFillSecondary)
         }
         else {
             button.foregroundStyle(.primary).tint(.primary)

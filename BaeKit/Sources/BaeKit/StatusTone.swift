@@ -110,8 +110,8 @@ public struct StatusGlyph: View {
     @Environment(\.colorScheme)
     private var colorScheme
 
-    /// `muted` draws the glyph in tertiary text, grey, for a failure that
-    /// should not call attention to itself.
+    /// `muted` draws the glyph in the grey of the words beside it (secondary
+    /// text), for a failure that should not call attention to itself.
     public init(
         _ tone: StatusTone,
         outline: Bool = false,
@@ -132,7 +132,7 @@ public struct StatusGlyph: View {
     /// On a notice's own fill the glyph is `onNotice` in dark mode, where the
     /// solid fill is the tone's colour, and the tone's icon colour in light.
     private var color: Color {
-        if muted { return Theme.textTertiary }
+        if muted { return Color.secondary }
         if onNoticeFill, colorScheme == .dark { return Theme.onNotice }
         return tone.iconColor
     }
