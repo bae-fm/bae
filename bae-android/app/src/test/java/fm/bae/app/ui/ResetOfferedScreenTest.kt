@@ -12,6 +12,7 @@ import fm.bae.app.ErrorDisplays
 import fm.bae.app.FailedStep
 import fm.bae.app.R
 import fm.bae.app.ScreenFailure
+import fm.bae.app.coreString
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -59,7 +60,10 @@ class ResetOfferedScreenTest {
         assertEquals(listOf("leave"), calls)
     }
 
-    /** Preparing the reset reads this device's state and can throw; the tap must not escape. */
+    /**
+     * Preparing the reset reads this device's state and can throw; the tap must not escape. The failure shows as a
+     * failed reset does: the step's title and Retry, with the error's line behind Details.
+     */
     @Test
     fun aFailedPreparationShowsAsAFailedResetWithRetry() {
         val calls = mutableListOf<String>()
@@ -84,9 +88,12 @@ class ResetOfferedScreenTest {
         compose.onNodeWithText(compose.activity.getString(R.string.reset_device)).performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithText("Couldn't prepare the reset.").assertIsDisplayed()
+        compose.onNodeWithText(compose.activity.coreString(FailedStep.DEVICE_RESET.titleKey)).assertIsDisplayed()
         compose.onNodeWithText(compose.activity.getString(R.string.retry)).assertIsDisplayed()
         assertEquals(emptyList<String>(), calls)
+
+        compose.onNodeWithText(compose.activity.getString(R.string.details)).performClick()
+        compose.onNodeWithText("Couldn't prepare the reset.", substring = true).assertIsDisplayed()
     }
 
     private data object TestErrorDisplays : ErrorDisplays {
