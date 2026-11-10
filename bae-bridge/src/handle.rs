@@ -240,6 +240,10 @@ impl Session {
         // thread, or with a thread that could not start, never with the close
         // forgotten below: a call waiting for it goes on and finds the store
         // still held.
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the close catches and reports its own panic through `failed`; end_released has no Diagnostics to spawn through"
+        )]
         let started =
             std::thread::Builder::new().name("bae-library-close".to_string()).spawn(move || {
                 if let Ok(ending) = work.recv() {

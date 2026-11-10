@@ -134,6 +134,10 @@ impl Diagnostics {
         on_panic: impl FnOnce(Bug) + Send + 'static,
     ) -> std::io::Result<ReportedThread> {
         let diagnostics = self.clone();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "this is the reported thread spawner: the body runs under caught_sync"
+        )]
         let thread = std::thread::Builder::new().name(name.to_string()).spawn(move || {
             if let Err(failed) = caught_sync(name, body) {
                 diagnostics.end_panicked(failed, on_panic);

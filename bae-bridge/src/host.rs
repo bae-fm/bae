@@ -144,8 +144,9 @@ impl BridgeHost {
         // Moved into the thread, so the close ends with it, or with the
         // thread that could not start.
         let closing = self.library_sessions.closing(store);
-        let started =
-            std::thread::Builder::new().name("bae-store-close".to_string()).spawn(move || {
+        let started = self.diagnostics.spawn_thread_reported(
+            "bae-store-close",
+            move || {
                 let runtime = host
                     .runtime
                     .as_ref()
@@ -158,7 +159,11 @@ impl BridgeHost {
                         .report_failure("close the store a released library held", &error);
                 }
                 drop(closing);
-            });
+            },
+            // The close's guard drops as the panic unwinds, ending the close
+            // the host's record holds.
+            |_| {},
+        );
         if let Err(error) = started {
             self.diagnostics.report_bug(
                 "close the store a released library held",

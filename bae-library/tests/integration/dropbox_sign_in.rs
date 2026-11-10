@@ -1,5 +1,10 @@
 //! A fake Dropbox sign-in the integration tests sign bae in through.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 /// Signs bae in to a fake Dropbox. The presenter answers every authorization
 /// with a code, and the token endpoint grants `access-N` for the Nth code. It
 /// refuses every refresh, so a token Dropbox rejects needs a new sign-in.

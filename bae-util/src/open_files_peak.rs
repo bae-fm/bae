@@ -51,6 +51,7 @@ impl OpenFilesPeak {
         let dir = dir.to_path_buf();
         let stop = Arc::new(AtomicBool::new(false));
         let peak = Arc::new(AtomicUsize::new(0));
+        #[expect(clippy::disallowed_methods, reason = "test support: finish() joins the thread")]
         let thread = std::thread::spawn({
             let stop = stop.clone();
             let peak = peak.clone();

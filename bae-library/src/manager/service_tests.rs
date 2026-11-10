@@ -3,6 +3,11 @@
 //! upload transfer watches, and the import list a surface opens over the
 //! library.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::manager::tests::*;
 use crate::test_libraries::TestLibrary;

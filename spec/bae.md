@@ -4948,7 +4948,10 @@ each device and hands playback the channel or sink.
   A panic in work core runs apart from whoever asked for it — on a blocking
   thread, as a task or a thread of its own — is such a bug: it is reported,
   and what the work served ends with it, the operation that asked failing
-  with "Something went wrong", never left waiting. A service's own thread
+  with "Something went wrong", never left waiting. Core starts such tasks and
+  threads through the spawners that report a panic; clippy refuses a bare
+  `tokio::spawn` or `std::thread::spawn` outside them, bar the few that catch
+  and report their own panic. A service's own thread
   that such a panic ends, the import worker's or the folder scan
   coordinator's, ends its service with it: a later call that waits on the
   service's answer fails with "Something went wrong", carrying the thread's

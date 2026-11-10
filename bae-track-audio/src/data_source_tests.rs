@@ -1,3 +1,8 @@
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use bae_audio::sparse_buffer::create_sparse_buffer;
 use bae_audio::sparse_buffer::BufferStop;

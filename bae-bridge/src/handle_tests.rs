@@ -1,3 +1,8 @@
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use bae_records::{DbArtist, DbWork};
 use bae_views::album_detail::{
     ComposerDetail, ComposerDetailItem, ComposerDetailRow, ComposerHeading, WorkDetail,

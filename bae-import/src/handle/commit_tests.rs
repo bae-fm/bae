@@ -2,6 +2,11 @@
 //! must not wait on reading files, a write prepared before an import's claim
 //! cannot land after it, and a durable write that panics fails its caller.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::handle::tests::*;
 use crate::tests::import::TestImport;

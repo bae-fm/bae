@@ -197,6 +197,10 @@ where
         let task_identity = identity.clone();
         #[cfg(test)]
         let ended = self.ended.clone();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the task catches its own panic and reports it through the bug function the owner handed in; bae-util is below bae-diagnostics"
+        )]
         let task = tokio::spawn(async move {
             let error = match caught(name, serving).await {
                 Ok(Ok(())) => return,

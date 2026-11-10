@@ -2,6 +2,11 @@
 //! the library's state as writes, transfers and transitions change it, and
 //! moves to another id or view in place.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use bae_library::test_libraries::{
     insert_local_release_with_files, insert_release, insert_release_with_queued_uploads,
     storage_library, test_album, test_release, TestLibrary,

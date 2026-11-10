@@ -1,3 +1,8 @@
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use crate::test_playback_behavior::fixtures::*;
 use crate::test_playback_behavior::support::*;
 

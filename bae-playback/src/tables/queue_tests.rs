@@ -2,6 +2,11 @@
 //! deleted track takes with it, what opening keeps, and how the reads are
 //! planned.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::tables::tests::*;
 /// Play `RELEASE_A` from `start`, returning the entry playing.

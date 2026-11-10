@@ -2,6 +2,11 @@
 //! whose passes and removals a test drives, and the commands and reports it
 //! takes.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::folder_scanner::ScanItem;
 use crate::service::tests::{setup_import_service, TestService};

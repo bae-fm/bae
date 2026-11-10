@@ -3,6 +3,11 @@
 //! candidate still being identified. A cancel whose end cannot be written
 //! fails and ends nothing.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::handle::tests::*;
 use crate::{ImportListSnapshot, ImportListView, PendingFilter, TriageRow, TriageTab};

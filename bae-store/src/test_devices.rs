@@ -135,6 +135,10 @@ impl SyncCycles {
         let last = Arc::new(std::sync::Mutex::new(String::new()));
         let mut ends = pass_ends(store);
         let recorded = last.clone();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "test support: the watcher ends with its test"
+        )]
         let watcher = tokio::spawn(async move {
             let mut previous = match ends.next().await {
                 Some(Ok(end)) => end,
@@ -263,6 +267,10 @@ async fn sorted_rows(store: &Store, query: &str) -> Vec<String> {
 /// with deep stacks: restoration and snapshot installation recurse further
 /// than a default test thread allows.
 pub fn on_device_runtime(body: impl AsyncFnOnce() + Send + 'static) {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "test support: the thread is joined at once and its panic resumed on the test"
+    )]
     std::thread::Builder::new()
         .name("device-test".to_string())
         .stack_size(64 * 1024 * 1024)

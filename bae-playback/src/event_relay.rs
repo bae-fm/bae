@@ -67,6 +67,10 @@ impl Drop for EventRelay {
 pub(crate) fn event_relay() -> std::io::Result<(RelayWake, EventRelay)> {
     let state = Arc::new(RelayState { ready: tokio::sync::Notify::new(), closed: false.into() });
     let relayed = state.clone();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the relay only parks and notifies; the audio callback unparks its Thread, which ReportedThread does not expose, and playback's audio output has no Diagnostics"
+    )]
     let relay =
         std::thread::Builder::new().name("playback audio events".to_string()).spawn(move || {
             loop {

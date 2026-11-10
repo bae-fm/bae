@@ -112,6 +112,10 @@ impl CandidateRuntime {
     #[cfg(test)]
     pub(super) fn poison_work_lock(&self) {
         let work = self.work.clone();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the test poisons a lock with a panic and joins the thread"
+        )]
         let poisoner = std::thread::spawn(move || {
             let _held = work.lock().expect("the work lock is not yet poisoned");
             panic!("poison the work lock");

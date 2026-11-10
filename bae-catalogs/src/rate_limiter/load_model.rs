@@ -53,6 +53,10 @@ pub async fn sustain(
     let refused = Arc::new(Mutex::new(0usize));
     let mut rng = rand::rngs::StdRng::seed_from_u64(load.seed);
 
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "test support: the load test joins every task it starts"
+    )]
     let others = {
         let window = Arc::clone(&window);
         tokio::spawn(async move {
@@ -74,6 +78,10 @@ pub async fn sustain(
         let limiter = Arc::clone(&limiter);
         let window = Arc::clone(&window);
         let refused = Arc::clone(&refused);
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "test support: the load test joins every task it starts"
+        )]
         requests.push(tokio::spawn(async move {
             loop {
                 let (there, back) = latencies.pop().expect("a request is refused fewer times");

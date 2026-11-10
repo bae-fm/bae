@@ -2,6 +2,11 @@
 //! root that moved while it was read, changed folders read alone, and the
 //! releases and offers a reading of a folder's discs gives.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::scan_passes::tests::*;
 use crate::service::tests::*;

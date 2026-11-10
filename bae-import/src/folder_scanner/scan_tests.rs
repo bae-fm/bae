@@ -3,6 +3,11 @@
 //! names that are not UTF-8, and a walk that is cancelled or cannot read a
 //! folder.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::folder_scanner::tests::*;
 use bae_util::test_channels::HANG_GUARD;

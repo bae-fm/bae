@@ -134,6 +134,10 @@ impl RemoteImageHost {
             requests: requests.clone(),
             holds: holds.clone(),
         });
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "test support: the host serves until its test ends"
+        )]
         tokio::spawn(async move {
             axum::serve(listener, app)
                 .await

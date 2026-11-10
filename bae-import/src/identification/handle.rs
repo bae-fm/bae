@@ -7,7 +7,7 @@ use super::*;
 pub struct IdentificationHandle {
     token: CancellationToken,
     tasks: TaskTracker,
-    executor_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
+    executor_thread: Arc<Mutex<Option<bae_diagnostics::ReportedThread>>>,
     commands: mpsc::UnboundedSender<Command>,
     /// The import service the queue runs over, for the pane's identification
     /// commands.
@@ -18,7 +18,7 @@ impl IdentificationHandle {
     pub(super) fn new(
         token: CancellationToken,
         tasks: TaskTracker,
-        executor_thread: std::thread::JoinHandle<()>,
+        executor_thread: bae_diagnostics::ReportedThread,
         commands: mpsc::UnboundedSender<Command>,
         import: ImportServiceHandle,
     ) -> Self {
@@ -45,9 +45,7 @@ impl IdentificationHandle {
         else {
             return;
         };
-        if executor_thread.join().is_err() {
-            warn!("identification: the queue's executor thread panicked during shutdown");
-        }
+        executor_thread.join();
     }
 
     /// Identify this candidate now with a fresh run, whatever is stored or

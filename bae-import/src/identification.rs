@@ -153,9 +153,19 @@ pub(crate) fn start(
     );
 
     let completion_tasks = tasks.clone();
-    let executor_thread = std::thread::Builder::new()
-        .name("bae-import-identification".to_string())
-        .spawn(move || runtime.block_on(completion_tasks.wait()))
+    let (ended_token, ended_tasks) = (token.clone(), tasks.clone());
+    let executor_thread = context
+        .diagnostics
+        .spawn_thread_reported(
+            "bae-import-identification",
+            move || runtime.block_on(completion_tasks.wait()),
+            // An executor that panicked is reported and stopped as a shutdown
+            // stops it, so what asks the queue after hears it has stopped.
+            move |_| {
+                ended_token.cancel();
+                ended_tasks.close();
+            },
+        )
         .expect("identification queue executor thread");
 
     IdentificationHandle::new(token, tasks, executor_thread, command_tx, context.import.clone())

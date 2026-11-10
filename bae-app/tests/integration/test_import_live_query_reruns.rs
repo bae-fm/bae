@@ -12,6 +12,11 @@
 //! It prints each query's runs over the writes: all of them, those a write
 //! caused, and of those, the ones whose result was unchanged.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use bae_import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, ScanItem, ScannedAudio, ScannedFile,
 };

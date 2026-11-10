@@ -2,6 +2,11 @@
 //! artwork host answered with is the host's failure, and what bae met on its
 //! own side is bae's.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 
 fn transport(error: reqwest::Error) -> RemoteImageError {

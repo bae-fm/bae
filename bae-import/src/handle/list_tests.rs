@@ -6,6 +6,11 @@
 //! answer and the identity it committed, leading with the picked release and
 //! stating what each claimed source says.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::handle::tests::*;
 use crate::identification::tests::*;

@@ -1,3 +1,8 @@
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::{LiveRead, LiveRequest};
 use crate::live_query::{CancellableLiveQuery, LiveQueryError};
 use crate::{LibraryPageWindow, LibraryPageWindows, Schema, Store};

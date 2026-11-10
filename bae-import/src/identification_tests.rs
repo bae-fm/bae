@@ -4,6 +4,11 @@
 //! the list and the event bus its tests share. Also one run end to end: a
 //! candidate nobody selected acquires a verdict.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::tables::{DbCandidateIdentifyResult, DbImportCandidateState};

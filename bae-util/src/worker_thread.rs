@@ -84,6 +84,10 @@ impl<M: Send + 'static> WorkerThread<M> {
         let body_tx = tx.clone();
         let (ended, end) = watch::channel(None);
         let heard = bugs.clone();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "this is the worker thread spawner: the body runs under caught_sync"
+        )]
         let thread = std::thread::Builder::new()
             .name(name.to_string())
             .spawn(move || {

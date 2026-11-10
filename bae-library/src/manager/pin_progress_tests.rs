@@ -2,6 +2,11 @@
 //! of each download in flight as coven's download watch tells it, and never
 //! a file whose download failed.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::manager::tests::*;
 use std::collections::BTreeMap;

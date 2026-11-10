@@ -7,9 +7,8 @@
 
 use std::collections::HashMap;
 use std::net::IpAddr;
-use std::thread::JoinHandle;
 
-use bae_diagnostics::Diagnostics;
+use bae_diagnostics::{Diagnostics, ReportedThread};
 use bae_util::task_failure::caught_sync;
 use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
@@ -30,7 +29,7 @@ pub(crate) type CastDiscovery = ProtocolDiscovery<CastBrowse>;
 /// A live Cast browse: the mDNS daemon and the thread draining its events.
 pub(crate) struct CastBrowse {
     daemon: ServiceDaemon,
-    reader: JoinHandle<()>,
+    reader: ReportedThread,
 }
 
 impl Browse for CastBrowse {
@@ -56,9 +55,27 @@ impl Browse for CastBrowse {
             }
         };
         devices.clear();
-        let devices = devices.clone();
-        let diagnostics = diagnostics.clone();
-        let reader = std::thread::spawn(move || run_browse(events, devices, diagnostics));
+        let reader_devices = devices.clone();
+        let reader_diagnostics = diagnostics.clone();
+        // A reader that panicked can no longer keep the list current, so the
+        // list is emptied rather than left showing receivers it can't confirm.
+        let panicked_devices = devices.clone();
+        let reader = match diagnostics.spawn_thread_reported(
+            "cast browse reader",
+            move || run_browse(events, reader_devices, reader_diagnostics),
+            move |_| panicked_devices.clear(),
+        ) {
+            Ok(reader) => reader,
+            Err(error) => {
+                warn!("cast discovery: failed to start the browse reader thread: {error}");
+                if let Err(shutdown_err) = daemon.shutdown() {
+                    debug!(
+                        "cast discovery: mDNS daemon shutdown after reader failure: {shutdown_err}"
+                    );
+                }
+                return None;
+            }
+        };
         Some(Self { daemon, reader })
     }
 
@@ -68,9 +85,7 @@ impl Browse for CastBrowse {
         if let Err(e) = self.daemon.shutdown() {
             warn!("cast discovery: mDNS daemon shutdown failed: {e}");
         }
-        if self.reader.join().is_err() {
-            warn!("cast discovery: browse reader thread panicked");
-        }
+        self.reader.join();
     }
 }
 

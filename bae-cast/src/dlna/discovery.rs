@@ -11,7 +11,6 @@ use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use tracing::{debug, warn};
@@ -19,7 +18,7 @@ use tracing::{debug, warn};
 use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
-use bae_diagnostics::Diagnostics;
+use bae_diagnostics::{Diagnostics, ReportedThread};
 use bae_util::error_text::CauseChain;
 use bae_util::task_failure::caught_sync;
 
@@ -44,7 +43,7 @@ pub(crate) type DlnaDiscovery = ProtocolDiscovery<DlnaSearch>;
 pub(crate) struct DlnaSearch {
     stop: Arc<AtomicBool>,
     wake: SocketAddr,
-    reader: JoinHandle<()>,
+    reader: ReportedThread,
 }
 
 impl Browse for DlnaSearch {
@@ -57,12 +56,24 @@ impl Browse for DlnaSearch {
             }
         };
         devices.clear();
-        let devices = devices.clone();
+        let reader_devices = devices.clone();
         let stop = Arc::new(AtomicBool::new(false));
         let reader_stop = stop.clone();
-        let diagnostics = diagnostics.clone();
-        let reader =
-            std::thread::spawn(move || run_search(socket, reader_stop, devices, diagnostics));
+        let reader_diagnostics = diagnostics.clone();
+        // A reader that panicked can no longer keep the list current, so the
+        // list is emptied rather than left showing receivers it can't confirm.
+        let panicked_devices = devices.clone();
+        let reader = match diagnostics.spawn_thread_reported(
+            "dlna search reader",
+            move || run_search(socket, reader_stop, reader_devices, reader_diagnostics),
+            move |_| panicked_devices.clear(),
+        ) {
+            Ok(reader) => reader,
+            Err(error) => {
+                warn!("dlna discovery: failed to start the search reader thread: {error}");
+                return None;
+            }
+        };
         Some(Self { stop, wake, reader })
     }
 
@@ -76,9 +87,7 @@ impl Browse for DlnaSearch {
         {
             warn!("dlna discovery: couldn't wake the search reader to stop it: {error}");
         }
-        if self.reader.join().is_err() {
-            warn!("dlna discovery: search reader thread panicked");
-        }
+        self.reader.join();
     }
 }
 

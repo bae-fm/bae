@@ -1,6 +1,11 @@
 //! Moving releases to the cloud: admission, the upload queue, what a failed or
 //! cancelled move leaves, retrying, and the storage list's view of an upload.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbLibraryImage, DbRelease, NewReleaseFile};

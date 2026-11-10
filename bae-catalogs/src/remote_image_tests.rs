@@ -1,6 +1,11 @@
 //! What the image tests share: a test image, a direct transport, and local
 //! hosts answering as an artwork host would.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use bae_util::http::Http;
 use std::sync::Arc;
 

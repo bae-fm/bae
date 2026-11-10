@@ -2,6 +2,11 @@
 //! through the download queue, unpinning, cancelling a transition, and a
 //! release whose audio is on another device.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use crate::manager::tests::*;
 use bae_records::OtherDevice;
 use bae_store::FormerDeviceState;

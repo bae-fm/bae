@@ -2,6 +2,11 @@
 //! the start makes of its files and tags, what the import commits from the
 //! draft, and the automatic starts refused with and without a failed import.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::handle::tests::*;
 use crate::identification::tests::*;

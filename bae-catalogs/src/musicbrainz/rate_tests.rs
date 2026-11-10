@@ -1,6 +1,11 @@
 //! MusicBrainz's rate as the client reads it: refusals its rate limiter
 //! sends, failures that are not, and the window under sustained load.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::musicbrainz::tests::{mb_raw_server, mb_response_server, served_by};
 use crate::musicbrainz::*;

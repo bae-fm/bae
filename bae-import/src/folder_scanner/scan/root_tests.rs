@@ -2,6 +2,11 @@
 //! several at once, newest first, each saying what it says on its own; a
 //! folder that fails or a cancel stopping them all.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::folder_scanner::tests::*;
 use bae_util::test_channels::HANG_GUARD;

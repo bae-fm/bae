@@ -6,6 +6,11 @@
 //! (8 kHz) files, in one shorter than the points' spacing, and in one larger
 //! than the window a scrub fetches.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use bae_audio::{encode_i32, EncodeFormat};
 use bae_records::ScrubPoints;

@@ -3,6 +3,11 @@
 //! of automatic runs, progress counts, what turning automatic
 //! identification off leaves going, and a person cancelling identification.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::identification::tests::*;
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};

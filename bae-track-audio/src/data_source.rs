@@ -207,6 +207,10 @@ fn spawn_fill(
 ) -> FillTask {
     let buffer = Arc::downgrade(buffer);
     let fill_diagnostics = diagnostics.clone();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the fill catches and reports its own panic and fails the buffer with on_error, which Diagnostics::spawn_reported's on_panic could not share with the task"
+    )]
     let task = tokio::spawn(async move {
         let error = match caught("fill a playback buffer", fill).await {
             Ok(Ok(())) => return,

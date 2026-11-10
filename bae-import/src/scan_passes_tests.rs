@@ -2,6 +2,11 @@
 //! service's library, a folder read through them, a listing that records what
 //! it read, and the events a pass announces; and a pass's start.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::service::tests::{setup_import_service, TestService};
 use crate::watching::WatchReport;

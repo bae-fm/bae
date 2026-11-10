@@ -12,4 +12,12 @@ disallowed-methods = [
     # A dropped JoinHandle loses its work's panic the same way.
     { path = "tokio::task::spawn_blocking", reason = "use Diagnostics::blocking, or blocking_completing with a bug sink" },
     { path = "tokio::runtime::Handle::spawn_blocking", reason = "use Diagnostics::blocking, or blocking_completing with a bug sink" },
+    # A task or thread nothing joins loses its panic to the panic hook's log
+    # line. bae's runs under a reported spawner, which reports the panic as a
+    # bug: Diagnostics::spawn_reported, Diagnostics::spawn_thread_reported or
+    # WorkerThread::spawn.
+    { path = "tokio::spawn", reason = "use Diagnostics::spawn_reported, which reports a panic in the task" },
+    { path = "tokio::task::spawn", reason = "use Diagnostics::spawn_reported, which reports a panic in the task" },
+    { path = "std::thread::spawn", reason = "use Diagnostics::spawn_thread_reported or WorkerThread::spawn, which report a panic in the thread" },
+    { path = "std::thread::Builder::spawn", reason = "use Diagnostics::spawn_thread_reported or WorkerThread::spawn, which report a panic in the thread" },
 ]

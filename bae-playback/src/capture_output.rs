@@ -445,6 +445,10 @@ impl CaptureStream {
             AudioDrain::new(controls.clone(), source, audio_events, position_update_interval_ms);
         let thread_controls = controls.clone();
         let running = stop.clone();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "test support with no Diagnostics: the stream joins its thread when dropped"
+        )]
         let thread = std::thread::spawn(move || {
             let mut buf = vec![0.0f32; buf_len];
             loop {
@@ -480,6 +484,10 @@ impl CaptureStream {
         let thread_controls = controls.clone();
         let running = stop.clone();
         let thread_clock = clock.clone();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "test support with no Diagnostics: the stream joins its thread when dropped"
+        )]
         let thread = std::thread::spawn(move || {
             // One pull covers a report.
             let mut buf = vec![0.0f32; interval];

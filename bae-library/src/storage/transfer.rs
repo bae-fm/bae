@@ -184,6 +184,10 @@ where
     Done: Send + 'static,
 {
     let (tx, rx) = mpsc::unbounded_channel();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the transfer catches and reports its own panic, and its caller joins the task for the transfer's result, which Diagnostics::spawn_reported does not hand back"
+    )]
     let task = tokio::spawn(async move {
         let result = caught("pin a release", async {
             let file_count = transfer.start().await?;

@@ -183,6 +183,10 @@ impl AudioOutput for AAudioOutput {
         // fails this build rather than a later write.
         let (opened_tx, opened_rx) = mpsc::sync_channel(1);
 
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the thread catches each of its steps (caught_sync) and a panic ends the output, which playback reports; the audio output has no Diagnostics"
+        )]
         let thread = std::thread::spawn(move || {
             // A panic ending this thread unseen would leave playback showing
             // Playing with no sound: opening and each step are caught, and a

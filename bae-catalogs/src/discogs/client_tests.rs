@@ -1,3 +1,8 @@
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::catalog::{Catalog, LookupCatalog};
 use crate::discogs::documents::parse_discogs_master_covers;

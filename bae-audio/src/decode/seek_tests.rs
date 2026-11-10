@@ -1,3 +1,8 @@
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use crate::test_samples::filled_sparse_buffer;
 use crate::{
     decode_audio, decode_audio_streaming, encode_i32, init, seek_landing_bytes, DecodeStart,

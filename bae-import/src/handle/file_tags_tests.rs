@@ -2,6 +2,11 @@
 //! a new complete reading when the files, the scan or a file decision moved,
 //! and the cover applying the tags selects.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::handle::tests::*;
 use bae_util::test_channels::HANG_GUARD;

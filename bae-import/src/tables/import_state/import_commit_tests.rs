@@ -2,6 +2,11 @@
 //! checks the candidate still is what the import was prepared from. The row
 //! reads as importing until that write.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::identification::tests::*;
 use bae_records::test_fixtures::{

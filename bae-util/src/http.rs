@@ -288,6 +288,7 @@ pub async fn serve_not_found() -> String {
         tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("the not-found server binds");
     let origin =
         format!("http://{}", listener.local_addr().expect("the not-found server has an address"));
+    #[expect(clippy::disallowed_methods, reason = "test support: the server ends with its test")]
     tokio::spawn(async move {
         while let Ok((mut stream, _)) = listener.accept().await {
             tokio::spawn(async move {

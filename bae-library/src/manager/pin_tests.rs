@@ -3,6 +3,11 @@
 //! storage row keeps. What a pin's progress counts is in
 //! `pin_progress_tests.rs`.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::manager::tests::*;
 use bae_records::DbRelease;

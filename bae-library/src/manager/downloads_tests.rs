@@ -3,6 +3,11 @@
 //! list shows a release it holds, and the inspector's view of a pinning
 //! release.
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::manager::tests::*;
 

@@ -15,6 +15,11 @@
 //! 5,000, 10,000 and 20,000 folders, or the sizes `SCAN_SIZES` lists
 //! (`SCAN_SIZES=5000,20000`).
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use bae_app::AppServices;
 use bae_import::{ImportListView, ScanEvent};
 use bae_store::LibraryPageWindow;

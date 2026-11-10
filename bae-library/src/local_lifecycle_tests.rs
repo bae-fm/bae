@@ -1,3 +1,8 @@
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::{
     finish_deletion, finish_removals, remove_unopenable_library, LibraryRemovalError,
     UnfinishedRemoval,

@@ -31,6 +31,7 @@ impl FakeHost {
         let arrivals = Arc::new(tokio::sync::watch::channel(0).0);
         let accept_state = state.clone();
         let accept_arrivals = arrivals.clone();
+        #[expect(clippy::disallowed_methods, reason = "test support: the host ends with its test")]
         tokio::spawn(async move {
             loop {
                 let Ok((stream, _)) = listener.accept().await else {

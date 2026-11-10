@@ -1,3 +1,8 @@
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use super::*;
 use crate::source_release::UnfetchedDocument;
 use crate::test_documents::{linked_discogs_master, linked_discogs_release, linked_release_group};

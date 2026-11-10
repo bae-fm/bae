@@ -14,9 +14,8 @@
 
 use std::collections::HashMap;
 use std::net::IpAddr;
-use std::thread::JoinHandle;
 
-use bae_diagnostics::Diagnostics;
+use bae_diagnostics::{Diagnostics, ReportedThread};
 use bae_util::task_failure::caught_sync;
 use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
@@ -74,7 +73,7 @@ pub(crate) type AirPlayDiscovery = ProtocolDiscovery<AirPlayBrowse>;
 /// service types.
 pub(crate) struct AirPlayBrowse {
     daemon: ServiceDaemon,
-    readers: Vec<JoinHandle<()>>,
+    readers: Vec<ReportedThread>,
 }
 
 impl Browse for AirPlayBrowse {
@@ -104,10 +103,20 @@ impl Browse for AirPlayBrowse {
             };
             let devices = devices.clone();
             let table = table.clone();
-            let diagnostics = diagnostics.clone();
-            readers.push(std::thread::spawn(move || {
-                run_browse(service_type, events, table, devices, diagnostics);
-            }));
+            let reader_diagnostics = diagnostics.clone();
+            // A reader that panicked can no longer keep the list current, so
+            // the list is emptied rather than left showing receivers it can't
+            // confirm.
+            let panicked_devices = devices.clone();
+            let reader = diagnostics.spawn_thread_reported(
+                "airplay browse reader",
+                move || run_browse(service_type, events, table, devices, reader_diagnostics),
+                move |_| panicked_devices.clear(),
+            );
+            match reader {
+                Ok(reader) => readers.push(reader),
+                Err(e) => warn!("airplay discovery: failed to start a browse reader thread: {e}"),
+            }
         }
         if readers.is_empty() {
             if let Err(e) = daemon.shutdown() {
@@ -123,9 +132,7 @@ impl Browse for AirPlayBrowse {
             warn!("airplay discovery: mDNS daemon shutdown failed: {e}");
         }
         for reader in self.readers {
-            if reader.join().is_err() {
-                warn!("airplay discovery: a browse reader thread panicked");
-            }
+            reader.join();
         }
     }
 }

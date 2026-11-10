@@ -398,6 +398,10 @@ where
     // threads (Swift cooperative Tasks, Android coroutine workers; ~0.5 MB), which
     // overflow there — so run the whole thing on a thread with a large stack.
     let reporter = diagnostics.clone();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "a 32 MiB stack, which Diagnostics::spawn_thread_reported can't give; the caller joins the thread at once and reports its panic there"
+    )]
     let bootstrap_thread = std::thread::Builder::new()
         .name("bae-bootstrap".to_string())
         .stack_size(32 * 1024 * 1024)
