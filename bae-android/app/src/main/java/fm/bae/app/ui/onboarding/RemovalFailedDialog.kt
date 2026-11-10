@@ -19,7 +19,7 @@ import uniffi.bae_bridge.BridgeLibrary
 /**
  * The dialog for a removal of [library] that failed, or the count before it:
  * the error's line, *Retry*, which runs it again, and *Cancel*, which leaves the
- * library as it was.
+ * library as it was; *OK* alone when core says retrying can't get past it.
  */
 @Composable
 internal fun RemovalFailedDialog(
@@ -28,12 +28,20 @@ internal fun RemovalFailedDialog(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        text = { RemovalFailedText(library, error) },
-        confirmButton = { TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) } },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) } },
-    )
+    if (error.offersRetry) {
+        AlertDialog(
+            onDismissRequest = onCancel,
+            text = { RemovalFailedText(library, error) },
+            confirmButton = { TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) } },
+            dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) } },
+        )
+    } else {
+        AlertDialog(
+            onDismissRequest = onCancel,
+            text = { RemovalFailedText(library, error) },
+            confirmButton = { TextButton(onClick = onCancel) { Text(stringResource(android.R.string.ok)) } },
+        )
+    }
 }
 
 /**

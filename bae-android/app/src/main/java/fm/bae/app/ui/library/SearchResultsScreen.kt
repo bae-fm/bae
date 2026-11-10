@@ -38,9 +38,9 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.TitledErrorNotice
+import fm.bae.app.ui.components.retryAction
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackSearchResult
@@ -80,13 +80,14 @@ fun SearchResultsScreen(
     val current = state.value
     val context = LocalContext.current
     val failure: @Composable (NoticeLook, Modifier) -> Unit = { look, modifier ->
+        val shown = state.error?.let(context::displayError)
         TitledErrorNotice(
             title = stringResource(R.string.search_failed),
             advice = null,
-            error = state.error?.let(context::displayError),
+            error = shown,
             modifier = modifier,
             look = look,
-            action = ErrorAction(stringResource(R.string.retry), onClick = session.libraryQueries.search::retry),
+            action = shown.retryAction(onClick = session.libraryQueries.search::retry),
         )
     }
     Box(modifier = Modifier.fillMaxSize()) {

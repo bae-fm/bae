@@ -3,7 +3,11 @@ package fm.bae.app.data
 import android.os.Looper
 import androidx.compose.runtime.snapshots.Snapshot
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.DisplayError
+import fm.bae.app.ErrorDisplays
+import fm.bae.app.NoErrorDisplays
 import fm.bae.app.R
+import fm.bae.app.diagnosticDetail
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -160,13 +164,31 @@ class BrowserPageStoresTest {
         assertEquals("Couldn't load your library.", store.error?.error?.line)
     }
 
+    /** A read core says reading again can't get past, such as a damaged database, offers no Retry. */
+    @Test
+    fun aFailedReadNoRetryGetsPastOffersNone() {
+        val noRetry =
+            object : ErrorDisplays by NoErrorDisplays {
+                override fun display(error: BridgeException) = DisplayError("failed", error.diagnosticDetail, false)
+            }
+        val store = RecordingPageStore(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate), errors = noRetry)
+        store.activate("all")
+
+        store.queries.single().fail(BridgeException.Diagnostic(BridgeErrorCategory.DatabaseDamaged, "damaged"))
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(false, store.error?.error?.offersRetry)
+    }
+
     private fun window(offset: Int) = BridgeLibraryPageWindow(offset.toULong(), BROWSER_PAGE_SIZE.toULong())
 
     private class RecordingPageStore(
         scope: CoroutineScope,
         loadMoreFailed: Int = R.string.library_load_more_albums_failed,
+        errors: ErrorDisplays = NoErrorDisplays,
     ) : WindowedBrowserPageStore<String, String, AlbumGridSections>(
             RuntimeEnvironment.getApplication(),
+            errors,
             scope,
             emptyList(),
             loadMoreFailed,

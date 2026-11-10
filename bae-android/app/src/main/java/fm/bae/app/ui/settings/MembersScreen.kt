@@ -37,11 +37,11 @@ import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
@@ -287,7 +287,7 @@ private fun PeopleContent(
                 ErrorNotice(
                     error = read.error,
                     look = NoticeLook.CENTERED,
-                    action = ErrorAction(stringResource(R.string.retry), onClick = model::retry),
+                    action = read.error.retryAction(onClick = model::retry),
                 )
             }
         }

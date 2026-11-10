@@ -76,7 +76,7 @@ class OpenLibrary internal constructor(
     // Library is always a thin wrapper around appHandle; construct it here rather
     // than requiring callers to pass a separately-constructed instance.
     val library = Library(appHandle)
-    internal val browserPages = BrowserPageStores(library, appContext, runtime.scope)
+    internal val browserPages = BrowserPageStores(library, appContext, runtime.errors, runtime.scope)
     internal val libraryQueries = LibraryQueryStores(library, runtime.scope)
     val playback: BaeCorePlayer get() = runtime.playback
 

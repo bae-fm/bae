@@ -36,10 +36,10 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.WaitingIndicator
+import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDropboxLocation
@@ -94,13 +94,12 @@ internal fun FolderChoiceBody(
         FolderHeading(browser, shown, words)
     }
     browser.failure?.let { failure ->
-        val retry =
-            ErrorAction(stringResource(R.string.retry), enabled = !browser.busy) { scope.launch { failure.retry() } }
+        val retry = { scope.launch { failure.retry() } }
         val error = failure.error
         if (error != null) {
-            ErrorNotice(error, action = retry)
+            ErrorNotice(error, action = error.retryAction(enabled = !browser.busy) { retry() })
         } else {
-            TextButton(onClick = retry.onClick, enabled = retry.enabled) { Text(retry.label) }
+            TextButton(onClick = { retry() }, enabled = !browser.busy) { Text(stringResource(R.string.retry)) }
         }
     }
     FolderWorkLine(browser.work, words, setup, onCancel)

@@ -42,9 +42,9 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.retryAction
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -126,7 +126,7 @@ private fun DownloadsBody(
                 ErrorNotice(
                     error = pageError.error,
                     look = NoticeLook.CENTERED,
-                    action = ErrorAction(stringResource(R.string.retry), onClick = pageError.onRetry),
+                    action = pageError.error.retryAction(onClick = pageError.onRetry),
                 )
             }
 

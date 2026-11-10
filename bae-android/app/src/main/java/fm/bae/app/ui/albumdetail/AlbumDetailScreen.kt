@@ -59,12 +59,12 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.library.LibraryDetailTopBar
 import fm.bae.app.ui.playback.NowPlayingBar
 import fm.bae.app.ui.rememberScreenScope
@@ -201,7 +201,7 @@ private fun BoxScope.AlbumDetailPlaceholderBox(
             ErrorNotice(
                 error = placeholder.error,
                 look = NoticeLook.CENTERED,
-                action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
+                action = placeholder.error.retryAction(onClick = onRetry),
             )
         }
 

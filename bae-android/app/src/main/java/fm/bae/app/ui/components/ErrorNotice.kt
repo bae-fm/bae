@@ -56,6 +56,22 @@ class ErrorAction(
     val onClick: () -> Unit,
 )
 
+/**
+ * Retry for [this] failure, running [onClick]: null when core says making the
+ * same call again can't get past it, so the notice offers none. A failure with
+ * nothing to show, a cancellation, rules nothing out.
+ */
+@Composable
+internal fun DisplayError?.retryAction(
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+): ErrorAction? =
+    if (this?.offersRetry == false) {
+        null
+    } else {
+        ErrorAction(stringResource(R.string.retry), enabled, onClick)
+    }
+
 /** Where a notice's buttons sit in the framed layout. */
 enum class NoticeButtons {
     /** On the title's line at the right, centred on it, the words wrapping beside them. */

@@ -1,7 +1,9 @@
 package fm.bae.app.data
 
 import fm.bae.app.DisplayError
+import fm.bae.app.ErrorDisplays
 import fm.bae.app.NoErrorDisplays
+import fm.bae.app.diagnosticDetail
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -96,6 +98,23 @@ class SessionMessagesTest {
         checkNotNull(notSyncing?.retry).invoke()
         assertNull("a retry that synced shows nothing", next())
         assertTrue(outcomes.isEmpty())
+    }
+
+    /** A failure core says retrying can't get past, such as a damaged database, shows with no Retry. */
+    @Test
+    fun aFailureNoRetryGetsPastShowsWithoutRetry() {
+        val noRetry =
+            object : ErrorDisplays by NoErrorDisplays {
+                override fun display(error: BridgeException) = DisplayError("failed", error.diagnosticDetail, false)
+            }
+        val damaged = SessionMessages(CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), noRetry)
+        val inbox = damaged.messages.produceIn(CoroutineScope(Dispatchers.Unconfined))
+
+        damaged.perform("save") { throw BridgeException.Diagnostic(BridgeErrorCategory.DatabaseDamaged, "damaged") }
+
+        val shown = inbox.tryReceive().getOrNull()
+        assertEquals(DisplayError("failed", "damaged", false), shown?.error)
+        assertNull(shown?.retry)
     }
 
     @Test

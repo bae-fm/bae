@@ -31,11 +31,11 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.launch
@@ -78,7 +78,12 @@ internal fun SettingsLibrarySwitcher(
         is LibraryListing.Failed -> {
             Column(modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge)) {
                 ReadFailure(
-                    error = DisplayError(stringResource(R.string.settings_libraries_load_failed), listing.error.detail),
+                    error =
+                        DisplayError(
+                            stringResource(R.string.settings_libraries_load_failed),
+                            listing.error.detail,
+                            listing.error.offersRetry,
+                        ),
                     onRetry = onReloadLibraries,
                 )
             }
@@ -120,13 +125,13 @@ private fun LibrarySwitcher(
     }
 }
 
-/** A read Settings needs that failed: the failure where its rows would be, and Retry. */
+/** A read Settings needs that failed: the failure where its rows would be, and Retry when it can help. */
 @Composable
 internal fun ReadFailure(
     error: DisplayError,
     onRetry: () -> Unit,
 ) {
-    ErrorNotice(error, action = ErrorAction(stringResource(R.string.retry), onClick = onRetry))
+    ErrorNotice(error, action = error.retryAction(onClick = onRetry))
 }
 
 @Composable

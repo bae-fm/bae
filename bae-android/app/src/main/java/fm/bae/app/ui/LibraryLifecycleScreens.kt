@@ -42,6 +42,7 @@ import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
+import fm.bae.app.ui.components.retryAction
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeErrorCategory
@@ -117,7 +118,7 @@ internal fun ResetOfferedScreen(
                 advice = null,
                 error = reason,
                 look = NoticeLook.CENTERED,
-                action = ErrorAction(stringResource(R.string.retry)) { prepared(onReset) },
+                action = shown.error.retryAction { prepared(onReset) },
             )
         }
 

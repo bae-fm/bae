@@ -11,20 +11,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.LocalBugReports
 import fm.bae.app.OpenLibrary
-import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.TitledErrorNotice
+import fm.bae.app.ui.components.retryAction
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeException
 
@@ -126,6 +124,6 @@ internal fun UpcomingFailureNotice(session: OpenLibrary) {
         error = shown,
         modifier = Modifier.padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
         look = NoticeLook.CENTERED,
-        action = ErrorAction(stringResource(R.string.retry), onClick = upcoming::retry),
+        action = shown.retryAction(onClick = upcoming::retry),
     )
 }

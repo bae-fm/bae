@@ -10,6 +10,7 @@ import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.bridgeErrorLineKey
+import uniffi.bae_bridge.bridgeErrorRetryCanHelp
 import uniffi.bae_bridge.bridgeErrorShownDetail
 import uniffi.bae_bridge.bridgePlayOutcomeKey
 import uniffi.bae_bridge.bridgePlaybackErrorReasonLine
@@ -98,17 +99,28 @@ val BridgeException.diagnosticDetail: String?
 val BridgeException.shownDetail: String?
     get() = bridgeErrorShownDetail(this)
 
+/**
+ * Whether core says making the same call again can't get past this error: a damaged database, a
+ * bug, an edit to fix, a call only another call answers. Core's answer, not this app's.
+ */
+val BridgeException.retryRuledOut: Boolean
+    get() = !bridgeErrorRetryCanHelp(this)
+
+/** Only a diagnostic playback failure carries core's answer, its error's; core keys the others without saying. */
+val BridgePlaybackErrorReason.retryRuledOut: Boolean
+    get() = (this as? BridgePlaybackErrorReason.Diagnostic)?.error?.retryRuledOut ?: false
+
 /** The diagnostic to show under a playback failure's line: only a diagnostic one has one, as core says. */
 val BridgePlaybackErrorReason.shownDetail: String?
     get() = (this as? BridgePlaybackErrorReason.Diagnostic)?.error?.shownDetail
 
 /** A [BridgeException] ready to show, or null when core says it has nothing to show — a cancellation. */
 fun Context.displayError(error: BridgeException): DisplayError? =
-    localizedLine(error)?.let { line -> DisplayError(line, error.shownDetail) }
+    localizedLine(error)?.let { line -> DisplayError(line, error.shownDetail, !error.retryRuledOut) }
 
 /** A [BridgePlaybackErrorReason] ready to show, or null when core says it has nothing to show. */
 fun Context.displayError(reason: BridgePlaybackErrorReason): DisplayError? =
-    localizedLine(reason)?.let { line -> DisplayError(line, reason.shownDetail) }
+    localizedLine(reason)?.let { line -> DisplayError(line, reason.shownDetail, !reason.retryRuledOut) }
 
 /**
  * What a retry that didn't sync shows, or null when it synced. A failed pass

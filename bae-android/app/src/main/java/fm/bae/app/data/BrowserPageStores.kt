@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
+import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
 import fm.bae.app.diagnosticDetail
 import fm.bae.screensubscription.PulledSubscription
@@ -58,6 +59,8 @@ internal interface BrowseRowsQuery<Row, Beside> : PulledSubscription<BrowseRows<
  */
 internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
     private val appContext: Context,
+    /** Core's answer to whether a failed read is worth reading again. */
+    private val errors: ErrorDisplays,
     protected val scope: CoroutineScope,
     /** What [beside] holds while no value has been delivered. */
     private val nothingBeside: Beside,
@@ -204,6 +207,8 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
                         if (rows.isEmpty()) loadFailed else loadMoreFailed,
                     ),
                     value.diagnosticDetail,
+                    // A cancellation, which core shows nothing for, rules nothing out.
+                    errors.display(value)?.offersRetry != false,
                 ),
                 ::retry,
             )
@@ -232,9 +237,11 @@ internal data class AlbumBrowseParameters(
 internal class AlbumPageStore(
     private val library: Library,
     appContext: Context,
+    errors: ErrorDisplays,
     scope: CoroutineScope,
 ) : WindowedBrowserPageStore<AlbumBrowseParameters, BridgeAlbumAppearance, AlbumGridSections>(
         appContext,
+        errors,
         scope,
         nothingBeside = emptyList(),
         loadMoreFailed = R.string.library_load_more_albums_failed,
@@ -261,9 +268,11 @@ internal class AlbumPageStore(
 internal class ArtistPageStore(
     private val library: Library,
     appContext: Context,
+    errors: ErrorDisplays,
     scope: CoroutineScope,
 ) : WindowedBrowserPageStore<BridgeArtistSortCriterion, BridgeArtistSummary, Unit>(
         appContext,
+        errors,
         scope,
         nothingBeside = Unit,
         loadMoreFailed = R.string.library_load_more_artists_failed,
@@ -277,9 +286,11 @@ internal class ArtistPageStore(
 internal class ComposerPageStore(
     private val library: Library,
     appContext: Context,
+    errors: ErrorDisplays,
     scope: CoroutineScope,
 ) : WindowedBrowserPageStore<BridgeComposerSortCriterion, BridgeComposerSummary, Unit>(
         appContext,
+        errors,
         scope,
         nothingBeside = Unit,
         loadMoreFailed = R.string.library_load_more_composers_failed,
@@ -294,9 +305,11 @@ internal class ComposerPageStore(
 internal class ComposerDetailRowsPageStore(
     private val library: Library,
     appContext: Context,
+    errors: ErrorDisplays,
     scope: CoroutineScope,
 ) : WindowedBrowserPageStore<String, BridgeComposerDetailRow, Unit>(
         appContext,
+        errors,
         scope,
         nothingBeside = Unit,
         loadMoreFailed = R.string.composer_detail_load_failed,
@@ -312,9 +325,11 @@ internal class ComposerDetailRowsPageStore(
 internal class DownloadPageStore(
     private val library: Library,
     appContext: Context,
+    errors: ErrorDisplays,
     scope: CoroutineScope,
 ) : WindowedBrowserPageStore<Unit, BridgeDownloadOp, Unit>(
         appContext,
+        errors,
         scope,
         nothingBeside = Unit,
         loadMoreFailed = R.string.pinning_load_more_failed,
@@ -338,13 +353,14 @@ private class SnapshotRowsQuery<Snapshot, Row, Beside>(
 internal class BrowserPageStores(
     library: Library,
     appContext: Context,
+    errors: ErrorDisplays,
     scope: CoroutineScope,
 ) {
-    val albums = AlbumPageStore(library, appContext, scope)
-    val artists = ArtistPageStore(library, appContext, scope)
-    val composers = ComposerPageStore(library, appContext, scope)
-    val composerRows = ComposerDetailRowsPageStore(library, appContext, scope)
-    val downloads = DownloadPageStore(library, appContext, scope)
+    val albums = AlbumPageStore(library, appContext, errors, scope)
+    val artists = ArtistPageStore(library, appContext, errors, scope)
+    val composers = ComposerPageStore(library, appContext, errors, scope)
+    val composerRows = ComposerDetailRowsPageStore(library, appContext, errors, scope)
+    val downloads = DownloadPageStore(library, appContext, errors, scope)
 
     fun cancel() {
         albums.deactivate()

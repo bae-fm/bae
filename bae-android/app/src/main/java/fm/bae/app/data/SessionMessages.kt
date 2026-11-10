@@ -18,8 +18,9 @@ private val logger = BaeLogger("bae.SessionMessages")
 private const val RETRY_SYNC = "retry sync"
 
 /**
- * One snackbar's worth: what failed, and, for something the person did, the
- * Retry that runs it again. Without [retry] the snackbar only dismisses.
+ * One snackbar's worth: what failed, and, for something the person did whose
+ * failure core doesn't rule a retry out for, the Retry that runs it again.
+ * Without [retry] the snackbar only dismisses.
  */
 internal data class SessionMessage(
     val error: DisplayError,
@@ -60,7 +61,8 @@ class SessionMessages internal constructor(
 
     /**
      * Run [action], something the person did, in the session. Its failure
-     * shows as a snackbar whose Retry runs it again.
+     * shows as a snackbar whose Retry runs it again, unless core says
+     * retrying can't get past it.
      */
     fun perform(
         operation: String,
@@ -72,7 +74,8 @@ class SessionMessages internal constructor(
                 if (shown == null) {
                     logger.debug("$operation was cancelled; nothing to show")
                 } else {
-                    channel.trySend(SessionMessage(shown, retry = { perform(operation, action) }))
+                    val retry = if (shown.offersRetry) ({ perform(operation, action) }) else null
+                    channel.trySend(SessionMessage(shown, retry))
                 }
             }, action)
         }
@@ -113,7 +116,8 @@ class SessionMessages internal constructor(
         retry: suspend () -> BridgeSyncRetryOutcome,
     ) {
         if (shown != null) {
-            channel.trySend(SessionMessage(shown, retry = { startRetrySync(retry) }))
+            val again = if (shown.offersRetry) ({ startRetrySync(retry) }) else null
+            channel.trySend(SessionMessage(shown, again))
         }
     }
 }
