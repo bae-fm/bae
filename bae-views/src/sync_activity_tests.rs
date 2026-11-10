@@ -136,6 +136,43 @@ fn a_held_line_keeps_its_count() {
     );
 }
 
+/// A line ends in Resume only while the person paused its queue: not while
+/// the network, a metered network or a retry's time holds it, nor while
+/// nothing does. Pins and make-locals share one queue, so both lines say so.
+#[test]
+fn a_line_is_paused_only_by_the_person() {
+    use bae_records::UploadQueueWait;
+    let uploads = |wait| {
+        let uploads = UploadQueueCounts { batch: batch(1, 3), sending: 0, wait };
+        SyncActivity::new(&status(), &uploads, &idle_downloads()).uploads.unwrap().paused()
+    };
+    assert!(uploads(Some(UploadQueueWait::Paused)));
+    for wait in [
+        None,
+        Some(UploadQueueWait::Offline),
+        Some(UploadQueueWait::Metered),
+        Some(UploadQueueWait::Retrying { at_ms: 1_700_000_000_000 }),
+    ] {
+        assert!(!uploads(wait.clone()), "{wait:?}");
+    }
+
+    let downloads = |wait| {
+        let downloads = DownloadQueueCounts {
+            pins: batch(0, 2),
+            making_local: batch(0, 1),
+            queue: ReleaseQueueCounts {
+                total: ReleaseQueueProgress { queued: 2, active: 0, failed: 0 },
+                wait,
+            },
+        };
+        let activity = SyncActivity::new(&status(), &idle_uploads(), &downloads);
+        (activity.pins.unwrap().paused(), activity.making_local.unwrap().paused())
+    };
+    assert_eq!(downloads(Some(QueueWait::Paused)), (true, true));
+    assert_eq!(downloads(Some(QueueWait::Offline)), (false, false));
+    assert_eq!(downloads(None), (false, false));
+}
+
 /// The indicator shows the pause symbol while a line shows what holds its
 /// queue, whatever holds it, and no bytes move: a paused, offline, metered or
 /// retrying upload queue, and a paused or offline download queue on either of

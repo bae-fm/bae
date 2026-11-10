@@ -177,7 +177,8 @@ struct SyncActivitySubscriptionTests {
             uploads: sending.map {
                 BridgeUploadQueueActivity(
                     batch: BridgeTransferBatch(done: 0, total: $0),
-                    wait: nil
+                    wait: nil,
+                    paused: false
                 )
             },
             pins: nil,

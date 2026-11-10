@@ -32,7 +32,6 @@ import fm.bae.app.releasesDoneText
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.fastvalues.LatestSource
-import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeSyncActivity
 
 internal fun LazyListScope.transferRows(
@@ -62,7 +61,7 @@ internal fun LazyListScope.transferRows(
     activity.pins?.let { pins ->
         item {
             val context = LocalContext.current
-            val paused = pins.wait == BridgeQueueWait.PAUSED
+            val paused = pins.paused
             TransferLine(
                 title = context.coreString("core.activity.pinning"),
                 count = words.pinsWait ?: context.releasesDoneText(pins.batch),

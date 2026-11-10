@@ -77,6 +77,21 @@ pub struct DownloadQueueActivity {
     pub wait: Option<QueueWait>,
 }
 
+impl UploadQueueActivity {
+    /// The person paused the upload queue: its line ends in Resume, not Pause.
+    pub fn paused(&self) -> bool {
+        self.wait == Some(bae_records::UploadQueueWait::Paused)
+    }
+}
+
+impl DownloadQueueActivity {
+    /// The person paused the download queue: the line ends in Resume, not
+    /// Pause. Pins and make-locals share the queue, so both lines say so.
+    pub fn paused(&self) -> bool {
+        self.wait == Some(QueueWait::Paused)
+    }
+}
+
 /// What the activity reads of the upload queue in one query: the Uploading
 /// line's batch, how many files this process is sending now, and what holds
 /// the queue back.

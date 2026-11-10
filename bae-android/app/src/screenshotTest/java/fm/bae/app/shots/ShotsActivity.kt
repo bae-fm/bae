@@ -44,7 +44,7 @@ fun ActivityNeedingAttention() {
                 needsAttention = true,
                 failure = BridgeException.Diagnostic(BridgeErrorCategory.Database, "401"),
                 syncing = false,
-                uploads = BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 3u), wait = null),
+                uploads = BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 3u), wait = null, paused = false),
                 pins = null,
             )
     ActivityListShot(
@@ -64,7 +64,7 @@ fun ActivityLaunchProblem() {
             .syncActivity(needsAttention = false)
             .copy(
                 syncing = false,
-                uploads = BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 3u), wait = null),
+                uploads = BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 3u), wait = null, paused = false),
                 pins = null,
             )
     val context = LocalContext.current
@@ -98,8 +98,8 @@ fun ActivityTransfersHeld() {
             .syncActivity(needsAttention = false)
             .copy(
                 syncing = false,
-                uploads = BridgeUploadQueueActivity(batch, BridgeUploadQueueWait.Paused),
-                pins = BridgeDownloadQueueActivity(batch, BridgeQueueWait.PAUSED),
+                uploads = BridgeUploadQueueActivity(batch, BridgeUploadQueueWait.Paused, paused = true),
+                pins = BridgeDownloadQueueActivity(batch, BridgeQueueWait.PAUSED, paused = true),
             )
     ActivityListShot(
         activity,
@@ -121,8 +121,8 @@ fun ActivityButtonHeld() {
                 moving = false,
                 held = true,
                 syncing = false,
-                uploads = BridgeUploadQueueActivity(batch, BridgeUploadQueueWait.Paused),
-                pins = BridgeDownloadQueueActivity(batch, BridgeQueueWait.PAUSED),
+                uploads = BridgeUploadQueueActivity(batch, BridgeUploadQueueWait.Paused, paused = true),
+                pins = BridgeDownloadQueueActivity(batch, BridgeQueueWait.PAUSED, paused = true),
             )
     val store = remember { SyncActivityStore().apply { apply(activity) } }
     LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null) {

@@ -79,12 +79,15 @@ pub struct BridgeUploadQueueActivity {
     pub batch: BridgeTransferBatch,
     /// What holds the upload queue back, shown in place of the count.
     pub wait: Option<super::BridgeUploadQueueWait>,
+    /// The person paused the upload queue: the line ends in Resume, not Pause.
+    pub paused: bool,
 }
 
 impl BridgeUploadQueueActivity {
     fn from_core(uploads: bae_views::UploadQueueActivity) -> Self {
         Self {
             batch: BridgeTransferBatch::from_core(uploads.batch),
+            paused: uploads.paused(),
             wait: uploads.wait.map(super::BridgeUploadQueueWait::from_core),
         }
     }
@@ -98,12 +101,16 @@ pub struct BridgeDownloadQueueActivity {
     pub batch: BridgeTransferBatch,
     /// What holds the download queue back, shown in place of the count.
     pub wait: Option<super::BridgeQueueWait>,
+    /// The person paused the download queue: the line ends in Resume, not
+    /// Pause.
+    pub paused: bool,
 }
 
 impl BridgeDownloadQueueActivity {
     fn from_core(downloads: bae_views::DownloadQueueActivity) -> Self {
         Self {
             batch: BridgeTransferBatch::from_core(downloads.batch),
+            paused: downloads.paused(),
             wait: downloads.wait.map(super::BridgeQueueWait::from_core),
         }
     }

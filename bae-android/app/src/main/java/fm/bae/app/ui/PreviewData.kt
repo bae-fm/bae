@@ -303,8 +303,18 @@ object PreviewData {
                     emptyList()
                 },
             syncing = true,
-            uploads = BridgeUploadQueueActivity(batch = BridgeTransferBatch(done = 1u, total = 2u), wait = null),
-            pins = BridgeDownloadQueueActivity(batch = BridgeTransferBatch(done = 1u, total = 3u), wait = null),
+            uploads =
+                BridgeUploadQueueActivity(
+                    batch = BridgeTransferBatch(done = 1u, total = 2u),
+                    wait = null,
+                    paused = false,
+                ),
+            pins =
+                BridgeDownloadQueueActivity(
+                    batch = BridgeTransferBatch(done = 1u, total = 3u),
+                    wait = null,
+                    paused = false,
+                ),
             makingLocal = null,
         )
 

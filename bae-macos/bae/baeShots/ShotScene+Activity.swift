@@ -137,7 +137,8 @@ private enum ActivityShot {
             syncing: false,
             uploads: BridgeUploadQueueActivity(
                 batch: BridgeTransferBatch(done: uploadsDone, total: 3),
-                wait: nil
+                wait: nil,
+                paused: false
             ),
             pins: nil,
             makingLocal: nil
@@ -151,7 +152,9 @@ private enum ActivityShot {
         uploadsWait: BridgeUploadQueueWait? = nil,
         downloadsWait: BridgeQueueWait? = nil
     ) -> BridgeSyncActivity {
-        BridgeSyncActivity(
+        let uploadsPaused = uploadsWait == .paused
+        let downloadsPaused = downloadsWait == .paused
+        return BridgeSyncActivity(
             moving: uploadsWait == nil,
             held: uploadsWait != nil,
             needsAttention: false,
@@ -160,15 +163,18 @@ private enum ActivityShot {
             syncing: true,
             uploads: BridgeUploadQueueActivity(
                 batch: BridgeTransferBatch(done: 1, total: 2),
-                wait: uploadsWait
+                wait: uploadsWait,
+                paused: uploadsPaused
             ),
             pins: BridgeDownloadQueueActivity(
                 batch: BridgeTransferBatch(done: 1, total: 3),
-                wait: downloadsWait
+                wait: downloadsWait,
+                paused: downloadsPaused
             ),
             makingLocal: BridgeDownloadQueueActivity(
                 batch: BridgeTransferBatch(done: 0, total: 1),
-                wait: downloadsWait
+                wait: downloadsWait,
+                paused: downloadsPaused
             )
         )
     }

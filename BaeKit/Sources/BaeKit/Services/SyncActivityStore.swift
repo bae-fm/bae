@@ -68,15 +68,18 @@ public final class SyncActivityStore {
                 syncing: true,
                 uploads: BridgeUploadQueueActivity(
                     batch: BridgeTransferBatch(done: 1, total: 2),
-                    wait: nil
+                    wait: nil,
+                    paused: false
                 ),
                 pins: BridgeDownloadQueueActivity(
                     batch: BridgeTransferBatch(done: 1, total: 3),
-                    wait: nil
+                    wait: nil,
+                    paused: false
                 ),
                 makingLocal: BridgeDownloadQueueActivity(
                     batch: BridgeTransferBatch(done: 0, total: 1),
-                    wait: nil
+                    wait: nil,
+                    paused: false
                 )
             )
         }

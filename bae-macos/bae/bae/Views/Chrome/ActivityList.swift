@@ -157,7 +157,7 @@ private struct TransferRows: View {
             TransferLine(
                 title: localizedCoreString("core.activity.uploading"),
                 count: uploads.wait?.text ?? uploads.batch.text,
-                queue: .init(.uploads, paused: uploads.wait == .paused),
+                queue: .init(.uploads, paused: uploads.paused),
                 bar: store.bar(.uploads)
             )
         }
@@ -165,7 +165,7 @@ private struct TransferRows: View {
             TransferLine(
                 title: localizedCoreString("core.activity.pinning"),
                 count: pins.wait?.text ?? pins.batch.text,
-                queue: .init(.downloads, paused: pins.wait == .paused),
+                queue: .init(.downloads, paused: pins.paused),
                 bar: store.bar(.pins)
             )
         }
@@ -173,7 +173,7 @@ private struct TransferRows: View {
             TransferLine(
                 title: localizedCoreString("core.activity.making_local"),
                 count: makingLocal.wait?.text ?? makingLocal.batch.text,
-                queue: .init(.downloads, paused: makingLocal.wait == .paused),
+                queue: .init(.downloads, paused: makingLocal.paused),
                 bar: store.bar(.makingLocal)
             )
         }
