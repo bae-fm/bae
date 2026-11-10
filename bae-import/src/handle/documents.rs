@@ -44,7 +44,7 @@ impl ImportServiceHandle {
                 candidate: candidate_key.clone(),
                 file: file_id.to_string(),
             })?;
-        if !matches!(entry.role, FileRole::Document | FileRole::TrackSheet { .. }) {
+        if !matches!(entry.role, FileRole::Document { .. } | FileRole::TrackSheet { .. }) {
             return Err(DocumentRefusal::NotADocument(file_id.to_string()).into());
         }
         let path = entry.file.version.path;

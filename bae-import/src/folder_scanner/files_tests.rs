@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::folder_scanner::tests::*;
+use bae_records::DocumentKind;
 
 fn mp3_with_id3_padding(padding: usize) -> Vec<u8> {
     let mut bytes = fake_mp3();
@@ -110,13 +111,13 @@ fn content_hash_is_independent_of_discovery_order() {
             entry("01.flac", 1, FileRole::Audio),
             entry("02.flac", 2, FileRole::Audio),
             entry("cover.jpg", 3, FileRole::Artwork),
-            entry("notes.txt", 4, FileRole::Document),
+            entry("notes.txt", 4, FileRole::Document { kind: DocumentKind::Text }),
         ],
         parts: Vec::new(),
     };
     let shuffled = CategorizedFiles {
         files: vec![
-            entry("notes.txt", 4, FileRole::Document),
+            entry("notes.txt", 4, FileRole::Document { kind: DocumentKind::Text }),
             entry("02.flac", 2, FileRole::Audio),
             entry("cover.jpg", 3, FileRole::Artwork),
             entry("01.flac", 1, FileRole::Audio),

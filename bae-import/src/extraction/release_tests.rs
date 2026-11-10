@@ -129,7 +129,11 @@ async fn test_resolve_release_identity_local() {
     let records = bae_records::test_fixtures::test_records(&db);
 
     for (filename, content_type, role) in [
-        ("test_album.log", ContentType::PlainText, bae_records::ReleaseFileRole::Document),
+        (
+            "test_album.log",
+            ContentType::PlainText,
+            bae_records::ReleaseFileRole::Document(bae_records::DocumentKind::RipLog),
+        ),
         ("01 Test Track 1.flac", ContentType::Flac, bae_records::ReleaseFileRole::Other),
         ("02 Test Track 2.flac", ContentType::Flac, bae_records::ReleaseFileRole::Other),
     ] {
@@ -223,7 +227,14 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
                 crate::folder_scanner::FileRole::TrackSheet { .. } => {
                     bae_records::ReleaseFileRole::TrackSheet
                 }
-                _ => bae_records::ReleaseFileRole::Document,
+                crate::folder_scanner::FileRole::Document { kind } => {
+                    bae_records::ReleaseFileRole::Document(kind)
+                }
+                crate::folder_scanner::FileRole::Artwork => bae_records::ReleaseFileRole::Artwork,
+                crate::folder_scanner::FileRole::DamagedImage => {
+                    bae_records::ReleaseFileRole::DamagedImage
+                }
+                crate::folder_scanner::FileRole::Other => bae_records::ReleaseFileRole::Other,
             },
             source_audio: file.source_audio.as_ref().map(|audio| {
                 bae_records::source_audio::SourceAudioFile {

@@ -79,7 +79,10 @@ pub enum ProposedRole {
     Image,
     /// Named as an image, and its bytes do not decode as one.
     DamagedImage,
-    Document,
+    /// Named as a document of `kind`.
+    Document {
+        kind: bae_records::DocumentKind,
+    },
     Other,
 }
 
@@ -105,7 +108,7 @@ impl SkippedFile {
                 FileRole::TrackSheet { .. } => ProposedRole::Cue,
                 FileRole::Artwork => ProposedRole::Image,
                 FileRole::DamagedImage => ProposedRole::DamagedImage,
-                FileRole::Document => ProposedRole::Document,
+                FileRole::Document { kind } => ProposedRole::Document { kind },
                 FileRole::Other => ProposedRole::Other,
             },
         }

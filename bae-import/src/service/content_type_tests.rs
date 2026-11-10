@@ -1,4 +1,5 @@
 use super::*;
+use bae_records::DocumentKind;
 use std::path::{Path, PathBuf};
 
 fn scanned_non_audio(
@@ -34,12 +35,15 @@ fn resolve_file_content_type_maps_non_audio_by_extension() {
         ContentType::Png
     );
     assert_eq!(
-        resolve_file_content_type(&scanned_non_audio("/x/notes.txt", FileRole::Document)).unwrap(),
+        resolve_file_content_type(&scanned_non_audio(
+            "/x/notes.txt",
+            FileRole::Document { kind: DocumentKind::Text }
+        ))
+        .unwrap(),
         ContentType::PlainText
     );
     assert_eq!(
-        resolve_file_content_type(&scanned_non_audio("/x/booklet.pdf", FileRole::Document))
-            .unwrap(),
+        resolve_file_content_type(&scanned_non_audio("/x/booklet.pdf", FileRole::Other)).unwrap(),
         ContentType::Pdf
     );
     // An extension the hint can't classify becomes opaque binary.

@@ -610,7 +610,7 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
                 },
                 CandidateFile {
                     file: ScannedFile::new(log.clone(), "rip.log".into(), 1_000, 1),
-                    role: FileRole::Document,
+                    role: FileRole::Document { kind: bae_records::DocumentKind::RipLog },
                 },
             ],
             parts: Vec::new(),

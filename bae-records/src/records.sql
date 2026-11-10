@@ -394,9 +394,15 @@ CREATE TABLE IF NOT EXISTS release_files (
     file TEXT NOT NULL,
     -- What the file is to its release, as the import's scan read it. Its
     -- content type can't say: a damaged image is stored as plain bytes, and
-    -- a CUE sheet as text. Audio, and only audio, states the facts below.
+    -- a CUE sheet, a rip log and a playlist all as text. Audio, and only
+    -- audio, states the facts below.
     role TEXT NOT NULL CHECK (role IN (
         'audio', 'track_sheet', 'artwork', 'damaged_image', 'document', 'other'
+    )),
+    -- Which document the file is, as the scan read it; set for a document,
+    -- and only a document.
+    document_kind TEXT CHECK (document_kind IS NULL OR document_kind IN (
+        'cue_sheet', 'rip_log', 'accuraterip_report', 'playlist', 'text'
     )),
     -- How the file gives the release its tracks, its bytes stored as they
     -- were: as its own audio ('file'), or as a CUE-described image whose
@@ -411,6 +417,7 @@ CREATE TABLE IF NOT EXISTS release_files (
     source_audio_channels INTEGER,
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
     CHECK ((role = 'audio') = (source_audio_content_type IS NOT NULL)),
+    CHECK ((role = 'document') = (document_kind IS NOT NULL)),
     -- A file that is not audio states no audio facts. An audio file states
     -- them all, the codec deciding whether bits per sample or bitrate is set,
     -- and a layout unless the release carries it with the tracklist leaving

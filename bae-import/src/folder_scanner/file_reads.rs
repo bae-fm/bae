@@ -618,13 +618,14 @@ impl Known {
                 })
             }
             FileRole::TrackSheet { sheet, .. } => FileRead::Sheet(Some(sheet.clone())),
-            // A `.cue` a release carries as a document is a sheet that did
-            // not parse.
-            FileRole::Document if is_cue_file(&file.version.path) => FileRead::Sheet(None),
+            // A CUE sheet a release carries as a document did not parse.
+            FileRole::Document { kind: bae_records::DocumentKind::CueSheet } => {
+                FileRead::Sheet(None)
+            }
             FileRole::Artwork => FileRead::Image { decodes: true },
             // A zero-byte image is damaged before its bytes are looked at.
             FileRole::DamagedImage if file.version.size > 0 => FileRead::Image { decodes: false },
-            FileRole::DamagedImage | FileRole::Document | FileRole::Other => return Ok(()),
+            FileRole::DamagedImage | FileRole::Document { .. } | FileRole::Other => return Ok(()),
         };
         self.learn(file.version.clone(), read)
     }
@@ -645,7 +646,7 @@ impl Known {
             ProposedRole::DamagedAudio { damage: AudioDamage::Empty }
             | ProposedRole::DamagedImage
             | ProposedRole::Cue
-            | ProposedRole::Document
+            | ProposedRole::Document { .. }
             | ProposedRole::Other => return Ok(()),
         };
         self.learn(file.file.clone(), read)

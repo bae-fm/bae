@@ -419,6 +419,7 @@ fn files_json_sql() -> String {
              'audio_bitrate_kbps', file.audio_bitrate_kbps, \
              'audio_channels', file.audio_channels, 'file_name', file.file_name, \
              'dir_prefix', file.dir_prefix, 'role', file.role, \
+             'document_kind', file.document_kind, \
              'sheet_binding', file.sheet_binding, \
              'sheet_binding_codec', file.sheet_binding_codec, \
              'sheet_disc', file.sheet_disc, 'sheet_disc_number', file.sheet_disc_number, \
@@ -444,7 +445,8 @@ const SKIPPED_FILES_JSON: &str = "(SELECT json_group_array(json_object( \
          'relative_path', skipped.relative_path, \
          'absolute_path', hex(skipped.absolute_path), \
          'size', skipped.size, 'modified_at_ns', skipped.modified_at_ns, \
-         'role', skipped.role, 'audio_damage', skipped.audio_damage) ORDER BY skipped.position) \
+         'role', skipped.role, 'audio_damage', skipped.audio_damage, \
+         'document_kind', skipped.document_kind) ORDER BY skipped.position) \
      FROM scan_skipped_file AS skipped \
      WHERE skipped.watched_folder_path = candidate.watched_folder_path \
        AND skipped.candidate_path = candidate.path)";
@@ -596,6 +598,7 @@ struct FileRow {
     file_name: String,
     dir_prefix: Option<String>,
     role: String,
+    document_kind: Option<String>,
     sheet_binding: Option<String>,
     sheet_binding_codec: Option<String>,
     sheet_disc: Option<String>,
@@ -614,7 +617,17 @@ fn files_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<CandidateFi
                 "audio" => FileRole::Audio,
                 "artwork" => FileRole::Artwork,
                 "damaged_image" => FileRole::DamagedImage,
-                "document" => FileRole::Document,
+                "document" => FileRole::Document {
+                    kind: document_kind_of(row.document_kind.as_deref().ok_or_else(|| {
+                        DbError::unreadable(
+                            format!(
+                                "the kind of document {} under {candidate_path}",
+                                row.relative_path
+                            ),
+                            None::<String>,
+                        )
+                    })?)?,
+                },
                 "other" => FileRole::Other,
                 "track_sheet" => {
                     let missing = |what: &str| {
@@ -754,6 +767,7 @@ struct SkippedFileRow {
     modified_at_ns: i64,
     role: String,
     audio_damage: Option<String>,
+    document_kind: Option<String>,
 }
 
 /// The files of the release at `candidate_path` that failed validation.
@@ -771,7 +785,11 @@ fn skipped_files_of(
                     size: to_u64(row.size, "a skipped file's size")?,
                     modified_at_ns: row.modified_at_ns,
                 },
-                role: proposed_role_of(&row.role, row.audio_damage.as_deref())?,
+                role: proposed_role_of(
+                    &row.role,
+                    row.audio_damage.as_deref(),
+                    row.document_kind.as_deref(),
+                )?,
             })
         })
         .collect()

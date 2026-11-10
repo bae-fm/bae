@@ -469,13 +469,13 @@ pub(super) fn insert_artist_role_row(
 #[cfg(any(test, feature = "test-utils", desktop))]
 const INSERT_RELEASE_FILE_SQL: &str = r#"
     INSERT INTO release_files (
-        id, release_id, original_filename, content_type, file, role,
+        id, release_id, original_filename, content_type, file, role, document_kind,
         source_audio_layout, source_audio_content_type, source_audio_container,
         source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample,
         source_audio_bitrate_kbps, source_audio_channels,
         created_at
     ) VALUES (
-        :id, :release_id, :original_filename, :content_type, :file, :role,
+        :id, :release_id, :original_filename, :content_type, :file, :role, :document_kind,
         :source_audio_layout, :source_audio_content_type, :source_audio_container,
         :source_audio_duration_ms, :source_audio_sample_rate_hz, :source_audio_bits_per_sample,
         :source_audio_bitrate_kbps, :source_audio_channels,
@@ -518,6 +518,7 @@ pub fn insert_release_file_row(
             ":content_type": file.content_type.as_str(),
             ":file": coven_file,
             ":role": file.role.as_str(),
+            ":document_kind": file.role.document_kind().map(crate::DocumentKind::as_str),
             ":source_audio_layout": source_audio_layout,
             ":source_audio_content_type": source_audio_content_type,
             ":source_audio_container": source_audio_container,

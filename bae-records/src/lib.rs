@@ -22,7 +22,7 @@ pub mod test_fixtures;
 pub use models::*;
 #[cfg(any(test, feature = "test-utils"))]
 pub use records::resolved_in_an_empty_library;
-pub use release_file_role::ReleaseFileRole;
+pub use release_file_role::{DocumentKind, ReleaseFileRole};
 // Only an import names its own artist credits from outside bae-records.
 pub use records::artist_credit_names::CreditNameError;
 pub use records::AlbumFields;

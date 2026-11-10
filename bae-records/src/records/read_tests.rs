@@ -113,6 +113,58 @@ fn only_audio_has_a_layout_and_audio_left_out_of_the_tracklist_has_none() {
     assert_eq!(audio.layout, None);
 }
 
+/// Insert one non-audio `release_files` row of the seeded release in `role`,
+/// with `document_kind`.
+fn insert_carried_file(
+    conn: &Connection,
+    id: &str,
+    role: &str,
+    document_kind: Option<&str>,
+) -> rusqlite::Result<usize> {
+    let file = bae_util::test_ids::test_uuid(id);
+    conn.execute(
+        "INSERT OR IGNORE INTO coven_files (id, audience, size, coordinates, namespace) \
+         VALUES (?1, '', 1, '', 'release_files')",
+        [&file],
+    )?;
+    conn.execute(
+        "INSERT INTO release_files (id, release_id, original_filename, content_type, file, \
+         created_at, role, document_kind) \
+         VALUES (?1, 'cccb6034-5922-40d2-8d0b-d94619230882', ?1, 'text/plain', ?2, \
+         '2026-01-01T00:00:00Z', ?3, ?4)",
+        params![id, file, role, document_kind],
+    )
+}
+
+/// A document states which kind it is, and no other file states one.
+#[test]
+fn only_a_document_has_a_kind_and_every_document_has_one() {
+    let conn = seeded_conn();
+    insert_carried_file(&conn, "rip.log", "document", Some("rip_log")).expect("a rip log");
+    insert_carried_file(&conn, "notes.nfo", "other", None).expect("a file that is no document");
+    for (id, role, kind) in [
+        ("kindless.txt", "document", None),
+        ("unknown.txt", "document", Some("letter")),
+        ("booklet.pdf", "other", Some("text")),
+    ] {
+        let error = insert_carried_file(&conn, id, role, kind).expect_err(id);
+        assert!(error.to_string().contains("CHECK constraint failed"), "{id}: {error}");
+    }
+
+    let log = conn
+        .query_row(
+            concat!(
+                "SELECT ",
+                release_file_columns!(),
+                " FROM release_files AS f WHERE f.id = 'rip.log'"
+            ),
+            [],
+            row_to_file,
+        )
+        .unwrap();
+    assert_eq!(log.role, crate::ReleaseFileRole::Document(crate::DocumentKind::RipLog));
+}
+
 /// A track of the seeded release with one audio format and one main segment
 /// over a seeded file, all with valid non-negative positions.
 fn seeded_audio_segment() -> Connection {

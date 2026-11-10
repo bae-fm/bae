@@ -668,3 +668,75 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
         .await
         .expect("the reading the import was queued against still stands");
 }
+
+/// A release keeps what its scan read of each document: its rip log, its
+/// AccurateRip report, its playlist and its text file come back as those
+/// kinds of document, and a PDF, which is no document, as a PDF.
+#[tokio::test]
+async fn an_imported_release_keeps_each_documents_kind() {
+    use bae_records::{DocumentKind, ReleaseFileRole};
+    use bae_util::content_type::ContentType;
+    let test = setup_import_service().await;
+    let folder = test.temp.path().join("Album");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(folder.join("01.flac"), flac()).unwrap();
+    std::fs::write(folder.join("Album.log"), b"Exact Audio Copy V1.0\n").unwrap();
+    std::fs::write(folder.join("Album.accurip"), b"[AccurateRip ID: 0001] found.\n").unwrap();
+    std::fs::write(folder.join("Album.m3u"), b"01.flac\n").unwrap();
+    std::fs::write(folder.join("notes.txt"), b"Recorded live.\n").unwrap();
+    std::fs::write(folder.join("booklet.pdf"), b"%PDF-1.4\n").unwrap();
+    let (candidate_key, stored) = store_scanned_candidate(&test, &folder, "Album").await;
+    let content_hash = stored.candidate.content_hash.clone();
+
+    test.service.queue_import_for_test(&candidate_key, "import-1").await;
+    test.service
+        .prepare_and_run_folder_import(
+            "import-1".to_string(),
+            candidate_key,
+            crate::release_candidate::CandidateSource {
+                path: folder.clone(),
+                scope: crate::ReleaseFileScope::Recursive,
+                parts: Vec::new(),
+            },
+            stored,
+            ImportDestination::Local,
+        )
+        .await
+        .expect("the release imports");
+
+    let release = test
+        .service
+        .tables
+        .release_imported_from(&content_hash)
+        .await
+        .unwrap()
+        .expect("the import records the release of its files");
+    let files = bae_records::test_fixtures::test_records(&test.db)
+        .get_files_for_release(&release)
+        .await
+        .unwrap();
+    let stored_as = |name: &str| {
+        let file = files
+            .iter()
+            .find(|file| file.original_filename == name)
+            .unwrap_or_else(|| panic!("{name} is among the release's files"));
+        (file.role, file.content_type.clone())
+    };
+    assert_eq!(
+        stored_as("Album.log"),
+        (ReleaseFileRole::Document(DocumentKind::RipLog), ContentType::PlainText)
+    );
+    assert_eq!(
+        stored_as("Album.accurip"),
+        (ReleaseFileRole::Document(DocumentKind::AccurateRipReport), ContentType::PlainText)
+    );
+    assert_eq!(
+        stored_as("Album.m3u"),
+        (ReleaseFileRole::Document(DocumentKind::Playlist), ContentType::PlainText)
+    );
+    assert_eq!(
+        stored_as("notes.txt"),
+        (ReleaseFileRole::Document(DocumentKind::Text), ContentType::PlainText)
+    );
+    assert_eq!(stored_as("booklet.pdf"), (ReleaseFileRole::Other, ContentType::Pdf));
+}

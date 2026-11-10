@@ -175,6 +175,9 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     file_name             TEXT NOT NULL,
     dir_prefix            TEXT,
     role                  TEXT NOT NULL CHECK (role IN ('audio', 'track_sheet', 'artwork', 'damaged_image', 'document', 'other')),
+    -- Which document the file is, as its name reads; set for a document, and
+    -- only a document.
+    document_kind         TEXT CHECK (document_kind IS NULL OR document_kind IN ('cue_sheet', 'rip_log', 'accuraterip_report', 'playlist', 'text')),
     sheet_binding         TEXT CHECK (sheet_binding IS NULL OR sheet_binding IN ('resolved', 'unresolved', 'refused_timing', 'refused_codec')),
     sheet_binding_codec   TEXT,
     sheet_disc            TEXT CHECK (sheet_disc IS NULL OR sheet_disc IN ('disc', 'ignored')),
@@ -182,6 +185,7 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     PRIMARY KEY (watched_folder_path, candidate_path, relative_path),
     FOREIGN KEY (watched_folder_path, candidate_path) REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
     CHECK ((role = 'track_sheet') = (sheet_binding IS NOT NULL AND sheet_disc IS NOT NULL)),
+    CHECK ((role = 'document') = (document_kind IS NOT NULL)),
     CHECK ((sheet_binding = 'refused_codec') = (sheet_binding_codec IS NOT NULL)),
     CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL)),
     CHECK (
@@ -304,11 +308,14 @@ CREATE TABLE IF NOT EXISTS scan_skipped_file (
     role                TEXT NOT NULL CHECK (role IN ('audio', 'damaged_audio', 'track_sheet', 'artwork', 'damaged_image', 'document', 'other')),
     -- Why a damaged track can't be played: it holds no bytes, or no stream bae plays.
     audio_damage        TEXT CHECK (audio_damage IS NULL OR audio_damage IN ('empty', 'unreadable')),
+    -- Which document the file is, as in `scan_candidate_file`.
+    document_kind       TEXT CHECK (document_kind IS NULL OR document_kind IN ('cue_sheet', 'rip_log', 'accuraterip_report', 'playlist', 'text')),
     PRIMARY KEY (watched_folder_path, candidate_path, position),
     UNIQUE (watched_folder_path, candidate_path, absolute_path),
     FOREIGN KEY (watched_folder_path, candidate_path)
         REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
-    CHECK ((role = 'damaged_audio') = (audio_damage IS NOT NULL))
+    CHECK ((role = 'damaged_audio') = (audio_damage IS NOT NULL)),
+    CHECK ((role = 'document') = (document_kind IS NOT NULL))
 ) STRICT;
 
 -- What the tags of a release that failed validation call it: the album title
@@ -354,8 +361,11 @@ CREATE TABLE IF NOT EXISTS scan_sidecar_file (
     modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
     role                TEXT NOT NULL CHECK (role IN ('artwork', 'damaged_image', 'document', 'other', 'damaged_audio')),
     audio_damage        TEXT CHECK (audio_damage IS NULL OR audio_damage IN ('empty', 'unreadable')),
+    -- Which document the file is, as in `scan_candidate_file`.
+    document_kind       TEXT CHECK (document_kind IS NULL OR document_kind IN ('cue_sheet', 'rip_log', 'accuraterip_report', 'playlist', 'text')),
     PRIMARY KEY (folder, position),
-    CHECK ((role = 'damaged_audio') = (audio_damage IS NOT NULL))
+    CHECK ((role = 'damaged_audio') = (audio_damage IS NOT NULL)),
+    CHECK ((role = 'document') = (document_kind IS NOT NULL))
 ) STRICT;
 
 -- A CUE sheet found beside a candidate's audio, as parsed.

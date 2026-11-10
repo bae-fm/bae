@@ -2,10 +2,11 @@
 //! blocking call, plus the artwork to read afterwards.
 
 use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source, SourcedLine};
-use crate::folder_scanner::CategorizedFiles;
+use crate::folder_scanner::{CategorizedFiles, FileRole};
 use crate::rip_reading::read_rip_artifacts;
 use bae_catalogs::{AudioOrigin, AudioSource, DownloadProof};
 use bae_identify::signals::{AudioFacts, DiscIdSignal, SourcedValue};
+use bae_records::DocumentKind;
 use bae_types::barcode::Barcode;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -279,13 +280,10 @@ fn cue_sheet_names(sheet: &crate::cue_sheet::CueSheet) -> Vec<String> {
     out
 }
 
-/// `.txt` documents only; logs hold no names and sheets are read parsed.
+/// Text documents only; logs hold no names, playlists only the audio's, and
+/// sheets are read parsed.
 fn text_file_paths(categorized: &CategorizedFiles) -> Vec<PathBuf> {
-    categorized
-        .documents()
-        .filter(|f| crate::folder_scanner::has_extension(&f.version.path, "txt"))
-        .map(|f| f.version.path.clone())
-        .collect()
+    categorized.documents_of(DocumentKind::Text).map(|f| f.version.path.clone()).collect()
 }
 
 /// Read a text file, capped and decoded whatever its encoding; `None` only on
@@ -326,8 +324,15 @@ fn download_proof(
         return Some(DownloadProof::Store { marker, file });
     }
     let read_off_a_disc = categorized.files.iter().any(|entry| {
-        crate::rip_reading::is_rip_document(&entry.file.version.path)
-            || crate::folder_scanner::is_cue_file(&entry.file.version.path)
+        matches!(
+            entry.role,
+            FileRole::TrackSheet { .. }
+                | FileRole::Document {
+                    kind: DocumentKind::CueSheet
+                        | DocumentKind::RipLog
+                        | DocumentKind::AccurateRipReport
+                }
+        )
     });
     let delivered = !files.is_empty()
         && files.iter().all(|file| {

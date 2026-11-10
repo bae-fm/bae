@@ -58,7 +58,10 @@ fn a_folder_kept_as_separate_releases_says_its_own_files() {
             .iter()
             .map(|entry| (entry.file.relative_path.as_str(), &entry.role))
             .collect::<Vec<_>>(),
-        [("cover.jpg", &FileRole::Artwork), ("Scans/booklet.txt", &FileRole::Document)]
+        [
+            ("cover.jpg", &FileRole::Artwork),
+            ("Scans/booklet.txt", &FileRole::Document { kind: DocumentKind::Text })
+        ]
     );
     assert!(files.iter().all(|entry| entry.file.version.path.starts_with(&album)));
 }
@@ -198,7 +201,10 @@ fn a_damaged_image_is_carried_in_the_sidecar_as_one() {
             .iter()
             .map(|entry| (entry.file.relative_path.as_str(), &entry.role))
             .collect::<Vec<_>>(),
-        [("cover.jpg", &FileRole::DamagedImage), ("Scans/booklet.txt", &FileRole::Document)]
+        [
+            ("cover.jpg", &FileRole::DamagedImage),
+            ("Scans/booklet.txt", &FileRole::Document { kind: DocumentKind::Text })
+        ]
     );
 }
 
@@ -227,7 +233,7 @@ fn a_zero_byte_track_makes_the_sidecar_invalid() {
         [
             ("bonus.flac", ProposedRole::DamagedAudio { damage: AudioDamage::Empty }),
             ("cover.jpg", ProposedRole::Image),
-            ("Scans/booklet.txt", ProposedRole::Document),
+            ("Scans/booklet.txt", ProposedRole::Document { kind: DocumentKind::Text }),
         ],
         "every file, as the scan read it"
     );

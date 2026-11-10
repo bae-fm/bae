@@ -2,6 +2,7 @@
 //! sidecar files, each given its role the way a release's are.
 
 use super::*;
+use bae_records::DocumentKind;
 
 /// The files under `folder` that no release read there owns, each given its
 /// role the way a release's are — `folder` holds no audio, so every one is an
@@ -28,13 +29,14 @@ pub(super) fn categorize_sidecar(
                 )))
             }
             // A sheet with no audio beside it names nothing here to play.
-            ProposedRole::Cue => ProposedRole::Document,
+            ProposedRole::Cue => ProposedRole::Document { kind: DocumentKind::CueSheet },
             role => role,
         };
         let release_role = match role {
             ProposedRole::Image => Some(FileRole::Artwork),
             ProposedRole::DamagedImage => Some(FileRole::DamagedImage),
-            ProposedRole::Document | ProposedRole::Cue => Some(FileRole::Document),
+            ProposedRole::Document { kind } => Some(FileRole::Document { kind }),
+            ProposedRole::Cue => Some(FileRole::Document { kind: DocumentKind::CueSheet }),
             ProposedRole::Other => Some(FileRole::Other),
             ProposedRole::DamagedAudio { .. } | ProposedRole::Audio => None,
         };

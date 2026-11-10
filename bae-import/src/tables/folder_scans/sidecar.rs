@@ -22,7 +22,8 @@ const SIDECAR_COLUMNS: &str = "sidecar.folder, sidecar.watched_folder_path, side
      (SELECT json_group_array(json_object( \
           'relative_path', file.relative_path, 'absolute_path', hex(file.absolute_path), \
           'size', file.size, 'modified_at_ns', file.modified_at_ns, 'role', file.role, \
-          'audio_damage', file.audio_damage) ORDER BY file.position) \
+          'audio_damage', file.audio_damage, 'document_kind', file.document_kind) \
+          ORDER BY file.position) \
       FROM scan_sidecar_file AS file WHERE file.folder = sidecar.folder) AS files";
 
 /// One sidecar's [`SIDECAR_COLUMNS`] as SQLite hands them over.
@@ -52,6 +53,7 @@ struct SidecarFileRow {
     modified_at_ns: i64,
     role: String,
     audio_damage: Option<String>,
+    document_kind: Option<String>,
 }
 
 impl StoredSidecar {
@@ -87,12 +89,18 @@ impl StoredSidecar {
                                 to_u64(row.size, "a sidecar file's size")?,
                                 row.modified_at_ns,
                             ),
-                            role: match (row.role.as_str(), row.audio_damage) {
-                                ("artwork", None) => FileRole::Artwork,
-                                ("damaged_image", None) => FileRole::DamagedImage,
-                                ("document", None) => FileRole::Document,
-                                ("other", None) => FileRole::Other,
-                                (other, _) => {
+                            role: match (
+                                row.role.as_str(),
+                                row.audio_damage,
+                                row.document_kind.as_deref(),
+                            ) {
+                                ("artwork", None, None) => FileRole::Artwork,
+                                ("damaged_image", None, None) => FileRole::DamagedImage,
+                                ("document", None, Some(kind)) => {
+                                    FileRole::Document { kind: document_kind_of(kind)? }
+                                }
+                                ("other", None, None) => FileRole::Other,
+                                (other, _, _) => {
                                     return Err(DbError::unreadable(
                                         "scan_sidecar_file.role",
                                         other,
@@ -113,7 +121,11 @@ impl StoredSidecar {
                                 size: to_u64(row.size, "a sidecar file's size")?,
                                 modified_at_ns: row.modified_at_ns,
                             },
-                            role: proposed_role_of(&row.role, row.audio_damage.as_deref())?,
+                            role: proposed_role_of(
+                                &row.role,
+                                row.audio_damage.as_deref(),
+                                row.document_kind.as_deref(),
+                            )?,
                         })
                     })
                     .collect::<Result<_, DbError>>()?,
@@ -185,36 +197,36 @@ pub(super) fn write_sidecar(
         )?;
         return Ok(ScanItemWrite::Unchanged);
     }
-    // Every file the sidecar holds, with the role and damage columns it is
-    // stored under. A sidecar holding a damaged track, or two files showing
+    // Every file the sidecar holds, with the role, damage and document kind
+    // columns it is stored under. A sidecar holding a damaged track, or two files showing
     // one name, holds every one of its files as the scan read them, and they
     // replace a release holding them as the valid ones do.
     // A folder holding a track or a sheet is a release, never a sidecar.
     let files: Vec<StoredSidecarFile<'_>> = match &sidecar.files {
         SidecarFiles::Valid(files) => files
             .iter()
-            .map(|entry| StoredSidecarFile {
-                relative_path: &entry.file.relative_path,
-                path: &entry.file.version.path,
-                size: entry.file.version.size,
-                modified_at_ns: entry.file.version.modified_at_ns,
-                role: match entry.role {
-                    FileRole::Artwork => "artwork",
-                    FileRole::DamagedImage => "damaged_image",
-                    FileRole::Document => "document",
-                    FileRole::Other => "other",
-                    FileRole::Audio | FileRole::TrackSheet { .. } => panic!(
-                        "{} is a sidecar file read as a track or a sheet",
-                        coven::path_text(&entry.file.version.path)
-                    ),
-                },
-                damage: None,
+            .map(|entry| {
+                assert!(
+                    !matches!(entry.role, FileRole::Audio | FileRole::TrackSheet { .. }),
+                    "{} is a sidecar file read as a track or a sheet",
+                    coven::path_text(&entry.file.version.path)
+                );
+                let columns = role_columns(&entry.role);
+                StoredSidecarFile {
+                    relative_path: &entry.file.relative_path,
+                    path: &entry.file.version.path,
+                    size: entry.file.version.size,
+                    modified_at_ns: entry.file.version.modified_at_ns,
+                    role: columns.role,
+                    damage: None,
+                    document_kind: columns.document_kind,
+                }
             })
             .collect(),
         SidecarFiles::Invalid(files) => files
             .iter()
             .map(|file| {
-                let (role, damage) = proposed_role_columns(file.role);
+                let columns = proposed_role_columns(file.role);
                 assert!(
                     !matches!(file.role, ProposedRole::Audio | ProposedRole::Cue),
                     "{} is a sidecar file read as a track or a sheet",
@@ -225,8 +237,9 @@ pub(super) fn write_sidecar(
                     path: &file.file.path,
                     size: file.file.size,
                     modified_at_ns: file.file.modified_at_ns,
-                    role,
-                    damage,
+                    role: columns.role,
+                    damage: columns.audio_damage,
+                    document_kind: columns.document_kind,
                 }
             })
             .collect(),
@@ -272,8 +285,8 @@ pub(super) fn write_sidecar(
         sql.execute(
             "INSERT INTO scan_sidecar_file \
                  (folder, position, relative_path, absolute_path, size, modified_at_ns, role, \
-                  audio_damage) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                  audio_damage, document_kind) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 folder_text,
                 to_i64(position as u64, "a sidecar file's position")?,
@@ -283,6 +296,7 @@ pub(super) fn write_sidecar(
                 entry.modified_at_ns,
                 entry.role,
                 entry.damage,
+                entry.document_kind,
             ],
         )?;
     }
@@ -299,6 +313,7 @@ struct StoredSidecarFile<'a> {
     modified_at_ns: i64,
     role: &'static str,
     damage: Option<&'static str>,
+    document_kind: Option<&'static str>,
 }
 
 /// Delete the sidecars stored for `folders`.

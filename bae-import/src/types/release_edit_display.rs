@@ -270,7 +270,7 @@ fn carried_file(file: &bae_records::DbFile) -> Result<crate::MappingFile, Releas
         role: match file.role {
             ReleaseFileRole::Audio => MappingRole::Audio,
             // The library keeps no sheet's binding: a sheet is the text it is.
-            ReleaseFileRole::TrackSheet | ReleaseFileRole::Document => MappingRole::Document,
+            ReleaseFileRole::TrackSheet | ReleaseFileRole::Document(_) => MappingRole::Document,
             ReleaseFileRole::Artwork => MappingRole::Image,
             ReleaseFileRole::DamagedImage => MappingRole::DamagedImage,
             ReleaseFileRole::Other => MappingRole::Other,

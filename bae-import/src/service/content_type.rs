@@ -37,7 +37,10 @@ pub(super) fn resolve_file_content_type(
                 })
         }
         FileRole::DamagedImage => return Ok(ContentType::OctetStream),
-        FileRole::TrackSheet { .. } | FileRole::Artwork | FileRole::Document | FileRole::Other => {}
+        FileRole::TrackSheet { .. }
+        | FileRole::Artwork
+        | FileRole::Document { .. }
+        | FileRole::Other => {}
     }
     let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
         return Ok(ContentType::OctetStream);
@@ -71,7 +74,7 @@ pub(super) fn release_file_role(role: &crate::folder_scanner::FileRole) -> Relea
         FileRole::TrackSheet { .. } => ReleaseFileRole::TrackSheet,
         FileRole::Artwork => ReleaseFileRole::Artwork,
         FileRole::DamagedImage => ReleaseFileRole::DamagedImage,
-        FileRole::Document => ReleaseFileRole::Document,
+        FileRole::Document { kind } => ReleaseFileRole::Document(*kind),
         FileRole::Other => ReleaseFileRole::Other,
     }
 }

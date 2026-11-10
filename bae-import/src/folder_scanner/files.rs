@@ -162,9 +162,10 @@ pub enum FileRole {
     /// library reads it as a picture. The folder is the release, so it is
     /// carried and comes back on export like every other file.
     DamagedImage,
-    /// Readable evidence: a rip log, a tracklist, a playlist, or a CUE that
-    /// could not be parsed as a sheet.
-    Document,
+    /// Readable evidence, of the kind its name says: a rip log, an
+    /// AccurateRip report, a playlist, other text, or a CUE sheet that could
+    /// not be parsed or has no audio beside it.
+    Document { kind: bae_records::DocumentKind },
     /// In the folder and carried with the release, unrecognized: a scene
     /// sidecar (`.nfo`, `.sfv`, `.md5`), a stray video, a file with no
     /// extension. The folder is the release, so it imports, uploads, and comes
@@ -286,7 +287,18 @@ impl CategorizedFiles {
     pub fn documents(&self) -> impl Iterator<Item = &ScannedFile> {
         self.files
             .iter()
-            .filter(|entry| matches!(entry.role, FileRole::Document))
+            .filter(|entry| matches!(entry.role, FileRole::Document { .. }))
+            .map(|entry| &entry.file)
+    }
+
+    /// The release's documents of `kind`.
+    pub fn documents_of(
+        &self,
+        kind: bae_records::DocumentKind,
+    ) -> impl Iterator<Item = &ScannedFile> {
+        self.files
+            .iter()
+            .filter(move |entry| entry.role == FileRole::Document { kind })
             .map(|entry| &entry.file)
     }
 

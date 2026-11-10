@@ -1,16 +1,12 @@
 use super::*;
 use crate::track_numbers::TrackNumbers;
-use bae_records::ReleaseFileRole;
+use bae_records::{DocumentKind, ReleaseFileRole};
 
 mod play_order;
 
 use play_order::lay_audio_in_play_order;
 
 // ── Extension-based classification (pure, no I/O) ──────────────────────────
-
-/// The text files a folder carries beside its audio: track sheets, rip logs
-/// and the AccurateRip reports rippers write beside them, notes, playlists.
-const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "accurip", "txt", "m3u", "m3u8"];
 
 /// Extensions used by download clients and browsers to mark an
 /// in-progress download. Presence of any of these anywhere in a folder means
@@ -31,19 +27,30 @@ pub(super) fn is_image_file(path: &Path) -> bool {
 }
 
 /// Whether `path`'s extension is `expected`, in any case.
-pub(crate) fn has_extension(path: &Path, expected: &str) -> bool {
+fn has_extension(path: &Path, expected: &str) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())
         .is_some_and(|ext| ext.eq_ignore_ascii_case(expected))
 }
 
-/// Check if a file is a document file (see `DOCUMENT_EXTENSIONS`)
-pub(super) fn is_document_file(path: &Path) -> bool {
-    DOCUMENT_EXTENSIONS.iter().any(|extension| has_extension(path, extension))
+/// The kind of document a file's name says it is, of the text files a folder
+/// carries beside its audio: rip logs and the AccurateRip reports rippers
+/// write beside them, playlists, notes. `None` for any other file. A track
+/// sheet is read apart (`is_cue_file`), and is a document only when it does
+/// not parse.
+fn document_kind(path: &Path) -> Option<DocumentKind> {
+    let extension = path.extension()?.to_str()?.to_ascii_lowercase();
+    match extension.as_str() {
+        "log" => Some(DocumentKind::RipLog),
+        "accurip" => Some(DocumentKind::AccurateRipReport),
+        "m3u" | "m3u8" => Some(DocumentKind::Playlist),
+        "txt" => Some(DocumentKind::Text),
+        _ => None,
+    }
 }
 
 /// Whether a file is a CUE sheet.
-pub(crate) fn is_cue_file(path: &Path) -> bool {
+fn is_cue_file(path: &Path) -> bool {
     has_extension(path, "cue")
 }
 
@@ -134,8 +141,8 @@ pub(super) fn propose_file(
         } else {
             ProposedRole::Image
         }
-    } else if is_document_file(&entry.path) {
-        ProposedRole::Document
+    } else if let Some(kind) = document_kind(&entry.path) {
+        ProposedRole::Document { kind }
     } else {
         // Unrecognized, and carried anyway — the folder is the release.
         ProposedRole::Other
@@ -313,7 +320,7 @@ pub(super) fn categorize_files_from_tree(
             }
             None => {
                 info!("CUE {:?} stays a document", file.version.path);
-                *role = ProposedRole::Document;
+                *role = ProposedRole::Document { kind: DocumentKind::CueSheet };
             }
         }
     }
@@ -329,7 +336,7 @@ pub(super) fn categorize_files_from_tree(
             ),
             ProposedRole::Image => FileRole::Artwork,
             ProposedRole::DamagedImage => FileRole::DamagedImage,
-            ProposedRole::Document => FileRole::Document,
+            ProposedRole::Document { kind } => FileRole::Document { kind },
             ProposedRole::Other => FileRole::Other,
             ProposedRole::DamagedAudio { .. } => {
                 unreachable!("a folder holding damaged audio was judged invalid above")
@@ -398,10 +405,10 @@ pub(crate) fn categorize_library_files(
                             "CUE {:?} no longer parses, so it is read as a document: {error}",
                             file.version.path
                         );
-                        FileRole::Document
+                        FileRole::Document { kind: DocumentKind::CueSheet }
                     }
                 },
-                ReleaseFileRole::Document => FileRole::Document,
+                ReleaseFileRole::Document(kind) => FileRole::Document { kind },
                 ReleaseFileRole::Artwork
                 | ReleaseFileRole::DamagedImage
                 | ReleaseFileRole::Other => return None,

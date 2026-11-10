@@ -8,6 +8,7 @@ use crate::folder_scanner::{
     AudioDamage, FileRole, ProposedRole, ReleaseFileScope, SheetAudioFile, SheetBinding, SheetDisc,
 };
 use crate::VolumeKind;
+use bae_records::DocumentKind;
 
 /// The volume a scan root's row says its folder is on.
 pub(super) fn volume_text(volume: VolumeKind) -> &'static str {
@@ -54,54 +55,80 @@ pub(super) fn scope_of(stored: &str) -> Result<ReleaseFileScope, DbError> {
     }
 }
 
-/// A skipped file's role, and the damage a damaged track names, as the two
-/// columns store them. The roles a release's files share are spelled as
-/// [`role_columns`] spells them.
-pub(super) fn proposed_role_columns(role: ProposedRole) -> (&'static str, Option<&'static str>) {
+/// A skipped file's role, the damage a damaged track names and the kind a
+/// document is, as the three columns store them. The roles a release's files
+/// share are spelled as [`role_columns`] spells them.
+pub(super) struct ProposedRoleColumns {
+    pub(super) role: &'static str,
+    pub(super) audio_damage: Option<&'static str>,
+    pub(super) document_kind: Option<&'static str>,
+}
+
+pub(super) fn proposed_role_columns(role: ProposedRole) -> ProposedRoleColumns {
+    let plain = |role| ProposedRoleColumns { role, audio_damage: None, document_kind: None };
     match role {
-        ProposedRole::Audio => ("audio", None),
-        ProposedRole::DamagedAudio { damage } => (
-            "damaged_audio",
-            Some(match damage {
+        ProposedRole::Audio => plain("audio"),
+        ProposedRole::DamagedAudio { damage } => ProposedRoleColumns {
+            role: "damaged_audio",
+            audio_damage: Some(match damage {
                 AudioDamage::Empty => "empty",
                 AudioDamage::Unreadable => "unreadable",
             }),
-        ),
-        ProposedRole::Cue => ("track_sheet", None),
-        ProposedRole::Image => ("artwork", None),
-        ProposedRole::DamagedImage => ("damaged_image", None),
-        ProposedRole::Document => ("document", None),
-        ProposedRole::Other => ("other", None),
+            document_kind: None,
+        },
+        ProposedRole::Cue => plain("track_sheet"),
+        ProposedRole::Image => plain("artwork"),
+        ProposedRole::DamagedImage => plain("damaged_image"),
+        ProposedRole::Document { kind } => ProposedRoleColumns {
+            role: "document",
+            audio_damage: None,
+            document_kind: Some(kind.as_str()),
+        },
+        ProposedRole::Other => plain("other"),
     }
 }
 
 pub(super) fn proposed_role_of(
     stored: &str,
     damage: Option<&str>,
+    document_kind: Option<&str>,
 ) -> Result<ProposedRole, DbError> {
-    // The table pairs the two columns, so only a damaged track names damage.
-    match (stored, damage) {
-        ("audio", None) => Ok(ProposedRole::Audio),
-        ("damaged_audio", Some("empty")) => {
+    // The table pairs the columns, so only a damaged track names damage, and
+    // only a document a kind.
+    match (stored, damage, document_kind) {
+        ("audio", None, None) => Ok(ProposedRole::Audio),
+        ("damaged_audio", Some("empty"), None) => {
             Ok(ProposedRole::DamagedAudio { damage: AudioDamage::Empty })
         }
-        ("damaged_audio", Some("unreadable")) => {
+        ("damaged_audio", Some("unreadable"), None) => {
             Ok(ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable })
         }
-        ("track_sheet", None) => Ok(ProposedRole::Cue),
-        ("artwork", None) => Ok(ProposedRole::Image),
-        ("damaged_image", None) => Ok(ProposedRole::DamagedImage),
-        ("document", None) => Ok(ProposedRole::Document),
-        ("other", None) => Ok(ProposedRole::Other),
-        stored => Err(DbError::unreadable("scan_skipped_file's role and damage", stored)),
+        ("track_sheet", None, None) => Ok(ProposedRole::Cue),
+        ("artwork", None, None) => Ok(ProposedRole::Image),
+        ("damaged_image", None, None) => Ok(ProposedRole::DamagedImage),
+        ("document", None, Some(kind)) => {
+            Ok(ProposedRole::Document { kind: document_kind_of(kind)? })
+        }
+        ("other", None, None) => Ok(ProposedRole::Other),
+        stored => {
+            Err(DbError::unreadable("a skipped file's role, damage and document kind", stored))
+        }
     }
 }
 
-/// The role, and the columns a track sheet adds to it. The audio a bound
-/// sheet describes is not a column: it is the sheet's `scan_sheet_audio_file`
-/// rows, written after every file of the candidate is in place.
+/// The document kind a scanned file's `document_kind` column names.
+pub(super) fn document_kind_of(stored: &str) -> Result<DocumentKind, DbError> {
+    DocumentKind::from_db_value(stored)
+        .ok_or_else(|| DbError::unreadable("a scanned file's document_kind", stored))
+}
+
+/// The role, and the columns a track sheet or a document adds to it. The
+/// audio a bound sheet describes is not a column: it is the sheet's
+/// `scan_sheet_audio_file` rows, written after every file of the candidate is
+/// in place.
 pub(super) struct RoleColumns<'a> {
     pub(super) role: &'static str,
+    pub(super) document_kind: Option<&'static str>,
     pub(super) sheet_binding: Option<&'static str>,
     pub(super) sheet_binding_codec: Option<&'a str>,
     pub(super) sheet_disc: Option<&'static str>,
@@ -111,6 +138,7 @@ pub(super) struct RoleColumns<'a> {
 pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
     let plain = |role| RoleColumns {
         role,
+        document_kind: None,
         sheet_binding: None,
         sheet_binding_codec: None,
         sheet_disc: None,
@@ -120,7 +148,9 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
         FileRole::Audio => plain("audio"),
         FileRole::Artwork => plain("artwork"),
         FileRole::DamagedImage => plain("damaged_image"),
-        FileRole::Document => plain("document"),
+        FileRole::Document { kind } => {
+            RoleColumns { document_kind: Some(kind.as_str()), ..plain("document") }
+        }
         FileRole::Other => plain("other"),
         FileRole::TrackSheet { binding, disc, .. } => {
             let (sheet_binding, sheet_binding_codec) = match binding {
@@ -135,6 +165,7 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
             };
             RoleColumns {
                 role: "track_sheet",
+                document_kind: None,
                 sheet_binding: Some(sheet_binding),
                 sheet_binding_codec,
                 sheet_disc: Some(sheet_disc),

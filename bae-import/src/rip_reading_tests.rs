@@ -45,12 +45,17 @@ fn lossless(sample_rate_hz: i64, bits: i64, channels: i64) -> AudioFormat {
     }
 }
 
-/// Read one sheet over one file of `format`, with `documents` beside them.
-fn read_folder(sheet: &CueSheet, format: &AudioFormat, documents: &[(&Path, &str)]) -> RipReading {
+/// Read one sheet over one file of `format`, with AccurateRip `reports`
+/// beside them.
+fn read_folder(sheet: &CueSheet, format: &AudioFormat, reports: &[(&Path, &str)]) -> RipReading {
     read(RipArtifacts {
-        documents: documents
+        documents: reports
             .iter()
-            .map(|(path, file)| RipDocument { path, file: Some(file) })
+            .map(|(path, file)| RipDocument {
+                path,
+                file: Some(file),
+                kind: DocumentKind::AccurateRipReport,
+            })
             .collect(),
         sheets: vec![RipSheet {
             sheet,
@@ -135,7 +140,11 @@ fn a_rip_log_proves_a_cd_and_is_the_disc_id() {
     let sheet = sheet(None);
     let format = lossless(96_000, 24, 2);
     let reading = read(RipArtifacts {
-        documents: vec![RipDocument { path: &log, file: Some("Album.log") }],
+        documents: vec![RipDocument {
+            path: &log,
+            file: Some("Album.log"),
+            kind: DocumentKind::RipLog,
+        }],
         sheets: vec![RipSheet {
             sheet: &sheet,
             audio: vec![SheetAudioDuration { file_reference: "Album.flac", duration_ms: 120_000 }],
@@ -199,7 +208,10 @@ fn a_folder_with_a_log_per_disc_computes_every_disc_id() {
     let format = lossless(44_100, 16, 2);
     let sheet_paths: Vec<_> = logs.iter().map(|(log, _)| log.with_file_name("Album.cue")).collect();
     let reading = read(RipArtifacts {
-        documents: logs.iter().map(|(path, file)| RipDocument { path, file: Some(file) }).collect(),
+        documents: logs
+            .iter()
+            .map(|(path, file)| RipDocument { path, file: Some(file), kind: DocumentKind::RipLog })
+            .collect(),
         sheets: sheet_paths
             .iter()
             .map(|path| RipSheet {

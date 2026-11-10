@@ -284,12 +284,12 @@ fn insert_invalid(
         ],
     )?;
     for (position, file) in candidate.files.iter().enumerate() {
-        let (role, damage) = proposed_role_columns(file.role);
+        let columns = proposed_role_columns(file.role);
         sql.execute(
             "INSERT INTO scan_skipped_file \
                  (watched_folder_path, candidate_path, position, relative_path, absolute_path, \
-                  size, modified_at_ns, role, audio_damage) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  size, modified_at_ns, role, audio_damage, document_kind) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 coven::path_bytes(watched_folder_path),
                 key,
@@ -298,8 +298,9 @@ fn insert_invalid(
                 coven::path_bytes(&file.file.path),
                 to_i64(file.file.size, "a skipped file's size")?,
                 file.file.modified_at_ns,
-                role,
-                damage,
+                columns.role,
+                columns.audio_damage,
+                columns.document_kind,
             ],
         )?;
     }
@@ -364,9 +365,9 @@ fn insert_file(
              (watched_folder_path, candidate_path, relative_path, position, absolute_path, \
               size, modified_at_ns, audio_content_type, audio_container, audio_duration_ms, \
               audio_sample_rate_hz, audio_bits_per_sample, audio_bitrate_kbps, audio_channels, \
-              file_name, dir_prefix, role, sheet_binding, \
+              file_name, dir_prefix, role, document_kind, sheet_binding, \
               sheet_binding_codec, sheet_disc, sheet_disc_number) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             coven::path_bytes(watched_folder_path),
             candidate_path,
@@ -389,6 +390,7 @@ fn insert_file(
             file.file.file_name,
             file.file.dir_prefix,
             columns.role,
+            columns.document_kind,
             columns.sheet_binding,
             columns.sheet_binding_codec,
             columns.sheet_disc,

@@ -246,7 +246,7 @@ fn the_files_no_track_plays_from_are_listed_with_their_roles() {
         stored_file("disc.cue", TrackSheet, None),
         stored_file("disc.flac", Audio, Some(SourceAudioLayout::Cue)),
         stored_file("notes.nfo", Other, None),
-        stored_file("rip.log", Document, None),
+        stored_file("rip.log", Document(bae_records::DocumentKind::RipLog), None),
     ];
 
     let display = ReleaseEditDisplayContext::from_raw(&raw, tracks).unwrap();

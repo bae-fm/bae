@@ -5,10 +5,10 @@
 
 use crate::cue_sheet::CueSheet;
 use crate::discid::{calculate_mb_discid_from_cue, discid_from_log_text, SheetAudioDuration};
-use crate::folder_scanner::has_extension;
 use bae_catalogs::rip::rate_ruling_out_cd;
 use bae_catalogs::{AudioOrigin, AudioSource, CdProof};
 use bae_identify::signals::{ComputedDiscId, DiscIdSignal};
+use bae_records::DocumentKind;
 use bae_types::audio_format::AudioFormat;
 use std::path::Path;
 use tracing::{debug, trace, warn};
@@ -89,17 +89,13 @@ impl DiscIdReading {
     }
 }
 
-/// A document that may be a rip log or an AccurateRip report.
+/// A rip log or an AccurateRip report.
 struct RipDocument<'a> {
     path: &'a Path,
     /// The candidate-relative path, where the document is a folder's file.
     file: Option<&'a str>,
-}
-
-impl RipDocument<'_> {
-    fn is_log(&self) -> bool {
-        has_extension(self.path, "log")
-    }
+    /// A rip log or an AccurateRip report.
+    kind: DocumentKind,
 }
 
 /// A track sheet with the measured length of every audio file it names.
@@ -112,18 +108,12 @@ struct RipSheet<'a> {
 
 /// Everything of a candidate's that speaks to where its audio came from.
 struct RipArtifacts<'a> {
-    /// The logs and AccurateRip reports, in the order found.
+    /// The logs, then the AccurateRip reports.
     documents: Vec<RipDocument<'a>>,
     /// The sheets that lay out the candidate's tracks.
     sheets: Vec<RipSheet<'a>>,
     /// The format of every one of the candidate's audio files.
     audio: Vec<&'a AudioFormat>,
-}
-
-/// Whether a document is one a rip reading reads: a rip log, or an
-/// AccurateRip report.
-pub(crate) fn is_rip_document(path: &Path) -> bool {
-    has_extension(path, "log") || has_extension(path, "accurip")
 }
 
 /// Read the artifacts. Every log whose table of contents reads is a disc ID
@@ -136,11 +126,8 @@ pub(crate) fn is_rip_document(path: &Path) -> bool {
 /// one rip per disc yields one disc ID per disc; one hashed twice is kept
 /// once. Failures along the way log at `debug!` so the chain shows up in
 /// traces.
-fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
+fn read(artifacts: RipArtifacts<'_>) -> RipReading {
     let not_cd_rate = rate_ruling_out_cd(artifacts.audio.iter().copied());
-    // Logs first: a log's table of contents is the disc ID as well as the
-    // proof, which a report is not.
-    artifacts.documents.sort_by_key(|document| !document.is_log());
     let mut discs: Vec<ComputedDiscId> = Vec::new();
     let mut read_logs: Vec<&RipDocument<'_>> = Vec::new();
     let mut report = None;
@@ -148,7 +135,7 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
         let Some(text) = read_document(document.path) else {
             continue;
         };
-        if document.is_log() {
+        if document.kind == DocumentKind::RipLog {
             trace!("Reading LOG file: {:?}", document.path);
             match discid_from_log_text(&text) {
                 Ok(disc_id) => {
@@ -262,10 +249,17 @@ fn read_categorized(
     categorized: &crate::folder_scanner::CategorizedFiles,
     named: fn(&crate::folder_scanner::ScannedFile) -> Option<&str>,
 ) -> RipReading {
-    let documents = categorized
-        .documents()
-        .filter(|doc| is_rip_document(&doc.version.path))
-        .map(|doc| RipDocument { path: &doc.version.path, file: named(doc) })
+    // Logs first: a log's table of contents is the Disc ID as well as the
+    // proof, which a report is not.
+    let rip_documents = |kind| {
+        categorized.documents_of(kind).map(move |doc| RipDocument {
+            path: &doc.version.path,
+            file: named(doc),
+            kind,
+        })
+    };
+    let documents = rip_documents(DocumentKind::RipLog)
+        .chain(rip_documents(DocumentKind::AccurateRipReport))
         .collect();
     let carving = categorized.carving_sheets();
     let sheets = carving

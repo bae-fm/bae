@@ -41,7 +41,7 @@ async fn a_document_written_in_latin1_reads_decoded() {
         temp_dir.path(),
         &release.id,
         "rip.log",
-        ReleaseFileRole::Document,
+        ReleaseFileRole::Document(bae_records::DocumentKind::RipLog),
         b"Caf\xE9",
     )
     .await;

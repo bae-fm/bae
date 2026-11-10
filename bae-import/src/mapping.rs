@@ -298,7 +298,7 @@ fn folder_files_besides(
             // so on its own. The folder is the release, so all of it is still
             // carried. The images are the gallery beside the rows.
             FileRole::Artwork => {}
-            FileRole::Document => file_rows.push(carried(entry, MappingRole::Document)),
+            FileRole::Document { .. } => file_rows.push(carried(entry, MappingRole::Document)),
             FileRole::DamagedImage => file_rows.push(carried(entry, MappingRole::DamagedImage)),
             FileRole::Other => file_rows.push(carried(entry, MappingRole::Other)),
         }
@@ -621,7 +621,7 @@ impl InvalidCandidateDetail {
                 }
                 // A sheet in a folder that is never imported is never bound:
                 // it is the text it is.
-                ProposedRole::Cue | ProposedRole::Document => {
+                ProposedRole::Cue | ProposedRole::Document { .. } => {
                     files.push(entry(MappingRole::Document))
                 }
                 ProposedRole::DamagedImage => files.push(entry(MappingRole::DamagedImage)),

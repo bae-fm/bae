@@ -34,7 +34,7 @@ impl BridgeCandidateFile {
             },
             FileRole::Artwork => BridgeFileRole::Artwork { choice: cover_choice },
             FileRole::DamagedImage => BridgeFileRole::DamagedImage,
-            FileRole::Document => BridgeFileRole::Document,
+            FileRole::Document { .. } => BridgeFileRole::Document,
             FileRole::Other => BridgeFileRole::Other,
         };
         BridgeCandidateFile { file, role }
