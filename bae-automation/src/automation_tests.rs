@@ -578,6 +578,142 @@ mod release_album {
     }
 }
 
+/// An MCP metadata edit hands over its credits' catalog ids as the caller
+/// wrote them, so its credits can disagree about one artist where a catalog's
+/// never do: the write is refused and nothing of it lands.
+mod conflicting_source_ids {
+    use super::*;
+    use bae_catalogs::credits::ArtistCredit;
+    use bae_import::{ArtistAssignment, Credited, ReleaseUserEdit, TrackArtistAssignments};
+    use bae_library::test_libraries::{ImportedRelease, TestLibrary};
+
+    /// A library release of one track, imported, and the automation over it.
+    async fn imported_release() -> (TestLibrary, ImportedRelease, Automation) {
+        let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+        let (library, imported) = bae_library::test_libraries::imported_release_setup_with(
+            &fakes,
+            bae_catalogs::test_releases::discogs_test_release(
+                "conflicting-ids",
+                "Album Title",
+                &[("Track One", "0:10")],
+            ),
+            "conflicting",
+            "conflicting-ids-import".to_string(),
+            |dir| {
+                bae_import::test_fixtures::write_tagged_flac(dir, "01 Track One.flac", "Track One");
+            },
+        )
+        .await
+        .expect("import the release the edit lands on");
+        let services = bae_app::test_services::start_services(&library)
+            .await
+            .expect("the test library's services start");
+        (library, imported, Automation::new(services))
+    }
+
+    fn credit(name: &str, musicbrainz: Option<&str>, discogs: Option<&str>) -> Credited {
+        Credited::plain(ArtistAssignment::Credit {
+            credit: ArtistCredit {
+                name: name.to_string(),
+                sort_name: None,
+                musicbrainz_artist_id: musicbrainz.map(str::to_string),
+                discogs_artist_id: discogs.map(str::to_string),
+                credited_as: None,
+            },
+        })
+    }
+
+    /// `release_metadata_update` titling the album `title` and crediting it
+    /// to `album_artists`, as an MCP client sends it.
+    async fn update(
+        automation: &Automation,
+        release_id: &str,
+        title: &str,
+        album_artists: Vec<Credited>,
+    ) -> Result<Value, AutomationError> {
+        let edit = ReleaseUserEdit {
+            album_title: title.to_string(),
+            album_artist_assignments: album_artists,
+            album_year: None,
+            pressing: bae_types::pressing::Pressing::blank(),
+            tracks: vec![TrackUserEdit {
+                title: "Track One".to_string(),
+                artist_assignments: TrackArtistAssignments::AlbumArtists,
+                file: None,
+            }],
+        };
+        automation
+            .call_tool(
+                AutomationTool::ReleaseMetadataUpdate,
+                serde_json::json!({
+                    "release_id": release_id,
+                    "edit": AutomationReleaseUserEdit::from_core(edit),
+                }),
+            )
+            .await
+    }
+
+    async fn album_title(library: &TestLibrary, release_id: &str) -> String {
+        let manager = library.manager();
+        let album_id = manager.get_album_id_for_release(release_id).await.unwrap();
+        manager.get_album_by_id(&album_id).await.unwrap().expect("the release's album").title
+    }
+
+    /// Two credits sharing a MusicBrainz id and naming two Discogs ids are
+    /// one artist with two Discogs ids, which no write records.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn two_credits_naming_one_artist_by_different_discogs_ids_are_refused() {
+        let (library, imported, automation) = imported_release().await;
+        let musicbrainz = "00000000-0000-4000-8000-000000000001";
+
+        let refused = update(
+            &automation,
+            &imported.release_id,
+            "Edited Title",
+            vec![
+                credit("Artist Name", Some(musicbrainz), Some("1001")),
+                credit("Artist Name", Some(musicbrainz), Some("1002")),
+            ],
+        )
+        .await
+        .expect_err("the credits disagree about the artist's Discogs id");
+
+        assert_eq!(refused.kind(), "import");
+        assert_eq!(refused.message(), "artist 'Artist Name' has conflicting source IDs");
+        assert_eq!(album_title(&library, &imported.release_id).await, "Album Title");
+    }
+
+    /// An edit that gives the library's Various Artists artist another
+    /// Discogs id than Discogs' own Various Artists entry leaves every later
+    /// credit of that entry refused.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_various_artists_artist_holding_another_discogs_id_refuses_discogs_various_artists() {
+        let (library, imported, automation) = imported_release().await;
+        let various = &bae_records::VARIOUS_ARTISTS;
+
+        update(
+            &automation,
+            &imported.release_id,
+            "First Edit",
+            vec![credit("Various Artists", Some(various.musicbrainz), Some("1001"))],
+        )
+        .await
+        .expect("a new artist holds the edit's two ids");
+        let refused = update(
+            &automation,
+            &imported.release_id,
+            "Second Edit",
+            vec![credit("Various Artists", None, Some(various.discogs))],
+        )
+        .await
+        .expect_err("the Various Artists artist holds another Discogs id");
+
+        assert_eq!(refused.kind(), "import");
+        assert_eq!(refused.message(), "artist 'Various Artists' has conflicting source IDs");
+        assert_eq!(album_title(&library, &imported.release_id).await, "First Edit");
+    }
+}
+
 /// `import_search` asks one source, and only a catalog that answers searches
 /// can be named as it.
 mod import_search_source {
