@@ -549,3 +549,7 @@ fn claimed_records(
 #[cfg(test)]
 #[path = "window_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "row_kinds_tests.rs"]
+mod row_kinds_tests;
