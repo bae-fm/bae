@@ -162,6 +162,7 @@ struct SyncStatusStoreTests {
             libraryFullWidth: false,
             savePresets: [],
             filenameTokens: [],
+            folderTokens: [.artist, .album],
             lastSavePreset: "flac",
             castEnabled: false,
             castTranscodeFormat: .mp3,

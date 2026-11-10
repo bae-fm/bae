@@ -39,12 +39,16 @@ impl LibraryManager {
         preset_id: &str,
     ) -> Result<(), LibraryError> {
         let preset = self.save_preset_for(preset_id).await?;
-        let filename_tokens = self.preferences().await?.save_filename_tokens;
+        let preferences = self.preferences().await?;
         let preset_id = preset.id.clone();
         self.enqueue_output(
             release_id,
             target_dir,
-            bae_transfers::OutputKind::Save { preset, filename_tokens },
+            bae_transfers::OutputKind::Save {
+                preset,
+                filename_tokens: preferences.save_filename_tokens,
+                folder_tokens: preferences.save_folder_tokens,
+            },
         )
         .await?;
         self.set_last_save_preset(preset_id).await?;
@@ -198,11 +202,18 @@ impl LibraryManager {
             .get_release_by_id(release_id)
             .await?
             .ok_or_else(|| LibraryError::release_missing(release_id, output_work(&request.kind)))?;
-        let folder = release.source_folder_name.clone().ok_or_else(|| {
-            LibraryError::Export(format!(
-                "release {release_id} has no source folder name; cannot reconstruct its folder"
-            ))
-        })?;
+        let folder = match &request.kind {
+            bae_transfers::OutputKind::Export => {
+                release.source_folder_name.clone().ok_or_else(|| {
+                    LibraryError::Export(format!(
+                        "release {release_id} has no source folder name; cannot reconstruct its folder"
+                    ))
+                })?
+            }
+            bae_transfers::OutputKind::Save { folder_tokens, .. } => {
+                self.save_folder_name(&release, folder_tokens).await?
+            }
+        };
         let final_dir = request
             .target_dir
             .join(bae_records::stored_name::folder_path(release_id, &folder)?.local_path());
@@ -219,7 +230,7 @@ impl LibraryManager {
             bae_transfers::OutputKind::Export => {
                 self.copy_release_files_to_staging(release_id, &folder, staging.path()).await?;
             }
-            bae_transfers::OutputKind::Save { preset, filename_tokens } => {
+            bae_transfers::OutputKind::Save { preset, filename_tokens, .. } => {
                 info!(
                     release_id,
                     folder = folder.as_str(),
@@ -242,6 +253,29 @@ impl LibraryManager {
             .await??;
         staging.disarm();
         Ok(())
+    }
+
+    /// The name of the folder a save of `release` writes into: the folder name
+    /// pattern rendered from the release's data, read from the database alone.
+    async fn save_folder_name(
+        &self,
+        release: &DbRelease,
+        tokens: &[bae_preferences::SaveFolderToken],
+    ) -> Result<String, LibraryError> {
+        let album = self.records.get_album_for_release(release).await?;
+        let album_artists = self.records.get_artists_for_album(&album.id).await?;
+        let labels = &release.pressing.labels;
+        let tags = crate::save::SaveFolderTags {
+            artist: bae_records::credits::library_line(&album_artists),
+            year: release.shown_year(album.year),
+            album: album.title,
+            label: labels.iter().find_map(|label| label.name()).map(str::to_string),
+            catalog_number: labels
+                .iter()
+                .find_map(|label| label.catalog_number())
+                .map(str::to_string),
+        };
+        Ok(crate::save::render_save_folder_name(tokens, &tags))
     }
 
     /// Write a release's output to `target_dir`, bypassing the output queue.

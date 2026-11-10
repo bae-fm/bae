@@ -34,6 +34,7 @@ import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSaveBitDepth
 import uniffi.bae_bridge.BridgeSaveCodec
 import uniffi.bae_bridge.BridgeSaveFilenameToken
+import uniffi.bae_bridge.BridgeSaveFolderToken
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSidePauseCountdown
@@ -294,6 +295,11 @@ object BridgeFixtures {
                 listOf(
                     BridgeSaveFilenameToken.TRACK_NUMBER,
                     BridgeSaveFilenameToken.TITLE,
+                ),
+            folderTokens =
+                listOf(
+                    BridgeSaveFolderToken.ARTIST,
+                    BridgeSaveFolderToken.ALBUM,
                 ),
             lastSavePreset = "flac",
             castEnabled = false,

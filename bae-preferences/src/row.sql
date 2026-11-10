@@ -78,6 +78,13 @@ CREATE TABLE IF NOT EXISTS save_filename_token (
         'title', 'artist', 'album', 'year', 'track_number', 'disc_number', 'track_total'))
 ) STRICT;
 
+-- The folder name pattern a release save names its folder by: its tokens in
+-- order.
+CREATE TABLE IF NOT EXISTS save_folder_token (
+    position INTEGER PRIMARY KEY CHECK (position >= 0),
+    token    TEXT NOT NULL CHECK (token IN ('artist', 'album', 'year', 'label', 'catalog_number'))
+) STRICT;
+
 INSERT OR IGNORE INTO save_preset (
     id, position, name, codec, bit_depth, bitrate_kbps, embed_cover)
 VALUES
@@ -85,6 +92,8 @@ VALUES
     ('mp3', 1, 'MP3', 'mp3', NULL, 320, 1);
 INSERT OR IGNORE INTO save_filename_token (position, token)
 VALUES (0, 'track_number'), (1, 'title');
+INSERT OR IGNORE INTO save_folder_token (position, token)
+VALUES (0, 'artist'), (1, 'album');
 INSERT OR IGNORE INTO preferences (
     singleton, discogs_key, replay_gain_mode, last_save_preset, pause_between_sides,
     side_pause_countdown_seconds,

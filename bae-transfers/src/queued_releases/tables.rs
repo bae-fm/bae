@@ -81,24 +81,28 @@ impl QueuedPayload for DownloadRequest {
 }
 
 /// An output carries its target folder and what it writes there, a save its
-/// preset and filename pattern whole.
+/// preset and filename and folder name patterns whole.
 impl QueuedPayload for OutputRequest {
     const QUEUE: &'static str = "output";
     const TABLE: &'static str = "output_queue";
-    const COLUMNS: &'static [&'static str] = &["target_dir", "kind", "preset", "filename_tokens"];
+    const COLUMNS: &'static [&'static str] =
+        &["target_dir", "kind", "preset", "filename_tokens", "folder_tokens"];
     const NEEDS_NETWORK: bool = false;
 
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError> {
-        let (kind, preset, filename_tokens) = match &self.kind {
-            OutputKind::Export => ("export", None, None),
-            OutputKind::Save { preset, filename_tokens } => (
+        let (kind, preset, filename_tokens, folder_tokens) = match &self.kind {
+            OutputKind::Export => ("export", None, None, None),
+            OutputKind::Save { preset, filename_tokens, folder_tokens } => (
                 "save",
                 Some(serde_json::to_string(preset).map_err(|error| {
                     DbError::encode(format!("save preset {}", preset.id), error)
                 })?),
                 Some(serde_json::to_string(filename_tokens).map_err(|error| {
                     DbError::encode(format!("save filename pattern of {}", preset.id), error)
+                })?),
+                Some(serde_json::to_string(folder_tokens).map_err(|error| {
+                    DbError::encode(format!("save folder pattern of {}", preset.id), error)
                 })?),
             ),
         };
@@ -107,6 +111,7 @@ impl QueuedPayload for OutputRequest {
             Value::Text(kind.to_string()),
             preset.map_or(Value::Null, Value::Text),
             filename_tokens.map_or(Value::Null, Value::Text),
+            folder_tokens.map_or(Value::Null, Value::Text),
         ])
     }
 
@@ -115,21 +120,26 @@ impl QueuedPayload for OutputRequest {
         let kind: String = row.get(at + 1)?;
         let preset: Option<String> = row.get(at + 2)?;
         let filename_tokens: Option<String> = row.get(at + 3)?;
-        let kind = match (kind.as_str(), preset, filename_tokens) {
-            ("export", None, None) => OutputKind::Export,
-            ("save", Some(preset), Some(filename_tokens)) => OutputKind::Save {
-                preset: serde_json::from_str(&preset)
-                    .map_err(|error| column_conversion_error(row, at + 2, error))?,
-                filename_tokens: serde_json::from_str(&filename_tokens)
-                    .map_err(|error| column_conversion_error(row, at + 3, error))?,
-            },
-            (kind, preset, filename_tokens) => {
+        let folder_tokens: Option<String> = row.get(at + 4)?;
+        let kind = match (kind.as_str(), preset, filename_tokens, folder_tokens) {
+            ("export", None, None, None) => OutputKind::Export,
+            ("save", Some(preset), Some(filename_tokens), Some(folder_tokens)) => {
+                OutputKind::Save {
+                    preset: serde_json::from_str(&preset)
+                        .map_err(|error| column_conversion_error(row, at + 2, error))?,
+                    filename_tokens: serde_json::from_str(&filename_tokens)
+                        .map_err(|error| column_conversion_error(row, at + 3, error))?,
+                    folder_tokens: serde_json::from_str(&folder_tokens)
+                        .map_err(|error| column_conversion_error(row, at + 4, error))?,
+                }
+            }
+            (kind, preset, filename_tokens, folder_tokens) => {
                 return Err(column_conversion_error(
                     row,
                     at + 1,
                     format!(
-                        "output kind {kind:?} with preset {preset:?} and filename pattern \
-                         {filename_tokens:?}"
+                        "output kind {kind:?} with preset {preset:?}, filename pattern \
+                         {filename_tokens:?} and folder pattern {folder_tokens:?}"
                     ),
                 ))
             }

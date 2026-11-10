@@ -8,7 +8,8 @@
 use super::{
     CastTranscodeFormat, DiscogsValidation, IdentificationPreferences, ImportDestination,
     LookupCatalogPreferences, McpConfig, Preferences, PreferencesError, ReplayGainMode,
-    SaveBitDepth, SaveCodec, SaveFilenameToken, SavePreset, SidePauseCountdown, SubsonicConfig,
+    SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFolderToken, SavePreset, SidePauseCountdown,
+    SubsonicConfig,
 };
 use bae_store::{DbError, Store};
 use coven::{BulkSqlContext, CovenWrite, SqlRead};
@@ -78,6 +79,11 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
             let token: String = row.get("token")?;
             filename_token(&token).ok_or_else(|| invalid(row, "token", token))
         })?;
+    let save_folder_tokens =
+        sql.query("SELECT token FROM save_folder_token ORDER BY position", [], |row| {
+            let token: String = row.get("token")?;
+            folder_token(&token).ok_or_else(|| invalid(row, "token", token))
+        })?;
     sql.query_row("SELECT * FROM preferences", [], |row| {
         let flag = |column: &str| row.get::<_, bool>(column);
         let concurrency = |column: &str| {
@@ -102,6 +108,7 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
             },
             save_presets,
             save_filename_tokens,
+            save_folder_tokens,
             last_save_preset: row.get("last_save_preset")?,
             pause_between_sides: flag("pause_between_sides")?,
             side_pause_countdown: match row.get::<_, Option<u32>>("side_pause_countdown_seconds")? {
@@ -232,11 +239,21 @@ fn write_preferences_on(
             )?;
         }
     }
+    if edited.save_folder_tokens != stored.save_folder_tokens {
+        sql.execute("DELETE FROM save_folder_token", [])?;
+        for (position, token) in edited.save_folder_tokens.iter().enumerate() {
+            sql.execute(
+                "INSERT INTO save_folder_token (position, token) VALUES (?, ?)",
+                params![position as i64, folder_token_column(*token)],
+            )?;
+        }
+    }
     let Preferences {
         discogs,
         replay_gain_mode,
         save_presets: _,
         save_filename_tokens: _,
+        save_folder_tokens: _,
         last_save_preset,
         pause_between_sides,
         side_pause_countdown,
@@ -345,6 +362,27 @@ fn filename_token_column(token: SaveFilenameToken) -> &'static str {
         SaveFilenameToken::TrackNumber => "track_number",
         SaveFilenameToken::DiscNumber => "disc_number",
         SaveFilenameToken::TrackTotal => "track_total",
+    }
+}
+
+fn folder_token(column: &str) -> Option<SaveFolderToken> {
+    Some(match column {
+        "artist" => SaveFolderToken::Artist,
+        "album" => SaveFolderToken::Album,
+        "year" => SaveFolderToken::Year,
+        "label" => SaveFolderToken::Label,
+        "catalog_number" => SaveFolderToken::CatalogNumber,
+        _ => return None,
+    })
+}
+
+fn folder_token_column(token: SaveFolderToken) -> &'static str {
+    match token {
+        SaveFolderToken::Artist => "artist",
+        SaveFolderToken::Album => "album",
+        SaveFolderToken::Year => "year",
+        SaveFolderToken::Label => "label",
+        SaveFolderToken::CatalogNumber => "catalog_number",
     }
 }
 

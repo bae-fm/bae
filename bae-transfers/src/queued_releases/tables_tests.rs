@@ -290,6 +290,7 @@ async fn an_output_keeps_its_target_and_preset() {
             kind: OutputKind::Save {
                 preset: preset.clone(),
                 filename_tokens: vec![bae_preferences::SaveFilenameToken::Artist],
+                folder_tokens: vec![bae_preferences::SaveFolderToken::Album],
             },
         },
     };

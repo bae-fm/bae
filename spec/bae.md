@@ -2379,7 +2379,9 @@ Two ways put a release back on disk, from desktop:
   `Some/Weird:Title` saves as `Some／Weird：Title.flac`; a single track's Save
   as suggests the same name, whatever format it starts in, and choosing
   another format changes only its extension. A release save writes its files into a folder
-  named by the folder pattern, written the same way.
+  named by the folder pattern, written the same way; its pieces are the
+  artist, album, release year, label and catalog number, and one the release
+  does not state drops out.
   A release save creates each track's file new, like export, so two names a
   drive holds as one (`Track Title` and `track title` on a drive that folds
   case) fail the save rather than one track replacing the other; a single

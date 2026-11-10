@@ -116,6 +116,7 @@
                         libraryFullWidth: libraryFullWidth,
                         savePresets: savePresets,
                         filenameTokens: exportFilenameTokens,
+                        folderTokens: [.artist, .album],
                         lastSavePreset: lastSavePreset,
                         castEnabled: castEnabled,
                         castTranscodeFormat: .mp3,

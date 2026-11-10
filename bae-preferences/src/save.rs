@@ -25,6 +25,25 @@ pub(super) fn default_save_filename_tokens() -> Vec<SaveFilenameToken> {
     vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
 }
 
+/// One piece of the folder name pattern a release save names its folder by.
+/// Rendered like a filename pattern: each token's value, the non-empty values
+/// joined with single spaces.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SaveFolderToken {
+    Artist,
+    Album,
+    Year,
+    Label,
+    CatalogNumber,
+}
+
+/// The folder name pattern the schema starts a library with: the artist, then
+/// the album.
+#[cfg(any(test, feature = "test-utils"))]
+pub(super) fn default_save_folder_tokens() -> Vec<SaveFolderToken> {
+    vec![SaveFolderToken::Artist, SaveFolderToken::Album]
+}
+
 /// The bit depth a lossless save format writes: the depth of the track being
 /// saved, or 16 bits for players that can't take more.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

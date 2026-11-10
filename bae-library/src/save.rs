@@ -64,6 +64,56 @@ pub fn render_save_filename(
     "track".to_string()
 }
 
+/// A release's data a folder name pattern draws on, from the database alone.
+pub struct SaveFolderTags {
+    /// The album's line (ALBUMARTIST).
+    pub artist: String,
+    pub album: String,
+    pub year: Option<i32>,
+    /// The first label the pressing states a name for.
+    pub label: Option<String>,
+    /// The first catalog number the pressing states.
+    pub catalog_number: Option<String>,
+}
+
+/// Render the folder name (one name, no extension) a release save writes into
+/// from the ordered token list and the release's data: each token's value, the
+/// non-empty values joined with single spaces, through `sanitize_filename_stem`.
+/// A pattern that renders nothing usable falls back to the album, then to
+/// "release". The name is text: the folder takes it through `coven`'s rule for
+/// a stored name.
+pub fn render_save_folder_name(
+    tokens: &[bae_preferences::SaveFolderToken],
+    tags: &SaveFolderTags,
+) -> String {
+    use bae_preferences::SaveFolderToken;
+
+    let rendered = tokens
+        .iter()
+        .map(|token| match token {
+            SaveFolderToken::Artist => tags.artist.clone(),
+            SaveFolderToken::Album => tags.album.clone(),
+            SaveFolderToken::Year => tags.year.map(|year| year.to_string()).unwrap_or_default(),
+            SaveFolderToken::Label => tags.label.clone().unwrap_or_default(),
+            SaveFolderToken::CatalogNumber => tags.catalog_number.clone().unwrap_or_default(),
+        })
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let name = sanitize_filename_stem(&rendered);
+    if !name.is_empty() {
+        return name;
+    }
+    let album = sanitize_filename_stem(&tags.album);
+    if !album.is_empty() {
+        debug!(album = %tags.album, "folder name pattern rendered empty; using the album");
+        return album;
+    }
+    debug!("folder name pattern and album both empty; using \"release\"");
+    "release".to_string()
+}
+
 /// Tidy a rendered filename stem: whitespace runs collapse to one space,
 /// leading and trailing spaces are trimmed, and a leading '.' is stripped so
 /// the file isn't hidden. What a name may hold on a volume is coven's rule,

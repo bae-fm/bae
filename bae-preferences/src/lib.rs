@@ -25,13 +25,15 @@ pub use presentation::LookupCatalogSetting;
 pub use row::{carry_preferences, preferences, subscribe_preferences, PreferencesRow};
 #[cfg(any(test, feature = "test-utils"))]
 pub use row::{fail_preferences_writes_for_test, plant_unknown_replay_gain_mode_for_test};
-pub use save::{SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFormat, SavePreset};
+pub use save::{
+    SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFolderToken, SaveFormat, SavePreset,
+};
 pub use server::{
     McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,
 };
 
 #[cfg(any(test, feature = "test-utils"))]
-use save::{default_save_filename_tokens, default_save_presets};
+use save::{default_save_filename_tokens, default_save_folder_tokens, default_save_presets};
 
 /// The preferences' part of the library's schema.
 pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[row::SCHEMA];
@@ -273,6 +275,8 @@ pub struct Preferences {
     /// The one filename pattern every save names its files by, whatever the
     /// format: tokens in order, rendered by the library's save.
     pub save_filename_tokens: Vec<SaveFilenameToken>,
+    /// The folder name pattern a release save names its folder by.
+    pub save_folder_tokens: Vec<SaveFolderToken>,
     /// Id of the preset the last save, of a track or a release, used; the
     /// one a save starts with. A required, valid preset id (config validation
     /// keeps it non-dangling).
@@ -337,6 +341,7 @@ impl Default for Preferences {
             replay_gain_mode: ReplayGainMode::Off,
             save_presets: default_save_presets(),
             save_filename_tokens: default_save_filename_tokens(),
+            save_folder_tokens: default_save_folder_tokens(),
             last_save_preset: "flac".to_string(),
             pause_between_sides: true,
             side_pause_countdown: SidePauseCountdown::Off,

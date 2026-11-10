@@ -4,7 +4,7 @@
 //! bytes are downloaded from storage and decrypted with the release's
 //! item key — the same verified read pin and unmanage use.
 
-use bae_preferences::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePreset};
+use bae_preferences::{SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFolderToken, SavePreset};
 use bae_transfers::OutputKind;
 use coven::MemoryStorage;
 use std::fs;
@@ -196,6 +196,55 @@ async fn a_lossless_format_writes_the_depth_of_the_track_it_saves() {
     assert_eq!(depths(&sixteen).await, vec![16, 16]);
 }
 
+/// A release save writes into a folder named by the folder name pattern, from
+/// the release's own data, not the folder it was imported from.
+#[tokio::test]
+async fn a_release_save_names_its_folder_by_the_folder_pattern() {
+    bae_util::test_logs::install();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("source folder");
+    fs::create_dir_all(&album_dir).unwrap();
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let manager = f.library.manager();
+    let release = manager.get_release_by_id(&release_id).await.unwrap().unwrap();
+    let album = f.library.records().get_album_for_release(&release).await.unwrap();
+    let flac = manager.save_presets().await.unwrap().remove(0);
+
+    let saved_folder = |tokens: Vec<SaveFolderToken>, directory: &str| {
+        let (f, release_id, flac) = (&f, &release_id, &flac);
+        let directory = directory.to_string();
+        async move {
+            let target = f.temp_path().join(directory);
+            fs::create_dir_all(&target).unwrap();
+            f.library
+                .manager()
+                .export_release(
+                    release_id,
+                    &target,
+                    OutputKind::Save {
+                        preset: flac.clone(),
+                        filename_tokens: default_tokens(),
+                        folder_tokens: tokens,
+                    },
+                )
+                .await
+                .expect("the release save succeeds");
+            let entries: Vec<_> = fs::read_dir(&target).unwrap().collect();
+            assert_eq!(entries.len(), 1, "one folder per save");
+            entries[0].as_ref().unwrap().file_name().to_string_lossy().to_string()
+        }
+    };
+
+    assert_eq!(saved_folder(vec![SaveFolderToken::Album], "by-album").await, album.title);
+    assert_ne!(album.title, "source folder", "the name is not the import's folder");
+    assert_eq!(
+        saved_folder(Vec::new(), "by-nothing").await,
+        album.title,
+        "a pattern that renders nothing names the folder by the album"
+    );
+}
+
 /// A single track's save records its format as the one the next save starts
 /// with, the same as a release save does.
 #[tokio::test]
@@ -241,7 +290,11 @@ async fn one_filename_pattern_names_every_format() {
                 .export_release(
                     release_id,
                     &target,
-                    OutputKind::Save { preset, filename_tokens: tokens },
+                    OutputKind::Save {
+                        preset,
+                        filename_tokens: tokens,
+                        folder_tokens: default_folder_tokens(),
+                    },
                 )
                 .await
                 .expect("the release save succeeds");
@@ -474,7 +527,11 @@ async fn a_release_save_copies_a_track_already_in_the_format_and_converts_the_re
         .export_release(
             &release_id,
             &target,
-            OutputKind::Save { preset: flac, filename_tokens: default_tokens() },
+            OutputKind::Save {
+                preset: flac,
+                filename_tokens: default_tokens(),
+                folder_tokens: default_folder_tokens(),
+            },
         )
         .await
         .expect("the release saves");
@@ -607,7 +664,11 @@ async fn a_cue_image_saves_one_file_per_track_with_each_gap_before_its_track() {
         .export_release(
             &release_id,
             &target,
-            OutputKind::Save { preset: flac, filename_tokens: default_tokens() },
+            OutputKind::Save {
+                preset: flac,
+                filename_tokens: default_tokens(),
+                folder_tokens: default_folder_tokens(),
+            },
         )
         .await
         .expect("the release saves");
@@ -669,7 +730,11 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
         .export_release(
             &release_id,
             &target,
-            OutputKind::Save { preset, filename_tokens: vec![SaveFilenameToken::Title] },
+            OutputKind::Save {
+                preset,
+                filename_tokens: vec![SaveFilenameToken::Title],
+                folder_tokens: default_folder_tokens(),
+            },
         )
         .await
         .expect_err("two tracks written at one path fail the save");
@@ -710,6 +775,11 @@ async fn export_release_missing_file_is_hard_error() {
     );
 }
 
+/// The folder name pattern a new library starts with.
+fn default_folder_tokens() -> Vec<SaveFolderToken> {
+    vec![SaveFolderToken::Artist, SaveFolderToken::Album]
+}
+
 /// The pattern a new library starts with.
 fn default_tokens() -> Vec<SaveFilenameToken> {
     vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
@@ -746,7 +816,11 @@ async fn peak_sources_open_saving(
         .export_release(
             release_id,
             &target,
-            OutputKind::Save { preset, filename_tokens: default_tokens() },
+            OutputKind::Save {
+                preset,
+                filename_tokens: default_tokens(),
+                folder_tokens: default_folder_tokens(),
+            },
         )
         .await
         .expect("the release save succeeds");

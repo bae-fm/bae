@@ -50,6 +50,8 @@ pub struct BridgeConfig {
     /// The one filename pattern every save names its files by, whatever the
     /// format.
     pub filename_tokens: Vec<BridgeSaveFilenameToken>,
+    /// The folder name pattern a release save names its folder by.
+    pub folder_tokens: Vec<BridgeSaveFolderToken>,
     /// Id of the preset the last save, of a track or a release, used, the one a
     /// save starts with (a valid preset id; core keeps it non-dangling).
     pub last_save_preset: String,

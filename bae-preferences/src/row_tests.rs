@@ -46,6 +46,11 @@ async fn a_new_library_starts_at_the_defaults() {
         vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
         "every format starts named by track number, then title"
     );
+    assert_eq!(
+        prefs.save_folder_tokens,
+        vec![SaveFolderToken::Artist, SaveFolderToken::Album],
+        "a release save starts naming its folder by artist, then album"
+    );
 }
 
 /// Every preference set away from its default reads back as set. Spelled
@@ -79,6 +84,13 @@ async fn every_preference_reads_back_as_set() {
             SaveFilenameToken::TrackNumber,
             SaveFilenameToken::TrackTotal,
             SaveFilenameToken::Title,
+        ],
+        save_folder_tokens: vec![
+            SaveFolderToken::CatalogNumber,
+            SaveFolderToken::Label,
+            SaveFolderToken::Year,
+            SaveFolderToken::Album,
+            SaveFolderToken::Artist,
         ],
         last_save_preset: "sixteen".to_string(),
         pause_between_sides: false,

@@ -40,6 +40,17 @@ pub enum BridgeSaveFilenameToken {
     TrackTotal,
 }
 
+/// One piece of the folder name pattern a release save names its folder by.
+/// Mirror of bae-preferences' `SaveFolderToken`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSaveFolderToken {
+    Artist,
+    Album,
+    Year,
+    Label,
+    CatalogNumber,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSaveCodec {
     Flac { bit_depth: BridgeSaveBitDepth },

@@ -3,8 +3,8 @@ use crate::types::BridgeOutputKind;
 use crate::types::{
     BridgeCastTranscodeFormat, BridgeConfig, BridgeDiscogsTokenStatus, BridgeImportDestination,
     BridgeLookupCatalog, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeSaveBitDepth,
-    BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePreset, BridgeSidePauseCountdown,
-    BridgeSourceAvailability, BridgeSubsonicConfig,
+    BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSaveFolderToken, BridgeSavePreset,
+    BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig,
 };
 
 mirror_enum! {
@@ -88,6 +88,13 @@ impl BridgeSaveCodec {
 }
 
 mirror_enum! {
+    BridgeSaveFolderToken = bae_preferences::SaveFolderToken,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Artist, Album, Year, Label, CatalogNumber },
+}
+
+mirror_enum! {
     BridgeSaveFilenameToken = bae_preferences::SaveFilenameToken,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
@@ -142,6 +149,7 @@ impl BridgeConfig {
             replay_gain_mode: _,
             save_presets,
             save_filename_tokens,
+            save_folder_tokens,
             last_save_preset,
             pause_between_sides,
             side_pause_countdown,
@@ -193,6 +201,11 @@ impl BridgeConfig {
                 .iter()
                 .copied()
                 .map(BridgeSaveFilenameToken::from_core)
+                .collect(),
+            folder_tokens: save_folder_tokens
+                .iter()
+                .copied()
+                .map(BridgeSaveFolderToken::from_core)
                 .collect(),
             last_save_preset: last_save_preset.clone(),
             cast_enabled: *cast_enabled,

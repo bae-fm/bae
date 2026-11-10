@@ -268,3 +268,51 @@ fn a_lossless_codec_encodes_at_the_depth_it_resolves_to() {
         EncodeFormat::PcmAiff { bits_per_sample: 16 }
     ));
 }
+
+fn folder_tags() -> SaveFolderTags {
+    SaveFolderTags {
+        artist: "Mara Quill".to_string(),
+        album: "Low Tide Hours".to_string(),
+        year: Some(1992),
+        label: Some("Harbor Records".to_string()),
+        catalog_number: Some("HR-1042".to_string()),
+    }
+}
+
+/// A folder name is its pattern's values joined with single spaces, and a value
+/// a release does not state drops out.
+#[test]
+fn a_folder_name_joins_the_values_its_pattern_names() {
+    use bae_preferences::SaveFolderToken::*;
+    let tags = folder_tags();
+    assert_eq!(render_save_folder_name(&[Artist, Album], &tags), "Mara Quill Low Tide Hours");
+    assert_eq!(
+        render_save_folder_name(&[Year, Label, CatalogNumber, Album], &tags),
+        "1992 Harbor Records HR-1042 Low Tide Hours"
+    );
+    let unstated = SaveFolderTags { year: None, label: None, catalog_number: None, ..tags };
+    assert_eq!(
+        render_save_folder_name(&[Artist, Year, Label, CatalogNumber, Album], &unstated),
+        "Mara Quill Low Tide Hours"
+    );
+}
+
+/// A pattern that renders nothing falls back to the album, then to a fixed name.
+#[test]
+fn an_empty_folder_name_falls_back_to_the_album() {
+    use bae_preferences::SaveFolderToken::*;
+    let tags = folder_tags();
+    assert_eq!(render_save_folder_name(&[], &tags), "Low Tide Hours");
+    assert_eq!(
+        render_save_folder_name(&[Label], &SaveFolderTags { label: None, ..tags }),
+        "Low Tide Hours"
+    );
+    let nothing = SaveFolderTags {
+        artist: String::new(),
+        album: String::new(),
+        year: None,
+        label: None,
+        catalog_number: None,
+    };
+    assert_eq!(render_save_folder_name(&[Artist], &nothing), "release");
+}

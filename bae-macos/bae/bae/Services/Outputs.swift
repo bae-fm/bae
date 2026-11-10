@@ -34,6 +34,9 @@ final class Outputs: Sendable, Observable {
     /// Set the one filename pattern every save names its files by.
     let setFilenameTokens:
         @Sendable (_ tokens: [BridgeSaveFilenameToken]) async throws -> Void
+    /// Set the folder name pattern a release save names its folder by.
+    let setFolderTokens:
+        @Sendable (_ tokens: [BridgeSaveFolderToken]) async throws -> Void
 
     init(
         newSavePreset:
@@ -61,6 +64,10 @@ final class Outputs: Sendable, Observable {
         setFilenameTokens:
             @escaping @Sendable ([BridgeSaveFilenameToken]) async throws
             -> Void = { _ in
+            },
+        setFolderTokens:
+            @escaping @Sendable ([BridgeSaveFolderToken]) async throws
+            -> Void = { _ in
             }
     ) {
         self.newSavePreset = newSavePreset
@@ -70,6 +77,7 @@ final class Outputs: Sendable, Observable {
         self.cancelOutput = cancelOutput
         self.setSavePresets = setSavePresets
         self.setFilenameTokens = setFilenameTokens
+        self.setFolderTokens = setFolderTokens
     }
 
     convenience init(handle: any AppHandleProtocol, host: BridgeHost) {
@@ -93,6 +101,9 @@ final class Outputs: Sendable, Observable {
             setSavePresets: { try await handle.setSavePresets(presets: $0) },
             setFilenameTokens: {
                 try await handle.setFilenameTokens(tokens: $0)
+            },
+            setFolderTokens: {
+                try await handle.setFolderTokens(tokens: $0)
             }
         )
     }

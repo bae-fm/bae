@@ -85,6 +85,18 @@ forward! { async this => {
             .await?)
     }
 
+    fn set_folder_tokens(tokens: Vec<crate::types::BridgeSaveFolderToken>) -> () {
+        Ok(this
+            .services
+            .set_save_folder_tokens(
+                tokens
+                    .into_iter()
+                    .map(crate::types::BridgeSaveFolderToken::into_core)
+                    .collect(),
+            )
+            .await?)
+    }
+
     fn set_filename_tokens(tokens: Vec<crate::types::BridgeSaveFilenameToken>) -> () {
         Ok(this
             .services

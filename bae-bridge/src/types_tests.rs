@@ -374,6 +374,22 @@ mod conversion_roundtrip {
     }
 
     #[test]
+    fn the_config_carries_the_folder_name_pattern() {
+        let mut config = bae_preferences::Config::with_defaults(
+            coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
+            "/library",
+        );
+        config.prefs.save_folder_tokens = vec![
+            bae_preferences::SaveFolderToken::Label,
+            bae_preferences::SaveFolderToken::CatalogNumber,
+        ];
+        assert_eq!(
+            BridgeConfig::from_core(&config).folder_tokens,
+            vec![BridgeSaveFolderToken::Label, BridgeSaveFolderToken::CatalogNumber]
+        );
+    }
+
+    #[test]
     fn the_config_carries_the_one_filename_pattern() {
         let mut config = bae_preferences::Config::with_defaults(
             coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap()),

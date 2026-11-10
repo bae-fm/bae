@@ -1,19 +1,54 @@
 import BaeKit
 import SwiftUI
 
-/// The filename pattern editor for Save as…: reorderable token chips and an "Add:"
-/// row of unused tokens.
-struct FilenameTokenEditor: View {
-    let tokens: [BridgeSaveFilenameToken]
-    let setTokens: ([BridgeSaveFilenameToken]) -> Void
+/// A piece a save name is made of, as the pane's chips offer it.
+protocol SaveNameToken: Hashable {
+    /// Every token, in the order the "Add:" row offers them.
+    static var allTokens: [Self] { get }
+    var label: String { get }
+    /// This token's value in the settings preview.
+    var sampleValue: String { get }
+    /// The string a chip drag carries; it never leaves the drag session.
+    var dragId: String { get }
+}
+
+extension SaveNameToken {
+    static func token(dragId: String) -> Self? {
+        allTokens.first { $0.dragId == dragId }
+    }
+
+    /// The settings preview of a pattern's name; an empty pattern shows
+    /// `fallback`, as a save names by it.
+    static func previewName(tokens: [Self], fallback: Self) -> String {
+        let name = tokens.map(\.sampleValue).joined(separator: " ")
+        return name.isEmpty ? fallback.sampleValue : name
+    }
+}
+
+/// A name pattern Save as… writes with: its title above, the pattern's
+/// pieces as reorderable chips, an "Add:" row of unused pieces, and a preview
+/// of a name it makes.
+struct SaveNameField<Token: SaveNameToken>: View {
+    let title: LocalizedStringKey
+    let tokens: [Token]
+    let setTokens: ([Token]) -> Void
+    /// A name the pattern makes, shown under the field.
+    let preview: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            Text(title)
+                .themeText(.rowTitle)
             chipField
             if !availableTokens.isEmpty {
                 addRow
             }
+            Text(
+                "Preview: \(Text(preview).monospaced())"
+            )
+            .fieldNote()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var chipField: some View {
@@ -67,18 +102,15 @@ struct FilenameTokenEditor: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var availableTokens: [BridgeSaveFilenameToken] {
-        BridgeSaveFilenameToken.allTokens.filter { !tokens.contains($0) }
+    private var availableTokens: [Token] {
+        Token.allTokens.filter { !tokens.contains($0) }
     }
 
     /// Reinsert a dragged chip before `target`, or at the end when the drop
     /// landed on the field background rather than a chip.
-    private func dropToken(
-        _ items: [String],
-        before target: BridgeSaveFilenameToken?
-    ) -> Bool {
+    private func dropToken(_ items: [String], before target: Token?) -> Bool {
         guard let id = items.first,
-            let dragged = BridgeSaveFilenameToken(dragId: id),
+            let dragged = Token.token(dragId: id),
             tokens.contains(dragged),
             dragged != target
         else { return false }
@@ -94,8 +126,8 @@ struct FilenameTokenEditor: View {
     }
 }
 
-private struct TokenChip: View {
-    let token: BridgeSaveFilenameToken
+private struct TokenChip<Token: SaveNameToken>: View {
+    let token: Token
     let remove: () -> Void
 
     var body: some View {
@@ -119,8 +151,7 @@ private struct TokenChip: View {
     }
 }
 
-extension BridgeSaveFilenameToken {
-    /// Every token, in the order the "Add:" row offers them.
+extension BridgeSaveFilenameToken: SaveNameToken {
     static let allTokens: [Self] = [
         .trackNumber, .title, .artist, .album, .year, .discNumber, .trackTotal,
     ]
@@ -137,8 +168,7 @@ extension BridgeSaveFilenameToken {
         }
     }
 
-    /// This token's value in the settings preview; numbers stay unlocalized,
-    /// as in real filenames.
+    /// Numbers stay unlocalized, as in real filenames.
     var sampleValue: String {
         switch self {
         case .title: String(localized: "Track title")
@@ -151,7 +181,6 @@ extension BridgeSaveFilenameToken {
         }
     }
 
-    /// The string a chip drag carries; it never leaves the drag session.
     var dragId: String {
         switch self {
         case .title: "title"
@@ -163,34 +192,74 @@ extension BridgeSaveFilenameToken {
         case .trackTotal: "trackTotal"
         }
     }
+}
 
-    init?(dragId: String) {
-        guard
-            let token = Self.allTokens.first(where: { $0.dragId == dragId })
-        else { return nil }
-        self = token
+extension BridgeSaveFolderToken: SaveNameToken {
+    static let allTokens: [Self] = [
+        .artist, .album, .year, .label, .catalogNumber,
+    ]
+
+    var label: String {
+        switch self {
+        case .artist: String(localized: "Artist")
+        case .album: String(localized: "Album")
+        case .year: String(localized: "Release year")
+        case .label: String(localized: "Label")
+        case .catalogNumber: String(localized: "Catalog number")
+        }
     }
 
-    /// The settings preview of a pattern's file name, without the extension,
-    /// which the format gives; an empty pattern falls back to the title, as
-    /// the exporter does.
-    static func previewStem(tokens: [Self]) -> String {
-        let stem = tokens.map(\.sampleValue).joined(separator: " ")
-        return stem.isEmpty ? Self.title.sampleValue : stem
+    /// Numbers stay unlocalized, as in real folder names.
+    var sampleValue: String {
+        switch self {
+        case .artist: String(localized: "Artist name")
+        case .album: String(localized: "Album title")
+        case .year: "2020"
+        case .label: String(localized: "Label name")
+        case .catalogNumber: "HR-1042"
+        }
+    }
+
+    var dragId: String {
+        switch self {
+        case .artist: "artist"
+        case .album: "album"
+        case .year: "year"
+        case .label: "label"
+        case .catalogNumber: "catalogNumber"
+        }
     }
 }
 
 #if DEBUG
-    #Preview("Filename token editor") {
+    #Preview("Save name fields") {
         @Previewable
         @State
-        var tokens: [BridgeSaveFilenameToken] = [
-            .trackNumber, .title,
-        ]
+        var fileTokens: [BridgeSaveFilenameToken] = [.trackNumber, .title]
+        @Previewable
+        @State
+        var folderTokens: [BridgeSaveFolderToken] = [.artist, .album]
         Form {
-            FilenameTokenEditor(tokens: tokens, setTokens: { tokens = $0 })
+            SaveNameField(
+                title: "File name",
+                tokens: fileTokens,
+                setTokens: { fileTokens = $0 },
+                preview: BridgeSaveFilenameToken.previewName(
+                    tokens: fileTokens,
+                    fallback: .title
+                ) + ".flac"
+            )
+            SaveNameField(
+                title: "Folder name",
+                tokens: folderTokens,
+                setTokens: { folderTokens = $0 },
+                preview: BridgeSaveFolderToken.previewName(
+                    tokens: folderTokens,
+                    fallback: .album
+                )
+            )
         }
         .formStyle(.grouped)
-        .frame(width: 500, height: 200)
+        .frame(width: 500, height: 420)
     }
 #endif

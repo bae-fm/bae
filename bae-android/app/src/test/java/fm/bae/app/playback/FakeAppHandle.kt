@@ -62,6 +62,7 @@ import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeReportedRenderer
 import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeSaveFilenameToken
+import uniffi.bae_bridge.BridgeSaveFolderToken
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeSearchResults
@@ -434,6 +435,10 @@ internal open class FakeAppHandle(
 
     override fun setMuted(muted: Boolean) {
         unfaked("setMuted")
+    }
+
+    override suspend fun setFolderTokens(tokens: List<BridgeSaveFolderToken>) {
+        unfaked("setFolderTokens")
     }
 
     override suspend fun setFilenameTokens(tokens: List<BridgeSaveFilenameToken>) {

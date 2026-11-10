@@ -311,6 +311,18 @@ impl LibraryManager {
         .await
     }
 
+    /// Set the folder name pattern a release save names its folder by.
+    pub async fn set_save_folder_tokens(
+        &self,
+        tokens: Vec<bae_preferences::SaveFolderToken>,
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        self.update_preferences(move |prefs| {
+            prefs.save_folder_tokens = tokens;
+            Ok(())
+        })
+        .await
+    }
+
     /// Record `preset_id` as the format the last save used, which the next
     /// save starts with.
     #[cfg(desktop)]

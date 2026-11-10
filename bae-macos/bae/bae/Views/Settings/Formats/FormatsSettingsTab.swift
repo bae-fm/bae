@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The Save as pane: the formats and the file names, each written through
+/// The Save as pane: the formats and the names, each written through
 /// `Outputs` and read back from config.
 struct FormatsSettingsTab: View {
     @Environment(ConfigStore.self)
@@ -23,7 +23,7 @@ struct FormatsSettingsTab: View {
     var body: some View {
         Form {
             formatsSection
-            fileNamesSection
+            namesSection
         }
         .formStyle(.grouped)
         .sheet(item: $editingPreset) { editing in
@@ -41,35 +41,48 @@ struct FormatsSettingsTab: View {
         }
     }
 
-    private var fileNamesSection: some View {
+    /// The extension, dot included, of the files the next save writes: those
+    /// of the format last used, as the save panel starts with it.
+    private var nextFileExtension: String {
+        let config = configStore.config
+        guard
+            let preset = config.savePresets.first(where: {
+                $0.id == config.lastSavePreset
+            })
+        else { return "" }
+        return "." + preset.codec.fileExtension
+    }
+
+    private var namesSection: some View {
         Section {
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                FilenameTokenEditor(
+            VStack(alignment: .leading, spacing: ThemeSpace.section) {
+                SaveNameField(
+                    title: "File name",
                     tokens: configStore.config.filenameTokens,
                     setTokens: { tokens in
                         set { try await outputs.setFilenameTokens(tokens) }
-                    }
+                    },
+                    preview: BridgeSaveFilenameToken.previewName(
+                        tokens: configStore.config.filenameTokens,
+                        fallback: .title
+                    ) + nextFileExtension
                 )
-                Text(
-                    "Preview: \(Text(previewStem).monospaced())"
+                SaveNameField(
+                    title: "Folder name",
+                    tokens: configStore.config.folderTokens,
+                    setTokens: { tokens in
+                        set { try await outputs.setFolderTokens(tokens) }
+                    },
+                    preview: BridgeSaveFolderToken.previewName(
+                        tokens: configStore.config.folderTokens,
+                        fallback: .album
+                    )
                 )
-                .fieldNote()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } header: {
-            Text("File names")
-        } footer: {
-            Text("How Save as… names each track's file, in every format.")
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("Names")
         }
-    }
-
-    private var previewStem: String {
-        BridgeSaveFilenameToken.previewStem(
-            tokens: configStore.config.filenameTokens
-        )
     }
 
     private var formatsSection: some View {
