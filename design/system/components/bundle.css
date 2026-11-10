@@ -136,7 +136,7 @@
 
 .bae-m-field { display: flex; flex-direction: column; gap: var(--space-inline); color: var(--text-primary); font: 400 13px var(--font-sans); min-width: 0; }
 .bae-m-field-line { display: flex; align-items: center; gap: var(--space-group); }
-.bae-m-field-label { flex: none; }
+.bae-m-field-label { flex: none; text-align: end; }
 .bae-m-field-auto { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-group); row-gap: var(--space-inline); align-items: center; }
 .bae-m-field-auto .bae-m-field-line { display: contents; }
 .bae-m-field-auto .bae-m-field-note { grid-column: 2; }
@@ -181,6 +181,7 @@
 .bae-m-sheet { margin-top: 36px; display: flex; flex-direction: column; background: var(--elevated); border-radius: 20px; box-shadow: 0 10px 30px var(--shadow); color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-sheet-title { padding: 18px var(--space-edge) 0; font: 700 13px var(--font-sans); }
 .bae-m-sheet-body { padding: 12px var(--space-edge) var(--space-edge); display: flex; flex-direction: column; gap: 10px; }
+.bae-m-sheet-message { font: 400 13px/18px var(--font-sans); color: var(--text-secondary); text-wrap: pretty; }
 .bae-m-sheet-footer { margin-top: var(--space-inline); display: flex; gap: var(--space-related); justify-content: flex-end; }
 .bae-m-sheet-footer-lead { margin-right: auto; display: flex; }
 
@@ -265,6 +266,9 @@
 .bae-a-field-label { position: absolute; top: -9px; left: 12px; padding: 0 4px; background: var(--elevated); font-size: 12px; line-height: 16px; color: var(--text-secondary); }
 .bae-a-input { width: 100%; box-sizing: border-box; padding: 14px var(--space-edge); border: 0; outline: none; background: none; color: var(--text-primary); font: 400 16px var(--font-android); }
 .bae-a-input::placeholder { color: var(--text-secondary); }
+.bae-a-codetext { min-height: calc(3 * 24px + 28px); font: 400 15px/24px var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.bae-m-codetext { height: auto; min-height: calc(3 * 20px + 16px); padding-top: 8px; padding-bottom: 8px; font: 400 13px/20px var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.bae-codetext-placeholder { font-family: var(--font-sans); word-spacing: normal; color: var(--text-secondary); }
 .bae-a-field-focused .bae-a-field-box { box-shadow: inset 0 0 0 2px var(--accent); }
 .bae-a-field-focused .bae-a-field-label { color: var(--accent); }
 .bae-a-field-error .bae-a-field-box { box-shadow: inset 0 0 0 2px var(--danger); }

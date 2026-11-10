@@ -91,7 +91,10 @@
     return h('div', { className: cx('bae-a-field', state === 'focused' && 'bae-a-field-focused', isError && 'bae-a-field-error') },
       h('label', { className: 'bae-a-field-box' },
         h('span', { className: 'bae-a-field-label' }, props.label),
-        h('input', { className: 'bae-a-input', defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false })),
+        props.code
+          ? h('div', { role: 'textbox', 'aria-multiline': true, 'aria-label': props.label, className: 'bae-a-input bae-a-codetext' },
+              props.value ? groupCode(props.value) : h('span', { className: 'bae-codetext-placeholder' }, props.placeholder))
+          : h('input', { className: 'bae-a-input', defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false })),
       line ? h('div', { className: 'bae-a-field-line' }, line) : null);
   }
 

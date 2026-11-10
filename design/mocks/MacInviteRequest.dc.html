@@ -44,8 +44,7 @@ body{margin:0}
       <x-import component-from-global-scope="Bae.MacRow" label="Invite…" action="{{yes}}"></x-import>
     </x-import>
   </x-import>
-  <x-import component-from-global-scope="Bae.MacSheet" title="Dan wants to join" overlay="{{yes}}" width="400">
-    <div style="font-size: 13px; line-height: 18px; color: var(--text-primary)">Approve if their screen shows this code:</div>
+  <x-import component-from-global-scope="Bae.MacSheet" title="Dan wants to join" overlay="{{yes}}" width="400" message="Approve if their screen shows this code:">
     <x-import component-from-global-scope="Bae.MacMatchCode" code="412 778"></x-import>
     <x-import component-from-global-scope="Bae.MacSheetFooter">
       <x-import component-from-global-scope="Bae.MacButton">Decline</x-import>

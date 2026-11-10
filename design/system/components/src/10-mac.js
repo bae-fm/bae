@@ -103,6 +103,13 @@
     return h('button', rest, props.children != null ? props.children : props.label);
   }
 
+  // A code as people read it: groups of four characters with a space between, the way Settings shows a restore code. Spaces typed or pasted drop first.
+  function groupCode(value) {
+    var run = String(value || '').replace(/\s+/g, '');
+    return run ? run.match(/.{1,4}/g).join(' ') : '';
+  }
+
+  // `code`: a field for a restore code or an invite, typed or pasted: several lines tall, monospaced, the code in groups of four as Settings shows it.
   function MacTextField(props) {
     var state = props.state || 'normal';
     var hidden = !!props.labelHidden;
@@ -112,7 +119,9 @@
     var lw = auto ? null : props.labelWidth != null ? Number(props.labelWidth) : 90;
     var isError = state === 'error';
     var line = isError ? props.error : props.note;
-    var input = h('input', {
+    var input = props.code ? h('div', { role: 'textbox', 'aria-multiline': true, 'aria-label': props.label,
+      className: cx('bae-m-input', 'bae-m-codetext', state === 'focused' && 'bae-m-input-focused', isError && 'bae-m-input-error') },
+      props.value ? groupCode(props.value) : h('span', { className: 'bae-codetext-placeholder' }, hidden ? props.label : props.placeholder)) : h('input', {
       className: cx('bae-m-input', state === 'focused' && 'bae-m-input-focused', isError && 'bae-m-input-error'),
       type: props.secret ? 'password' : 'text',
       defaultValue: props.value || '',
@@ -164,7 +173,8 @@
   function MacSheet(props) {
     var panel = h('div', { role: 'dialog', 'aria-label': props.title, className: 'bae-m-sheet', style: { width: Number(props.width || 460) } },
       props.title ? h('div', { className: 'bae-m-sheet-title' }, props.title) : null,
-      h('div', { className: 'bae-m-sheet-body' }, props.children));
+      // `message`: the sheet's line under its title, in secondary text, as an alert's message sits under its title.
+      h('div', { className: 'bae-m-sheet-body' }, props.message ? h('div', { className: 'bae-m-sheet-message' }, props.message) : null, props.children));
     if (!props.overlay) return panel;
     return h('div', { className: 'bae-m-scrim' }, panel);
   }

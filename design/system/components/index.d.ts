@@ -46,7 +46,7 @@ export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' 
 export declare function MacButton(props: MacButtonProps): React.ReactElement;
 
 /** A text field with its label on the left (labelWidth px), or the label as a placeholder (labelHidden). note is a grey line under it; error a red one, shown when state is error. Leave out label when a MacFieldRow holds the field and gives the label. Children sit after the field. */
-export interface MacTextFieldProps { label?: string; value?: string; placeholder?: string; state?: 'normal' | 'focused' | 'off' | 'error'; secret?: boolean; note?: string; error?: string; labelHidden?: boolean; labelWidth?: number | 'auto'; children?: React.ReactNode }
+export interface MacTextFieldProps { label?: string; value?: string; placeholder?: string; code?: boolean; state?: 'normal' | 'focused' | 'off' | 'error'; secret?: boolean; note?: string; error?: string; labelHidden?: boolean; labelWidth?: number | 'auto'; children?: React.ReactNode }
 export declare function MacTextField(props: MacTextFieldProps): React.ReactElement;
 
 /** One choice of several, as a row of a MacBox. */
@@ -78,7 +78,7 @@ export interface MacDisclosureProps { label?: string; open?: boolean; children?:
 export declare function MacDisclosure(props: MacDisclosureProps): React.ReactElement;
 
 /** A sheet: title, divider, content, and a MacSheetFooter last. overlay dims what is under it and sits it at the top. */
-export interface MacSheetProps { title?: string; overlay?: boolean; width?: number; children?: React.ReactNode }
+export interface MacSheetProps { title?: string; message?: string; overlay?: boolean; width?: number; children?: React.ReactNode }
 export declare function MacSheet(props: MacSheetProps): React.ReactElement;
 
 /** A sheet's buttons, on the right. split puts the first child on the left. */
@@ -146,7 +146,7 @@ export interface AndroidAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink
 export declare function AndroidAccentPicker(props: AndroidAccentPickerProps): React.ReactElement;
 
 /** An outlined text field with its label on the border. helper is a grey line under it; error a red one, shown when state is error. */
-export interface AndroidTextFieldProps { label: string; value?: string; placeholder?: string; state?: 'normal' | 'focused' | 'error'; helper?: string; error?: string }
+export interface AndroidTextFieldProps { label: string; value?: string; placeholder?: string; code?: boolean; state?: 'normal' | 'focused' | 'error'; helper?: string; error?: string }
 export declare function AndroidTextField(props: AndroidTextFieldProps): React.ReactElement;
 
 /** One choice of several, in a dialog. */

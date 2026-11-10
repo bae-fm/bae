@@ -253,24 +253,16 @@
   "CodeMacEmpty.dc.html": {
    "h": 600,
    "page": "welcome",
-   "title": "macOS: Add device, before a code",
-   "w": 900,
+   "title": "macOS: Enter code",
+   "w": 690,
    "x": 0,
-   "y": 9716
-  },
-  "CodeMacJoin.dc.html": {
-   "h": 600,
-   "page": "welcome",
-   "title": "macOS: Join library",
-   "w": 900,
-   "x": 4900,
    "y": 9716
   },
   "CodeMacRunning.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: adding, downloading the library",
-   "w": 900,
+   "w": 690,
    "x": 3920,
    "y": 9716
   },
@@ -278,7 +270,7 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: the code read, S3 key needed",
-   "w": 900,
+   "w": 690,
    "x": 1960,
    "y": 9716
   },
@@ -293,8 +285,8 @@
   "CodeMacTyping.dc.html": {
    "h": 600,
    "page": "welcome",
-   "title": "macOS: a code half typed",
-   "w": 900,
+   "title": "macOS: Enter code, half typed",
+   "w": 690,
    "x": 980,
    "y": 9716
   },
@@ -5295,7 +5287,6 @@
   "CodeMacS3.dc.html",
   "CodeMacScan.dc.html",
   "CodeMacRunning.dc.html",
-  "CodeMacJoin.dc.html",
   "ResetAndroidOffered.dc.html",
   "ResetAndroidDialog.dc.html",
   "ResetAndroidWorking.dc.html",
