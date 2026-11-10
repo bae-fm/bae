@@ -43,12 +43,13 @@ async fn a_call_that_panics_is_reported_once_by_the_store() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(tmp.path()).unwrap().coven_app_dir());
     let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
-    let handle = crate::configure_store(installation.builder(), Schema::new(&[]))
-        .clock(clock.clone())
-        .id_source(crate::test_devices::ids_timed_by(&clock))
-        .create_store("Test Library")
-        .await
-        .unwrap();
+    let handle = crate::configure_store(
+        crate::test_devices::test_builder_on(&installation, &clock),
+        Schema::new(&[]),
+    )
+    .create_store("Test Library")
+    .await
+    .unwrap();
     let heard = coven::task::HeardBugs::shared();
     let db = crate::Store::new(handle, clock, heard.clone());
 

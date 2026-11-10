@@ -18,13 +18,14 @@ pub async fn storage_library(
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let (clock, ids) = super::system_sources();
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-    let handle = bae_store::configure_store(installation.builder(), crate::SCHEMA)
-        .clock(clock.clone())
-        .id_source(ids.clone())
-        .storage_connector(storage.clone())
-        .create_store("Test Library")
-        .await
-        .unwrap();
+    let handle = bae_store::configure_store(
+        bae_store::store_builder(&installation, clock.clone(), ids.clone()),
+        crate::SCHEMA,
+    )
+    .storage_connector(storage.clone())
+    .create_store("Test Library")
+    .await
+    .unwrap();
     let store = bae_store::test_devices::store_under(handle, clock.clone());
     let library = super::TestLibrary::open_with(
         store,

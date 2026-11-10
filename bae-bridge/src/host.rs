@@ -80,7 +80,7 @@ impl BridgeHost {
             self.diagnostics.clone(),
             self.clock.clone(),
             self.ids.clone(),
-            self.builder(),
+            self.library_builder(),
             opening.report(),
             start_handle(self.clone(), self.diagnostics.clone()),
         ))
@@ -107,7 +107,7 @@ impl BridgeHost {
             self.diagnostics.clone(),
             self.clock.clone(),
             self.ids.clone(),
-            self.builder(),
+            self.library_builder(),
             opening.report(),
             start_handle(self.clone(), self.diagnostics.clone()),
         ))
@@ -227,7 +227,7 @@ impl BridgeHost {
         bae_library::finish_deletion(
             &self.app_dir,
             &self.coven,
-            self.builder(),
+            self.library_builder(),
             &self.diagnostics,
             store,
             &|step| steps.core(step),
@@ -246,12 +246,8 @@ impl BridgeHost {
         services.remove_library(&self.coven, &|step| steps.core(step)).await
     }
 
-    fn builder(&self) -> coven::CovenBuilder {
-        let builder = self
-            .coven
-            .builder()
-            .clock(self.clock.clone())
-            .id_source(self.ids.clone())
+    fn library_builder(&self) -> coven::CovenBuilder {
+        let builder = bae_store::store_builder(&self.coven, self.clock.clone(), self.ids.clone())
             .oauth_clients(self.oauth_clients.lock().expect(HOST_LOCK).clone());
         #[cfg(desktop)]
         {
@@ -435,7 +431,7 @@ impl BridgeHost {
         opening: Arc<crate::BridgeLibraryOpening>,
     ) -> Result<crate::BridgeUnsentWork, BridgeError> {
         let store = crate::from_app::store(&library_id)?;
-        let builder = self.builder();
+        let builder = self.library_builder();
         let report = opening.report();
         let clock = self.clock.clone();
         self.operations
@@ -552,7 +548,7 @@ impl BridgeHost {
         name: Option<String>,
         setup: Arc<crate::BridgeLibrarySetup>,
     ) -> Result<Arc<crate::OpenedLibrary>, BridgeError> {
-        let builder = self.builder();
+        let builder = self.library_builder();
         let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         let name = match name {
             Some(name) => crate::from_app::name(&name)?,

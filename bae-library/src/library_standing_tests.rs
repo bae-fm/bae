@@ -12,7 +12,7 @@ async fn synced_closed_library(installation: &coven::Coven, name: &str) -> coven
         coven::MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap(),
     );
     let handle = bae_store::configure_store(
-        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        bae_store::test_devices::test_builder(&installation),
         crate::SCHEMA,
     )
     .storage_connector(storage.clone())

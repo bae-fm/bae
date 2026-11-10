@@ -14,12 +14,13 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(tmp.path()).unwrap().coven_app_dir());
     let clock: coven::ClockRef = Arc::new(FixedClock::new(fixed_now().into()));
-    let handle = bae_store::configure_store(installation.builder(), crate::TEST_SCHEMA)
-        .clock(clock.clone())
-        .id_source(bae_store::test_devices::ids_timed_by(&clock))
-        .create_store("Test Library")
-        .await
-        .unwrap();
+    let handle = bae_store::configure_store(
+        bae_store::test_devices::test_builder_on(&installation, &clock),
+        crate::TEST_SCHEMA,
+    )
+    .create_store("Test Library")
+    .await
+    .unwrap();
     let id = handle.store_id();
     let db = bae_store::test_devices::store_under(handle, clock.clone());
     fetched(&db, "release-a").await;
@@ -59,12 +60,13 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     db.close().await.unwrap();
     drop(db);
 
-    let handle = bae_store::configure_store(installation.builder(), crate::TEST_SCHEMA)
-        .clock(clock.clone())
-        .id_source(bae_store::test_devices::ids_timed_by(&clock))
-        .open(id, |_| ())
-        .await
-        .unwrap();
+    let handle = bae_store::configure_store(
+        bae_store::test_devices::test_builder_on(&installation, &clock),
+        crate::TEST_SCHEMA,
+    )
+    .open(id, |_| ())
+    .await
+    .unwrap();
     let reopened = bae_store::test_devices::store_under(handle, clock);
     let loaded = ImportTables::new(reopened).load_import_candidate_states().await.unwrap();
 

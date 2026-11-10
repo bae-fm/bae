@@ -42,9 +42,7 @@ async fn a_restore_over_this_devices_copy_keeps_its_settings() {
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &storage).await;
     let builder = || {
-        installation
-            .builder()
-            .id_source(ordered_ids())
+        bae_store::test_devices::test_builder(&installation)
             .storage_connector(std::sync::Arc::new(storage.for_device()))
     };
     change_settings(builder(), replaced.store).await;
@@ -89,9 +87,7 @@ async fn a_reset_starts_at_a_new_librarys_settings() {
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let (store, _, _) = connected_library(&installation, &storage, "Household").await;
     let builder = || {
-        installation
-            .builder()
-            .id_source(ordered_ids())
+        bae_store::test_devices::test_builder(&installation)
             .storage_connector(std::sync::Arc::new(storage.for_device()))
     };
     change_settings(builder(), store).await;

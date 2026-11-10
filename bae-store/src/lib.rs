@@ -5,6 +5,8 @@
 //! collation the parts declare, list windows, the cancellable live queries a
 //! surface pulls values from, and the names a person enters.
 
+mod builder;
+pub use builder::store_builder;
 mod device_state;
 pub use device_state::FormerDeviceState;
 mod entered_name;

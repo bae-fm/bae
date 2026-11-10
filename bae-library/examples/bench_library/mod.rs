@@ -114,10 +114,11 @@ impl BenchLibrary {
         let app_dir =
             bae_app_dir::AppDir::under_home(directory.path()).map_err(|error| error.to_string())?;
         let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-        let builder = installation
-            .builder()
-            .clock(composition.clock.clone())
-            .id_source(composition.ids.clone());
+        let builder = bae_store::store_builder(
+            &installation,
+            composition.clock.clone(),
+            composition.ids.clone(),
+        );
         let handle = bae_store::configure_store(builder, bae_library::SCHEMA)
             .create_store(name)
             .await

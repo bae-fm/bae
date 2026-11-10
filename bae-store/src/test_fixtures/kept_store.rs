@@ -7,12 +7,10 @@
 //! the folder.
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
-use bae_util::time_ordered_ids::TimeOrderedIds;
 
 use coven::{ClockRef, Coven, StoreId};
 
+use crate::test_devices::test_builder_on;
 use crate::{configure_store, Schema, Store};
 
 /// A new store on `schema` with its folder under `app_dir`, and the keychain
@@ -25,9 +23,7 @@ pub async fn create_kept(
     clock: ClockRef,
 ) -> Store {
     let installation = Coven::in_memory(coven_app_dir(app_dir));
-    let handle = configure_store(installation.builder(), schema)
-        .clock(clock.clone())
-        .id_source(Arc::new(TimeOrderedIds::new(clock.clone())))
+    let handle = configure_store(test_builder_on(&installation, &clock), schema)
         .create_store("Kept Library")
         .await
         .expect("create the kept store");
@@ -46,9 +42,7 @@ pub async fn open_kept(
 ) -> Store {
     let installation = Coven::in_memory_with_saved_keychain(coven_app_dir(app_dir), keychain)
         .expect("load the kept keychain");
-    let handle = configure_store(installation.builder(), schema)
-        .clock(clock.clone())
-        .id_source(Arc::new(TimeOrderedIds::new(clock.clone())))
+    let handle = configure_store(test_builder_on(&installation, &clock), schema)
         .open(id, |_| ())
         .await
         .expect("open the kept store");

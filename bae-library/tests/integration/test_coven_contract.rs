@@ -6,7 +6,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(directory.path()).unwrap().coven_app_dir());
     let handle = bae_store::configure_store(
-        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        bae_store::test_devices::test_builder(&installation),
         bae_library::SCHEMA,
     )
     .create_store("Schema Test")
@@ -79,7 +79,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(directory.path()).unwrap().coven_app_dir());
     let handle = bae_store::configure_store(
-        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        bae_store::test_devices::test_builder(&installation),
         bae_library::SCHEMA,
     )
     .create_store("Upload Test")

@@ -239,13 +239,12 @@ impl Store {
     ) -> Result<Self, DbError> {
         let installation =
             coven::Coven::in_memory(bae_app_dir::AppDir::at(directory)?.coven_app_dir());
-        let ids =
-            std::sync::Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
-        let handle = crate::configure_store(installation.builder(), schema)
-            .clock(clock.clone())
-            .id_source(ids)
-            .create_store("Test Library")
-            .await?;
+        let handle = crate::configure_store(
+            crate::test_devices::test_builder_on(&installation, &clock),
+            schema,
+        )
+        .create_store("Test Library")
+        .await?;
         Ok(Self::new(handle, clock, bugs))
     }
 }

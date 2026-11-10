@@ -91,7 +91,7 @@ impl BridgeHost {
         let name = crate::from_app::name(&profile.library_name)?;
         tracing::info!(name = %profile.library_name, "dev reset: creating the library");
         let created = Arc::new(crate::OpenedLibrary::new(
-            bae_library::create_library(self.builder(), name, &self.diagnostics).await?,
+            bae_library::create_library(self.library_builder(), name, &self.diagnostics).await?,
             self.clone(),
         ));
         let library_id = created.library_id();

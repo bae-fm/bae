@@ -124,13 +124,14 @@ async fn restore_cost(library: Library) {
     let app_dir = AppDir::at(owner_dir.path()).unwrap();
     let ids = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
     let installation = Coven::in_memory(app_dir.coven_app_dir());
-    let handle = bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
-        .clock(clock.clone())
-        .id_source(ids.clone())
-        .storage_connector(storage.clone())
-        .create_store("Library")
-        .await
-        .unwrap();
+    let handle = bae_store::configure_store(
+        bae_store::store_builder(&installation, clock.clone(), ids.clone()),
+        bae_library::SCHEMA,
+    )
+    .storage_connector(storage.clone())
+    .create_store("Library")
+    .await
+    .unwrap();
     handle
         .setup_s3_storage(
             storage.config(),
@@ -196,11 +197,12 @@ async fn restore_cost(library: Library) {
     let (_cancelling, cancel) = tokio::sync::watch::channel(false);
     let restoring = Instant::now();
     let restored = bae_library::restore_from_code(
-        Coven::in_memory(device_app_dir.coven_app_dir())
-            .builder()
-            .clock(clock.clone())
-            .id_source(Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone())))
-            .storage_connector(Arc::new(storage.for_device())),
+        bae_store::store_builder(
+            &Coven::in_memory(device_app_dir.coven_app_dir()),
+            clock.clone(),
+            Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone())),
+        )
+        .storage_connector(Arc::new(storage.for_device())),
         &code,
         None,
         "Ana's phone",

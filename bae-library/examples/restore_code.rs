@@ -50,7 +50,11 @@ fn main() {
     };
     let runtime = tokio::runtime::Runtime::new().expect("build tokio runtime");
     let result: Result<String, String> = runtime.block_on(async {
-        let handle = bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
+        let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
+        let ids =
+            std::sync::Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
+        let builder = bae_store::store_builder(&installation, clock, ids);
+        let handle = bae_store::configure_store(builder, bae_library::SCHEMA)
             .open(store_id, |_| ())
             .await
             .map_err(|e| format!("open store failed: {e}"))?;

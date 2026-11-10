@@ -3,7 +3,6 @@ use bae_library::test_libraries::{
     connect_storage, made_profile, made_profile_on, requested_profile_on, storage_library,
 };
 use bae_people::people::{ProfileError, Sharing};
-use bae_store::test_devices::ordered_ids;
 
 mod avatars;
 
@@ -114,7 +113,7 @@ impl Household {
                 .unwrap(),
         );
         let builder =
-            installation.builder().id_source(ordered_ids()).storage_connector(storage.clone());
+            bae_store::test_devices::test_builder(&installation).storage_connector(storage.clone());
         let builder = match sign_in {
             Some(sign_in) => sign_in.configure(builder),
             None => builder,
@@ -188,9 +187,7 @@ impl Household {
             coven::CloudProvider::S3 => self.storage.for_device(),
             _ => coven::MemoryStorage::for_recipient(&self.storage, GUEST_ACCOUNT).unwrap(),
         };
-        installation
-            .builder()
-            .id_source(ordered_ids())
+        bae_store::test_devices::test_builder(&installation)
             .storage_connector(std::sync::Arc::new(storage))
     }
 

@@ -16,9 +16,7 @@ async fn dropbox_library(
     );
     let owner = bae_library::create_library(
         sign_in.configure(
-            installation_in(dir)
-                .builder()
-                .id_source(bae_store::test_devices::ordered_ids())
+            bae_store::test_devices::test_builder(&installation_in(dir))
                 .storage_connector(storage.clone()),
         ),
         bae_store::EnteredName::parse("Household").unwrap(),
@@ -71,9 +69,7 @@ fn a_stopped_restore_whose_sign_in_dropbox_refuses_signs_in_again_and_finishes()
         let laptop = installation_in(&laptop_dir);
         let builder = || {
             sign_in.configure(
-                laptop
-                    .builder()
-                    .id_source(bae_store::test_devices::ordered_ids())
+                bae_store::test_devices::test_builder(&laptop)
                     .storage_connector(std::sync::Arc::new(storage.for_device())),
             )
         };

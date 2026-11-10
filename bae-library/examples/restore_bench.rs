@@ -93,7 +93,7 @@ async fn restore_runs(
         let installation = coven::Coven::in_memory(new_app_dir.coven_app_dir());
         let (_cancelling, cancel) = tokio::sync::watch::channel(false);
         let started = Instant::now();
-        let builder = installation.builder().clock(clock.clone()).id_source(ids.clone());
+        let builder = bae_store::store_builder(&installation, clock.clone(), ids.clone());
         let device_name = format!("Restore bench {run}");
         let on_status = |status| eprintln!("run {run}: {status:?} at {:?}", started.elapsed());
         let restored = match downloads {

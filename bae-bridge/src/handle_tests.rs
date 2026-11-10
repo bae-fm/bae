@@ -184,7 +184,7 @@ pub(super) fn fresh_test_library(
     let handle = runtime
         .block_on(
             bae_store::configure_store(
-                installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+                bae_store::test_devices::test_builder(&installation),
                 bae_library::SCHEMA,
             )
             .create_store("Test Library"),

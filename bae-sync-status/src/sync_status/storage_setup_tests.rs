@@ -55,7 +55,7 @@ async fn library(
 ) -> (Store, SyncStatus) {
     let installation = coven::Coven::in_memory(app_dir.path().to_path_buf());
     let handle = bae_store::configure_store(
-        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        bae_store::test_devices::test_builder(&installation),
         crate::test_fixtures::TEST_SCHEMA,
     )
     .storage_connector(device)

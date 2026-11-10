@@ -114,7 +114,7 @@ impl BridgeHost {
             .clone()
             .run_to_completion(self.clone(), "restore library", move || async move {
                 match bae_library::restore_from_code(
-                    self.builder(),
+                    self.library_builder(),
                     &code,
                     credentials.map(BridgeS3Credentials::into_core),
                     &device_name,
@@ -161,7 +161,7 @@ impl BridgeHost {
                 move || async move {
                     self.closed(store).await?;
                     match bae_library::restore_replacing_device(
-                        || self.builder(),
+                        || self.library_builder(),
                         store,
                         &code,
                         credentials.map(BridgeS3Credentials::into_core),
@@ -209,7 +209,7 @@ impl BridgeHost {
                 move || async move {
                     self.closed(store).await?;
                     match bae_library::resume_replacement(
-                        self.builder(),
+                        self.library_builder(),
                         store,
                         |status| steps.bootstrap(status, cancellable),
                         &cancel,
@@ -239,7 +239,7 @@ impl BridgeHost {
             .clone()
             .run_to_completion(self.clone(), "restore saved library", move || async move {
                 match bae_library::restore_from_saved_code(
-                    self.builder(),
+                    self.library_builder(),
                     &saved.saved,
                     credentials.map(BridgeS3Credentials::into_core),
                     &device_name,
@@ -272,7 +272,7 @@ impl BridgeHost {
             .clone()
             .run("BridgeHost.join_with_invite", move || async move {
                 let joined = bae_library::join_with_invite(
-                    self.builder(),
+                    self.library_builder(),
                     &code,
                     &device_name,
                     self.clock.clone(),
@@ -296,7 +296,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.unfinished_joins", move || async move {
-                bae_library::unfinished_joins(&self.builder(), &self.diagnostics)
+                bae_library::unfinished_joins(&self.library_builder(), &self.diagnostics)
                     .await
                     .map(|joins| {
                         joins
@@ -323,7 +323,7 @@ impl BridgeHost {
             .clone()
             .run("BridgeHost.resume_join", move || async move {
                 let joined = bae_library::resume_join(
-                    || self.builder(),
+                    || self.library_builder(),
                     &join.join,
                     self.clock.clone(),
                     |status| {
@@ -347,7 +347,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.unfinished_restores", move || async move {
-                bae_library::unfinished_restores(&self.builder(), &self.diagnostics)
+                bae_library::unfinished_restores(&self.library_builder(), &self.diagnostics)
                     .await
                     .map(|restores| {
                         restores
@@ -378,7 +378,7 @@ impl BridgeHost {
             .clone()
             .run_to_completion(self.clone(), "finish restoring library", move || async move {
                 match bae_library::resume_restore(
-                    || self.builder(),
+                    || self.library_builder(),
                     &restore.restore,
                     |status| steps.bootstrap(status, true),
                     &cancel,
@@ -435,7 +435,7 @@ impl BridgeDeviceReset {
             .run_to_completion(self.clone(), "reset device", move || async move {
                 self.host.closed(self.store).await?;
                 match bae_library::reset_device(
-                    self.host.builder(),
+                    self.host.library_builder(),
                     self.store,
                     &self.device_name,
                     |status| steps.bootstrap(status, false),

@@ -66,10 +66,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
     let setup = bae_library::test_libraries::multi_thread_runtime();
     let library_id = setup.block_on(async {
         let handle = bae_library::create_library(
-            installation
-                .builder()
-                .id_source(bae_store::test_devices::ordered_ids())
-                .storage_connector(storage.clone()),
+            bae_store::test_devices::test_builder(&installation).storage_connector(storage.clone()),
             bae_store::EnteredName::parse("Test Library").unwrap(),
             &bae_diagnostics::Diagnostics::noop(),
         )
@@ -98,10 +95,8 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
             .await;
         id
     });
-    let builder = installation
-        .builder()
-        .id_source(bae_store::test_devices::ordered_ids())
-        .storage_connector(storage.clone());
+    let builder =
+        bae_store::test_devices::test_builder(&installation).storage_connector(storage.clone());
     let (app_tx, app_rx) = mpsc::sync_channel(1);
     let startup = std::thread::spawn(move || {
         app_tx

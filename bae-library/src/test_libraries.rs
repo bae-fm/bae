@@ -431,12 +431,13 @@ pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, t
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let (clock, ids) = system_sources();
     let library = runtime.block_on(async {
-        let handle = bae_store::configure_store(installation.builder(), crate::SCHEMA)
-            .clock(clock.clone())
-            .id_source(ids.clone())
-            .create_store("Test Library")
-            .await
-            .expect("create fresh test store");
+        let handle = bae_store::configure_store(
+            bae_store::store_builder(&installation, clock.clone(), ids.clone()),
+            crate::SCHEMA,
+        )
+        .create_store("Test Library")
+        .await
+        .expect("create fresh test store");
         let store = bae_store::test_devices::store_under(handle, clock.clone());
         TestLibrary::open_with(
             store,

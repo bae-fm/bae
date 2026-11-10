@@ -8,7 +8,7 @@ async fn a_keychain_that_refused_right_now_is_not_a_config_failure() {
         coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
     installation.fail_next_keychain_operation();
     let failure = bae_store::configure_store(
-        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        bae_store::test_devices::test_builder(&installation),
         bae_library::SCHEMA,
     )
     .create_store("Unavailable Keychain")
@@ -30,7 +30,7 @@ async fn opening_with_a_locked_keychain_remains_retryable() {
         coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
     installation.fail_next_keychain_operation();
     let failure = bae_store::configure_store(
-        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        bae_store::test_devices::test_builder(&installation),
         bae_library::SCHEMA,
     )
     .create_store("Keychain test")
@@ -83,7 +83,7 @@ fn a_bootstrap_that_fails_after_the_library_starts_closes_it() {
     let handle = runtime
         .block_on(
             bae_store::configure_store(
-                installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+                bae_store::test_devices::test_builder(&installation),
                 bae_library::SCHEMA,
             )
             .create_store("Failing Bootstrap"),

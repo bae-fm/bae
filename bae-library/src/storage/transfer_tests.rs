@@ -37,7 +37,7 @@ async fn manager_with_recording_transport_over_storage() -> (
         bae_app_dir::AppDir::under_home(home.path()).unwrap().coven_app_dir(),
     );
     let handle = bae_store::configure_store(
-        installation.builder().id_source(bae_store::test_devices::ordered_ids()),
+        bae_store::test_devices::test_builder(&installation),
         crate::SCHEMA,
     )
     .clock(Arc::new(coven::SystemClock))
