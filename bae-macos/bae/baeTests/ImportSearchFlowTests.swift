@@ -31,12 +31,13 @@ final class SettingsNavigationTests: XCTestCase {
                     DiscogsSettingsContent(
                         draft: .constant(""),
                         status: .notConfigured,
+                        isEnabled: true,
                         isValidating: false,
+                        wasRejected: false,
                         saveError: nil,
                         readError: nil,
                         onSave: {},
-                        onRecheck: {},
-                        onRemove: {}
+                        onRecheck: {}
                     )
                 }
             }
