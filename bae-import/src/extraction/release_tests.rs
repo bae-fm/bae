@@ -208,7 +208,8 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
     let library = tempfile::TempDir::new().unwrap();
     let (db, release_id) = library_with_release(library.path()).await;
     let records = bae_records::test_fixtures::test_records(&db);
-    for file in categorized.release_files() {
+    for entry in &categorized.files {
+        let file = &entry.file;
         let row = NewReleaseFile {
             id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
             release_id: release_id.clone(),
@@ -217,10 +218,12 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
                 .source_audio
                 .as_ref()
                 .map_or(ContentType::PlainText, |audio| audio.content_type.clone()),
-            role: if file.source_audio.is_some() {
-                bae_records::ReleaseFileRole::Audio
-            } else {
-                bae_records::ReleaseFileRole::Document
+            role: match entry.role {
+                crate::folder_scanner::FileRole::Audio => bae_records::ReleaseFileRole::Audio,
+                crate::folder_scanner::FileRole::TrackSheet { .. } => {
+                    bae_records::ReleaseFileRole::TrackSheet
+                }
+                _ => bae_records::ReleaseFileRole::Document,
             },
             source_audio: file.source_audio.as_ref().map(|audio| {
                 bae_records::source_audio::SourceAudioFile {

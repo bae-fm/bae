@@ -1,5 +1,6 @@
 use super::*;
 use crate::track_numbers::TrackNumbers;
+use bae_records::ReleaseFileRole;
 
 mod play_order;
 
@@ -375,35 +376,35 @@ fn unsettled_sheet(sheet: crate::cue_sheet::CueSheet) -> FileRole {
 }
 
 /// A library release's files on this device, read the way a folder's scan
-/// reads its rip files: audio by the facts its import stored, every CUE that
-/// parses a track sheet bound to that audio and given its disc by the scan's
-/// own rules, and the documents beside them, in name order. A person's
-/// decisions about a folder's sheets are kept with the candidate, not the
-/// release, so the sheets settle as the scan proposes them. Holds only what a
-/// rip reading reads: artwork and other files are left out.
+/// reads its rip files: audio by the facts its import stored, every track
+/// sheet the import stored parsed and bound to that audio and given its disc
+/// by the scan's own rules, and the documents beside them, in name order.
+/// Each file is read as the role its import stored. A person's decisions
+/// about a folder's sheets are kept with the candidate, not the release, so
+/// the sheets settle as the scan proposes them. Holds only what a rip
+/// reading reads: artwork and other files are left out.
 pub(crate) fn categorize_library_files(
-    files: impl IntoIterator<Item = ScannedFile>,
+    files: impl IntoIterator<Item = (ScannedFile, ReleaseFileRole)>,
 ) -> CategorizedFiles {
     let mut files: Vec<CandidateFile> = files
         .into_iter()
-        .filter_map(|file| {
-            let role = if file.source_audio.is_some() {
-                FileRole::Audio
-            } else if is_cue_file(&file.version.path) {
-                match parse_cue_sheet(&file.version.path) {
+        .filter_map(|(file, stored)| {
+            let role = match stored {
+                ReleaseFileRole::Audio => FileRole::Audio,
+                ReleaseFileRole::TrackSheet => match parse_cue_sheet(&file.version.path) {
                     Ok(sheet) => unsettled_sheet(sheet),
                     Err(error) => {
                         info!(
-                            "CUE {:?} does not parse, so it stays a document: {error}",
+                            "CUE {:?} no longer parses, so it is read as a document: {error}",
                             file.version.path
                         );
                         FileRole::Document
                     }
-                }
-            } else if is_document_file(&file.version.path) {
-                FileRole::Document
-            } else {
-                return None;
+                },
+                ReleaseFileRole::Document => FileRole::Document,
+                ReleaseFileRole::Artwork
+                | ReleaseFileRole::DamagedImage
+                | ReleaseFileRole::Other => return None,
             };
             Some(CandidateFile { file, role })
         })

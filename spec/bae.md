@@ -278,6 +278,9 @@ channels, and whether it held one track or a CUE-described disc. Lossless
 codecs state a bit depth; lossy ones a bitrate. The role is kept because the
 content type can't say it: a damaged image is stored as plain bytes, and a CUE
 sheet as text.
+A library release's re-identify reads its files as the role each recorded, not
+from their names: its audio, its track sheets (parsed again from the file) and
+its documents.
 
 The files of a release include everything in its folder, not only the audio:
 the CUE sheet, the rip log, scans of the booklet. A release's folder comes back

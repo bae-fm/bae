@@ -86,13 +86,13 @@ pub async fn resolve_release_identity(
 }
 
 /// A release file as the file at `original`, the path this device recorded
-/// at import, with the audio facts the import stored; `None` when nothing is
+/// at import, with the audio facts the import stored and the role it stored; `None` when nothing is
 /// there now. A release imported elsewhere records no originals here, so it
 /// has no such files. Blocking: it reads the file's metadata.
 fn local_file(
     file: bae_records::DbFile,
     original: PathBuf,
-) -> Option<crate::folder_scanner::ScannedFile> {
+) -> Option<(crate::folder_scanner::ScannedFile, bae_records::ReleaseFileRole)> {
     let metadata = match std::fs::metadata(&original) {
         Ok(metadata) => metadata,
         Err(error) => {
@@ -117,13 +117,14 @@ fn local_file(
         metadata.len(),
         modified_at_ns,
     );
+    let role = file.role;
     scanned.source_audio = file.source_audio.map(|audio| crate::folder_scanner::ScannedAudio {
         content_type: audio.content_type,
         container: audio.container,
         duration_ms: audio.duration_ms,
         format: audio.format,
     });
-    Some(scanned)
+    Some((scanned, role))
 }
 
 /// The artwork the re-identify OCR pass reads: the release's cover, plus every
