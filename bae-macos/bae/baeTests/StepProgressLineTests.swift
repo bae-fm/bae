@@ -43,6 +43,41 @@ struct StepProgressLineTests {
         }
     }
 
+    @Test("a line without a bar shows the step's name alone")
+    func stepWithoutBar() async throws {
+        let size = NSSize(width: 360, height: 120)
+        try await SnapshotTestSupport.withHostedWindow(
+            StepProgressLine(
+                steps: LatestStream.closingSteps(holding: .stoppingSync).only,
+                showsBar: false
+            ) {
+                EmptyView()
+            }
+            .frame(width: size.width, height: size.height, alignment: .top),
+            size: size
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let line = try #require(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? StepProgressNSView<BridgeClosingStep> }
+                    .first
+            )
+            let bar = try #require(
+                SnapshotTestSupport.descendants(of: line)
+                    .compactMap { $0 as? ProgressTrackNSView }
+                    .first
+            )
+            #expect(bar.isHidden)
+            let label = try #require(
+                SnapshotTestSupport.descendants(of: line)
+                    .compactMap { $0 as? NSTextField }
+                    .first
+            )
+            #expect(abs(line.frame.height - label.frame.height) < 1)
+            #expect(label.stringValue.hasPrefix("Stopping sync"))
+        }
+    }
+
     @Test("a step running as the line appears shows from its first layout")
     func stepRunningAtFirstLayout() async throws {
         let size = NSSize(width: 360, height: 120)

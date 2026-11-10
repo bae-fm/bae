@@ -379,4 +379,12 @@ public struct ClosedLibraryOpening: Sendable {
 public struct RunningRemoval: Sendable {
     public let libraryId: String
     public let steps: LibraryClosingSteps
+
+    #if DEBUG
+        /// A removal a preview or shot shows running.
+        public init(libraryId: String, steps: LibraryClosingSteps) {
+            self.libraryId = libraryId
+            self.steps = steps
+        }
+    #endif
 }

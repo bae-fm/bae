@@ -85,8 +85,9 @@ struct LocalLibrariesSection: View {
 /// library that opens, which shows in a popover off the ⋯, then Remove, or
 /// Delete for a library that doesn't sync. While counting or removing opens
 /// the library, a step the open runs shows under the name, and then a step
-/// the removal runs, with a spinner in place of the ⋯; a library that can't
-/// open shows the removal's steps alone.
+/// the removal runs, as its name alone since the spinner in place of the ⋯
+/// shows that it runs; a library that can't open shows the removal's steps
+/// alone.
 private struct LibraryRow: View {
     let library: BridgeLibrary
     let disabled: Bool
@@ -134,8 +135,8 @@ private struct LibraryRow: View {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(library.name)
                     .themeText(.strong)
-                StepProgressLine(steps: removalSteps) {
-                    StepProgressLine(steps: openSteps) {
+                StepProgressLine(steps: removalSteps, showsBar: false) {
+                    StepProgressLine(steps: openSteps, showsBar: false) {
                         if let line = library.stateLine {
                             Text(line)
                                 .themeText(.detail)

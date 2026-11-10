@@ -1,6 +1,7 @@
 #if DEBUG
     import BaeKit
     import Foundation
+    import SwiftUI
 
     // Preview fixtures for the Welcome flow: a library with storage, one
     // without, one that can't be read, one whose restore stopped partway, and
@@ -134,6 +135,44 @@
                 findUnfinished: { nil },
                 finishUnfinished: { _ in }
             )
+        }
+    }
+
+    extension PreviewScenes {
+        /// The first screen's list of this Mac's libraries, one row for each
+        /// state a library is in: one with a cloud home, one with none, which
+        /// offers Delete in place of Remove, one that can't be read, and one
+        /// whose restore, and one whose removal, stopped partway. With
+        /// `removing`, the first of `libraries` is being removed, at that step.
+        static func welcomeLibraries(
+            _ libraries: [BridgeLibrary] = PreviewData.welcomeLibraries,
+            removing step: BridgeClosingStep? = nil
+        ) -> some View {
+            LocalLibrariesSection(
+                libraries: libraries,
+                disabled: false,
+                canDeleteActiveLibrary: true,
+                removing: step.map {
+                    RunningRemoval(
+                        libraryId: libraries[0].id,
+                        steps: LibraryClosingSteps(
+                            host: BaeHost.preview(),
+                            at: $0
+                        )
+                    )
+                },
+                opening: nil,
+                onOpen: { _ in },
+                onFinish: { _, _ in },
+                onFinishRemoving: { _ in },
+                onRemove: { _ in },
+                readStanding: { _ in PreviewData.standingSynced },
+                onCreate: {},
+                onScanCode: {},
+                onEnterCode: {}
+            )
+            .padding()
+            .windowBackground()
         }
     }
 #endif

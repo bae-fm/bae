@@ -6,7 +6,9 @@
 public final class LibraryClosingSteps: Sendable {
     public let closing: BridgeLibraryClosing
     public let steps: LatestSource<BridgeClosingStep>
-    private let feed: LatestFeed
+    /// The feed from the closing, nil for a preview's, whose stream holds a
+    /// step and nothing feeds it.
+    private let feed: LatestFeed?
 
     public init(host: BridgeHost) {
         closing = BridgeLibraryClosing(host: host)
@@ -14,4 +16,14 @@ public final class LibraryClosingSteps: Sendable {
         feed = stream.feed(from: closing)
         steps = stream.only
     }
+
+    #if DEBUG
+        /// A close a preview or shot shows at `step`: its stream holds the
+        /// step, and the closing it is handed never runs.
+        public init(host: BridgeHost, at step: BridgeClosingStep) {
+            closing = BridgeLibraryClosing(host: host)
+            feed = nil
+            steps = LatestStream.closingSteps(holding: step).only
+        }
+    #endif
 }

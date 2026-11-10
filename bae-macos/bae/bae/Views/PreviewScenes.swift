@@ -43,30 +43,6 @@
             .windowBackground()
         }
 
-        /// The first screen's list of this Mac's libraries, one row for each
-        /// state a library is in: one with a cloud home, one with none, which
-        /// offers Delete in place of Remove, one that can't be read, and one
-        /// whose restore, and one whose removal, stopped partway.
-        static func welcomeLibraries() -> some View {
-            LocalLibrariesSection(
-                libraries: PreviewData.welcomeLibraries,
-                disabled: false,
-                canDeleteActiveLibrary: true,
-                removing: nil,
-                opening: nil,
-                onOpen: { _ in },
-                onFinish: { _, _ in },
-                onFinishRemoving: { _ in },
-                onRemove: { _ in },
-                readStanding: { _ in PreviewData.standingSynced },
-                onCreate: {},
-                onScanCode: {},
-                onEnterCode: {}
-            )
-            .padding()
-            .windowBackground()
-        }
-
         /// The screen that offers resetting this device, in the welcome
         /// window's chrome, saying `error`.
         static func deviceReset(error: LoadError) -> some View {

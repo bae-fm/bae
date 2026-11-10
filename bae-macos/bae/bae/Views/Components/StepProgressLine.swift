@@ -104,8 +104,9 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         set { bar.accent = newValue }
     }
 
-    init(accent: NSColor) {
+    init(accent: NSColor, showsBar: Bool = true) {
         bar = ProgressTrackNSView(progress: 0, accent: accent)
+        bar.isHidden = !showsBar
         stack = NSStackView(views: [label, bar])
         super.init(frame: .zero)
         label.font = .systemFont(ofSize: NSFont.systemFontSize)
@@ -178,10 +179,11 @@ private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
     @Environment(\.colorScheme)
     private var colorScheme
     let steps: LatestSource<Step>
+    let showsBar: Bool
     let onStepping: (Bool) -> Void
 
     func makeNSView(context _: Context) -> StepProgressNSView<Step> {
-        let view = StepProgressNSView<Step>(accent: fill)
+        let view = StepProgressNSView<Step>(accent: fill, showsBar: showsBar)
         view.onStepping = onStepping
         view.follow(steps)
         return view
@@ -218,20 +220,24 @@ private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
 
 /// What shows while a library opens or a setup call runs: `idle` until the
 /// call runs a step, then the step's name over a bar of how much of it is
-/// done, in its place. With no call to follow, `idle` alone. Whether a step
+/// done, in its place; with `showsBar` off, the name alone, for a line whose
+/// row shows a spinner already. With no call to follow, `idle` alone. Whether a step
 /// runs is read from the call's stream as the line starts to follow it, and
 /// set as the native line tells a step starting or ending.
 struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
     let steps: LatestSource<Step>?
+    let showsBar: Bool
     let idle: Idle
     @State
     private var stepping: Bool
 
     init(
         steps: LatestSource<Step>?,
+        showsBar: Bool = true,
         @ViewBuilder idle: () -> Idle
     ) {
         self.steps = steps
+        self.showsBar = showsBar
         self.idle = idle()
         _stepping = State(initialValue: steps?.holdsValue ?? false)
     }
@@ -242,7 +248,7 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
                 idle
             }
             if let steps {
-                StepProgressBar(steps: steps) { started in
+                StepProgressBar(steps: steps, showsBar: showsBar) { started in
                     stepping = started
                 }
             }

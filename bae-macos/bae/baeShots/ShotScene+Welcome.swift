@@ -8,13 +8,24 @@ extension ShotScene {
     /// The welcome's list of this Mac's libraries, its window over a Mac that
     /// holds libraries and over one that holds none and no saved restore
     /// code, the screen that offers a reset and the one a failed reset lands
-    /// on, and a library's details.
+    /// on, a library's details, and the list while a library is removed.
     static let welcomeScenes: [ShotScene] = [
         ShotScene(
             id: "welcome-libraries",
             size: CGSize(width: 452, height: 362)
         ) {
             ShotStage(PreviewScenes.welcomeLibraries())
+        },
+        ShotScene(
+            id: "welcome-removing",
+            size: CGSize(width: 452, height: 170)
+        ) {
+            ShotStage(
+                PreviewScenes.welcomeLibraries(
+                    Array(PreviewData.welcomeLibraries.prefix(2)),
+                    removing: .leavingLibrary
+                )
+            )
         },
         ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
             let reads = CountedReads()
@@ -198,7 +209,7 @@ extension ShotScene {
         _ id: String,
         _ status: BridgeLibraryStanding
     ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: 432, height: 380)) {
+        ShotScene(id: id, size: CGSize(width: 320, height: 380)) {
             let reads = CountedReads()
             return ShotStage(
                 PreviewScenes.welcomeLibraryDetails(

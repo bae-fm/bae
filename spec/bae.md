@@ -2706,7 +2706,7 @@ partway, says so under its name, and its menu offers to finish it first. A
 library row shows its name alone otherwise, on a phone and on a Mac: no
 provider line, and nothing for one that never synced. While a removal runs, its
 row shows the step under its name with a spinner in place of the ⋯ (the ⋮ on a
-phone). **Details…** hangs a popover off the ⋯ with the library's sync status as
+phone). **Details…** hangs a popover off the ⋯, titled with the library's name, with its sync status as
 this Mac last knew it (**Synced**, or **Unsent changes** while it holds some it
 never uploaded), when it last synced, and its provider, account and folder. A
 library that is open shows its live sync status; any other is read as it last

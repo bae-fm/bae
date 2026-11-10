@@ -1,11 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// A library in a popover off its row: how it stands with its storage, when
-/// it last synced, and where it is stored. The bridge answers from the open
-/// library's live sync status, or for one that isn't open reads it as this
-/// Mac last knew it without opening it. A library that never synced says so
-/// and has nothing more to show.
+/// A library in a popover off its row, its name the title of its one
+/// section: how it stands with its storage, when it last synced, and where it
+/// is stored. The bridge answers from the open library's live sync status, or
+/// for one that isn't open reads it as this Mac last knew it without opening
+/// it. A library that never synced says so and has nothing more to show.
 struct WelcomeLibraryDetails: View {
     let library: BridgeLibrary
     /// Reads how a library stands with its storage, by its id.
@@ -23,19 +23,14 @@ struct WelcomeLibraryDetails: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            Text(library.name)
-                .themeText(.strong)
-            Form {
-                Section {
-                    rows
-                }
+        Form {
+            Section(library.name) {
+                rows
             }
-            .formStyle(.grouped)
-            .scrollDisabled(true)
         }
-        .padding()
-        .frame(width: 400)
+        .formStyle(.grouped)
+        .scrollDisabled(true)
+        .frame(width: 320)
         .task { await load() }
     }
 
