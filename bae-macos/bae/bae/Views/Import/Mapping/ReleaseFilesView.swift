@@ -101,3 +101,15 @@ struct ReleaseFilesView: View {
         .contentShape(Rectangle())
     }
 }
+
+#if DEBUG
+    #Preview("Release files") {
+        ReleaseFilesView(
+            rows: PreviewData.releaseFilesRows,
+            onOpenDocument: { _, _ in }
+        )
+        .padding(ThemeSpace.section)
+        .frame(width: 560)
+        .windowBackground()
+    }
+#endif

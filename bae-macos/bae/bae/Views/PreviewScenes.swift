@@ -304,6 +304,16 @@
         )
     }
 
+    #Preview("Import Release Queue Selected") {
+        PreviewScenes.importReleaseQueue(
+            scene: PreviewData.releaseQueueSelectedScene(),
+            tab: .pending,
+            collapsePendingGroup: false,
+            refreshingWatchedFolderPath: nil,
+            images: PreviewData.artImageStore()
+        )
+    }
+
     #Preview("Import Release Queue Scanning") {
         PreviewScenes.importReleaseQueue(
             scene: PreviewData.releaseQueueScanningScene(),
