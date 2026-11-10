@@ -28,9 +28,10 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[
 ];
 
 pub(crate) use folder_scans::DbCandidateFileTagSnapshot;
-pub use folder_scans::{FinishedScan, FolderRereadRefusal, ScanItemWrite};
+pub use folder_scans::{FinishedScan, FolderRereadRefusal, ScanEntryMoved, ScanItemWrite};
 pub(crate) use folder_scans::{
-    FolderEntryToWrite, FolderReadingCommit, FolderReadingWrite, ScanItemSeed, ScanItemToWrite,
+    FolderEntryToWrite, FolderReadingCommit, FolderReadingWrite, ScanItemReadings, ScanItemSeed,
+    ScanItemToWrite, ScanWriteError,
 };
 pub use import_list::{ImportListError, SelectionWrite};
 pub(crate) use import_state::{

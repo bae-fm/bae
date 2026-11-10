@@ -33,6 +33,9 @@ async fn persist_scan_items(
         };
         dated.push((entry, folder_date));
     }
+    // The entries that changed after a read found them to be the items
+    // written over them, which every later read seeds.
+    let mut moved = HashSet::new();
     loop {
         // Each item as the file decisions stored right now describe it, and
         // what its own tags seed it with, both read before the commit lock:
@@ -47,9 +50,15 @@ async fn persist_scan_items(
             .collect();
         let (releases, edits_read): (Vec<ScanItem>, Vec<Option<(String, u64)>>) =
             with_stored_file_edits(&releases, tables).await?.into_iter().unzip();
-        let seeds =
-            scan_item_seeds(tables, &services.diagnostics, &releases, generation, reads.clone())
-                .await?;
+        let seeds = scan_item_seeds(
+            tables,
+            &services.diagnostics,
+            &releases,
+            generation,
+            reads.clone(),
+            &moved,
+        )
+        .await?;
         let mut releases = releases.into_iter().zip(seeds).zip(edits_read);
         let mut prepared = Vec::with_capacity(dated.len());
         for (entry, folder_date) in &dated {
@@ -87,8 +96,18 @@ async fn persist_scan_items(
             continue;
         }
         let items = prepared.into_iter().map(|(to_write, _)| to_write).collect();
-        let Some(writes) = tables.save_folder_scan_items(root, generation, items).await? else {
-            return Ok(None);
+        // An entry that changed since it was read as unchanged was not
+        // seeded: seed it as it now stands.
+        let writes = match tables.save_folder_scan_items(root, generation, items).await {
+            Ok(Some(writes)) => writes,
+            Ok(None) => return Ok(None),
+            Err(bae_store::WriteError::Refused(crate::tables::ScanEntryMoved(key))) => {
+                debug!("{key} changed after it was read as unchanged; seeding it again");
+                drop(commit);
+                moved.insert(key);
+                continue;
+            }
+            Err(error) => return Err(error.into()),
         };
         return Ok(Some(PersistedScanItems { commit, writes }));
     }
@@ -276,27 +295,37 @@ pub(super) async fn store_scan_items(
 ///
 /// A tentative folder whose files a settled entry already reads takes no seed
 /// and opens no file: the store keeps that entry and writes nothing for the
-/// folder.
+/// folder. Nor does an item the entry stored at its key already is, unless
+/// that entry is in `moved`, having changed after a read found it so: the
+/// store keeps the entry, and refuses the write if it changed by then.
 async fn scan_item_seeds(
     tables: &crate::tables::ImportTables,
     diagnostics: &bae_diagnostics::Diagnostics,
     items: &[crate::folder_scanner::ScanItem],
     generation: u64,
     reads: std::sync::Arc<crate::folder_scanner::FileReads>,
+    moved: &HashSet<crate::CandidateKey>,
 ) -> Result<Vec<crate::tables::ScanItemSeed>, crate::ImportError> {
     use crate::folder_scanner::ScanItem;
-    use crate::tables::ScanItemSeed;
-    let readings = tables.load_scan_batch_readings(items).await?;
+    use crate::tables::{ScanItemReadings, ScanItemSeed};
+    let readings = tables.load_scan_batch_readings(items, moved).await?;
     let mut seeds = Vec::with_capacity(items.len());
     for (item, readings) in items.iter().zip(readings) {
         let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
             seeds.push(ScanItemSeed::Tags(None));
             continue;
         };
-        if readings.settled {
-            seeds.push(ScanItemSeed::AlreadySettled);
-            continue;
-        }
+        let stored = match readings {
+            ScanItemReadings::Settled => {
+                seeds.push(ScanItemSeed::AlreadySettled);
+                continue;
+            }
+            ScanItemReadings::Unchanged => {
+                seeds.push(ScanItemSeed::Unchanged);
+                continue;
+            }
+            ScanItemReadings::Stored(stored) => stored,
+        };
         let folder = candidate.path.display().to_string();
         let candidate = candidate.clone();
         let reads = reads.clone();
@@ -306,7 +335,7 @@ async fn scan_item_seeds(
                     &candidate,
                     generation,
                     &reads,
-                    readings.stored.as_ref(),
+                    stored.as_ref(),
                 )
             })
             .await?;
@@ -331,9 +360,11 @@ pub(crate) async fn scan_item_seed(
     item: &crate::folder_scanner::ScanItem,
     generation: u64,
     reads: std::sync::Arc<crate::folder_scanner::FileReads>,
+    moved: &HashSet<crate::CandidateKey>,
 ) -> Result<crate::tables::ScanItemSeed, crate::ImportError> {
     let mut seeds =
-        scan_item_seeds(tables, diagnostics, std::slice::from_ref(item), generation, reads).await?;
+        scan_item_seeds(tables, diagnostics, std::slice::from_ref(item), generation, reads, moved)
+            .await?;
     Ok(seeds.pop().expect("one item has one seed"))
 }
 
@@ -357,6 +388,7 @@ pub async fn store_scan_item(
         std::sync::Arc::new(crate::folder_scanner::FileReads::new(std::sync::Arc::new(
             crate::file_tag_reader::LoftyFileTagReader,
         ))),
+        &HashSet::new(),
     )
     .await?;
     let writes = tables

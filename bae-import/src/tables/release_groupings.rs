@@ -377,8 +377,13 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
         },
         EntrySource::Grouping,
     )?;
-    if let folder_scans::EntryWrite::Stored { .. } = written {
-        changes.written.push(item);
+    match written {
+        folder_scans::EntryWrite::Stored { .. } => changes.written.push(item),
+        folder_scans::EntryWrite::Unchanged => {}
+        // Only an item seeded as unchanged finds its entry moved.
+        folder_scans::EntryWrite::Moved => {
+            panic!("the grouping {key}, stored with no seed taken, found its entry moved")
+        }
     }
     Ok(changes)
 }

@@ -50,6 +50,7 @@ pub(crate) use self::tag_snapshot::DbCandidateFileTagSnapshot;
 
 pub(super) use self::dates::forget_discovery_at_or_below;
 pub(super) use self::file_decisions::settle_candidate_files;
+pub(crate) use self::file_reads::ScanItemReadings;
 pub(super) use self::sidecar::load_sidecar;
 use self::sidecar::load_sidecars;
 pub(super) use self::write::{delete_entry, insert_candidate_files};
@@ -197,18 +198,21 @@ impl ImportTables {
     /// Store scan results in one transaction, in the order given, each
     /// deleting the entries it supersedes: a crash loses all of them or none.
     /// Each write sees the ones before it. `None`, with nothing written, when
-    /// `generation` is no longer the root's.
+    /// `generation` is no longer the root's; refused, with nothing written,
+    /// when an entry an item was seeded as unchanged has changed.
     pub(crate) async fn save_folder_scan_items(
         &self,
         watched_folder_path: &Path,
         generation: u64,
         items: Vec<FolderEntryToWrite>,
-    ) -> Result<Option<Vec<(crate::folder_scanner::FolderEntry, ScanItemWrite)>>, DbError> {
+    ) -> Result<Option<Vec<(crate::folder_scanner::FolderEntry, ScanItemWrite)>>, ScanWriteError>
+    {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let generation = generation_column(generation)?;
         let observed_at = self.store.now_utc().timestamp_millis();
         self.store
-            .call(move |sql| {
+            .write(move |sql| {
+                let sql = &sql;
                 if !holds_generation(sql, &watched_folder_path, generation)? {
                     return Ok(None);
                 }
@@ -274,8 +278,14 @@ impl ImportTables {
         generation: u64,
         entry: FolderEntryToWrite,
     ) -> Result<Option<ScanItemWrite>, DbError> {
-        let writes =
-            self.save_folder_scan_items(watched_folder_path, generation, vec![entry]).await?;
+        let writes = self
+            .save_folder_scan_items(watched_folder_path, generation, vec![entry])
+            .await
+            .map_err(|error| match error {
+                bae_store::WriteError::Database(error) => error,
+                // Only an item seeded as unchanged is refused.
+                refused => panic!("an entry stored with no seed taken was refused: {refused}"),
+            })?;
         Ok(writes.map(|mut writes| writes.pop().expect("one entry stores one write").1))
     }
 
@@ -458,7 +468,21 @@ pub(crate) enum ScanItemSeed {
     /// the seed was taken, which stores only when its folder was seen (see
     /// [`write_entry`]).
     AlreadySettled,
+    /// Nothing: the entry stored at the item's key was exactly the item when
+    /// the seed was taken. Its write keeps that entry, and is refused when
+    /// the entry says something else by then: a seed is taken for it again.
+    Unchanged,
 }
+
+/// Why a scan's write stored nothing: the entry stored at this key changed
+/// after the read that found it to be the item written over it, so the item
+/// was not seeded. Seeding it again and storing the write again stores it.
+#[derive(Debug, thiserror::Error)]
+#[error("the entry stored for {0} changed after it was read")]
+pub struct ScanEntryMoved(pub CandidateKey);
+
+/// How a scan's write ended when it did not store.
+pub(crate) type ScanWriteError = bae_store::WriteError<ScanEntryMoved>;
 
 /// Write one scan item under `generation`, inside the caller's transaction,
 /// deleting the entries it supersedes. The caller has checked `generation`.
@@ -469,11 +493,16 @@ fn write_scan_item(
     to_write: &FolderEntryToWrite,
     observed_at: i64,
     finding: Finding,
-) -> Result<ScanItemWrite, DbError> {
+) -> Result<ScanItemWrite, ScanWriteError> {
     let to_write = match to_write {
         FolderEntryToWrite::Release(to_write) => to_write,
         FolderEntryToWrite::Sidecar(folder_sidecar) => {
-            return sidecar::write_sidecar(sql, watched_folder_path, generation, folder_sidecar)
+            return Ok(sidecar::write_sidecar(
+                sql,
+                watched_folder_path,
+                generation,
+                folder_sidecar,
+            )?)
         }
     };
     let entry_key = to_write.item.key();
@@ -485,15 +514,16 @@ fn write_scan_item(
             coven::path_text(watched_folder_path)
         );
     }
-    let EntryWrite::Stored { replaced: superseded_keys, found } = write_entry(
+    let (superseded_keys, found) = match write_entry(
         sql,
         watched_folder_path,
         generation,
         to_write,
         EntrySource::Scanned { finding, observed_at },
-    )?
-    else {
-        return Ok(ScanItemWrite::Unchanged);
+    )? {
+        EntryWrite::Stored { replaced, found } => (replaced, found),
+        EntryWrite::Unchanged => return Ok(ScanItemWrite::Unchanged),
+        EntryWrite::Moved => return Err(bae_store::WriteError::Refused(ScanEntryMoved(entry_key))),
     };
     // A valid release takes its files from any sidecar holding them.
     let uncovered = sidecar::delete_sidecars_holding(sql, &to_write.item)?;
@@ -530,6 +560,9 @@ pub(super) enum Finding {
 pub(super) enum EntryWrite {
     /// The stored row already said exactly this.
     Unchanged,
+    /// Nothing: the item was seeded as the entry stored at its key, which
+    /// says something else now (see [`ScanItemSeed::Unchanged`]).
+    Moved,
     Stored {
         /// The keys of the entries it replaced.
         replaced: Vec<CandidateKey>,
@@ -597,7 +630,8 @@ pub(super) fn write_entry(
         }
     }
     let file_metadata = match seed {
-        ScanItemSeed::Tags(file_metadata) => file_metadata,
+        ScanItemSeed::Tags(file_metadata) => Some(file_metadata),
+        ScanItemSeed::Unchanged => None,
         // The pass seeds an entry as already settled only when it is
         // tentative, and a tentative one returned above.
         ScanItemSeed::AlreadySettled => panic!(
@@ -614,6 +648,9 @@ pub(super) fn write_entry(
         record_discovery()?;
         return Ok(EntryWrite::Unchanged);
     }
+    let Some(file_metadata) = file_metadata else {
+        return Ok(EntryWrite::Moved);
+    };
     // Rewriting the row deletes its file-tag reading; a write with no
     // reading of its own keeps the stored one if the new row holds the
     // audio it was read from.

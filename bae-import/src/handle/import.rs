@@ -339,6 +339,7 @@ impl ImportServiceHandle {
             &item,
             generation,
             Arc::new(crate::folder_scanner::FileReads::new(self.services.file_tags.clone())),
+            &std::collections::HashSet::new(),
         )
         .await?;
         if self

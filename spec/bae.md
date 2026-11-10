@@ -806,8 +806,13 @@ comment block cut short, are a fact of the file as it is, so a track whose tags
 don't parse is not read again until it changes. It opens only the files that are new or changed, so a rescan of a
 folder nothing in has changed opens none. A release's draft takes each
 unchanged track's tags, and the picture they embed, from the reading stored
-for the release, and reads only its new or changed tracks. A store that says
-two different things about one file fails the scan.
+for the release, and reads only its new or changed tracks. A release whose
+stored entry is already exactly what the rescan read takes no draft or
+reading at all: its entry stays as it is, and nothing of its stored reading,
+the picture included, is read back. When that entry changes between the read
+and the write that keeps it, the write stores nothing, and the scan reads the
+release's reading again and stores it as it read it. A store that says two
+different things about one file fails the scan.
 
 **Edge cases.**
 

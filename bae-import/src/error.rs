@@ -142,6 +142,12 @@ pub enum ImportError {
     #[error(transparent)]
     FolderReread(#[from] crate::tables::FolderRereadRefusal),
 
+    /// A scan's write was refused: an entry it was to keep as it stood
+    /// changed after it was read.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    ScanEntryMoved(#[from] crate::tables::ScanEntryMoved),
+
     /// A list opened for one read was found closed under it, though only
     /// the read that opened it closes it.
     #[cfg(desktop)]
@@ -414,6 +420,25 @@ impl From<crate::tables::ImportCommitError> for ImportError {
     }
 }
 
+/// A scan's write failed: an entry it was to keep changed after it was read,
+/// or the store failed.
+#[cfg(desktop)]
+impl From<crate::tables::ScanWriteError> for ImportError {
+    fn from(error: crate::tables::ScanWriteError) -> Self {
+        use bae_store::WriteError as E;
+        match error {
+            E::Refused(moved) => Self::ScanEntryMoved(moved),
+            E::Database(error) => Self::Database(error),
+            E::Rollback { operation, rollback } => {
+                Self::Rollback { operation: Box::new((*operation).into()), rollback }
+            }
+            E::FileCleanup { write, failures } => {
+                Self::FileCleanup { write: Box::new((*write).into()), failures }
+            }
+        }
+    }
+}
+
 /// A bug a coven call import made carried back, which the store reported as
 /// it returned, one coven repeats, or the bug an import worker ended on,
 /// which its thread reported as it happened.
@@ -653,6 +678,11 @@ impl ImportError {
                 | crate::tables::FolderRereadRefusal::DecisionOutside { .. }
                 | crate::tables::FolderRereadRefusal::EntryOutside { .. } => C::Internal,
             },
+            // A pass's write that found an entry changed under it is read
+            // again by the pass; one that reaches the person changed
+            // meanwhile.
+            #[cfg(desktop)]
+            Self::ScanEntryMoved(_) => C::ChangedMeanwhile,
             // The import pane combines only what it lists, at least two, so
             // a short pick or one that made nothing is bae's own fault; a
             // release that moved or was taken meanwhile is the person's to

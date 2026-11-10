@@ -233,13 +233,14 @@ async fn read_folder_again(
     let read_at = started.elapsed();
 
     let mut scanned_decisions = Vec::new();
-    let mut items = Vec::with_capacity(walked.items.len());
+    // Each entry the folder yields, a release with its folder's date.
+    let mut dated = Vec::with_capacity(walked.items.len());
     for item in walked.items {
         let item = match item {
             crate::folder_scanner::WalkItem::Entry(FolderEntry::Release(item)) => item,
             // A folder's sidecar files are no release: no date, no tags.
             crate::folder_scanner::WalkItem::Entry(FolderEntry::Sidecar(sidecar)) => {
-                items.push(crate::tables::FolderEntryToWrite::Sidecar(sidecar));
+                dated.push((FolderEntry::Sidecar(sidecar), None));
                 continue;
             }
             crate::folder_scanner::WalkItem::Reading { key, decision, grouping } => {
@@ -255,64 +256,95 @@ async fn read_folder_again(
             }
         };
         let folder_date = super::scan_items::folder_date(&item, &services.diagnostics).await?;
-        let seed = super::scan_item_seed(
-            tables,
-            &services.diagnostics,
-            &item,
-            stamp.generation,
-            reads.clone(),
-        )
-        .await?;
-        items.push(crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
-            item,
-            seed,
-            folder_date,
-        }));
+        dated.push((FolderEntry::Release(item), folder_date));
     }
-    let prepared_at = started.elapsed();
+    // The entries that changed after a read found them to be the items
+    // written over them, which every later read seeds.
+    let mut moved = HashSet::new();
+    let (_commit, crate::tables::FolderReadingWrite { writes, pruned, regrouped }, timings) = loop {
+        let mut items = Vec::with_capacity(dated.len());
+        for (entry, folder_date) in &dated {
+            let item = match entry {
+                FolderEntry::Release(item) => item,
+                FolderEntry::Sidecar(sidecar) => {
+                    items.push(crate::tables::FolderEntryToWrite::Sidecar(sidecar.clone()));
+                    continue;
+                }
+            };
+            let seed = super::scan_item_seed(
+                tables,
+                &services.diagnostics,
+                item,
+                stamp.generation,
+                reads.clone(),
+                &moved,
+            )
+            .await?;
+            items.push(crate::tables::FolderEntryToWrite::Release(
+                crate::tables::ScanItemToWrite {
+                    item: item.clone(),
+                    seed,
+                    folder_date: *folder_date,
+                },
+            ));
+        }
+        let prepared_at = started.elapsed();
 
-    let _commit = services.folder_state_commit.lock("store a folder reading").await;
-    let locked_at = started.elapsed();
-    if cancellation.is_cancelled() {
-        return Err(crate::ImportError::Internal {
-            detail: format!(
-                "reading {} again was cancelled before it was stored",
-                coven::path_text(Path::new(folder))
-            ),
-        });
-    }
-    // The walk read each candidate with the file decisions stored then. One
-    // stored since describes files this reading did not settle.
-    for to_write in &items {
-        let crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
-            item: ScanItem::Discovered(candidate) | ScanItem::Valid(candidate),
-            ..
-        }) = to_write
-        else {
-            continue;
-        };
-        let edits = tables.load_candidate_file_edits(&candidate.files.content_hash()).await?;
-        if edits.revision != candidate.file_edit_revision {
+        let commit = services.folder_state_commit.lock("store a folder reading").await;
+        let locked_at = started.elapsed();
+        if cancellation.is_cancelled() {
             return Err(crate::ImportError::Internal {
                 detail: format!(
-                    "{} changed while its folder was being read again: its file decisions \
-                     were edited",
-                    candidate.relative_folder.text()
+                    "reading {} again was cancelled before it was stored",
+                    coven::path_text(Path::new(folder))
                 ),
             });
         }
-    }
-    let crate::tables::FolderReadingWrite { writes, pruned, regrouped } = tables
-        .commit_folder_reading(crate::tables::FolderReadingCommit {
-            watched_folder_path: root.to_path_buf(),
-            folder: folder.to_os_string(),
-            stamp,
-            decision: decision.clone(),
-            scanned_decisions,
-            items,
-            directories: walked.directory_mtimes,
-        })
-        .await?;
+        // The walk read each candidate with the file decisions stored then.
+        // One stored since describes files this reading did not settle.
+        for to_write in &items {
+            let crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
+                item: ScanItem::Discovered(candidate) | ScanItem::Valid(candidate),
+                ..
+            }) = to_write
+            else {
+                continue;
+            };
+            let edits = tables.load_candidate_file_edits(&candidate.files.content_hash()).await?;
+            if edits.revision != candidate.file_edit_revision {
+                return Err(crate::ImportError::Internal {
+                    detail: format!(
+                        "{} changed while its folder was being read again: its file decisions \
+                         were edited",
+                        candidate.relative_folder.text()
+                    ),
+                });
+            }
+        }
+        // An entry that changed since it was read as unchanged was not
+        // seeded: seed it as it now stands.
+        match tables
+            .commit_folder_reading(crate::tables::FolderReadingCommit {
+                watched_folder_path: root.to_path_buf(),
+                folder: folder.to_os_string(),
+                stamp,
+                decision: decision.clone(),
+                scanned_decisions: scanned_decisions.clone(),
+                items,
+                directories: walked.directory_mtimes.clone(),
+            })
+            .await
+        {
+            Ok(write) => break (commit, write, (prepared_at, locked_at)),
+            Err(crate::ImportError::ScanEntryMoved(crate::tables::ScanEntryMoved(key))) => {
+                debug!("{key} changed after it was read as unchanged; seeding it again");
+                drop(commit);
+                moved.insert(key);
+            }
+            Err(error) => return Err(error),
+        }
+    };
+    let (prepared_at, locked_at) = timings;
     let committed_at = started.elapsed();
     // The walk can write one release twice — found before its folder's
     // reading was known, then settled — so each key is stored as its last
