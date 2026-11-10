@@ -59,7 +59,7 @@ chardetng = { workspace = true }
 encoding_rs = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "net", "io-util"] }
+tokio = { workspace = true, features = ["macros", "net", "io-util", "test-util"] }
 # The directory the open-files sampler's test holds a file open in.
 tempfile = { workspace = true }
 # The process's open files under a directory, which the sampler reads.

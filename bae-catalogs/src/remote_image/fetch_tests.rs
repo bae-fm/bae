@@ -120,10 +120,12 @@ async fn artwork_invalid_request_is_a_request_bae_could_not_build() {
 /// text, where reqwest's own text says only that sending failed.
 #[tokio::test]
 async fn artwork_unresolvable_host_names_its_dns_failure() {
-    let error = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop())
-        .fetch_required("http://bae-test.invalid/cover.jpg")
-        .await
-        .unwrap_err();
+    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
+    let error =
+        tokio::time::timeout(HANG_GUARD, cache.fetch_required("http://bae-test.invalid/cover.jpg"))
+            .await
+            .expect("the resolver answers")
+            .unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Transport { error, .. } if error.is_connect()),
         "{error}"

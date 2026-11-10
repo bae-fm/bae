@@ -158,3 +158,36 @@ async fn transport_failure_names_how_a_request_failed() {
     assert_eq!(TransportFailure::of(&unbuildable_request_error()), TransportFailure::Unmakeable,);
     assert_eq!(TransportFailure::of(&refused_request_error().await), TransportFailure::Network);
 }
+
+/// A test transport puts no timer on a request: one its host holds stays in
+/// flight however long the hold lasts, and answers once the host lets it go.
+/// Once the request is held, tokio's clock is paused, so it jumps to the
+/// earliest timer as soon as nothing else can run: a timeout of the
+/// transport's would end the request there, before the day the test waits.
+#[tokio::test]
+async fn a_test_transport_holds_a_request_as_long_as_its_host_does() {
+    let host = crate::test_host::FakeHost::start().await;
+    host.route("/held", 200, "{}");
+    host.hold("/held");
+    let http = Http::for_test().serve("provider.example", host.base_url());
+    let request = http.get("https://provider.example/held").build().unwrap();
+    let response = http.execute(request);
+    tokio::pin!(response);
+    tokio::select! {
+        answered = &mut response => panic!("a held request answered: {answered:?}"),
+        () = host.wait_for_request("/held", 1) => {}
+    }
+
+    tokio::time::pause();
+    timeout(Duration::from_secs(24 * 60 * 60), &mut response)
+        .await
+        .expect_err("a held request stays in flight");
+    tokio::time::resume();
+
+    host.release();
+    let response = timeout(HANG_GUARD, response)
+        .await
+        .expect("a released request answers")
+        .expect("the host answers it");
+    assert_eq!(response.status(), 200);
+}

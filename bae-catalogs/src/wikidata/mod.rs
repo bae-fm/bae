@@ -181,7 +181,6 @@ impl Wikidata {
             .http
             .get(url)
             .header("Accept", "application/json")
-            .timeout(bae_util::http::API_TIMEOUT)
             .build()
             .map_err(WikidataError::from_reqwest)?;
         let key = request.url().to_string();

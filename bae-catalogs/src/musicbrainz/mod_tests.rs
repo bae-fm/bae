@@ -844,3 +844,36 @@ async fn an_isrc_search_asks_every_code_at_once_and_reads_every_page() {
     assert!(paths[0].contains("offset=0"), "{}", paths[0]);
     assert!(paths[1].contains("offset=2"), "{}", paths[1]);
 }
+
+/// A lookup its host holds in a test waits for the host alone: no timeout
+/// of the lookup's or of the transport's ends it, however long the hold
+/// lasts. Once the request is held, tokio's clock is paused, so it jumps to
+/// the earliest timer as soon as nothing else can run, and a timeout would
+/// end the lookup there, before the day the test waits.
+#[tokio::test]
+async fn a_held_lookup_waits_for_its_host_however_long_it_holds() {
+    let host = bae_util::test_host::FakeHost::start().await;
+    host.route("release-group/rg-held", 200, r#"{"id":"rg-held"}"#);
+    host.hold("release-group/rg-held");
+    let musicbrainz = served_by(host.base_url());
+    let lookup = musicbrainz.fetch_release_group_json("rg-held", CallClass::REQUESTED);
+    tokio::pin!(lookup);
+    tokio::select! {
+        answered = &mut lookup => panic!("a held lookup answered: {answered:?}"),
+        () = host.wait_for_request("release-group/rg-held", 1) => {}
+    }
+
+    tokio::time::pause();
+    tokio::time::timeout(Duration::from_secs(24 * 60 * 60), &mut lookup)
+        .await
+        .expect_err("a held lookup stays in flight");
+    tokio::time::resume();
+
+    host.release();
+    let json = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, lookup)
+        .await
+        .expect("a released lookup answers")
+        .expect("the host's answer is the lookup's");
+    assert_eq!(json, r#"{"id":"rg-held"}"#);
+    assert_eq!(host.count_containing("release-group/rg-held"), 1);
+}

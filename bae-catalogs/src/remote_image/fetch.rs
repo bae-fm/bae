@@ -40,7 +40,7 @@ pub(super) async fn send_artwork_request(
     operation: &str,
 ) -> Result<Option<reqwest::Response>, RemoteImageError> {
     retry_classified(http.clock().as_ref(), RETRY, operation, || async {
-        let request = match http.get(url).timeout(bae_util::http::READ_TIMEOUT).build() {
+        let request = match http.get(url).build() {
             Ok(request) => request,
             Err(error) => {
                 return ClassifiedAttempt::Failed(

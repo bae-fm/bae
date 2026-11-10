@@ -8,18 +8,18 @@ use std::time::{Duration, SystemTime};
 /// descriptive agent, so keep it identifying.
 pub const USER_AGENT: &str = "bae/1.0 +https://github.com/bae-fm/bae";
 
-/// Total per-request ceiling for a bounded JSON API call.
-#[cfg(desktop)]
-pub const API_TIMEOUT: Duration = Duration::from_secs(30);
+/// Total ceiling on one request bae sends to a provider, the whole body read
+/// included.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Bounded time to establish a TCP + TLS connection to any provider.
-pub(crate) const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Stall guard for any provider socket after the request starts.
-pub const READ_TIMEOUT: Duration = Duration::from_secs(30);
+const READ_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Maximum redirects any provider request may follow.
-pub(crate) const MAX_REDIRECTS: usize = 10;
+const MAX_REDIRECTS: usize = 10;
 
 /// Ceiling for image/cover bodies read into memory.
 pub const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
@@ -142,15 +142,17 @@ pub fn response_key(url: &str) -> String {
     reqwest::Url::parse(url).expect("a provider request URL parses").to_string()
 }
 
-/// A `reqwest` client builder pre-set with bae's outbound HTTP policy. Callers
-/// add their endpoint's settings and call `.build()` themselves, so each keeps
-/// its own error handling.
+/// A `reqwest` client builder pre-set with bae's outbound HTTP policy: its
+/// user agent, its redirect limit, and the time it gives a connection and
+/// each read. Callers add their endpoint's settings and call `.build()`
+/// themselves, so each keeps its own error handling.
 pub fn client_builder() -> reqwest::ClientBuilder {
-    reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .connect_timeout(CONNECT_TIMEOUT)
-        .read_timeout(READ_TIMEOUT)
-        .redirect(Policy::limited(MAX_REDIRECTS))
+    untimed_client_builder().connect_timeout(CONNECT_TIMEOUT).read_timeout(READ_TIMEOUT)
+}
+
+/// bae's user agent and redirect limit, with no timeout of any kind.
+fn untimed_client_builder() -> reqwest::ClientBuilder {
+    reqwest::Client::builder().user_agent(USER_AGENT).redirect(Policy::limited(MAX_REDIRECTS))
 }
 
 /// How bae's outbound requests reach the network: one client with bae's user
@@ -159,11 +161,20 @@ pub fn client_builder() -> reqwest::ClientBuilder {
 /// provider's rate asks for, and the wait before a failed request is asked
 /// again. Built once when the app starts and handed to each provider.
 ///
+/// The transport alone times its requests: [`Self::new`] gives each one
+/// `CONNECT_TIMEOUT` to connect, `READ_TIMEOUT` for each read and
+/// `REQUEST_TIMEOUT` in all, and a request built from [`Self::get`] carries
+/// no timeout of its own.
+///
 /// Requests are always built against the real addresses. A test builds one
 /// whose requests go to local servers instead — `Http::for_test` sends every
 /// host to a port nothing listens on, and `Http::serve` routes a host to a
-/// fake — so a test never reaches the network, and the URLs a response is
-/// cached under, or a cover is stored under, are the ones production uses.
+/// fake — so a test never reaches the network unless it sends its hosts as
+/// addressed (`Http::send_unrouted_as_addressed`), and the URLs a response
+/// is cached under, or a cover is stored under, are the ones production uses.
+/// A test transport times nothing: a request ends when its local server
+/// answers, closes or refuses it, so a test that holds one decides alone how
+/// long it waits, and no wall-clock time the test takes can end it.
 #[derive(Clone)]
 pub struct Http {
     client: reqwest::Client,
@@ -173,19 +184,29 @@ pub struct Http {
 }
 
 /// Where a test's requests go, by host: a host with a route goes to its
-/// origin, and every other host to `unrouted`.
+/// origin, and every other host as `unrouted` says.
 #[cfg(any(test, feature = "test-utils"))]
 #[derive(Clone)]
 struct TestRoutes {
     by_host: std::collections::HashMap<String, reqwest::Url>,
-    unrouted: reqwest::Url,
+    unrouted: Unrouted,
+}
+
+/// Where a test transport sends a host no route names.
+#[cfg(any(test, feature = "test-utils"))]
+#[derive(Clone)]
+enum Unrouted {
+    /// To this origin.
+    To(reqwest::Url),
+    /// Where the request's own URL says, as a production transport sends it.
+    AsAddressed,
 }
 
 impl Http {
     /// A transport whose waits between requests pass on `clock`.
     pub fn new(clock: coven::ClockRef) -> Result<Self, reqwest::Error> {
         Ok(Self {
-            client: client_builder().build()?,
+            client: client_builder().timeout(REQUEST_TIMEOUT).build()?,
             clock,
             #[cfg(any(test, feature = "test-utils"))]
             routes: None,
@@ -193,18 +214,21 @@ impl Http {
     }
 
     /// A transport whose every request goes to a port nothing listens on, so
-    /// it fails fast and locally until [`Self::serve`] routes its host. Its
-    /// waits between requests pass as they are armed, on a clock of its own;
-    /// [`Self::on_clock`] puts them on one the test reads or moves.
+    /// it fails fast and locally until [`Self::serve`] routes its host. It
+    /// puts no timeout on a request. Its waits between requests pass as they
+    /// are armed, on a clock of its own; [`Self::on_clock`] puts them on one
+    /// the test reads or moves.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn for_test() -> Self {
         let fixed = std::sync::Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
         Self {
-            client: client_builder().build().expect("the test HTTP client builds"),
+            client: untimed_client_builder().build().expect("the test HTTP client builds"),
             clock: std::sync::Arc::new(coven::PollingClock::new(fixed)),
             routes: Some(std::sync::Arc::new(TestRoutes {
                 by_host: std::collections::HashMap::new(),
-                unrouted: reqwest::Url::parse("http://127.0.0.1:9").expect("the dead port parses"),
+                unrouted: Unrouted::To(
+                    reqwest::Url::parse("http://127.0.0.1:9").expect("the dead port parses"),
+                ),
             })),
         }
     }
@@ -241,7 +265,19 @@ impl Http {
         let routes = std::sync::Arc::make_mut(
             self.routes.as_mut().expect("only a test transport routes hosts"),
         );
-        routes.unrouted = reqwest::Url::parse(origin).expect("a test origin parses");
+        routes.unrouted = Unrouted::To(reqwest::Url::parse(origin).expect("a test origin parses"));
+        self
+    }
+
+    /// This transport with every host not routed on its own sent where its
+    /// URL says: for a test whose local servers are named by their own
+    /// addresses, or one that needs the system resolver's answer for a host.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn send_unrouted_as_addressed(mut self) -> Self {
+        let routes = std::sync::Arc::make_mut(
+            self.routes.as_mut().expect("only a test transport routes hosts"),
+        );
+        routes.unrouted = Unrouted::AsAddressed;
         self
     }
 
@@ -258,18 +294,24 @@ impl Http {
     }
 
     /// `request` sent to the origin its host is routed to. A transport built
-    /// with [`Self::new`] routes nothing.
+    /// with [`Self::new`] routes nothing. A test transport times nothing, so
+    /// a request that carries a timeout of its own is a caller timing what
+    /// only the transport times, and fails the test.
     #[cfg(any(test, feature = "test-utils"))]
     fn routed(&self, mut request: reqwest::Request) -> reqwest::Request {
         let Some(routes) = &self.routes else {
             return request;
         };
-        let origin = request
-            .url()
-            .host_str()
-            .and_then(|host| routes.by_host.get(host))
-            .unwrap_or(&routes.unrouted)
-            .clone();
+        assert!(
+            request.timeout().is_none(),
+            "a request to {} carries its own timeout; only the transport times a request",
+            request.url()
+        );
+        let routed = request.url().host_str().and_then(|host| routes.by_host.get(host));
+        let origin = match (routed, &routes.unrouted) {
+            (Some(origin), _) | (None, Unrouted::To(origin)) => origin.clone(),
+            (None, Unrouted::AsAddressed) => return request,
+        };
         let url = request.url_mut();
         url.set_scheme(origin.scheme()).expect("a test origin's scheme applies");
         url.set_host(origin.host_str()).expect("a test origin's host applies");

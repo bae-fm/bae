@@ -17,12 +17,11 @@ pub(super) fn test_png() -> Vec<u8> {
     bytes.into_inner()
 }
 
-/// A transport that sends each request where its URL says: these tests serve
-/// images from their own local servers and ask for them by those addresses.
-/// Its waits before a repeat pass as they are armed.
+/// A test transport that sends each request where its URL says: these tests
+/// serve images from their own local servers and ask for them by those
+/// addresses. Its waits before a repeat pass as they are armed.
 pub(super) fn direct_http() -> Http {
-    let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
-    Http::new(Arc::new(coven::PollingClock::new(clock))).expect("the test HTTP client builds")
+    Http::for_test().send_unrouted_as_addressed()
 }
 
 /// Spawn a localhost HTTP server that returns the given responses in order,

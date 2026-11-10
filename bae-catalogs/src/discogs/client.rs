@@ -390,7 +390,6 @@ impl DiscogsClient {
             .http
             .get(url)
             .header("Authorization", format!("Discogs token={}", self.api_key))
-            .timeout(bae_util::http::API_TIMEOUT)
     }
 
     /// One request, straight to the wire: wait for the rate-limit slot, send,

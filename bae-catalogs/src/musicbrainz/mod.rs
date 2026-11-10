@@ -315,7 +315,6 @@ impl MusicBrainz {
     ) -> Result<String, MusicBrainzError> {
         let request = request
             .header("Accept", "application/json")
-            .timeout(bae_util::http::API_TIMEOUT)
             .build()
             .map_err(MusicBrainzError::from_reqwest)?;
         let key = request.url().to_string();
