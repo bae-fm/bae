@@ -125,11 +125,12 @@ pub struct BridgeImportStorage {
 pub enum BridgeSourceAvailability {
     /// Asked. Its switch is on.
     On,
-    /// Switched off. Its switch is off, and turning it back on is all it takes.
+    /// Switched off. Its switch is off, and turning it back on is all it takes
+    /// for a source that needs no credential.
     Off,
-    /// The source needs a credential this library does not hold, so it cannot
-    /// be asked whatever the switch says. Its switch renders off and cannot be
-    /// moved; supplying the credential brings back the choice last made.
+    /// Switched on, but the source needs a credential this library does not
+    /// hold, so it cannot be asked until one is supplied. Its switch renders
+    /// on, and the surface offers where to supply the credential.
     NotConfigured,
 }
 
@@ -139,12 +140,12 @@ pub enum BridgeSourceAvailability {
 pub struct BridgeLookupCatalogSetting {
     pub catalog: BridgeLookupCatalog,
     pub availability: BridgeSourceAvailability,
-    /// Whether this switch can be moved at all. Core's answer, covering both
-    /// reasons it cannot: the catalog needs a credential this library does not
-    /// hold, which a switch cannot supply, and it is the only catalog still
-    /// being asked, which core refuses to leave nothing behind. A surface
-    /// greys the switch out on this rather than working the two cases out for
-    /// itself, so it is disabled on exactly the writes core would turn down.
+    /// Whether this switch can be moved at all. Core's answer: it cannot when
+    /// the catalog is the only one still being asked, which core refuses to
+    /// leave nothing behind. A missing credential never holds a switch. A
+    /// surface greys the switch out on this rather than working the case out
+    /// for itself, so it is disabled on exactly the writes core would turn
+    /// down.
     pub can_change: bool,
 }
 
