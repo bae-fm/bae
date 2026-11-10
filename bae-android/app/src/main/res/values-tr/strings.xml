@@ -269,7 +269,6 @@
     <string name="onboarding_person_name">Adınız</string>
     <string name="name_shown_to_everyone">Kitaplıktaki herkes bu adı görür.</string>
     <string name="onboarding_restoring_title">Kitaplığınız geri yükleniyor</string>
-    <string name="onboarding_adding_device">Bu cihaz ekleniyor</string>
     <string name="onboarding_joining_library">%1$s kitaplığına katılınıyor</string>
     <string name="onboarding_invite_ended">Bu davet sona erdi. Reddedildi veya iptal edildi, süresi doldu ya da daveti oluşturan cihaz artık kitaplıkta değil.</string>
     <string name="onboarding_waiting_until">%1$s tarihine kadar onay bekleniyor</string>

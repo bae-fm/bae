@@ -267,7 +267,6 @@
     <string name="onboarding_person_name">Το όνομά σας</string>
     <string name="name_shown_to_everyone">Όλοι στη βιβλιοθήκη βλέπουν αυτό το όνομα.</string>
     <string name="onboarding_restoring_title">Γίνεται επαναφορά της βιβλιοθήκης σας</string>
-    <string name="onboarding_adding_device">Γίνεται προσθήκη αυτής της συσκευής</string>
     <string name="onboarding_joining_library">Γίνεται συμμετοχή στο %1$s</string>
     <string name="onboarding_invite_ended">Αυτή η πρόσκληση τερματίστηκε. Απορρίφθηκε ή ακυρώθηκε, έληξε, ή η συσκευή που τη δημιούργησε δεν είναι πλέον στη βιβλιοθήκη.</string>
     <string name="onboarding_waiting_until">Αναμονή για έγκριση έως %1$s</string>

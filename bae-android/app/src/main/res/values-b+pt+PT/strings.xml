@@ -268,7 +268,6 @@
     <string name="onboarding_person_name">O seu nome</string>
     <string name="name_shown_to_everyone">Todos na biblioteca veem este nome.</string>
     <string name="onboarding_restoring_title">A restaurar a sua biblioteca</string>
-    <string name="onboarding_adding_device">A adicionar este dispositivo</string>
     <string name="onboarding_joining_library">A aderir a %1$s</string>
     <string name="onboarding_invite_ended">Este convite terminou. Foi recusado ou cancelado, expirou, ou o dispositivo que o criou já não está na biblioteca.</string>
     <string name="onboarding_waiting_until">A aguardar aprovação até %1$s</string>

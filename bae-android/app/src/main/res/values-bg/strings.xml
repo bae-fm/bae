@@ -269,7 +269,6 @@
     <string name="onboarding_person_name">Вашето име</string>
     <string name="name_shown_to_everyone">Всички в библиотеката виждат това име.</string>
     <string name="onboarding_restoring_title">Библиотеката ви се възстановява</string>
-    <string name="onboarding_adding_device">Това устройство се добавя</string>
     <string name="onboarding_joining_library">Присъединяване към %1$s</string>
     <string name="onboarding_invite_ended">Тази покана е приключила. Отхвърлена е или е отменена, изтекла е, или устройството, което я е създало, вече не е в библиотеката.</string>
     <string name="onboarding_waiting_until">Изчаква одобрение до %1$s</string>

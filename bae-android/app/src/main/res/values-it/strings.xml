@@ -274,7 +274,6 @@
     <string name="onboarding_person_name">Il tuo nome</string>
     <string name="name_shown_to_everyone">Tutti nella libreria vedono questo nome.</string>
     <string name="onboarding_restoring_title">Ripristino della libreria in corso</string>
-    <string name="onboarding_adding_device">Aggiunta del dispositivo in corso</string>
     <string name="onboarding_joining_library">Ingresso in %1$s</string>
     <string name="onboarding_invite_ended">Questo invito è terminato. È stato rifiutato o annullato, è scaduto, oppure il dispositivo che l’ha creato non fa più parte della libreria.</string>
     <string name="onboarding_waiting_until">In attesa di approvazione fino al %1$s</string>

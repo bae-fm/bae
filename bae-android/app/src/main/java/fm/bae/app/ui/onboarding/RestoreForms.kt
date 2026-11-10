@@ -43,14 +43,15 @@ import uniffi.bae_bridge.BridgeS3Credentials
 internal class RestoreText(
     @StringRes val title: Int,
     @StringRes val action: Int,
-    @StringRes val running: Int,
+    /** The heading while it runs; null when the step line above the bar says it. */
+    @StringRes val running: Int?,
 ) {
     companion object {
         val ADD =
             RestoreText(
                 title = R.string.onboarding_add_device,
                 action = R.string.onboarding_add_action,
-                running = R.string.onboarding_adding_device,
+                running = null,
             )
 
         val RESTORE =

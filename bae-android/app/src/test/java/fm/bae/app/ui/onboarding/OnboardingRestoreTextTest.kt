@@ -70,7 +70,7 @@ class OnboardingRestoreTextTest {
     }
 
     @Test
-    fun addingThisDeviceSaysSoWhileItRuns() {
+    fun addingThisDeviceHasNoHeadingUnderTheBar() {
         // The spinner animates forever; a frozen clock lets the content settle.
         compose.mainClock.autoAdvance = false
         compose.setContent {
@@ -87,7 +87,7 @@ class OnboardingRestoreTextTest {
             }
         }
 
-        compose.onNodeWithText("Adding this device").assertIsDisplayed()
+        compose.onNodeWithText("Adding this device").assertDoesNotExist()
     }
 
     @Test

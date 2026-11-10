@@ -281,7 +281,6 @@
     <string name="onboarding_person_name">Ваше ім’я</string>
     <string name="name_shown_to_everyone">Це ім’я бачать усі в бібліотеці.</string>
     <string name="onboarding_restoring_title">Відновлення бібліотеки</string>
-    <string name="onboarding_adding_device">Додавання цього пристрою</string>
     <string name="onboarding_joining_library">Приєднання до %1$s</string>
     <string name="onboarding_invite_ended">Це запрошення завершилося. Його відхилено чи скасовано, термін його дії минув, або пристрою, який його створив, уже немає в бібліотеці.</string>
     <string name="onboarding_waiting_until">Очікує схвалення до %1$s</string>

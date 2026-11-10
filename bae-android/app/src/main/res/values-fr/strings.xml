@@ -274,7 +274,6 @@
     <string name="onboarding_person_name">Votre nom</string>
     <string name="name_shown_to_everyone">Tout le monde dans la bibliothèque voit ce nom.</string>
     <string name="onboarding_restoring_title">Restauration de votre bibliothèque</string>
-    <string name="onboarding_adding_device">Ajout de cet appareil</string>
     <string name="onboarding_joining_library">Vous rejoignez %1$s</string>
     <string name="onboarding_invite_ended">Cette invitation a pris fin. Elle a été refusée ou annulée, elle a expiré, ou l’appareil qui l’a créée ne fait plus partie de la bibliothèque.</string>
     <string name="onboarding_waiting_until">En attente d’approbation jusqu’au %1$s</string>

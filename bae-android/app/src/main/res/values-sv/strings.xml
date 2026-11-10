@@ -267,7 +267,6 @@
     <string name="onboarding_person_name">Ditt namn</string>
     <string name="name_shown_to_everyone">Alla i biblioteket ser det här namnet.</string>
     <string name="onboarding_restoring_title">Återställer ditt bibliotek</string>
-    <string name="onboarding_adding_device">Lägger till den här enheten</string>
     <string name="onboarding_joining_library">Går med i %1$s</string>
     <string name="onboarding_invite_ended">Den här inbjudan har upphört. Den avböjdes eller återkallades, den gick ut, eller så finns enheten som skapade den inte längre i biblioteket.</string>
     <string name="onboarding_waiting_until">Väntar på godkännande till %1$s</string>

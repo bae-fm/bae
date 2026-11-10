@@ -263,7 +263,6 @@
     <string name="onboarding_person_name">내 이름</string>
     <string name="name_shown_to_everyone">라이브러리의 모든 사람이 이 이름을 봅니다.</string>
     <string name="onboarding_restoring_title">라이브러리를 복원하는 중</string>
-    <string name="onboarding_adding_device">이 기기를 추가하는 중</string>
     <string name="onboarding_joining_library">%1$s 참여 중</string>
     <string name="onboarding_invite_ended">이 초대는 종료되었습니다. 거절 또는 취소되었거나, 만료되었거나, 초대를 만든 기기가 더 이상 라이브러리에 없습니다.</string>
     <string name="onboarding_waiting_until">%1$s까지 승인을 기다립니다</string>

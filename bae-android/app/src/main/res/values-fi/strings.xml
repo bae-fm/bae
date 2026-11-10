@@ -267,7 +267,6 @@
     <string name="onboarding_person_name">Nimesi</string>
     <string name="name_shown_to_everyone">Kaikki kirjastossa näkevät tämän nimen.</string>
     <string name="onboarding_restoring_title">Kirjastoasi palautetaan</string>
-    <string name="onboarding_adding_device">Tätä laitetta lisätään</string>
     <string name="onboarding_joining_library">Liitytään: %1$s</string>
     <string name="onboarding_invite_ended">Tämä kutsu on päättynyt. Se hylättiin tai peruttiin, se vanheni, tai sen luonut laite ei ole enää kirjastossa.</string>
     <string name="onboarding_waiting_until">Odottaa hyväksyntää %1$s asti</string>

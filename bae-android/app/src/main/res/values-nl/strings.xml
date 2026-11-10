@@ -269,7 +269,6 @@
     <string name="onboarding_person_name">Je naam</string>
     <string name="name_shown_to_everyone">Iedereen in de bibliotheek ziet deze naam.</string>
     <string name="onboarding_restoring_title">Je bibliotheek wordt hersteld</string>
-    <string name="onboarding_adding_device">Dit apparaat wordt toegevoegd</string>
     <string name="onboarding_joining_library">Deelnemen aan %1$s</string>
     <string name="onboarding_invite_ended">Deze uitnodiging is beëindigd. Ze is geweigerd of ingetrokken, ze is verlopen, of het apparaat dat haar heeft gemaakt zit niet meer in de bibliotheek.</string>
     <string name="onboarding_waiting_until">Wacht op goedkeuring tot %1$s</string>

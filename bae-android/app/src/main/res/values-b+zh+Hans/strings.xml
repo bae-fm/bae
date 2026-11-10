@@ -263,7 +263,6 @@
     <string name="onboarding_person_name">你的名字</string>
     <string name="name_shown_to_everyone">库中的每个人都能看到这个名字。</string>
     <string name="onboarding_restoring_title">正在恢复你的库</string>
-    <string name="onboarding_adding_device">正在添加此设备</string>
     <string name="onboarding_joining_library">正在加入 %1$s</string>
     <string name="onboarding_invite_ended">此邀请已结束：它已被拒绝或取消、已过期，或者创建它的设备已不在资料库中。</string>
     <string name="onboarding_waiting_until">等待批准，截止于 %1$s</string>

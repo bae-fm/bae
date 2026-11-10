@@ -281,7 +281,6 @@
     <string name="onboarding_person_name">Vaše jméno</string>
     <string name="name_shown_to_everyone">Toto jméno vidí všichni v knihovně.</string>
     <string name="onboarding_restoring_title">Obnovování knihovny</string>
-    <string name="onboarding_adding_device">Přidávání tohoto zařízení</string>
     <string name="onboarding_joining_library">Připojování k %1$s</string>
     <string name="onboarding_invite_ended">Tato pozvánka skončila. Byla odmítnuta nebo zrušena, vypršela, nebo zařízení, které ji vytvořilo, už v knihovně není.</string>
     <string name="onboarding_waiting_until">Čeká na schválení do %1$s</string>

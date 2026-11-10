@@ -275,7 +275,6 @@
     <string name="onboarding_person_name">השם שלך</string>
     <string name="name_shown_to_everyone">כל מי שבספרייה רואה את השם הזה.</string>
     <string name="onboarding_restoring_title">משחזרים את הספרייה שלך</string>
-    <string name="onboarding_adding_device">מוסיפים את המכשיר הזה</string>
     <string name="onboarding_joining_library">מצטרפים אל %1$s</string>
     <string name="onboarding_invite_ended">ההזמנה הזו הסתיימה. היא נדחתה או בוטלה, פג תוקפה, או שהמכשיר שיצר אותה כבר לא בספרייה.</string>
     <string name="onboarding_waiting_until">ממתין לאישור עד %1$s</string>

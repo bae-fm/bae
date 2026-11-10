@@ -291,6 +291,17 @@ internal fun OnboardingStartColumn(
     }
 }
 
+/** The heading over a running restore or join; null when none is drawn. */
+@Composable
+private fun runningTitle(from: OnboardingStep.Attempt): String? =
+    when (from) {
+        is OnboardingStep.Invite -> stringResource(R.string.onboarding_joining_library, from.invite.libraryName)
+        is OnboardingStep.Restore -> RestoreText.of(from.entry).running?.let { stringResource(it) }
+        is OnboardingStep.RestoreSaved -> RestoreText.RESTORE.running?.let { stringResource(it) }
+        is OnboardingStep.FinishRestore -> RestoreText.RESTORE.running?.let { stringResource(it) }
+        is OnboardingStep.ResumeRestore -> RestoreText.ADD.running?.let { stringResource(it) }
+    }
+
 /**
  * A restore or join running: what it waits on now, and Cancel while it can
  * be. A join waiting for approval shows its confirmation number,
@@ -303,14 +314,7 @@ internal fun OnboardingProgress(
     onCheckNow: () -> Unit,
     nowMs: () -> Long = System::currentTimeMillis,
 ) {
-    val title =
-        when (val from = step.from) {
-            is OnboardingStep.Invite -> stringResource(R.string.onboarding_joining_library, from.invite.libraryName)
-            is OnboardingStep.Restore -> stringResource(RestoreText.of(from.entry).running)
-            is OnboardingStep.RestoreSaved -> stringResource(RestoreText.RESTORE.running)
-            is OnboardingStep.FinishRestore -> stringResource(RestoreText.RESTORE.running)
-            is OnboardingStep.ResumeRestore -> stringResource(RestoreText.ADD.running)
-        }
+    val title = runningTitle(step.from)
     OnboardingContainer {
         val status = step.state?.status
         // While the restore's open runs a step, its line stands in for the
@@ -328,8 +332,10 @@ internal fun OnboardingProgress(
             }
             Spacer(modifier = Modifier.height(ThemeSpace.section))
         }
-        Text(text = title, style = ThemeText.heading.style, textAlign = TextAlign.Center)
-        Spacer(modifier = Modifier.height(ThemeSpace.related))
+        if (title != null) {
+            Text(text = title, style = ThemeText.heading.style, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(ThemeSpace.related))
+        }
         when (status) {
             is BridgeBootstrapStatus.WaitingForApproval -> {
                 // Only a join waits for approval.
