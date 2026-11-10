@@ -108,8 +108,9 @@
     <string name="settings_local_only">Yalnızca yerel</string>
     <string name="settings_sync_unreadable">Eşitleme durumu okunamadı</string>
     <string name="settings_pause_between_sides">Yüzler ve diskler arasında duraklat</string>
-    <string name="settings_side_pause_countdown">Geri sayım</string>
-    <string name="settings_side_pause_countdown_off">Kapalı</string>
+    <string name="settings_resume_automatically">Otomatik olarak sürdür</string>
+    <string name="settings_resume_never">Hiçbir zaman</string>
+    <string name="settings_resume_after">%1$s sonra</string>
     <string name="settings_restore_on_launch">Açılışta geri yükle</string>
     <string name="settings_restore_on_launch_help">Uygulama açıldığında son oturumun parçasını, konumunu, kuyruğunu ve ses düzeyini geri yükler.</string>
     <string name="settings_playback">Oynatma</string>

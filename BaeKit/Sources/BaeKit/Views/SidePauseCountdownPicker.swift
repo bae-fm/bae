@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// The countdown choice under the pause-between-sides toggle: whether a side
-/// or disc pause ends on its own, and after how long. Only drawn while pausing
-/// between sides is on — with pausing off there is no pause to count down.
+/// Resume automatically, under the pause-between-sides toggle: whether a side
+/// or disc pause ends on its own (Never, or after a length of time). With
+/// pausing between sides off there is no pause to count down, so the row shows
+/// dimmed and does nothing.
 @MainActor
 public struct SidePauseCountdownPicker: View {
     private let configStore: ConfigStore
@@ -22,28 +23,29 @@ public struct SidePauseCountdownPicker: View {
         self.showError = showError
     }
 
-    /// Whether settings draw the picker for `config`: only while pausing
+    /// Whether the picker takes input for `config`: only while pausing
     /// between sides is on.
-    public static func isShown(for config: Config) -> Bool {
+    public static func isEnabled(for config: Config) -> Bool {
         config.pauseBetweenSides
     }
 
     public var body: some View {
-        if Self.isShown(for: configStore.config) {
-            Picker("Countdown", selection: binding) {
-                ForEach(BridgeSidePauseCountdown.offered, id: \.self) {
-                    choice in
-                    choiceLabel(choice).tag(choice)
-                }
+        Picker("Resume automatically", selection: binding) {
+            ForEach(BridgeSidePauseCountdown.offered, id: \.self) {
+                choice in
+                choiceLabel(choice).tag(choice)
             }
         }
+        .disabled(!Self.isEnabled(for: configStore.config))
     }
 
     private func choiceLabel(_ choice: BridgeSidePauseCountdown) -> Text {
         guard let seconds = choice.seconds else {
-            return Text("Off")
+            return Text("Never")
         }
-        return Text(verbatim: BridgeSidePauseCountdown.label(seconds: seconds))
+        return Text(
+            "After \(BridgeSidePauseCountdown.label(seconds: seconds))"
+        )
     }
 
     private var binding: Binding<BridgeSidePauseCountdown> {

@@ -111,8 +111,9 @@
     <string name="settings_local_only">Somente local</string>
     <string name="settings_sync_unreadable">Não foi possível ler o status da sincronização</string>
     <string name="settings_pause_between_sides">Pausa entre lados e discos</string>
-    <string name="settings_side_pause_countdown">Contagem regressiva</string>
-    <string name="settings_side_pause_countdown_off">Desativado</string>
+    <string name="settings_resume_automatically">Retomar automaticamente</string>
+    <string name="settings_resume_never">Nunca</string>
+    <string name="settings_resume_after">Após %1$s</string>
     <string name="settings_restore_on_launch">Restaurar ao abrir</string>
     <string name="settings_restore_on_launch_help">Restaura a faixa, a posição, a fila e o volume da última sessão ao abrir o app.</string>
     <string name="settings_playback">Reprodução</string>

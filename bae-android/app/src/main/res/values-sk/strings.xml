@@ -120,8 +120,9 @@
     <string name="settings_local_only">Len lokálne</string>
     <string name="settings_sync_unreadable">Stav synchronizácie sa nepodarilo načítať</string>
     <string name="settings_pause_between_sides">Pauza medzi stranami a diskami</string>
-    <string name="settings_side_pause_countdown">Odpočítavanie</string>
-    <string name="settings_side_pause_countdown_off">Vypnuté</string>
+    <string name="settings_resume_automatically">Automaticky pokračovať</string>
+    <string name="settings_resume_never">Nikdy</string>
+    <string name="settings_resume_after">Za %1$s</string>
     <string name="settings_restore_on_launch">Obnoviť pri spustení</string>
     <string name="settings_restore_on_launch_help">Pri otvorení aplikácie obnoví skladbu, pozíciu, poradie a hlasitosť z poslednej relácie.</string>
     <string name="settings_playback">Prehrávanie</string>

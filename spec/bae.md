@@ -3777,7 +3777,7 @@ or Next, to start side B. A CD box set pauses between discs the same way.
   Playback settings show it as *Pause between sides and discs*, with
   *Resume automatically* (Never, or after 5, 15, 30, 45 or 60 seconds)
   joined under it with no divider: the two read as one setting, so neither
-  needs a note.
+  needs a note. While pausing is off the row shows dimmed and does nothing.
 
 ### 7.4 Pregaps
 

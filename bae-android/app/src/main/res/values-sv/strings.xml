@@ -112,8 +112,9 @@
     <string name="settings_local_only">Endast lokalt</string>
     <string name="settings_sync_unreadable">Det gick inte att läsa synkroniseringsstatus</string>
     <string name="settings_pause_between_sides">Paus mellan sidor och skivor</string>
-    <string name="settings_side_pause_countdown">Nedräkning</string>
-    <string name="settings_side_pause_countdown_off">Av</string>
+    <string name="settings_resume_automatically">Återuppta automatiskt</string>
+    <string name="settings_resume_never">Aldrig</string>
+    <string name="settings_resume_after">Efter %1$s</string>
     <string name="settings_restore_on_launch">Återställ vid start</string>
     <string name="settings_restore_on_launch_help">Återställer den senaste sessionens spår, position, kö och volym när appen öppnas.</string>
     <string name="settings_playback">Uppspelning</string>

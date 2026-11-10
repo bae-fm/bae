@@ -108,8 +108,9 @@
     <string name="settings_local_only">Nur lokal</string>
     <string name="settings_sync_unreadable">Synchronisierungsstatus konnte nicht gelesen werden</string>
     <string name="settings_pause_between_sides">Pause zwischen Seiten und Discs</string>
-    <string name="settings_side_pause_countdown">Countdown</string>
-    <string name="settings_side_pause_countdown_off">Aus</string>
+    <string name="settings_resume_automatically">Automatisch fortsetzen</string>
+    <string name="settings_resume_never">Nie</string>
+    <string name="settings_resume_after">Nach %1$s</string>
     <string name="settings_restore_on_launch">Beim Start wiederherstellen</string>
     <string name="settings_restore_on_launch_help">Stellt beim Öffnen der App den Titel, die Position, die Warteschlange und die Lautstärke der letzten Sitzung wieder her.</string>
     <string name="settings_playback">Wiedergabe</string>

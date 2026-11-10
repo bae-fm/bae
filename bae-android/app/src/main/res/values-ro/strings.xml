@@ -116,8 +116,9 @@
     <string name="settings_local_only">Doar local</string>
     <string name="settings_sync_unreadable">Starea sincronizării nu a putut fi citită</string>
     <string name="settings_pause_between_sides">Pauză între fețe și discuri</string>
-    <string name="settings_side_pause_countdown">Numărătoare inversă</string>
-    <string name="settings_side_pause_countdown_off">Oprit</string>
+    <string name="settings_resume_automatically">Reia automat</string>
+    <string name="settings_resume_never">Niciodată</string>
+    <string name="settings_resume_after">După %1$s</string>
     <string name="settings_restore_on_launch">Restaurează la pornire</string>
     <string name="settings_restore_on_launch_help">Restaurează piesa, poziția, coada și volumul din ultima sesiune când se deschide aplicația.</string>
     <string name="settings_playback">Redare</string>

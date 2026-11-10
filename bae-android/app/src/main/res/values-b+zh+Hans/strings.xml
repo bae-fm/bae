@@ -105,8 +105,9 @@
     <string name="settings_local_only">仅本地</string>
     <string name="settings_sync_unreadable">无法读取同步状态</string>
     <string name="settings_pause_between_sides">面或碟片之间暂停</string>
-    <string name="settings_side_pause_countdown">倒计时</string>
-    <string name="settings_side_pause_countdown_off">关闭</string>
+    <string name="settings_resume_automatically">自动继续</string>
+    <string name="settings_resume_never">永不</string>
+    <string name="settings_resume_after">%1$s后</string>
     <string name="settings_restore_on_launch">启动时恢复</string>
     <string name="settings_restore_on_launch_help">打开应用时恢复上次会话的曲目、播放位置、队列和音量。</string>
     <string name="settings_playback">播放</string>

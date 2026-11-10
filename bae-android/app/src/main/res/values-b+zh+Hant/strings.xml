@@ -105,8 +105,9 @@
     <string name="settings_local_only">僅本機</string>
     <string name="settings_sync_unreadable">無法讀取同步狀態</string>
     <string name="settings_pause_between_sides">面或碟片之間暫停</string>
-    <string name="settings_side_pause_countdown">倒數計時</string>
-    <string name="settings_side_pause_countdown_off">關閉</string>
+    <string name="settings_resume_automatically">自動繼續</string>
+    <string name="settings_resume_never">永不</string>
+    <string name="settings_resume_after">%1$s後</string>
     <string name="settings_restore_on_launch">啟動時還原</string>
     <string name="settings_restore_on_launch_help">開啟 App 時還原上次工作階段的曲目、播放位置、佇列與音量。</string>
     <string name="settings_playback">播放</string>

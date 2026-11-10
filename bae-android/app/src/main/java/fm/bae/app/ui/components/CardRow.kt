@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -34,8 +35,9 @@ import fm.bae.app.ui.appearance.ThemeText
  * its card), with [leadingIcon] before it when it adds to the list; [selected]
  * tints the row for the one choice made. In a [RowCard] a hairline divides the
  * row from the one above it. The [subtitle] wraps, read whole, as Material's supporting
- * text does. A row with an [onClick] opens or changes something, which [onClickLabel] names for
- * screen readers.
+ * text does. A [nested] row is a setting that belongs to the switch row above it: joined to it
+ * with no hairline and set in. A row that is not [enabled] shows dimmed and does nothing. A row
+ * with an [onClick] opens or changes something, which [onClickLabel] names for screen readers.
  */
 @Composable
 internal fun CardRow(
@@ -47,6 +49,8 @@ internal fun CardRow(
     action: Boolean = false,
     destructive: Boolean = false,
     selected: Boolean = false,
+    nested: Boolean = false,
+    enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
@@ -54,20 +58,14 @@ internal fun CardRow(
     val accent = MaterialTheme.colorScheme.primary
     Row(
         modifier =
-            modifier
-                .cardRowDivider()
-                .fillMaxWidth()
-                .background(if (selected) accent.copy(alpha = ThemeOpacity.tint) else Color.Transparent)
-                .then(
-                    if (onClick !=
-                        null
-                    ) {
-                        Modifier.clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
-                    } else {
-                        Modifier
-                    },
-                ).defaultMinSize(minHeight = if (subtitle == null) ONE_LINE_HEIGHT else TWO_LINE_HEIGHT)
-                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
+            modifier.cardRowSurface(
+                nested = nested,
+                twoLines = subtitle != null,
+                selected = selected,
+                enabled = enabled,
+                onClick = onClick,
+                onClickLabel = onClickLabel,
+            ),
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -96,6 +94,48 @@ internal fun CardRow(
     }
 }
 
+/** The row's divider, fill, dimming, tap, size and padding; [nested] sets it in under the row above. */
+@Composable
+private fun Modifier.cardRowSurface(
+    nested: Boolean,
+    twoLines: Boolean,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: (() -> Unit)?,
+    onClickLabel: String?,
+): Modifier {
+    val accent = MaterialTheme.colorScheme.primary
+    val minHeight =
+        when {
+            nested -> 0.dp
+            twoLines -> TWO_LINE_HEIGHT
+            else -> ONE_LINE_HEIGHT
+        }
+    return this
+        .then(if (nested) Modifier else Modifier.cardRowDivider())
+        .fillMaxWidth()
+        .alpha(if (enabled) 1f else DISABLED_ALPHA)
+        .background(if (selected) accent.copy(alpha = ThemeOpacity.tint) else Color.Transparent)
+        .then(
+            if (onClick != null) {
+                Modifier.clickable(
+                    enabled = enabled,
+                    onClickLabel = onClickLabel,
+                    role = Role.Button,
+                    onClick = onClick,
+                )
+            } else {
+                Modifier
+            },
+        ).defaultMinSize(minHeight = minHeight)
+        .padding(
+            start = if (nested) ThemeSpace.edge + ThemeSpace.section else ThemeSpace.edge,
+            top = if (nested) 0.dp else ThemeSpace.group,
+            end = ThemeSpace.edge,
+            bottom = ThemeSpace.group,
+        )
+}
+
 @Composable
 private fun Subtitle(
     text: String,
@@ -118,3 +158,6 @@ private fun Subtitle(
 private val ONE_LINE_HEIGHT = 56.dp
 private val TWO_LINE_HEIGHT = 72.dp
 private val DOT = 8.dp
+
+/** Material's alpha for a disabled control's content. */
+private const val DISABLED_ALPHA = 0.38f

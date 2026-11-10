@@ -114,8 +114,9 @@
     <string name="settings_local_only">Tylko lokalnie</string>
     <string name="settings_sync_unreadable">Nie można odczytać stanu synchronizacji</string>
     <string name="settings_pause_between_sides">Pauza między stronami i płytami</string>
-    <string name="settings_side_pause_countdown">Odliczanie</string>
-    <string name="settings_side_pause_countdown_off">Wyłączone</string>
+    <string name="settings_resume_automatically">Wznawiaj automatycznie</string>
+    <string name="settings_resume_never">Nigdy</string>
+    <string name="settings_resume_after">Za %1$s</string>
     <string name="settings_restore_on_launch">Przywracaj przy uruchomieniu</string>
     <string name="settings_restore_on_launch_help">Przywraca utwór, pozycję, kolejkę i głośność z ostatniej sesji przy otwarciu aplikacji.</string>
     <string name="settings_playback">Odtwarzanie</string>

@@ -4,24 +4,19 @@ import android.content.Context
 import android.icu.text.MeasureFormat
 import android.icu.util.Measure
 import android.icu.util.MeasureUnit
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -32,8 +27,8 @@ import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.currentLocale
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.RowCard
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeConfig
@@ -45,22 +40,12 @@ internal fun SettingsPlaybackSection(
     config: BridgeConfig,
     ioDispatcher: CoroutineDispatcher,
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-    ) {
-        Eyebrow(text = stringResource(R.string.settings_playback))
-        // Countdown belongs to the pause, so it sits right under the switch, in one group with it.
-        Column {
+    Column(modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge)) {
+        RowCard {
             PauseBetweenSidesRow(session = session, config = config, ioDispatcher = ioDispatcher)
             SidePauseCountdownRow(session = session, config = config, ioDispatcher = ioDispatcher)
+            RestoreOnLaunchRow()
         }
-        RestoreOnLaunchRow()
-        Text(
-            text = stringResource(R.string.settings_restore_on_launch_help),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -70,26 +55,21 @@ private fun PauseBetweenSidesRow(
     config: BridgeConfig,
     ioDispatcher: CoroutineDispatcher,
 ) {
-    val context = LocalContext.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.settings_pause_between_sides),
-            modifier = Modifier.weight(1f),
-        )
-        Switch(
-            checked = config.pauseBetweenSides,
-            onCheckedChange = { enabled ->
-                session.messages.perform("update pause-between-sides setting") {
-                    withContext(ioDispatcher) {
-                        session.appHandle.setPauseBetweenSides(enabled)
+    CardRow(
+        title = stringResource(R.string.settings_pause_between_sides),
+        trailing = {
+            Switch(
+                checked = config.pauseBetweenSides,
+                onCheckedChange = { enabled ->
+                    session.messages.perform("update pause-between-sides setting") {
+                        withContext(ioDispatcher) {
+                            session.appHandle.setPauseBetweenSides(enabled)
+                        }
                     }
-                }
-            },
-        )
-    }
+                },
+            )
+        },
+    )
 }
 
 @Composable
@@ -98,7 +78,6 @@ private fun SidePauseCountdownRow(
     config: BridgeConfig,
     ioDispatcher: CoroutineDispatcher,
 ) {
-    val context = LocalContext.current
     SidePauseCountdownPicker(
         pauseBetweenSides = config.pauseBetweenSides,
         selected = config.sidePauseCountdown,
@@ -112,44 +91,42 @@ private fun SidePauseCountdownRow(
     )
 }
 
-/** Whether a side or disc pause ends on its own, and after how long; shown only while pausing is on. */
+/**
+ * Whether a side or disc pause ends on its own, and after how long: a row nested under the
+ * pause-between-sides switch, its value as supporting text and a tap opening the choices. While
+ * pausing is off there is no pause to count down, so the row shows dimmed and does nothing.
+ */
 @Composable
 internal fun SidePauseCountdownPicker(
     pauseBetweenSides: Boolean,
     selected: BridgeSidePauseCountdown,
     onSelect: (BridgeSidePauseCountdown) -> Unit,
 ) {
-    if (!pauseBetweenSides) return
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.settings_side_pause_countdown),
-            modifier = Modifier.weight(1f),
+    Box {
+        CardRow(
+            title = stringResource(R.string.settings_resume_automatically),
+            subtitle = context.sidePauseCountdownLabel(selected),
+            nested = true,
+            enabled = pauseBetweenSides,
+            onClick = { expanded = true },
         )
-        Box {
-            TextButton(onClick = { expanded = true }) {
-                Text(context.sidePauseCountdownLabel(selected))
-            }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                BridgeSidePauseCountdown.entries.forEach { choice ->
-                    DropdownMenuItem(
-                        text = { Text(context.sidePauseCountdownLabel(choice)) },
-                        onClick = {
-                            expanded = false
-                            onSelect(choice)
-                        },
-                    )
-                }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            BridgeSidePauseCountdown.entries.forEach { choice ->
+                DropdownMenuItem(
+                    text = { Text(context.sidePauseCountdownLabel(choice)) },
+                    onClick = {
+                        expanded = false
+                        onSelect(choice)
+                    },
+                )
             }
         }
     }
 }
 
-/** How long a countdown choice lasts, in seconds, or null for Off. */
+/** How long a countdown choice lasts, in seconds, or null for Never. */
 internal val BridgeSidePauseCountdown.seconds: Int?
     get() =
         when (this) {
@@ -163,10 +140,12 @@ internal val BridgeSidePauseCountdown.seconds: Int?
 
 /** A countdown choice in words for the current locale, with the platform's plural for the length. */
 internal fun Context.sidePauseCountdownLabel(countdown: BridgeSidePauseCountdown): String {
-    val seconds = countdown.seconds ?: return getString(R.string.settings_side_pause_countdown_off)
-    return MeasureFormat
-        .getInstance(currentLocale(), MeasureFormat.FormatWidth.WIDE)
-        .format(Measure(seconds, MeasureUnit.SECOND))
+    val seconds = countdown.seconds ?: return getString(R.string.settings_resume_never)
+    val length =
+        MeasureFormat
+            .getInstance(currentLocale(), MeasureFormat.FormatWidth.WIDE)
+            .format(Measure(seconds, MeasureUnit.SECOND))
+    return getString(R.string.settings_resume_after, length)
 }
 
 // Device-local, not library config: whether the next launch restores the last session's playback.
@@ -174,22 +153,19 @@ internal fun Context.sidePauseCountdownLabel(countdown: BridgeSidePauseCountdown
 private fun RestoreOnLaunchRow() {
     val context = LocalContext.current
     var restoreOnLaunch by remember { mutableStateOf(RestorePlaybackPref.load(context)) }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.settings_restore_on_launch),
-            modifier = Modifier.weight(1f),
-        )
-        Switch(
-            checked = restoreOnLaunch,
-            onCheckedChange = { enabled ->
-                restoreOnLaunch = enabled
-                RestorePlaybackPref.save(context, enabled)
-            },
-        )
-    }
+    CardRow(
+        title = stringResource(R.string.settings_restore_on_launch),
+        subtitle = stringResource(R.string.settings_restore_on_launch_help),
+        trailing = {
+            Switch(
+                checked = restoreOnLaunch,
+                onCheckedChange = { enabled ->
+                    restoreOnLaunch = enabled
+                    RestorePlaybackPref.save(context, enabled)
+                },
+            )
+        },
+    )
 }
 
 @Preview(showBackground = true)

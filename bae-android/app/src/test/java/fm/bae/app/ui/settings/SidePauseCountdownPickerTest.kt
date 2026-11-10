@@ -1,6 +1,8 @@
 package fm.bae.app.ui.settings
 
 import android.app.Application
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -15,8 +17,8 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 
 /**
- * The countdown choice under the pause-between-sides switch: drawn only while
- * pausing is on, offering Off and each length, and writing the one picked.
+ * Resume automatically under the pause-between-sides switch: dimmed and inert while
+ * pausing is off, offering Never and each length while it is on, and writing the one picked.
  */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -25,20 +27,24 @@ class SidePauseCountdownPickerTest {
     val compose = createComposeRule()
 
     private val context = RuntimeEnvironment.getApplication()
-    private val title = context.getString(R.string.settings_side_pause_countdown)
-    private val off = context.getString(R.string.settings_side_pause_countdown_off)
+    private val title = context.getString(R.string.settings_resume_automatically)
+    private val never = context.getString(R.string.settings_resume_never)
 
     @Test
-    fun theChoiceIsHiddenWhilePausingBetweenSidesIsOff() {
+    fun theChoiceIsDimmedAndInertWhilePausingBetweenSidesIsOff() {
+        val picked = mutableListOf<BridgeSidePauseCountdown>()
         compose.setContent {
             SidePauseCountdownPicker(
                 pauseBetweenSides = false,
                 selected = BridgeSidePauseCountdown.OFF,
-                onSelect = {},
+                onSelect = { picked += it },
             )
         }
 
-        compose.onNodeWithText(title).assertDoesNotExist()
+        compose.onNodeWithText(title).assertExists().assertIsNotEnabled()
+        compose.onNodeWithText(never).performClick()
+        compose.onNodeWithText("After 15 seconds").assertDoesNotExist()
+        assertEquals(emptyList<BridgeSidePauseCountdown>(), picked)
     }
 
     @Test
@@ -52,9 +58,9 @@ class SidePauseCountdownPickerTest {
             )
         }
 
-        compose.onNodeWithText(title).assertExists()
-        compose.onNodeWithText(off).performClick()
-        compose.onNodeWithText("15 seconds").performClick()
+        compose.onNodeWithText(title).assertIsEnabled()
+        compose.onNodeWithText(never).performClick()
+        compose.onNodeWithText("After 15 seconds").performClick()
 
         assertEquals(listOf(BridgeSidePauseCountdown.SECONDS15), picked)
     }
@@ -62,7 +68,7 @@ class SidePauseCountdownPickerTest {
     @Test
     fun everyChoiceHasALabel() {
         assertEquals(
-            listOf("Off", "5 seconds", "15 seconds", "30 seconds", "45 seconds", "60 seconds"),
+            listOf("Never", "After 5 seconds", "After 15 seconds", "After 30 seconds", "After 45 seconds", "After 60 seconds"),
             BridgeSidePauseCountdown.entries.map { context.sidePauseCountdownLabel(it) },
         )
     }

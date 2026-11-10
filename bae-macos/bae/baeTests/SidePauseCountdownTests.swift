@@ -39,21 +39,23 @@ struct SidePauseCountdownTests {
         .config
     }
 
-    @Test("the countdown choice shows only while pausing between sides is on")
+    @Test(
+        "the countdown choice takes input only while pausing between sides is on"
+    )
     func pickerFollowsThePauseSetting() {
         #expect(
-            SidePauseCountdownPicker.isShown(
+            SidePauseCountdownPicker.isEnabled(
                 for: Self.config(pauseBetweenSides: true)
             )
         )
         #expect(
-            !SidePauseCountdownPicker.isShown(
+            !SidePauseCountdownPicker.isEnabled(
                 for: Self.config(pauseBetweenSides: false)
             )
         )
     }
 
-    @Test("the picker offers Off and each length in order")
+    @Test("the picker offers Never and each length in order")
     func pickerOffersEveryChoice() {
         #expect(
             BridgeSidePauseCountdown.offered.map(\.seconds)
@@ -124,7 +126,7 @@ struct SidePauseCountdownTests {
         }
 
         let reference = try locales("Pause between sides and discs")
-        for key in ["Countdown", "Off"] {
+        for key in ["Resume automatically", "Never", "After %@"] {
             #expect(try locales(key) == reference, "\(key) is missing locales")
         }
     }

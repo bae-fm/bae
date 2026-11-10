@@ -120,8 +120,9 @@
     <string name="settings_local_only">محلي فقط</string>
     <string name="settings_sync_unreadable">تعذّرت قراءة حالة المزامنة</string>
     <string name="settings_pause_between_sides">إيقاف مؤقت بين الجوانب والأقراص</string>
-    <string name="settings_side_pause_countdown">العد التنازلي</string>
-    <string name="settings_side_pause_countdown_off">إيقاف</string>
+    <string name="settings_resume_automatically">الاستئناف تلقائيًا</string>
+    <string name="settings_resume_never">أبدًا</string>
+    <string name="settings_resume_after">بعد %1$s</string>
     <string name="settings_restore_on_launch">الاستعادة عند التشغيل</string>
     <string name="settings_restore_on_launch_help">يستعيد المقطع والموضع وقائمة الانتظار ومستوى الصوت من الجلسة الأخيرة عند فتح التطبيق.</string>
     <string name="settings_playback">التشغيل</string>

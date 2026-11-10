@@ -112,8 +112,9 @@
     <string name="settings_local_only">Csak helyi</string>
     <string name="settings_sync_unreadable">A szinkronizálás állapota nem olvasható</string>
     <string name="settings_pause_between_sides">Szünet a lemezoldalak és lemezek között</string>
-    <string name="settings_side_pause_countdown">Visszaszámlálás</string>
-    <string name="settings_side_pause_countdown_off">Ki</string>
+    <string name="settings_resume_automatically">Automatikus folytatás</string>
+    <string name="settings_resume_never">Soha</string>
+    <string name="settings_resume_after">%1$s után</string>
     <string name="settings_restore_on_launch">Visszaállítás indításkor</string>
     <string name="settings_restore_on_launch_help">Az app megnyitásakor visszaállítja az előző munkamenet számát, pozícióját, sorát és hangerejét.</string>
     <string name="settings_playback">Lejátszás</string>

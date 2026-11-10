@@ -114,8 +114,9 @@
     <string name="settings_local_only">Лише локально</string>
     <string name="settings_sync_unreadable">Не вдалося прочитати стан синхронізації</string>
     <string name="settings_pause_between_sides">Пауза між сторонами та дисками</string>
-    <string name="settings_side_pause_countdown">Зворотний відлік</string>
-    <string name="settings_side_pause_countdown_off">Вимкнено</string>
+    <string name="settings_resume_automatically">Відновлювати автоматично</string>
+    <string name="settings_resume_never">Ніколи</string>
+    <string name="settings_resume_after">Через %1$s</string>
     <string name="settings_restore_on_launch">Відновлювати під час запуску</string>
     <string name="settings_restore_on_launch_help">Під час відкриття застосунку відновлює трек, позицію, чергу та гучність останнього сеансу.</string>
     <string name="settings_playback">Відтворення</string>

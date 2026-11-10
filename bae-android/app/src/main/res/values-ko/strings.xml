@@ -105,8 +105,9 @@
     <string name="settings_local_only">로컬 전용</string>
     <string name="settings_sync_unreadable">동기화 상태를 읽을 수 없음</string>
     <string name="settings_pause_between_sides">면과 디스크 사이에 일시정지</string>
-    <string name="settings_side_pause_countdown">카운트다운</string>
-    <string name="settings_side_pause_countdown_off">끔</string>
+    <string name="settings_resume_automatically">자동으로 재개</string>
+    <string name="settings_resume_never">안 함</string>
+    <string name="settings_resume_after">%1$s 후</string>
     <string name="settings_restore_on_launch">시작 시 복원</string>
     <string name="settings_restore_on_launch_help">앱을 열 때 마지막 세션의 트랙, 위치, 대기열, 음량을 복원합니다.</string>
     <string name="settings_playback">재생</string>

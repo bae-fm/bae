@@ -111,8 +111,9 @@
     <string name="settings_local_only">Local uniquement</string>
     <string name="settings_sync_unreadable">Impossible de lire l’état de la synchronisation</string>
     <string name="settings_pause_between_sides">Pause entre les faces et les disques</string>
-    <string name="settings_side_pause_countdown">Compte à rebours</string>
-    <string name="settings_side_pause_countdown_off">Désactivé</string>
+    <string name="settings_resume_automatically">Reprendre automatiquement</string>
+    <string name="settings_resume_never">Jamais</string>
+    <string name="settings_resume_after">Après %1$s</string>
     <string name="settings_restore_on_launch">Restaurer au lancement</string>
     <string name="settings_restore_on_launch_help">Restaure la piste, la position, la file et le volume de la dernière session à l\'ouverture de l\'app.</string>
     <string name="settings_playback">Lecture</string>

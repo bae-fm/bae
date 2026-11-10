@@ -15,8 +15,8 @@ struct PlaybackSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                // Countdown belongs to the pause: one row holds both, so no
-                // divider comes between them.
+                // Resume automatically belongs to the pause: one row holds
+                // both, so no divider comes between them.
                 VStack(spacing: ThemeSpace.compact) {
                     PauseBetweenSidesToggle(
                         configStore: configStore,

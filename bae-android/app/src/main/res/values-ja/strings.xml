@@ -105,8 +105,9 @@
     <string name="settings_local_only">ローカルのみ</string>
     <string name="settings_sync_unreadable">同期の状態を読み取れませんでした</string>
     <string name="settings_pause_between_sides">面やディスクの間で一時停止</string>
-    <string name="settings_side_pause_countdown">カウントダウン</string>
-    <string name="settings_side_pause_countdown_off">オフ</string>
+    <string name="settings_resume_automatically">自動で再開</string>
+    <string name="settings_resume_never">しない</string>
+    <string name="settings_resume_after">%1$s後</string>
     <string name="settings_restore_on_launch">起動時に復元</string>
     <string name="settings_restore_on_launch_help">アプリを開いたときに、前回のセッションのトラック、再生位置、キュー、音量を復元します。</string>
     <string name="settings_playback">再生</string>

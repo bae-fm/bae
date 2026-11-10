@@ -112,8 +112,9 @@
     <string name="settings_local_only">Vain paikallisesti</string>
     <string name="settings_sync_unreadable">Synkronoinnin tilaa ei voitu lukea</string>
     <string name="settings_pause_between_sides">Tauko puolten ja levyjen välissä</string>
-    <string name="settings_side_pause_countdown">Lähtölaskenta</string>
-    <string name="settings_side_pause_countdown_off">Pois</string>
+    <string name="settings_resume_automatically">Jatka automaattisesti</string>
+    <string name="settings_resume_never">Ei koskaan</string>
+    <string name="settings_resume_after">Kun on kulunut %1$s</string>
     <string name="settings_restore_on_launch">Palauta käynnistyksessä</string>
     <string name="settings_restore_on_launch_help">Palauttaa edellisen istunnon raidan, kohdan, jonon ja äänenvoimakkuuden, kun ohjelma avataan.</string>
     <string name="settings_playback">Toisto</string>

@@ -114,8 +114,9 @@
     <string name="settings_local_only">Pouze místně</string>
     <string name="settings_sync_unreadable">Stav synchronizace nelze načíst</string>
     <string name="settings_pause_between_sides">Pauza mezi stranami a disky</string>
-    <string name="settings_side_pause_countdown">Odpočet</string>
-    <string name="settings_side_pause_countdown_off">Vypnuto</string>
+    <string name="settings_resume_automatically">Automaticky pokračovat</string>
+    <string name="settings_resume_never">Nikdy</string>
+    <string name="settings_resume_after">Za %1$s</string>
     <string name="settings_restore_on_launch">Obnovit při spuštění</string>
     <string name="settings_restore_on_launch_help">Při otevření aplikace obnoví skladbu, pozici, frontu a hlasitost z poslední relace.</string>
     <string name="settings_playback">Přehrávání</string>
