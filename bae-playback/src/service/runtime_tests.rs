@@ -366,12 +366,12 @@ impl crate::audio_output::AudioOutput for EndPanicsOutput {
     }
 }
 
-/// A command that panics is reported, stops playback with an error, and the
-/// service goes on to serve the next command. Sabotage: drop the boundary in
-/// `run`, and the panic ends the service, so the next command is never
-/// answered.
+/// A command that panics stops playback with an error, isn't reported again
+/// (the panic hook reported it), and the service goes on to serve the next
+/// command. Sabotage: drop the boundary in `run`, and the panic ends the
+/// service, so the next command is never answered.
 #[tokio::test]
-async fn a_command_that_panics_is_reported_and_the_next_is_served() {
+async fn a_command_that_panics_stops_playback_and_the_next_is_served() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let store = seeded_store(&[]).await;
@@ -397,10 +397,7 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
         saw_error |= matches!(progress, PlaybackProgress::PlaybackError { .. });
     }
     assert!(saw_error, "the person is told playback stopped");
-    assert_eq!(
-        bugs.reports(),
-        vec![bae_diagnostics::test_panic::report("serve playback", "the output's end failed")]
-    );
+    assert_eq!(bugs.reports(), Vec::new());
 }
 
 /// A track deleted where playback didn't ask for it — its release deleted
@@ -652,9 +649,10 @@ fn failures_heard(progress: &mut crate::PlaybackProgressFeed) -> Vec<crate::Play
 }
 
 /// A panic that ends a playback service ends what it played: whoever follows
-/// playback hears it stopped with an error, once, the bug is reported once,
-/// and the next press reaches a fresh service, which reports nothing of the
-/// one that ended. Sabotage: start no fresh service, and the play fails.
+/// playback hears it stopped with an error, once, the service reports
+/// nothing (the panic hook reported the panic), and the next press reaches a
+/// fresh service, which reports nothing of the one that ended. Sabotage:
+/// start no fresh service, and the play fails.
 #[tokio::test]
 async fn the_press_after_a_panic_ended_the_service_reaches_a_fresh_one() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
@@ -681,13 +679,7 @@ async fn the_press_after_a_panic_ended_the_service_reaches_a_fresh_one() {
     let played = playback.play_library_shuffled().await;
     assert!(matches!(played, Ok(PlayOutcome::NothingToPlay)), "{played:?}");
     assert_eq!(failures_heard(&mut progress), Vec::new());
-    assert_eq!(
-        bugs.reports(),
-        vec![bae_diagnostics::test_panic::report(
-            "playback service thread",
-            "the device would not open"
-        )]
-    );
+    assert_eq!(bugs.reports(), Vec::new());
 }
 
 /// An audio device that won't open as playback starts ends that service:

@@ -461,10 +461,11 @@ async fn closing_the_library_cancels_a_waiting_live_read() {
     ));
 }
 
-/// A file operation that panics fails as something that went wrong, is
-/// reported once, and leaves the library able to close.
+/// A file operation that panics fails as something that went wrong, is not
+/// reported again (the panic hook reported it), and leaves the library able
+/// to close.
 #[tokio::test]
-async fn a_file_operation_that_panics_fails_and_is_reported() {
+async fn a_file_operation_that_panics_fails_and_lets_the_library_close() {
     let (test, _temp_dir, bugs) = setup_test_manager_reporting_bugs().await;
     let manager = test.library.manager();
 
@@ -474,7 +475,7 @@ async fn a_file_operation_that_panics_fails_and_is_reported() {
         .expect_err("a panicked operation fails");
 
     assert!(matches!(error, LibraryError::Internal(_)), "{error}");
-    assert_eq!(bugs.reports().len(), 1, "{:?}", bugs.reports());
+    assert!(bugs.reports().is_empty(), "{:?}", bugs.reports());
     manager.close().await.expect("the library closes");
 }
 

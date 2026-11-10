@@ -689,8 +689,8 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
 }
 
 /// What a bootstrap runs once the library is open: record it in `host`'s
-/// open libraries and start the handle for `host` over it, reporting a panic
-/// in its work through `diagnostics`.
+/// open libraries and start the handle for `host` over it, its work run
+/// under `diagnostics`.
 pub(crate) fn start_handle(
     host: Arc<crate::BridgeHost>,
     diagnostics: Diagnostics,

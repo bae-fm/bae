@@ -288,8 +288,8 @@ impl LibraryManager {
                 &self.runtime_handle,
             )
         };
-        // The task catches its work's panic and reports it, so its join fails
-        // only as its runtime ends it.
+        // The task catches its work's panic and hands it back, so its join
+        // fails only as its runtime ends it.
         task.await.map_err(|error| self.bug(TaskFailed::of_join(name, error)))?
     }
 

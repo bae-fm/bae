@@ -79,7 +79,7 @@ impl ImportServiceHandle {
         let write = bae_util::task_failure::caught("a candidate write", write);
         #[expect(
             clippy::disallowed_methods,
-            reason = "joined at once: the write's panic is reported at its join"
+            reason = "joined at once: the write's panic comes back at its join"
         )]
         let write = self.runtime_handle.spawn(write);
         bae_util::task_failure::joined("a candidate write", write)

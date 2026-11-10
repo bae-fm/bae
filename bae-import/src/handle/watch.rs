@@ -119,7 +119,7 @@ impl ImportServiceHandle {
             let this = self.clone();
             #[expect(
                 clippy::disallowed_methods,
-                reason = "joined below: each read's panic is reported at its join"
+                reason = "joined below: each read's panic comes back at its join"
             )]
             reads.spawn(bae_util::task_failure::caught("read a watched folder", async move {
                 this.refresh_watched_folder(folder.path).await

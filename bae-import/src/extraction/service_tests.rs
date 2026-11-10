@@ -523,7 +523,7 @@ async fn an_unchanged_folder_is_not_read_again() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_fast_pass_that_panics_says_why_there_is_no_pass_and_is_reported() {
+async fn a_fast_pass_that_panics_says_why_there_is_no_pass() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let fast_pass =
@@ -536,13 +536,7 @@ async fn a_fast_pass_that_panics_says_why_there_is_no_pass_and_is_reported() {
         panic!("a fast pass that panics fails, not swallowed");
     };
     assert_eq!(detail, "read a folder's signals panicked: fast-pass blocking task panicked");
-    assert_eq!(
-        bugs.reports(),
-        vec![bae_diagnostics::test_panic::report(
-            "read a folder's signals",
-            "fast-pass blocking task panicked"
-        )]
-    );
+    assert_eq!(bugs.reports(), Vec::new(), "the panic hook reported the panic");
 }
 
 /// An extraction that cannot gather its inputs does not go silent: it says so

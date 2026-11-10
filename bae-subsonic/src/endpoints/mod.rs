@@ -66,9 +66,9 @@ where
 }
 
 /// Answer a request whose handling panicked with a Subsonic error document,
-/// which clients read, in the format the request asked for, and report the
-/// panic: the server goes on serving the next request.
-pub(crate) async fn report_panics(
+/// which clients read, in the format the request asked for: the server goes
+/// on serving the next request. The panic hook reported the panic.
+pub(crate) async fn answer_panics(
     State(state): State<AppState>,
     request: axum::extract::Request,
     next: axum::middleware::Next,

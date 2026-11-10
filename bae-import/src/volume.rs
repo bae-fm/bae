@@ -46,8 +46,8 @@ pub enum VolumeKind {
 ///
 /// Asking can block for as long as a network mount takes to answer — a share
 /// that dropped off can take minutes — so the question is put on a blocking
-/// thread. A question that panics is reported to `diagnostics` and answered
-/// `Local`, as a platform that will not say is.
+/// thread. A question that panics is answered `Local`, as a platform that
+/// will not say is.
 pub(crate) async fn volume_kind(
     path: &Path,
     diagnostics: &bae_diagnostics::Diagnostics,

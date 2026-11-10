@@ -168,7 +168,7 @@ async fn advance(
     let context = context.clone();
     #[expect(
         clippy::disallowed_methods,
-        reason = "the settle catches its own panic, and the queue joins every settle in its set and reports a failed join"
+        reason = "the settle catches its own panic, and the queue joins every settle in its set and tells of a failed join"
     )]
     settling.spawn(async move {
         let representative_key = candidate.key();

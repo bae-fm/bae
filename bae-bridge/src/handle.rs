@@ -195,8 +195,8 @@ impl Session {
     }
 
     /// [`Self::end`] for a released handle, with no caller to hear a failure:
-    /// the close's error, or its panic, is reported to `diagnostics` as the
-    /// bug it is. Released on a thread of a runtime — the last call on the
+    /// the close's error is reported to `diagnostics` as the bug it is, and
+    /// its panic, which the panic hook reported, is logged there. Released on a thread of a runtime — the last call on the
     /// handle ending on the app runtime — it can't wait there for work only
     /// a runtime can do, so a thread of its own ends the session, and the
     /// close stays under way in the host's record until that thread ends.

@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use super::*;
-use crate::test_panic;
+use crate::test_panic::{self, reported_panics};
 use crate::RecordingBugReporter;
 
 fn reporting() -> (Diagnostics, Arc<RecordingBugReporter>) {
@@ -10,24 +10,41 @@ fn reporting() -> (Diagnostics, Arc<RecordingBugReporter>) {
     (diagnostics, reports)
 }
 
+/// A panic, which the hook reported as it began, is handed back and not
+/// reported again; so is one that reached a join uncaught, with no place.
 #[test]
-fn bug_reports_a_panic_and_hands_it_back() {
+fn bug_hands_back_a_panic_without_reporting_it_again() {
     let (diagnostics, reports) = reporting();
     let failed = TaskFailed::Panicked(test_panic::bug("resize the cover", "zero width"));
     assert_eq!(diagnostics.bug(failed.clone()), failed);
-    assert_eq!(reports.reports(), vec![test_panic::report("resize the cover", "zero width")]);
+    let uncaught = Bug {
+        operation: "resize the cover",
+        message: "zero width".into(),
+        location: None,
+        kind: BugKind::Panic,
+    };
+    assert_eq!(diagnostics.panicked(uncaught.clone()), uncaught);
+    assert!(reports.reports().is_empty());
 }
 
-/// A bug that can't say where it began, such as a panic that reached a join
-/// uncaught, is reported with its text alone.
+/// A bug code found without a panic, which no hook saw, is reported by
+/// `bug`, naming where it was found.
 #[test]
-fn a_bug_with_no_place_is_reported_by_its_text() {
+fn bug_reports_a_bug_found_without_a_panic() {
     let (diagnostics, reports) = reporting();
-    let bug = Bug { operation: "resize the cover", message: "zero width".into(), location: None };
-    assert_eq!(diagnostics.panicked(bug.clone()), bug);
+    let found = Bug::new("resize the cover", "a width the cover never had");
+    let found_on = line!() - 1;
+    let failed = TaskFailed::Panicked(found);
+    assert_eq!(diagnostics.bug(failed.clone()), failed);
     assert_eq!(
         reports.reports(),
-        vec![("resize the cover".to_string(), "resize the cover panicked: zero width".to_string())]
+        vec![(
+            "resize the cover".to_string(),
+            format!(
+                "resize the cover panicked: a width the cover never had (at {}:{found_on}:17)",
+                file!()
+            )
+        )]
     );
 }
 
@@ -43,10 +60,12 @@ fn bug_does_not_report_a_runtime_shutting_down() {
 }
 
 /// Work on the blocking pool runs to its end after its caller stops waiting,
-/// and its panic still reaches the crash reporter. Sabotage: run it under
-/// `coven::task::blocking`, and the panic goes nowhere once the caller drops.
+/// and its panic is reported once, by the hook, naming the work; the sink
+/// that hears it once no caller waits only logs it.
 #[tokio::test]
-async fn blocking_reports_a_panic_its_caller_stopped_waiting_for() {
+async fn blocking_work_whose_caller_stopped_waiting_has_its_panic_reported_once() {
+    let hooked = reported_panics();
+    let message = "a cover of zero width";
     let reports = Arc::new(crate::HeardBugReports::new());
     let diagnostics = Diagnostics::noop().reporting_bugs_to(reports.clone());
     let (started_tx, started) = tokio::sync::oneshot::channel();
@@ -54,36 +73,42 @@ async fn blocking_reports_a_panic_its_caller_stopped_waiting_for() {
     let mut work = Box::pin(diagnostics.blocking("resize the cover", move || {
         started_tx.send(()).expect("the test waits for the start");
         wait.recv().expect("the test lets the work go on");
-        test_panic::panics("zero width")
+        test_panic::panics(message)
     }));
     tokio::select! {
         _ = &mut work => panic!("the work waits for the test"),
         started = started => started.expect("the work started"),
     }
-    // The caller stops waiting; the work runs on, and reports.
+    // The caller stops waiting; the work runs on, and panics.
     drop(work);
     go.send(()).expect("the work is waiting");
-    let report = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, reports.next())
-        .await
-        .expect("the panic is reported");
-    assert_eq!(report, test_panic::report("resize the cover", "zero width"));
+    assert_eq!(
+        test_panic::report_about(hooked, message).await,
+        test_panic::report("resize the cover", message)
+    );
+    assert!(!hooked.holds_about(message));
+    assert!(reports.all_taken(), "the sink only logs a panic");
 }
 
-/// Work started with nobody waiting runs to its end, and its panic reaches the
-/// crash reporter.
+/// Work started with nobody waiting runs to its end, and the hook reports its
+/// panic.
 #[tokio::test]
-async fn blocking_unawaited_reports_a_panic_nobody_waits_for() {
-    let reports = Arc::new(crate::HeardBugReports::new());
-    let diagnostics = Diagnostics::noop().reporting_bugs_to(reports.clone());
-    diagnostics.blocking_unawaited("write a body", || test_panic::panics("short write"));
-    let report = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, reports.next())
-        .await
-        .expect("the panic is reported");
-    assert_eq!(report, test_panic::report("write a body", "short write"));
+async fn blocking_unawaited_work_has_its_panic_reported() {
+    let hooked = reported_panics();
+    let message = "a body's write came up short";
+    Diagnostics::noop().blocking_unawaited("write a body", move || test_panic::panics(message));
+    assert_eq!(
+        test_panic::report_about(hooked, message).await,
+        test_panic::report("write a body", message)
+    );
 }
 
+/// A panicking task's owner ends its work, and the panic is reported once, by
+/// the hook.
 #[tokio::test]
-async fn spawn_reported_reports_a_panic_and_lets_its_owner_end_the_work() {
+async fn spawn_reported_lets_its_owner_end_the_work_of_a_task_that_panicked() {
+    let hooked = reported_panics();
+    let message = "a queue index out of range";
     let (diagnostics, reports) = reporting();
     let (ended_tx, ended_rx) = tokio::sync::oneshot::channel();
     let task = diagnostics.spawn_reported(
@@ -91,21 +116,20 @@ async fn spawn_reported_reports_a_panic_and_lets_its_owner_end_the_work() {
         "follow the queue",
         async {
             tokio::task::yield_now().await;
-            test_panic::panics("queue index out of range")
+            test_panic::panics(message)
         },
         move |failed| {
             ended_tx.send(failed).unwrap();
         },
     );
     task.ended().await;
+    assert_eq!(ended_rx.await.expect("on_panic ran"), test_panic::bug("follow the queue", message));
     assert_eq!(
-        ended_rx.await.expect("on_panic ran"),
-        test_panic::bug("follow the queue", "queue index out of range")
+        test_panic::report_about(hooked, message).await,
+        test_panic::report("follow the queue", message)
     );
-    assert_eq!(
-        reports.reports(),
-        vec![test_panic::report("follow the queue", "queue index out of range")]
-    );
+    assert!(!hooked.holds_about(message));
+    assert!(reports.reports().is_empty(), "the task's owner doesn't report it again");
 }
 
 #[tokio::test]
@@ -126,40 +150,78 @@ async fn spawn_reported_calls_nothing_when_the_task_finishes_or_is_aborted() {
 
 #[tokio::test]
 async fn a_panic_in_on_panic_is_reported_and_goes_no_further() {
-    let (diagnostics, reports) = reporting();
-    let task = diagnostics.spawn_reported(
+    let hooked = reported_panics();
+    let first = "progress fanned out to a closed screen";
+    let second = "the screen's end was already sent";
+    let task = Diagnostics::noop().spawn_reported(
         &tokio::runtime::Handle::current(),
         "fan out progress",
-        async { panic!("first") },
-        |_| panic!("second"),
+        async move { test_panic::panics(first) },
+        move |_| test_panic::panics(second),
     );
     task.ended().await;
-    let operations: Vec<String> = reports.reports().into_iter().map(|(op, _)| op).collect();
-    assert_eq!(operations, vec!["fan out progress", "end what the work served"]);
+    assert_eq!(
+        test_panic::report_about(hooked, first).await,
+        test_panic::report("fan out progress", first)
+    );
+    assert_eq!(
+        test_panic::report_about(hooked, second).await,
+        test_panic::report("end what the work served", second)
+    );
 }
 
-/// A task that panics is reported, and its `end` hears the panic and hands
-/// the joiner what it makes of it.
 #[tokio::test]
-async fn spawn_ending_reports_a_panic_and_hands_end_s_value_to_the_joiner() {
+async fn spawn_thread_reported_calls_on_panic_on_the_thread_that_panicked() {
+    let hooked = reported_panics();
+    let message = "a packet larger than the frame";
+    let (diagnostics, reports) = reporting();
+    let (ended_tx, ended_rx) = std::sync::mpsc::channel();
+    let thread = diagnostics
+        .spawn_thread_reported(
+            "bae-decoder",
+            move || test_panic::panics(message),
+            move |failed| {
+                let thread = std::thread::current().name().map(str::to_string);
+                ended_tx.send((failed, thread)).unwrap();
+            },
+        )
+        .expect("spawn the thread");
+    thread.join();
+    let (failed, thread_name) = ended_rx.recv().expect("on_panic ran");
+    assert_eq!(failed, test_panic::bug("bae-decoder", message));
+    assert_eq!(thread_name.as_deref(), Some("bae-decoder"));
+    assert_eq!(
+        test_panic::report_about(hooked, message).await,
+        test_panic::report("bae-decoder", message)
+    );
+    assert!(reports.reports().is_empty(), "the thread's owner doesn't report it again");
+}
+
+/// A task that panics hands its `end` the panic, which the hook reported,
+/// and the joiner gets what `end` makes of it; the task reports nothing.
+#[tokio::test]
+async fn spawn_ending_hands_a_panic_to_end_and_end_s_value_to_the_joiner() {
+    let hooked = reported_panics();
+    let message = "a window past the buffer's end";
     let (diagnostics, reports) = reporting();
     let task = diagnostics.spawn_ending(
         &tokio::runtime::Handle::current(),
         "fill a buffer",
-        async {
+        async move {
             tokio::task::yield_now().await;
             if true {
-                test_panic::panics("window past the end");
+                test_panic::panics(message);
             }
             7
         },
         |ended: Result<i32, Bug>| ended,
     );
+    assert_eq!(task.outcome().await, Ok(Err(test_panic::bug("fill a buffer", message))));
     assert_eq!(
-        task.outcome().await,
-        Ok(Err(test_panic::bug("fill a buffer", "window past the end")))
+        test_panic::report_about(hooked, message).await,
+        test_panic::report("fill a buffer", message)
     );
-    assert_eq!(reports.reports(), vec![test_panic::report("fill a buffer", "window past the end")]);
+    assert!(reports.reports().is_empty(), "the task doesn't report it again");
 }
 
 /// A task that finishes hands its value to `end`, and reports nothing.
@@ -191,42 +253,22 @@ async fn spawn_ending_tells_the_joiner_of_an_abort() {
     assert!(reports.reports().is_empty());
 }
 
-/// A panic in `end` is reported, and the joiner hears it.
+/// A panic in `end` is reported by the hook, naming the ending, and the
+/// joiner hears it.
 #[tokio::test]
-async fn spawn_ending_reports_a_panic_in_end_to_the_joiner() {
-    let (diagnostics, reports) = reporting();
-    let task = diagnostics.spawn_ending(
+async fn spawn_ending_hands_a_panic_in_end_to_the_joiner() {
+    let hooked = reported_panics();
+    let message = "the transfer's progress channel is gone";
+    let task = Diagnostics::noop().spawn_ending(
         &tokio::runtime::Handle::current(),
         "record the transfer",
         async {},
-        |_| -> () { panic!("progress channel gone") },
+        move |_| -> () { test_panic::panics(message) },
     );
     assert!(matches!(task.outcome().await, Err(Unfinished::Panicked(_))));
-    let operations: Vec<String> = reports.reports().into_iter().map(|(op, _)| op).collect();
-    assert_eq!(operations, vec!["end what the work served"]);
-}
-
-#[test]
-fn spawn_thread_reported_reports_a_panic_and_calls_on_panic_on_that_thread() {
-    let (diagnostics, reports) = reporting();
-    let (ended_tx, ended_rx) = std::sync::mpsc::channel();
-    let thread = diagnostics
-        .spawn_thread_reported(
-            "bae-decoder",
-            || test_panic::panics("packet larger than the frame"),
-            move |failed| {
-                let thread = std::thread::current().name().map(str::to_string);
-                ended_tx.send((failed, thread)).unwrap();
-            },
-        )
-        .expect("spawn the thread");
-    thread.join();
-    let (failed, thread_name) = ended_rx.recv().expect("on_panic ran");
-    assert_eq!(failed, test_panic::bug("bae-decoder", "packet larger than the frame"));
-    assert_eq!(thread_name.as_deref(), Some("bae-decoder"));
     assert_eq!(
-        reports.reports(),
-        vec![test_panic::report("bae-decoder", "packet larger than the frame")]
+        test_panic::report_about(hooked, message).await,
+        test_panic::report("end what the work served", message)
     );
 }
 
@@ -243,23 +285,26 @@ fn run_on_thread_hands_back_the_work_s_value_on_its_stack() {
     assert!(reports.reports().is_empty());
 }
 
-/// Work on a thread of its own that panics is reported, and its caller hears
-/// the panic.
-#[test]
-fn run_on_thread_reports_a_panic_and_hands_it_back() {
+/// Work on a thread of its own that panics hands the panic back to its
+/// caller; the hook reported it, so nothing reports it again.
+#[tokio::test]
+async fn run_on_thread_hands_back_a_panic() {
+    let hooked = reported_panics();
+    let message = "the schema is out of date";
     let (diagnostics, reports) = reporting();
-    let failed = diagnostics.run_on_thread("open the library", 1024 * 1024, || -> () {
-        test_panic::panics("schema out of date")
+    let failed = diagnostics.run_on_thread("open the library", 1024 * 1024, move || -> () {
+        test_panic::panics(message)
     });
     assert!(
         matches!(&failed, Err(ThreadFailed::Panicked(bug))
-            if *bug == test_panic::bug("open the library", "schema out of date")),
+            if *bug == test_panic::bug("open the library", message)),
         "{failed:?}"
     );
     assert_eq!(
-        reports.reports(),
-        vec![test_panic::report("open the library", "schema out of date")]
+        test_panic::report_about(hooked, message).await,
+        test_panic::report("open the library", message)
     );
+    assert!(reports.reports().is_empty());
 }
 
 #[test]

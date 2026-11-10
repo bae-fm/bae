@@ -40,10 +40,11 @@ impl BridgeAudioFocus for Throwing {
     }
 }
 
-/// A throw is reported and refuses the request, so playback stays
-/// paused instead of the playback service unwinding.
+/// A throw refuses the request, so playback stays paused instead of the
+/// playback service unwinding. uniffi raises it as a panic, which the panic
+/// hook reported, so the request doesn't report it again.
 #[test]
-fn a_platform_that_throws_is_reported_and_refuses() {
+fn a_platform_that_throws_refuses() {
     let bugs = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let throwing = PlatformAudioFocus::new(
         Box::new(Throwing),
@@ -53,6 +54,5 @@ fn a_platform_that_throws_is_reported_and_refuses() {
     assert!(throwing.request().is_err());
     throwing.release();
 
-    let operations: Vec<String> = bugs.reports().into_iter().map(|(op, _)| op).collect();
-    assert_eq!(operations, ["request audio focus", "release audio focus"]);
+    assert_eq!(bugs.reports(), Vec::new());
 }

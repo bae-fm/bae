@@ -6,16 +6,18 @@
 //!
 //! A panic turned into an `Err` at the nearest join lets the caller's own
 //! failure path run: the rollback, the cleanup and the "this import failed"
-//! record bae writes on `Err`, which an unwind would skip. The caller reports
-//! the panic as a bug (bae-diagnostics' `Diagnostics::bug`); this crate has no
-//! bug reporter of its own.
+//! record bae writes on `Err`, which an unwind would skip. The panic hook
+//! reports the panic as it begins (bae-diagnostics' `report_panics`), and the
+//! caller hands the failure to bae-diagnostics' `Diagnostics::bug`, which
+//! reports only a bug code found without a panic; this crate has no bug
+//! reporter of its own.
 //!
 //! [`ReportedBug`] says whether a failure holds a bug that has already reached
 //! the crash reporter, so whoever meets the failure later doesn't report it
 //! again.
 
 pub use coven::task::CarriesBug;
-pub use coven::task::{caught, caught_sync, joined, panic_message, Bug, TaskFailed};
+pub use coven::task::{caught, caught_sync, joined, panic_message, Bug, BugKind, TaskFailed};
 
 /// A failure holding a bug that has already reached the crash reporter, so
 /// whoever meets the failure later shows it and doesn't report it again.

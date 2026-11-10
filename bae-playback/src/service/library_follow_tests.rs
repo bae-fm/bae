@@ -133,24 +133,29 @@ fn a_store_failed_on_an_earlier_bug_is_not_reported_again() {
     assert_eq!(reporter.reports().len(), 1);
 }
 
-/// A run that panicked carries its bug back to the follow, which awaits the
-/// query, so the follow reports it once, as the panic it is.
+/// A run's bug comes back to the follow, which awaits the query. A run
+/// that panicked was reported by the panic hook, so the follow doesn't
+/// report it again; a bug coven found without a panic, the follow reports
+/// once.
 #[test]
-fn a_run_that_panicked_is_reported_as_its_bug() {
+fn a_run_s_bug_is_reported_once() {
     let reporter = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(reporter.clone());
-    let bug = bae_diagnostics::test_panic::bug("live query", "a run broke");
+    let read = |bug| {
+        failed_read(
+            &diagnostics,
+            "read the tracks for playback",
+            "the tracks",
+            &Vec::<String>::new(),
+            &bae_store::DbError::from(coven::DbError::Bug(bug)),
+        )
+    };
 
-    failed_read(
-        &diagnostics,
-        "read the tracks for playback",
-        "the tracks",
-        &Vec::<String>::new(),
-        &bae_store::DbError::from(coven::DbError::Bug(bug)),
-    );
+    read(bae_diagnostics::test_panic::bug("live query", "a run broke"));
+    assert_eq!(reporter.reports(), Vec::new());
 
-    assert_eq!(
-        reporter.reports(),
-        vec![bae_diagnostics::test_panic::report("live query", "a run broke")]
-    );
+    read(coven::task::Bug::new("live query", "a run's state was half-changed"));
+    let reports = reporter.reports();
+    assert_eq!(reports.len(), 1, "{reports:?}");
+    assert!(reports[0].1.contains("a run's state was half-changed"), "{reports:?}");
 }

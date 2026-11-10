@@ -290,10 +290,10 @@ async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
     decided.expect("the decision lands once its read finishes");
 }
 
-/// The panic comes back to the caller as an internal error, and the crash
-/// reporter hears of it once.
+/// The panic comes back to the caller as an internal error, which isn't
+/// reported again: the panic hook reported the panic.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_write_that_panics_fails_its_caller_and_is_reported() {
+async fn a_write_that_panics_fails_its_caller() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let (parts, _, _tmp) = setup_test_import_reporting_to(diagnostics).await;
@@ -312,11 +312,5 @@ async fn a_write_that_panics_fails_its_caller_and_is_reported() {
         panic!("a panicked write fails as internal, got {result:?}");
     };
     assert_eq!(detail, "a candidate write panicked: the write's bookkeeping broke");
-    assert_eq!(
-        bugs.reports(),
-        vec![bae_diagnostics::test_panic::report(
-            "a candidate write",
-            "the write's bookkeeping broke"
-        )]
-    );
+    assert_eq!(bugs.reports(), Vec::new());
 }

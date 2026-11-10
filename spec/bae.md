@@ -4889,7 +4889,7 @@ bindings export none of their symbols.
 | bae-people | the library's members and each person's own data: who is in the library and on which devices, the admin changes this device asked for, profiles, plays, ratings and playlists, with the `Membership` and `People` owners |
 | bae-sync-status | the sync status as the Sync page and the Activity panel show it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do, why this device's last start failed and where its storage setup stands, with the `SyncStatus` owner |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
-| bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the tasks and threads whose panics are reported, and the error categories a person is shown |
+| bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the panic hook that reports each panic once, the tasks and threads that end what a panicking one served, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through, which reports a panic in its own disk work; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |
 | bae-audio | the audio codec over FFmpeg (decode, encode, probe, resample), the sparse buffer a decode reads a file's bytes from, and the stream a decoded track plays from |
 | bae-types | the domain values the catalogs, identification and the library share: what a pressing is, how two pieces of written text name one thing, and how a barcode is read |
@@ -4963,40 +4963,51 @@ each device and hands playback the channel or sink.
   own guarantee — is logged with its causes and handed to the platform's crash
   reporter as a non-fatal event naming the operation, through the reporter
   each app hands core at launch. Crash reporting itself stays in the apps.
-  A panic in work core runs apart from whoever asked for it — on a blocking
-  thread, as a task or a thread of its own — is such a bug: it is reported,
-  and what the work served ends with it, the operation that asked failing
-  with "Something went wrong", never left waiting. Its report names where in
-  the code the panic began, as file, line and column, which coven's catch
-  records as it catches the panic; work core runs apart catches its own
-  panic for that reason, so the place travels back with it. A panic no catch
-  saw begin, one that escaped every catch to a join, is reported without
-  it. Core starts such tasks and
-  threads through the spawners that report a panic; clippy refuses a bare
-  `tokio::spawn`, a runtime's or a task set's `spawn`, or `std::thread::spawn`
-  outside them, bar work whose caller joins it at once, a task set that joins
-  every task it holds, and test code. A service's own thread
-  that such a panic ends, the import worker's or the folder scan
+- **A panic is reported once, from the panic hook.** A panic is such a bug,
+  on whatever thread it happens: in core's work, in coven's, or in a
+  library's own thread or task that no catch of core's runs on, such as an
+  HTTP connection's task, the mDNS daemon or an audio device's callback
+  thread. A catch hears only the panics that unwind to it, so the one place
+  every panic passes is the process's panic hook, which core adds at launch.
+  The hook logs each panic with its backtrace and reports it, once, as it
+  begins: the report names the operation of the innermost catch on the
+  panicking thread, or "work outside every catch", and where in the code the
+  panic began, as file, line and column. It hands the report to a thread of
+  its own that calls the platform's reporter, since a throw from the
+  reporter inside the hook would end the process. Nothing else reports a
+  panic: a panic a catch hands back is logged as the failure of what it was
+  doing, never reported again, and only a bug core or coven finds without a
+  panic is reported where it lands.
+- **A panic ends what its work served.** A panic in work core runs apart
+  from whoever asked for it — on a blocking thread, as a task or a thread of
+  its own — ends what the work served with it, the operation that asked
+  failing with "Something went wrong", never left waiting. Core starts such
+  tasks and threads through the spawners that end what a panicking task or
+  thread served; clippy refuses a bare `tokio::spawn`, a runtime's or a task
+  set's `spawn`, or `std::thread::spawn` outside them, bar work whose caller
+  joins it at once, a task set that joins every task it holds, and test
+  code. A service's own
+  thread that such a panic ends, the import worker's or the folder scan
   coordinator's, ends its service with it: a later call that waits on the
   service's answer fails with "Something went wrong", carrying the thread's
   bug, which is not reported again; a call made once the service was shut
   down fails as stopped. Such a panic in playback's service stops playback
   with "Something went wrong" for whoever follows it, and the next command
-  starts a fresh service (§9.4). Work on a blocking thread
-  runs to its end even once whoever asked for it stops waiting, and a panic
-  in it is reported all the same. coven's own bugs in work
+  starts a fresh service (§9.4). Work on a blocking thread runs to its end
+  even once whoever asked for it stops waiting. coven's own bugs in work
   nobody waits for, such as a store's sync loop and upload worker, reach the
   same crash reporter: bae hands coven its reporter when it builds the
-  device's libraries at launch. A later call coven answers with such a
-  worker's bug, such as a retry of uploads after the upload worker
+  device's libraries at launch, which reports a bug coven found and only
+  logs a panic, which the hook reported. A later call coven answers with
+  such a worker's bug, such as a retry of uploads after the upload worker
   panicked, shows "Something went wrong" and is not reported again; so
   does every call on a library an earlier bug failed, until it reopens. A
   call into coven that fails on a bug of its own work, a panic in coven or in
   core's code coven runs, carries the bug back to whatever in core awaits it:
   the library's store for its reads, writes and other calls on the library, a
   subscription for its live query, the code that lists, opens, creates,
-  restores, joins or removes a library. That one reports it, once, as core
-  reports its own panics, and the failure shows "Something went wrong";
+  restores, joins or removes a library. That one reports it, once, if coven
+  found it without a panic, and the failure shows "Something went wrong";
   nothing it passes the failure to reports it again.
 - **Logs stay in the platform's log.** Core's and each app's log lines go to
   the platform's own log on the device: the unified log on macOS and iOS,

@@ -687,11 +687,12 @@ async fn fill_that_panics() -> Result<(), FillFailure> {
 }
 
 /// A fill that panics fails its buffer, so a reader stops on the failure
-/// instead of waiting for bytes, hands the failure to its owner as any read
-/// failure is, and is reported as a bug. Sabotage: drop the panic arm in
-/// `spawn_fill`, and the reader blocks forever with nothing reported.
+/// instead of waiting for bytes, and hands the failure to its owner as any
+/// read failure is; the fill doesn't report the panic again (the panic hook
+/// reported it). Sabotage: drop the panic arm in `spawn_fill`, and the
+/// reader blocks forever.
 #[tokio::test]
-async fn a_fill_that_panics_fails_its_buffer_and_is_reported() {
+async fn a_fill_that_panics_fails_its_buffer() {
     let bugs = Arc::new(RecordingBugReporter::default());
     let diagnostics = Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let buffer = create_sparse_buffer(1_024);
@@ -713,11 +714,5 @@ async fn a_fill_that_panics_fails_its_buffer_and_is_reported() {
         "{error}"
     );
     assert!(matches!(buffer.new_reader().read(&mut [0u8; 1]), Err(BufferStop::Failed(_))));
-    assert_eq!(
-        bugs.reports(),
-        vec![bae_diagnostics::test_panic::report(
-            "fill a playback buffer",
-            "window index out of range"
-        )]
-    );
+    assert_eq!(bugs.reports(), Vec::new());
 }

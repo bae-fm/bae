@@ -49,10 +49,11 @@ impl OAuthPresenterCallback for Throwing {
         panic!("Callback interface failure: the host threw");
     }
 }
-/// The throw fails the sign-in with a presentation error and is
-/// reported, instead of unwinding through coven.
+/// The throw fails the sign-in with a presentation error, instead of
+/// unwinding through coven. uniffi raises it as a panic, which the panic
+/// hook reported, so the sign-in doesn't report it again.
 #[tokio::test]
-async fn a_sign_in_sheet_that_throws_fails_the_sign_in_and_is_reported() {
+async fn a_sign_in_sheet_that_throws_fails_the_sign_in() {
     let bugs = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let presenter = NativeOAuthPresenter::new(
         BridgeOAuthRedirects { dropbox: "bae://dropbox".into(), onedrive: "bae://onedrive".into() },
@@ -63,7 +64,5 @@ async fn a_sign_in_sheet_that_throws_fails_the_sign_in_and_is_reported() {
         presenter.present("https://example.test/authorize").await,
         Err(coven::OAuthError::Presentation(_))
     ));
-    let reports = bugs.reports();
-    assert_eq!(reports.len(), 1, "{reports:?}");
-    assert_eq!(reports[0].0, "present a native sign-in");
+    assert_eq!(bugs.reports(), Vec::new());
 }

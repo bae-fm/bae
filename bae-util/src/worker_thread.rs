@@ -2,7 +2,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use coven::task::{blocking_completing, caught_sync, report, Bug, BugSinkRef, TaskFailed};
+use coven::task::{blocking_completing, caught_sync, report, Bug, BugKind, BugSinkRef, TaskFailed};
 use tokio::sync::{mpsc, watch};
 
 use crate::task_failure::panic_message;
@@ -203,6 +203,7 @@ fn joined_thread(name: &'static str, thread: std::thread::JoinHandle<()>) -> Res
         operation: name,
         message: panic_message(payload.as_ref()),
         location: None,
+        kind: BugKind::Panic,
     })
 }
 

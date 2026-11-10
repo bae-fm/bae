@@ -1,5 +1,4 @@
-use std::backtrace::Backtrace;
-use std::sync::{Arc, Once};
+use std::sync::Arc;
 
 use bae_diagnostics::{
     AppDiagnosticMetadata, DatadogDiagnosticsConfig, Diagnostics, DiagnosticsConfig, Screen,
@@ -11,8 +10,9 @@ use tracing_subscriber::filter::LevelFilter;
 
 /// The platform's crash reporter, which the app hands in when it builds the
 /// telemetry sink. Core calls it for each bug it finds — code that broke its
-/// own guarantee — from whatever thread found it; the platform records one
-/// non-fatal event with the operation and the error's full text.
+/// own guarantee — from whatever thread found it, and for each panic in the
+/// process, from a thread of its own; the platform records one non-fatal
+/// event with the operation and the error's full text.
 #[uniffi::export(callback_interface)]
 pub trait BridgeBugReporter: Send + Sync {
     fn report(&self, operation: String, detail: String);
@@ -134,24 +134,30 @@ impl BridgeDiagnostics {
 /// process start, before `BridgeHost` (which requires the returned handle),
 /// so the sink exists for every launch step that could fail. The
 /// sink reports the bugs core finds to `bug_reporter`, the platform's crash
-/// reporter. Local logs go to the platform's native log, and on the desktop
-/// also to stdout when it is a terminal.
+/// reporter, and so does the panic hook added here, each panic once, on
+/// whatever thread. Local logs go to the platform's native log, and on the
+/// desktop also to stdout when it is a terminal.
 ///
 /// Infallible by contract: telemetry setup must never block a launch. Sink
 /// construction from an `Enabled` config can fail (incomplete config, worker
 /// spawn); that is logged at `error` and the app continues with the no-op sink
-/// — the one failure telemetry cannot report about itself, accepted. Handling
-/// it here keeps the bailout in one place instead of a catch-and-retry in every
-/// host language.
+/// — the one failure telemetry cannot report about itself, accepted. So is a
+/// panic reporting thread that can't start: panics then go unreported, and
+/// only std's own hook prints them. Handling it here keeps the bailout in one
+/// place instead of a catch-and-retry in every host language.
 #[uniffi::export]
 pub fn configure_diagnostics(
     config: BridgeDiagnosticsConfig,
     bug_reporter: Box<dyn BridgeBugReporter>,
 ) -> Arc<BridgeDiagnostics> {
     configure_logging();
-    install_panic_logging();
     let (clock, ids) = system_sources();
     let bugs: Arc<dyn bae_diagnostics::BugReporter> = Arc::new(PlatformBugReporter(bug_reporter));
+    if let Err(error) = bae_diagnostics::report_panics(bugs.clone()) {
+        tracing::error!(
+            "the panic reporting thread failed to start: {error}; panics go unreported"
+        );
+    }
     let inner = match Diagnostics::configure(
         config.into_core(),
         clock.clone(),
@@ -165,28 +171,6 @@ pub fn configure_diagnostics(
         }
     };
     Arc::new(BridgeDiagnostics { inner, clock, ids })
-}
-
-fn install_panic_logging() {
-    static INSTALL: Once = Once::new();
-    INSTALL.call_once(|| {
-        let previous = std::panic::take_hook();
-        std::panic::set_hook(Box::new(move |panic| {
-            let message = if let Some(message) = panic.payload().downcast_ref::<&str>() {
-                (*message).to_string()
-            } else if let Some(message) = panic.payload().downcast_ref::<String>() {
-                message.clone()
-            } else {
-                "non-string panic payload".to_string()
-            };
-            let location = panic.location().map(|location| {
-                format!("{}:{}:{}", location.file(), location.line(), location.column())
-            });
-            let backtrace = Backtrace::force_capture();
-            tracing::error!(%message, ?location, %backtrace, "process panicked");
-            previous(panic);
-        }));
-    });
 }
 
 mirror_enum! {

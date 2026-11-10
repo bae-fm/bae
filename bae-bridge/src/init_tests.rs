@@ -107,8 +107,7 @@ fn detached_panics_are_emitted_through_tracing() {
     assert!(!output.status.success(), "the child process must panic");
     let logs = String::from_utf8(output.stdout).expect("panic logs are UTF-8");
     assert!(
-        logs.contains("process panicked")
-            && logs.contains("detached panic test")
+        logs.contains("work outside every catch panicked: detached panic test")
             && logs.contains("bae-bridge/src/init_tests.rs")
             && logs.contains("backtrace="),
         "the panic and its diagnostics must reach tracing, got: {logs}"

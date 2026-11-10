@@ -34,7 +34,7 @@ pub(super) struct ActiveRoots {
     removal_completions: mpsc::UnboundedSender<RootRemovalCompletion>,
     folder_state_commit: crate::FolderStateCommit,
     next_removal_id: u64,
-    /// Where a removal that panics is reported.
+    /// What a removal runs under, so one that panics ends.
     diagnostics: bae_diagnostics::Diagnostics,
     /// Each root's last pass failure that the store would not take, until
     /// the root's next pass starts.

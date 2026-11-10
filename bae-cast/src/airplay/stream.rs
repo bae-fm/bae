@@ -361,8 +361,8 @@ impl RaopStream {
     /// Spawn the audio, (optional) sync, and timing threads over the already-bound
     /// sockets in `sockets`. AirPlay 2 anchors its timeline with
     /// SETRATEANCHORTIME instead of RAOP sync packets, so it passes
-    /// `send_sync = false`. A thread that panics is reported through
-    /// `diagnostics` and fails the stream, which ends the session.
+    /// `send_sync = false`. A thread that panics fails the stream, which ends
+    /// the session.
     pub(super) fn spawn(
         diagnostics: &Diagnostics,
         feed: PcmFeed,

@@ -397,8 +397,9 @@ where
     // stack, especially in debug builds. Callers may invoke us from small-stack
     // threads (Swift cooperative Tasks, Android coroutine workers; ~0.5 MB), which
     // overflow there — so run the whole thing on a thread with a large stack.
-    // A panic fails the open as something that went wrong, reported as a
-    // bug; what it had built was dropped as the thread unwound.
+    // A panic fails the open as something that went wrong, which the panic
+    // hook reported as a bug; what it had built was dropped as the thread
+    // unwound.
     let reporter = diagnostics.clone();
     reporter
         .run_on_thread("bae-bootstrap", 32 * 1024 * 1024, move || {

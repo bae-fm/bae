@@ -150,11 +150,12 @@ impl PcmSource for PanickingSource {
 
 /// An audio sender that panics fails the stream, which ends the session
 /// rather than leaving the receiver silent while the session says it
-/// streams: playback is told, and the panic is reported. Sabotage: drop the
-/// `on_panic` in `spawn_audio_thread`, and the stream reads as healthy; drop
-/// the report in `mark_panicked`, and playback is never told.
+/// streams: playback is told, and the sender doesn't report the panic again
+/// (the panic hook reported it). Sabotage: drop the `on_panic` in
+/// `spawn_audio_thread`, and the stream reads as healthy; drop the report in
+/// `mark_panicked`, and playback is never told.
 #[test]
-fn a_sender_that_panics_fails_the_stream_and_is_reported() {
+fn a_sender_that_panics_fails_the_stream_and_tells_playback() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let (reported_tx, reported) = std::sync::mpsc::channel();
@@ -174,13 +175,7 @@ fn a_sender_that_panics_fails_the_stream_and_is_reported() {
         control.failure().as_deref(),
         Some("airplay audio sender panicked: ring index out of range")
     );
-    assert_eq!(
-        bugs.reports(),
-        vec![bae_diagnostics::test_panic::report(
-            "airplay audio sender",
-            "ring index out of range"
-        )]
-    );
+    assert_eq!(bugs.reports(), Vec::new());
 }
 
 /// A source that drains does NOT end the thread — the stream is persistent, so

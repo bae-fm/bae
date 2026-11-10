@@ -74,7 +74,7 @@ pub(super) enum RootChange {
 
 /// [`root_change`] on a blocking thread: its stats can take as long as a
 /// network mount does to answer, and the coordinator must not wait on that.
-/// Stats that panic are reported to `diagnostics` and read the whole root.
+/// Stats that panic read the whole root.
 pub(super) async fn root_change_of(
     root: &Path,
     changed: &[&Path],

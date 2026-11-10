@@ -9,12 +9,11 @@ impl bae_audio::DecodedSink for DiscardingSink {
     fn on_samples(&mut self, _samples: &[i32]) {}
 }
 
-/// A read of a track decode's source that panics, under a transcode, is
-/// reported to the library's diagnostics as a bug, and fails the decode.
-/// Sabotage: map `ReadPanicked` to its text as any other decode error, and
-/// nothing is reported.
+/// A read of a track decode's source that panics, under a transcode, fails
+/// the decode with the read's bug, which the decode doesn't report again: the
+/// panic hook reported it.
 #[test]
-fn a_track_decode_whose_read_panics_reports_it() {
+fn a_track_decode_whose_read_panics_fails_with_its_bug() {
     bae_audio::init();
     let bytes = std::fs::read(
         bae_audio::test_fixtures::cue_flac_dir()
@@ -45,9 +44,6 @@ fn a_track_decode_whose_read_panics_reports_it() {
         .run_to_sink(&mut DiscardingSink, Arc::new(std::sync::atomic::AtomicBool::new(false)));
 
     let error = result.expect_err("a read that panicked fails the decode");
-    let reported = reports.reports();
-    assert_eq!(reported.len(), 1, "{reported:?}");
-    let (text, at) = reported[0].1.rsplit_once(" (at ").expect("the report names a place");
-    assert_eq!(text, error, "the decode fails with what was reported");
-    assert!(at.starts_with("bae-audio/src/sparse_buffer.rs:"), "{at}");
+    assert!(error.contains(" panicked: "), "{error}");
+    assert_eq!(reports.reports(), Vec::new());
 }

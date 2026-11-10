@@ -15,7 +15,8 @@
 //! upload are platform-specific). A bug core finds — code that broke its own
 //! guarantee — goes to the platform's crash reporter through the
 //! [`BugReporter`] the platform hands in, with its full text: it is a report
-//! for whoever fixes the bug, not telemetry.
+//! for whoever fixes the bug, not telemetry. A panic, on any thread, goes
+//! there once, from the panic hook ([`report_panics`]).
 //!
 //! The transport posts to the client intake endpoint Datadog's browser, iOS, and
 //! Android SDKs use (`browser-intake-.../api/v2/logs`) with a client token —
@@ -24,6 +25,7 @@
 
 mod background;
 mod error_category;
+mod panic_reports;
 mod telemetry;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_panic;
@@ -36,6 +38,7 @@ pub use error_category::{
     pending_reason_category, storage_category, storage_error_category, storage_setup_category,
     store_list_category, sync_category,
 };
+pub use panic_reports::report_panics;
 pub use telemetry::*;
 pub use ui_error::{GroupingBlockReason, UiError, UiErrorCategory, UiErrorClass};
 
@@ -713,6 +716,31 @@ impl HeardBugReports {
             }
             notified.await;
         }
+    }
+
+    /// Wait for the first report not yet taken whose detail holds `text`,
+    /// and take it, leaving the rest: for a test that shares the reporter
+    /// with the tests running beside it, as the panic hook's is.
+    pub async fn next_about(&self, text: &str) -> (String, String) {
+        loop {
+            let notified = self.notice.notified();
+            {
+                let mut heard = self.heard.lock().expect("bug reports mutex poisoned");
+                if let Some(at) = heard.iter().position(|(_, detail)| detail.contains(text)) {
+                    return heard.remove(at).expect("the position is in the queue");
+                }
+            }
+            notified.await;
+        }
+    }
+
+    /// Whether a report not yet taken holds `text` in its detail.
+    pub fn holds_about(&self, text: &str) -> bool {
+        self.heard
+            .lock()
+            .expect("bug reports mutex poisoned")
+            .iter()
+            .any(|(_, detail)| detail.contains(text))
     }
 }
 

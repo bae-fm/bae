@@ -1,7 +1,8 @@
 use super::*;
 
 /// A body whose producer panics partway ends with an error after what it
-/// sent, never as if the stream were whole, and the panic is reported.
+/// sent, never as if the stream were whole. The panic hook reported the
+/// panic, so the body doesn't report it again.
 #[tokio::test]
 async fn a_body_whose_producer_panics_ends_with_an_error() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
@@ -23,7 +24,5 @@ async fn a_body_whose_producer_panics_ends_with_an_error() {
         .expect_err("the body ends with an error");
     assert!(ended.to_string().contains("the producer broke its guarantee"), "{ended}");
     assert!(body.recv().await.is_none());
-    let reports = bugs.reports();
-    assert_eq!(reports.len(), 1, "{reports:?}");
-    assert_eq!(reports[0].0, "test stream");
+    assert_eq!(bugs.reports(), Vec::new());
 }

@@ -336,7 +336,7 @@ struct MeasuredTrack {
 
 /// Decode and meter one track's segments from their open streams, counting
 /// its frames into the pass's progress as they are measured. A read that
-/// panics is reported to `diagnostics`.
+/// panics fails the track as a read that panicked.
 fn measure_track(
     track: &MeasuredTrack,
     streams: &HashMap<String, SharedSparseBuffer>,

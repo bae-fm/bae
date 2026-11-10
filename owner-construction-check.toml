@@ -963,6 +963,12 @@ OpenCalls = "LibrarySessions"
     "RecordingTransport::new",
     "HeardBugReports::new",
 ]
+# The panic hook's reports in a test process: the hook is the process's, so
+# the reporter it reports to is too.
+"bae-diagnostics/src/test_panic.rs" = [
+    "REPORTS",
+    "reported_panics",
+]
 "bae-import/src/assemble.rs" = ["ArtistRows::new"]
 "bae-import/src/catalog_sessions.rs" = ["CatalogSessions::new"]
 "bae-import/src/event_bus.rs" = [

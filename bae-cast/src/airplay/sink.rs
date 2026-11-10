@@ -31,7 +31,8 @@ pub(crate) struct RaopSink {
     /// `et=1`.
     encryption: RaopEncryption,
     initial_volume: bae_playback::Volume,
-    /// Where the session's stream threads report a panic.
+    /// What the session's stream threads run under, so one that panics fails
+    /// the stream.
     diagnostics: Diagnostics,
 }
 
@@ -105,7 +106,8 @@ pub(crate) struct Ap2Sink {
     timing: TimingProtocol,
     /// Where the session's ids come from.
     ids: coven::IdSourceRef,
-    /// Where the session's stream threads report a panic.
+    /// What the session's stream threads run under, so one that panics fails
+    /// the stream.
     diagnostics: Diagnostics,
 }
 

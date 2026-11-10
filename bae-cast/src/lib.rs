@@ -217,10 +217,10 @@ struct EphemeralServer {
 impl EphemeralServer {
     /// Bind the router on `network` at an OS-assigned port, read the port back,
     /// and serve until cancelled. The base URL names the address `network`
-    /// gives, so the receiver can reach it. A request that panics is reported
-    /// through `diagnostics` and answered with an error document. A server
-    /// that panics is reported there too, reads as [`Self::panicked`], and
-    /// `on_panic` runs, for its owner to end the cast it served.
+    /// gives, so the receiver can reach it. A request that panics is answered
+    /// with an error document. A server that panics reads as
+    /// [`Self::panicked`], and `on_panic` runs, for its owner to end the cast
+    /// it served.
     async fn start(
         services: AppServices,
         network: ServingNetwork,
@@ -330,8 +330,9 @@ pub struct CastController {
     serving: ServingNetwork,
     /// Where an AirPlay session's ids come from.
     ids: coven::IdSourceRef,
-    /// Where casting's background work — the server, the watchers, the
-    /// discovery readers and the AirPlay stream threads — reports a panic.
+    /// What casting's background work — the server, the watchers, the
+    /// discovery readers and the AirPlay stream threads — runs under, so a
+    /// panic in it ends what it served.
     diagnostics: Diagnostics,
     /// The `cast_enabled` value the setting watcher last finished applying, so
     /// a test can wait for the watcher to act on a change it wrote.

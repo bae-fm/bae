@@ -6,23 +6,26 @@ disallowed-methods = [
     { path = "std::fs::File::try_lock", reason = "Unsupported on Android; use coven::FileLock" },
     { path = "std::fs::File::try_lock_shared", reason = "Unsupported on Android; use coven::FileLock" },
     { path = "std::fs::File::unlock", reason = "Unsupported on Android; use coven::FileLock" },
-    # A dropped caller of `blocking` loses its work's panic with the join
-    # handle; bae's work runs under Diagnostics::blocking, which reports it.
+    # A dropped caller of `blocking` drops its work's panic with the join
+    # handle, so nothing hears how the work ended; bae's work runs under
+    # Diagnostics::blocking, whose bug sink hears it. The panic hook reports
+    # the panic either way.
     { path = "coven::task::blocking", reason = "use Diagnostics::blocking, or blocking_completing with a bug sink" },
-    # A dropped JoinHandle loses its work's panic the same way.
+    # A dropped JoinHandle drops its work's panic the same way.
     { path = "tokio::task::spawn_blocking", reason = "use Diagnostics::blocking, or blocking_completing with a bug sink" },
     { path = "tokio::runtime::Handle::spawn_blocking", reason = "use Diagnostics::blocking, or blocking_completing with a bug sink" },
-    # A task or thread nothing joins loses its panic to the panic hook's log
-    # line. bae's runs under a reported spawner, which reports the panic as a
-    # bug: Diagnostics::spawn_reported, spawn_ending, spawn_thread_reported
-    # or run_on_thread, WorkerThread::spawn, or below bae-diagnostics coven's
+    # A task or thread nothing joins ends on a panic with no one told, and
+    # what it served waits on it. The panic hook reports the panic; bae's
+    # work runs under a reported spawner, which ends what the work served:
+    # Diagnostics::spawn_reported, spawn_ending, spawn_thread_reported or
+    # run_on_thread, WorkerThread::spawn, or below bae-diagnostics coven's
     # task::spawn_owned with the owner's bug sink.
-    { path = "tokio::spawn", reason = "use Diagnostics::spawn_reported, which reports a panic in the task" },
-    { path = "tokio::task::spawn", reason = "use Diagnostics::spawn_reported, which reports a panic in the task" },
-    { path = "std::thread::spawn", reason = "use Diagnostics::spawn_thread_reported or WorkerThread::spawn, which report a panic in the thread" },
-    { path = "std::thread::Builder::spawn", reason = "use Diagnostics::spawn_thread_reported or WorkerThread::spawn, which report a panic in the thread" },
-    { path = "tokio::runtime::Handle::spawn", reason = "use Diagnostics::spawn_reported or spawn_ending, which report a panic in the task" },
-    { path = "tokio::runtime::Runtime::spawn", reason = "use Diagnostics::spawn_reported or spawn_ending, which report a panic in the task" },
-    { path = "tokio::task::JoinSet::spawn", reason = "use Diagnostics::spawn_reported or spawn_ending, unless the set joins every task and reports its panic" },
-    { path = "tokio::task::JoinSet::spawn_on", reason = "use Diagnostics::spawn_reported or spawn_ending, unless the set joins every task and reports its panic" },
+    { path = "tokio::spawn", reason = "use Diagnostics::spawn_reported, which ends what a task that panics served" },
+    { path = "tokio::task::spawn", reason = "use Diagnostics::spawn_reported, which ends what a task that panics served" },
+    { path = "std::thread::spawn", reason = "use Diagnostics::spawn_thread_reported or WorkerThread::spawn, which end what a thread that panics served" },
+    { path = "std::thread::Builder::spawn", reason = "use Diagnostics::spawn_thread_reported or WorkerThread::spawn, which end what a thread that panics served" },
+    { path = "tokio::runtime::Handle::spawn", reason = "use Diagnostics::spawn_reported or spawn_ending, which end what a task that panics served" },
+    { path = "tokio::runtime::Runtime::spawn", reason = "use Diagnostics::spawn_reported or spawn_ending, which end what a task that panics served" },
+    { path = "tokio::task::JoinSet::spawn", reason = "use Diagnostics::spawn_reported or spawn_ending, unless the set joins every task and hears its panic" },
+    { path = "tokio::task::JoinSet::spawn_on", reason = "use Diagnostics::spawn_reported or spawn_ending, unless the set joins every task and hears its panic" },
 ]

@@ -13,8 +13,10 @@ use crate::service::tests::*;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 
+/// The panic hook reported the walk's panic; the cancelled pass fails with
+/// it and doesn't report it again.
 #[tokio::test]
-async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
+async fn cancelling_a_panicked_folder_walk_fails_with_its_panic() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let cancellation = crate::folder_scanner::ScanCancellation::new();
@@ -36,36 +38,26 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
         error.to_string(),
         "internal import error: walk a watched folder panicked: folder walk panic"
     );
-    assert_eq!(
-        bugs.reports(),
-        vec![bae_diagnostics::test_panic::report("walk a watched folder", "folder walk panic")]
-    );
+    assert!(bugs.reports().is_empty(), "{:?}", bugs.reports());
 }
 
-/// A walk whose pass stopped waiting for it runs to its end, and the panic
-/// of one of its threads still reaches the crash reporter. Sabotage: start
-/// the walk with `tokio::task::spawn_blocking`, or have `FolderScanError`
-/// carry no bug, and the panic goes nowhere.
+/// A walk whose pass stopped waiting for it runs to its end, and its panic
+/// is still reported, by the panic hook, naming the walk.
 #[tokio::test]
-async fn a_walk_its_pass_stopped_waiting_for_reports_its_threads_panic() {
-    let reports = Arc::new(bae_diagnostics::HeardBugReports::new());
-    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(reports.clone());
+async fn a_walk_its_pass_stopped_waiting_for_has_its_panic_reported() {
+    let hooked = bae_diagnostics::test_panic::reported_panics();
+    let message = "a folder vanished mid-walk";
     let (go, wait) = std::sync::mpsc::channel::<()>();
-    let walk = start_folder_walk(&diagnostics, move || {
+    let walk = start_folder_walk(&bae_diagnostics::Diagnostics::noop(), move || {
         wait.recv().expect("the test lets the walk end");
-        Err(crate::folder_scanner::FolderScanError::Panicked(bae_diagnostics::test_panic::bug(
-            "read folders' dates",
-            "a folder vanished mid-read",
-        )))
+        bae_diagnostics::test_panic::panics(message)
     });
-    // The pass stops waiting; the walk runs on, and reports.
+    // The pass stops waiting; the walk runs on, and panics.
     drop(walk);
     go.send(()).expect("the walk is waiting");
-    let report =
-        tokio::time::timeout(HANG_GUARD, reports.next()).await.expect("the panic is reported");
     assert_eq!(
-        report,
-        bae_diagnostics::test_panic::report("read folders' dates", "a folder vanished mid-read")
+        bae_diagnostics::test_panic::report_about(hooked, message).await,
+        bae_diagnostics::test_panic::report("walk a watched folder", message)
     );
 }
 
@@ -157,8 +149,9 @@ async fn stop_coordinator(
 }
 
 /// A refresh whose pass panics partway through the walk is answered, the
-/// root's scan is stored as failed with the panic, the crash reporter hears
-/// of it once, and the root is free for the next refresh, which reads it.
+/// root's scan is stored as failed with the panic, which the pass doesn't
+/// report again (the panic hook reported it), and the root is free for the
+/// next refresh, which reads it.
 #[tokio::test]
 async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
     let mut test = setup_import_service().await;
@@ -184,13 +177,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
         panic!("the panicked pass is stored as failed");
     };
     assert!(error.contains("the listing broke"), "{error}");
-    assert_eq!(
-        bugs.reports(),
-        vec![bae_diagnostics::test_panic::report(
-            "walk a folder under a watched root",
-            "the listing broke"
-        )]
-    );
+    assert!(bugs.reports().is_empty(), "{:?}", bugs.reports());
 
     assert_eq!(refresh(&commands, &root).await, Ok(()));
     assert_eq!(stored_outcome(&test.db).await, crate::StoredScanOutcome::Complete);

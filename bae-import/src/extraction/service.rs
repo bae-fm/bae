@@ -416,8 +416,7 @@ async fn extract(
     }
 }
 
-/// The fast pass, or why it panicked or the folder's timing does not read. A
-/// panic is reported to `diagnostics`.
+/// The fast pass, or why it panicked or the folder's timing does not read.
 async fn run_fast_pass_blocking<F>(
     diagnostics: &bae_diagnostics::Diagnostics,
     task: F,

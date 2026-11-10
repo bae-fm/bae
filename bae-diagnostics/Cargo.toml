@@ -43,8 +43,10 @@ tokio = { workspace = true, features = ["macros", "net", "io-util", "rt-multi-th
 default = []
 # The bug reporter that keeps what it is handed and the transport that
 # records what it is asked to send, for the tests of every crate that builds
-# on this one. Dev/test-only: a production build never enables it.
-test-utils = []
+# on this one, and the panic hook's reports in a test process, waited for
+# with bae-util's hang guard. Dev/test-only: a production build never enables
+# it.
+test-utils = ["bae-util/test-utils"]
 
 [lints]
 workspace = true

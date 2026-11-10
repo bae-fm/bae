@@ -304,8 +304,8 @@ impl RendererDiscovery {
         }
     }
 
-    /// Begin browsing. Idempotent. bae's own readers
-    /// report a panic through `diagnostics`.
+    /// Begin browsing. Idempotent. bae's own readers run under
+    /// `diagnostics`, so one that panics ends.
     pub fn start(&mut self, diagnostics: &bae_diagnostics::Diagnostics) {
         match self {
             Self::Builtin(builtin) => {

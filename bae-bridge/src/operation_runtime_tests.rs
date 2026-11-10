@@ -125,9 +125,10 @@ async fn dropping_run_to_completion_keeps_the_owned_task_alive() {
 }
 
 /// A panic in an operation fails it with the internal error the host
-/// shows as "Something went wrong", and reaches the crash reporter once.
+/// shows as "Something went wrong", and the operation doesn't report it
+/// again: the panic hook reported it.
 #[tokio::test]
-async fn a_panicking_operation_fails_as_internal_and_is_reported() {
+async fn a_panicking_operation_fails_as_internal() {
     let owned = owned_runtime();
     let (operations, bugs) = reporting_operations(&owned);
 
@@ -148,19 +149,18 @@ async fn a_panicking_operation_fails_as_internal_and_is_reported() {
         ),
         "{error:?}"
     );
-    let reports = bugs.reports();
-    assert_eq!(reports.len(), 1, "{reports:?}");
-    assert_eq!(reports[0].0, "test operation");
-    assert!(reports[0].1.contains("the operation broke its guarantee"), "{reports:?}");
+    assert_eq!(bugs.reports(), Vec::new());
     owned.shutdown_background();
 }
 
-/// A lifecycle operation that panics after its caller left is still
-/// reported: nobody else will hear of it.
+/// A lifecycle operation that panics after its caller left runs on, and its
+/// panic is reported once, by the panic hook, naming the operation.
 #[tokio::test]
 async fn a_persistent_operation_panicking_after_its_caller_left_is_reported() {
+    let hooked = bae_diagnostics::test_panic::reported_panics();
+    let message = "the lifecycle operation broke its guarantee";
     let owned = owned_runtime();
-    let reports = Arc::new(bae_diagnostics::HeardBugReports::new());
+    let reports = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let operations = OperationRuntime::new(
         owned.handle().clone(),
         Diagnostics::noop().reporting_bugs_to(reports.clone()),
@@ -175,7 +175,7 @@ async fn a_persistent_operation_panicking_after_its_caller_left_is_reported() {
             started_tx.send(()).expect("test receives task start");
             continue_rx.await.expect("test releases operation");
             if true {
-                panic!("the lifecycle operation broke its guarantee");
+                panic!("{message}");
             }
             Ok(())
         },
@@ -184,8 +184,9 @@ async fn a_persistent_operation_panicking_after_its_caller_left_is_reported() {
     caller.abort();
     continue_tx.send(()).expect("release owned operation");
 
-    let (operation, _) =
-        tokio::time::timeout(HANG_GUARD, reports.next()).await.expect("the panic is reported");
+    let (operation, _) = bae_diagnostics::test_panic::report_about(hooked, message).await;
     assert_eq!(operation, "test persistent operation");
+    assert!(!hooked.holds_about(message), "the panic is reported once");
+    assert_eq!(reports.reports(), Vec::new());
     owned.shutdown_background();
 }

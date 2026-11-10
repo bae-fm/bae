@@ -654,8 +654,9 @@ async fn a_cancelled_run_drops_the_lookup_it_was_waiting_on() {
         .expect("the guard reports its drop");
 }
 
-/// A lookup that panics is reported, and ends its run as broken: the driver
-/// waiting on its answer hears the run broke, and ends it there.
+/// A lookup that panics ends its run as broken: the driver waiting on its
+/// answer hears the run broke, and ends it there. The panic hook reported the
+/// panic, so nothing here reports it again.
 #[tokio::test]
 async fn a_lookup_that_panics_ends_its_run_as_broken() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
@@ -680,10 +681,7 @@ async fn a_lookup_that_panics_ends_its_run_as_broken() {
         panic!("a panicked lookup breaks its run, got {event:?}");
     };
     assert_eq!(failure.detail, "run an identify lookup panicked: the lookup broke");
-    assert_eq!(
-        bugs.reports(),
-        vec![bae_diagnostics::test_panic::report("run an identify lookup", "the lookup broke")]
-    );
+    assert_eq!(bugs.reports(), Vec::new());
 }
 
 /// What a run read of albums is kept with no caller waiting on it, so a

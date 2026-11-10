@@ -116,7 +116,7 @@ impl McpServerController {
                         AuthState { token_provider },
                         bearer_auth,
                     ))
-                    .layer(middleware::from_fn_with_state(diagnostics, report_panics));
+                    .layer(middleware::from_fn_with_state(diagnostics, answer_panics));
                 let shutdown = cancellation.clone();
                 axum::serve(listener, router)
                     .with_graceful_shutdown(async move { shutdown.cancelled_owned().await })
@@ -125,9 +125,10 @@ impl McpServerController {
     }
 }
 
-/// Answer a request whose handling panicked with an internal error, and
-/// report the panic: the server goes on serving the next request.
-async fn report_panics(
+/// Answer a request whose handling panicked with an internal error: the
+/// server goes on serving the next request. The panic hook reported the
+/// panic.
+async fn answer_panics(
     State(diagnostics): State<Diagnostics>,
     request: Request<Body>,
     next: Next,
@@ -218,11 +219,11 @@ impl BaeMcpServer {
 }
 
 /// The answer `answering` gives a tool call, or, when it panics, an internal
-/// error, with the panic reported to `diagnostics`. rmcp runs each call on a
-/// task of its own and drops the task's handle, so a panic there reaches
-/// neither the request [`report_panics`] waits on nor any other catch: this is
-/// the one place that hears it.
-async fn answer_or_report(
+/// error; the panic hook reported the panic. rmcp runs each call on a task of
+/// its own and drops the task's handle, so a panic there reaches neither the
+/// request [`answer_panics`] waits on nor any other catch: this is the one
+/// place that can answer the call.
+async fn answer_or_fail(
     diagnostics: &Diagnostics,
     answering: impl std::future::Future<Output = Result<CallToolResponse, ErrorData>>,
 ) -> Result<CallToolResponse, ErrorData> {
@@ -242,7 +243,7 @@ impl ServerHandler for BaeMcpServer {
         request: CallToolRequestParams,
         _: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, ErrorData> {
-        answer_or_report(&self.diagnostics, self.answer_tool_call(request)).await
+        answer_or_fail(&self.diagnostics, self.answer_tool_call(request)).await
     }
 
     async fn list_tools(

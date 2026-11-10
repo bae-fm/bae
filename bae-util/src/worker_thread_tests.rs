@@ -33,6 +33,7 @@ fn queue_gone() -> Bug {
             line: PANIC_LINE,
             column: 5,
         }),
+        kind: coven::task::BugKind::Panic,
     }
 }
 

@@ -66,8 +66,8 @@ pub struct RendererSession {
 impl RendererSession {
     /// Start a session over an already-connected `channel`, spawning its poll
     /// thread. `on_event` receives every status, every refused command, and
-    /// the session's end. A session thread that panics is reported through
-    /// `diagnostics` and ends the session with the panic as its cause.
+    /// the session's end. A session thread that panics ends the session with
+    /// the panic as its cause.
     pub fn start(
         diagnostics: &Diagnostics,
         channel: Box<dyn RendererChannel>,

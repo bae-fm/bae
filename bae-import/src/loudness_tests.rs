@@ -338,13 +338,14 @@ async fn measure_loudness_fails_on_a_source_whose_read_fails() {
     assert!(!error.to_string().contains("Invalid data found"), "{error}");
 }
 
-/// A read of a track's source that panics is a bug: it is reported, and the
-/// track comes back as a read that panicked, which fails the import as a bug,
-/// never as a broken track or as an unmeasured one the import would commit.
+/// A read of a track's source that panics is a bug, which the panic hook
+/// reported: the track comes back as a read that panicked, naming where it
+/// began, which fails the import as a bug, never as a broken track or as an
+/// unmeasured one the import would commit. Measuring doesn't report it again.
 /// Sabotage: let `decode_track` treat `ReadPanicked` as any other decode
-/// error, and the track comes back broken with nothing reported.
+/// error, and the track comes back broken.
 #[tokio::test]
-async fn a_read_that_panics_is_reported_and_measures_nothing() {
+async fn a_read_that_panics_measures_nothing() {
     bae_audio::init();
     let bytes = std::fs::read(cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac"))
         .expect("fixture");
@@ -370,7 +371,7 @@ async fn a_read_that_panics_is_reported_and_measures_nothing() {
     };
     let at = bug.location.clone().expect("the read's panic names where it began");
     assert_eq!(at.file, "bae-audio/src/sparse_buffer.rs");
-    assert_eq!(reports.reports(), vec![(bug.operation.to_string(), format!("{bug} (at {at})"))]);
+    assert_eq!(reports.reports(), Vec::new());
 }
 
 /// A track whose audio format has no segments is skipped (nothing to

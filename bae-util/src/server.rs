@@ -7,9 +7,10 @@
 //! and how each builds its serve future — so those are the parameters here.
 //! The errors they report are shared. Everything else — the state machine, the
 //! locking, the graceful-shutdown token, the task that records a mid-flight
-//! server failure — lives once. A serve future that panics is a bug: it goes
-//! to the bug sink the server's owner hands the controller, and the status
-//! moves to `Error` like any other failure.
+//! server failure — lives once. A serve future that panics is a bug, which
+//! the panic hook reports: the bug sink the server's owner hands the
+//! controller hears of it, and the status moves to `Error` like any other
+//! failure.
 
 use std::fmt::Display;
 use std::future::{Future, IntoFuture};
@@ -86,10 +87,11 @@ impl<I> ServerState<I> {
 #[derive(Clone)]
 pub struct ServerController<I> {
     /// The service's name in log messages ("MCP", "Subsonic"), and the
-    /// operation a panic of its serve future is reported as.
+    /// operation a panic of its serve future is reported as: the catch the
+    /// serve future runs under.
     name: &'static str,
     inner: Arc<Mutex<ServerState<I>>>,
-    /// Where a panic of the serve future goes: the owner's crash reporter.
+    /// Where a panic of the serve future goes: the owner's bug sink.
     bugs: BugSinkRef,
     /// Woken when a serve future's ending moves the state, for a test.
     #[cfg(test)]
@@ -170,7 +172,7 @@ where
     /// cancels it and then waits for the task. A serve future that ends with an
     /// error, or panics, moves the controller into `Error` as
     /// [`ServerError::ServerFailed`], unless a different server has since taken its place;
-    /// a panic is reported first.
+    /// a panic goes to the owner's bug sink first.
     pub async fn start<S, Err>(
         &self,
         identity: I,

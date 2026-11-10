@@ -729,9 +729,10 @@ async fn an_automatic_start_the_closing_library_stops_records_nothing() {
 
 /// The import worker ending on a bug ends the import service with it: an
 /// automatic start after it fails with the worker's bug, is recorded as the
-/// candidate's failed import, and claims nothing, and the bug is reported
-/// once, as it happened. Sabotage: answer a send to the ended worker as a
-/// closing library, and the start fails as though nothing went wrong.
+/// candidate's failed import, and claims nothing, and the bug isn't reported
+/// again: the panic hook reported it as it happened. Sabotage: answer a send
+/// to the ended worker as a closing library, and the start fails as though
+/// nothing went wrong.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_automatic_start_after_the_worker_panicked_fails_with_its_bug() {
     let fixture = Fixture::new("auto-import-worker-panicked").await;
@@ -753,13 +754,7 @@ async fn an_automatic_start_after_the_worker_panicked_fails_with_its_bug() {
         "{error:?}"
     );
     assert!(fixture.import_failure(&dir).await.is_some(), "the failed start is recorded");
-    assert_eq!(
-        fixture.bugs.reports(),
-        vec![bae_diagnostics::test_panic::report(
-            "import worker thread",
-            "the import worker broke"
-        )]
-    );
+    assert_eq!(fixture.bugs.reports(), Vec::new());
     assert!(
         fixture
             .import

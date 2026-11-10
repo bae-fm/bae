@@ -409,7 +409,7 @@ where
     /// outcome — the hook that reports the outcome to diagnostics (`on_done`),
     /// the one that reports a failed write of the queue's own table
     /// (`store_failed`), after which the worker waits to be woken again, and
-    /// the one that reports a panic as a bug (`bug`).
+    /// the one that hands on a panic's bug (`bug`).
     ///
     /// The protocol:
     ///
@@ -432,7 +432,7 @@ where
     ///   fails that write ([`DbError::EntryCancelled`]) and rolls the work
     ///   back. Failure marks the entry failed and leaves it for retry. A `start` that fails marks it failed the same way — nothing was
     ///   spawned.
-    /// - An entry whose `start`, work or `on_done` panics is reported through
+    /// - An entry whose `start`, work or `on_done` panics hands its bug to
     ///   `bug` and fails as any failure does; the worker goes on to the next
     ///   entry.
     pub async fn run_serial<Error, Start, StartFut, Fut, Done, StoreFailed, ReportBug>(

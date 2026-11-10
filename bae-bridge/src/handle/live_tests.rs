@@ -125,26 +125,27 @@ fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
 }
 
 /// A feed that panics — as a host callback that throws does, through
-/// uniffi — ends with its panic reported, and the library's other feeds go
-/// on.
+/// uniffi — ends with its panic reported once, by the panic hook, and the
+/// library's other feeds go on.
 #[test]
 fn a_feed_that_panics_is_reported_and_others_go_on() {
+    let hooked = bae_diagnostics::test_panic::reported_panics();
+    let message = "Callback interface failure: the host threw";
     let root = tempfile::tempdir().unwrap();
     let reports = Arc::new(bae_diagnostics::HeardBugReports::new());
     let app =
         open_library_reporting(&root, crate::BridgeDiagnostics::reporting_bugs_to(reports.clone()));
 
-    app.deliver_until(bae_library::CancellationToken::new(), |_| async {
-        panic!("Callback interface failure: the host threw");
+    app.deliver_until(bae_library::CancellationToken::new(), move |_| async move {
+        panic!("{message}");
     });
-    let (operation, _) = app
-        .runtime
-        .block_on(async { tokio::time::timeout(HANG_GUARD, reports.next()).await })
-        .expect("the panic is reported");
+    let (operation, _) =
+        app.runtime.block_on(bae_diagnostics::test_panic::report_about(hooked, message));
     assert_eq!(operation, "feed a stream");
 
     let (_stop, started, _ended) = waiting_feed(&app);
     started.recv_timeout(HANG_GUARD).expect("another feed still starts");
     app.close_library(None).unwrap();
-    assert!(reports.all_taken(), "the panic is reported once");
+    assert!(!hooked.holds_about(message), "the panic is reported once");
+    assert!(reports.all_taken(), "the feed doesn't report it again");
 }

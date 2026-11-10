@@ -42,8 +42,8 @@ impl InternalFailure {
     }
 }
 
-/// Work that panicked or never finished is a failure on bae's own side; a
-/// panic was reported as a bug where it was caught.
+/// Work that panicked or never finished is a failure on bae's own side; the
+/// panic hook reported a panic as a bug as it began.
 impl From<bae_util::task_failure::TaskFailed> for InternalFailure {
     fn from(failed: bae_util::task_failure::TaskFailed) -> Self {
         Self { detail: failed.to_string() }

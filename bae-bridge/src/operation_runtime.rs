@@ -24,7 +24,7 @@ where
 {
     #[expect(
         clippy::disallowed_methods,
-        reason = "its callers join the task at once and report its panic through Diagnostics::bug"
+        reason = "its callers join the task at once and hand its panic to Diagnostics::bug"
     )]
     runtime.spawn(caught(operation, async move { build().await }))
 }

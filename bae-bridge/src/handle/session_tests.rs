@@ -34,10 +34,10 @@ fn open_session(sessions: &Arc<crate::host::LibrarySessions>) -> Session {
     }))
 }
 
-/// A close that breaks its guarantee partway.
-async fn panicking_close() -> super::Closing {
+/// A close that breaks its guarantee partway, panicking with `message`.
+async fn panicking_close(message: &'static str) -> super::Closing {
     if true {
-        panic!("the close broke its guarantee");
+        panic!("{message}");
     }
     Ok(())
 }
@@ -49,17 +49,19 @@ fn reporting() -> (bae_diagnostics::Diagnostics, Arc<bae_diagnostics::RecordingB
 }
 
 /// Released on a runtime thread, the close runs on a thread of its own; its
-/// panic is caught there and reported, so the open that later waits for that
-/// close is not failed by it.
+/// panic is caught there and reported once, by the panic hook, so the open
+/// that later waits for that close is not failed by it.
 #[test]
 fn a_released_close_that_panics_on_its_thread_is_reported_not_raised_into_the_next_open() {
+    let hooked = bae_diagnostics::test_panic::reported_panics();
+    let message = "the close on its own thread broke its guarantee";
     let sessions = crate::host::LibrarySessions::new();
     let session = open_session(&sessions);
     let (diagnostics, reports) = reporting();
     let caller = tokio::runtime::Runtime::new().expect("build the caller's runtime");
 
     caller.block_on(async {
-        session.end_released(panicking_close(), &diagnostics);
+        session.end_released(panicking_close(message), &diagnostics);
     });
 
     assert!(
@@ -68,22 +70,30 @@ fn a_released_close_that_panics_on_its_thread_is_reported_not_raised_into_the_ne
     );
     sessions.wait(store());
 
-    let reports = reports.reports();
-    assert_eq!(reports.len(), 1, "{reports:?}");
-    assert!(reports[0].1.contains("the close broke its guarantee"), "{reports:?}");
+    let (operation, _) =
+        caller.block_on(bae_diagnostics::test_panic::report_about(hooked, message));
+    assert_eq!(operation, super::CLOSE_RELEASED);
+    assert!(!hooked.holds_about(message), "the panic is reported once");
+    assert_eq!(reports.reports(), Vec::new());
 }
 
 /// Released off any runtime, the close runs inside the handle's `Drop`; its
-/// panic is caught there and reported, never unwinding out of the `Drop`.
+/// panic is caught there and reported once, by the panic hook, never
+/// unwinding out of the `Drop`.
 #[test]
 fn a_released_close_that_panics_inline_is_reported_not_unwound() {
+    let hooked = bae_diagnostics::test_panic::reported_panics();
+    let message = "the close inside the drop broke its guarantee";
     let sessions = crate::host::LibrarySessions::new();
     let session = open_session(&sessions);
     let (diagnostics, reports) = reporting();
 
-    session.end_released(panicking_close(), &diagnostics);
+    session.end_released(panicking_close(message), &diagnostics);
 
-    let reports = reports.reports();
-    assert_eq!(reports.len(), 1, "{reports:?}");
-    assert!(reports[0].1.contains("the close broke its guarantee"), "{reports:?}");
+    let (operation, _) = tokio::runtime::Runtime::new()
+        .expect("build a runtime to wait on")
+        .block_on(bae_diagnostics::test_panic::report_about(hooked, message));
+    assert_eq!(operation, super::CLOSE_RELEASED);
+    assert!(!hooked.holds_about(message), "the panic is reported once");
+    assert_eq!(reports.reports(), Vec::new());
 }

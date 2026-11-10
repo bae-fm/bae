@@ -133,8 +133,9 @@ impl coven::IdSource for IdsThatPanicOnce {
 }
 
 /// An import whose work panics fails as one that errs: its failure is
-/// recorded on its candidate, the crash reporter hears of it once, and the
-/// worker takes up the next import of the candidate, which lands.
+/// recorded on its candidate, the import doesn't report the panic again (the
+/// panic hook reported it), and the worker takes up the next import of the
+/// candidate, which lands.
 #[tokio::test]
 async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() {
     let mut test = setup_import_service().await;
@@ -167,10 +168,7 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
         failure.reason.detail,
         "internal import error: an import panicked: the id source broke"
     );
-    assert_eq!(
-        bugs.reports(),
-        vec![bae_diagnostics::test_panic::report("an import", "the id source broke")]
-    );
+    assert_eq!(bugs.reports(), Vec::new(), "the panic hook reported the panic");
 
     test.service.queue_import_for_test(&candidate_key, "import-again").await;
     test.service
