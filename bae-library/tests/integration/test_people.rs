@@ -186,7 +186,7 @@ impl Household {
             coven::CloudProvider::S3 => self.storage.for_device(),
             _ => coven::MemoryStorage::for_recipient(&self.storage, GUEST_ACCOUNT).unwrap(),
         };
-        self.sources.builder(&installation).storage_connector(std::sync::Arc::new(storage))
+        self.sources.builder(installation).storage_connector(std::sync::Arc::new(storage))
     }
 
     /// A library over the owner's store, in `dir`.

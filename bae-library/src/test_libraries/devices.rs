@@ -19,6 +19,8 @@ pub struct TestDevice {
     installation: coven::Coven,
     app: AppDir,
     storage: Arc<coven::MemoryStorage>,
+    /// The clock and ids every device of the library runs on.
+    sources: super::TestSources,
     _dir: TempDir,
 }
 
@@ -90,6 +92,7 @@ impl TestDevice {
 pub struct DeviceLibrary {
     first: TestDevice,
     storage: Arc<coven::MemoryStorage>,
+    sources: super::TestSources,
 }
 
 pub struct TwoDevices {
@@ -148,14 +151,18 @@ impl TwoDevices {
 
 impl DeviceLibrary {
     async fn new() -> Self {
-        let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-        let storage = Arc::new(coven::MemoryStorage::builder().clock(clock).build().unwrap());
+        let sources = super::TestSources::system();
+        let storage = Arc::new(
+            coven::MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap(),
+        );
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
         let installation = coven::Coven::in_memory(app.coven_app_dir());
         let handle =
-            stores::create_first_store(crate::SCHEMA, &installation, storage.clone()).await;
-        Self { first: device(dir, app, handle, installation, storage.clone()).await, storage }
+            stores::create_first_store(crate::SCHEMA, &installation, &sources, storage.clone())
+                .await;
+        let first = device(dir, app, handle, installation, storage.clone(), sources.clone()).await;
+        Self { first, storage, sources }
     }
 
     /// The device that created the library.
@@ -172,9 +179,16 @@ impl DeviceLibrary {
         let installation = coven::Coven::in_memory(app.coven_app_dir());
         let storage = Arc::new(self.storage.for_device());
         let code = crate::sync::restore_code::entered(code);
-        let handle =
-            stores::restore_store(crate::SCHEMA, &installation, storage.clone(), &code, name).await;
-        let device = device(dir, app, handle, installation, storage).await;
+        let handle = stores::restore_store(
+            crate::SCHEMA,
+            &installation,
+            &self.sources,
+            storage.clone(),
+            &code,
+            name,
+        )
+        .await;
+        let device = device(dir, app, handle, installation, storage, self.sources.clone()).await;
         device.store().start_sync().await.unwrap();
         device
     }
@@ -240,12 +254,13 @@ impl TestDevice {
         let handle = stores::reopen_store(
             crate::SCHEMA,
             &self.installation,
+            &self.sources,
             self.storage.clone(),
             self.store().store_id(),
             migrations,
         )
         .await;
-        self.library = RunningLibrary::new(self.app.clone(), handle).await;
+        self.library = RunningLibrary::new(self.app.clone(), handle, &self.sources).await;
         self.store().start_sync().await.unwrap();
     }
 }
@@ -262,19 +277,25 @@ async fn device(
     handle: coven::CovenHandle,
     installation: coven::Coven,
     storage: Arc<coven::MemoryStorage>,
+    sources: super::TestSources,
 ) -> TestDevice {
     TestDevice {
-        library: RunningLibrary::new(app.clone(), handle).await,
+        library: RunningLibrary::new(app.clone(), handle, &sources).await,
         installation,
         app,
         storage,
+        sources,
         _dir: dir,
     }
 }
 
 impl RunningLibrary {
-    async fn new(app_dir: AppDir, handle: coven::CovenHandle) -> Self {
-        let store = stores::device_store(handle);
+    async fn new(
+        app_dir: AppDir,
+        handle: coven::CovenHandle,
+        sources: &super::TestSources,
+    ) -> Self {
+        let store = sources.store(handle);
         let library = crate::test_libraries::TestLibrary::open(
             store.clone(),
             app_dir,

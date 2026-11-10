@@ -133,7 +133,7 @@ async fn connected_library(
     name: &str,
 ) -> (coven::StoreId, coven::DeviceId, String) {
     let handle =
-        configure_store(bae_store::test_devices::test_builder(&installation), crate::SCHEMA)
+        configure_store(bae_store::test_devices::test_builder(installation), crate::SCHEMA)
             .storage_connector(storage.clone())
             .create_store(name)
             .await
@@ -200,7 +200,7 @@ async fn keys_replaced_elsewhere(
     phone.close().await.unwrap();
     // This copy learns of the replacement the way the app does, from sync.
     let laptop =
-        configure_store(bae_store::test_devices::test_builder(&installation), crate::SCHEMA)
+        configure_store(bae_store::test_devices::test_builder(installation), crate::SCHEMA)
             .storage_connector(std::sync::Arc::new(storage.for_device()))
             .open(store, |_| ())
             .await

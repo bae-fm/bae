@@ -31,38 +31,7 @@ use bae_sync_status::SyncStatus;
 use coven::{ClockRef, IdSourceRef};
 use std::sync::Arc;
 
-/// The clock and the ids it times that one test library runs on, made once
-/// as the app's composition makes them for a process: the library's store is
-/// built from them and its services open on them, so a test cannot give the
-/// two different ones.
-pub struct TestSources {
-    clock: ClockRef,
-    ids: IdSourceRef,
-}
-
-impl TestSources {
-    /// The real clock and the app's time-ordered ids it times.
-    pub fn system() -> Self {
-        let clock: ClockRef = Arc::new(coven::SystemClock);
-        let ids = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
-        Self { clock, ids }
-    }
-
-    /// A builder over `installation` on these sources.
-    pub fn builder(&self, installation: &coven::Coven) -> coven::CovenBuilder {
-        bae_store::store_builder(installation, self.clock.clone(), self.ids.clone())
-    }
-
-    /// The clock.
-    pub fn clock(&self) -> &ClockRef {
-        &self.clock
-    }
-
-    /// The ids.
-    pub fn ids(&self) -> &IdSourceRef {
-        &self.ids
-    }
-}
+pub use bae_store::TestSources;
 
 /// An open test library: its manager, and what the app would hand the
 /// library's services beside it. A test starts the services it needs over it,
@@ -84,8 +53,8 @@ pub struct TestLibrary {
 }
 
 impl TestLibrary {
-    /// Open the library over `store` on the real clock and the app's
-    /// time-ordered ids, asking
+    /// Open the library over `store`, on the clock and ids it was built on,
+    /// asking
     /// `providers`, which were built on `http`, reporting nowhere.
     pub async fn open(
         store: Store,
@@ -93,21 +62,11 @@ impl TestLibrary {
         providers: bae_catalogs::providers::Providers,
         http: bae_util::http::Http,
     ) -> Self {
-        let sources = TestSources::system();
-        Self::open_with(
-            store,
-            app_dir,
-            providers,
-            http,
-            sources.clock().clone(),
-            sources.ids().clone(),
-            Diagnostics::noop(),
-        )
-        .await
+        Self::open_with(store, app_dir, providers, http, Diagnostics::noop()).await
     }
 
     /// Open the library over `store` through the app's opening step, on
-    /// `clock` and `ids`, reporting to `diagnostics`. `http` is the transport
+    /// the clock and ids `store` was built from, reporting to `diagnostics`. `http` is the transport
     /// `providers` were built on. The catalog sessions, the image cache over
     /// `http` and the closing token are built here, as the bootstrap builds
     /// them from the one transport it holds.
@@ -116,10 +75,10 @@ impl TestLibrary {
         app_dir: bae_app_dir::AppDir,
         providers: bae_catalogs::providers::Providers,
         http: bae_util::http::Http,
-        clock: ClockRef,
-        ids: IdSourceRef,
         diagnostics: Diagnostics,
     ) -> Self {
+        let clock = store.test_sources().clock().clone();
+        let ids = store.test_sources().ids().clone();
         let remote_images = RemoteImageCache::for_test(http, diagnostics.clone());
         let preferences = bae_preferences::PreferencesRow::new(store.clone());
         let records = bae_records::Records::new(store.clone(), ids.clone());
@@ -414,14 +373,11 @@ pub async fn test_library_from_handle(
     http: bae_util::http::Http,
     sources: &TestSources,
 ) -> TestLibrary {
-    TestLibrary::open_with(
-        bae_store::test_devices::store_under(handle, sources.clock().clone()),
+    TestLibrary::open(
+        sources.store(handle),
         bae_app_dir::AppDir::under_home(dir).unwrap(),
         providers,
         http,
-        sources.clock().clone(),
-        sources.ids().clone(),
-        Diagnostics::noop(),
     )
     .await
 }

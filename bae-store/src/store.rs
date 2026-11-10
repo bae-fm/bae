@@ -34,6 +34,11 @@ struct StoreInner {
     /// path to the reads it should make.
     #[cfg(any(test, feature = "test-utils"))]
     reads: std::sync::atomic::AtomicU64,
+    /// The clock and ids a test built the store's library on, which the
+    /// library's services open on. Absent on a store a test made over a
+    /// handle of its own.
+    #[cfg(any(test, feature = "test-utils"))]
+    sources: Option<crate::TestSources>,
 }
 
 /// The library's store over coven's owned connection. Writes to synced tables
@@ -70,8 +75,39 @@ impl Store {
                 bugs,
                 #[cfg(any(test, feature = "test-utils"))]
                 reads: std::sync::atomic::AtomicU64::new(0),
+                #[cfg(any(test, feature = "test-utils"))]
+                sources: None,
             }),
         }
+    }
+
+    /// The store over `handle`, built from `sources`, which it keeps.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) fn new_on(
+        handle: CovenHandle,
+        sources: crate::TestSources,
+        bugs: BugSinkRef,
+    ) -> Self {
+        Store {
+            inner: Arc::new(StoreInner {
+                handle,
+                clock: sources.clock().clone(),
+                bugs,
+                reads: std::sync::atomic::AtomicU64::new(0),
+                sources: Some(sources),
+            }),
+        }
+    }
+
+    /// The clock and ids this store's library was built on. A test store
+    /// over a handle of its own has none; open a library over one made with
+    /// `TestSources::store`.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn test_sources(&self) -> &crate::TestSources {
+        self.inner
+            .sources
+            .as_ref()
+            .expect("a store opened as a test library is made with TestSources::store")
     }
 
     /// `result`, once the bug its coven call carried back, if any, has gone
@@ -239,13 +275,11 @@ impl Store {
     ) -> Result<Self, DbError> {
         let installation =
             coven::Coven::in_memory(bae_app_dir::AppDir::at(directory)?.coven_app_dir());
-        let handle = crate::configure_store(
-            crate::test_devices::test_builder_on(&installation, &clock),
-            schema,
-        )
-        .create_store("Test Library")
-        .await?;
-        Ok(Self::new(handle, clock, bugs))
+        let sources = crate::TestSources::on(&clock);
+        let handle = crate::configure_store(sources.builder(&installation), schema)
+            .create_store("Test Library")
+            .await?;
+        Ok(Self::new_on(handle, sources, bugs))
     }
 }
 

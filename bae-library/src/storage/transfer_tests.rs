@@ -42,7 +42,7 @@ async fn manager_with_recording_transport_over_storage() -> (
         .create_store("Test Library")
         .await
         .unwrap();
-    let database = bae_store::test_devices::store_under(handle, sources.clock().clone());
+    let database = sources.store(handle);
     let store = database.clone();
 
     let transport = Arc::new(RecordingTransport::new(vec![]));
@@ -71,8 +71,6 @@ async fn manager_with_recording_transport_over_storage() -> (
         bae_app_dir::AppDir::under_home(home.path()).unwrap(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
-        sources.clock().clone(),
-        sources.ids().clone(),
         diagnostics.clone(),
     )
     .await;

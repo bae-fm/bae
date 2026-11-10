@@ -11,27 +11,13 @@ use coven::Storage;
 
 use crate::Store;
 
-/// The S3 key the library's storage is reached with on every device.
-/// The app's time-ordered ids, timed by `clock`: the ids a test library gets
-/// as the app's composition makes them from its clock.
-pub fn ids_timed_by(clock: &coven::ClockRef) -> coven::IdSourceRef {
-    Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()))
-}
-
-/// A builder over `installation` on `clock` and the ids it times, for a test
-/// that has no services to share the ids with.
-pub fn test_builder_on(
-    installation: &coven::Coven,
-    clock: &coven::ClockRef,
-) -> coven::CovenBuilder {
-    crate::store_builder(installation, clock.clone(), ids_timed_by(clock))
-}
-
-/// [`test_builder_on`] the system clock.
+/// A builder over `installation` on the system clock and the ids it times,
+/// for a test that opens no library services over what it builds.
 pub fn test_builder(installation: &coven::Coven) -> coven::CovenBuilder {
-    test_builder_on(installation, &(Arc::new(coven::SystemClock) as coven::ClockRef))
+    crate::TestSources::system().builder(installation)
 }
 
+/// The S3 key the library's storage is reached with on every device.
 fn owner_credentials() -> coven::S3Credentials {
     coven::S3Credentials {
         access_key_id: "owner-key".into(),
@@ -45,9 +31,10 @@ fn owner_credentials() -> coven::S3Credentials {
 pub async fn create_first_store(
     schema: crate::Schema,
     installation: &coven::Coven,
+    sources: &crate::TestSources,
     storage: Arc<coven::MemoryStorage>,
 ) -> coven::CovenHandle {
-    let handle = crate::configure_store(test_builder(installation), schema)
+    let handle = crate::configure_store(sources.builder(installation), schema)
         .storage_connector(storage.clone())
         .create_store("Two Devices")
         .await
@@ -74,12 +61,13 @@ pub async fn create_first_store(
 pub async fn restore_store(
     schema: crate::Schema,
     installation: &coven::Coven,
+    sources: &crate::TestSources,
     storage: Arc<coven::MemoryStorage>,
     code: &str,
     name: &str,
 ) -> coven::CovenHandle {
     let builder =
-        crate::configure_store(test_builder(installation), schema).storage_connector(storage);
+        crate::configure_store(sources.builder(installation), schema).storage_connector(storage);
     let (_sender, cancel) = tokio::sync::watch::channel(false);
     coven::restore_from_code(builder, code, Some(owner_credentials()), name, |_| {}, &cancel)
         .await
@@ -91,11 +79,12 @@ pub async fn restore_store(
 pub async fn reopen_store(
     schema: crate::Schema,
     installation: &coven::Coven,
+    sources: &crate::TestSources,
     storage: Arc<coven::MemoryStorage>,
     store: coven::StoreId,
     migrations: Vec<coven::Migration>,
 ) -> coven::CovenHandle {
-    crate::configure_store(test_builder(installation), schema)
+    crate::configure_store(sources.builder(installation), schema)
         .migrations(migrations)
         .storage_connector(storage)
         .open(store, |_| ())
@@ -103,14 +92,10 @@ pub async fn reopen_store(
         .expect("open the device's store again")
 }
 
-/// The store over a device's opened store, under the system clock. A bug
+/// The store over `handle`, stamping its writes by `clock`, for a test that
+/// opens no library services over it: it carries no [`crate::TestSources`]
+/// (use [`crate::TestSources::store`] for one a library opens over). A bug
 /// one of its calls carries back fails the test as the store drops.
-pub fn device_store(handle: coven::CovenHandle) -> Store {
-    store_under(handle, Arc::new(coven::SystemClock))
-}
-
-/// The store over `handle`, stamping its writes by `clock`. A bug one of its
-/// calls carries back fails the test as the store drops.
 pub fn store_under(handle: coven::CovenHandle, clock: coven::ClockRef) -> Store {
     Store::new(handle, clock, coven::task::HeardBugs::shared())
 }
@@ -307,8 +292,13 @@ struct StoreDevice {
 
 #[cfg(any(test, feature = "test-utils"))]
 impl StoreDevice {
-    fn new(handle: coven::CovenHandle, installation: coven::Coven, dir: tempfile::TempDir) -> Self {
-        let store = device_store(handle);
+    fn new(
+        handle: coven::CovenHandle,
+        sources: &crate::TestSources,
+        installation: coven::Coven,
+        dir: tempfile::TempDir,
+    ) -> Self {
+        let store = sources.store(handle);
         let cycles = SyncCycles::follow(&store);
         Self { store, cycles, _installation: installation, _dir: dir }
     }
@@ -343,19 +333,27 @@ where
 #[cfg(any(test, feature = "test-utils"))]
 impl TwoStores {
     async fn new(schema: crate::Schema) -> Self {
-        let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-        let storage = Arc::new(coven::MemoryStorage::builder().clock(clock).build().unwrap());
+        let sources = crate::TestSources::system();
+        let storage = Arc::new(
+            coven::MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap(),
+        );
         let dir = tempfile::TempDir::new().unwrap();
         let installation = coven::Coven::in_memory(dir.path().to_path_buf());
-        let handle = create_first_store(schema, &installation, storage.clone()).await;
-        let a = StoreDevice::new(handle, installation, dir);
+        let handle = create_first_store(schema, &installation, &sources, storage.clone()).await;
+        let a = StoreDevice::new(handle, &sources, installation, dir);
         let code = a.store.generate_restore_code().await.unwrap();
         let dir = tempfile::TempDir::new().unwrap();
         let installation = coven::Coven::in_memory(dir.path().to_path_buf());
-        let handle =
-            restore_store(schema, &installation, Arc::new(storage.for_device()), &code, "Device B")
-                .await;
-        let b = StoreDevice::new(handle, installation, dir);
+        let handle = restore_store(
+            schema,
+            &installation,
+            &sources,
+            Arc::new(storage.for_device()),
+            &code,
+            "Device B",
+        )
+        .await;
+        let b = StoreDevice::new(handle, &sources, installation, dir);
         b.store.start_sync().await.unwrap();
         Self { a, b }
     }

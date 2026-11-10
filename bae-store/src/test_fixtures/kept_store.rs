@@ -10,8 +10,7 @@ use std::path::{Path, PathBuf};
 
 use coven::{ClockRef, Coven, StoreId};
 
-use crate::test_devices::test_builder_on;
-use crate::{configure_store, Schema, Store};
+use crate::{configure_store, Schema, Store, TestSources};
 
 /// A new store on `schema` with its folder under `app_dir`, and the keychain
 /// entries it opens with saved at `keychain`. Close it before copying the
@@ -23,12 +22,13 @@ pub async fn create_kept(
     clock: ClockRef,
 ) -> Store {
     let installation = Coven::in_memory(coven_app_dir(app_dir));
-    let handle = configure_store(test_builder_on(&installation, &clock), schema)
+    let sources = TestSources::on(&clock);
+    let handle = configure_store(sources.builder(&installation), schema)
         .create_store("Kept Library")
         .await
         .expect("create the kept store");
     installation.save_device_keychain(keychain).expect("save the kept keychain");
-    Store::new(handle, clock, coven::task::HeardBugs::shared())
+    sources.store(handle)
 }
 
 /// The store `id` that `create_kept` made, in a copy of its closed folder at
@@ -42,11 +42,12 @@ pub async fn open_kept(
 ) -> Store {
     let installation = Coven::in_memory_with_saved_keychain(coven_app_dir(app_dir), keychain)
         .expect("load the kept keychain");
-    let handle = configure_store(test_builder_on(&installation, &clock), schema)
+    let sources = TestSources::on(&clock);
+    let handle = configure_store(sources.builder(&installation), schema)
         .open(id, |_| ())
         .await
         .expect("open the kept store");
-    Store::new(handle, clock, coven::task::HeardBugs::shared())
+    sources.store(handle)
 }
 
 fn coven_app_dir(app_dir: &Path) -> PathBuf {

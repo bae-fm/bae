@@ -583,6 +583,13 @@ OpenCalls = "LibrarySessions"
     "BootstrapCancellation::new",
     "BridgeJoinControl::new",
 ]
+# The clock and ids a test makes once, builds its store from and opens its
+# library on.
+"bae-store/src/test_sources.rs" = [
+    "TestSources::system",
+    "TestSources::on",
+    "TestSources::ids",
+]
 # An owner's constructor builds the owner and the parts it holds that nothing
 # else shares.
 "bae-bridge/src/host/library_sessions.rs" = ["LibrarySessions::new", "OpenLibrary::new"]
@@ -718,6 +725,7 @@ OpenCalls = "LibrarySessions"
     "SyncCycles::follow",
     "TwoStores::new",
     "run_two_store_test",
+    "test_builder",
     # A test's devices run on a thread the test joins.
     "on_device_runtime",
 ]
@@ -777,10 +785,6 @@ OpenCalls = "LibrarySessions"
     "TestLibrary::open",
     "TestLibrary::open_with",
     "TestLibrary::start_playback_reporting",
-    # The clock and ids a test makes once, builds its store from and opens
-    # its library on.
-    "TestSources::system",
-    "TestSources::ids",
     "open_test_library",
     "open_test_library_with",
     "test_library_from_handle",
@@ -1081,7 +1085,16 @@ OpenCalls = "LibrarySessions"
 "bae-playback/src/tables/timeline.rs" = ["PlaybackTimelineRow::new"]
 "bae-playback/src/track_buffered.rs" = ["PlayingBytes::new"]
 "bae-records/src/records.rs" = ["Records::new"]
-"bae-store/src/store.rs" = ["Store::new"]
+"bae-store/src/store.rs" = [
+    "Store::new",
+    # A test store built from the clock and ids its library runs on, which
+    # it keeps for the library's services to open on.
+    "Store::new_on",
+    "Store::test_sources",
+    "Store::new_test_reporting_to",
+]
+# A kept store is made on the clock and ids of the run that made it.
+"bae-store/src/test_fixtures/kept_store.rs" = ["create_kept", "open_kept"]
 "bae-track-audio/src/data_source.rs" = [
     "CovenFileReader::for_playback",
     "CovenFileReader::new",

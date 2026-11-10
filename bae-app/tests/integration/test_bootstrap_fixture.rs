@@ -53,7 +53,7 @@ fn open(
     fixture: std::path::PathBuf,
     installation: &coven::Coven,
 ) -> TestApp {
-    let builder = bae_store::test_devices::test_builder(&installation);
+    let builder = bae_store::test_devices::test_builder(installation);
     bootstrap_on_fixture(
         fixture,
         app_dir.clone(),

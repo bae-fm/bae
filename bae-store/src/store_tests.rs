@@ -44,7 +44,7 @@ async fn a_call_that_panics_is_reported_once_by_the_store() {
         coven::Coven::in_memory(bae_app_dir::AppDir::at(tmp.path()).unwrap().coven_app_dir());
     let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
     let handle = crate::configure_store(
-        crate::test_devices::test_builder_on(&installation, &clock),
+        crate::TestSources::on(&clock).builder(&installation),
         Schema::new(&[]),
     )
     .create_store("Test Library")

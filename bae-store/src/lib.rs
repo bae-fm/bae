@@ -37,6 +37,10 @@ pub use store_read::StoreRead;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_devices;
 #[cfg(any(test, feature = "test-utils"))]
+mod test_sources;
+#[cfg(any(test, feature = "test-utils"))]
+pub use test_sources::TestSources;
+#[cfg(any(test, feature = "test-utils"))]
 pub mod test_fixtures;
 mod with_sync_state;
 pub use with_sync_state::WithSyncState;

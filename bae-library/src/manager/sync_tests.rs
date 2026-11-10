@@ -719,15 +719,11 @@ async fn reopen_without_credentials(manager: TestManager, temp_dir: &TempDir) ->
         .open(store, |_| ())
         .await
         .unwrap();
-    let database = bae_store::test_devices::store_under(handle, sources.clock().clone());
-    let library = TestLibrary::open_with(
-        database,
+    let library = TestLibrary::open(
+        sources.store(handle),
         app_dir,
         manager.fakes.providers(),
         bae_util::http::Http::for_test(),
-        sources.clock().clone(),
-        sources.ids().clone(),
-        bae_diagnostics::Diagnostics::noop(),
     )
     .await;
     TestManager {
@@ -773,13 +769,9 @@ mod sign_in {
         let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-        let ids = bae_store::test_devices::ids_timed_by(&clock);
+        let sources = bae_store::TestSources::on(&clock);
         let handle = bae_store::configure_store(
-            bae_store::store_builder(
-                &coven::Coven::in_memory(app_dir.coven_app_dir()),
-                clock.clone(),
-                ids.clone(),
-            ),
+            sources.builder(&coven::Coven::in_memory(app_dir.coven_app_dir())),
             crate::SCHEMA,
         )
         .oauth_clients(coven::OAuthClients::new(
@@ -791,15 +783,11 @@ mod sign_in {
         .create_store("Test Library")
         .await
         .unwrap();
-        let database = bae_store::test_devices::store_under(handle, clock.clone());
-        let library = TestLibrary::open_with(
-            database,
+        let library = TestLibrary::open(
+            sources.store(handle),
             app_dir,
             bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),
-            clock,
-            ids,
-            bae_diagnostics::Diagnostics::noop(),
         )
         .await;
         let manager = LibraryManager::clone(library.manager());

@@ -122,16 +122,13 @@ async fn restore_cost(library: Library) {
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let owner_dir = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(owner_dir.path()).unwrap();
-    let ids = Arc::new(bae_util::time_ordered_ids::TimeOrderedIds::new(clock.clone()));
+    let sources = bae_store::TestSources::on(&(clock.clone() as coven::ClockRef));
     let installation = Coven::in_memory(app_dir.coven_app_dir());
-    let handle = bae_store::configure_store(
-        bae_store::store_builder(&installation, clock.clone(), ids.clone()),
-        bae_library::SCHEMA,
-    )
-    .storage_connector(storage.clone())
-    .create_store("Library")
-    .await
-    .unwrap();
+    let handle = bae_store::configure_store(sources.builder(&installation), bae_library::SCHEMA)
+        .storage_connector(storage.clone())
+        .create_store("Library")
+        .await
+        .unwrap();
     handle
         .setup_s3_storage(
             storage.config(),
@@ -143,15 +140,11 @@ async fn restore_cost(library: Library) {
         .await
         .unwrap();
     handle.start_sync().await.unwrap();
-    let database = bae_store::test_devices::store_under(handle.clone(), clock.clone());
-    let opened = bae_library::test_libraries::TestLibrary::open_with(
-        database,
+    let opened = bae_library::test_libraries::TestLibrary::open(
+        sources.store(handle.clone()),
         app_dir.clone(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
-        clock.clone(),
-        ids,
-        bae_diagnostics::Diagnostics::noop(),
     )
     .await;
     let building = Instant::now();

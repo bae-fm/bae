@@ -55,24 +55,19 @@ pub(super) async fn setup_test_manager_with(
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-    let ids = bae_store::test_devices::ids_timed_by(&clock);
-    let handle = bae_store::configure_store(
-        bae_store::store_builder(&installation, clock.clone(), ids.clone()),
-        crate::SCHEMA,
-    )
-    .storage_connector(storage.clone())
-    .create_store("Test Library")
-    .await
-    .unwrap();
-    let database = bae_store::test_devices::store_under(handle, clock.clone());
+    let sources = bae_store::TestSources::on(&clock);
+    let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
+        .storage_connector(storage.clone())
+        .create_store("Test Library")
+        .await
+        .unwrap();
+    let database = sources.store(handle);
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let manager = TestLibrary::open_with(
         database,
         app_dir,
         fakes.providers(),
         bae_util::http::Http::for_test(),
-        clock,
-        ids,
         diagnostics,
     )
     .await;
