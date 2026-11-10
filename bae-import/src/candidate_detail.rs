@@ -55,8 +55,9 @@ pub enum ProjectedStage {
     Drafting(Box<DraftProjection>),
     Imported {
         release: ImportedRelease,
-        /// The folder's images and its other files, read from its scan.
-        folder: super::mapping::FolderFiles,
+        /// The folder's images, read from its scan: the gallery beside the
+        /// library release, whose editor lists the release's files.
+        images: Vec<super::mapping::MappingImage>,
     },
 }
 
@@ -154,10 +155,10 @@ impl ImportCandidateDetailProjection {
         let placement = listed.basis.placement;
         let live = CandidateLiveState::of(&listed.basis, facts, listed.standing);
         let (import_status, pane_placement, stage) = match stage {
-            ProjectedStage::Imported { release, folder } => (
+            ProjectedStage::Imported { release, images } => (
                 import_status_of(Some(&release), source_error.as_ref(), None),
                 CandidatePanePlacement::Done,
-                CandidateStage::Imported { release, folder },
+                CandidateStage::Imported { release, images },
             ),
             ProjectedStage::Drafting(draft) => {
                 let session = draft.session_or_initial(verdict.is_some());
@@ -360,8 +361,9 @@ pub enum CandidateStage {
     Drafting(Box<CandidateDraftPane>),
     Imported {
         release: ImportedRelease,
-        /// The folder's images and its other files, read from its scan.
-        folder: super::mapping::FolderFiles,
+        /// The folder's images, read from its scan: the gallery beside the
+        /// library release, whose editor lists the release's files.
+        images: Vec<super::mapping::MappingImage>,
     },
 }
 

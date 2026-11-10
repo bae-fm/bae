@@ -233,7 +233,7 @@ impl CandidateDetailRows {
         let stage = match stage {
             StageRows::Imported(release) => ProjectedStage::Imported {
                 release,
-                folder: crate::mapping::folder_files(&candidate.files),
+                images: crate::mapping::folder_images(&candidate.files),
             },
             StageRows::Drafting(draft) => {
                 let DraftRows {

@@ -235,15 +235,6 @@ pub struct MappingContainer {
     pub audio_format: bae_types::audio_format::AudioFormat,
 }
 
-/// The folder's images and the files carried with the release that no track
-/// row stands for, in the scan's order: what a folder shows besides its
-/// tracks, which reads its files alone.
-#[derive(Debug, Clone, PartialEq)]
-pub struct FolderFiles {
-    pub images: Vec<MappingImage>,
-    pub files: Vec<MappingFileRow>,
-}
-
 /// The track sheets of `files` that carve the audio they are bound to into
 /// track rows, by relative path.
 fn carving_sheets<'a>(layout: &'a [(&'a ScannedFile, UnitContribution<'a>)]) -> BTreeSet<&'a str> {
@@ -258,21 +249,25 @@ fn carving_sheets<'a>(layout: &'a [(&'a ScannedFile, UnitContribution<'a>)]) -> 
         .collect()
 }
 
-/// The folder's images and its files no track row stands for. A sheet that
-/// carves track rows heads them, so it is not among the files.
-pub(crate) fn folder_files(files: &CategorizedFiles) -> FolderFiles {
-    let layout = audio_layout(files);
-    folder_files_besides(files, &carving_sheets(&layout), &disc_options(files))
+/// The folder's images, in the scan's order: its gallery.
+pub(crate) fn folder_images(files: &CategorizedFiles) -> Vec<MappingImage> {
+    files
+        .files
+        .iter()
+        .filter(|entry| matches!(entry.role, FileRole::Artwork))
+        .map(mapping_image)
+        .collect()
 }
 
-/// [`folder_files`] with the sheets that carve track rows and the discs a
-/// bound sheet may be assigned to already worked out.
+/// The folder's files carried with the release that no track row stands for,
+/// in the scan's order, given the sheets that carve track rows and the discs a
+/// bound sheet may be assigned to. A sheet that carves track rows heads them,
+/// so it is not among the files.
 fn folder_files_besides(
     files: &CategorizedFiles,
     carving: &BTreeSet<&str>,
     disc_options: &[u32],
-) -> FolderFiles {
-    let mut images = Vec::new();
+) -> Vec<MappingFileRow> {
     let mut file_rows = Vec::new();
     for entry in &files.files {
         match &entry.role {
@@ -301,14 +296,14 @@ fn folder_files_besides(
             FileRole::Audio => {}
             // Nothing else the folder holds is in the tracklist — the role says
             // so on its own. The folder is the release, so all of it is still
-            // carried. The images become one gallery beside the rows.
-            FileRole::Artwork => images.push(mapping_image(entry)),
+            // carried. The images are the gallery beside the rows.
+            FileRole::Artwork => {}
             FileRole::Document => file_rows.push(carried(entry, MappingRole::Document)),
             FileRole::DamagedImage => file_rows.push(carried(entry, MappingRole::DamagedImage)),
             FileRole::Other => file_rows.push(carried(entry, MappingRole::Other)),
         }
     }
-    FolderFiles { images, files: file_rows }
+    file_rows
 }
 
 /// Project the mapping table for one folder and the draft committing it.
@@ -376,7 +371,8 @@ pub(crate) fn mapping_table(
             ),
         });
     }
-    let FolderFiles { images, files } = folder_files_besides(files, &carving, &disc_options);
+    let images = folder_images(files);
+    let files = folder_files_besides(files, &carving, &disc_options);
 
     let untitled_track_count = track_sides
         .iter()

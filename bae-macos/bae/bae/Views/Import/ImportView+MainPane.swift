@@ -68,7 +68,6 @@ extension ImportView {
                     ),
                     onViewInLibrary: { uiStore.navigateToAlbum($0) },
                     onOpenImages: mappingActions.openImages,
-                    onOpenDocument: mappingActions.openDocument,
                     onPlayTrack: { trackId in
                         playback.playRelease(
                             release.releaseId,

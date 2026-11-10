@@ -49,21 +49,9 @@ extension ImportView {
     }
 
     private func openDocument(name: String, fileId: String, of key: Data) {
-        Task {
-            do {
-                let text = try await importer.readCandidateDocument(key, fileId)
-                uiStore.presentDocument(name: name, text: text)
-            }
-            catch {
-                // No line means a cancellation, which raises no alert.
-                if let failure = DisplayError(error)?
-                    .rewording({
-                        String(localized: "Could not read \(name): \($0)")
-                    })
-                {
-                    uiStore.showError(failure)
-                }
-            }
+        let importer = importer
+        uiStore.openDocument(name: name) {
+            try await importer.readCandidateDocument(key, fileId)
         }
     }
 

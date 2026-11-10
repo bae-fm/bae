@@ -488,15 +488,6 @@ pub struct BridgeMappingTable {
     pub untitled_track_count: u32,
 }
 
-/// The folder's images and the files carried with the release that no track
-/// row stands for, in the scan's order. Mirror of bae-library's `FolderFiles`.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeFolderFiles {
-    pub images: Vec<BridgeMappingImage>,
-    pub files: Vec<BridgeMappingFileRow>,
-}
-
 /// One album-level text field of the import pane's metadata form.
 ///
 /// Each is written on its own as the user leaves it, so the pane holds no copy

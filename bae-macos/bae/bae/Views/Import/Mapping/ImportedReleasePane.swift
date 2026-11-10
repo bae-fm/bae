@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A completed import: the saved release's editable metadata, with the source
-/// folder's images and files as its scan read them. It cannot change the
+/// A completed import: the saved release's editable metadata and files, with
+/// the source folder's images as its scan read them. It cannot change the
 /// candidate, which holds no draft once imported.
 struct ImportedReleasePane: View {
     let candidate: Candidate
@@ -11,16 +11,15 @@ struct ImportedReleasePane: View {
     let editCommands: ReleaseEditCommands
     let onViewInLibrary: (String) -> Void
     let onOpenImages: ([BridgeMappingImage], String) -> Void
-    let onOpenDocument: (String, String) -> Void
     let onPlayTrack: (String) -> Void
 
     /// The height the loading and failed states hold.
     private static let placeholderHeight: CGFloat = 280
 
-    /// The folder's images and its other files, as its scan read them: the
-    /// candidate holds no draft once imported, so no mapping table.
-    private var folder: BridgeFolderFiles {
-        candidate.importedFolder ?? BridgeFolderFiles(images: [], files: [])
+    /// The folder's images, as its scan read them: the candidate holds no
+    /// draft once imported, so no mapping table.
+    private var images: [BridgeMappingImage] {
+        candidate.importedImages ?? []
     }
 
     @State
@@ -45,14 +44,8 @@ struct ImportedReleasePane: View {
                     onPlayTrack: onPlayTrack,
                     onSaved: { _ in }
                 )
-                if !folder.images.isEmpty {
+                if !images.isEmpty {
                     imagesSection
-                }
-                if !folder.files.isEmpty {
-                    ReleaseFilesView(
-                        rows: folder.files,
-                        onOpenDocument: onOpenDocument
-                    )
                 }
             }
             else if let loadError {
@@ -100,7 +93,7 @@ struct ImportedReleasePane: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             FormSectionHeader(title: String(localized: "Images"))
             ImportMappingGallery(
-                images: folder.images,
+                images: images,
                 onOpen: onOpenImages
             )
         }

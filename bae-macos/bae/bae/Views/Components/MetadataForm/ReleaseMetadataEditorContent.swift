@@ -1,13 +1,17 @@
 import BaeKit
 import SwiftUI
 
-/// The release editor's draft: its fields, album row and track table.
+/// The release editor's draft: its fields, album row and track table, and
+/// the files the release carries that no track plays from.
 struct ReleaseMetadataEditorContent: View {
     let session: ReleaseMetadataEditSession
     var onEditCover: (() -> Void)?
     /// Show a library album the album row names.
     let onViewAlbum: (String) -> Void
     var onPlayTrack: ((String) -> Void)?
+    /// Open one of the release's documents in the viewer: the file's name,
+    /// then its file id.
+    let onOpenDocument: (String, String) -> Void
 
     @State
     private var availableWidth = ReleaseMetadataTrackColumns.minimumTableWidth
@@ -38,6 +42,12 @@ struct ReleaseMetadataEditorContent: View {
                 actions: session.albumActions(viewInLibrary: onViewAlbum)
             )
             trackTable
+            if !session.draft.display.files.isEmpty {
+                ReleaseFilesView(
+                    rows: session.draft.display.files.map { .file(file: $0) },
+                    onOpenDocument: onOpenDocument
+                )
+            }
         }
         .disabled(session.isBusy)
         .environment(\.artistResolutions, session.draft.artistResolutions)

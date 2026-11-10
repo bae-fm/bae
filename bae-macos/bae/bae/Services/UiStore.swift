@@ -142,6 +142,10 @@ class UiStore: @unchecked Sendable {
 
     var lightbox: Cursor<LightboxItem>?
     private(set) var modalBuilder: (() -> AnyView)?
+    /// The document open in the viewer. It has a layer of its own, over the
+    /// modal: a document opened from the release editor's modal leaves the
+    /// editor open beneath it.
+    private(set) var document: OpenDocument?
     private(set) var isImportFolderPickerPresented = false
 
     // ── Errors ──────────────────────────────────────────────────────────
@@ -353,13 +357,35 @@ class UiStore: @unchecked Sendable {
     }
 
     func presentDocument(name: String, text: String) {
-        presentModal {
-            DocumentViewerView(
-                name: name,
-                text: text,
-                onClose: self.dismissModal
-            )
+        document = OpenDocument(name: name, text: text)
+    }
+
+    /// Read the document `name` with `read` and show it in the viewer; a
+    /// read that fails shows on the app's alert, naming the file.
+    @MainActor
+    func openDocument(
+        name: String,
+        read: @escaping @Sendable () async throws -> String
+    ) {
+        Task {
+            do {
+                presentDocument(name: name, text: try await read())
+            }
+            catch {
+                // No line means a cancellation, which raises no alert.
+                if let failure = DisplayError(error)?
+                    .rewording({
+                        String(localized: "Could not read \(name): \($0)")
+                    })
+                {
+                    showError(failure)
+                }
+            }
         }
+    }
+
+    func dismissDocument() {
+        document = nil
     }
 
     func presentLightbox(items: [LightboxItem], preferring id: String? = nil) {
@@ -379,4 +405,10 @@ class UiStore: @unchecked Sendable {
     func dismissDiscogsNotice() {
         discogsNoticeDismissed = true
     }
+}
+
+/// A document open in the viewer: the file's name and its text.
+struct OpenDocument: Equatable {
+    let name: String
+    let text: String
 }

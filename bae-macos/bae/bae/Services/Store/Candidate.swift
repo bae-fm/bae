@@ -422,12 +422,11 @@ struct Candidate: Equatable, Identifiable {
         return draft
     }
 
-    /// The folder's images and its other files, once this device imported
-    /// its files: what the imported folder's pane shows beside the library
-    /// release.
-    var importedFolder: BridgeFolderFiles? {
-        guard case .imported(_, let folder) = detail?.stage else { return nil }
-        return folder
+    /// The folder's images, once this device imported its files: the
+    /// gallery the imported folder's pane shows beside the library release.
+    var importedImages: [BridgeMappingImage]? {
+        guard case .imported(_, let images) = detail?.stage else { return nil }
+        return images
     }
 
     /// The covers the picker offers from the catalogs: what the applied

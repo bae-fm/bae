@@ -274,9 +274,9 @@ pub use list::{
 };
 #[cfg(desktop)]
 pub use mapping::{
-    mapping_tracks, FolderFiles, InvalidCandidateDetail, MappingContainer, MappingEntry,
-    MappingFile, MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable,
-    MappingTrackRun, MappingTrackSide, SheetBound, SheetGroup, TrackMapping,
+    mapping_tracks, InvalidCandidateDetail, MappingContainer, MappingEntry, MappingFile,
+    MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable, MappingTrackRun,
+    MappingTrackSide, SheetBound, SheetGroup, TrackMapping,
 };
 #[cfg(desktop)]
 pub use preparations::{

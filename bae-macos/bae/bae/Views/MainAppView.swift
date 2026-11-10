@@ -126,6 +126,17 @@ struct MainAppView: View {
                     builder()
                 }
             }
+
+            // Document viewer, over the modal it may have been opened from
+            if let document = uiStore.document {
+                ModalOverlay(onDismiss: { uiStore.dismissDocument() }) {
+                    DocumentViewerView(
+                        name: document.name,
+                        text: document.text,
+                        onClose: { uiStore.dismissDocument() }
+                    )
+                }
+            }
         }
         .animation(.easeInOut(duration: 0.2), value: uiStore.lightbox != nil)
         .overlay {

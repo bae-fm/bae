@@ -5,8 +5,7 @@ import Foundation
 /// Covers cover changes, pinning, deleting a release or a whole album,
 /// primary-release selection, opening a release edit session (whose own
 /// commands write each change, apply a catalog, pick its album and save),
-/// and the remote-cover
-/// gallery fetch.
+/// reading one of a release's documents, and the remote-cover gallery fetch.
 @MainActor
 final class ReleaseEditor: Observable {
     let changeCover:
@@ -29,6 +28,10 @@ final class ReleaseEditor: Observable {
     /// the library holds the release, and the session's commands.
     let openReleaseEdit:
         @Sendable (_ releaseId: String) async throws -> OpenedReleaseEdit
+    /// The text of the release's document `fileId`, decoded by core.
+    let readReleaseDocument:
+        @Sendable (_ releaseId: String, _ fileId: String) async throws ->
+            String
     let fetchRemoteCovers:
         @Sendable (_ target: BridgeCoverTarget) async throws ->
             BridgeRemoteCoverGallery
@@ -63,6 +66,11 @@ final class ReleaseEditor: Observable {
         openReleaseEdit:
             @escaping @Sendable (String) async throws -> OpenedReleaseEdit =
             { _ in throw StubError.notImplemented },
+        readReleaseDocument:
+            @escaping @Sendable (String, String) async throws -> String = {
+                _,
+                _ in throw StubError.notImplemented
+            },
         fetchRemoteCovers:
             @escaping @Sendable (BridgeCoverTarget) async throws ->
             BridgeRemoteCoverGallery = {
@@ -77,6 +85,7 @@ final class ReleaseEditor: Observable {
         self.deleteAlbum = deleteAlbum
         self.setPrimaryRelease = setPrimaryRelease
         self.openReleaseEdit = openReleaseEdit
+        self.readReleaseDocument = readReleaseDocument
         self.fetchRemoteCovers = fetchRemoteCovers
         self.catalogApply = catalogApply
     }
@@ -130,6 +139,9 @@ final class ReleaseEditor: Observable {
                         save: { try await session.save() }
                     )
                 )
+            },
+            readReleaseDocument: {
+                try await handle.readReleaseDocument(releaseId: $0, fileId: $1)
             },
             fetchRemoteCovers: {
                 try await handle.fetchRemoteCovers(target: $0)

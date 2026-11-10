@@ -65,7 +65,8 @@ struct ReleaseEditorView: View {
                     session: session,
                     onEditCover: { showingCoverPicker = true },
                     onViewAlbum: onViewAlbum,
-                    onPlayTrack: onPlayTrack
+                    onPlayTrack: onPlayTrack,
+                    onOpenDocument: openDocument
                 )
             }
         }
@@ -171,6 +172,13 @@ struct ReleaseEditorView: View {
             onDone: { showingCoverPicker = false }
         )
         .frame(width: 1_000, height: 740)
+    }
+
+    /// Open the release's document `fileId` in the viewer.
+    private func openDocument(name: String, fileId: String) {
+        let read = releaseEditor.readReleaseDocument
+        let releaseId = session.releaseId
+        uiStore.openDocument(name: name) { try await read(releaseId, fileId) }
     }
 
     /// Open the search and start identifying the release from its files.

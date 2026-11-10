@@ -235,8 +235,9 @@ pub enum BridgeCandidateStage {
     },
     Imported {
         release: BridgeImportedRelease,
-        /// The folder's images and its other files, read from its scan.
-        folder: crate::types::BridgeFolderFiles,
+        /// The folder's images, read from its scan: the gallery beside the
+        /// library release, whose editor lists the release's files.
+        images: Vec<crate::types::BridgeMappingImage>,
     },
 }
 

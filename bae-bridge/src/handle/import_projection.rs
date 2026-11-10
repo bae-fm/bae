@@ -648,9 +648,12 @@ impl crate::types::BridgeCandidateStage {
             bae_import::CandidateStage::Drafting(draft) => {
                 Self::Drafting { draft: crate::types::BridgeCandidateDraftPane::from_core(*draft) }
             }
-            bae_import::CandidateStage::Imported { release, folder } => Self::Imported {
+            bae_import::CandidateStage::Imported { release, images } => Self::Imported {
                 release: crate::types::BridgeImportedRelease::from_core(release),
-                folder: crate::types::BridgeFolderFiles::from_core(folder),
+                images: images
+                    .into_iter()
+                    .map(crate::types::BridgeMappingImage::from_core)
+                    .collect(),
             },
         }
     }

@@ -187,7 +187,8 @@ struct ReleaseEditorTests {
                 ReleaseMetadataEditorContent(
                     session: session,
                     onViewAlbum: { _ in },
-                    onPlayTrack: { _ in }
+                    onPlayTrack: { _ in },
+                    onOpenDocument: { _, _ in }
                 )
             }
             .environment(Library.stub())

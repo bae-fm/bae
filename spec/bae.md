@@ -1558,9 +1558,10 @@ The files the folder carries that are no track, such as a rip log or a track
 sheet that carves no tracks, are listed under the tracks beneath a ruled *Files*
 heading, one line per file: its name in monospace, its size at the right, a
 hairline between lines, a damaged file marked with why. A document opens in the
-viewer when clicked. An imported folder's pane lists the files of its scan the
-same way, under its tracks; one view draws both, so a release's files never
-show two ways.
+viewer when clicked, over whatever else is open. A library release's editor
+(§3.8), on an imported folder's pane and in the album's *Edit Release* sheet,
+lists the release's files the same way, under its tracks; one view draws all
+three, so a release's files never show two ways.
 
 Before importing, the person can play a file through a second player, which
 pauses the library's playback and resumes it when it ends.
@@ -1823,6 +1824,13 @@ once; every other track names in its row the file its body, from its
 INDEX 01 on, plays from. A pregap stored at the tail of the file before
 (§2.2) is not named: a row names one file. An applied catalog lays them out
 again at the places it gives them.
+
+Under the tracks, the editor lists the release's files that no track plays
+from (§3.6): its track sheets, documents, images and anything else its folder
+held, in the release's file order, each as the role its import's scan gave it
+(§2.2) says. A track sheet reads as the text it is, an image the scan found
+damaged says so, and a document or track sheet opens in the viewer, read from
+wherever coven has the file and decoded as a folder's document is (§3.3).
 
 ---
 ## 4. Files
