@@ -171,43 +171,17 @@ pub struct SavePreset {
     pub name: String,
     pub codec: SaveCodec,
     pub pregap_placement: SavePregapPlacement,
-    pub applies_to_track: bool,
-    pub applies_to_release: bool,
     /// Whether saved files embed the release's cover art. When false, the cover
     /// file is never read — no wasted download/decrypt for a preset that won't
     /// embed it.
     pub embed_cover: bool,
 }
 
-/// What a save writes: one track, or a whole release.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SaveLevel {
-    Track,
-    Release,
-}
-
-impl std::fmt::Display for SaveLevel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::Track => "track",
-            Self::Release => "release",
-        })
-    }
-}
-
 impl SavePreset {
-    /// Whether the preset is offered for saves of `level`.
-    pub fn applies_to(&self, level: SaveLevel) -> bool {
-        match level {
-            SaveLevel::Track => self.applies_to_track,
-            SaveLevel::Release => self.applies_to_release,
-        }
-    }
-
     /// The preset a person adds to their list: FLAC at its starting codec,
     /// named for the format, pregaps appended
-    /// to the track before except the hidden first-track audio, offered for
-    /// tracks and releases, embedding the cover, under an id from `ids`.
+    /// to the track before except the hidden first-track audio, embedding the
+    /// cover, under an id from `ids`.
     pub fn new_flac(ids: &dyn coven::IdSource) -> Self {
         let format = SaveFormat::Flac;
         SavePreset {
@@ -215,8 +189,6 @@ impl SavePreset {
             name: format.name().to_string(),
             codec: format.default_codec(),
             pregap_placement: default_export_pregap_placement(),
-            applies_to_track: true,
-            applies_to_release: true,
             embed_cover: true,
         }
     }
@@ -228,19 +200,6 @@ impl SavePreset {
         if self.name.trim().is_empty() {
             return Err(PreferencesError::Invalid(format!(
                 "export preset {} has an empty name",
-                self.id
-            )));
-        }
-        if !self.applies_to_track && !self.applies_to_release {
-            return Err(PreferencesError::Invalid(format!(
-                "export preset {} does not apply to any export level",
-                self.id
-            )));
-        }
-        if self.pregap_placement == SavePregapPlacement::SingleFileWithCue && self.applies_to_track
-        {
-            return Err(PreferencesError::Invalid(format!(
-                "export preset {} uses single-file CUE and cannot apply to track export",
                 self.id
             )));
         }
@@ -281,8 +240,6 @@ pub(super) fn default_save_presets() -> Vec<SavePreset> {
             name: "FLAC".to_string(),
             codec: SaveFormat::Flac.default_codec(),
             pregap_placement: default_export_pregap_placement(),
-            applies_to_track: true,
-            applies_to_release: true,
             embed_cover: true,
         },
         SavePreset {
@@ -290,8 +247,6 @@ pub(super) fn default_save_presets() -> Vec<SavePreset> {
             name: "MP3".to_string(),
             codec: SaveFormat::Mp3.default_codec(),
             pregap_placement: default_export_pregap_placement(),
-            applies_to_track: true,
-            applies_to_release: true,
             embed_cover: true,
         },
     ]

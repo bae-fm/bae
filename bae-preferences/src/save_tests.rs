@@ -1,31 +1,21 @@
 use super::*;
 
 #[test]
-fn single_file_cue_preset_is_release_only() {
+fn single_file_cue_preset_needs_a_codec_a_sheet_can_index() {
     let preset = SavePreset {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
         codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
         pregap_placement: SavePregapPlacement::SingleFileWithCue,
-        applies_to_track: true,
-        applies_to_release: true,
         embed_cover: true,
     };
-
-    let err = preset.validate().expect_err("single-file CUE cannot be a track export preset");
-    assert!(err.to_string().contains("cannot apply to track export"));
-
-    let release_only = SavePreset { applies_to_track: false, ..preset };
-    release_only.validate().unwrap();
+    preset.validate().unwrap();
 
     let opus_image = SavePreset {
         id: "opus-image".to_string(),
         name: "Opus image".to_string(),
         codec: SaveCodec::OpusOgg { bitrate_kbps: 192 },
-        pregap_placement: SavePregapPlacement::SingleFileWithCue,
-        applies_to_track: false,
-        applies_to_release: true,
-        embed_cover: true,
+        ..preset
     };
     let err = opus_image.validate().expect_err("single-file CUE requires a CUE-compatible codec");
     assert!(err.to_string().contains("unsupported codec"));
@@ -38,8 +28,6 @@ fn aac_bitrate_is_validated_against_its_bounds() {
         name: "AAC".to_string(),
         codec: SaveCodec::Aac { bitrate_kbps },
         pregap_placement: default_export_pregap_placement(),
-        applies_to_track: true,
-        applies_to_release: true,
         embed_cover: true,
     };
 
@@ -65,8 +53,6 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
             name: "Preset".to_string(),
             codec,
             pregap_placement: default_export_pregap_placement(),
-            applies_to_track: true,
-            applies_to_release: true,
             embed_cover: true,
         };
         preset(codec.clone()).validate().unwrap();
@@ -89,7 +75,7 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
 
 /// Add format's preset: FLAC at its starting depth, named for the format,
 /// pregaps appended except the hidden first-track audio,
-/// for tracks and releases, with the cover, under an id of its own.
+/// with the cover, under an id of its own.
 #[test]
 fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
     let ids = coven::SequentialIds::new();
@@ -105,8 +91,6 @@ fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
             name: "FLAC".to_string(),
             codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
             pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
-            applies_to_track: true,
-            applies_to_release: true,
             embed_cover: true,
         }
     );

@@ -65,17 +65,13 @@ CREATE TABLE IF NOT EXISTS save_preset (
     pregap_placement TEXT NOT NULL CHECK (pregap_placement IN (
         'append_to_previous_except_htoa', 'append_to_previous_including_htoa', 'exclude',
         'single_file_with_cue')),
-    applies_to_track   INTEGER NOT NULL CHECK (applies_to_track IN (0, 1)),
-    applies_to_release INTEGER NOT NULL CHECK (applies_to_release IN (0, 1)),
     embed_cover        INTEGER NOT NULL CHECK (embed_cover IN (0, 1)),
-    CHECK (applies_to_track OR applies_to_release),
     CHECK ((codec IN ('flac', 'wav', 'aiff')) = (bit_depth IS NOT NULL)),
     CHECK ((codec IN ('flac', 'wav', 'aiff')) = (bitrate_kbps IS NULL)),
     CHECK (codec <> 'mp3' OR bitrate_kbps BETWEEN 32 AND 320),
     CHECK (codec NOT IN ('aac', 'opus_ogg') OR bitrate_kbps BETWEEN 32 AND 512),
-    -- One file with a CUE sheet is a release's, in a codec a sheet can index.
-    CHECK (pregap_placement <> 'single_file_with_cue'
-        OR (NOT applies_to_track AND codec NOT IN ('aac', 'opus_ogg')))
+    -- One file with a CUE sheet is in a codec a sheet can index.
+    CHECK (pregap_placement <> 'single_file_with_cue' OR codec NOT IN ('aac', 'opus_ogg'))
 ) STRICT;
 
 -- The filename pattern every save names its files by, whatever the format:
@@ -87,11 +83,10 @@ CREATE TABLE IF NOT EXISTS save_filename_token (
 ) STRICT;
 
 INSERT OR IGNORE INTO save_preset (
-    id, position, name, codec, bit_depth, bitrate_kbps, pregap_placement,
-    applies_to_track, applies_to_release, embed_cover)
+    id, position, name, codec, bit_depth, bitrate_kbps, pregap_placement, embed_cover)
 VALUES
-    ('flac', 0, 'FLAC', 'flac', 24, NULL, 'append_to_previous_except_htoa', 1, 1, 1),
-    ('mp3', 1, 'MP3', 'mp3', NULL, 320, 'append_to_previous_except_htoa', 1, 1, 1);
+    ('flac', 0, 'FLAC', 'flac', 24, NULL, 'append_to_previous_except_htoa', 1),
+    ('mp3', 1, 'MP3', 'mp3', NULL, 320, 'append_to_previous_except_htoa', 1);
 INSERT OR IGNORE INTO save_filename_token (position, token)
 VALUES (0, 'track_number'), (1, 'title');
 INSERT OR IGNORE INTO preferences (

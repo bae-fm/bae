@@ -26,8 +26,7 @@ pub use row::{carry_preferences, preferences, subscribe_preferences, Preferences
 #[cfg(any(test, feature = "test-utils"))]
 pub use row::{fail_preferences_writes_for_test, plant_unknown_replay_gain_mode_for_test};
 pub use save::{
-    SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFormat, SaveLevel, SavePregapPlacement,
-    SavePreset,
+    SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFormat, SavePregapPlacement, SavePreset,
 };
 pub use server::{
     McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,

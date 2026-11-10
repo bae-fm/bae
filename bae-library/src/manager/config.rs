@@ -264,23 +264,17 @@ impl LibraryManager {
         Ok(self.preferences().await?.save_presets)
     }
 
-    /// The save preset `preset_id` names, where it is offered for saves of
-    /// `level`.
+    /// The save preset `preset_id` names.
     #[cfg(desktop)]
     pub(crate) async fn save_preset_for(
         &self,
         preset_id: &str,
-        level: bae_preferences::SaveLevel,
     ) -> Result<bae_preferences::SavePreset, LibraryError> {
         self.save_presets()
             .await?
             .into_iter()
-            .find(|preset| preset.id == preset_id && preset.applies_to(level))
-            .ok_or_else(|| {
-                LibraryError::Save(format!(
-                    "save preset {preset_id} is not available for {level} save"
-                ))
-            })
+            .find(|preset| preset.id == preset_id)
+            .ok_or_else(|| LibraryError::Save(format!("save preset {preset_id} does not exist")))
     }
 
     pub async fn set_save_presets(
@@ -298,20 +292,11 @@ impl LibraryManager {
             }
         }
         // Both save defaults are required, valid preset ids: re-validate the
-        // stored ones against the new list so deleting a default's preset (or
-        // the last preset applicable to a level) is refused rather than
-        // leaving a dangling default.
+        // stored ones against the new list so deleting a default's preset is
+        // refused rather than leaving a dangling default.
         self.update_preferences(move |prefs| {
-            Self::validate_default_save_preset(
-                &prefs.default_track_save_preset,
-                &presets,
-                bae_preferences::SaveLevel::Track,
-            )?;
-            Self::validate_default_save_preset(
-                &prefs.default_release_save_preset,
-                &presets,
-                bae_preferences::SaveLevel::Release,
-            )?;
+            Self::validate_default_save_preset(&prefs.default_track_save_preset, &presets)?;
+            Self::validate_default_save_preset(&prefs.default_release_save_preset, &presets)?;
             prefs.save_presets = presets;
             Ok(())
         })
@@ -336,11 +321,7 @@ impl LibraryManager {
         preset_id: String,
     ) -> Result<(), bae_preferences::PreferencesError> {
         self.update_preferences(move |prefs| {
-            Self::validate_default_save_preset(
-                &preset_id,
-                &prefs.save_presets,
-                bae_preferences::SaveLevel::Track,
-            )?;
+            Self::validate_default_save_preset(&preset_id, &prefs.save_presets)?;
             prefs.default_track_save_preset = preset_id;
             Ok(())
         })
@@ -352,35 +333,24 @@ impl LibraryManager {
         preset_id: String,
     ) -> Result<(), bae_preferences::PreferencesError> {
         self.update_preferences(move |prefs| {
-            Self::validate_default_save_preset(
-                &preset_id,
-                &prefs.save_presets,
-                bae_preferences::SaveLevel::Release,
-            )?;
+            Self::validate_default_save_preset(&preset_id, &prefs.save_presets)?;
             prefs.default_release_save_preset = preset_id;
             Ok(())
         })
         .await
     }
 
-    /// A save default must name a preset that exists and applies to its level
-    /// (track or release). Rejects an unknown id or one whose preset doesn't
-    /// cover the level, so a stored default is never dangling or wrong-level.
+    /// A save default must name a preset that exists, so a stored default is
+    /// never dangling.
     fn validate_default_save_preset(
         preset_id: &str,
         presets: &[bae_preferences::SavePreset],
-        level: bae_preferences::SaveLevel,
     ) -> Result<(), bae_preferences::PreferencesError> {
-        let Some(preset) = presets.iter().find(|preset| preset.id == *preset_id) else {
-            return Err(bae_preferences::PreferencesError::Invalid(format!(
-                "unknown export preset {preset_id}"
-            )));
-        };
-        if preset.applies_to(level) {
+        if presets.iter().any(|preset| preset.id == *preset_id) {
             Ok(())
         } else {
             Err(bae_preferences::PreferencesError::Invalid(format!(
-                "export preset {preset_id} does not apply to {level} saves"
+                "unknown export preset {preset_id}"
             )))
         }
     }

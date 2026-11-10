@@ -37,7 +37,6 @@ struct SavePresetEditor: View {
                 }
                 Section {
                     coverRow
-                    scopeRow
                 }
                 FormDisclosure(isExpanded: $advancedExpanded) {
                     if let bitDepth = preset.codec.bitDepth {
@@ -161,10 +160,6 @@ struct SavePresetEditor: View {
                 set: { placement in
                     var changed = preset
                     changed.pregapPlacement = placement
-                    if placement == .singleFileWithCue {
-                        changed.appliesToTrack = false
-                        changed.appliesToRelease = true
-                    }
                     update(changed)
                 }
             )
@@ -181,17 +176,6 @@ struct SavePresetEditor: View {
             }
         }
         .labelsHidden()
-    }
-
-    private var scopeRow: some View {
-        LabeledContent("Show in Save as… for") {
-            HStack(spacing: ThemeSpace.edge) {
-                Toggle("Track", isOn: appliesToTrackBinding)
-                Toggle("Release", isOn: appliesToReleaseBinding)
-            }
-        }
-        .disabled(preset.pregapPlacement == .singleFileWithCue)
-        .presetEditorRowInsets()
     }
 
     private var coverRow: some View {
@@ -215,20 +199,6 @@ struct SavePresetEditor: View {
         var changed = preset
         changed.name = nameDraft
         update(changed)
-    }
-
-    private var appliesToTrackBinding: Binding<Bool> {
-        Binding(
-            get: { preset.trackScopeOn },
-            set: { enabled in update(preset.withTrackScope(enabled)) }
-        )
-    }
-
-    private var appliesToReleaseBinding: Binding<Bool> {
-        Binding(
-            get: { preset.releaseScopeOn },
-            set: { enabled in update(preset.withReleaseScope(enabled)) }
-        )
     }
 }
 

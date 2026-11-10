@@ -3,38 +3,21 @@ import BaeKit
 import Foundation
 
 /// One preset the user can pick in a save flow: its display name, the file
-/// extension its codec produces (as core gives it), and its id. Built from the configured presets, filtered to the relevant level.
+/// extension its codec produces (as core gives it), and its id. Built from the
+/// configured presets, every one of which a track and a release save offer.
 struct SaveFormatChoice {
     let title: String
     let extensionName: String
     let presetId: String
 
-    static func trackChoices(
-        presets: [BridgeSavePreset]
-    ) -> [SaveFormatChoice] {
-        presets
-            .filter(\.appliesToTrack)
-            .map {
-                SaveFormatChoice(
-                    title: $0.name,
-                    extensionName: $0.codec.fileExtension,
-                    presetId: $0.id
-                )
-            }
-    }
-
-    static func releaseChoices(
-        presets: [BridgeSavePreset]
-    ) -> [SaveFormatChoice] {
-        presets
-            .filter(\.appliesToRelease)
-            .map {
-                SaveFormatChoice(
-                    title: $0.name,
-                    extensionName: $0.codec.fileExtension,
-                    presetId: $0.id
-                )
-            }
+    static func choices(presets: [BridgeSavePreset]) -> [SaveFormatChoice] {
+        presets.map {
+            SaveFormatChoice(
+                title: $0.name,
+                extensionName: $0.codec.fileExtension,
+                presetId: $0.id
+            )
+        }
     }
 }
 
@@ -116,7 +99,7 @@ enum OutputTarget {
     /// plus preset id.
     @MainActor
     static func resolveReleaseSave(config: Config) -> ReleaseSaveTarget? {
-        let choices = SaveFormatChoice.releaseChoices(
+        let choices = SaveFormatChoice.choices(
             presets: config.savePresets
         )
         guard

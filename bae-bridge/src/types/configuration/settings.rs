@@ -65,8 +65,6 @@ pub struct BridgeSavePreset {
     pub name: String,
     pub codec: BridgeSaveCodec,
     pub pregap_placement: BridgeSavePregapPlacement,
-    pub applies_to_track: bool,
-    pub applies_to_release: bool,
     /// Whether saved files embed the release's cover art.
     pub embed_cover: bool,
 }

@@ -142,7 +142,7 @@ impl LibraryManager {
     }
 
     /// Save one track to `output_path` under the preset named by `preset_id`
-    /// (must exist and apply to track saves). The source audio is decoded and
+    /// (must exist, and not write a release as one file). The source audio is decoded and
     /// re-encoded to the preset's codec, tagged from bae's metadata, and cover
     /// art embedded — always a constructed file, never a verbatim copy.
     pub async fn save_track(
@@ -151,7 +151,12 @@ impl LibraryManager {
         output_path: &Path,
         preset_id: &str,
     ) -> Result<(), LibraryError> {
-        let preset = self.save_preset_for(preset_id, bae_preferences::SaveLevel::Track).await?;
+        let preset = self.save_preset_for(preset_id).await?;
+        if preset.pregap_placement == bae_preferences::SavePregapPlacement::SingleFileWithCue {
+            return Err(LibraryError::Save(format!(
+                "save preset {preset_id} writes a release as one file and cannot save a track"
+            )));
+        }
         let meta = TrackAudioMeta::resolve(&self.records, track_id).await?;
         let neighbors = self.records.track_neighbors(&meta.track.id).await?.ok_or_else(|| {
             LibraryError::Save(format!(

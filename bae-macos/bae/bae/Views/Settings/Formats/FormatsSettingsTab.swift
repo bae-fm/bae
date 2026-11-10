@@ -43,12 +43,12 @@ struct FormatsSettingsTab: View {
         Section {
             presetPicker(
                 label: "Release",
-                presets: releasePresets,
+                presets: configStore.config.savePresets,
                 selection: defaultReleasePresetBinding()
             )
             presetPicker(
                 label: "Tracks",
-                presets: trackPresets,
+                presets: configStore.config.savePresets,
                 selection: defaultTrackPresetBinding()
             )
         } header: {
@@ -119,14 +119,6 @@ struct FormatsSettingsTab: View {
                 Text(preset.name).tag(preset.id)
             }
         }
-    }
-
-    private var trackPresets: [BridgeSavePreset] {
-        configStore.config.savePresets.filter(\.appliesToTrack)
-    }
-
-    private var releasePresets: [BridgeSavePreset] {
-        configStore.config.savePresets.filter(\.appliesToRelease)
     }
 
     private func replacePreset(_ preset: BridgeSavePreset) {

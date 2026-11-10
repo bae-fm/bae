@@ -367,8 +367,6 @@ mod conversion_roundtrip {
                 bit_depth: bae_preferences::SaveBitDepth::Bits24,
             },
             pregap_placement: bae_preferences::SavePregapPlacement::Exclude,
-            applies_to_track: true,
-            applies_to_release: false,
             embed_cover: false,
         };
         let bridge = BridgeSavePreset::from_core(&core);

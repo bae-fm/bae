@@ -118,43 +118,23 @@ impl BridgeOutputKind {
 
 impl BridgeSavePreset {
     pub(crate) fn from_core(preset: &bae_preferences::SavePreset) -> Self {
-        let bae_preferences::SavePreset {
-            id,
-            name,
-            codec,
-            pregap_placement,
-            applies_to_track,
-            applies_to_release,
-            embed_cover,
-        } = preset;
+        let bae_preferences::SavePreset { id, name, codec, pregap_placement, embed_cover } = preset;
         BridgeSavePreset {
             id: id.clone(),
             name: name.clone(),
             codec: BridgeSaveCodec::from_core(codec),
             pregap_placement: BridgeSavePregapPlacement::from_core(*pregap_placement),
-            applies_to_track: *applies_to_track,
-            applies_to_release: *applies_to_release,
             embed_cover: *embed_cover,
         }
     }
 
     pub(crate) fn into_core(self) -> bae_preferences::SavePreset {
-        let BridgeSavePreset {
-            id,
-            name,
-            codec,
-            pregap_placement,
-            applies_to_track,
-            applies_to_release,
-            embed_cover,
-        } = self;
+        let BridgeSavePreset { id, name, codec, pregap_placement, embed_cover } = self;
         bae_preferences::SavePreset {
             id,
             name,
             codec: codec.into_core(),
             pregap_placement: pregap_placement.into_core(),
-            applies_to_track,
-            applies_to_release,
             embed_cover,
         }
     }

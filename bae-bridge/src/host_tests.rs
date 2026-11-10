@@ -161,7 +161,7 @@ fn a_new_save_preset_is_cores_flac_preset_with_its_own_id() {
     assert_eq!(preset.name, bridge_save_format_name(BridgeSaveFormat::Flac));
     assert_eq!(preset.codec, bridge_save_format_default_codec(BridgeSaveFormat::Flac));
     assert_eq!(preset.pregap_placement, BridgeSavePregapPlacement::AppendToPreviousExceptHtoa);
-    assert!(preset.applies_to_track && preset.applies_to_release && preset.embed_cover);
+    assert!(preset.embed_cover);
     assert_ne!(preset.id, host.new_save_preset().id);
 }
 

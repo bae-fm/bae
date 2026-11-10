@@ -21,8 +21,6 @@
                 name: "FLAC",
                 codec: .flac(bitDepth: .bits24),
                 pregapPlacement: .appendToPreviousExceptHtoa,
-                appliesToTrack: true,
-                appliesToRelease: true,
                 embedCover: true
             ),
             BridgeSavePreset(
@@ -30,8 +28,6 @@
                 name: "MP3",
                 codec: .mp3(bitrateKbps: 320),
                 pregapPlacement: .appendToPreviousExceptHtoa,
-                appliesToTrack: true,
-                appliesToRelease: true,
                 embedCover: true
             ),
         ]

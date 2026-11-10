@@ -531,7 +531,7 @@ extension AlbumDetailView {
     private func exportTrack(trackId: String) {
         exportTask?.cancel()
         exportTask = Task {
-            let choices = SaveFormatChoice.trackChoices(
+            let choices = SaveFormatChoice.choices(
                 presets: configStore.config.savePresets
             )
             let defaultPresetId = configStore.config.defaultTrackSavePreset

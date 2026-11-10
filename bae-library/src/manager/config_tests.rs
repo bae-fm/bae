@@ -81,9 +81,10 @@ async fn set_save_presets_rejects_removing_selected_default() {
     assert!(manager.save_presets().await.unwrap().iter().any(|preset| preset.id == "mp3"));
 }
 
-/// A save default must name a preset that exists and applies to its level.
+/// A save default must name a preset that exists; every format is offered
+/// for tracks and releases alike.
 #[tokio::test]
-async fn set_default_save_preset_rejects_unknown_and_wrong_level() {
+async fn set_default_save_preset_rejects_unknown_and_takes_any_format() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
 
@@ -93,17 +94,11 @@ async fn set_default_save_preset_rejects_unknown_and_wrong_level() {
     );
 
     let mut presets = manager.save_presets().await.unwrap();
-    presets.push(release_only_image_preset());
+    presets.push(single_file_image_preset());
     manager.set_save_presets(presets).await.unwrap();
 
-    assert!(
-        manager.set_default_track_save_preset("flac-image".to_string()).await.is_err(),
-        "a release-only preset can't be the track-save default"
-    );
-    manager
-        .set_default_release_save_preset("flac-image".to_string())
-        .await
-        .expect("a release-applicable preset is a valid release default");
+    manager.set_default_track_save_preset("flac-image".to_string()).await.unwrap();
+    manager.set_default_release_save_preset("flac-image".to_string()).await.unwrap();
 }
 
 #[tokio::test]

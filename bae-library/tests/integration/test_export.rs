@@ -281,8 +281,6 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
         name: "FLAC image".to_string(),
         codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
         pregap_placement: SavePregapPlacement::SingleFileWithCue,
-        applies_to_track: false,
-        applies_to_release: true,
         embed_cover: true,
     };
     let mut presets = f.library.manager().save_presets().await.unwrap();
@@ -521,8 +519,6 @@ fn flac_save_preset(id: &str, placement: SavePregapPlacement) -> SavePreset {
         name: id.to_string(),
         codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
         pregap_placement: placement,
-        applies_to_track: false,
-        applies_to_release: true,
         embed_cover: false,
     }
 }

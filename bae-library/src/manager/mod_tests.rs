@@ -875,9 +875,9 @@ pub(super) async fn add_track_audio_sources(
     files
 }
 
-/// A release-only preset (single-file CUE) that a track save must refuse.
+/// A single-file CUE preset, which a track save must refuse.
 #[cfg(test)]
-pub(super) fn release_only_image_preset() -> bae_preferences::SavePreset {
+pub(super) fn single_file_image_preset() -> bae_preferences::SavePreset {
     bae_preferences::SavePreset {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
@@ -885,8 +885,6 @@ pub(super) fn release_only_image_preset() -> bae_preferences::SavePreset {
             bit_depth: bae_preferences::SaveBitDepth::Bits16,
         },
         pregap_placement: bae_preferences::SavePregapPlacement::SingleFileWithCue,
-        applies_to_track: false,
-        applies_to_release: true,
         embed_cover: true,
     }
 }

@@ -182,8 +182,6 @@ fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
                 "single_file_with_cue" => SavePregapPlacement::SingleFileWithCue,
                 _ => return Err(invalid(row, "pregap_placement", pregap)),
             },
-            applies_to_track: row.get("applies_to_track")?,
-            applies_to_release: row.get("applies_to_release")?,
             embed_cover: row.get("embed_cover")?,
             id,
         })
@@ -214,8 +212,8 @@ fn write_preferences_on(
             };
             sql.execute(
                 "INSERT INTO save_preset (id, position, name, codec, bit_depth, bitrate_kbps, \
-                     pregap_placement, applies_to_track, applies_to_release, embed_cover) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                     pregap_placement, embed_cover) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     preset.id,
                     position as i64,
@@ -233,8 +231,6 @@ fn write_preferences_on(
                         SavePregapPlacement::Exclude => "exclude",
                         SavePregapPlacement::SingleFileWithCue => "single_file_with_cue",
                     },
-                    preset.applies_to_track,
-                    preset.applies_to_release,
                     preset.embed_cover,
                 ],
             )?;

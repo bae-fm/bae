@@ -290,8 +290,6 @@ object BridgeFixtures {
                         codec = BridgeSaveCodec.Flac(bitDepth = BridgeSaveBitDepth.BITS24),
                         pregapPlacement =
                             BridgeSavePregapPlacement.APPEND_TO_PREVIOUS_EXCEPT_HTOA,
-                        appliesToTrack = true,
-                        appliesToRelease = true,
                         embedCover = true,
                     ),
                 ),

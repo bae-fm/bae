@@ -63,8 +63,6 @@ async fn every_preference_reads_back_as_set() {
                 name: "WAV \"24-bit\" — 設定".to_string(),
                 codec: SaveCodec::Wav { bit_depth: SaveBitDepth::Bits24 },
                 pregap_placement: SavePregapPlacement::Exclude,
-                applies_to_track: true,
-                applies_to_release: false,
                 embed_cover: false,
             },
             SavePreset {
@@ -72,8 +70,6 @@ async fn every_preference_reads_back_as_set() {
                 name: "Image".to_string(),
                 codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
                 pregap_placement: SavePregapPlacement::SingleFileWithCue,
-                applies_to_track: false,
-                applies_to_release: true,
                 embed_cover: true,
             },
         ],
@@ -236,9 +232,10 @@ async fn the_schema_refuses_preferences_no_setter_writes() {
             }),
         ),
         (
-            "one file with a CUE sheet for a track save",
+            "one file with a CUE sheet in a codec a sheet cannot index",
             Box::new(|prefs: &mut Preferences| {
-                prefs.save_presets[0].pregap_placement = SavePregapPlacement::SingleFileWithCue;
+                prefs.save_presets[1].codec = SaveCodec::OpusOgg { bitrate_kbps: 192 };
+                prefs.save_presets[1].pregap_placement = SavePregapPlacement::SingleFileWithCue;
             }),
         ),
     ] {

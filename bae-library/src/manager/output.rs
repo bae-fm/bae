@@ -30,8 +30,7 @@ impl LibraryManager {
     }
 
     /// Enqueue a release-level save to `target_dir` under the preset named by
-    /// `preset_id`. The preset is resolved (must exist and apply to release
-    /// saves) and captured whole into the queue payload, so a later config edit
+    /// `preset_id`. The preset is resolved (must exist) and captured whole into the queue payload, so a later config edit
     /// or delete can't change or break this queued save.
     pub async fn enqueue_release_save(
         &self,
@@ -39,7 +38,7 @@ impl LibraryManager {
         target_dir: std::path::PathBuf,
         preset_id: &str,
     ) -> Result<(), LibraryError> {
-        let preset = self.save_preset_for(preset_id, bae_preferences::SaveLevel::Release).await?;
+        let preset = self.save_preset_for(preset_id).await?;
         let filename_tokens = self.preferences().await?.save_filename_tokens;
         self.enqueue_output(
             release_id,
