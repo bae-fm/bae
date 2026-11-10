@@ -33,7 +33,7 @@ struct RestoreCodePage: View {
                 .font(.system(size: 12, design: .monospaced))
                 .lineSpacing(6)
             Text(
-                "If you lose all your devices, choose Add device in bae on a new one, then scan this or type the code. Anyone who has this page and access to your cloud can open your library: keep it somewhere private."
+                "If you lose all your devices, open bae on a new one and choose Scan code to scan this, or Enter code to type the code. Anyone who has this page and access to your cloud can open your library: keep it somewhere private."
             )
             .foregroundStyle(Color(white: 0.27))
             Spacer(minLength: 0)

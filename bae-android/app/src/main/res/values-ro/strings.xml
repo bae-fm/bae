@@ -320,7 +320,7 @@
     <string name="restore_code_partly_hidden">Cod de restaurare, parțial ascuns</string>
     <string name="restore_code_print_title">Cod de restaurare bae</string>
     <string name="restore_code_printed">Imprimat pe %1$s</string>
-    <string name="restore_code_print_keep">Dacă pierzi toate dispozitivele, alege Adaugă dispozitiv în bae pe unul nou, apoi scanează acest cod sau tastează-l. Oricine are această pagină și acces la cloudul tău îți poate deschide biblioteca: păstreaz-o într-un loc privat.</string>
+    <string name="restore_code_print_keep">Dacă pierzi toate dispozitivele, deschide bae pe unul nou și alege Scanează un cod ca să scanezi acest cod sau Introdu un cod ca să-l tastezi. Oricine are această pagină și acces la cloudul tău îți poate deschide biblioteca: păstreaz-o într-un loc privat.</string>
     <string name="done">Gata</string>
     <string name="members_you">Tu</string>
     <string name="members_unnamed">Încă fără nume</string>
@@ -355,7 +355,7 @@
     <string name="add_device_title">Adaugă un dispozitiv</string>
     <string name="add_device_added">Dispozitiv adăugat: %1$s</string>
     <string name="add_device_making_code">Se creează un cod pentru noul tău dispozitiv…</string>
-    <string name="add_device_instructions">Pe noul dispozitiv, alege „Adaugă dispozitiv”, apoi scanează asta sau tastează:</string>
+    <string name="add_device_instructions">Pe noul dispozitiv, alege „Scanează un cod” ca să scanezi asta sau „Introdu un cod” ca să tastezi:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Creează invitația</string>
     <string name="invite_title">Invitație</string>

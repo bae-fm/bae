@@ -321,7 +321,7 @@
     <string name="restore_code_partly_hidden">Code de restauration, partiellement masqué</string>
     <string name="restore_code_print_title">Code de restauration bae</string>
     <string name="restore_code_printed">Imprimé le %1$s</string>
-    <string name="restore_code_print_keep">Si vous perdez tous vos appareils, choisissez Ajouter un appareil dans bae sur un nouvel appareil, puis scannez ceci ou saisissez le code. Toute personne qui a cette page et l’accès à votre cloud peut ouvrir votre bibliothèque : gardez-la en lieu sûr.</string>
+    <string name="restore_code_print_keep">Si vous perdez tous vos appareils, ouvrez bae sur un nouvel appareil et choisissez Scanner un code pour scanner ceci, ou Saisir un code pour saisir le code. Toute personne qui a cette page et l’accès à votre cloud peut ouvrir votre bibliothèque : gardez-la en lieu sûr.</string>
     <string name="done">Terminé</string>
     <string name="members_you">Vous</string>
     <string name="members_unnamed">Pas encore de nom</string>
@@ -355,7 +355,7 @@
     <string name="add_device_title">Ajouter un appareil</string>
     <string name="add_device_added">Appareil ajouté : %1$s</string>
     <string name="add_device_making_code">Création d\'un code pour votre nouvel appareil…</string>
-    <string name="add_device_instructions">Sur le nouvel appareil, choisissez « Ajouter un appareil », puis scannez ceci ou saisissez :</string>
+    <string name="add_device_instructions">Sur le nouvel appareil, choisissez « Scanner un code » pour scanner ceci ou « Saisir un code » pour saisir :</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Créer l’invitation</string>
     <string name="invite_title">Invitation</string>

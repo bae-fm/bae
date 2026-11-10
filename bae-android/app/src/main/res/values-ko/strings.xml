@@ -310,7 +310,7 @@
     <string name="restore_code_partly_hidden">복원 코드, 일부 가려짐</string>
     <string name="restore_code_print_title">bae 복원 코드</string>
     <string name="restore_code_printed">인쇄일: %1$s</string>
-    <string name="restore_code_print_keep">모든 기기를 잃어버렸다면, 새 기기의 bae에서 ‘기기 추가’를 선택한 다음 이것을 스캔하거나 코드를 입력하세요. 이 페이지와 클라우드 접근 권한이 있는 사람은 누구나 라이브러리를 열 수 있으니 안전한 곳에 보관하세요.</string>
+    <string name="restore_code_print_keep">모든 기기를 잃어버렸다면, 새 기기에서 bae를 열고 ‘코드 스캔’을 선택해 이것을 스캔하거나 ‘코드 입력’을 선택해 코드를 입력하세요. 이 페이지와 클라우드 접근 권한이 있는 사람은 누구나 라이브러리를 열 수 있으니 안전한 곳에 보관하세요.</string>
     <string name="done">완료</string>
     <string name="members_you">나</string>
     <string name="members_unnamed">아직 이름 없음</string>
@@ -343,7 +343,7 @@
     <string name="add_device_title">기기 추가</string>
     <string name="add_device_added">%1$s 추가됨</string>
     <string name="add_device_making_code">새 기기용 코드를 만드는 중…</string>
-    <string name="add_device_instructions">새 기기에서 ‘기기 추가’ 항목을 선택한 다음, 이 코드를 스캔하거나 다음을 입력하세요:</string>
+    <string name="add_device_instructions">새 기기에서 ‘코드 스캔’을 선택해 이 코드를 스캔하거나, ‘코드 입력’을 선택해 다음을 입력하세요:</string>
     <string name="invite_email">이메일</string>
     <string name="invite_create">초대 만들기</string>
     <string name="invite_title">초대</string>

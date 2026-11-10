@@ -310,7 +310,7 @@
     <string name="restore_code_partly_hidden">復元コード（一部非表示）</string>
     <string name="restore_code_print_title">bae 復元コード</string>
     <string name="restore_code_printed">プリント日: %1$s</string>
-    <string name="restore_code_print_keep">すべてのデバイスを失ったら、新しいデバイスの bae で「デバイスを追加」を選び、これをスキャンするかコードを入力してください。このページとクラウドへのアクセスがあれば誰でもライブラリを開けます。人目につかない場所に保管してください。</string>
+    <string name="restore_code_print_keep">すべてのデバイスを失ったら、新しいデバイスで bae を開き、「コードをスキャン」を選んでこれをスキャンするか、「コードを入力」を選んでコードを入力してください。このページとクラウドへのアクセスがあれば誰でもライブラリを開けます。人目につかない場所に保管してください。</string>
     <string name="done">完了</string>
     <string name="members_you">あなた</string>
     <string name="members_unnamed">名前はまだありません</string>
@@ -343,7 +343,7 @@
     <string name="add_device_title">デバイスを追加</string>
     <string name="add_device_added">%1$s を追加しました</string>
     <string name="add_device_making_code">新しいデバイス用のコードを作成しています…</string>
-    <string name="add_device_instructions">新しいデバイスで「デバイスを追加」を選んでから、これをスキャンするか、次のコードを入力してください：</string>
+    <string name="add_device_instructions">新しいデバイスで「コードをスキャン」を選んでこれをスキャンするか、「コードを入力」を選んで次のコードを入力してください：</string>
     <string name="invite_email">メールアドレス</string>
     <string name="invite_create">招待を作成</string>
     <string name="invite_title">招待</string>

@@ -328,7 +328,7 @@
     <string name="restore_code_partly_hidden">Код відновлення, частково приховано</string>
     <string name="restore_code_print_title">Код відновлення bae</string>
     <string name="restore_code_printed">Надруковано %1$s</string>
-    <string name="restore_code_print_keep">Якщо ви втратите всі пристрої, на новому пристрої виберіть у bae «Додати пристрій», а потім відскануйте це або введіть код. Будь-хто, у кого є ця сторінка й доступ до вашої хмари, може відкрити вашу бібліотеку: зберігайте її в приватному місці.</string>
+    <string name="restore_code_print_keep">Якщо ви втратите всі пристрої, відкрийте bae на новому пристрої та виберіть «Сканувати код», щоб відсканувати це, або «Ввести код», щоб ввести код. Будь-хто, у кого є ця сторінка й доступ до вашої хмари, може відкрити вашу бібліотеку: зберігайте її в приватному місці.</string>
     <string name="done">Готово</string>
     <string name="members_you">Ви</string>
     <string name="members_unnamed">Ще без імені</string>
@@ -364,7 +364,7 @@
     <string name="add_device_title">Додати пристрій</string>
     <string name="add_device_added">Пристрій додано: %1$s</string>
     <string name="add_device_making_code">Створення коду для вашого нового пристрою…</string>
-    <string name="add_device_instructions">На новому пристрої виберіть «Додати пристрій», а потім відскануйте це або введіть:</string>
+    <string name="add_device_instructions">На новому пристрої виберіть «Сканувати код», щоб відсканувати це, або «Ввести код», щоб ввести:</string>
     <string name="invite_email">Ел. пошта</string>
     <string name="invite_create">Створити запрошення</string>
     <string name="invite_title">Запрошення</string>

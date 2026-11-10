@@ -310,7 +310,7 @@
     <string name="restore_code_partly_hidden">恢复码（部分隐藏）</string>
     <string name="restore_code_print_title">bae 恢复码</string>
     <string name="restore_code_printed">打印日期：%1$s</string>
-    <string name="restore_code_print_keep">如果你丢失了所有设备，请在新设备的 bae 中选择“添加设备”，然后扫描此码或输入代码。任何拿到此页面并能访问你云端的人都可以打开你的库，请妥善保管。</string>
+    <string name="restore_code_print_keep">如果你丢失了所有设备，请在新设备上打开 bae，选择“扫描代码”来扫描此码，或选择“输入代码”来输入代码。任何拿到此页面并能访问你云端的人都可以打开你的库，请妥善保管。</string>
     <string name="done">完成</string>
     <string name="members_you">你</string>
     <string name="members_unnamed">尚无名字</string>
@@ -343,7 +343,7 @@
     <string name="add_device_title">添加设备</string>
     <string name="add_device_added">已添加%1$s</string>
     <string name="add_device_making_code">正在为你的新设备生成代码…</string>
-    <string name="add_device_instructions">在新设备上选择“添加设备”，然后扫描此代码或输入：</string>
+    <string name="add_device_instructions">在新设备上选择“扫描代码”来扫描此代码，或选择“输入代码”来输入：</string>
     <string name="invite_email">电子邮件</string>
     <string name="invite_create">创建邀请</string>
     <string name="invite_title">邀请</string>

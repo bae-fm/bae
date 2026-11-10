@@ -316,7 +316,7 @@
     <string name="restore_code_partly_hidden">Geri yükleme kodu, kısmen gizli</string>
     <string name="restore_code_print_title">bae geri yükleme kodu</string>
     <string name="restore_code_printed">Yazdırılma tarihi: %1$s</string>
-    <string name="restore_code_print_keep">Tüm cihazlarınızı kaybederseniz yeni bir cihazda bae\'de Cihaz ekle\'yi seçin, ardından bunu tarayın veya kodu yazın. Bu sayfaya ve bulutunuza erişimi olan herkes kitaplığınızı açabilir: özel bir yerde saklayın.</string>
+    <string name="restore_code_print_keep">Tüm cihazlarınızı kaybederseniz yeni bir cihazda bae\'yi açın ve bunu taramak için Kod tara\'yı, kodu yazmak için Kod gir\'i seçin. Bu sayfaya ve bulutunuza erişimi olan herkes kitaplığınızı açabilir: özel bir yerde saklayın.</string>
     <string name="done">Bitti</string>
     <string name="members_you">Siz</string>
     <string name="members_unnamed">Henüz ad yok</string>
@@ -350,7 +350,7 @@
     <string name="add_device_title">Cihaz ekle</string>
     <string name="add_device_added">%1$s eklendi</string>
     <string name="add_device_making_code">Yeni cihazınız için kod oluşturuluyor…</string>
-    <string name="add_device_instructions">Yeni cihazda “Cihaz ekle” seçeneğini seçin, ardından bunu tarayın ya da şunu yazın:</string>
+    <string name="add_device_instructions">Yeni cihazda “Kod tara” seçeneğiyle bunu tarayın ya da “Kod gir” seçeneğiyle şunu yazın:</string>
     <string name="invite_email">E-posta</string>
     <string name="invite_create">Davet oluştur</string>
     <string name="invite_title">Davet</string>

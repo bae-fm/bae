@@ -314,7 +314,7 @@
     <string name="restore_code_partly_hidden">Κωδικός επαναφοράς, εν μέρει κρυμμένος</string>
     <string name="restore_code_print_title">Κωδικός επαναφοράς bae</string>
     <string name="restore_code_printed">Εκτυπώθηκε στις %1$s</string>
-    <string name="restore_code_print_keep">Αν χάσετε όλες τις συσκευές σας, επιλέξτε «Προσθήκη συσκευής» στο bae σε μια νέα συσκευή και έπειτα σαρώστε αυτό ή πληκτρολογήστε τον κωδικό. Όποιος έχει αυτή τη σελίδα και πρόσβαση στο cloud σας μπορεί να ανοίξει τη βιβλιοθήκη σας: φυλάξτε τη σε ιδιωτικό μέρος.</string>
+    <string name="restore_code_print_keep">Αν χάσετε όλες τις συσκευές σας, ανοίξτε το bae σε μια νέα συσκευή και επιλέξτε «Σάρωση κωδικού» για να σαρώσετε αυτό ή «Εισαγωγή κωδικού» για να πληκτρολογήσετε τον κωδικό. Όποιος έχει αυτή τη σελίδα και πρόσβαση στο cloud σας μπορεί να ανοίξει τη βιβλιοθήκη σας: φυλάξτε τη σε ιδιωτικό μέρος.</string>
     <string name="done">Τέλος</string>
     <string name="members_you">Εσείς</string>
     <string name="members_unnamed">Χωρίς όνομα ακόμη</string>
@@ -348,7 +348,7 @@
     <string name="add_device_title">Προσθήκη συσκευής</string>
     <string name="add_device_added">Προστέθηκε η συσκευή %1$s</string>
     <string name="add_device_making_code">Δημιουργία κωδικού για τη νέα σας συσκευή…</string>
-    <string name="add_device_instructions">Στη νέα συσκευή, επιλέξτε «Προσθήκη συσκευής» και μετά σαρώστε αυτό ή πληκτρολογήστε:</string>
+    <string name="add_device_instructions">Στη νέα συσκευή, επιλέξτε «Σάρωση κωδικού» για να σαρώσετε αυτό ή «Εισαγωγή κωδικού» για να πληκτρολογήσετε:</string>
     <string name="invite_email">Email</string>
     <string name="invite_create">Δημιουργία πρόσκλησης</string>
     <string name="invite_title">Πρόσκληση</string>

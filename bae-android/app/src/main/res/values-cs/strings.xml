@@ -328,7 +328,7 @@
     <string name="restore_code_partly_hidden">Kód pro obnovení, částečně skrytý</string>
     <string name="restore_code_print_title">Kód pro obnovení bae</string>
     <string name="restore_code_printed">Vytištěno %1$s</string>
-    <string name="restore_code_print_keep">Pokud přijdete o všechna zařízení, zvolte v bae na novém zařízení Přidat zařízení a pak tento kód naskenujte nebo ho opište. Kdokoli, kdo má tuto stránku a přístup k vašemu cloudu, může otevřít vaši knihovnu: uschovejte ji na soukromém místě.</string>
+    <string name="restore_code_print_keep">Pokud přijdete o všechna zařízení, otevřete bae na novém zařízení a zvolte Naskenovat kód pro naskenování tohoto kódu nebo Zadat kód pro jeho opsání. Kdokoli, kdo má tuto stránku a přístup k vašemu cloudu, může otevřít vaši knihovnu: uschovejte ji na soukromém místě.</string>
     <string name="done">Hotovo</string>
     <string name="members_you">Vy</string>
     <string name="members_unnamed">Zatím bez jména</string>
@@ -364,7 +364,7 @@
     <string name="add_device_title">Přidat zařízení</string>
     <string name="add_device_added">Zařízení přidáno: %1$s</string>
     <string name="add_device_making_code">Vytváří se kód pro vaše nové zařízení…</string>
-    <string name="add_device_instructions">Na novém zařízení zvolte „Přidat zařízení“ a pak naskenujte toto nebo zadejte:</string>
+    <string name="add_device_instructions">Na novém zařízení zvolte „Naskenovat kód“ pro naskenování tohoto kódu nebo „Zadat kód“ pro jeho opsání:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Vytvořit pozvánku</string>
     <string name="invite_title">Pozvánka</string>

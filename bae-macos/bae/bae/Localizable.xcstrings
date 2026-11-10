@@ -4808,174 +4808,174 @@
         }
       }
     },
-    "If you lose all your devices, choose Add device in bae on a new one, then scan this or type the code. Anyone who has this page and access to your cloud can open your library: keep it somewhere private." : {
+    "If you lose all your devices, open bae on a new one and choose Scan code to scan this, or Enter code to type the code. Anyone who has this page and access to your cloud can open your library: keep it somewhere private." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إذا فقدت جميع أجهزتك، فاختر «إضافة جهاز» في bae على جهاز جديد، ثم امسح هذا الرمز ضوئيًا أو اكتبه. يمكن لأي شخص يملك هذه الصفحة وصولًا إلى سحابتك أن يفتح مكتبتك، فاحتفظ بها في مكان خاص."
+            "value" : "إذا فقدت جميع أجهزتك، فافتح bae على جهاز جديد واختر «مسح رمز» لمسح هذا الرمز، أو «إدخال رمز» لكتابته. يمكن لأي شخص يملك هذه الصفحة وصولًا إلى سحابتك أن يفتح مكتبتك، فاحتفظ بها في مكان خاص."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ако загубите всичките си устройства, изберете „Добавяне на устройство“ в bae на ново устройство, после сканирайте това или въведете кода. Всеки, който има тази страница и достъп до облака ви, може да отвори библиотеката ви: пазете я на скрито място."
+            "value" : "Ако загубите всичките си устройства, отворете bae на ново устройство и изберете Сканиране на код, за да сканирате това, или Въвеждане на код, за да въведете кода. Всеки, който има тази страница и достъп до облака ви, може да отвори библиотеката ви: пазете я на скрито място."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pokud přijdete o všechna zařízení, zvolte v bae na novém zařízení Přidat zařízení a pak tento kód naskenujte nebo ho opište. Kdokoli, kdo má tuto stránku a přístup k vašemu cloudu, může otevřít vaši knihovnu: uschovejte ji na soukromém místě."
+            "value" : "Pokud přijdete o všechna zařízení, otevřete bae na novém zařízení a zvolte Naskenovat kód pro naskenování tohoto kódu nebo Zadat kód pro jeho opsání. Kdokoli, kdo má tuto stránku a přístup k vašemu cloudu, může otevřít vaši knihovnu: uschovejte ji na soukromém místě."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hvis du mister alle dine enheder, skal du vælge Tilføj enhed i bae på en ny enhed og derefter scanne dette eller skrive koden. Alle, der har denne side og adgang til din sky, kan åbne dit bibliotek: opbevar den et privat sted."
+            "value" : "Hvis du mister alle dine enheder, skal du åbne bae på en ny enhed og vælge Scan en kode for at scanne dette eller Indtast en kode for at skrive koden. Alle, der har denne side og adgang til din sky, kan åbne dit bibliotek: opbevar den et privat sted."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wenn du alle deine Geräte verlierst, wähle in bae auf einem neuen Gerät „Gerät hinzufügen“ und scanne dann diesen Code oder tippe ihn ein. Jeder, der diese Seite und Zugriff auf deine Cloud hat, kann deine Bibliothek öffnen: Bewahre sie an einem privaten Ort auf."
+            "value" : "Wenn du alle deine Geräte verlierst, öffne bae auf einem neuen Gerät und wähle „Code scannen“, um diesen Code zu scannen, oder „Code eingeben“, um ihn einzutippen. Jeder, der diese Seite und Zugriff auf deine Cloud hat, kann deine Bibliothek öffnen: Bewahre sie an einem privaten Ort auf."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αν χάσετε όλες τις συσκευές σας, επιλέξτε «Προσθήκη συσκευής» στο bae σε μια νέα συσκευή και έπειτα σαρώστε αυτό ή πληκτρολογήστε τον κωδικό. Όποιος έχει αυτή τη σελίδα και πρόσβαση στο cloud σας μπορεί να ανοίξει τη βιβλιοθήκη σας: φυλάξτε τη σε ιδιωτικό μέρος."
+            "value" : "Αν χάσετε όλες τις συσκευές σας, ανοίξτε το bae σε μια νέα συσκευή και επιλέξτε «Σάρωση κωδικού» για να σαρώσετε αυτό ή «Εισαγωγή κωδικού» για να πληκτρολογήσετε τον κωδικό. Όποιος έχει αυτή τη σελίδα και πρόσβαση στο cloud σας μπορεί να ανοίξει τη βιβλιοθήκη σας: φυλάξτε τη σε ιδιωτικό μέρος."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "If you lose all your devices, choose Add device in bae on a new one, then scan this or type the code. Anyone who has this page and access to your cloud can open your library: keep it somewhere private."
+            "value" : "If you lose all your devices, open bae on a new one and choose Scan code to scan this, or Enter code to type the code. Anyone who has this page and access to your cloud can open your library: keep it somewhere private."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Si pierdes todos tus dispositivos, elige Añadir dispositivo en bae en uno nuevo y luego escanea esto o escribe el código. Cualquiera que tenga esta página y acceso a tu nube puede abrir tu biblioteca: guárdala en un lugar privado."
+            "value" : "Si pierdes todos tus dispositivos, abre bae en uno nuevo y elige Escanear un código para escanear esto o Introducir un código para escribir el código. Cualquiera que tenga esta página y acceso a tu nube puede abrir tu biblioteca: guárdala en un lugar privado."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jos menetät kaikki laitteesi, valitse baessa uudella laitteella Lisää laite ja skannaa sitten tämä tai kirjoita koodi. Jokainen, jolla on tämä sivu ja pääsy pilveesi, voi avata kirjastosi: säilytä sitä yksityisessä paikassa."
+            "value" : "Jos menetät kaikki laitteesi, avaa bae uudella laitteella ja valitse Skannaa koodi skannataksesi tämän tai Syötä koodi kirjoittaaksesi koodin. Jokainen, jolla on tämä sivu ja pääsy pilveesi, voi avata kirjastosi: säilytä sitä yksityisessä paikassa."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Si vous perdez tous vos appareils, choisissez Ajouter un appareil dans bae sur un nouvel appareil, puis scannez ceci ou saisissez le code. Toute personne qui a cette page et l’accès à votre cloud peut ouvrir votre bibliothèque : gardez-la en lieu sûr."
+            "value" : "Si vous perdez tous vos appareils, ouvrez bae sur un nouvel appareil et choisissez Scanner un code pour scanner ceci, ou Saisir un code pour saisir le code. Toute personne qui a cette page et l’accès à votre cloud peut ouvrir votre bibliothèque : gardez-la en lieu sûr."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אם איבדת את כל המכשירים שלך, בחר ב“הוספת מכשיר” ב-bae במכשיר חדש, ואז סרוק את הקוד הזה או הקלד אותו. כל מי שיש לו את הדף הזה וגישה לענן שלך יכול לפתוח את הספרייה שלך: שמור אותו במקום פרטי."
+            "value" : "אם איבדת את כל המכשירים שלך, פתח את bae במכשיר חדש ובחר ב“סריקת קוד” כדי לסרוק את הקוד הזה, או ב“הזנת קוד” כדי להקליד אותו. כל מי שיש לו את הדף הזה וגישה לענן שלך יכול לפתוח את הספרייה שלך: שמור אותו במקום פרטי."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ako izgubite sve svoje uređaje, na novom uređaju u baeu odaberite Dodaj uređaj, a zatim skenirajte ovo ili upišite kod. Tko god ima ovu stranicu i pristup vašem oblaku može otvoriti vašu fonoteku: čuvajte je na privatnom mjestu."
+            "value" : "Ako izgubite sve svoje uređaje, otvorite bae na novom uređaju i odaberite Skeniraj kod za skeniranje ovoga ili Unesi kod za upis koda. Tko god ima ovu stranicu i pristup vašem oblaku može otvoriti vašu fonoteku: čuvajte je na privatnom mjestu."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ha elveszíted az összes eszközödet, válaszd a bae-ben egy új eszközön az Eszköz hozzáadása lehetőséget, majd olvasd be ezt, vagy írd be a kódot. Bárki, aki birtokolja ezt az oldalt és hozzáfér a felhődhöz, megnyithatja a könyvtáradat: tartsd magánál."
+            "value" : "Ha elveszíted az összes eszközödet, nyisd meg a bae-et egy újon, és válaszd a Kód beolvasása lehetőséget ennek beolvasásához, vagy a Kód megadása lehetőséget a kód beírásához. Bárki, aki birtokolja ezt az oldalt és hozzáfér a felhődhöz, megnyithatja a könyvtáradat: tartsd magánál."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se perdi tutti i tuoi dispositivi, scegli Aggiungi dispositivo in bae su uno nuovo, poi scansiona questo o digita il codice. Chiunque abbia questa pagina e l’accesso al tuo cloud può aprire la tua libreria: conservala in un luogo privato."
+            "value" : "Se perdi tutti i tuoi dispositivi, apri bae su uno nuovo e scegli Scansiona un codice per scansionare questo, o Inserisci un codice per digitare il codice. Chiunque abbia questa pagina e l’accesso al tuo cloud può aprire la tua libreria: conservala in un luogo privato."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "すべてのデバイスを失ったら、新しいデバイスの bae で「デバイスを追加」を選び、これをスキャンするかコードを入力してください。このページとクラウドへのアクセスがあれば誰でもライブラリを開けます。人目につかない場所に保管してください。"
+            "value" : "すべてのデバイスを失ったら、新しいデバイスで bae を開き、「コードをスキャン」を選んでこれをスキャンするか、「コードを入力」を選んでコードを入力してください。このページとクラウドへのアクセスがあれば誰でもライブラリを開けます。人目につかない場所に保管してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "모든 기기를 잃어버렸다면, 새 기기의 bae에서 ‘기기 추가’를 선택한 다음 이것을 스캔하거나 코드를 입력하세요. 이 페이지와 클라우드 접근 권한이 있는 사람은 누구나 라이브러리를 열 수 있으니 안전한 곳에 보관하세요."
+            "value" : "모든 기기를 잃어버렸다면, 새 기기에서 bae를 열고 ‘코드 스캔’을 선택해 이것을 스캔하거나 ‘코드 입력’을 선택해 코드를 입력하세요. 이 페이지와 클라우드 접근 권한이 있는 사람은 누구나 라이브러리를 열 수 있으니 안전한 곳에 보관하세요."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hvis du mister alle enhetene dine, velger du Legg til enhet i bae på en ny enhet og skanner deretter dette eller skriver inn koden. Alle som har denne siden og tilgang til skyen din, kan åpne biblioteket ditt: oppbevar den på et privat sted."
+            "value" : "Hvis du mister alle enhetene dine, åpner du bae på en ny enhet og velger Skann en kode for å skanne dette eller Skriv inn en kode for å skrive inn koden. Alle som har denne siden og tilgang til skyen din, kan åpne biblioteket ditt: oppbevar den på et privat sted."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Als je al je apparaten kwijtraakt, kies je in bae op een nieuw apparaat Apparaat toevoegen en scan je dit of typ je de code. Iedereen die deze pagina heeft en toegang tot je cloud, kan je bibliotheek openen: bewaar hem op een privéplek."
+            "value" : "Als je al je apparaten kwijtraakt, open je bae op een nieuw apparaat en kies je Code scannen om dit te scannen, of Code invoeren om de code te typen. Iedereen die deze pagina heeft en toegang tot je cloud, kan je bibliotheek openen: bewaar hem op een privéplek."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jeśli stracisz wszystkie urządzenia, wybierz w bae na nowym urządzeniu Dodaj urządzenie, a potem zeskanuj to lub wpisz kod. Każdy, kto ma tę stronę i dostęp do Twojej chmury, może otworzyć Twoją bibliotekę: przechowuj ją w prywatnym miejscu."
+            "value" : "Jeśli stracisz wszystkie urządzenia, otwórz bae na nowym urządzeniu i wybierz Zeskanuj kod, żeby to zeskanować, albo Wpisz kod, żeby wpisać kod. Każdy, kto ma tę stronę i dostęp do Twojej chmury, może otworzyć Twoją bibliotekę: przechowuj ją w prywatnym miejscu."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se você perder todos os seus dispositivos, escolha Adicionar dispositivo no bae em um novo e depois escaneie este código ou digite-o. Qualquer pessoa que tenha esta página e acesso à sua nuvem pode abrir sua biblioteca: guarde-a em um lugar privado."
+            "value" : "Se você perder todos os seus dispositivos, abra o bae em um novo e escolha Ler um código para ler este código ou Digitar um código para digitá-lo. Qualquer pessoa que tenha esta página e acesso à sua nuvem pode abrir sua biblioteca: guarde-a em um lugar privado."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se perder todos os seus dispositivos, escolha Adicionar dispositivo no bae num novo e depois leia este código ou escreva-o. Qualquer pessoa que tenha esta página e acesso à sua nuvem pode abrir a sua biblioteca: guarde-a num local privado."
+            "value" : "Se perder todos os seus dispositivos, abra o bae num novo e escolha Ler um código para ler este código ou Introduzir um código para o escrever. Qualquer pessoa que tenha esta página e acesso à sua nuvem pode abrir a sua biblioteca: guarde-a num local privado."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dacă pierzi toate dispozitivele, alege Adaugă dispozitiv în bae pe unul nou, apoi scanează acest cod sau tastează-l. Oricine are această pagină și acces la cloudul tău îți poate deschide biblioteca: păstreaz-o într-un loc privat."
+            "value" : "Dacă pierzi toate dispozitivele, deschide bae pe unul nou și alege Scanează un cod ca să scanezi acest cod sau Introdu un cod ca să-l tastezi. Oricine are această pagină și acces la cloudul tău îți poate deschide biblioteca: păstreaz-o într-un loc privat."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ak prídete o všetky zariadenia, vyberte v bae na novom zariadení Pridať zariadenie a potom tento kód naskenujte alebo ho prepíšte. Ktokoľvek, kto má túto stranu a prístup k vášmu cloudu, môže otvoriť vašu knižnicu: uschovajte ju na súkromnom mieste."
+            "value" : "Ak prídete o všetky zariadenia, otvorte bae na novom zariadení a vyberte Naskenovať kód na naskenovanie tohto kódu alebo Zadať kód na jeho prepísanie. Ktokoľvek, kto má túto stranu a prístup k vášmu cloudu, môže otvoriť vašu knižnicu: uschovajte ju na súkromnom mieste."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Om du förlorar alla dina enheter väljer du Lägg till enhet i bae på en ny och skannar sedan koden eller skriver in den. Alla som har den här sidan och åtkomst till ditt moln kan öppna ditt bibliotek: förvara den privat."
+            "value" : "Om du förlorar alla dina enheter öppnar du bae på en ny och väljer Skanna en kod för att skanna koden eller Ange en kod för att skriva in den. Alla som har den här sidan och åtkomst till ditt moln kan öppna ditt bibliotek: förvara den privat."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tüm cihazlarınızı kaybederseniz yeni bir cihazda bae'de Cihaz ekle'yi seçin, ardından bunu tarayın veya kodu yazın. Bu sayfaya ve bulutunuza erişimi olan herkes kitaplığınızı açabilir: özel bir yerde saklayın."
+            "value" : "Tüm cihazlarınızı kaybederseniz yeni bir cihazda bae'yi açın ve bunu taramak için Kod tara'yı, kodu yazmak için Kod gir'i seçin. Bu sayfaya ve bulutunuza erişimi olan herkes kitaplığınızı açabilir: özel bir yerde saklayın."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Якщо ви втратите всі пристрої, на новому пристрої виберіть у bae «Додати пристрій», а потім відскануйте це або введіть код. Будь-хто, у кого є ця сторінка й доступ до вашої хмари, може відкрити вашу бібліотеку: зберігайте її в приватному місці."
+            "value" : "Якщо ви втратите всі пристрої, відкрийте bae на новому пристрої та виберіть «Сканувати код», щоб відсканувати це, або «Ввести код», щоб ввести код. Будь-хто, у кого є ця сторінка й доступ до вашої хмари, може відкрити вашу бібліотеку: зберігайте її в приватному місці."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "如果你丢失了所有设备，请在新设备的 bae 中选择“添加设备”，然后扫描此码或输入代码。任何拿到此页面并能访问你云端的人都可以打开你的库，请妥善保管。"
+            "value" : "如果你丢失了所有设备，请在新设备上打开 bae，选择“扫描代码”来扫描此码，或选择“输入代码”来输入代码。任何拿到此页面并能访问你云端的人都可以打开你的库，请妥善保管。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "如果你遺失了所有裝置，請在新裝置的 bae 中選擇「新增裝置」，然後掃描此碼或輸入代碼。任何拿到此頁面並能存取你雲端的人都可以打開你的資料庫，請妥善保管。"
+            "value" : "如果你遺失了所有裝置，請在新裝置上打開 bae，選擇「掃描代碼」來掃描此碼，或選擇「輸入代碼」來輸入代碼。任何拿到此頁面並能存取你雲端的人都可以打開你的資料庫，請妥善保管。"
           }
         }
       }
@@ -23291,7 +23291,7 @@
       }
     },
     "Add" : {
-      "comment" : "Button: add the selected folder in the open panel, a typed artist, a pressing fact; and on the Add device screen, add this device to the library the code names.",
+      "comment" : "Button: add the selected folder in the open panel, a typed artist, a pressing fact; and on the S3 key sheet, add this device to the library the code names.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -117221,175 +117221,175 @@
         }
       }
     },
-    "On the new device, choose “Add device”, then scan this or type:" : {
-      "comment" : "Add a device sheet: instructions between the QR code and the restore code. The quoted label is the Add device choice on the new device's first screen.",
+    "On the new device, choose “Scan code” to scan this, or “Enter code” to type:" : {
+      "comment" : "Add a device sheet: instructions between the QR code and the restore code. The quoted labels are the Scan code and Enter code choices on the new device's first screen.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "على الجهاز الجديد، اختر «إضافة جهاز»، ثم امسح هذا الرمز أو اكتب:"
+            "value" : "على الجهاز الجديد، اختر «مسح رمز» لمسح هذا الرمز، أو «إدخال رمز» لكتابته:"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "На новото устройство изберете „Добавяне на устройство“, след това сканирайте това или въведете:"
+            "value" : "На новото устройство изберете „Сканиране на код“, за да сканирате това, или „Въвеждане на код“, за да въведете:"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Na novém zařízení zvolte „Přidat zařízení“ a pak naskenujte toto nebo zadejte:"
+            "value" : "Na novém zařízení zvolte „Naskenovat kód“ pro naskenování tohoto kódu nebo „Zadat kód“ pro jeho opsání:"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vælg »Tilføj enhed« på den nye enhed, og scan derefter dette, eller skriv:"
+            "value" : "Vælg »Scan en kode« på den nye enhed for at scanne dette, eller »Indtast en kode« for at skrive:"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wähle auf dem neuen Gerät „Gerät hinzufügen“ und scanne dann dies oder gib Folgendes ein:"
+            "value" : "Wähle auf dem neuen Gerät „Code scannen“, um dies zu scannen, oder „Code eingeben“, um Folgendes einzutippen:"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Στη νέα συσκευή, επιλέξτε «Προσθήκη συσκευής» και μετά σαρώστε αυτό ή πληκτρολογήστε:"
+            "value" : "Στη νέα συσκευή, επιλέξτε «Σάρωση κωδικού» για να σαρώσετε αυτό ή «Εισαγωγή κωδικού» για να πληκτρολογήσετε:"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "On the new device, choose “Add device”, then scan this or type:"
+            "value" : "On the new device, choose “Scan code” to scan this, or “Enter code” to type:"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En el nuevo dispositivo, elige “Añadir dispositivo” y luego escanea esto o escribe:"
+            "value" : "En el nuevo dispositivo, elige “Escanear un código” para escanear esto o “Introducir un código” para escribir:"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Valitse uudella laitteella ”Lisää laite” ja skannaa sitten tämä tai kirjoita:"
+            "value" : "Valitse uudella laitteella ”Skannaa koodi” skannataksesi tämän tai ”Syötä koodi” kirjoittaaksesi:"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sur le nouvel appareil, choisissez « Ajouter un appareil », puis scannez ceci ou saisissez :"
+            "value" : "Sur le nouvel appareil, choisissez « Scanner un code » pour scanner ceci ou « Saisir un code » pour saisir :"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "במכשיר החדש בחר ב“הוספת מכשיר”, ואז סרוק את זה או הקלד:"
+            "value" : "במכשיר החדש בחר ב“סריקת קוד” כדי לסרוק את זה, או ב“הזנת קוד” כדי להקליד:"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Na novom uređaju odaberite „Dodaj uređaj”, a zatim skenirajte ovo ili upišite:"
+            "value" : "Na novom uređaju odaberite „Skeniraj kod” za skeniranje ili „Unesi kod” za upis:"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Az új eszközön válaszd ezt: „Eszköz hozzáadása”, majd olvasd be ezt, vagy írd be:"
+            "value" : "Az új eszközön válaszd a „Kód beolvasása” lehetőséget ennek beolvasásához, vagy a „Kód megadása” lehetőséget a beíráshoz:"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sul nuovo dispositivo, scegli “Aggiungi dispositivo”, poi scansiona questo codice o digita:"
+            "value" : "Sul nuovo dispositivo, scegli “Scansiona un codice” per scansionare questo, o “Inserisci un codice” per digitare:"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新しいデバイスで「デバイスを追加」を選んでから、これをスキャンするか、次のコードを入力してください："
+            "value" : "新しいデバイスで「コードをスキャン」を選んでこれをスキャンするか、「コードを入力」を選んで次のコードを入力してください："
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 기기에서 ‘기기 추가’ 항목을 선택한 다음, 이 코드를 스캔하거나 다음을 입력하세요:"
+            "value" : "새 기기에서 ‘코드 스캔’을 선택해 이 코드를 스캔하거나, ‘코드 입력’을 선택해 다음을 입력하세요:"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Velg «Legg til enhet» på den nye enheten, og skann deretter dette eller skriv inn:"
+            "value" : "Velg «Skann en kode» på den nye enheten for å skanne dette, eller «Skriv inn en kode» for å skrive inn:"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kies op het nieuwe apparaat ‘Apparaat toevoegen’ en scan dan dit of typ:"
+            "value" : "Kies op het nieuwe apparaat ‘Code scannen’ om dit te scannen, of ‘Code invoeren’ om te typen:"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Na nowym urządzeniu wybierz „Dodaj urządzenie”, a potem zeskanuj to albo wpisz:"
+            "value" : "Na nowym urządzeniu wybierz „Zeskanuj kod”, żeby to zeskanować, albo „Wpisz kod”, żeby wpisać:"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No novo dispositivo, escolha “Adicionar dispositivo” e depois escaneie isto ou digite:"
+            "value" : "No novo dispositivo, escolha “Ler um código” para ler isto ou “Digitar um código” para digitar:"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No novo dispositivo, escolha «Adicionar dispositivo» e depois leia isto ou escreva:"
+            "value" : "No novo dispositivo, escolha «Ler um código» para ler isto ou «Introduzir um código» para escrever:"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pe noul dispozitiv, alege „Adaugă dispozitiv”, apoi scanează asta sau tastează:"
+            "value" : "Pe noul dispozitiv, alege „Scanează un cod” ca să scanezi asta sau „Introdu un cod” ca să tastezi:"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Na novom zariadení vyberte „Pridať zariadenie“ a potom naskenujte toto alebo zadajte:"
+            "value" : "Na novom zariadení vyberte „Naskenovať kód“ na naskenovanie tohto kódu alebo „Zadať kód“ na jeho prepísanie:"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Välj ”Lägg till enhet” på den nya enheten och skanna sedan det här eller skriv:"
+            "value" : "Välj ”Skanna en kod” på den nya enheten för att skanna det här, eller ”Ange en kod” för att skriva:"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yeni cihazda “Cihaz ekle” seçeneğini seçin, ardından bunu tarayın ya da şunu yazın:"
+            "value" : "Yeni cihazda “Kod tara” seçeneğiyle bunu tarayın ya da “Kod gir” seçeneğiyle şunu yazın:"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "На новому пристрої виберіть «Додати пристрій», а потім відскануйте це або введіть:"
+            "value" : "На новому пристрої виберіть «Сканувати код», щоб відсканувати це, або «Ввести код», щоб ввести:"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在新设备上选择“添加设备”，然后扫描此代码或输入："
+            "value" : "在新设备上选择“扫描代码”来扫描此代码，或选择“输入代码”来输入："
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在新裝置上選擇「新增裝置」，然後掃描此代碼或輸入："
+            "value" : "在新裝置上選擇「掃描代碼」來掃描此代碼，或選擇「輸入代碼」來輸入："
           }
         }
       }

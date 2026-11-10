@@ -340,7 +340,7 @@
     <string name="restore_code_partly_hidden">رمز الاستعادة، مخفي جزئيًا</string>
     <string name="restore_code_print_title">رمز استعادة bae</string>
     <string name="restore_code_printed">تمت الطباعة في %1$s</string>
-    <string name="restore_code_print_keep">إذا فقدت جميع أجهزتك، فاختر «إضافة جهاز» في bae على جهاز جديد، ثم امسح هذا الرمز ضوئيًا أو اكتبه. يمكن لأي شخص يملك هذه الصفحة وصولًا إلى سحابتك أن يفتح مكتبتك، فاحتفظ بها في مكان خاص.</string>
+    <string name="restore_code_print_keep">إذا فقدت جميع أجهزتك، فافتح bae على جهاز جديد واختر «مسح رمز» لمسح هذا الرمز، أو «إدخال رمز» لكتابته. يمكن لأي شخص يملك هذه الصفحة وصولًا إلى سحابتك أن يفتح مكتبتك، فاحتفظ بها في مكان خاص.</string>
     <string name="done">تم</string>
     <string name="members_you">أنت</string>
     <string name="members_unnamed">بلا اسم بعد</string>
@@ -378,7 +378,7 @@
     <string name="add_device_title">إضافة جهاز</string>
     <string name="add_device_added">تمت إضافة %1$s</string>
     <string name="add_device_making_code">جارٍ إنشاء رمز لجهازك الجديد…</string>
-    <string name="add_device_instructions">على الجهاز الجديد، اختر «إضافة جهاز»، ثم امسح هذا الرمز أو اكتب:</string>
+    <string name="add_device_instructions">على الجهاز الجديد، اختر «مسح رمز» لمسح هذا الرمز، أو «إدخال رمز» لكتابته:</string>
     <string name="invite_email">البريد الإلكتروني</string>
     <string name="invite_create">إنشاء دعوة</string>
     <string name="invite_title">دعوة</string>

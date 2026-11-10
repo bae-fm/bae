@@ -314,7 +314,7 @@
     <string name="restore_code_partly_hidden">Gendannelseskode, delvist skjult</string>
     <string name="restore_code_print_title">bae-gendannelseskode</string>
     <string name="restore_code_printed">Udskrevet %1$s</string>
-    <string name="restore_code_print_keep">Hvis du mister alle dine enheder, skal du vælge Tilføj enhed i bae på en ny enhed og derefter scanne dette eller skrive koden. Alle, der har denne side og adgang til din sky, kan åbne dit bibliotek: opbevar den et privat sted.</string>
+    <string name="restore_code_print_keep">Hvis du mister alle dine enheder, skal du åbne bae på en ny enhed og vælge Scan en kode for at scanne dette eller Indtast en kode for at skrive koden. Alle, der har denne side og adgang til din sky, kan åbne dit bibliotek: opbevar den et privat sted.</string>
     <string name="done">Færdig</string>
     <string name="members_you">Dig</string>
     <string name="members_unnamed">Intet navn endnu</string>
@@ -348,7 +348,7 @@
     <string name="add_device_title">Tilføj en enhed</string>
     <string name="add_device_added">%1$s er tilføjet</string>
     <string name="add_device_making_code">Laver en kode til din nye enhed…</string>
-    <string name="add_device_instructions">Vælg »Tilføj enhed« på den nye enhed, og scan derefter dette, eller skriv:</string>
+    <string name="add_device_instructions">Vælg »Scan en kode« på den nye enhed for at scanne dette, eller »Indtast en kode« for at skrive:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Opret invitation</string>
     <string name="invite_title">Invitation</string>

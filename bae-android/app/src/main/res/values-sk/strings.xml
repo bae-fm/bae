@@ -326,7 +326,7 @@
     <string name="restore_code_partly_hidden">Kód na obnovenie, čiastočne skrytý</string>
     <string name="restore_code_print_title">Kód na obnovenie bae</string>
     <string name="restore_code_printed">Vytlačené %1$s</string>
-    <string name="restore_code_print_keep">Ak prídete o všetky zariadenia, vyberte v bae na novom zariadení Pridať zariadenie a potom tento kód naskenujte alebo ho prepíšte. Ktokoľvek, kto má túto stranu a prístup k vášmu cloudu, môže otvoriť vašu knižnicu: uschovajte ju na súkromnom mieste.</string>
+    <string name="restore_code_print_keep">Ak prídete o všetky zariadenia, otvorte bae na novom zariadení a vyberte Naskenovať kód na naskenovanie tohto kódu alebo Zadať kód na jeho prepísanie. Ktokoľvek, kto má túto stranu a prístup k vášmu cloudu, môže otvoriť vašu knižnicu: uschovajte ju na súkromnom mieste.</string>
     <string name="done">Hotovo</string>
     <string name="members_you">Ty</string>
     <string name="members_unnamed">Zatiaľ bez mena</string>
@@ -362,7 +362,7 @@
     <string name="add_device_title">Pridať zariadenie</string>
     <string name="add_device_added">Zariadenie pridané: %1$s</string>
     <string name="add_device_making_code">Vytvára sa kód pre vaše nové zariadenie…</string>
-    <string name="add_device_instructions">Na novom zariadení vyber „Pridať zariadenie“ a potom naskenuj toto alebo zadaj:</string>
+    <string name="add_device_instructions">Na novom zariadení vyberte „Naskenovať kód“ na naskenovanie tohto kódu alebo „Zadať kód“ na jeho prepísanie:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Vytvoriť pozvánku</string>
     <string name="invite_title">Pozvánka</string>

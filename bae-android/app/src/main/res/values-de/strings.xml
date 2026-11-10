@@ -316,7 +316,7 @@
     <string name="restore_code_partly_hidden">Wiederherstellungscode, teilweise verborgen</string>
     <string name="restore_code_print_title">bae-Wiederherstellungscode</string>
     <string name="restore_code_printed">Gedruckt am %1$s</string>
-    <string name="restore_code_print_keep">Wenn du alle deine Geräte verlierst, wähle in bae auf einem neuen Gerät „Gerät hinzufügen“ und scanne dann diesen Code oder tippe ihn ein. Jeder, der diese Seite und Zugriff auf deine Cloud hat, kann deine Bibliothek öffnen: Bewahre sie an einem privaten Ort auf.</string>
+    <string name="restore_code_print_keep">Wenn du alle deine Geräte verlierst, öffne bae auf einem neuen Gerät und wähle „Code scannen“, um diesen Code zu scannen, oder „Code eingeben“, um ihn einzutippen. Jeder, der diese Seite und Zugriff auf deine Cloud hat, kann deine Bibliothek öffnen: Bewahre sie an einem privaten Ort auf.</string>
     <string name="done">Fertig</string>
     <string name="members_you">Du</string>
     <string name="members_unnamed">Noch kein Name</string>
@@ -350,7 +350,7 @@
     <string name="add_device_title">Gerät hinzufügen</string>
     <string name="add_device_added">%1$s hinzugefügt</string>
     <string name="add_device_making_code">Code für dein neues Gerät wird erstellt…</string>
-    <string name="add_device_instructions">Wähle auf dem neuen Gerät „Gerät hinzufügen“ und scanne dann dies oder gib Folgendes ein:</string>
+    <string name="add_device_instructions">Wähle auf dem neuen Gerät „Code scannen“, um dies zu scannen, oder „Code eingeben“, um Folgendes einzutippen:</string>
     <string name="invite_email">E-Mail</string>
     <string name="invite_create">Einladung erstellen</string>
     <string name="invite_title">Einladung</string>

@@ -316,7 +316,7 @@
     <string name="restore_code_partly_hidden">Herstelcode, gedeeltelijk verborgen</string>
     <string name="restore_code_print_title">bae-herstelcode</string>
     <string name="restore_code_printed">Geprint op %1$s</string>
-    <string name="restore_code_print_keep">Als je al je apparaten kwijtraakt, kies je in bae op een nieuw apparaat Apparaat toevoegen en scan je dit of typ je de code. Iedereen die deze pagina heeft en toegang tot je cloud, kan je bibliotheek openen: bewaar hem op een privéplek.</string>
+    <string name="restore_code_print_keep">Als je al je apparaten kwijtraakt, open je bae op een nieuw apparaat en kies je Code scannen om dit te scannen, of Code invoeren om de code te typen. Iedereen die deze pagina heeft en toegang tot je cloud, kan je bibliotheek openen: bewaar hem op een privéplek.</string>
     <string name="done">Klaar</string>
     <string name="members_you">Jij</string>
     <string name="members_unnamed">Nog geen naam</string>
@@ -350,7 +350,7 @@
     <string name="add_device_title">Een apparaat toevoegen</string>
     <string name="add_device_added">%1$s toegevoegd</string>
     <string name="add_device_making_code">Code voor je nieuwe apparaat wordt gemaakt…</string>
-    <string name="add_device_instructions">Kies op het nieuwe apparaat ‘Apparaat toevoegen’ en scan dan dit of typ:</string>
+    <string name="add_device_instructions">Kies op het nieuwe apparaat ‘Code scannen’ om dit te scannen, of ‘Code invoeren’ om te typen:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Uitnodiging maken</string>
     <string name="invite_title">Uitnodiging</string>

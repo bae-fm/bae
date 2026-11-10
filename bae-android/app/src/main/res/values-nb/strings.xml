@@ -314,7 +314,7 @@
     <string name="restore_code_partly_hidden">Gjenopprettingskode, delvis skjult</string>
     <string name="restore_code_print_title">bae-gjenopprettingskode</string>
     <string name="restore_code_printed">Skrevet ut %1$s</string>
-    <string name="restore_code_print_keep">Hvis du mister alle enhetene dine, velger du Legg til enhet i bae på en ny enhet og skanner deretter dette eller skriver inn koden. Alle som har denne siden og tilgang til skyen din, kan åpne biblioteket ditt: oppbevar den på et privat sted.</string>
+    <string name="restore_code_print_keep">Hvis du mister alle enhetene dine, åpner du bae på en ny enhet og velger Skann en kode for å skanne dette eller Skriv inn en kode for å skrive inn koden. Alle som har denne siden og tilgang til skyen din, kan åpne biblioteket ditt: oppbevar den på et privat sted.</string>
     <string name="done">Ferdig</string>
     <string name="members_you">Deg</string>
     <string name="members_unnamed">Ikke noe navn ennå</string>
@@ -348,7 +348,7 @@
     <string name="add_device_title">Legg til en enhet</string>
     <string name="add_device_added">%1$s er lagt til</string>
     <string name="add_device_making_code">Lager en kode til den nye enheten din…</string>
-    <string name="add_device_instructions">Velg «Legg til enhet» på den nye enheten, og skann deretter dette eller skriv inn:</string>
+    <string name="add_device_instructions">Velg «Skann en kode» på den nye enheten for å skanne dette, eller «Skriv inn en kode» for å skrive inn:</string>
     <string name="invite_email">E-post</string>
     <string name="invite_create">Opprett invitasjon</string>
     <string name="invite_title">Invitasjon</string>

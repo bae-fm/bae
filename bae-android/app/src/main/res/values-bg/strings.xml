@@ -316,7 +316,7 @@
     <string name="restore_code_partly_hidden">Код за възстановяване, частично скрит</string>
     <string name="restore_code_print_title">Код за възстановяване на bae</string>
     <string name="restore_code_printed">Отпечатано на %1$s</string>
-    <string name="restore_code_print_keep">Ако загубите всичките си устройства, изберете „Добавяне на устройство“ в bae на ново устройство, после сканирайте това или въведете кода. Всеки, който има тази страница и достъп до облака ви, може да отвори библиотеката ви: пазете я на скрито място.</string>
+    <string name="restore_code_print_keep">Ако загубите всичките си устройства, отворете bae на ново устройство и изберете Сканиране на код, за да сканирате това, или Въвеждане на код, за да въведете кода. Всеки, който има тази страница и достъп до облака ви, може да отвори библиотеката ви: пазете я на скрито място.</string>
     <string name="done">Готово</string>
     <string name="members_you">Вие</string>
     <string name="members_unnamed">Още без име</string>
@@ -350,7 +350,7 @@
     <string name="add_device_title">Добавяне на устройство</string>
     <string name="add_device_added">Добавено устройство: %1$s</string>
     <string name="add_device_making_code">Създава се код за новото ви устройство…</string>
-    <string name="add_device_instructions">На новото устройство изберете „Добавяне на устройство“, след това сканирайте това или въведете:</string>
+    <string name="add_device_instructions">На новото устройство изберете „Сканиране на код“, за да сканирате това, или „Въвеждане на код“, за да въведете:</string>
     <string name="invite_email">Имейл</string>
     <string name="invite_create">Създаване на покана</string>
     <string name="invite_title">Покана</string>

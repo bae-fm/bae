@@ -314,7 +314,7 @@
     <string name="restore_code_partly_hidden">Palautuskoodi, osittain piilotettu</string>
     <string name="restore_code_print_title">bae-palautuskoodi</string>
     <string name="restore_code_printed">Tulostettu %1$s</string>
-    <string name="restore_code_print_keep">Jos menetät kaikki laitteesi, valitse baessa uudella laitteella Lisää laite ja skannaa sitten tämä tai kirjoita koodi. Jokainen, jolla on tämä sivu ja pääsy pilveesi, voi avata kirjastosi: säilytä sitä yksityisessä paikassa.</string>
+    <string name="restore_code_print_keep">Jos menetät kaikki laitteesi, avaa bae uudella laitteella ja valitse Skannaa koodi skannataksesi tämän tai Syötä koodi kirjoittaaksesi koodin. Jokainen, jolla on tämä sivu ja pääsy pilveesi, voi avata kirjastosi: säilytä sitä yksityisessä paikassa.</string>
     <string name="done">Valmis</string>
     <string name="members_you">Sinä</string>
     <string name="members_unnamed">Ei vielä nimeä</string>
@@ -348,7 +348,7 @@
     <string name="add_device_title">Lisää laite</string>
     <string name="add_device_added">%1$s lisätty</string>
     <string name="add_device_making_code">Luodaan koodia uudelle laitteellesi…</string>
-    <string name="add_device_instructions">Valitse uudella laitteella ”Lisää laite” ja skannaa sitten tämä tai kirjoita:</string>
+    <string name="add_device_instructions">Valitse uudella laitteella ”Skannaa koodi” skannataksesi tämän tai ”Syötä koodi” kirjoittaaksesi:</string>
     <string name="invite_email">Sähköposti</string>
     <string name="invite_create">Luo kutsu</string>
     <string name="invite_title">Kutsu</string>

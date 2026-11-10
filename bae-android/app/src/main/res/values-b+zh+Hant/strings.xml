@@ -310,7 +310,7 @@
     <string name="restore_code_partly_hidden">還原碼（部分隱藏）</string>
     <string name="restore_code_print_title">bae 還原碼</string>
     <string name="restore_code_printed">列印日期：%1$s</string>
-    <string name="restore_code_print_keep">如果你遺失了所有裝置，請在新裝置的 bae 中選擇「新增裝置」，然後掃描此碼或輸入代碼。任何拿到此頁面並能存取你雲端的人都可以打開你的資料庫，請妥善保管。</string>
+    <string name="restore_code_print_keep">如果你遺失了所有裝置，請在新裝置上打開 bae，選擇「掃描代碼」來掃描此碼，或選擇「輸入代碼」來輸入代碼。任何拿到此頁面並能存取你雲端的人都可以打開你的資料庫，請妥善保管。</string>
     <string name="done">完成</string>
     <string name="members_you">你</string>
     <string name="members_unnamed">尚無名字</string>
@@ -343,7 +343,7 @@
     <string name="add_device_title">新增裝置</string>
     <string name="add_device_added">已新增%1$s</string>
     <string name="add_device_making_code">正在為你的新裝置產生代碼…</string>
-    <string name="add_device_instructions">在新裝置上選擇「新增裝置」，然後掃描此代碼或輸入：</string>
+    <string name="add_device_instructions">在新裝置上選擇「掃描代碼」來掃描此代碼，或選擇「輸入代碼」來輸入：</string>
     <string name="invite_email">電子郵件</string>
     <string name="invite_create">建立邀請</string>
     <string name="invite_title">邀請</string>

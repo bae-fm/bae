@@ -200,7 +200,7 @@ class RestoreCodeSectionTest {
 
         // The QR code takes the dialog's width, so what follows it is scrolled to.
         compose
-            .onNodeWithText("On the new device, choose “Add device”, then scan this or type:")
+            .onNodeWithText("On the new device, choose “Scan code” to scan this, or “Enter code” to type:")
             .performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithText(CODE).performScrollTo().assertIsDisplayed()

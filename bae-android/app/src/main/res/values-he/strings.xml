@@ -322,7 +322,7 @@
     <string name="restore_code_partly_hidden">קוד שחזור, מוסתר חלקית</string>
     <string name="restore_code_print_title">קוד השחזור של bae</string>
     <string name="restore_code_printed">הודפס ב-%1$s</string>
-    <string name="restore_code_print_keep">אם איבדת את כל המכשירים שלך, בחר ב“הוספת מכשיר” ב-bae במכשיר חדש, ואז סרוק את הקוד הזה או הקלד אותו. כל מי שיש לו את הדף הזה וגישה לענן שלך יכול לפתוח את הספרייה שלך: שמור אותו במקום פרטי.</string>
+    <string name="restore_code_print_keep">אם איבדת את כל המכשירים שלך, פתח את bae במכשיר חדש ובחר ב“סריקת קוד” כדי לסרוק את הקוד הזה, או ב“הזנת קוד” כדי להקליד אותו. כל מי שיש לו את הדף הזה וגישה לענן שלך יכול לפתוח את הספרייה שלך: שמור אותו במקום פרטי.</string>
     <string name="done">סיום</string>
     <string name="members_you">את/ה</string>
     <string name="members_unnamed">עדיין ללא שם</string>
@@ -357,7 +357,7 @@
     <string name="add_device_title">הוספת מכשיר</string>
     <string name="add_device_added">המכשיר %1$s נוסף</string>
     <string name="add_device_making_code">יוצר קוד למכשיר החדש שלך…</string>
-    <string name="add_device_instructions">במכשיר החדש בחר ב“הוספת מכשיר”, ואז סרוק את זה או הקלד:</string>
+    <string name="add_device_instructions">במכשיר החדש בחר ב“סריקת קוד” כדי לסרוק את זה, או ב“הזנת קוד” כדי להקליד:</string>
     <string name="invite_email">אימייל</string>
     <string name="invite_create">יצירת הזמנה</string>
     <string name="invite_title">הזמנה</string>

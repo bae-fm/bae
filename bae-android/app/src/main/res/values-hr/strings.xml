@@ -322,7 +322,7 @@
     <string name="restore_code_partly_hidden">Kod za vraćanje, djelomično skriven</string>
     <string name="restore_code_print_title">bae kod za vraćanje</string>
     <string name="restore_code_printed">Ispisano %1$s</string>
-    <string name="restore_code_print_keep">Ako izgubite sve svoje uređaje, na novom uređaju u baeu odaberite Dodaj uređaj, a zatim skenirajte ovo ili upišite kod. Tko god ima ovu stranicu i pristup vašem oblaku može otvoriti vašu fonoteku: čuvajte je na privatnom mjestu.</string>
+    <string name="restore_code_print_keep">Ako izgubite sve svoje uređaje, otvorite bae na novom uređaju i odaberite Skeniraj kod za skeniranje ovoga ili Unesi kod za upis koda. Tko god ima ovu stranicu i pristup vašem oblaku može otvoriti vašu fonoteku: čuvajte je na privatnom mjestu.</string>
     <string name="done">Gotovo</string>
     <string name="members_you">Vi</string>
     <string name="members_unnamed">Još bez imena</string>
@@ -357,7 +357,7 @@
     <string name="add_device_title">Dodaj uređaj</string>
     <string name="add_device_added">Uređaj dodan: %1$s</string>
     <string name="add_device_making_code">Izrada koda za vaš novi uređaj…</string>
-    <string name="add_device_instructions">Na novom uređaju odaberite „Dodaj uređaj”, a zatim skenirajte ovo ili upišite:</string>
+    <string name="add_device_instructions">Na novom uređaju odaberite „Skeniraj kod” za skeniranje ili „Unesi kod” za upis:</string>
     <string name="invite_email">E-pošta</string>
     <string name="invite_create">Stvori pozivnicu</string>
     <string name="invite_title">Pozivnica</string>

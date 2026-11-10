@@ -321,7 +321,7 @@
     <string name="restore_code_partly_hidden">Código de restauración, parcialmente oculto</string>
     <string name="restore_code_print_title">Código de restauración de bae</string>
     <string name="restore_code_printed">Impreso el %1$s</string>
-    <string name="restore_code_print_keep">Si pierdes todos tus dispositivos, elige Añadir dispositivo en bae en uno nuevo y luego escanea esto o escribe el código. Cualquiera que tenga esta página y acceso a tu nube puede abrir tu biblioteca: guárdala en un lugar privado.</string>
+    <string name="restore_code_print_keep">Si pierdes todos tus dispositivos, abre bae en uno nuevo y elige Escanear un código para escanear esto o Introducir un código para escribir el código. Cualquiera que tenga esta página y acceso a tu nube puede abrir tu biblioteca: guárdala en un lugar privado.</string>
     <string name="done">Listo</string>
     <string name="members_you">Tú</string>
     <string name="members_unnamed">Aún sin nombre</string>
@@ -355,7 +355,7 @@
     <string name="add_device_title">Añadir un dispositivo</string>
     <string name="add_device_added">Se ha añadido %1$s</string>
     <string name="add_device_making_code">Creando un código para tu nuevo dispositivo…</string>
-    <string name="add_device_instructions">En el nuevo dispositivo, elige “Añadir dispositivo” y luego escanea esto o escribe:</string>
+    <string name="add_device_instructions">En el nuevo dispositivo, elige “Escanear un código” para escanear esto o “Introducir un código” para escribir:</string>
     <string name="invite_email">Correo electrónico</string>
     <string name="invite_create">Crear invitación</string>
     <string name="invite_title">Invitación</string>
